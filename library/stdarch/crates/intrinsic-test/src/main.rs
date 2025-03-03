@@ -240,7 +240,7 @@ fn compile_c(
     let arch_flags = if target.contains("v7") {
         "-march=armv8.6-a+crypto+crc+dotprod+fp16"
     } else {
-        "-march=armv8.6-a+crypto+sha3+crc+dotprod+fp16+faminmax"
+        "-march=armv8.6-a+crypto+sha3+crc+dotprod+fp16+faminmax+lut"
     };
 
     let intrinsic_name = &intrinsic.name;

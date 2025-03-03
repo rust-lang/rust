@@ -12826,6 +12826,403 @@ pub unsafe fn vld4q_u64(a: *const u64) -> uint64x2x4_t {
     ret_val.3 = unsafe { simd_shuffle!(ret_val.3, ret_val.3, [1, 0]) };
     ret_val
 }
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_s8<const LANE: i32>(a: int8x8_t, b: uint8x8_t) -> int8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.lane.v16i8.v8i8"
+        )]
+        fn _vluti2_lane_s8(a: int8x8_t, b: uint8x8_t, n: i32) -> int8x16_t;
+    }
+    _vluti2_lane_s8(a, b, LANE)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_s8<const LANE: i32>(a: int8x16_t, b: uint8x8_t) -> int8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.lane.v16i8.v16i8"
+        )]
+        fn _vluti2q_lane_s8(a: int8x16_t, b: uint8x8_t, n: i32) -> int8x16_t;
+    }
+    _vluti2q_lane_s8(a, b, LANE)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_s16<const LANE: i32>(a: int16x4_t, b: uint8x8_t) -> int16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.lane.v8i16.v4i16"
+        )]
+        fn _vluti2_lane_s16(a: int16x4_t, b: uint8x8_t, n: i32) -> int16x8_t;
+    }
+    _vluti2_lane_s16(a, b, LANE)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_s16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_s16<const LANE: i32>(a: int16x8_t, b: uint8x8_t) -> int16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti2.lane.v8i16.v8i16"
+        )]
+        fn _vluti2q_lane_s16(a: int16x8_t, b: uint8x8_t, n: i32) -> int16x8_t;
+    }
+    _vluti2q_lane_s16(a, b, LANE)
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_u8<const LANE: i32>(a: uint8x8_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti2_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_u8<const LANE: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti2q_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_u16<const LANE: i32>(a: uint16x4_t, b: uint8x8_t) -> uint16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti2_lane_s16::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_u16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_u16<const LANE: i32>(a: uint16x8_t, b: uint8x8_t) -> uint16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti2q_lane_s16::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_p8<const LANE: i32>(a: poly8x8_t, b: uint8x8_t) -> poly8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti2_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_p8<const LANE: i32>(a: poly8x16_t, b: uint8x8_t) -> poly8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti2q_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2_lane_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2_lane_p16<const LANE: i32>(a: poly16x4_t, b: uint8x8_t) -> poly16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti2_lane_s16::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 2-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti2q_lane_p16)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 1))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti2q_lane_p16<const LANE: i32>(a: poly16x8_t, b: uint8x8_t) -> poly16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti2q_lane_s16::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_f16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut,fp16")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_f16_x2<const LANE: i32>(a: float16x8x2_t, b: uint8x8_t) -> float16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti4q_lane_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_u16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_u16_x2<const LANE: i32>(a: uint16x8x2_t, b: uint8x8_t) -> uint16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti4q_lane_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_p16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_p16_x2<const LANE: i32>(a: poly16x8x2_t, b: uint8x8_t) -> poly16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti4q_lane_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_s16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_s16_x2<const LANE: i32>(a: int16x8x2_t, b: uint8x8_t) -> int16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti4q.lane.x2.v8i16"
+        )]
+        fn _vluti4q_lane_s16_x2(a: int16x8_t, a: int16x8_t, b: uint8x8_t, n: i32) -> int16x8_t;
+    }
+    _vluti4q_lane_s16_x2(a.0, a.1, b, LANE)
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_s8<const LANE: i32>(a: int8x16_t, b: uint8x8_t) -> int8x16_t {
+    static_assert!(LANE == 0);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti4q.lane.v8i8"
+        )]
+        fn _vluti4q_lane_s8(a: int8x16_t, b: uint8x8_t, n: i32) -> int8x16_t;
+    }
+    _vluti4q_lane_s8(a, b, LANE)
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_u8<const LANE: i32>(a: uint8x16_t, b: uint8x8_t) -> uint8x16_t {
+    static_assert!(LANE == 0);
+    transmute(vluti4q_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_lane_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_lane_p8<const LANE: i32>(a: poly8x16_t, b: uint8x8_t) -> poly8x16_t {
+    static_assert!(LANE == 0);
+    transmute(vluti4q_lane_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_f16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut,fp16")]
+#[cfg_attr(test, assert_instr(nop, LANE = 3))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_f16_x2<const LANE: i32>(
+    a: float16x8x2_t,
+    b: uint8x16_t,
+) -> float16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti4q_laneq_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_u16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 3))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_u16_x2<const LANE: i32>(a: uint16x8x2_t, b: uint8x16_t) -> uint16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti4q_laneq_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_p16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 3))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_p16_x2<const LANE: i32>(a: poly16x8x2_t, b: uint8x16_t) -> poly16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    transmute(vluti4q_laneq_s16_x2::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_s16_x2)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 3))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_s16_x2<const LANE: i32>(a: int16x8x2_t, b: uint8x16_t) -> int16x8_t {
+    static_assert!(LANE >= 0 && LANE <= 3);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti4q.laneq.x2.v8i16"
+        )]
+        fn _vluti4q_laneq_s16_x2(a: int16x8_t, b: int16x8_t, c: uint8x16_t, n: i32) -> int16x8_t;
+    }
+    _vluti4q_laneq_s16_x2(a.0, a.1, b, LANE)
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_s8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_s8<const LANE: i32>(a: int8x16_t, b: uint8x16_t) -> int8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    unsafe extern "unadjusted" {
+        #[cfg_attr(
+            any(target_arch = "aarch64", target_arch = "arm64ec"),
+            link_name = "llvm.aarch64.neon.vluti4q.laneq.v16i8"
+        )]
+        fn _vluti4q_laneq_s8(a: int8x16_t, b: uint8x16_t, n: i32) -> int8x16_t;
+    }
+    _vluti4q_laneq_s8(a, b, LANE)
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_u8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_u8<const LANE: i32>(a: uint8x16_t, b: uint8x16_t) -> uint8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti4q_laneq_s8::<LANE>(transmute(a), b))
+}
+#[doc = "Lookup table read with 4-bit indices"]
+#[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vluti4q_laneq_p8)"]
+#[doc = "## Safety"]
+#[doc = "  * Neon instrinsic unsafe"]
+#[inline]
+#[target_feature(enable = "neon,lut")]
+#[cfg_attr(test, assert_instr(nop, LANE = 0))]
+#[unstable(feature = "stdarch_neon_feat_lut", issue = "138050")]
+#[rustc_legacy_const_generics(2)]
+pub unsafe fn vluti4q_laneq_p8<const LANE: i32>(a: poly8x16_t, b: uint8x16_t) -> poly8x16_t {
+    static_assert!(LANE >= 0 && LANE <= 1);
+    transmute(vluti4q_laneq_s8::<LANE>(transmute(a), b))
+}
 #[doc = "Maximum (vector)"]
 #[doc = "[Arm's documentation](https://developer.arm.com/architectures/instruction-sets/intrinsics/vmax_f64)"]
 #[inline]

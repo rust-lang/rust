@@ -118843,5 +118843,915 @@
         "FAMAX"
       ]
     ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_u8",
+    "arguments": [
+      "uint8x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "uint8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_u8",
+    "arguments": [
+      "uint8x16_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "uint8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_s8",
+    "arguments": [
+      "int8x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "int8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_s8",
+    "arguments": [
+      "int8x16_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "int8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_p8",
+    "arguments": [
+      "poly8x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "poly8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_p8",
+    "arguments": [
+      "poly8x16_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "poly8x16_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.16B"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_u16",
+    "arguments": [
+      "uint16x4_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "uint16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_u16",
+    "arguments": [
+      "uint16x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "uint16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_s16",
+    "arguments": [
+      "int16x4_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "int16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_s16",
+    "arguments": [
+      "int16x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "int16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2_lane_p16",
+    "arguments": [
+      "poly16x4_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "poly16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti2q_lane_p16",
+    "arguments": [
+      "poly16x8_t a",
+      "uint8x8_t b",
+      "const int lane"
+    ],
+    "return_type": {
+      "value": "poly16x8_t"
+    },
+    "Arguments_Preparation": {
+      "a": {
+        "register": "Vn.8H"
+      },
+      "b": {
+        "register": "Vm"
+      },
+      "lane": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI2"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_u8",
+    "arguments": [
+      "uint8x16_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "uint8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 0
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_u8",
+    "arguments": [
+      "uint8x16_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "uint8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_s8",
+    "arguments": [
+      "int8x16_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "int8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 0
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_s8",
+    "arguments": [
+      "int8x16_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "int8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_p8",
+    "arguments": [
+      "poly8x16_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "poly8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 0
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_p8",
+    "arguments": [
+      "poly8x16_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "poly8x16_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn.16B"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.16B"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_u16_x2",
+    "arguments": [
+      "uint16x8x2_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "uint16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_u16_x2",
+    "arguments": [
+      "uint16x8x2_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "uint16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_s16_x2",
+    "arguments": [
+      "int16x8x2_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "int16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_s16_x2",
+    "arguments": [
+      "int16x8x2_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "int16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_f16_x2",
+    "arguments": [
+      "float16x8x2_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "float16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_f16_x2",
+    "arguments": [
+      "float16x8x2_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "float16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_lane_p16_x2",
+    "arguments": [
+      "poly16x8x2_t vn",
+      "uint8x8_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "poly16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 1
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
+  },
+  {
+    "SIMD_ISA": "Neon",
+    "name": "vluti4q_laneq_p16_x2",
+    "arguments": [
+      "poly16x8x2_t vn",
+      "uint8x16_t vm",
+      "const int index"
+    ],
+    "return_type": {
+      "value": "poly16x8_t"
+    },
+    "Arguments_Preparation": {
+      "vn": {
+        "register": "Vn1.8H"
+      },
+      "vm": {
+        "register": "Vm"
+      },
+      "index": {
+        "minimum": 0,
+        "maximum": 3
+      },
+      "r": {
+        "register": "Vd.8H"
+      }
+    },
+    "Architectures": [
+      "A64"
+    ],
+    "instructions": [
+      [
+        "LUTI4"
+      ]
+    ]
   }
 ]

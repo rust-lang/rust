@@ -30,6 +30,32 @@ vrnd32x_f64
 vrnd32z_f64
 vrnd64x_f64
 vrnd64z_f64
+vluti2_lane_p16
+vluti2_lane_p8
+vluti2_lane_s16
+vluti2_lane_s8
+vluti2_lane_u16
+vluti2_lane_u8
+vluti2q_lane_p16
+vluti2q_lane_p8
+vluti2q_lane_s16
+vluti2q_lane_s8
+vluti2q_lane_u16
+vluti2q_lane_u8
+vluti4q_lane_f16_x2
+vluti4q_lane_p16_x2
+vluti4q_lane_p8
+vluti4q_lane_s16_x2
+vluti4q_lane_s8
+vluti4q_lane_u16_x2
+vluti4q_lane_u8
+vluti4q_laneq_f16_x2
+vluti4q_laneq_p16_x2
+vluti4q_laneq_p8
+vluti4q_laneq_s16_x2
+vluti4q_laneq_s8
+vluti4q_laneq_u16_x2
+vluti4q_laneq_u8
 
 # Broken in Clang
 vcvth_s16_f16
