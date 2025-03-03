@@ -113,7 +113,6 @@ fn main() {
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
         ("csky", _) => false,
         ("hexagon", _) => false,
-        ("loongarch64", _) => false,
         ("powerpc" | "powerpc64", _) => false,
         ("sparc" | "sparc64", _) => false,
         ("wasm32" | "wasm64", _) => false,
