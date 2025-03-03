@@ -1,5 +1,5 @@
 // regression test of https://github.com/rust-lang/rust/pull/133572#issuecomment-2543007164
-// we should also test UniqueArc once implemented
+// see also the test for UniqueArc in variance-uniquearc.rs
 //
 // inline comments explain how this code *would* compile if UniqueRc was still covariant
 

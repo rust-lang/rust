@@ -4110,7 +4110,11 @@ pub struct UniqueArc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<ArcInner<T>>,
-    phantom: PhantomData<ArcInner<T>>,
+    // Define the ownership of `ArcInner<T>` for drop-check
+    _marker: PhantomData<ArcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
     alloc: A,
 }
 
@@ -4155,7 +4159,7 @@ impl<T, A: Allocator> UniqueArc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 }
 
