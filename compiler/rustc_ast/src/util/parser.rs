@@ -1,7 +1,7 @@
 use rustc_span::kw;
 
 use crate::ast::{self, BinOpKind, RangeLimits};
-use crate::token::{self, BinOpToken, Token};
+use crate::token::{self, Token};
 
 /// Associative operator.
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -34,26 +34,26 @@ impl AssocOp {
         use AssocOp::*;
         match t.kind {
             token::Eq => Some(Assign),
-            token::BinOp(BinOpToken::Plus) => Some(Binary(BinOpKind::Add)),
-            token::BinOp(BinOpToken::Minus) => Some(Binary(BinOpKind::Sub)),
-            token::BinOp(BinOpToken::Star) => Some(Binary(BinOpKind::Mul)),
-            token::BinOp(BinOpToken::Slash) => Some(Binary(BinOpKind::Div)),
-            token::BinOp(BinOpToken::Percent) => Some(Binary(BinOpKind::Rem)),
-            token::BinOp(BinOpToken::Caret) => Some(Binary(BinOpKind::BitXor)),
-            token::BinOp(BinOpToken::And) => Some(Binary(BinOpKind::BitAnd)),
-            token::BinOp(BinOpToken::Or) => Some(Binary(BinOpKind::BitOr)),
-            token::BinOp(BinOpToken::Shl) => Some(Binary(BinOpKind::Shl)),
-            token::BinOp(BinOpToken::Shr) => Some(Binary(BinOpKind::Shr)),
-            token::BinOpEq(BinOpToken::Plus) => Some(AssignOp(BinOpKind::Add)),
-            token::BinOpEq(BinOpToken::Minus) => Some(AssignOp(BinOpKind::Sub)),
-            token::BinOpEq(BinOpToken::Star) => Some(AssignOp(BinOpKind::Mul)),
-            token::BinOpEq(BinOpToken::Slash) => Some(AssignOp(BinOpKind::Div)),
-            token::BinOpEq(BinOpToken::Percent) => Some(AssignOp(BinOpKind::Rem)),
-            token::BinOpEq(BinOpToken::Caret) => Some(AssignOp(BinOpKind::BitXor)),
-            token::BinOpEq(BinOpToken::And) => Some(AssignOp(BinOpKind::BitAnd)),
-            token::BinOpEq(BinOpToken::Or) => Some(AssignOp(BinOpKind::BitOr)),
-            token::BinOpEq(BinOpToken::Shl) => Some(AssignOp(BinOpKind::Shl)),
-            token::BinOpEq(BinOpToken::Shr) => Some(AssignOp(BinOpKind::Shr)),
+            token::Plus => Some(Binary(BinOpKind::Add)),
+            token::Minus => Some(Binary(BinOpKind::Sub)),
+            token::Star => Some(Binary(BinOpKind::Mul)),
+            token::Slash => Some(Binary(BinOpKind::Div)),
+            token::Percent => Some(Binary(BinOpKind::Rem)),
+            token::Caret => Some(Binary(BinOpKind::BitXor)),
+            token::And => Some(Binary(BinOpKind::BitAnd)),
+            token::Or => Some(Binary(BinOpKind::BitOr)),
+            token::Shl => Some(Binary(BinOpKind::Shl)),
+            token::Shr => Some(Binary(BinOpKind::Shr)),
+            token::PlusEq => Some(AssignOp(BinOpKind::Add)),
+            token::MinusEq => Some(AssignOp(BinOpKind::Sub)),
+            token::StarEq => Some(AssignOp(BinOpKind::Mul)),
+            token::SlashEq => Some(AssignOp(BinOpKind::Div)),
+            token::PercentEq => Some(AssignOp(BinOpKind::Rem)),
+            token::CaretEq => Some(AssignOp(BinOpKind::BitXor)),
+            token::AndEq => Some(AssignOp(BinOpKind::BitAnd)),
+            token::OrEq => Some(AssignOp(BinOpKind::BitOr)),
+            token::ShlEq => Some(AssignOp(BinOpKind::Shl)),
+            token::ShrEq => Some(AssignOp(BinOpKind::Shr)),
             token::Lt => Some(Binary(BinOpKind::Lt)),
             token::Le => Some(Binary(BinOpKind::Le)),
             token::Ge => Some(Binary(BinOpKind::Ge)),

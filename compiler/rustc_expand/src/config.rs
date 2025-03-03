@@ -328,7 +328,7 @@ impl<'a> StripUnconfigured<'a> {
 
         // For inner attributes, we do the same thing for the `!` in `#![attr]`.
         let mut trees = if cfg_attr.style == AttrStyle::Inner {
-            let Some(TokenTree::Token(bang_token @ Token { kind: TokenKind::Not, .. }, _)) =
+            let Some(TokenTree::Token(bang_token @ Token { kind: TokenKind::Bang, .. }, _)) =
                 orig_trees.next()
             else {
                 panic!("Bad tokens for attribute {cfg_attr:?}");

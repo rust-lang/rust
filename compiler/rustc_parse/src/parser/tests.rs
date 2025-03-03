@@ -2291,7 +2291,7 @@ fn string_to_tts_macro() {
                     Token { kind: token::Ident(name_macro_rules, IdentIsRaw::No), .. },
                     _,
                 ),
-                TokenTree::Token(Token { kind: token::Not, .. }, _),
+                TokenTree::Token(Token { kind: token::Bang, .. }, _),
                 TokenTree::Token(Token { kind: token::Ident(name_zip, IdentIsRaw::No), .. }, _),
                 TokenTree::Delimited(.., macro_delim, macro_tts),
             ] if name_macro_rules == &kw::MacroRules && name_zip.as_str() == "zip" => {

@@ -651,7 +651,7 @@ impl TokenStream {
             if attr_style == AttrStyle::Inner {
                 vec![
                     TokenTree::token_joint(token::Pound, span),
-                    TokenTree::token_joint_hidden(token::Not, span),
+                    TokenTree::token_joint_hidden(token::Bang, span),
                     body,
                 ]
             } else {

@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
         let stmt = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
             let path = this.parse_path(PathStyle::Expr)?;
 
-            if this.eat(exp!(Not)) {
+            if this.eat(exp!(Bang)) {
                 let stmt_mac = this.parse_stmt_mac(lo, attrs, path)?;
                 return Ok((
                     stmt_mac,
@@ -442,7 +442,16 @@ impl<'a> Parser<'a> {
     /// Parses the RHS of a local variable declaration (e.g., `= 14;`).
     fn parse_initializer(&mut self, eq_optional: bool) -> PResult<'a, Option<P<Expr>>> {
         let eq_consumed = match self.token.kind {
-            token::BinOpEq(..) => {
+            token::PlusEq
+            | token::MinusEq
+            | token::StarEq
+            | token::SlashEq
+            | token::PercentEq
+            | token::CaretEq
+            | token::AndEq
+            | token::OrEq
+            | token::ShlEq
+            | token::ShrEq => {
                 // Recover `let x <op>= 1` as `let x = 1` We must not use `+ BytePos(1)` here
                 // because `<op>` can be a multi-byte lookalike that was recovered, e.g. `➖=` (the
                 // `➖` is a U+2796 Heavy Minus Sign Unicode Character) that was recovered as a
@@ -688,7 +697,7 @@ impl<'a> Parser<'a> {
             if self.token == token::Eof {
                 break;
             }
-            if self.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+            if self.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
                 // Account for `<<<<<<<` diff markers. We can't proactively error here because
                 // that can be a valid path start, so we snapshot and reparse only we've
                 // encountered another parse error.

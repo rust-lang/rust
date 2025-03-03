@@ -130,7 +130,7 @@ impl<'a> Parser<'a> {
             assert!(this.eat(exp!(Pound)), "parse_attribute called in non-attribute position");
 
             let style =
-                if this.eat(exp!(Not)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
+                if this.eat(exp!(Bang)) { ast::AttrStyle::Inner } else { ast::AttrStyle::Outer };
 
             this.expect(exp!(OpenBracket))?;
             let item = this.parse_attr_item(ForceCollect::No)?;
@@ -312,7 +312,7 @@ impl<'a> Parser<'a> {
         loop {
             let start_pos = self.num_bump_calls;
             // Only try to parse if it is an inner attribute (has `!`).
-            let attr = if self.check(exp!(Pound)) && self.look_ahead(1, |t| t == &token::Not) {
+            let attr = if self.check(exp!(Pound)) && self.look_ahead(1, |t| t == &token::Bang) {
                 Some(self.parse_attribute(InnerAttrPolicy::Permitted)?)
             } else if let token::DocComment(comment_kind, attr_style, data) = self.token.kind {
                 if attr_style == ast::AttrStyle::Inner {
