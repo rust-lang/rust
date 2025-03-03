@@ -661,6 +661,7 @@ fn run_test(
 
         let mut compiler_runner =
             wrapped_rustc_command(&rustdoc_options.test_builder_wrappers, rustc_binary);
+        compiler_runner.env("RUSTC_BOOTSTRAP=1");
         compiler_runner.args(compiler_args);
         compiler_runner.args(&["--crate-type=bin", "-o"]).arg(&output_file);
         let mut extern_path = std::ffi::OsString::from(format!(
