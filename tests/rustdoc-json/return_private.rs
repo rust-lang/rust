@@ -1,5 +1,4 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/96161>.
-// ignore-tidy-linelength
 
 mod secret {
     //@ set struct_secret = "$.index[*][?(@.name == 'Secret' && @.inner.struct)].id"

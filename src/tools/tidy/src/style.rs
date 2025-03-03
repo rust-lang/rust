@@ -72,12 +72,14 @@ const ANNOTATIONS_TO_IGNORE: &[&str] = &[
     "//@ normalize-stderr",
 ];
 
+const LINELENGTH_CHECK: &str = "linelength";
+
 // If you edit this, also edit where it gets used in `check` (calling `contains_ignore_directives`)
 const CONFIGURABLE_CHECKS: [&str; 11] = [
     "cr",
     "undocumented-unsafe",
     "tab",
-    "linelength",
+    LINELENGTH_CHECK,
     "filelength",
     "end-whitespace",
     "trailing-newlines",
@@ -250,14 +252,24 @@ enum Directive {
 // Use a fixed size array in the return type to catch mistakes with changing `CONFIGURABLE_CHECKS`
 // without changing the code in `check` easier.
 fn contains_ignore_directives<const N: usize>(
+    path_str: &str,
     can_contain: bool,
     contents: &str,
     checks: [&str; N],
 ) -> [Directive; N] {
-    if !can_contain {
+    // The rustdoc-json test syntax often requires very long lines, so the checks
+    // for long lines aren't really useful.
+    let always_ignore_linelength = path_str.contains("rustdoc-json");
+
+    if !can_contain && !always_ignore_linelength {
         return [Directive::Deny; N];
     }
+
     checks.map(|check| {
+        if check == LINELENGTH_CHECK && always_ignore_linelength {
+            return Directive::Ignore(false);
+        }
+
         // Update `can_contain` when changing this
         if contents.contains(&format!("// ignore-tidy-{check}"))
             || contents.contains(&format!("# ignore-tidy-{check}"))
@@ -367,6 +379,7 @@ pub fn check(path: &Path, bad: &mut bool) {
 
     walk(path, skip, &mut |entry, contents| {
         let file = entry.path();
+        let path_str = file.to_string_lossy();
         let filename = file.file_name().unwrap().to_string_lossy();
 
         let is_css_file = filename.ends_with(".css");
@@ -422,7 +435,7 @@ pub fn check(path: &Path, bad: &mut bool) {
             mut skip_copyright,
             mut skip_dbg,
             mut skip_odd_backticks,
-        ] = contains_ignore_directives(can_contain, &contents, CONFIGURABLE_CHECKS);
+        ] = contains_ignore_directives(&path_str, can_contain, &contents, CONFIGURABLE_CHECKS);
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
@@ -502,7 +515,7 @@ pub fn check(path: &Path, bad: &mut bool) {
                 let contains_potential_directive =
                     possible_line_start && (line.contains("-tidy") || line.contains("tidy-"));
                 let has_recognized_ignore_directive =
-                    contains_ignore_directives(can_contain, line, CONFIGURABLE_CHECKS)
+                    contains_ignore_directives(&path_str, can_contain, line, CONFIGURABLE_CHECKS)
                         .into_iter()
                         .any(|directive| matches!(directive, Directive::Ignore(_)));
                 let has_alphabetical_directive = line.contains("tidy-alphabetical-start")

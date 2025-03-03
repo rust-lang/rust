@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(abi_vectorcall)]
 
 //@ has "$.index[*][?(@.name=='Foo')]"
