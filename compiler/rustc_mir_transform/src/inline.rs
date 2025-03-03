@@ -625,13 +625,6 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         return Err("implementation limitation -- return type mismatch");
     }
     if callsite.fn_sig.abi() == ExternAbi::RustCall {
-        // FIXME: Don't inline user-written `extern "rust-call"` functions,
-        // since this is generally perf-negative on rustc, and we hope that
-        // LLVM will inline these functions instead.
-        if callee_body.spread_arg.is_some() {
-            return Err("user-written rust-call functions");
-        }
-
         let (self_arg, arg_tuple) = match &args[..] {
             [arg_tuple] => (None, arg_tuple),
             [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
@@ -641,18 +634,23 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         let self_arg_ty = self_arg.map(|self_arg| self_arg.node.ty(&caller_body.local_decls, tcx));
 
         let arg_tuple_ty = arg_tuple.node.ty(&caller_body.local_decls, tcx);
-        let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
-            bug!("Closure arguments are not passed as a tuple");
+        let arg_tys = if callee_body.spread_arg.is_some() {
+            std::slice::from_ref(&arg_tuple_ty)
+        } else {
+            let ty::Tuple(arg_tuple_tys) = *arg_tuple_ty.kind() else {
+                bug!("Closure arguments are not passed as a tuple");
+            };
+            arg_tuple_tys.as_slice()
         };
 
         for (arg_ty, input) in
-            self_arg_ty.into_iter().chain(arg_tuple_tys).zip(callee_body.args_iter())
+            self_arg_ty.into_iter().chain(arg_tys.iter().copied()).zip(callee_body.args_iter())
         {
             let input_type = callee_body.local_decls[input].ty;
             if !util::sub_types(tcx, inliner.typing_env(), input_type, arg_ty) {
                 trace!(?arg_ty, ?input_type);
                 debug!("failed to normalize tuple argument type");
-                return Err("implementation limitation -- arg mismatch");
+                return Err("implementation limitation");
             }
         }
     } else {
@@ -1059,8 +1057,7 @@ fn make_call_args<'tcx, I: Inliner<'tcx>>(
 
         closure_ref_arg.chain(tuple_tmp_args).collect()
     } else {
-        // FIXME(edition_2024): switch back to a normal method call.
-        <_>::into_iter(args)
+        args.into_iter()
             .map(|a| create_temp_if_necessary(inliner, a.node, callsite, caller_body, return_block))
             .collect()
     }
