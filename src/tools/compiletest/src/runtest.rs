@@ -2412,8 +2412,9 @@ impl<'test> TestCx<'test> {
         let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
-        // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
-        normalize_path(&self.config.build_test_suite_root, "$TEST_BUILD_DIR");
+        // eg.
+        // /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui/<test_dir>/$name.$revision.$mode/
+        normalize_path(&self.output_base_dir(), "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
         normalize_path(&self.config.build_root, "$BUILD_DIR");
 
@@ -2434,6 +2435,18 @@ impl<'test> TestCx<'test> {
             .into_owned();
 
         normalized = Self::normalize_platform_differences(&normalized);
+
+        // Normalize long type name hash.
+        normalized =
+            static_regex!(r"\$TEST_BUILD_DIR/(?P<filename>[^\.]+).long-type-(?P<hash>\d+).txt")
+                .replace_all(&normalized, |caps: &Captures<'_>| {
+                    format!(
+                        "$TEST_BUILD_DIR/{filename}.long-type-$LONG_TYPE_HASH.txt",
+                        filename = &caps["filename"]
+                    )
+                })
+                .into_owned();
+
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
 
         // Remove test annotations like `//~ ERROR text` from the output,
