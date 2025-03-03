@@ -1806,7 +1806,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         crate::GatherLocalsVisitor::new(&fcx).visit_body(body);
 
         let ty = fcx.check_expr_with_expectation(body.value, expected);
-        fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::ConstSized);
+        fcx.require_type_is_sized(ty, body.value.span, ObligationCauseCode::SizedConstOrStatic);
         fcx.write_ty(block.hir_id, ty);
         ty
     }

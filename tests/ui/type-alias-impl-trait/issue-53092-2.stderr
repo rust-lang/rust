@@ -1,5 +1,5 @@
 error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/issue-53092-2.rs:6:18
+  --> $DIR/issue-53092-2.rs:7:18
    |
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
    |                  ^^^^^^^^^^^ argument `u8` is not a generic parameter
@@ -10,33 +10,59 @@ note: for this opaque type
 LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0391]: cycle detected when type-checking `CONST_BUG`
-  --> $DIR/issue-53092-2.rs:6:1
-   |
-LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: ...which requires computing layout of `Bug<u8, ()>`...
-   = note: ...which requires normalizing `Bug<u8, ()>`...
-note: ...which requires computing type of `Bug::{opaque#0}`...
+error[E0391]: cycle detected when computing type of `Bug::{opaque#0}`
   --> $DIR/issue-53092-2.rs:4:18
    |
 LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
+   |
 note: ...which requires computing type of opaque `Bug::{opaque#0}`...
   --> $DIR/issue-53092-2.rs:4:18
    |
 LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
    |                  ^^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires type-checking `CONST_BUG`, completing the cycle
-note: cycle used when checking that `CONST_BUG` is well-formed
-  --> $DIR/issue-53092-2.rs:6:1
+note: ...which requires type-checking `CONST_BUG`...
+  --> $DIR/issue-53092-2.rs:7:1
    |
 LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires computing layout of `Bug<u8, ()>`...
+   = note: ...which requires normalizing `Bug<u8, ()>`...
+   = note: ...which again requires computing type of `Bug::{opaque#0}`, completing the cycle
+note: cycle used when checking that `Bug::{opaque#0}` is well-formed
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 2 previous errors
+error: item does not constrain `Bug::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-53092-2.rs:7:7
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   |       ^^^^^^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `Bug::{opaque#0}`, but has it in its signature
+  --> $DIR/issue-53092-2.rs:7:61
+   |
+LL | const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
+   |                                                             ^^^^^^^
+   |
+   = note: consider moving the opaque type's declaration and defining uses into a separate module
+note: this opaque type is in the signature
+  --> $DIR/issue-53092-2.rs:4:18
+   |
+LL | type Bug<T, U> = impl Fn(T) -> U + Copy;
+   |                  ^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0391, E0792.
 For more information about an error, try `rustc --explain E0391`.
