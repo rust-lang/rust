@@ -682,19 +682,20 @@ pub fn eq_generics(l: &Generics, r: &Generics) -> bool {
 
 pub fn eq_where_predicate(l: &WherePredicate, r: &WherePredicate) -> bool {
     use WherePredicateKind::*;
-    match (&l.kind, &r.kind) {
-        (BoundPredicate(l), BoundPredicate(r)) => {
-            over(&l.bound_generic_params, &r.bound_generic_params, |l, r| {
-                eq_generic_param(l, r)
-            }) && eq_ty(&l.bounded_ty, &r.bounded_ty)
-                && over(&l.bounds, &r.bounds, eq_generic_bound)
-        },
-        (RegionPredicate(l), RegionPredicate(r)) => {
-            eq_id(l.lifetime.ident, r.lifetime.ident) && over(&l.bounds, &r.bounds, eq_generic_bound)
-        },
-        (EqPredicate(l), EqPredicate(r)) => eq_ty(&l.lhs_ty, &r.lhs_ty) && eq_ty(&l.rhs_ty, &r.rhs_ty),
-        _ => false,
-    }
+    over(&l.attrs, &r.attrs, eq_attr) 
+        && match (&l.kind, &r.kind) {
+            (BoundPredicate(l), BoundPredicate(r)) => {
+                over(&l.bound_generic_params, &r.bound_generic_params, |l, r| {
+                    eq_generic_param(l, r)
+                }) && eq_ty(&l.bounded_ty, &r.bounded_ty)
+                    && over(&l.bounds, &r.bounds, eq_generic_bound)
+            },
+            (RegionPredicate(l), RegionPredicate(r)) => {
+                eq_id(l.lifetime.ident, r.lifetime.ident) && over(&l.bounds, &r.bounds, eq_generic_bound)
+            },
+            (EqPredicate(l), EqPredicate(r)) => eq_ty(&l.lhs_ty, &r.lhs_ty) && eq_ty(&l.rhs_ty, &r.rhs_ty),
+            _ => false,
+        }
 }
 
 pub fn eq_use_tree(l: &UseTree, r: &UseTree) -> bool {
