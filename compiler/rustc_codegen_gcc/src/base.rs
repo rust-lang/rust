@@ -206,7 +206,7 @@ pub fn compile_codegen_unit(
             let f128_type_supported = target_info.supports_target_dependent_type(CType::Float128);
             let u128_type_supported = target_info.supports_target_dependent_type(CType::UInt128t);
             // TODO: improve this to avoid passing that many arguments.
-            let cx = CodegenCx::new(
+            let mut cx = CodegenCx::new(
                 &context,
                 cgu,
                 tcx,
@@ -223,8 +223,8 @@ pub fn compile_codegen_unit(
             }
 
             // ... and now that we have everything pre-defined, fill out those definitions.
-            for &(mono_item, _) in &mono_items {
-                mono_item.define::<Builder<'_, '_, '_>>(&cx);
+            for &(mono_item, item_data) in &mono_items {
+                mono_item.define::<Builder<'_, '_, '_>>(&mut cx, item_data);
             }
 
             // If this codegen unit contains the main function, also create the
