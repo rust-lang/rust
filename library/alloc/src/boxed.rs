@@ -1968,6 +1968,7 @@ impl<T: ?Sized, A: Allocator> LegacyReceiver for Box<T, A> {}
 impl<Args: Tuple, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
     type Output = <F as FnOnce<Args>>::Output;
 
+    #[inline(never)]
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
         <F as FnOnce<Args>>::call_once(*self, args)
     }
@@ -1975,6 +1976,7 @@ impl<Args: Tuple, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
+    #[inline(never)]
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
         <F as FnMut<Args>>::call_mut(self, args)
     }
@@ -1982,6 +1984,7 @@ impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, 
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
 impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
+    #[inline(never)]
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
         <F as Fn<Args>>::call(self, args)
     }

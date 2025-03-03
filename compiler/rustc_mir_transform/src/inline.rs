@@ -625,6 +625,12 @@ fn try_inlining<'tcx, I: Inliner<'tcx>>(
         return Err("implementation limitation -- return type mismatch");
     }
     if callsite.fn_sig.abi() == ExternAbi::RustCall {
+        /* match callsite.callee.def {
+            InstanceKind::Item(def_id) if tcx.is_closure_like(def_id) => {}
+            InstanceKind::FnPtrShim(..) | InstanceKind::ClosureOnceShim { .. } => {}
+            _ => return Err("not inlining non-builtin call"),
+        } */
+
         let (self_arg, arg_tuple) = match &args[..] {
             [arg_tuple] => (None, arg_tuple),
             [self_arg, arg_tuple] => (Some(self_arg), arg_tuple),
