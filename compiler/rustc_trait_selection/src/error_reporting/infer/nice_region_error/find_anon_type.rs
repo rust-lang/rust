@@ -77,7 +77,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
         match arg.kind {
             hir::TyKind::BareFn(_) => {
                 self.current_index.shift_in(1);
-                intravisit::walk_ty(self, arg);
+                let _ = intravisit::walk_ty(self, arg);
                 self.current_index.shift_out(1);
                 return ControlFlow::Continue(());
             }
@@ -85,7 +85,7 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
             hir::TyKind::TraitObject(bounds, ..) => {
                 for bound in bounds {
                     self.current_index.shift_in(1);
-                    self.visit_poly_trait_ref(bound);
+                    let _ = self.visit_poly_trait_ref(bound);
                     self.current_index.shift_out(1);
                 }
             }

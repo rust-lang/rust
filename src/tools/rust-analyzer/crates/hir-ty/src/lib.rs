@@ -1035,7 +1035,7 @@ where
     T: ?Sized + TypeVisitable<Interner>,
 {
     let mut collector = PlaceholderCollector { db, placeholders: FxHashSet::default() };
-    value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
+    let _ = value.visit_with(&mut collector, DebruijnIndex::INNERMOST);
     collector.placeholders.into_iter().collect()
 }
 
