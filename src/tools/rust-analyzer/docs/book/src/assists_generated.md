@@ -257,7 +257,7 @@ fn main() {
 
 
 ### `apply_demorgan`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L16) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L23) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws).
 This transforms expressions of the form `!l || !r` into `!(l && r)`.
@@ -280,7 +280,7 @@ fn main() {
 
 
 ### `apply_demorgan_iterator`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L132) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L154) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 `Iterator::all` and `Iterator::any`.
@@ -419,7 +419,7 @@ Converts comments to documentation.
 
 
 ### `convert_bool_then_to_if`
-**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L131) 
+**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L143) 
 
 Converts a `bool::then` method call to an equivalent if expression.
 
@@ -443,7 +443,7 @@ fn main() {
 
 
 ### `convert_closure_to_fn`
-**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L25) 
+**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L27) 
 
 This converts a closure to a freestanding function, changing all captures to parameters.
 
@@ -527,7 +527,7 @@ impl TryFrom<usize> for Thing {
 
 
 ### `convert_if_to_bool_then`
-**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L20) 
+**Source:**  [convert_bool_then.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_then.rs#L21) 
 
 Converts an if expression into a corresponding `bool::then` call.
 
@@ -1341,6 +1341,26 @@ fn main() {
 ```rust
 fn main() {
     ((3, 4), (1, 2));
+}
+```
+
+
+### `flip_or_pattern`
+**Source:**  [flip_or_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/flip_or_pattern.rs#L9) 
+
+Flips two trait bounds.
+
+#### Before
+```rust
+fn foo() {
+    let (a |┃ b) = 1;
+}
+```
+
+#### After
+```rust
+fn foo() {
+    let (b | a) = 1;
 }
 ```
 
@@ -2161,7 +2181,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> ${0:_} for Ctx<T> {}
+impl<T: Clone> ${1:_} for Ctx<T> {┃}
 ```
 
 
@@ -2258,7 +2278,7 @@ fn bar() {
 
 
 ### `inline_local_variable`
-**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L17) 
+**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L21) 
 
 Inlines a local variable.
 
@@ -2974,7 +2994,7 @@ impl Walrus {
 
 
 ### `remove_parentheses`
-**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L5) 
+**Source:**  [remove_parentheses.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_parentheses.rs#L9) 
 
 Removes redundant parentheses.
 
@@ -3015,7 +3035,7 @@ mod foo {
 
 
 ### `remove_unused_param`
-**Source:**  [remove_unused_param.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_unused_param.rs#L15) 
+**Source:**  [remove_unused_param.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/remove_unused_param.rs#L16) 
 
 Removes unused function parameter.
 

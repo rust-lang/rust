@@ -594,7 +594,9 @@ impl CargoWorkspace {
             .filter_map(|package| {
                 let package = &self[package];
                 if package.is_member {
-                    Some(package.features.keys().cloned())
+                    Some(package.features.keys().cloned().chain(
+                        package.features.keys().map(|key| format!("{}/{key}", package.name)),
+                    ))
                 } else {
                     None
                 }

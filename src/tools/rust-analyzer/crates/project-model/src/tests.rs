@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use base_db::{CrateGraph, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
@@ -223,18 +221,6 @@ fn rust_project_hello_world_project_model() {
 fn rust_project_cfg_groups() {
     let (crate_graph, _proc_macros) = load_rust_project("cfg-groups.json");
     check_crate_graph(crate_graph, expect_file!["../test_data/output/rust_project_cfg_groups.txt"]);
-}
-
-#[test]
-fn rust_project_is_proc_macro_has_proc_macro_dep() {
-    let (crate_graph, _proc_macros) = load_rust_project("is-proc-macro-project.json");
-    // Since the project only defines one crate (outside the sysroot crates),
-    // it should be the one with the biggest Id.
-    let crate_id = crate_graph.iter().max().unwrap();
-    let crate_data = &crate_graph[crate_id];
-    // Assert that the project crate with `is_proc_macro` has a dependency
-    // on the proc_macro sysroot crate.
-    crate_data.dependencies.iter().find(|&dep| *dep.name.deref() == sym::proc_macro).unwrap();
 }
 
 #[test]

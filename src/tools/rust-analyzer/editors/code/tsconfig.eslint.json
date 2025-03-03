@@ -6,6 +6,6 @@
         "src",
         "tests",
         // these are the eslint-only inclusions
-        ".eslintrc.js"
+        "eslint.config.mts"
     ]
 }

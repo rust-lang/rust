@@ -5,6 +5,7 @@
 //! [`SyntaxEditor`]: https://github.com/dotnet/roslyn/blob/43b0b05cc4f492fd5de00f6f6717409091df8daa/src/Workspaces/Core/Portable/Editing/SyntaxEditor.cs
 
 use std::{
+    fmt,
     num::NonZeroU32,
     ops::RangeInclusive,
     sync::atomic::{AtomicU32, Ordering},
@@ -280,6 +281,64 @@ enum ChangeKind {
     Insert,
     ReplaceRange,
     Replace,
+}
+
+impl fmt::Display for Change {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Change::Insert(position, node_or_token) => {
+                let parent = position.parent();
+                let mut parent_str = parent.to_string();
+                let target_range = self.target_range().start() - parent.text_range().start();
+
+                parent_str.insert_str(
+                    target_range.into(),
+                    &format!("\x1b[42m{node_or_token}\x1b[0m\x1b[K"),
+                );
+                f.write_str(&parent_str)
+            }
+            Change::InsertAll(position, vec) => {
+                let parent = position.parent();
+                let mut parent_str = parent.to_string();
+                let target_range = self.target_range().start() - parent.text_range().start();
+                let insertion: String = vec.iter().map(|it| it.to_string()).collect();
+
+                parent_str
+                    .insert_str(target_range.into(), &format!("\x1b[42m{insertion}\x1b[0m\x1b[K"));
+                f.write_str(&parent_str)
+            }
+            Change::Replace(old, new) => {
+                if let Some(new) = new {
+                    write!(f, "\x1b[41m{old}\x1b[42m{new}\x1b[0m\x1b[K")
+                } else {
+                    write!(f, "\x1b[41m{old}\x1b[0m\x1b[K")
+                }
+            }
+            Change::ReplaceWithMany(old, vec) => {
+                let new: String = vec.iter().map(|it| it.to_string()).collect();
+                write!(f, "\x1b[41m{old}\x1b[42m{new}\x1b[0m\x1b[K")
+            }
+            Change::ReplaceAll(range, vec) => {
+                let parent = range.start().parent().unwrap();
+                let parent_str = parent.to_string();
+                let pre_range =
+                    TextRange::new(parent.text_range().start(), range.start().text_range().start());
+                let old_range = TextRange::new(
+                    range.start().text_range().start(),
+                    range.end().text_range().end(),
+                );
+                let post_range =
+                    TextRange::new(range.end().text_range().end(), parent.text_range().end());
+
+                let pre_str = &parent_str[pre_range - parent.text_range().start()];
+                let old_str = &parent_str[old_range - parent.text_range().start()];
+                let post_str = &parent_str[post_range - parent.text_range().start()];
+                let new: String = vec.iter().map(|it| it.to_string()).collect();
+
+                write!(f, "{pre_str}\x1b[41m{old_str}\x1b[42m{new}\x1b[0m\x1b[K{post_str}")
+            }
+        }
+    }
 }
 
 /// Utility trait to allow calling syntax editor functions with references or owned
