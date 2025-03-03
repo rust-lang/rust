@@ -525,31 +525,24 @@ fn ptr_metadata() {
     assert_eq!(metadata("foo"), 3_usize);
     assert_eq!(metadata(&[4, 7][..]), 2_usize);
 
-    let dst_tuple: &(bool, [u8]) = &(true, [0x66, 0x6F, 0x6F]);
     let dst_struct: &Pair<bool, [u8]> = &Pair(true, [0x66, 0x6F, 0x6F]);
-    assert_eq!(metadata(dst_tuple), 3_usize);
     assert_eq!(metadata(dst_struct), 3_usize);
     unsafe {
-        let dst_tuple: &(bool, str) = std::mem::transmute(dst_tuple);
         let dst_struct: &Pair<bool, str> = std::mem::transmute(dst_struct);
-        assert_eq!(&dst_tuple.1, "foo");
         assert_eq!(&dst_struct.1, "foo");
-        assert_eq!(metadata(dst_tuple), 3_usize);
         assert_eq!(metadata(dst_struct), 3_usize);
     }
 
     let vtable_1: DynMetadata<dyn Debug> = metadata(&4_u16 as &dyn Debug);
     let vtable_2: DynMetadata<dyn Display> = metadata(&4_u16 as &dyn Display);
     let vtable_3: DynMetadata<dyn Display> = metadata(&4_u32 as &dyn Display);
-    let vtable_4: DynMetadata<dyn Display> = metadata(&(true, 7_u32) as &(bool, dyn Display));
-    let vtable_5: DynMetadata<dyn Display> =
+    let vtable_4: DynMetadata<dyn Display> =
         metadata(&Pair(true, 7_u32) as &Pair<bool, dyn Display>);
     unsafe {
         let address_1: *const () = std::mem::transmute(vtable_1);
         let address_2: *const () = std::mem::transmute(vtable_2);
         let address_3: *const () = std::mem::transmute(vtable_3);
         let address_4: *const () = std::mem::transmute(vtable_4);
-        let address_5: *const () = std::mem::transmute(vtable_5);
         // Different trait => different vtable pointer
         assert_ne!(address_1, address_2);
         // Different erased type => different vtable pointer
@@ -558,7 +551,6 @@ fn ptr_metadata() {
         // This is *not guaranteed*, so we skip it in Miri.
         if !cfg!(miri) {
             assert_eq!(address_3, address_4);
-            assert_eq!(address_3, address_5);
         }
     }
 }

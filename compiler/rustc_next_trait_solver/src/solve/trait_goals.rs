@@ -786,13 +786,6 @@ where
                     )
                 }
 
-                //  `(A, B, T)` -> `(A, B, U)` where `T: Unsize<U>`
-                (ty::Tuple(a_tys), ty::Tuple(b_tys))
-                    if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
-                {
-                    result_to_single(ecx.consider_builtin_tuple_unsize(goal, a_tys, b_tys))
-                }
-
                 _ => vec![],
             }
         })
@@ -1081,48 +1074,6 @@ where
             ),
         );
         self.probe_builtin_trait_candidate(BuiltinImplSource::Misc)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
-    /// We generate the following builtin impl for tuples of all sizes.
-    ///
-    /// This impl is still unstable and we emit a feature error when it
-    /// when it is used by a coercion.
-    /// ```ignore (builtin impl example)
-    /// impl<T: ?Sized, U: ?Sized, V: ?Sized> Unsize<(T, V)> for (T, U)
-    /// where
-    ///     U: Unsize<V>,
-    /// {}
-    /// ```
-    fn consider_builtin_tuple_unsize(
-        &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
-        a_tys: I::Tys,
-        b_tys: I::Tys,
-    ) -> Result<Candidate<I>, NoSolution> {
-        let cx = self.cx();
-        let Goal { predicate: (_a_ty, b_ty), .. } = goal;
-
-        let (&a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
-        let b_last_ty = b_tys.last().unwrap();
-
-        // Instantiate just the tail field of B., and require that they're equal.
-        let unsized_a_ty = Ty::new_tup_from_iter(cx, a_rest_tys.iter().copied().chain([b_last_ty]));
-        self.eq(goal.param_env, unsized_a_ty, b_ty)?;
-
-        // Similar to ADTs, require that we can unsize the tail.
-        self.add_goal(
-            GoalSource::ImplWhereBound,
-            goal.with(
-                cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_last_ty, b_last_ty],
-                ),
-            ),
-        );
-        self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
 
