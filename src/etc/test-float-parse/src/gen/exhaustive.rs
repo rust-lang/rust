@@ -19,7 +19,7 @@ where
     type WriteCtx = F;
 
     fn total_tests() -> u64 {
-        F::Int::MAX.try_into().unwrap_or(u64::MAX)
+        2u64.saturating_pow(F::Int::BITS)
     }
 
     fn new() -> Self {
