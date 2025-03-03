@@ -117,7 +117,12 @@ fn lit_to_mir_constant<'tcx>(tcx: TyCtxt<'tcx>, lit_input: LitToConstInput<'tcx>
         ConstValue::Scalar(Scalar::from_uint(result, width))
     };
 
-    let value = match (lit, ty.kind()) {
+    let lit_ty = match *ty.kind() {
+        ty::Pat(base, _) => base,
+        _ => ty,
+    };
+
+    let value = match (lit, lit_ty.kind()) {
         (ast::LitKind::Str(s, _), ty::Ref(_, inner_ty, _)) if inner_ty.is_str() => {
             let s = s.as_str();
             let allocation = Allocation::from_bytes_byte_aligned_immutable(s.as_bytes());
