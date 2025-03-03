@@ -1,5 +1,13 @@
 //! Tests for the `Integer::{ilog,log2,log10}` methods.
 
+/// Rounds the argument down to the next integer, except that we account for potential imprecision
+/// in the input, so if `f` is very close to an integer, it will round to that.
+fn round_down_imprecise(f: f32) -> u32 {
+    // Rounds up for values less than 16*EPSILON below an integer,
+    // and rounds down for everything else.
+    (f + 16.0 * f32::EPSILON) as u32
+}
+
 #[test]
 fn checked_ilog() {
     assert_eq!(999u32.checked_ilog(10), Some(2));
@@ -25,15 +33,24 @@ fn checked_ilog() {
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_ilog(13), Some((i as f32).log(13.0) as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog(13),
+            Some(round_down_imprecise((i as f32).log(13.0))),
+            "checking {i}"
+        );
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_ilog(13), Some((i as f32).log(13.0) as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog(13),
+            Some(round_down_imprecise((i as f32).log(13.0))),
+            "checking {i}"
+        );
     }
 }
 
 #[test]
+#[cfg_attr(miri, ignore)] // FIXME test is broken on Miri: https://github.com/rust-lang/rust/issues/137591
 fn checked_ilog2() {
     assert_eq!(5u32.checked_ilog2(), Some(2));
     assert_eq!(0u64.checked_ilog2(), None);
@@ -45,25 +62,34 @@ fn checked_ilog2() {
     assert_eq!(0i8.checked_ilog2(), None);
     assert_eq!(0i16.checked_ilog2(), None);
 
-    assert_eq!(8192u16.checked_ilog2(), Some((8192f32).log2() as u32));
-    assert_eq!(32768u16.checked_ilog2(), Some((32768f32).log2() as u32));
-    assert_eq!(8192i16.checked_ilog2(), Some((8192f32).log2() as u32));
+    assert_eq!(8192u16.checked_ilog2(), Some(round_down_imprecise((8192f32).log2())));
+    assert_eq!(32768u16.checked_ilog2(), Some(round_down_imprecise((32768f32).log2())));
+    assert_eq!(8192i16.checked_ilog2(), Some(round_down_imprecise((8192f32).log2())));
 
     for i in 1..=u8::MAX {
-        assert_eq!(i.checked_ilog2(), Some((i as f32).log2() as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog2(),
+            Some(round_down_imprecise((i as f32).log2())),
+            "checking {i}"
+        );
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
-        // Guard against Android's imprecise f32::ilog2 implementation.
-        if i != 8192 && i != 32768 {
-            assert_eq!(i.checked_ilog2(), Some((i as f32).log2() as u32), "checking {i}");
-        }
+        assert_eq!(
+            i.checked_ilog2(),
+            Some(round_down_imprecise((i as f32).log2())),
+            "checking {i}"
+        );
     }
     for i in i8::MIN..=0 {
         assert_eq!(i.checked_ilog2(), None, "checking {i}");
     }
     for i in 1..=i8::MAX {
-        assert_eq!(i.checked_ilog2(), Some((i as f32).log2() as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog2(),
+            Some(round_down_imprecise((i as f32).log2())),
+            "checking {i}"
+        );
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in i16::MIN..=0 {
@@ -71,10 +97,11 @@ fn checked_ilog2() {
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
-        // Guard against Android's imprecise f32::ilog2 implementation.
-        if i != 8192 {
-            assert_eq!(i.checked_ilog2(), Some((i as f32).log2() as u32), "checking {i}");
-        }
+        assert_eq!(
+            i.checked_ilog2(),
+            Some(round_down_imprecise((i as f32).log2())),
+            "checking {i}"
+        );
     }
 }
 
@@ -91,15 +118,27 @@ fn checked_ilog10() {
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=i16::MAX {
-        assert_eq!(i.checked_ilog10(), Some((i as f32).log10() as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog10(),
+            Some(round_down_imprecise((i as f32).log10())),
+            "checking {i}"
+        );
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=u16::MAX {
-        assert_eq!(i.checked_ilog10(), Some((i as f32).log10() as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog10(),
+            Some(round_down_imprecise((i as f32).log10())),
+            "checking {i}"
+        );
     }
     #[cfg(not(miri))] // Miri is too slow
     for i in 1..=100_000u32 {
-        assert_eq!(i.checked_ilog10(), Some((i as f32).log10() as u32), "checking {i}");
+        assert_eq!(
+            i.checked_ilog10(),
+            Some(round_down_imprecise((i as f32).log10())),
+            "checking {i}"
+        );
     }
 }
 

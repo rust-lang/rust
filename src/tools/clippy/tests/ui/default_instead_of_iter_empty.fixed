@@ -10,8 +10,11 @@ struct Iter {
 fn main() {
     // Do lint.
     let _ = std::iter::empty::<usize>();
+    //~^ default_instead_of_iter_empty
     let _ = std::iter::empty::<HashMap<usize, usize>>();
+    //~^ default_instead_of_iter_empty
     let _foo: std::iter::Empty<usize> = std::iter::empty();
+    //~^ default_instead_of_iter_empty
 
     // Do not lint.
     let _ = Vec::<usize>::default();

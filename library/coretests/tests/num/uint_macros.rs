@@ -351,5 +351,169 @@ macro_rules! uint_module {
                 assert_eq_const_safe!(<$T>::midpoint(6, <$T>::MAX), (<$T>::MAX - <$T>::MIN) / 2 + 3);
             }
         }
+
+        // test_unbounded_sh* constants
+        const SHIFT_AMOUNT_OVERFLOW: u32 = <$T>::BITS;
+        const SHIFT_AMOUNT_OVERFLOW2: u32 = <$T>::BITS + 3;
+        const SHIFT_AMOUNT_OVERFLOW3: u32 = <$T>::BITS << 2;
+
+        const SHIFT_AMOUNT_TEST_ONE: u32 = <$T>::BITS >> 1;
+        const SHIFT_AMOUNT_TEST_TWO: u32 = <$T>::BITS >> 3;
+        const SHIFT_AMOUNT_TEST_THREE: u32 = (<$T>::BITS >> 1) - 1;
+        const SHIFT_AMOUNT_TEST_FOUR: u32 = <$T>::BITS - 1;
+
+        test_runtime_and_compiletime! {
+            fn test_unbounded_shl() {
+                // <$T>::MIN
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_ONE), (<$T>::MIN << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_TWO), (<$T>::MIN << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_THREE), (<$T>::MIN << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MIN << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 1), (<$T>::MIN << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 3), (<$T>::MIN << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, 5), (<$T>::MIN << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // <$T>::MAX
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_TEST_ONE), (<$T>::MAX << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_TEST_TWO), (<$T>::MAX << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_TEST_THREE), (<$T>::MAX << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MAX << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, 1), (<$T>::MAX << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, 3), (<$T>::MAX << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, 5), (<$T>::MAX << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 1
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_TEST_ONE), (1 << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_TEST_TWO), (1 << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_TEST_THREE), (1 << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_TEST_FOUR), (1 << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, 1), (1 << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, 3), (1 << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, 5), (1 << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(1, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // !0
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_TEST_ONE), (!0 << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_TEST_TWO), (!0 << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_TEST_THREE), (!0 << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_TEST_FOUR), (!0 << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, 1), (!0 << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, 3), (!0 << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, 5), (!0 << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(!0, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 8
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_TEST_ONE), (8 << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_TEST_TWO), (8 << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_TEST_THREE), (8 << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_TEST_FOUR), (8 << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, 1), (8 << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, 3), (8 << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, 5), (8 << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(8, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 17
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_TEST_ONE), (17 << SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_TEST_TWO), (17 << SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_TEST_THREE), (17 << SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_TEST_FOUR), (17 << SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, 1), (17 << 1));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, 3), (17 << 3));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, 5), (17 << 5));
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shl(17, SHIFT_AMOUNT_OVERFLOW3), 0);
+            }
+
+            fn test_unbounded_shr() {
+                // <$T>::MIN
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_ONE), (<$T>::MIN >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_TWO), (<$T>::MIN >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_THREE), (<$T>::MIN >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MIN >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 1), (<$T>::MIN >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 3), (<$T>::MIN >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, 5), (<$T>::MIN >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MIN, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // <$T>::MAX
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_TEST_ONE), (<$T>::MAX >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_TEST_TWO), (<$T>::MAX >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_TEST_THREE), (<$T>::MAX >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_TEST_FOUR), (<$T>::MAX >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, 1), (<$T>::MAX >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, 3), (<$T>::MAX >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, 5), (<$T>::MAX >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(<$T>::MAX, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 1
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_TEST_ONE), (1 >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_TEST_TWO), (1 >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_TEST_THREE), (1 >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_TEST_FOUR), (1 >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, 1), (1 >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, 3), (1 >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, 5), (1 >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(1, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // !0
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_TEST_ONE), (!0 >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_TEST_TWO), (!0 >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_TEST_THREE), (!0 >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_TEST_FOUR), (!0 >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, 1), (!0 >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, 3), (!0 >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, 5), (!0 >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(!0, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 8
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_TEST_ONE), (8 >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_TEST_TWO), (8 >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_TEST_THREE), (8 >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_TEST_FOUR), (8 >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, 1), (8 >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, 3), (8 >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, 5), (8 >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(8, SHIFT_AMOUNT_OVERFLOW3), 0);
+
+                // 17
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_TEST_ONE), (17 >> SHIFT_AMOUNT_TEST_ONE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_TEST_TWO), (17 >> SHIFT_AMOUNT_TEST_TWO));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_TEST_THREE), (17 >> SHIFT_AMOUNT_TEST_THREE));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_TEST_FOUR), (17 >> SHIFT_AMOUNT_TEST_FOUR));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, 1), (17 >> 1));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, 3), (17 >> 3));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, 5), (17 >> 5));
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW2), 0);
+                assert_eq_const_safe!(<$T>::unbounded_shr(17, SHIFT_AMOUNT_OVERFLOW3), 0);
+            }
+        }
     };
 }

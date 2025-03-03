@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/invalid-const.rs:5:19
    |
 LL |     pub bax: u8 = panic!("asdf"),
-   |                   ^^^^^^^^^^^^^^ the evaluated program panicked at 'asdf', $DIR/invalid-const.rs:5:19
+   |                   ^^^^^^^^^^^^^^ evaluation panicked: asdf
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

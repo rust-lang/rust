@@ -19,8 +19,16 @@ use crate::ty::{
     TypeSuperVisitable, TypeVisitable, TypeVisitor,
 };
 
+impl IntoDiagArg for Ty<'_> {
+    fn into_diag_arg(self, path: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        ty::tls::with(|tcx| {
+            let ty = tcx.short_string(self, path);
+            rustc_errors::DiagArgValue::Str(std::borrow::Cow::Owned(ty))
+        })
+    }
+}
+
 into_diag_arg_using_display! {
-    Ty<'_>,
     ty::Region<'_>,
 }
 

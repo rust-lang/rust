@@ -273,7 +273,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
 
                             // We lower to an infer even when the feature gate is not enabled
                             // as it is useful for diagnostics to be able to see a `ConstKind::Infer`
-                            args.push(ctx.provided_kind(param, arg));
+                            args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
                         }

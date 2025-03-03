@@ -539,7 +539,10 @@ impl FromStr for SplitDwarfKind {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord, HashStable_Generic)]
 #[derive(Encodable, Decodable)]
 pub enum OutputType {
+    /// This is the optimized bitcode, which could be either pre-LTO or non-LTO bitcode,
+    /// depending on the specific request type.
     Bitcode,
+    /// This is the summary or index data part of the ThinLTO bitcode.
     ThinLinkBitcode,
     Assembly,
     LlvmAssembly,
@@ -2807,8 +2810,8 @@ impl fmt::Display for CrateType {
 }
 
 impl IntoDiagArg for CrateType {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 

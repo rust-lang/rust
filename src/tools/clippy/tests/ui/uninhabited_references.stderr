@@ -8,7 +8,7 @@ LL | fn ret_uninh_ref() -> &'static std::convert::Infallible {
    = help: to override `-D warnings` add `#[allow(clippy::uninhabited_references)]`
 
 error: dereferencing a reference to an uninhabited type would be undefined behavior
-  --> tests/ui/uninhabited_references.rs:11:30
+  --> tests/ui/uninhabited_references.rs:12:30
    |
 LL |         fn $name(x: &$ty) -> &$ty {
    |                              ^^^^
@@ -19,7 +19,7 @@ LL | ret_something!(id_never, !);
    = note: this error originates in the macro `ret_something` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: dereferencing a reference to an uninhabited type is undefined behavior
-  --> tests/ui/uninhabited_references.rs:12:14
+  --> tests/ui/uninhabited_references.rs:14:14
    |
 LL |             &*x
    |              ^^
@@ -30,7 +30,7 @@ LL | ret_something!(id_never, !);
    = note: this error originates in the macro `ret_something` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: dereferencing a reference to an uninhabited type is undefined behavior
-  --> tests/ui/uninhabited_references.rs:22:13
+  --> tests/ui/uninhabited_references.rs:25:13
    |
 LL |     let _ = *x;
    |             ^^

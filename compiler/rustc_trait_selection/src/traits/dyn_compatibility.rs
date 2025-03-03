@@ -538,10 +538,10 @@ fn receiver_for_self_ty<'tcx>(
 /// a pointer.
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
-/// a new check that `Trait` is dyn-compatible, creating a cycle (until dyn_compatible_for_dispatch
-/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
-/// Instead, we fudge a little by introducing a new type parameter `U` such that
+/// a new check that `Trait` is dyn-compatible, creating a cycle.
+/// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
 /// forall (U: Trait + ?Sized) {
@@ -572,8 +572,6 @@ fn receiver_is_dispatchable<'tcx>(
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
-    // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
-    // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
         Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 

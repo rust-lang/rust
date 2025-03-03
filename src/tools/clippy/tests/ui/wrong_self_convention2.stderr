@@ -9,7 +9,7 @@ LL |         pub fn from_be_self(self) -> Self {
    = help: to override `-D warnings` add `#[allow(clippy::wrong_self_convention)]`
 
 error: methods called `from_*` usually take no `self`
-  --> tests/ui/wrong_self_convention2.rs:64:25
+  --> tests/ui/wrong_self_convention2.rs:65:25
    |
 LL |         fn from_be_self(self) -> Self;
    |                         ^^^^

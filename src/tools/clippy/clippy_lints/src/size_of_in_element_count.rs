@@ -99,7 +99,7 @@ fn get_pointee_ty_and_count_expr<'tcx>(
     if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind
         // Find calls to copy_{from,to}{,_nonoverlapping}
         && let method_ident = method_path.ident.as_str()
-        && METHODS.iter().any(|m| *m == method_ident)
+        && METHODS.contains(&method_ident)
 
         // Get the pointee type
         && let ty::RawPtr(pointee_ty, _) =

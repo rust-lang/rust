@@ -3,15 +3,19 @@
 
 fn main() {
     f() && g();
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
+
     f() || g();
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
+
     1 == 2 || g();
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
+
     (f() || g()) && (H * 2);
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
+
     (f() || g()) || (H * 2);
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
 
     macro_rules! mac {
         ($f:ident or $g:ident) => {
@@ -26,9 +30,10 @@ fn main() {
     }
 
     mac!() && mac!();
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
+
     mac!() || mac!();
-    //~^ ERROR: boolean short circuit operator in statement
+    //~^ short_circuit_statement
 
     // Do not lint if the expression comes from a macro
     mac!();

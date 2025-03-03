@@ -27,6 +27,22 @@ pub(crate) fn apply_random_float_error<F: rustc_apfloat::Float>(
     (val * (F::from_u128(1).value + err).value).value
 }
 
+/// [`apply_random_float_error`] gives instructions to apply a 2^N ULP error.
+/// This function implements these instructions such that applying a 2^N ULP error is less error prone.
+/// So for a 2^N ULP error, you would pass N as the `ulp_exponent` argument.
+pub(crate) fn apply_random_float_error_ulp<F: rustc_apfloat::Float>(
+    ecx: &mut crate::MiriInterpCx<'_>,
+    val: F,
+    ulp_exponent: u32,
+) -> F {
+    let n = i32::try_from(ulp_exponent)
+        .expect("`err_scale_for_ulp`: exponent is too large to create an error scale");
+    // we know this fits
+    let prec = i32::try_from(F::PRECISION).unwrap();
+    let err_scale = -(prec - n - 1);
+    apply_random_float_error(ecx, val, err_scale)
+}
+
 pub(crate) fn sqrt<S: rustc_apfloat::ieee::Semantics>(x: IeeeFloat<S>) -> IeeeFloat<S> {
     match x.category() {
         // preserve zero sign

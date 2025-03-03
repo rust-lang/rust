@@ -79,12 +79,12 @@ where
     pub(crate) fn answer(self) -> Answer<<C as QueryContext>::Ref> {
         let Self { src, dst, assume, context } = self;
 
-        // Unconditionally all `Def` nodes from `src`, without pruning away the
+        // Unconditionally remove all `Def` nodes from `src`, without pruning away the
         // branches they appear in. This is valid to do for value-to-value
         // transmutations, but not for `&mut T` to `&mut U`; we will need to be
         // more sophisticated to handle transmutations between mutable
         // references.
-        let src = src.prune(&|def| false);
+        let src = src.prune(&|_def| false);
 
         if src.is_inhabited() && !dst.is_inhabited() {
             return Answer::No(Reason::DstUninhabited);
@@ -96,7 +96,7 @@ where
         let dst = if assume.safety {
             // ...if safety is assumed, don't check if they carry safety
             // invariants; retain all paths.
-            dst.prune(&|def| false)
+            dst.prune(&|_def| false)
         } else {
             // ...otherwise, prune away all paths with safety invariants from
             // the `Dst` layout.

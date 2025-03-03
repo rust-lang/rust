@@ -358,7 +358,7 @@ dependencies = [
  "cargo_metadata 0.18.1",
  "directories",
  "rustc-build-sysroot",
- "rustc_tools_util",
+ "rustc_tools_util 0.4.0",
  "rustc_version",
  "serde",
  "serde_json",
@@ -407,9 +407,9 @@ version = "0.1.0"
 
 [[package]]
 name = "cc"
-version = "1.2.13"
+version = "1.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7777341816418c02e033934a09f20dc0ccaf65a5201ef8a450ae0105a573fda"
+checksum = "be714c154be609ec7f5dad223a33bf1482fff90472de28f7362806e6d4832b8c"
 dependencies = [
  "shlex",
 ]
@@ -522,7 +522,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "clippy"
-version = "0.1.86"
+version = "0.1.87"
 dependencies = [
  "anstream",
  "cargo_metadata 0.18.1",
@@ -539,7 +539,7 @@ dependencies = [
  "quote",
  "regex",
  "rinja",
- "rustc_tools_util",
+ "rustc_tools_util 0.4.2",
  "serde",
  "serde_json",
  "syn 2.0.96",
@@ -553,7 +553,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_config"
-version = "0.1.86"
+version = "0.1.87"
 dependencies = [
  "clippy_utils",
  "itertools",
@@ -578,7 +578,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.86"
+version = "0.1.87"
 dependencies = [
  "arrayvec",
  "cargo_metadata 0.18.1",
@@ -601,7 +601,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.86"
+version = "0.1.87"
 dependencies = [
  "arrayvec",
  "itertools",
@@ -3207,6 +3207,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -3215,6 +3216,7 @@ dependencies = [
  "rustc_index",
  "rustc_macros",
  "rustc_middle",
+ "rustc_parse",
  "rustc_session",
  "rustc_span",
  "rustc_target",
@@ -3263,14 +3265,10 @@ dependencies = [
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
- "rustc_errors",
- "rustc_feature",
- "rustc_fluent_macro",
- "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
- "rustc_session",
  "rustc_span",
+ "thin-vec",
 ]
 
 [[package]]
@@ -3285,11 +3283,13 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_hir",
  "rustc_lexer",
  "rustc_macros",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
+ "thin-vec",
 ]
 
 [[package]]
@@ -3342,6 +3342,7 @@ dependencies = [
  "rustc_expand",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_hir",
  "rustc_index",
  "rustc_lexer",
  "rustc_lint_defs",
@@ -3598,6 +3599,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_error_codes",
  "rustc_error_messages",
@@ -3632,6 +3634,7 @@ dependencies = [
  "rustc_errors",
  "rustc_feature",
  "rustc_fluent_macro",
+ "rustc_hir",
  "rustc_lexer",
  "rustc_lint_defs",
  "rustc_macros",
@@ -3690,6 +3693,7 @@ dependencies = [
  "rustc_abi",
  "rustc_arena",
  "rustc_ast",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_hashes",
  "rustc_index",
@@ -3737,6 +3741,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
+ "rustc_attr_parsing",
  "rustc_hir",
  "rustc_span",
 ]
@@ -3911,6 +3916,7 @@ dependencies = [
  "rustc_target",
  "rustc_trait_selection",
  "rustc_type_ir",
+ "smallvec",
  "tracing",
  "unicode-security",
 ]
@@ -4244,6 +4250,7 @@ name = "rustc_query_impl"
 version = "0.0.0"
 dependencies = [
  "measureme",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -4266,6 +4273,7 @@ dependencies = [
  "rustc-rayon-core",
  "rustc_abi",
  "rustc_ast",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_feature",
@@ -4316,6 +4324,7 @@ version = "0.0.0"
 dependencies = [
  "bitflags",
  "rustc_abi",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_hir",
  "rustc_middle",
@@ -4412,6 +4421,7 @@ dependencies = [
  "punycode",
  "rustc-demangle",
  "rustc_abi",
+ "rustc_ast",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_hashes",
@@ -4443,6 +4453,10 @@ name = "rustc_tools_util"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3316159ab19e19d1065ecc49278e87f767a9dae9fae80348d2b4d4fa4ae02d4d"
+
+[[package]]
+name = "rustc_tools_util"
+version = "0.4.2"
 
 [[package]]
 name = "rustc_trait_selection"
@@ -4491,8 +4505,6 @@ dependencies = [
  "rustc_abi",
  "rustc_data_structures",
  "rustc_hir",
- "rustc_infer",
- "rustc_macros",
  "rustc_middle",
  "rustc_span",
  "tracing",
@@ -4571,6 +4583,7 @@ dependencies = [
  "itertools",
  "minifier",
  "pulldown-cmark 0.9.6",
+ "pulldown-cmark-escape",
  "regex",
  "rinja",
  "rustdoc-json-types",

@@ -39,7 +39,9 @@ fn main() {
     unsafe { unit_fn_block() };
 
     { unit_fn_block(); }
+    //~^ semicolon_outside_block
     unsafe { unit_fn_block(); }
+    //~^ semicolon_outside_block
 
     { unit_fn_block(); };
     unsafe { unit_fn_block(); };
@@ -49,6 +51,7 @@ fn main() {
         unit_fn_block()
     };
     {
+    //~^ semicolon_outside_block
         unit_fn_block();
         unit_fn_block();
     }
@@ -59,6 +62,7 @@ fn main() {
 
     { m!(()) };
     { m!(()); }
+    //~^ semicolon_outside_block
     { m!(()); };
     m!(0);
     m!(1);
@@ -81,10 +85,12 @@ fn main() {
     { unit_fn_block(); };
 
     unsafe {
+    //~^ semicolon_outside_block
         std::arch::asm!("");
     }
 
     {
+    //~^ semicolon_outside_block
         line!();
     }
 

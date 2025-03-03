@@ -987,9 +987,7 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
-                // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
-                // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
-                // cargo.rustdocflag("--generate-link-to-definition");
+                cargo.rustdocflag("--generate-link-to-definition");
 
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
                 $(for krate in $crates {

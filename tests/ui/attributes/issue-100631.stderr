@@ -1,8 +1,8 @@
 error[E0084]: unsupported representation for zero-variant enum
-  --> $DIR/issue-100631.rs:4:1
+  --> $DIR/issue-100631.rs:4:8
    |
 LL | #[repr(C)]
-   | ^^^^^^^^^^
+   |        ^
 LL | #[repr(C)]
 LL | enum Foo {}
    | -------- zero-variant enum

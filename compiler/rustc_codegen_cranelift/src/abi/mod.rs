@@ -402,9 +402,13 @@ pub(crate) fn codegen_terminator_call<'tcx>(
 
         if is_call_from_compiler_builtins_to_upstream_monomorphization(fx.tcx, instance) {
             if target.is_some() {
-                let caller = with_no_trimmed_paths!(fx.tcx.def_path_str(fx.instance.def_id()));
-                let callee = with_no_trimmed_paths!(fx.tcx.def_path_str(def_id));
-                fx.tcx.dcx().emit_err(CompilerBuiltinsCannotCall { caller, callee });
+                let caller_def = fx.instance.def_id();
+                let e = CompilerBuiltinsCannotCall {
+                    span: fx.tcx.def_span(caller_def),
+                    caller: with_no_trimmed_paths!(fx.tcx.def_path_str(caller_def)),
+                    callee: with_no_trimmed_paths!(fx.tcx.def_path_str(def_id)),
+                };
+                fx.tcx.dcx().emit_err(e);
             } else {
                 fx.bcx.ins().trap(TrapCode::user(2).unwrap());
                 return;

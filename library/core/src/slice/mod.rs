@@ -956,7 +956,6 @@ impl<T> [T] {
     /// [`swap`]: slice::swap
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     #[unstable(feature = "slice_swap_unchecked", issue = "88539")]
-    #[rustc_const_unstable(feature = "slice_swap_unchecked", issue = "88539")]
     pub const unsafe fn swap_unchecked(&mut self, a: usize, b: usize) {
         assert_unsafe_precondition!(
             check_library_ub,
@@ -2928,10 +2927,17 @@ impl<T> [T] {
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// If the implementation of [`Ord`] for `T` does not implement a [total order] the resulting
-    /// order of elements in the slice is unspecified. All original elements will remain in the
-    /// slice and any possible modifications via interior mutability are observed in the input. Same
-    /// is true if the implementation of [`Ord`] for `T` panics.
+    /// If the implementation of [`Ord`] for `T` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
+    ///
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
+    ///
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if the implementation of [`Ord`] for `T` panics.
     ///
     /// Sorting types that only implement [`PartialOrd`] such as [`f32`] and [`f64`] require
     /// additional precautions. For example, `f32::NAN != f32::NAN`, which doesn't fulfill the
@@ -2954,7 +2960,8 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order].
+    /// May panic if the implementation of [`Ord`] for `T` does not implement a [total order], or if
+    /// the [`Ord`] implementation panics.
     ///
     /// # Examples
     ///
@@ -2982,14 +2989,16 @@ impl<T> [T] {
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// If the comparison function `compare` does not implement a [total order] the resulting order
-    /// of elements in the slice is unspecified. All original elements will remain in the slice and
-    /// any possible modifications via interior mutability are observed in the input. Same is true
-    /// if `compare` panics.
+    /// If the comparison function `compare` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
     ///
     /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
     /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
     /// examples see the [`Ord`] documentation.
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if `compare` panics.
     ///
     /// # Current implementation
     ///
@@ -3003,7 +3012,8 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// May panic if `compare` does not implement a [total order].
+    /// May panic if the `compare` does not implement a [total order], or if
+    /// the `compare` itself panics.
     ///
     /// # Examples
     ///
@@ -3034,10 +3044,16 @@ impl<T> [T] {
     /// This sort is unstable (i.e., may reorder equal elements), in-place (i.e., does not
     /// allocate), and *O*(*n* \* log(*n*)) worst-case.
     ///
-    /// If the implementation of [`Ord`] for `K` does not implement a [total order] the resulting
-    /// order of elements in the slice is unspecified. All original elements will remain in the
-    /// slice and any possible modifications via interior mutability are observed in the input. Same
-    /// is true if the implementation of [`Ord`] for `K` panics.
+    /// If the implementation of [`Ord`] for `K` does not implement a [total order], the function
+    /// may panic; even if the function exits normally, the resulting order of elements in the slice
+    /// is unspecified. See also the note on panicking below.
+    ///
+    /// For example `|a, b| (a - b).cmp(a)` is a comparison function that is neither transitive nor
+    /// reflexive nor total, `a < b < c < a` with `a = 1, b = 2, c = 3`. For more information and
+    /// examples see the [`Ord`] documentation.
+    ///
+    /// All original elements will remain in the slice and any possible modifications via interior
+    /// mutability are observed in the input. Same is true if the implementation of [`Ord`] for `K` panics.
     ///
     /// # Current implementation
     ///
@@ -3051,7 +3067,8 @@ impl<T> [T] {
     ///
     /// # Panics
     ///
-    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order].
+    /// May panic if the implementation of [`Ord`] for `K` does not implement a [total order], or if
+    /// the [`Ord`] implementation panics.
     ///
     /// # Examples
     ///
@@ -3716,6 +3733,7 @@ impl<T> [T] {
     #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
     #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
+    #[rustc_const_stable_indirect]
     #[track_caller]
     pub const fn copy_from_slice(&mut self, src: &[T])
     where

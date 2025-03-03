@@ -1962,6 +1962,10 @@ fn test_rename_directory_to_non_empty_directory() {
 #[test]
 fn test_rename_symlink() {
     let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
     let original = tmpdir.join("original");
     let dest = tmpdir.join("dest");
     let not_exist = Path::new("does not exist");

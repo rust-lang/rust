@@ -1,5 +1,5 @@
 error[E0658]: inline assembly is not stable yet on this architecture
-  --> $DIR/feature-gate-asm_experimental_arch.rs:19:5
+  --> $DIR/feature-gate-asm_experimental_arch.rs:13:5
    |
 LL |     asm!("");
    |     ^^^^^^^^

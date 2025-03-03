@@ -132,14 +132,33 @@ fn get_llvm_object_symbols(
     if err.is_null() {
         return Ok(true);
     } else {
-        return Err(unsafe { *Box::from_raw(err as *mut io::Error) });
+        let error = unsafe { *Box::from_raw(err as *mut io::Error) };
+        // These are the magic constants for LLVM bitcode files:
+        // https://github.com/llvm/llvm-project/blob/7eadc1960d199676f04add402bb0aa6f65b7b234/llvm/lib/BinaryFormat/Magic.cpp#L90-L97
+        if buf.starts_with(&[0xDE, 0xCE, 0x17, 0x0B]) || buf.starts_with(&[b'B', b'C', 0xC0, 0xDE])
+        {
+            // For LLVM bitcode, failure to read the symbols is not fatal. The bitcode may have been
+            // produced by a newer LLVM version that the one linked to rustc. This is fine provided
+            // that the linker does use said newer LLVM version. We skip writing the symbols for the
+            // bitcode to the symbol table of the archive. Traditional linkers don't like this, but
+            // newer linkers like lld, mold and wild ignore the symbol table anyway, so if they link
+            // against a new enough LLVM it will work out in the end.
+            // LLVM's archive writer also has this same behavior of only warning about invalid
+            // bitcode since https://github.com/llvm/llvm-project/pull/96848
+
+            // We don't have access to the DiagCtxt here to produce a nice warning in the correct format.
+            eprintln!("warning: Failed to read symbol table from LLVM bitcode: {}", error);
+            return Ok(true);
+        } else {
+            return Err(error);
+        }
     }
 
     unsafe extern "C" fn callback(state: *mut c_void, symbol_name: *const c_char) -> *mut c_void {
         let f = unsafe { &mut *(state as *mut &mut dyn FnMut(&[u8]) -> io::Result<()>) };
         match f(unsafe { CStr::from_ptr(symbol_name) }.to_bytes()) {
             Ok(()) => std::ptr::null_mut(),
-            Err(err) => Box::into_raw(Box::new(err)) as *mut c_void,
+            Err(err) => Box::into_raw(Box::new(err) as Box<io::Error>) as *mut c_void,
         }
     }
 
@@ -148,7 +167,7 @@ fn get_llvm_object_symbols(
         Box::into_raw(Box::new(io::Error::new(
             io::ErrorKind::Other,
             format!("LLVM error: {}", error.to_string_lossy()),
-        ))) as *mut c_void
+        )) as Box<io::Error>) as *mut c_void
     }
 }
 

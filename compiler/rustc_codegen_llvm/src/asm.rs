@@ -939,9 +939,10 @@ fn llvm_fixup_input<'ll, 'tcx>(
             }
             bx.insert_element(bx.const_undef(vec_ty), value, bx.const_i32(0))
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
             let vec_ty = bx.cx.type_vector(elem_ty, count);
             let indices: Vec<_> = (0..count * 2).map(|x| bx.const_i32(x as i32)).collect();
@@ -954,7 +955,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, bx.cx.type_vector(bx.cx.type_f64(), 8)),
         (
             X86(
@@ -989,7 +990,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
@@ -1026,7 +1027,7 @@ fn llvm_fixup_input<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_i16(), count))
         }
@@ -1099,9 +1100,10 @@ fn llvm_fixup_output<'ll, 'tcx>(
             }
             value
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(bx.cx, element);
             let vec_ty = bx.cx.type_vector(elem_ty, count * 2);
             let indices: Vec<_> = (0..count).map(|x| bx.const_i32(x as i32)).collect();
@@ -1114,7 +1116,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => bx.bitcast(value, layout.llvm_type(bx.cx)),
         (
             X86(
@@ -1145,7 +1147,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
@@ -1182,7 +1184,7 @@ fn llvm_fixup_output<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             bx.bitcast(value, bx.type_vector(bx.type_f16(), count))
         }
@@ -1243,9 +1245,10 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
             let count = 16 / layout.size.bytes();
             cx.type_vector(elem_ty, count)
         }
-        (AArch64(AArch64InlineAsmRegClass::vreg_low16), BackendRepr::Vector { element, count })
-            if layout.size.bytes() == 8 =>
-        {
+        (
+            AArch64(AArch64InlineAsmRegClass::vreg_low16),
+            BackendRepr::SimdVector { element, count },
+        ) if layout.size.bytes() == 8 => {
             let elem_ty = llvm_asm_scalar_type(cx, element);
             cx.type_vector(elem_ty, count * 2)
         }
@@ -1256,7 +1259,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
         }
         (
             X86(X86InlineAsmRegClass::xmm_reg | X86InlineAsmRegClass::zmm_reg),
-            BackendRepr::Vector { .. },
+            BackendRepr::SimdVector { .. },
         ) if layout.size.bytes() == 64 => cx.type_vector(cx.type_f64(), 8),
         (
             X86(
@@ -1284,7 +1287,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 | X86InlineAsmRegClass::ymm_reg
                 | X86InlineAsmRegClass::zmm_reg,
             ),
-            BackendRepr::Vector { element, count: count @ (8 | 16) },
+            BackendRepr::SimdVector { element, count: count @ (8 | 16) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
         }
@@ -1321,7 +1324,7 @@ fn llvm_fixup_output_type<'ll, 'tcx>(
                 | ArmInlineAsmRegClass::qreg_low4
                 | ArmInlineAsmRegClass::qreg_low8,
             ),
-            BackendRepr::Vector { element, count: count @ (4 | 8) },
+            BackendRepr::SimdVector { element, count: count @ (4 | 8) },
         ) if element.primitive() == Primitive::Float(Float::F16) => {
             cx.type_vector(cx.type_i16(), count)
         }

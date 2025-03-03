@@ -25,6 +25,26 @@ impl Statement<'_> {
 }
 
 impl<'tcx> StatementKind<'tcx> {
+    /// Returns a simple string representation of a `StatementKind` variant, independent of any
+    /// values it might hold (e.g. `StatementKind::Assign` always returns `"Assign"`).
+    pub const fn name(&self) -> &'static str {
+        match self {
+            StatementKind::Assign(..) => "Assign",
+            StatementKind::FakeRead(..) => "FakeRead",
+            StatementKind::SetDiscriminant { .. } => "SetDiscriminant",
+            StatementKind::Deinit(..) => "Deinit",
+            StatementKind::StorageLive(..) => "StorageLive",
+            StatementKind::StorageDead(..) => "StorageDead",
+            StatementKind::Retag(..) => "Retag",
+            StatementKind::PlaceMention(..) => "PlaceMention",
+            StatementKind::AscribeUserType(..) => "AscribeUserType",
+            StatementKind::Coverage(..) => "Coverage",
+            StatementKind::Intrinsic(..) => "Intrinsic",
+            StatementKind::ConstEvalCounter => "ConstEvalCounter",
+            StatementKind::Nop => "Nop",
+            StatementKind::BackwardIncompatibleDropHint { .. } => "BackwardIncompatibleDropHint",
+        }
+    }
     pub fn as_assign_mut(&mut self) -> Option<&mut (Place<'tcx>, Rvalue<'tcx>)> {
         match self {
             StatementKind::Assign(x) => Some(x),
@@ -860,5 +880,42 @@ impl<'tcx> BinOp {
             BinOp::Mul => BinOp::MulWithOverflow,
             _ => return None,
         })
+    }
+}
+
+impl From<Mutability> for RawPtrKind {
+    fn from(other: Mutability) -> Self {
+        match other {
+            Mutability::Mut => RawPtrKind::Mut,
+            Mutability::Not => RawPtrKind::Const,
+        }
+    }
+}
+
+impl RawPtrKind {
+    pub fn is_fake(self) -> bool {
+        match self {
+            RawPtrKind::Mut | RawPtrKind::Const => false,
+            RawPtrKind::FakeForPtrMetadata => true,
+        }
+    }
+
+    pub fn to_mutbl_lossy(self) -> Mutability {
+        match self {
+            RawPtrKind::Mut => Mutability::Mut,
+            RawPtrKind::Const => Mutability::Not,
+
+            // We have no type corresponding to a fake borrow, so use
+            // `*const` as an approximation.
+            RawPtrKind::FakeForPtrMetadata => Mutability::Not,
+        }
+    }
+
+    pub fn ptr_str(self) -> &'static str {
+        match self {
+            RawPtrKind::Mut => "mut",
+            RawPtrKind::Const => "const",
+            RawPtrKind::FakeForPtrMetadata => "const (fake)",
+        }
     }
 }

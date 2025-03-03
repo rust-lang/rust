@@ -18,7 +18,7 @@ pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'
                     _ => a.make_indirect(),
                 }
             }
-            BackendRepr::Vector { .. } => {
+            BackendRepr::SimdVector { .. } => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }

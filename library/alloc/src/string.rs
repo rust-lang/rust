@@ -966,11 +966,8 @@ impl String {
     /// This is highly unsafe, due to the number of invariants that aren't
     /// checked:
     ///
-    /// * The memory at `buf` needs to have been previously allocated by the
-    ///   same allocator the standard library uses, with a required alignment of exactly 1.
-    /// * `length` needs to be less than or equal to `capacity`.
-    /// * `capacity` needs to be the correct value.
-    /// * The first `length` bytes at `buf` need to be valid UTF-8.
+    /// * all safety requirements for [`Vec::<u8>::from_raw_parts`].
+    /// * all safety requirements for [`String::from_utf8_unchecked`].
     ///
     /// Violating these may cause problems like corrupting the allocator's
     /// internal data structures. For example, it is normally **not** safe to

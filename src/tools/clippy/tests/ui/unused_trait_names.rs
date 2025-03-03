@@ -10,6 +10,7 @@ fn main() {}
 
 fn bad() {
     use std::any::Any;
+    //~^ unused_trait_names
 
     println!("{:?}", "foo".type_id());
 }
@@ -29,6 +30,7 @@ fn used_good() {
 
 fn multi_bad() {
     use std::any::{self, Any, TypeId};
+    //~^ unused_trait_names
 
     println!("{:?}", "foo".type_id());
 }
@@ -41,12 +43,14 @@ fn multi_good() {
 
 fn renamed_bad() {
     use std::any::Any as MyAny;
+    //~^ unused_trait_names
 
     println!("{:?}", "foo".type_id());
 }
 
 fn multi_renamed_bad() {
     use std::any::{Any as MyAny, TypeId as MyTypeId};
+    //~^ unused_trait_names
 
     println!("{:?}", "foo".type_id());
 }
@@ -70,6 +74,7 @@ mod used_mod_good {
 mod mod_import_bad {
     fn mod_import_bad() {
         use std::any::Any;
+        //~^ unused_trait_names
 
         println!("{:?}", "foo".type_id());
     }
@@ -111,6 +116,7 @@ mod nested_mod_used_good3 {
 
 mod nested_mod_used_bad {
     use std::any::Any;
+    //~^ unused_trait_names
 
     fn bar() {
         println!("{:?}", "foo".type_id());
@@ -130,6 +136,7 @@ mod nested_mod_used_bad {
 // the code would still compile.
 mod nested_mod_used_bad1 {
     use std::any::Any;
+    //~^ unused_trait_names
 
     use std::any::Any as MyAny;
 
@@ -189,6 +196,7 @@ fn msrv_1_32() {
 #[clippy::msrv = "1.33"]
 fn msrv_1_33() {
     use simple_trait::{MyStruct, MyTrait};
+    //~^ unused_trait_names
     MyStruct.do_things();
 }
 
@@ -196,6 +204,7 @@ mod lint_inside_macro_expansion_bad {
     macro_rules! foo {
         () => {
             use std::any::Any;
+            //~^ unused_trait_names
             fn bar() {
                 "bar".type_id();
             }
@@ -243,6 +252,7 @@ proc_macros::with_span!(
 #[warn(unused)]
 mod unused_import {
     use std::any::Any;
+    //~^ ERROR: unused import
 }
 
 #[allow(clippy::unused_trait_names)]

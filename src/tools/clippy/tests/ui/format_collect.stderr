@@ -37,7 +37,7 @@ LL |     bytes.iter().map(|b| {{{{{ format!("{b:02X}") }}}}}).collect()
    = note: this can be written more efficiently by appending to a `String` directly
 
 error: use of `format!` to build up a string from an iterator
-  --> tests/ui/format_collect.rs:26:5
+  --> tests/ui/format_collect.rs:27:5
    |
 LL | /     (1..10)
 LL | |
@@ -49,12 +49,12 @@ LL | |         .collect()
    | |__________________^
    |
 help: call `fold` instead
-  --> tests/ui/format_collect.rs:28:10
+  --> tests/ui/format_collect.rs:29:10
    |
 LL |         .map(|s| {
    |          ^^^
 help: ... and use the `write!` macro here
-  --> tests/ui/format_collect.rs:30:13
+  --> tests/ui/format_collect.rs:31:13
    |
 LL |             format!("{s} {y}")
    |             ^^^^^^^^^^^^^^^^^^

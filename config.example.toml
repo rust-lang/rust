@@ -608,11 +608,12 @@
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using
-# nightly features
+# nightly features.
 #
-# If using tarball sources, default value for `channel` is taken from the `src/ci/channel` file;
-# otherwise, it's "dev".
-#channel = if "is a tarball source" { content of `src/ci/channel` file } else { "dev" }
+# You can set the channel to "auto-detect" to load the channel name from `src/ci/channel`.
+#
+# If using tarball sources, default value is "auto-detect", otherwise, it's "dev".
+#channel = if "is a tarball source" { "auto-detect" } else { "dev" }
 
 # A descriptive string to be appended to `rustc --version` output, which is
 # also used in places like debuginfo `DW_AT_producer`. This may be useful for

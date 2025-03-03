@@ -10,7 +10,7 @@ LL | pub(crate) const FOO_PUB_CRATE: [u32; 1_000_000] = [0u32; 1_000_000];
    = help: to override `-D warnings` add `#[allow(clippy::large_const_arrays)]`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:11:1
+  --> tests/ui/large_const_arrays.rs:12:1
    |
 LL | pub const FOO_PUB: [u32; 1_000_000] = [0u32; 1_000_000];
    | ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -18,7 +18,7 @@ LL | pub const FOO_PUB: [u32; 1_000_000] = [0u32; 1_000_000];
    |     help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:12:1
+  --> tests/ui/large_const_arrays.rs:14:1
    |
 LL | const FOO_COMPUTED: [u32; 1_000 * 100] = [0u32; 1_000 * 100];
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | const FOO_COMPUTED: [u32; 1_000 * 100] = [0u32; 1_000 * 100];
    | help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:13:1
+  --> tests/ui/large_const_arrays.rs:16:1
    |
 LL | const FOO: [u32; 1_000_000] = [0u32; 1_000_000];
    | -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL | const FOO: [u32; 1_000_000] = [0u32; 1_000_000];
    | help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:23:5
+  --> tests/ui/large_const_arrays.rs:27:5
    |
 LL |     pub const BAR_PUB: [u32; 1_000_000] = [0u32; 1_000_000];
    |     ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL |     pub const BAR_PUB: [u32; 1_000_000] = [0u32; 1_000_000];
    |         help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:24:5
+  --> tests/ui/large_const_arrays.rs:29:5
    |
 LL |     const BAR: [u32; 1_000_000] = [0u32; 1_000_000];
    |     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -50,7 +50,7 @@ LL |     const BAR: [u32; 1_000_000] = [0u32; 1_000_000];
    |     help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:25:5
+  --> tests/ui/large_const_arrays.rs:31:5
    |
 LL |     pub const BAR_STRUCT_PUB: [S; 5_000] = [S { data: [0; 32] }; 5_000];
    |     ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -58,7 +58,7 @@ LL |     pub const BAR_STRUCT_PUB: [S; 5_000] = [S { data: [0; 32] }; 5_000];
    |         help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:26:5
+  --> tests/ui/large_const_arrays.rs:33:5
    |
 LL |     const BAR_STRUCT: [S; 5_000] = [S { data: [0; 32] }; 5_000];
    |     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -66,7 +66,7 @@ LL |     const BAR_STRUCT: [S; 5_000] = [S { data: [0; 32] }; 5_000];
    |     help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:27:5
+  --> tests/ui/large_const_arrays.rs:35:5
    |
 LL |     pub const BAR_S_PUB: [Option<&str>; 200_000] = [Some("str"); 200_000];
    |     ^^^^-----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -74,7 +74,7 @@ LL |     pub const BAR_S_PUB: [Option<&str>; 200_000] = [Some("str"); 200_000];
    |         help: make this a static item: `static`
 
 error: large array defined as const
-  --> tests/ui/large_const_arrays.rs:28:5
+  --> tests/ui/large_const_arrays.rs:37:5
    |
 LL |     const BAR_S: [Option<&str>; 200_000] = [Some("str"); 200_000];
    |     -----^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

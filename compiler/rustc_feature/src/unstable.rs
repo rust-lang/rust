@@ -270,14 +270,6 @@ declare_features! (
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
     /// Allows using the `may_dangle` attribute (RFC 1327).
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
-    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
-    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
-    ///
-    /// Renamed from `object_safe_for_dispatch`.
-    ///
-    /// [^1]: Formerly known as "object safe".
-    (unstable, dyn_compatible_for_dispatch, "1.83.0", Some(43561)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
     /// Allows using `#[link_name="llvm.*"]`.
@@ -516,6 +508,8 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows the type of const generics to depend on generic parameters
+    (incomplete, generic_const_parameter_types, "CURRENT_RUSTC_VERSION", Some(137626)),
     /// Allows any generic constants being used as pattern type range ends
     (incomplete, generic_pattern_types, "1.86.0", Some(136574)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.

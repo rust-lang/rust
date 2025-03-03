@@ -5,7 +5,8 @@ fn main() {
 
     if s.starts_with("ab") {
         str::to_string(&s["ab".len()..]);
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
+
         s["ab".len()..].to_string();
 
         str::to_string(&s[2..]);
@@ -14,7 +15,8 @@ fn main() {
 
     if s.ends_with("bc") {
         str::to_string(&s[..s.len() - "bc".len()]);
-        //~^ ERROR: stripping a suffix manually
+        //~^ manual_strip
+
         s[..s.len() - "bc".len()].to_string();
 
         str::to_string(&s[..s.len() - 2]);
@@ -24,7 +26,8 @@ fn main() {
     // Character patterns
     if s.starts_with('a') {
         str::to_string(&s[1..]);
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
+
         s[1..].to_string();
     }
 
@@ -32,14 +35,15 @@ fn main() {
     let prefix = "ab";
     if s.starts_with(prefix) {
         str::to_string(&s[prefix.len()..]);
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
     }
 
     // Constant prefix
     const PREFIX: &str = "ab";
     if s.starts_with(PREFIX) {
         str::to_string(&s[PREFIX.len()..]);
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
+
         str::to_string(&s[2..]);
     }
 
@@ -47,14 +51,14 @@ fn main() {
     const TARGET: &str = "abc";
     if TARGET.starts_with(prefix) {
         str::to_string(&TARGET[prefix.len()..]);
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
     }
 
     // String target - not mutated.
     let s1: String = "abc".into();
     if s1.starts_with("ab") {
         s1[2..].to_uppercase();
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
     }
 
     // String target - mutated. (Don't lint.)
@@ -69,6 +73,23 @@ fn main() {
     let s4 = String::from("efgh");
     if s3.starts_with("ab") {
         s4[2..].to_string();
+    }
+
+    // Don't propose to reuse the `stripped` identifier as it is overriden
+    if s.starts_with("ab") {
+        let stripped = &s["ab".len()..];
+        //~^ ERROR: stripping a prefix manually
+        let stripped = format!("{stripped}-");
+        println!("{stripped}{}", &s["ab".len()..]);
+    }
+
+    // Don't propose to reuse the `stripped` identifier as it is mutable
+    if s.starts_with("ab") {
+        let mut stripped = &s["ab".len()..];
+        //~^ ERROR: stripping a prefix manually
+        stripped = "";
+        let stripped = format!("{stripped}-");
+        println!("{stripped}{}", &s["ab".len()..]);
     }
 }
 
@@ -85,6 +106,6 @@ fn msrv_1_45() {
     let s = "abc";
     if s.starts_with('a') {
         s[1..].to_string();
-        //~^ ERROR: stripping a prefix manually
+        //~^ manual_strip
     }
 }

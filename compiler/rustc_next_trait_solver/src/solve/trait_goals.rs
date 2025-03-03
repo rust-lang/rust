@@ -617,7 +617,6 @@ where
             )?;
 
             let certainty = ecx.is_transmutable(
-                goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
                 assume,
@@ -1239,17 +1238,15 @@ where
         constituent_tys: impl Fn(
             &EvalCtxt<'_, D>,
             I::Ty,
-        ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>,
+        ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
-            let goals = constituent_tys(ecx, goal.predicate.self_ty())?
-                .into_iter()
-                .map(|ty| {
-                    ecx.enter_forall(ty, |ecx, ty| {
-                        goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty))
-                    })
-                })
-                .collect::<Vec<_>>();
+            let goals =
+                ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
+                    tys.into_iter()
+                        .map(|ty| goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty)))
+                        .collect::<Vec<_>>()
+                });
             ecx.add_goals(GoalSource::ImplWhereBound, goals);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })
