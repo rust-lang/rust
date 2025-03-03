@@ -775,7 +775,7 @@ cc = ["@fmease"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
-[mentions."compiler/rustc_mir_build/src/build/matches"]
+[mentions."compiler/rustc_mir_build/src/builder/matches"]
 message = "Some changes occurred in match lowering"
 cc = ["@Nadrieril"]
 
@@ -1035,7 +1035,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/rustc_mir_build/src/build/coverageinfo.rs"]
+[mentions."compiler/rustc_mir_build/src/builder/coverageinfo.rs"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
@@ -1264,7 +1264,7 @@ project-exploit-mitigations = [
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
-"/compiler/rustc_mir_build/src/build" =                  ["compiler", "mir"]
+"/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
 "/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
