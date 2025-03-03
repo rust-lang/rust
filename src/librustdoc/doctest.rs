@@ -667,6 +667,18 @@ fn run_test(
             "--extern=rustdoc_tests_merged_{edition}=",
             edition = doctest.edition
         ));
+        for extern_str in &rustdoc_options.extern_strs {
+            if let Some((_cratename, path)) = extern_str.split_once('=') {
+                // Direct dependencies of the tests themselves are
+                // indirect dependencies of the test runner.
+                // They need to be in the library search path.
+                let dir = Path::new(path)
+                    .parent()
+                    .filter(|x| x.components().count() > 0)
+                    .unwrap_or(Path::new("."));
+                compiler_runner.arg("-L").arg(dir);
+            }
+        }
         extern_path.push(&output_bundle_file);
         compiler_runner.arg(extern_path);
         compiler_runner.arg(&runner_input_file);
