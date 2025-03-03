@@ -75,7 +75,7 @@ error[E0061]: this function takes 0 arguments but 1 argument was supplied
   --> $DIR/opaque-used-in-extraneous-argument.rs:20:5
    |
 LL |     open_parent(&old_path)
-   |     ^^^^^^^^^^^ --------- unexpected argument of type `&impl Fn<{type error}> + FnOnce<{type error}, Output = {type error}> + 'static`
+   |     ^^^^^^^^^^^ --------- unexpected argument of type `&impl Fn<{type error}> + FnOnce<{type error}, Output = {type error}> + '_`
    |
 note: function defined here
   --> $DIR/opaque-used-in-extraneous-argument.rs:12:4
