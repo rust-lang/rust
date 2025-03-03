@@ -68,6 +68,12 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         diff_fncs: Vec<AutoDiffItem>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError>;
+    fn autodiff_thin(
+        cgcx: &CodegenContext<Self>,
+        thin: &ThinModule<Self>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {
