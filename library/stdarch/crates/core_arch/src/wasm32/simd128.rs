@@ -2318,7 +2318,7 @@ pub fn u8x16_narrow_i16x8(a: v128, b: v128) -> v128 {
 #[doc(alias("i8x16.shl"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_shl(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shl(a.as_i8x16(), simd::i8x16::splat(amt as i8)).v128() }
+    unsafe { simd_shl(a.as_i8x16(), simd::i8x16::splat((amt & 0x7) as i8)).v128() }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2335,7 +2335,7 @@ pub use i8x16_shl as u8x16_shl;
 #[doc(alias("i8x16.shr_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_i8x16(), simd::i8x16::splat(amt as i8)).v128() }
+    unsafe { simd_shr(a.as_i8x16(), simd::i8x16::splat((amt & 0x7) as i8)).v128() }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -2349,7 +2349,7 @@ pub fn i8x16_shr(a: v128, amt: u32) -> v128 {
 #[doc(alias("i8x16.shr_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u8x16_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_u8x16(), simd::u8x16::splat(amt as u8)).v128() }
+    unsafe { simd_shr(a.as_u8x16(), simd::u8x16::splat((amt & 0x7) as u8)).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed sixteen 8-bit integers.
@@ -2686,7 +2686,7 @@ pub use i16x8_extend_high_u8x16 as u16x8_extend_high_u8x16;
 #[doc(alias("i16x8.shl"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_shl(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shl(a.as_i16x8(), simd::i16x8::splat(amt as i16)).v128() }
+    unsafe { simd_shl(a.as_i16x8(), simd::i16x8::splat((amt & 0xf) as i16)).v128() }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -2703,7 +2703,7 @@ pub use i16x8_shl as u16x8_shl;
 #[doc(alias("i16x8.shr_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i16x8_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_i16x8(), simd::i16x8::splat(amt as i16)).v128() }
+    unsafe { simd_shr(a.as_i16x8(), simd::i16x8::splat((amt & 0xf) as i16)).v128() }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -2717,7 +2717,7 @@ pub fn i16x8_shr(a: v128, amt: u32) -> v128 {
 #[doc(alias("i16x8.shr_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u16x8_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_u16x8(), simd::u16x8::splat(amt as u16)).v128() }
+    unsafe { simd_shr(a.as_u16x8(), simd::u16x8::splat((amt & 0xf) as u16)).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed eight 16-bit integers.
@@ -3136,7 +3136,7 @@ pub use i32x4_extend_high_u16x8 as u32x4_extend_high_u16x8;
 #[doc(alias("i32x4.shl"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_shl(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shl(a.as_i32x4(), simd::i32x4::splat(amt as i32)).v128() }
+    unsafe { simd_shl(a.as_i32x4(), simd::i32x4::splat((amt & 0x1f) as i32)).v128() }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3153,7 +3153,7 @@ pub use i32x4_shl as u32x4_shl;
 #[doc(alias("i32x4.shr_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i32x4_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_i32x4(), simd::i32x4::splat(amt as i32)).v128() }
+    unsafe { simd_shr(a.as_i32x4(), simd::i32x4::splat((amt & 0x1f) as i32)).v128() }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -3167,7 +3167,7 @@ pub fn i32x4_shr(a: v128, amt: u32) -> v128 {
 #[doc(alias("i32x4.shr_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u32x4_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_u32x4(), simd::u32x4::splat(amt)).v128() }
+    unsafe { simd_shr(a.as_u32x4(), simd::u32x4::splat(amt & 0x1f)).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed four 32-bit integers.
@@ -3502,7 +3502,7 @@ pub use i64x2_extend_high_u32x4 as u64x2_extend_high_u32x4;
 #[doc(alias("i64x2.shl"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_shl(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shl(a.as_i64x2(), simd::i64x2::splat(amt as i64)).v128() }
+    unsafe { simd_shl(a.as_i64x2(), simd::i64x2::splat((amt & 0x3f) as i64)).v128() }
 }
 
 #[stable(feature = "wasm_simd", since = "1.54.0")]
@@ -3519,7 +3519,7 @@ pub use i64x2_shl as u64x2_shl;
 #[doc(alias("i64x2.shr_s"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i64x2_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_i64x2(), simd::i64x2::splat(amt as i64)).v128() }
+    unsafe { simd_shr(a.as_i64x2(), simd::i64x2::splat((amt & 0x3f) as i64)).v128() }
 }
 
 /// Shifts each lane to the right by the specified number of bits, shifting in
@@ -3533,7 +3533,7 @@ pub fn i64x2_shr(a: v128, amt: u32) -> v128 {
 #[doc(alias("i64x2.shr_u"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn u64x2_shr(a: v128, amt: u32) -> v128 {
-    unsafe { simd_shr(a.as_u64x2(), simd::u64x2::splat(amt as u64)).v128() }
+    unsafe { simd_shr(a.as_u64x2(), simd::u64x2::splat((amt & 0x3f) as u64)).v128() }
 }
 
 /// Adds two 128-bit vectors as if they were two packed two 64-bit integers.
@@ -4344,9 +4344,7 @@ mod tests {
         };
         assert_eq!(
             bytes,
-            [
-                -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16
-            ]
+            [-1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12, -13, -14, -15, -16]
         );
     }
 
