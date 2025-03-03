@@ -5,8 +5,6 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
-// FIXME
-#![allow(unused_crate_dependencies)]
 #![cfg_attr(feature = "rustc", feature(let_chains))]
 #![warn(unreachable_pub)]
 // tidy-alphabetical-end
@@ -21,6 +19,9 @@ pub mod pat_column;
 #[cfg(feature = "rustc")]
 pub mod rustc;
 pub mod usefulness;
+
+#[cfg(test)]
+mod tests;
 
 #[cfg(feature = "rustc")]
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
