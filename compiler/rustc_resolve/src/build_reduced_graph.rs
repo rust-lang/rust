@@ -1529,6 +1529,14 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         visit::walk_variant(self, variant);
     }
 
+    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
+        if p.is_placeholder {
+            self.visit_invoc(p.id);
+        } else {
+            visit::walk_where_predicate(self, p);
+        }
+    }
+
     fn visit_crate(&mut self, krate: &'a ast::Crate) {
         if krate.is_placeholder {
             self.visit_invoc_in_module(krate.id);

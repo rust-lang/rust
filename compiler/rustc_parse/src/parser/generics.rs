@@ -367,34 +367,47 @@ impl<'a> Parser<'a> {
 
         loop {
             let where_sp = where_lo.to(self.prev_token.span);
+            let attrs = self.parse_outer_attributes()?;
             let pred_lo = self.token.span;
-            let kind = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
-                let lifetime = self.expect_lifetime();
-                // Bounds starting with a colon are mandatory, but possibly empty.
-                self.expect(exp!(Colon))?;
-                let bounds = self.parse_lt_param_bounds();
-                ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
-                    lifetime,
-                    bounds,
-                })
-            } else if self.check_type() {
-                match self.parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
-                    struct_, pred_lo, where_sp,
-                )? {
-                    PredicateKindOrStructBody::PredicateKind(kind) => kind,
-                    PredicateKindOrStructBody::StructBody(body) => {
-                        tuple_struct_body = Some(body);
-                        break;
-                    }
+            let predicate = self.collect_tokens(None, attrs, ForceCollect::No, |this, attrs| {
+                for attr in &attrs {
+                    self.psess.gated_spans.gate(sym::where_clause_attrs, attr.span);
                 }
-            } else {
-                break;
-            };
-            where_clause.predicates.push(ast::WherePredicate {
-                kind,
-                id: DUMMY_NODE_ID,
-                span: pred_lo.to(self.prev_token.span),
-            });
+                let kind = if this.check_lifetime() && this.look_ahead(1, |t| !t.is_like_plus()) {
+                    let lifetime = this.expect_lifetime();
+                    // Bounds starting with a colon are mandatory, but possibly empty.
+                    this.expect(exp!(Colon))?;
+                    let bounds = this.parse_lt_param_bounds();
+                    Some(ast::WherePredicateKind::RegionPredicate(ast::WhereRegionPredicate {
+                        lifetime,
+                        bounds,
+                    }))
+                } else if this.check_type() {
+                    match this.parse_ty_where_predicate_kind_or_recover_tuple_struct_body(
+                        struct_, pred_lo, where_sp,
+                    )? {
+                        PredicateKindOrStructBody::PredicateKind(kind) => Some(kind),
+                        PredicateKindOrStructBody::StructBody(body) => {
+                            tuple_struct_body = Some(body);
+                            None
+                        }
+                    }
+                } else {
+                    None
+                };
+                let predicate = kind.map(|kind| ast::WherePredicate {
+                    attrs,
+                    kind,
+                    id: DUMMY_NODE_ID,
+                    span: pred_lo.to(this.prev_token.span),
+                    is_placeholder: false,
+                });
+                Ok((predicate, Trailing::No, UsePreAttrPos::No))
+            })?;
+            match predicate {
+                Some(predicate) => where_clause.predicates.push(predicate),
+                None => break,
+            }
 
             let prev_token = self.prev_token.span;
             let ate_comma = self.eat(exp!(Comma));
