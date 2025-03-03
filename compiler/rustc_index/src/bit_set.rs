@@ -1,3 +1,4 @@
+pub mod thin_bit_set;
 use std::marker::PhantomData;
 #[cfg(not(feature = "nightly"))]
 use std::mem;
@@ -96,6 +97,7 @@ macro_rules! bit_relations_inherent_impls {
         }
     };
 }
+use bit_relations_inherent_impls;
 
 /// A fixed-size bitset type with a dense representation.
 ///
