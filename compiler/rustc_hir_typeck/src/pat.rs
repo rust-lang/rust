@@ -33,7 +33,7 @@ use ty::VariantDef;
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
-use crate::{FnCtxt, LoweredTy, errors};
+use crate::{FnCtxt, errors};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -258,6 +258,24 @@ enum InheritedRefMatchRule {
     },
 }
 
+/// When checking patterns containing paths, we need to know the path's resolution to determine
+/// whether to apply match ergonomics and implicitly dereference the scrutinee. For instance, when
+/// the `deref_patterns` feature is enabled and we're matching against a scrutinee of type
+/// `Cow<'a, Option<u8>>`, we insert an implicit dereference to allow the pattern `Some(_)` to type,
+/// but we must not dereference it when checking the pattern `Cow::Borrowed(_)`.
+///
+/// `ResolvedPat` contains the information from resolution needed to determine match ergonomics
+/// adjustments, plus a callback to finish checking the pattern once we know its adjusted type.
+// TODO: add an `adt_def: Option<DefId>` field to handle the `Cow` case above.
+struct ResolvedPat<F: ?Sized> {
+    /// For path patterns, this must be `Some(res)`, where `res` is the resolution of the pattern's
+    /// `QPath`. Otherwise, this is `None`.
+    path_res: Option<Res>,
+    /// Given the expected type of the scrutinee and the [`PatInfo`] after applying match ergonomics
+    /// adjustments, finish checking the pattern.
+    check: F,
+}
+
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Experimental pattern feature: after matching against a shared reference, do we limit the
     /// default binding mode in subpatterns to be `ref` when it would otherwise be `ref mut`?
@@ -336,13 +354,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
-        let path_res = match pat.kind {
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
-            }
-            _ => None,
-        };
-        let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
+        // For patterns containing paths, we need the path's resolution to determine whether to
+        // implicitly dereference the scrutinee before matching.
+        let resolved_pat: Option<&ResolvedPat<dyn Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>>> =
+            match pat.kind {
+                PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                    Some { 0: &self.check_pat_path(*hir_id, pat.hir_id, *span, qpath, &ti) }
+                }
+                _ => None,
+            };
+        let adjust_mode = self.calc_adjust_mode(pat, resolved_pat.and_then(|r| r.path_res));
         let (expected, binding_mode, max_ref_mutbl) =
             self.calc_default_binding_mode(pat, expected, binding_mode, adjust_mode, max_ref_mutbl);
         let pat_info = PatInfo {
@@ -357,16 +378,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                let ty = self.check_pat_path(
-                    *hir_id,
-                    pat.hir_id,
-                    *span,
-                    qpath,
-                    path_res.unwrap(),
-                    expected,
-                    &pat_info.top_info,
-                );
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), hir_id, .. }) => {
+                let ty = (resolved_pat.unwrap().check)(expected, pat_info);
                 self.write_ty(*hir_id, ty);
                 ty
             }
@@ -1251,33 +1264,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         path_id: HirId,
         pat_id_for_diag: HirId,
         span: Span,
-        qpath: &hir::QPath<'_>,
-        path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
-        expected: Ty<'tcx>,
+        qpath: &'tcx hir::QPath<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         let tcx = self.tcx;
 
-        // We have already resolved the path.
-        let (res, opt_ty, segments) = path_resolution;
-        match res {
+        let (res, opt_ty, segments) =
+            self.resolve_ty_and_res_fully_qualified_call(qpath, path_id, span);
+        let res_ok = match res {
             Res::Err => {
                 let e =
                     self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                return Ty::new_error(tcx, e);
+                Err(e)
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
                 let e = report_unexpected_variant_res(tcx, res, None, qpath, span, E0533, expected);
-                return Ty::new_error(tcx, e);
+                Err(e)
             }
             Res::SelfCtor(def_id) => {
                 if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
                     && adt_def.is_struct()
                     && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
                 {
-                    // Ok, we allow unit struct ctors in patterns only.
+                    Ok(()) // Ok, we allow unit struct ctors in patterns only.
                 } else {
                     let e = report_unexpected_variant_res(
                         tcx,
@@ -1288,7 +1299,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         E0533,
                         "unit struct",
                     );
-                    return Ty::new_error(tcx, e);
+                    Err(e)
                 }
             }
             Res::Def(
@@ -1297,19 +1308,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::ConstParam,
                 _,
-            ) => {} // OK
+            ) => Ok(()), // OK
             _ => bug!("unexpected pattern resolution: {:?}", res),
-        }
+        };
 
         // Type-check the path.
-        let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
-        if let Err(err) =
-            self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
-        {
-            self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
-        }
-        pat_ty
+        let pat_ty_and_res =
+            res_ok.map(|_| self.instantiate_value_path(segments, opt_ty, res, span, span, path_id));
+
+        let check = move |expected, _pat_info| -> Ty<'tcx> {
+            let (pat_ty, pat_res) = match pat_ty_and_res {
+                Ok(pat_ty_and_res) => pat_ty_and_res,
+                Err(guar) => return Ty::new_error(tcx, guar),
+            };
+
+            if let Err(err) =
+                self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
+            {
+                self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
+            }
+            pat_ty
+        };
+        ResolvedPat { path_res: Some(res), check }
     }
 
     fn maybe_suggest_range_literal(
