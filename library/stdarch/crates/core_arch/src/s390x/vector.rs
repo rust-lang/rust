@@ -3034,7 +3034,7 @@ pub unsafe fn vec_subec_u128(
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 #[cfg_attr(test, assert_instr(vrepib, IMM = 42))]
-pub unsafe fn vec_splat_i8<const IMM: i8>() -> vector_signed_char {
+pub unsafe fn vec_splat_s8<const IMM: i8>() -> vector_signed_char {
     vector_signed_char([IMM; 16])
 }
 
@@ -3043,7 +3043,7 @@ pub unsafe fn vec_splat_i8<const IMM: i8>() -> vector_signed_char {
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 #[cfg_attr(test, assert_instr(vrepih, IMM = 42))]
-pub unsafe fn vec_splat_i16<const IMM: i16>() -> vector_signed_short {
+pub unsafe fn vec_splat_s16<const IMM: i16>() -> vector_signed_short {
     vector_signed_short([IMM as i16; 8])
 }
 
@@ -3052,7 +3052,7 @@ pub unsafe fn vec_splat_i16<const IMM: i16>() -> vector_signed_short {
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 #[cfg_attr(test, assert_instr(vrepif, IMM = 42))]
-pub unsafe fn vec_splat_i32<const IMM: i16>() -> vector_signed_int {
+pub unsafe fn vec_splat_s32<const IMM: i16>() -> vector_signed_int {
     vector_signed_int([IMM as i32; 4])
 }
 
@@ -3061,7 +3061,7 @@ pub unsafe fn vec_splat_i32<const IMM: i16>() -> vector_signed_int {
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 #[cfg_attr(test, assert_instr(vrepig, IMM = 42))]
-pub unsafe fn vec_splat_i64<const IMM: i16>() -> vector_signed_long_long {
+pub unsafe fn vec_splat_s64<const IMM: i16>() -> vector_signed_long_long {
     vector_signed_long_long([IMM as i64; 2])
 }
 
