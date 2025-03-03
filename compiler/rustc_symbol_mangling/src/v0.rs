@@ -32,6 +32,7 @@ pub(super) fn mangle<'tcx>(
     let mut cx: SymbolMangler<'_> = SymbolMangler {
         tcx,
         start_offset: prefix.len(),
+        is_exportable: tcx.is_exportable(def_id),
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -78,6 +79,7 @@ pub(super) fn mangle_typeid_for_trait_ref<'tcx>(
     let mut cx = SymbolMangler {
         tcx,
         start_offset: 0,
+        is_exportable: false,
         paths: FxHashMap::default(),
         types: FxHashMap::default(),
         consts: FxHashMap::default(),
@@ -106,6 +108,7 @@ struct SymbolMangler<'tcx> {
     tcx: TyCtxt<'tcx>,
     binders: Vec<BinderLevel>,
     out: String,
+    is_exportable: bool,
 
     /// The length of the prefix in `out` (e.g. 2 for `_R`).
     start_offset: usize,
@@ -303,7 +306,14 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
                 args,
             )?;
         } else {
-            self.push_disambiguator(key.disambiguated_data.disambiguator as u64);
+            let exported_impl_order = self.tcx.stable_order_of_exportable_impls(impl_def_id.krate);
+            let disambiguator = match self.is_exportable {
+                true => exported_impl_order[&impl_def_id] as u64,
+                false => {
+                    exported_impl_order.len() as u64 + key.disambiguated_data.disambiguator as u64
+                }
+            };
+            self.push_disambiguator(disambiguator);
             self.print_def_path(parent_def_id, &[])?;
         }
 
@@ -755,8 +765,10 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
 
     fn path_crate(&mut self, cnum: CrateNum) -> Result<(), PrintError> {
         self.push("C");
-        let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
-        self.push_disambiguator(stable_crate_id.as_u64());
+        if !self.is_exportable {
+            let stable_crate_id = self.tcx.def_path_hash(cnum.as_def_id()).stable_crate_id();
+            self.push_disambiguator(stable_crate_id.as_u64());
+        }
         let name = self.tcx.crate_name(cnum);
         self.push_ident(name.as_str());
         Ok(())

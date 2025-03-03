@@ -1023,6 +1023,7 @@ pub struct OutputFilenames {
 pub const RLINK_EXT: &str = "rlink";
 pub const RUST_CGU_EXT: &str = "rcgu";
 pub const DWARF_OBJECT_EXT: &str = "dwo";
+pub const RUST_EXT: &str = "rs";
 
 impl OutputFilenames {
     pub fn new(
@@ -1052,6 +1053,10 @@ impl OutputFilenames {
             .unwrap_or_else(|| OutFileName::Real(self.output_path(flavor)))
     }
 
+    pub fn interface_path(&self) -> PathBuf {
+        self.out_directory.join(format!("lib{}.{}", self.crate_stem, RUST_EXT))
+    }
+
     /// Gets the output path where a compilation artifact of the given type
     /// should be placed on disk.
     fn output_path(&self, flavor: OutputType) -> PathBuf {
@@ -1060,6 +1065,7 @@ impl OutputFilenames {
             OutputType::Metadata => {
                 self.out_directory.join(format!("lib{}.{}", self.crate_stem, extension))
             }
+
             _ => self.with_directory_and_extension(&self.out_directory, extension),
         }
     }
@@ -1315,12 +1321,13 @@ pub enum CrateType {
     Staticlib,
     Cdylib,
     ProcMacro,
+    Sdylib,
 }
 
 impl CrateType {
     pub fn has_metadata(self) -> bool {
         match self {
-            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro => true,
+            CrateType::Rlib | CrateType::Dylib | CrateType::ProcMacro | CrateType::Sdylib => true,
             CrateType::Executable | CrateType::Cdylib | CrateType::Staticlib => false,
         }
     }
@@ -2805,6 +2812,7 @@ impl fmt::Display for CrateType {
             CrateType::Staticlib => "staticlib".fmt(f),
             CrateType::Cdylib => "cdylib".fmt(f),
             CrateType::ProcMacro => "proc-macro".fmt(f),
+            CrateType::Sdylib => "sdylib".fmt(f),
         }
     }
 }

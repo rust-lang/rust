@@ -592,8 +592,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     .ok();
                     self.push_rewrite(item.span, rewrite);
                 }
-                ast::ItemKind::Delegation(..) | ast::ItemKind::DelegationMac(..) => {
-                    // TODO: rewrite delegation items once syntax is established.
+                ast::ItemKind::Delegation(..)
+                | ast::ItemKind::DelegationMac(..)
+                | ast::ItemKind::ExternDynCrate(_) => {
+                    // TODO: rewrite these items once syntax is established.
                     // For now, leave the contents of the Span unformatted.
                     self.push_rewrite(item.span, None)
                 }
