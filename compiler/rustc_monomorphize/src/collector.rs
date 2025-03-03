@@ -209,7 +209,7 @@ use std::path::PathBuf;
 
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
+use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -357,7 +357,7 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
-    state: LRef<'_, SharedState<'tcx>>,
+    state: &SharedState<'tcx>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     mode: CollectionMode,
@@ -1671,30 +1671,26 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut state = SharedState {
+    let state = SharedState {
         visited: MTLock::new(UnordSet::default()),
         mentioned: MTLock::new(UnordSet::default()),
         usage_map: MTLock::new(UsageMap::new()),
     };
     let recursion_limit = tcx.recursion_limit();
 
-    {
-        let state: LRef<'_, _> = &mut state;
-
-        tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_for_each_in(roots, |root| {
-                let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
-                    tcx,
-                    dummy_spanned(root),
-                    state,
-                    &mut recursion_depths,
-                    recursion_limit,
-                    CollectionMode::UsedItems,
-                );
-            });
+    tcx.sess.time("monomorphization_collector_graph_walk", || {
+        par_for_each_in(roots, |root| {
+            let mut recursion_depths = DefIdMap::default();
+            collect_items_rec(
+                tcx,
+                dummy_spanned(root),
+                &state,
+                &mut recursion_depths,
+                recursion_limit,
+                CollectionMode::UsedItems,
+            );
         });
-    }
+    });
 
     // The set of MonoItems was created in an inherently indeterministic order because
     // of parallelism. We sort it here to ensure that the output is deterministic.
