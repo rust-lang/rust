@@ -1,0 +1,167 @@
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:17:5
+   |
+LL | fn top_level_to_nested(v: &u8) ->
+   |                           - the lifetime comes from here
+LL |
+LL |     ContainsLifetime
+   |     ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+note: the lint level is defined here
+  --> $DIR/elided-lifetime-in-path-details.rs:5:24
+   |
+LL | #![cfg_attr(tied, deny(elided_lifetimes_in_paths_tied))]
+   |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: indicate the anonymous lifetime
+   |
+LL |     ContainsLifetime<'_>
+   |                     ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:26:8
+   |
+LL |     v: ContainsLifetime,
+   |        ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     v: ContainsLifetime<'_>,
+   |                        ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:36:8
+   |
+LL |     v: ContainsLifetime,
+   |        ^^^^^^^^^^^^^^^^ expected lifetime parameter
+...
+LL | ) -> ContainsLifetime
+   |      ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     v: ContainsLifetime<'_>,
+   |                        ++++
+help: indicate the anonymous lifetime
+   |
+LL | ) -> ContainsLifetime<'_>
+   |                      ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:55:5
+   |
+LL |     ContainsLifetime
+   |     ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     ContainsLifetime<'_>
+   |                     ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:122:5
+   |
+LL | fn top_level_to_multiple_nested(v: &u8) -> (
+   |                                    - the lifetime comes from here
+LL |
+LL |     ContainsLifetime,
+   |     ^^^^^^^^^^^^^^^^ expected lifetime parameter
+...
+LL |     ContainsLifetime,
+   |     ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     ContainsLifetime<'_>,
+   |                     ++++
+help: indicate the anonymous lifetime
+   |
+LL |     ContainsLifetime<'_>,
+   |                     ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:143:9
+   |
+LL |         v: &u8,
+   |            - the lifetime comes from here
+...
+LL |         ContainsLifetime
+   |         ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         ContainsLifetime<'_>
+   |                         ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:152:12
+   |
+LL |         v: ContainsLifetime,
+   |            ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         v: ContainsLifetime<'_>,
+   |                            ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:162:12
+   |
+LL |         v: ContainsLifetime,
+   |            ^^^^^^^^^^^^^^^^ expected lifetime parameter
+...
+LL |     ) -> ContainsLifetime
+   |          ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         v: ContainsLifetime<'_>,
+   |                            ++++
+help: indicate the anonymous lifetime
+   |
+LL |     ) -> ContainsLifetime<'_>
+   |                          ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:181:9
+   |
+LL |         &self,
+   |         - the lifetime comes from here
+...
+LL |         ContainsLifetime
+   |         ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         ContainsLifetime<'_>
+   |                         ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:194:9
+   |
+LL |         &self,
+   |         - the lifetime comes from here
+...
+LL |         ContainsLifetime
+   |         ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |         ContainsLifetime<'_>
+   |                         ++++
+
+error: hidden lifetime parameters in types are deprecated
+  --> $DIR/elided-lifetime-in-path-details.rs:208:10
+   |
+LL |         &self,
+   |         - the lifetime comes from here
+...
+LL |     ) -> ContainsLifetime
+   |          ^^^^^^^^^^^^^^^^ expected lifetime parameter
+   |
+help: indicate the anonymous lifetime
+   |
+LL |     ) -> ContainsLifetime<'_>
+   |                          ++++
+
+error: aborting due to 11 previous errors
+
