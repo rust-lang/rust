@@ -185,7 +185,6 @@ struct Crate {
     name: String,
     deps: HashSet<String>,
     path: PathBuf,
-    has_lib: bool,
     features: Vec<String>,
 }
 
