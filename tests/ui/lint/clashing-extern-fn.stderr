@@ -17,7 +17,7 @@ LL |             fn hidden_niche_unsafe_cell() -> Option<UnsafeCell<NonZero<usiz
    = help: consider adding a `#[repr(C)]`, `#[repr(transparent)]`, or integer `#[repr(...)]` attribute to this enum
    = note: enum has no representation hint
 
-warning: `extern` block uses type `Option<(usize) is 0..=>`, which is not FFI-safe
+warning: `extern` block uses type `Option<(usize) is 0..>`, which is not FFI-safe
   --> $DIR/clashing-extern-fn.rs:502:54
    |
 LL |             fn pt_non_zero_usize_opt_full_range() -> Option<pattern_type!(usize is 0..)>;

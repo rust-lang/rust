@@ -220,13 +220,9 @@ impl FlagComputation {
             &ty::Pat(ty, pat) => {
                 self.add_ty(ty);
                 match *pat {
-                    ty::PatternKind::Range { start, end, include_end: _ } => {
-                        if let Some(start) = start {
-                            self.add_const(start)
-                        }
-                        if let Some(end) = end {
-                            self.add_const(end)
-                        }
+                    ty::PatternKind::Range { start, end } => {
+                        self.add_const(start);
+                        self.add_const(end);
                     }
                 }
             }
