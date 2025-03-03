@@ -1,0 +1,158 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:28:7
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/unsupported_attribute.rs:31:7
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |       ^^^^^^ not a non-macro attribute
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:14:5
+   |
+LL |     #[doc = "doc"] T: Trait,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:15:5
+   |
+LL |     #[doc = "doc"] 'a: 'static,
+   |     ^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:16:5
+   |
+LL |     #[ignore] T: Trait,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:17:5
+   |
+LL |     #[ignore] 'a: 'static,
+   |     ^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:18:5
+   |
+LL |     #[should_panic] T: Trait,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:19:5
+   |
+LL |     #[should_panic] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:20:5
+   |
+LL |     #[macro_use] T: Trait,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:21:5
+   |
+LL |     #[macro_use] 'a: 'static,
+   |     ^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:22:5
+   |
+LL |     #[allow(unused)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:23:5
+   |
+LL |     #[allow(unused)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:24:5
+   |
+LL |     #[deprecated] T: Trait,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:25:5
+   |
+LL |     #[deprecated] 'a: 'static,
+   |     ^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:26:5
+   |
+LL |     #[automatically_derived] T: Trait,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:27:5
+   |
+LL |     #[automatically_derived] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:28:5
+   |
+LL |     #[derive(Clone)] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:31:5
+   |
+LL |     #[derive(Clone)] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:34:5
+   |
+LL |     #[rustfmt::skip] T: Trait,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/unsupported_attribute.rs:35:5
+   |
+LL |     #[rustfmt::skip] 'a: 'static,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: aborting due to 20 previous errors
+

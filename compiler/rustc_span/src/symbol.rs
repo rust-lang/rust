@@ -2234,6 +2234,7 @@ symbols! {
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
+        where_clause_attrs,
         while_let,
         windows,
         windows_subsystem,

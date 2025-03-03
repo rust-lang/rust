@@ -1,7 +1,8 @@
 //@ run-pass
+//@ edition: 2021
 // Test that the precedence of ranges is correct
 
-
+use core::ops::{Add, RangeTo};
 
 struct Foo {
     foo: usize,
@@ -9,6 +10,13 @@ struct Foo {
 
 impl Foo {
     fn bar(&self) -> usize { 5 }
+}
+
+impl Add<RangeTo<usize>> for Foo {
+    type Output = usize;
+    fn add(self, range: RangeTo<usize>) -> Self::Output {
+        self.foo + range.end
+    }
 }
 
 fn main() {
@@ -49,4 +57,22 @@ fn main() {
 
     let y = ..;
     assert_eq!(y, (..));
+
+    let reference = &..0;
+    assert_eq!(*reference, ..0);
+    let reference2 = &&..0;
+    assert_eq!(**reference2, ..0);
+
+    let closure = || ..0;
+    assert_eq!(closure(), ..0);
+
+    let sum = Foo { foo: 3 } + ..4;
+    assert_eq!(sum, 7);
+
+    macro_rules! expr {
+        ($e:expr) => {};
+    }
+    expr!(!..0);
+    expr!(-..0);
+    expr!(*..0);
 }
