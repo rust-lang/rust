@@ -58,20 +58,24 @@ impl<I: Interner, P> Goal<I, P> {
 /// Why a specific goal has to be proven.
 ///
 /// This is necessary as we treat nested goals different depending on
-/// their source. This is currently mostly used by proof tree visitors
-/// but will be used by cycle handling in the future.
+/// their source. This is used to decide whether a cycle is coinductive.
+/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
+/// about this.
+///
+/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
     Misc,
-    /// We're proving a where-bound of an impl.
+    /// A nested goal required to prove that types are equal/subtypes.
+    /// This is always an unproductive step.
     ///
-    /// FIXME(-Znext-solver=coinductive): Explain how and why this
-    /// changes whether cycles are coinductive.
+    /// This is also used for all `NormalizesTo` goals as we they are used
+    /// to relate types in `AliasRelate`.
+    TypeRelating,
+    /// We're proving a where-bound of an impl.
     ImplWhereBound,
     /// Const conditions that need to hold for `~const` alias bounds to hold.
-    ///
-    /// FIXME(-Znext-solver=coinductive): Are these even coinductive?
     AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
@@ -79,7 +83,6 @@ pub enum GoalSource {
     /// This is used in two places: projecting to an opaque whose hidden type
     /// is already registered in the opaque type storage, and for rigid projections.
     AliasWellFormed,
-
     /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
     /// aliases in the context of the parent may incorrectly change the cycle kind.
     /// Normalizing aliases in goals therefore tracks the original path kind for this
