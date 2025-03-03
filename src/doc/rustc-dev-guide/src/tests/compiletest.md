@@ -549,10 +549,10 @@ data into a human-readable code coverage report.
 
 Instrumented binaries need to be linked against the LLVM profiler runtime, so
 `coverage-run` tests are **automatically skipped** unless the profiler runtime
-is enabled in `config.toml`:
+is enabled in `bootstrap.toml`:
 
 ```toml
-# config.toml
+# bootstrap.toml
 [build]
 profiler = true
 ```

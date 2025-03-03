@@ -36,7 +36,7 @@ like the standard library (std) or the compiler (rustc).
 - Document internal rustc items
 
   Compiler documentation is not built by default.
-  To create it by default with `x doc`, modify `config.toml`:
+  To create it by default with `x doc`, modify `bootstrap.toml`:
 
   ```toml
   [build]
