@@ -829,7 +829,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 && let ty::Closure(closure_def_id, _) | ty::CoroutineClosure(closure_def_id, _) =
                     *typeck_results.node_type(arg_hir_id).kind()
             {
-                // Otherwise, extract the closure kind from the obligation.
+                // Otherwise, extract the closure kind from the obligation,
+                // but only if we actually have an argument to deduce the
+                // closure type from...
                 let mut err = self.report_closure_error(
                     &obligation,
                     closure_def_id,
@@ -844,63 +846,72 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let self_ty = trait_pred.self_ty().skip_binder();
 
-        if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
-            let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
-                ty::Closure(def_id, args) => {
-                    (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
-                }
-                ty::CoroutineClosure(def_id, args) => (
-                    def_id,
-                    args.as_coroutine_closure()
-                        .coroutine_closure_sig()
-                        .map_bound(|sig| sig.tupled_inputs_ty),
-                    Some(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
-                ),
-                _ => return None,
+        let (expected_kind, trait_prefix) =
+            if let Some(expected_kind) = self.tcx.fn_trait_kind_from_def_id(trait_pred.def_id()) {
+                (expected_kind, "")
+            } else if let Some(expected_kind) =
+                self.tcx.async_fn_trait_kind_from_def_id(trait_pred.def_id())
+            {
+                (expected_kind, "Async")
+            } else {
+                return None;
             };
 
-            let expected_args =
-                trait_pred.map_bound(|trait_pred| trait_pred.trait_ref.args.type_at(1));
-
-            // Verify that the arguments are compatible. If the signature is
-            // mismatched, then we have a totally different error to report.
-            if self.enter_forall(found_args, |found_args| {
-                self.enter_forall(expected_args, |expected_args| {
-                    !self.can_eq(obligation.param_env, expected_args, found_args)
-                })
-            }) {
-                return None;
+        let (closure_def_id, found_args, by_ref_captures) = match *self_ty.kind() {
+            ty::Closure(def_id, args) => {
+                (def_id, args.as_closure().sig().map_bound(|sig| sig.inputs()[0]), None)
             }
+            ty::CoroutineClosure(def_id, args) => (
+                def_id,
+                args.as_coroutine_closure()
+                    .coroutine_closure_sig()
+                    .map_bound(|sig| sig.tupled_inputs_ty),
+                Some(args.as_coroutine_closure().coroutine_captures_by_ref_ty()),
+            ),
+            _ => return None,
+        };
 
-            if let Some(found_kind) = self.closure_kind(self_ty)
-                && !found_kind.extends(expected_kind)
-            {
-                let mut err = self.report_closure_error(
-                    &obligation,
-                    closure_def_id,
-                    found_kind,
-                    expected_kind,
-                    "",
-                );
-                self.note_obligation_cause(&mut err, &obligation);
-                return Some(err.emit());
-            }
+        let expected_args = trait_pred.map_bound(|trait_pred| trait_pred.trait_ref.args.type_at(1));
 
-            // If the closure has captures, then perhaps the reason that the trait
-            // is unimplemented is because async closures don't implement `Fn`/`FnMut`
-            // if they have captures.
-            if let Some(by_ref_captures) = by_ref_captures
-                && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
-                && !sig_tys.skip_binder().output().is_unit()
-            {
-                let mut err = self.dcx().create_err(AsyncClosureNotFn {
-                    span: self.tcx.def_span(closure_def_id),
-                    kind: expected_kind.as_str(),
-                });
-                self.note_obligation_cause(&mut err, &obligation);
-                return Some(err.emit());
-            }
+        // Verify that the arguments are compatible. If the signature is
+        // mismatched, then we have a totally different error to report.
+        if self.enter_forall(found_args, |found_args| {
+            self.enter_forall(expected_args, |expected_args| {
+                !self.can_eq(obligation.param_env, expected_args, found_args)
+            })
+        }) {
+            return None;
         }
+
+        if let Some(found_kind) = self.closure_kind(self_ty)
+            && !found_kind.extends(expected_kind)
+        {
+            let mut err = self.report_closure_error(
+                &obligation,
+                closure_def_id,
+                found_kind,
+                expected_kind,
+                trait_prefix,
+            );
+            self.note_obligation_cause(&mut err, &obligation);
+            return Some(err.emit());
+        }
+
+        // If the closure has captures, then perhaps the reason that the trait
+        // is unimplemented is because async closures don't implement `Fn`/`FnMut`
+        // if they have captures.
+        if let Some(by_ref_captures) = by_ref_captures
+            && let ty::FnPtr(sig_tys, _) = by_ref_captures.kind()
+            && !sig_tys.skip_binder().output().is_unit()
+        {
+            let mut err = self.dcx().create_err(AsyncClosureNotFn {
+                span: self.tcx.def_span(closure_def_id),
+                kind: expected_kind.as_str(),
+            });
+            self.note_obligation_cause(&mut err, &obligation);
+            return Some(err.emit());
+        }
+
         None
     }
 
