@@ -46,10 +46,8 @@ are implemented differently depending on whether `parallel-compiler` is true.
 
 | data structure                   | parallel                                            | non-parallel |
 | -------------------------------- | --------------------------------------------------- | ------------ |
-| OnceCell                         | std::sync::OnceLock                                 | std::cell::OnceCell |
 | Lock\<T> | (parking_lot::Mutex\<T>) | (std::cell::RefCell) |
 | RwLock\<T> | (parking_lot::RwLock\<T>) | (std::cell::RefCell) |
-| MTRef<'a, T> | &'a T | &'a mut T |
 | MTLock\<T> | (Lock\<T>) | (T) |
 | ReadGuard | parking_lot::RwLockReadGuard | std::cell::Ref |
 | MappedReadGuard | parking_lot::MappedRwLockReadGuard | std::cell::Ref |

@@ -18,21 +18,16 @@
 //!
 //! | Type                    | Serial version      | Parallel version                |
 //! | ----------------------- | ------------------- | ------------------------------- |
-//! | `LRef<'a, T>` [^2]      | `&'a mut T`         | `&'a T`                         |
-//! |                         |                     |                                 |
 //! | `Lock<T>`               | `RefCell<T>`        | `RefCell<T>` or                 |
 //! |                         |                     | `parking_lot::Mutex<T>`         |
 //! | `RwLock<T>`             | `RefCell<T>`        | `parking_lot::RwLock<T>`        |
 //! | `MTLock<T>`        [^1] | `T`                 | `Lock<T>`                       |
-//! | `MTLockRef<'a, T>` [^2] | `&'a mut MTLock<T>` | `&'a MTLock<T>`                 |
 //! |                         |                     |                                 |
 //! | `ParallelIterator`      | `Iterator`          | `rayon::iter::ParallelIterator` |
 //!
 //! [^1]: `MTLock` is similar to `Lock`, but the serial version avoids the cost
 //! of a `RefCell`. This is appropriate when interior mutability is not
 //! required.
-//!
-//! [^2]: `MTRef`, `MTLockRef` are type aliases.
 
 use std::collections::HashMap;
 use std::hash::{BuildHasher, Hash};
@@ -97,7 +92,6 @@ mod mode {
 
 // FIXME(parallel_compiler): Get rid of these aliases across the compiler.
 
-pub use std::sync::OnceLock;
 // Use portable AtomicU64 for targets without native 64-bit atomics
 #[cfg(target_has_atomic = "64")]
 pub use std::sync::atomic::AtomicU64;
@@ -109,8 +103,6 @@ pub use parking_lot::{
 };
 #[cfg(not(target_has_atomic = "64"))]
 pub use portable_atomic::AtomicU64;
-
-pub type LRef<'a, T> = &'a T;
 
 #[derive(Debug, Default)]
 pub struct MTLock<T>(Lock<T>);
@@ -147,8 +139,6 @@ use parking_lot::RwLock as InnerRwLock;
 /// This makes locks panic if they are already held.
 /// It is only useful when you are running in a single thread
 const ERROR_CHECKING: bool = false;
-
-pub type MTLockRef<'a, T> = LRef<'a, MTLock<T>>;
 
 #[derive(Default)]
 #[repr(align(64))]
