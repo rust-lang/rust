@@ -116,13 +116,16 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         ];
 
         let sized_trait = need!(cx.tcx.lang_items().sized_trait());
+        let meta_sized_trait = need!(cx.tcx.lang_items().meta_sized_trait());
 
         let preds = traits::elaborate(cx.tcx, cx.param_env.caller_bounds().iter())
             .filter(|p| !p.is_global())
             .filter_map(|pred| {
                 // Note that we do not want to deal with qualified predicates here.
                 match pred.kind().no_bound_vars() {
-                    Some(ty::ClauseKind::Trait(pred)) if pred.def_id() != sized_trait => Some(pred),
+                    Some(ty::ClauseKind::Trait(pred))
+                        if pred.def_id() != sized_trait && pred.def_id() != meta_sized_trait
+                            => Some(pred),
                     _ => None,
                 }
             })
