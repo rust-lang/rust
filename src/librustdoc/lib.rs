@@ -561,7 +561,7 @@ fn opts() -> Vec<RustcOptGroup> {
             "",
             "emit",
             "Comma separated list of types of output for rustdoc to emit",
-            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific]",
+            "[unversioned-shared-resources,toolchain-shared-resources,invocation-specific,dep-info]",
         ),
         opt(Unstable, FlagMulti, "", "no-run", "Compile doctests without running them", ""),
         opt(
@@ -890,7 +890,13 @@ fn main_args(early_dcx: &mut EarlyDiagCtxt, at_args: &[String]) {
                 // if we ran coverage, bail early, we don't need to also generate docs at this point
                 // (also we didn't load in any of the useful passes)
                 return;
-            } else if run_check {
+            }
+
+            if render_opts.dep_info().is_some() {
+                rustc_interface::passes::write_dep_info(tcx);
+            }
+
+            if run_check {
                 // Since we're in "check" mode, no need to generate anything beyond this point.
                 return;
             }
