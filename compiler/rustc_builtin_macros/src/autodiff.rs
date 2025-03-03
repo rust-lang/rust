@@ -34,6 +34,17 @@ mod llvm_enzyme {
         }
     }
     fn first_ident(x: &MetaItemInner) -> rustc_span::Ident {
+        if x.lit().is_some() {
+            let l = x.lit().unwrap();
+            match l.kind {
+                ast::LitKind::Int(val, _) => {
+                    // get an Ident from a lit
+                    return rustc_span::Ident::from_str(val.get().to_string().as_str());
+                }
+                _ => {}
+            }
+        }
+
         let segments = &x.meta_item().unwrap().path.segments;
         assert!(segments.len() == 1);
         segments[0].ident
@@ -41,6 +52,14 @@ mod llvm_enzyme {
 
     fn name(x: &MetaItemInner) -> String {
         first_ident(x).name.to_string()
+    }
+
+    fn width(x: &MetaItemInner) -> Option<u128> {
+        let lit = x.lit()?;
+        match lit.kind {
+            ast::LitKind::Int(x, _) => Some(x.get()),
+            _ => return None,
+        }
     }
 
     pub(crate) fn from_ast(
@@ -54,9 +73,28 @@ mod llvm_enzyme {
             dcx.emit_err(errors::AutoDiffInvalidMode { span: meta_item[1].span(), mode });
             return AutoDiffAttrs::error();
         };
+
+        // Now we check, whether the user wants autodiff in batch/vector mode, or scalar mode.
+        // If he doesn't specify an integer (=width), we default to scalar mode, thus width=1.
+        let mut first_activity = 2;
+        let width: u32 = match width(&meta_item[2]) {
+            Some(x) => {
+                first_activity = 3;
+                match x.try_into() {
+                    Ok(x) => x,
+                    Err(_) => {
+                        dcx.emit_err(errors::AutoDiffInvalidWidth { span: meta_item[2].span(), width: x });
+                        return AutoDiffAttrs::error();
+                    }
+                }
+            },
+            None => 1,
+        };
+
+        dbg!(&first_activity);
         let mut activities: Vec<DiffActivity> = vec![];
         let mut errors = false;
-        for x in &meta_item[2..] {
+        for x in &meta_item[first_activity..] {
             let activity_str = name(&x);
             let res = DiffActivity::from_str(&activity_str);
             match res {
@@ -87,7 +125,7 @@ mod llvm_enzyme {
             (&DiffActivity::None, activities.as_slice())
         };
 
-        AutoDiffAttrs { mode, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
+        AutoDiffAttrs { mode, width, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
     }
 
     /// We expand the autodiff macro to generate a new placeholder function which passes
@@ -193,13 +231,13 @@ mod llvm_enzyme {
             // input and output args.
             dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
             return vec![item];
-        } else {
-            for t in meta_item_vec.clone()[1..].iter() {
-                let val = first_ident(t);
-                let t = Token::from_ast_ident(val);
-                ts.push(TokenTree::Token(t, Spacing::Joint));
-                ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
-            }
+        }
+
+        for t in meta_item_vec.clone()[1..].iter() {
+            let val = first_ident(t);
+            let t = Token::from_ast_ident(val);
+            ts.push(TokenTree::Token(t, Spacing::Joint));
+            ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
         }
         if !has_ret {
             // We don't want users to provide a return activity if the function doesn't return anything.
@@ -645,50 +683,55 @@ mod llvm_enzyme {
             match activity {
                 DiffActivity::Active => {
                     act_ret.push(arg.ty.clone());
+                    // if width =/= 1, then push [arg.ty; width] to act_ret
                 }
                 DiffActivity::ActiveOnly => {
                     // We will add the active scalar to the return type.
                     // This is handled later.
                 }
                 DiffActivity::Duplicated | DiffActivity::DuplicatedOnly => {
-                    let mut shadow_arg = arg.clone();
-                    // We += into the shadow in reverse mode.
-                    shadow_arg.ty = P(assure_mut_ref(&arg.ty));
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("d{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        // We += into the shadow in reverse mode.
+                        shadow_arg.ty = P(assure_mut_ref(&arg.ty));
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("d{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Dual | DiffActivity::DualOnly => {
-                    let mut shadow_arg = arg.clone();
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("b{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("b{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Const => {
                     // Nothing to do here.

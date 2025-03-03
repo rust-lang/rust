@@ -136,6 +136,13 @@ fn generate_enzyme_call<'ll>(
         let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
         let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
         let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
+        let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
+
+        // FIXME(ZuseZ4): Find out, how enzyme_primal_ret and enzyme_width are combinable.
+        if attrs.width > 1 {
+            args.push(cx.get_metadata_value(enzyme_width));
+            args.push(cx.get_const_i64(attrs.width as u64));
+        }
 
         match output {
             DiffActivity::Dual => {
@@ -201,16 +208,21 @@ fn generate_enzyme_call<'ll>(
                     // FIXME(ZuseZ4): We will upstream a safety check later which asserts that
                     // int2 >= int1, which means the shadow vector is large enough to store the gradient.
                     assert!(llvm::LLVMRustGetTypeKind(next_outer_ty) == llvm::TypeKind::Integer);
-                    let next_outer_arg2 = outer_args[outer_pos + 2];
-                    let next_outer_ty2 = cx.val_ty(next_outer_arg2);
-                    assert!(llvm::LLVMRustGetTypeKind(next_outer_ty2) == llvm::TypeKind::Pointer);
-                    let next_outer_arg3 = outer_args[outer_pos + 3];
-                    let next_outer_ty3 = cx.val_ty(next_outer_arg3);
-                    assert!(llvm::LLVMRustGetTypeKind(next_outer_ty3) == llvm::TypeKind::Integer);
-                    args.push(next_outer_arg2);
+
+                    for _ in 0..attrs.width {
+                        let next_outer_arg2 = outer_args[outer_pos + 2];
+                        let next_outer_ty2 = cx.val_ty(next_outer_arg2);
+                        assert!(llvm::LLVMRustGetTypeKind(next_outer_ty2) == llvm::TypeKind::Pointer);
+                        let next_outer_arg3 = outer_args[outer_pos + 3];
+                        let next_outer_ty3 = cx.val_ty(next_outer_arg3);
+                        assert!(llvm::LLVMRustGetTypeKind(next_outer_ty3) == llvm::TypeKind::Integer);
+                        args.push(next_outer_arg2);
+                    }
+
+
                     args.push(cx.get_metadata_value(enzyme_const));
                     args.push(next_outer_arg);
-                    outer_pos += 4;
+                    outer_pos += 2 + 2 * attrs.width as usize;
                     activity_pos += 2;
                 } else {
                     // A duplicated pointer will have the following two outer_fn arguments:
@@ -228,6 +240,14 @@ fn generate_enzyme_call<'ll>(
                     args.push(next_outer_arg);
                     outer_pos += 2;
                     activity_pos += 1;
+
+                    // Now, if width > 1, we need to account for that
+                    for _ in 1..attrs.width {
+                        let next_outer_arg = outer_args[outer_pos];
+                        args.push(next_outer_arg);
+                        outer_pos += 1;
+                    }
+
                 }
             } else {
                 // We do not differentiate with resprect to this argument.

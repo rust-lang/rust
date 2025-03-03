@@ -875,8 +875,8 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         return Some(AutoDiffAttrs::source());
     }
 
-    let [mode, input_activities @ .., ret_activity] = &list[..] else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode and activities");
+    let [mode, width_meta, input_activities @ .., ret_activity] = &list[..] else {
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode, width and activities");
     };
     let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
         p1.segments.first().unwrap().ident
@@ -892,6 +892,39 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
             span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
         }
     };
+
+    dbg!(&width_meta);
+    let w = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = width_meta {
+        p1.segments.first().unwrap().ident
+    } else {
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain width");
+    };
+
+    let width: u32 = match w.as_str().parse() {
+        Ok(val) => val,
+        Err(_) => {
+            span_bug!(w.span, "rustc_autodiff width should fit u32");
+        }
+    };
+
+    //let width;
+    //let width = rustc_ast::name(width_meta);
+    //if let MetaItemInner::Lit(lit) = width_meta {
+    //    match lit.kind {
+    //        rustc_ast::LitKind::Int(val, _) => {width = val.get();}
+    //        _ => {
+    //            span_bug!(lit.span, "rustc_autodiff attribute must contain a width");
+    //        }
+    //    }
+    //} else {
+    //    span_bug!(attr.span(), "rustc_autodiff attribute must contain a width");
+    //};
+    //let width: u32 = match width.try_into() {
+    //    Ok(val) => val,
+    //    Err(_) => {
+    //        span_bug!(width_meta.span(), "rustc_autodiff width should fit u32");
+    //    }
+    //};
 
     // First read the ret symbol from the attribute
     let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
@@ -939,7 +972,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
     }
 
-    Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
+    Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
