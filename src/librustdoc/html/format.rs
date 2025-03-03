@@ -1342,7 +1342,7 @@ impl clean::FnDecl {
         fmt::from_fn(move |f| {
             // First, generate the text form of the declaration, with no line wrapping, and count the bytes.
             let mut counter = WriteCounter(0);
-            write!(&mut counter, "{:#}", fmt::from_fn(|f| { self.inner_full_print(None, f, cx) }))
+            write!(&mut counter, "{:#}", fmt::from_fn(|f| self.inner_full_print(None, f, cx)))
                 .unwrap();
             // If the text form was over 80 characters wide, we will line-wrap our output.
             let line_wrapping_indent =

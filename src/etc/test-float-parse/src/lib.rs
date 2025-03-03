@@ -443,9 +443,9 @@ fn launch_tests(tests: &mut [TestInfo], cfg: &Config) -> Duration {
             tests.iter().partition(|t| t.is_huge_test());
 
         // Run the actual tests
-        normal_tests.par_iter().for_each(|test| ((test.launch)(&tx, test, cfg)));
+        normal_tests.par_iter().for_each(|test| (test.launch)(&tx, test, cfg));
 
-        huge_tests.par_iter().for_each(|test| ((test.launch)(&tx, test, cfg)));
+        huge_tests.par_iter().for_each(|test| (test.launch)(&tx, test, cfg));
     });
 
     start.elapsed()
