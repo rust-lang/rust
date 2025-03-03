@@ -3,7 +3,6 @@
 // See https://github.com/rust-lang/rust/issues/135600
 // and https://github.com/rust-lang/rust/pull/134880#issuecomment-2596386111
 //
-// ignore-tidy-linelength
 //@ aux-build: defines_and_reexports.rs
 extern crate defines_and_reexports;
 

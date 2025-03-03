@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ is "$.index[*][?(@.name=='genfn')].inner.function.generics.where_predicates[0].bound_predicate.type" '{"generic": "F"}'
 //@ is "$.index[*][?(@.name=='genfn')].inner.function.generics.where_predicates[0].bound_predicate.generic_params" '[{"kind": {"lifetime": {"outlives": []}},"name": "'\''a"},{"kind": {"lifetime": {"outlives": []}},"name": "'\''b"}]'
 pub fn genfn<F>(f: F)
