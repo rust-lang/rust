@@ -455,7 +455,17 @@ impl Write for &mut [u8] {
 
     #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
-        if self.write(data)? == data.len() { Ok(()) } else { Err(io::Error::WRITE_ALL_EOF) }
+        if self.write(data)? < data.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        for buf in bufs {
+            if self.write(buf)? < buf.len() {
+                return Err(io::Error::WRITE_ALL_EOF);
+            }
+        }
+        Ok(())
     }
 
     #[inline]
@@ -496,6 +506,12 @@ impl<A: Allocator> Write for Vec<u8, A> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.write_vectored(bufs)?;
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -515,6 +531,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(n)
     }
 
+    #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let (front, back) = self.as_slices();
 
@@ -547,6 +564,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(())
     }
 
+    #[inline]
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let len = cursor.capacity();
         let (front, back) = self.as_slices();
@@ -639,6 +657,12 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.write_vectored(bufs)?;
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -646,10 +670,44 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
 
 #[unstable(feature = "read_buf", issue = "78485")]
 impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.capacity());
         self.append(&buf[..amt]);
         Ok(amt)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            let n = self.write(buf)?;
+            nwritten += n;
+            if n < buf.len() {
+                break;
+            }
+        }
+        Ok(nwritten)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        if self.write(buf)? < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        for buf in bufs {
+            if self.write(buf)? < buf.len() {
+                return Err(io::Error::WRITE_ALL_EOF);
+            }
+        }
+        Ok(())
     }
 
     #[inline]

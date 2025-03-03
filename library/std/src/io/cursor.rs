@@ -439,6 +439,27 @@ fn slice_write_vectored(
     Ok(nwritten)
 }
 
+#[inline]
+fn slice_write_all(pos_mut: &mut u64, slice: &mut [u8], buf: &[u8]) -> io::Result<()> {
+    let n = slice_write(pos_mut, slice, buf)?;
+    if n < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+}
+
+#[inline]
+fn slice_write_all_vectored(
+    pos_mut: &mut u64,
+    slice: &mut [u8],
+    bufs: &[IoSlice<'_>],
+) -> io::Result<()> {
+    for buf in bufs {
+        let n = slice_write(pos_mut, slice, buf)?;
+        if n < buf.len() {
+            return Err(io::Error::WRITE_ALL_EOF);
+        }
+    }
+    Ok(())
+}
+
 /// Reserves the required space, and pads the vec with 0s if necessary.
 fn reserve_and_pad<A: Allocator>(
     pos_mut: &mut u64,
@@ -481,9 +502,12 @@ fn reserve_and_pad<A: Allocator>(
     Ok(pos)
 }
 
-/// Writes the slice to the vec without allocating
-/// # Safety: vec must have buf.len() spare capacity
-unsafe fn vec_write_unchecked<A>(pos: usize, vec: &mut Vec<u8, A>, buf: &[u8]) -> usize
+/// Writes the slice to the vec without allocating.
+///
+/// # Safety
+///
+/// `vec` must have `buf.len()` spare capacity.
+unsafe fn vec_write_all_unchecked<A>(pos: usize, vec: &mut Vec<u8, A>, buf: &[u8]) -> usize
 where
     A: Allocator,
 {
@@ -492,7 +516,7 @@ where
     pos + buf.len()
 }
 
-/// Resizing write implementation for [`Cursor`]
+/// Resizing `write_all` implementation for [`Cursor`].
 ///
 /// Cursor is allowed to have a pre-allocated and initialised
 /// vector body, but with a position of 0. This means the [`Write`]
@@ -501,7 +525,7 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
-fn vec_write<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
+fn vec_write_all<A>(pos_mut: &mut u64, vec: &mut Vec<u8, A>, buf: &[u8]) -> io::Result<usize>
 where
     A: Allocator,
 {
@@ -512,7 +536,7 @@ where
     // Safety: we have ensured that the capacity is available
     // and that all bytes get written up to pos
     unsafe {
-        pos = vec_write_unchecked(pos, vec, buf);
+        pos = vec_write_all_unchecked(pos, vec, buf);
         if pos > vec.len() {
             vec.set_len(pos);
         }
@@ -523,7 +547,7 @@ where
     Ok(buf_len)
 }
 
-/// Resizing write_vectored implementation for [`Cursor`]
+/// Resizing `write_all_vectored` implementation for [`Cursor`].
 ///
 /// Cursor is allowed to have a pre-allocated and initialised
 /// vector body, but with a position of 0. This means the [`Write`]
@@ -532,7 +556,7 @@ where
 /// This also allows for the vec body to be empty, but with a position of N.
 /// This means that [`Write`] will pad the vec with 0 initially,
 /// before writing anything from that point
-fn vec_write_vectored<A>(
+fn vec_write_all_vectored<A>(
     pos_mut: &mut u64,
     vec: &mut Vec<u8, A>,
     bufs: &[IoSlice<'_>],
@@ -550,7 +574,7 @@ where
     // and that all bytes get written up to the last pos
     unsafe {
         for buf in bufs {
-            pos = vec_write_unchecked(pos, vec, buf);
+            pos = vec_write_all_unchecked(pos, vec, buf);
         }
         if pos > vec.len() {
             vec.set_len(pos);
@@ -580,6 +604,16 @@ impl Write for Cursor<&mut [u8]> {
     }
 
     #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        slice_write_all(&mut self.pos, self.inner, buf)
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        slice_write_all_vectored(&mut self.pos, self.inner, bufs)
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -591,16 +625,26 @@ where
     A: Allocator,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        vec_write(&mut self.pos, self.inner, buf)
+        vec_write_all(&mut self.pos, self.inner, buf)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        vec_write_vectored(&mut self.pos, self.inner, bufs)
+        vec_write_all_vectored(&mut self.pos, self.inner, bufs)
     }
 
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        vec_write_all(&mut self.pos, self.inner, buf)?;
+        Ok(())
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        vec_write_all_vectored(&mut self.pos, self.inner, bufs)?;
+        Ok(())
     }
 
     #[inline]
@@ -615,16 +659,26 @@ where
     A: Allocator,
 {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        vec_write(&mut self.pos, &mut self.inner, buf)
+        vec_write_all(&mut self.pos, &mut self.inner, buf)
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        vec_write_vectored(&mut self.pos, &mut self.inner, bufs)
+        vec_write_all_vectored(&mut self.pos, &mut self.inner, bufs)
     }
 
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        vec_write_all(&mut self.pos, &mut self.inner, buf)?;
+        Ok(())
+    }
+
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        vec_write_all_vectored(&mut self.pos, &mut self.inner, bufs)?;
+        Ok(())
     }
 
     #[inline]
@@ -654,6 +708,16 @@ where
     }
 
     #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        slice_write_all(&mut self.pos, &mut self.inner, buf)
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        slice_write_all_vectored(&mut self.pos, &mut self.inner, bufs)
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -674,6 +738,16 @@ impl<const N: usize> Write for Cursor<[u8; N]> {
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        slice_write_all(&mut self.pos, &mut self.inner, buf)
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        slice_write_all_vectored(&mut self.pos, &mut self.inner, bufs)
     }
 
     #[inline]
