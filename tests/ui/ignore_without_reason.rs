@@ -10,5 +10,5 @@ fn unignored_test() {}
 fn ignored_with_reason() {}
 
 #[test]
-#[ignore]
+#[ignore] //~ ignore_without_reason
 fn ignored_without_reason() {}
