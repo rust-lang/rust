@@ -159,7 +159,7 @@ fn create_mappings(extracted_mappings: &ExtractedMappings) -> Vec<Mapping> {
              condition_info: _,
              true_index: _,
              false_index: _,
-         }| { Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span } },
+         }| Mapping { kind: MappingKind::Branch { true_bcb, false_bcb }, span },
     ));
 
     for (decision, branches) in mcdc_mappings {

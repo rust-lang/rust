@@ -238,7 +238,7 @@ impl Condvar {
     /// // Wait for the thread to start up.
     /// let (lock, cvar) = &*pair;
     /// // As long as the value inside the `Mutex<bool>` is `true`, we wait.
-    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| { *pending }).unwrap();
+    /// let _guard = cvar.wait_while(lock.lock().unwrap(), |pending| *pending).unwrap();
     /// ```
     #[stable(feature = "wait_until", since = "1.42.0")]
     pub fn wait_while<'a, T, F>(
