@@ -16,6 +16,7 @@
 #![feature(char_max_len)]
 #![feature(clone_to_uninit)]
 #![feature(const_eval_select)]
+#![feature(const_ref_cell)]
 #![feature(const_swap_nonoverlapping)]
 #![feature(const_trait_impl)]
 #![feature(core_intrinsics)]
