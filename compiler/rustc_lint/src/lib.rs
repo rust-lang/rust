@@ -599,6 +599,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/73333> for more information",
     );
+    store.register_removed(
+        "ptr_cast_add_auto_to_object",
+        "converted into hard error, see issue #127323 \
+         <https://github.com/rust-lang/rust/issues/127323> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
