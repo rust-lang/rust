@@ -601,6 +601,8 @@ declare_features! (
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
+    /// Allows the use of raw-dylibs on ELF platforms
+    (incomplete, raw_dylib_elf, "CURRENT_RUSTC_VERSION", Some(135694)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
