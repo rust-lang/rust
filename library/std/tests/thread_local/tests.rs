@@ -1,7 +1,7 @@
 use std::cell::{Cell, UnsafeCell};
 use std::sync::atomic::{AtomicU8, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
-use std::thread::{self, Builder, LocalKey};
+use std::thread::{self, LocalKey};
 use std::thread_local;
 
 #[derive(Clone, Default)]
@@ -345,8 +345,27 @@ fn join_orders_after_tls_destructors() {
 }
 
 // Test that thread::current is still available in TLS destructors.
+//
+// The test won't currently work without target_thread_local, aka with slow tls.
+// The runtime tries very hard to drop last the TLS variable that keeps the information about the
+// current thread, by using several tricks like deffering the drop to a later round of TLS destruction.
+// However, this only seems to work with fast tls.
+//
+// With slow TLS, it seems that multiple libc implementations will just set the value to null the first
+// time they encounter it, regardless of it having a destructor or not. This means that trying to
+// retrieve it later in a drop impl of another TLS variable will not work.
+//
+// ** Apple libc: https://github.com/apple-oss-distributions/libpthread/blob/c032e0b076700a0a47db75528a282b8d3a06531a/src/pthread_tsd.c#L293
+// Sets the variable to null if it has a destructor and the value is not null. However, all variables
+// created with pthread_key_create are marked as having a destructor, even if the fn ptr called with
+// it is null.
+// ** glibc: https://github.com/bminor/glibc/blob/e5893e6349541d871e8a25120bca014551d13ff5/nptl/nptl_deallocate_tsd.c#L59
+// ** musl: https://github.com/kraj/musl/blob/1880359b54ff7dd9f5016002bfdae4b136007dde/src/thread/pthread_key_create.c#L87
+#[cfg(target_thread_local)]
 #[test]
 fn thread_current_in_dtor() {
+    use std::thread::Builder;
+
     // Go through one round of TLS destruction first.
     struct Defer;
     impl Drop for Defer {
