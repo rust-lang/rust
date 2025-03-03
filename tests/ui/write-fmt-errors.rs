@@ -4,7 +4,7 @@
 #![feature(io_error_uncategorized)]
 
 use std::fmt;
-use std::io::{self, Error, Write, sink};
+use std::io::{self, Error, Write};
 use std::panic::catch_unwind;
 
 struct ErrorDisplay;
@@ -33,7 +33,7 @@ fn main() {
     assert!(res.is_err(), "writer error did not propagate");
 
     // Test that the error from the formatter is detected.
-    let res = catch_unwind(|| write!(sink(), "{} {} {}", 1, ErrorDisplay, "bar"));
+    let res = catch_unwind(|| write!(vec![], "{} {} {}", 1, ErrorDisplay, "bar"));
     let err = res.expect_err("formatter error did not lead to panic").downcast::<&str>().unwrap();
     assert!(
         err.contains("formatting trait implementation returned an error"),
