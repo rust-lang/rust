@@ -1,4 +1,6 @@
 #![allow(rustc::internal)]
+// FIXME
+#![allow(unused_crate_dependencies)]
 
 use std::fmt::Debug;
 use std::fs;
