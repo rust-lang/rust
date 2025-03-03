@@ -3782,7 +3782,7 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
