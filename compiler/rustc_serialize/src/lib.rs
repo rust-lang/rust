@@ -3,8 +3,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::internal)]
-// FIXME
-#![allow(unused_crate_dependencies)]
 #![cfg_attr(test, feature(test))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
@@ -17,6 +15,10 @@
 #![feature(never_type)]
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
+
+// Allows macros to refer to this crate as `::rustc_serialize`.
+#[cfg(test)]
+extern crate self as rustc_serialize;
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 
