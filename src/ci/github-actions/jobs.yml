@@ -271,8 +271,9 @@ auto:
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
-  - name: x86_64-rust-for-linux
-    <<: *job-linux-4c
+  # FIXME: fix rustup 1.28 issue
+  #  - name: x86_64-rust-for-linux
+  #    <<: *job-linux-4c
 
   - name: x86_64-gnu
     <<: *job-linux-4c
