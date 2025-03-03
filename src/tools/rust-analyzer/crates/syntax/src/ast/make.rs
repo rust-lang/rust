@@ -623,6 +623,10 @@ pub fn expr_for_loop(pat: ast::Pat, expr: ast::Expr, block: ast::BlockExpr) -> a
     expr_from_text(&format!("for {pat} in {expr} {block}"))
 }
 
+pub fn expr_while_loop(condition: ast::Expr, block: ast::BlockExpr) -> ast::WhileExpr {
+    expr_from_text(&format!("while {condition} {block}"))
+}
+
 pub fn expr_loop(block: ast::BlockExpr) -> ast::Expr {
     expr_from_text(&format!("loop {block}"))
 }

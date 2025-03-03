@@ -1,8 +1,8 @@
 //! Wrappers over [`make`] constructors
 use crate::{
     ast::{
-        self, make, HasArgList, HasGenericArgs, HasGenericParams, HasName, HasTypeBounds,
-        HasVisibility,
+        self, make, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
+        HasTypeBounds, HasVisibility,
     },
     syntax_editor::SyntaxMappingBuilder,
     AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
@@ -537,6 +537,19 @@ impl SyntaxFactory {
                     ast.else_branch().unwrap().syntax().clone(),
                 );
             }
+            builder.finish(&mut mapping);
+        }
+
+        ast
+    }
+
+    pub fn expr_while_loop(&self, condition: ast::Expr, body: ast::BlockExpr) -> ast::WhileExpr {
+        let ast = make::expr_while_loop(condition.clone(), body.clone()).clone_for_update();
+
+        if let Some(mut mapping) = self.mappings() {
+            let mut builder = SyntaxMappingBuilder::new(ast.syntax().clone());
+            builder.map_node(condition.syntax().clone(), ast.condition().unwrap().syntax().clone());
+            builder.map_node(body.syntax().clone(), ast.loop_body().unwrap().syntax().clone());
             builder.finish(&mut mapping);
         }
 
