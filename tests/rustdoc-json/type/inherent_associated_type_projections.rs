@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(inherent_associated_types)]
 #![allow(incomplete_features)]
 

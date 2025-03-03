@@ -690,7 +690,7 @@ fn has_compile_error_macro(rhs: &mbe::TokenTree) -> bool {
                     && let TokenKind::Ident(ident, _) = ident.kind
                     && ident == sym::compile_error
                     && let mbe::TokenTree::Token(bang) = bang
-                    && let TokenKind::Not = bang.kind
+                    && let TokenKind::Bang = bang.kind
                     && let mbe::TokenTree::Delimited(.., del) = args
                     && !del.delim.skip()
                 {
@@ -1135,7 +1135,7 @@ fn check_matcher_core<'tt>(
                         && matches!(kind, NonterminalKind::Pat(PatParam { inferred: true }))
                         && matches!(
                             next_token,
-                            TokenTree::Token(token) if *token == BinOp(token::BinOpToken::Or)
+                            TokenTree::Token(token) if *token == token::Or
                         )
                     {
                         // It is suggestion to use pat_param, for example: $x:pat -> $x:pat_param.
@@ -1177,7 +1177,7 @@ fn check_matcher_core<'tt>(
 
                             if kind == NonterminalKind::Pat(PatWithOr)
                                 && sess.psess.edition.at_least_rust_2021()
-                                && next_token.is_token(&BinOp(token::BinOpToken::Or))
+                                && next_token.is_token(&token::Or)
                             {
                                 let suggestion = quoted_tt_to_string(&TokenTree::MetaVarDecl(
                                     span,
@@ -1296,7 +1296,7 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                 const TOKENS: &[&str] = &["`=>`", "`,`", "`=`", "`|`", "`if`", "`in`"];
                 match tok {
                     TokenTree::Token(token) => match token.kind {
-                        FatArrow | Comma | Eq | BinOp(token::Or) => IsInFollow::Yes,
+                        FatArrow | Comma | Eq | Or => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::If || name == kw::In => {
                             IsInFollow::Yes
                         }
@@ -1332,9 +1332,9 @@ fn is_in_follow(tok: &mbe::TokenTree, kind: NonterminalKind) -> IsInFollow {
                         | Colon
                         | Eq
                         | Gt
-                        | BinOp(token::Shr)
+                        | Shr
                         | Semi
-                        | BinOp(token::Or) => IsInFollow::Yes,
+                        | Or => IsInFollow::Yes,
                         Ident(name, IdentIsRaw::No) if name == kw::As || name == kw::Where => {
                             IsInFollow::Yes
                         }

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ is "$.index[*][?(@.name=='WithPrimitives')].visibility" \"public\"
 //@ has "$.index[*][?(@.name=='WithPrimitives')].inner.struct"
 //@ is "$.index[*][?(@.name=='WithPrimitives')].inner.struct.generics.params[0].name" \"\'a\"

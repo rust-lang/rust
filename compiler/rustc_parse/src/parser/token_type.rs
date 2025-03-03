@@ -25,7 +25,7 @@ pub enum TokenType {
     Gt,
     AndAnd,
     OrOr,
-    Not,
+    Bang,
     Tilde,
 
     // BinOps
@@ -172,7 +172,7 @@ impl TokenType {
             Gt,
             AndAnd,
             OrOr,
-            Not,
+            Bang,
             Tilde,
 
             Plus,
@@ -366,7 +366,7 @@ impl TokenType {
             TokenType::Gt => "`>`",
             TokenType::AndAnd => "`&&`",
             TokenType::OrOr => "`||`",
-            TokenType::Not => "`!`",
+            TokenType::Bang => "`!`",
             TokenType::Tilde => "`~`",
 
             TokenType::Plus => "`+`",
@@ -445,12 +445,6 @@ macro_rules! exp {
             token_type: $crate::parser::token_type::TokenType::$tok
         }
     };
-    (@binop, $op:ident) => {
-        $crate::parser::token_type::ExpTokenPair {
-            tok: &rustc_ast::token::BinOp(rustc_ast::token::BinOpToken::$op),
-            token_type: $crate::parser::token_type::TokenType::$op,
-        }
-    };
     (@open, $delim:ident, $token_type:ident) => {
         $crate::parser::token_type::ExpTokenPair {
             tok: &rustc_ast::token::OpenDelim(rustc_ast::token::Delimiter::$delim),
@@ -485,8 +479,13 @@ macro_rules! exp {
     (Gt)             => { exp!(@tok, Gt) };
     (AndAnd)         => { exp!(@tok, AndAnd) };
     (OrOr)           => { exp!(@tok, OrOr) };
-    (Not)            => { exp!(@tok, Not) };
+    (Bang)           => { exp!(@tok, Bang) };
     (Tilde)          => { exp!(@tok, Tilde) };
+    (Plus)           => { exp!(@tok, Plus) };
+    (Minus)          => { exp!(@tok, Minus) };
+    (Star)           => { exp!(@tok, Star) };
+    (And)            => { exp!(@tok, And) };
+    (Or)             => { exp!(@tok, Or) };
     (At)             => { exp!(@tok, At) };
     (Dot)            => { exp!(@tok, Dot) };
     (DotDot)         => { exp!(@tok, DotDot) };
@@ -501,12 +500,6 @@ macro_rules! exp {
     (Pound)          => { exp!(@tok, Pound) };
     (Question)       => { exp!(@tok, Question) };
     (Eof)            => { exp!(@tok, Eof) };
-
-    (Plus)           => { exp!(@binop, Plus) };
-    (Minus)          => { exp!(@binop, Minus) };
-    (Star)           => { exp!(@binop, Star) };
-    (And)            => { exp!(@binop, And) };
-    (Or)             => { exp!(@binop, Or) };
 
     (OpenParen)      => { exp!(@open,  Parenthesis, OpenParen) };
     (OpenBrace)      => { exp!(@open,  Brace,       OpenBrace) };

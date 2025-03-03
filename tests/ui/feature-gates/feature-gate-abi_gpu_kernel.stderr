@@ -112,3 +112,14 @@ error: aborting due to 12 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0570, E0658.
 For more information about an error, try `rustc --explain E0570`.
+Future incompatibility report: Future breakage diagnostic:
+warning: the calling convention "gpu-kernel" is not supported on this target
+  --> $DIR/feature-gate-abi_gpu_kernel.rs:37:11
+   |
+LL | type A1 = extern "gpu-kernel" fn(_: ());
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+

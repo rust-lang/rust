@@ -59,7 +59,7 @@ impl VfsPath {
     ///
     /// # Example
     ///
-    /// ```
+    /// ```ignore
     /// # use vfs::{AbsPathBuf, VfsPath};
     /// let mut path = VfsPath::from(AbsPathBuf::assert("/foo/bar".into()));
     /// assert!(path.pop());

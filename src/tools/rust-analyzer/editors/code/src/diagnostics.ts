@@ -104,10 +104,7 @@ export class AnsiDecorationProvider implements vscode.Disposable {
 
         for (const [lineNumber, line] of lines.entries()) {
             const totalEscapeLength = 0;
-
-            // eslint-disable-next-line camelcase
             const parsed = anser.ansiToJson(line, { use_classes: true });
-
             let offset = 0;
 
             for (const span of parsed) {
@@ -162,23 +159,23 @@ export class AnsiDecorationProvider implements vscode.Disposable {
     // NOTE: This could just be a kebab-case to camelCase conversion, but I think it's
     // a short enough list to just write these by hand
     static readonly _anserToThemeColor: Record<string, ThemeColor> = {
-        "ansi-black": "ansiBlack",
-        "ansi-white": "ansiWhite",
-        "ansi-red": "ansiRed",
-        "ansi-green": "ansiGreen",
-        "ansi-yellow": "ansiYellow",
-        "ansi-blue": "ansiBlue",
-        "ansi-magenta": "ansiMagenta",
-        "ansi-cyan": "ansiCyan",
+        "ansi-black": new ThemeColor("terminal.ansiBlack"),
+        "ansi-white": new ThemeColor("terminal.ansiWhite"),
+        "ansi-red": new ThemeColor("terminal.ansiRed"),
+        "ansi-green": new ThemeColor("terminal.ansiGreen"),
+        "ansi-yellow": new ThemeColor("terminal.ansiYellow"),
+        "ansi-blue": new ThemeColor("terminal.ansiBlue"),
+        "ansi-magenta": new ThemeColor("terminal.ansiMagenta"),
+        "ansi-cyan": new ThemeColor("terminal.ansiCyan"),
 
-        "ansi-bright-black": "ansiBrightBlack",
-        "ansi-bright-white": "ansiBrightWhite",
-        "ansi-bright-red": "ansiBrightRed",
-        "ansi-bright-green": "ansiBrightGreen",
-        "ansi-bright-yellow": "ansiBrightYellow",
-        "ansi-bright-blue": "ansiBrightBlue",
-        "ansi-bright-magenta": "ansiBrightMagenta",
-        "ansi-bright-cyan": "ansiBrightCyan",
+        "ansi-bright-black": new ThemeColor("terminal.ansiBrightBlack"),
+        "ansi-bright-white": new ThemeColor("terminal.ansiBrightWhite"),
+        "ansi-bright-red": new ThemeColor("terminal.ansiBrightRed"),
+        "ansi-bright-green": new ThemeColor("terminal.ansiBrightGreen"),
+        "ansi-bright-yellow": new ThemeColor("terminal.ansiBrightYellow"),
+        "ansi-bright-blue": new ThemeColor("terminal.ansiBrightBlue"),
+        "ansi-bright-magenta": new ThemeColor("terminal.ansiBrightMagenta"),
+        "ansi-bright-cyan": new ThemeColor("terminal.ansiBrightCyan"),
     };
 
     private static _convertColor(
@@ -210,11 +207,6 @@ export class AnsiDecorationProvider implements vscode.Disposable {
             }
         }
 
-        const themeColor = AnsiDecorationProvider._anserToThemeColor[color];
-        if (themeColor) {
-            return new ThemeColor("terminal." + themeColor);
-        }
-
-        return undefined;
+        return AnsiDecorationProvider._anserToThemeColor[color];
     }
 }

@@ -10,15 +10,14 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 backtrace = { version = "0.3.67", optional = true }
-always-assert = { version = "0.2.0", features = ["tracing"] }
 jod-thread = "0.1.2"
 libc.workspace = true
 crossbeam-channel.workspace = true
 itertools.workspace = true
+tracing.workspace = true
 # Think twice before adding anything here
 
 [target.'cfg(windows)'.dependencies]
@@ -28,6 +27,7 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation"] }
 [features]
 # Uncomment to enable for the whole crate graph
 # default = [ "backtrace" ]
+force-always-assert = []
 
 [lints]
 workspace = true

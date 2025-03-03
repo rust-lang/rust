@@ -147,9 +147,6 @@ pub enum SyntaxKind {
     C_STRING,
     FLOAT_NUMBER,
     INT_NUMBER,
-    RAW_BYTE_STRING,
-    RAW_C_STRING,
-    RAW_STRING,
     STRING,
     COMMENT,
     ERROR,
@@ -343,9 +340,6 @@ impl SyntaxKind {
             | C_STRING
             | FLOAT_NUMBER
             | INT_NUMBER
-            | RAW_BYTE_STRING
-            | RAW_C_STRING
-            | RAW_STRING
             | STRING
             | ABI
             | ADT
@@ -898,18 +892,7 @@ impl SyntaxKind {
         )
     }
     pub fn is_literal(self) -> bool {
-        matches!(
-            self,
-            BYTE | BYTE_STRING
-                | CHAR
-                | C_STRING
-                | FLOAT_NUMBER
-                | INT_NUMBER
-                | RAW_BYTE_STRING
-                | RAW_C_STRING
-                | RAW_STRING
-                | STRING
-        )
+        matches!(self, BYTE | BYTE_STRING | CHAR | C_STRING | FLOAT_NUMBER | INT_NUMBER | STRING)
     }
     pub fn from_keyword(ident: &str, edition: Edition) -> Option<SyntaxKind> {
         let kw = match ident {

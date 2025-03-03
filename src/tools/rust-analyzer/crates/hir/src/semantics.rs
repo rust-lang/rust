@@ -508,9 +508,7 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn is_derive_annotated(&self, adt: &ast::Adt) -> bool {
-        let file_id = self.find_file(adt.syntax()).file_id;
-        let adt = InFile::new(file_id, adt);
+    pub fn is_derive_annotated(&self, adt: InFile<&ast::Adt>) -> bool {
         self.with_ctx(|ctx| ctx.has_derives(adt))
     }
 
@@ -551,10 +549,8 @@ impl<'db> SemanticsImpl<'db> {
         res.is_empty().not().then_some(res)
     }
 
-    pub fn is_attr_macro_call(&self, item: &ast::Item) -> bool {
-        let file_id = self.find_file(item.syntax()).file_id;
-        let src = InFile::new(file_id, item);
-        self.with_ctx(|ctx| ctx.item_to_macro_call(src).is_some())
+    pub fn is_attr_macro_call(&self, item: InFile<&ast::Item>) -> bool {
+        self.with_ctx(|ctx| ctx.item_to_macro_call(item).is_some())
     }
 
     /// Expand the macro call with a different token tree, mapping the `token_to_map` down into the
@@ -1526,8 +1522,13 @@ impl<'db> SemanticsImpl<'db> {
         self.analyze(field.syntax())?.resolve_record_pat_field(self.db, field)
     }
 
+    // FIXME: Replace this with `resolve_macro_call2`
     pub fn resolve_macro_call(&self, macro_call: &ast::MacroCall) -> Option<Macro> {
         let macro_call = self.find_file(macro_call.syntax()).with_value(macro_call);
+        self.resolve_macro_call2(macro_call)
+    }
+
+    pub fn resolve_macro_call2(&self, macro_call: InFile<&ast::MacroCall>) -> Option<Macro> {
         self.with_ctx(|ctx| {
             ctx.macro_call_to_macro_call(macro_call)
                 .and_then(|call| macro_call_to_macro_id(ctx, call))
@@ -1538,8 +1539,8 @@ impl<'db> SemanticsImpl<'db> {
         })
     }
 
-    pub fn is_proc_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
-        self.resolve_macro_call(macro_call)
+    pub fn is_proc_macro_call(&self, macro_call: InFile<&ast::MacroCall>) -> bool {
+        self.resolve_macro_call2(macro_call)
             .is_some_and(|m| matches!(m.id, MacroId::ProcMacroId(..)))
     }
 

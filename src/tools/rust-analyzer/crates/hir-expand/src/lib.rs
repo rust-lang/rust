@@ -416,6 +416,24 @@ impl HirFileIdExt for HirFileId {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum MacroKind {
+    /// `macro_rules!` or Macros 2.0 macro.
+    Declarative,
+    /// A built-in function-like macro.
+    DeclarativeBuiltIn,
+    /// A custom derive.
+    Derive,
+    /// A builtin-in derive.
+    DeriveBuiltIn,
+    /// A procedural attribute macro.
+    Attr,
+    /// A built-in attribute macro.
+    AttrBuiltIn,
+    /// A function-like procedural macro.
+    ProcMacro,
+}
+
 pub trait MacroFileIdExt {
     fn is_env_or_option_env(&self, db: &dyn ExpandDatabase) -> bool;
     fn is_include_like_macro(&self, db: &dyn ExpandDatabase) -> bool;
@@ -427,15 +445,12 @@ pub trait MacroFileIdExt {
 
     fn expansion_info(self, db: &dyn ExpandDatabase) -> ExpansionInfo;
 
-    fn is_builtin_derive(&self, db: &dyn ExpandDatabase) -> bool;
-    fn is_custom_derive(&self, db: &dyn ExpandDatabase) -> bool;
+    fn kind(&self, db: &dyn ExpandDatabase) -> MacroKind;
 
     /// Return whether this file is an include macro
     fn is_include_macro(&self, db: &dyn ExpandDatabase) -> bool;
 
     fn is_eager(&self, db: &dyn ExpandDatabase) -> bool;
-    /// Return whether this file is an attr macro
-    fn is_attr_macro(&self, db: &dyn ExpandDatabase) -> bool;
 
     /// Return whether this file is the pseudo expansion of the derive attribute.
     /// See [`crate::builtin_attr_macro::derive_attr_expand`].
@@ -468,18 +483,18 @@ impl MacroFileIdExt for MacroFileId {
         ExpansionInfo::new(db, self)
     }
 
-    fn is_custom_derive(&self, db: &dyn ExpandDatabase) -> bool {
-        matches!(
-            db.lookup_intern_macro_call(self.macro_call_id).def.kind,
-            MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive)
-        )
-    }
-
-    fn is_builtin_derive(&self, db: &dyn ExpandDatabase) -> bool {
-        matches!(
-            db.lookup_intern_macro_call(self.macro_call_id).def.kind,
-            MacroDefKind::BuiltInDerive(..)
-        )
+    fn kind(&self, db: &dyn ExpandDatabase) -> MacroKind {
+        match db.lookup_intern_macro_call(self.macro_call_id).def.kind {
+            MacroDefKind::Declarative(..) => MacroKind::Declarative,
+            MacroDefKind::BuiltIn(..) | MacroDefKind::BuiltInEager(..) => {
+                MacroKind::DeclarativeBuiltIn
+            }
+            MacroDefKind::BuiltInDerive(..) => MacroKind::DeriveBuiltIn,
+            MacroDefKind::ProcMacro(_, _, ProcMacroKind::CustomDerive) => MacroKind::Derive,
+            MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr) => MacroKind::Attr,
+            MacroDefKind::ProcMacro(_, _, ProcMacroKind::Bang) => MacroKind::ProcMacro,
+            MacroDefKind::BuiltInAttr(..) => MacroKind::AttrBuiltIn,
+        }
     }
 
     fn is_include_macro(&self, db: &dyn ExpandDatabase) -> bool {
@@ -505,13 +520,6 @@ impl MacroFileIdExt for MacroFileId {
             MacroCallKind::FnLike { eager, .. } => eager.as_ref().map(|it| it.arg_id),
             _ => None,
         }
-    }
-
-    fn is_attr_macro(&self, db: &dyn ExpandDatabase) -> bool {
-        matches!(
-            db.lookup_intern_macro_call(self.macro_call_id).def.kind,
-            MacroDefKind::BuiltInAttr(..) | MacroDefKind::ProcMacro(_, _, ProcMacroKind::Attr)
-        )
     }
 
     fn is_derive_attr_pseudo_expansion(&self, db: &dyn ExpandDatabase) -> bool {

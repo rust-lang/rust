@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ set result = "$.index[*][?(@.name=='Result')].id"
 pub enum Result<T, E> {
     Ok(T),

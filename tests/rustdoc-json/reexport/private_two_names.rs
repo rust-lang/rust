@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // Test for the ICE in https://github.com/rust-lang/rust/issues/83720
 // A pub-in-private type re-exported under two different names shouldn't cause an error
 

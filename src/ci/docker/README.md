@@ -11,12 +11,12 @@ the [`jobs.yml`](../github-actions/jobs.yml) file.
 To run a specific CI job locally, you can use the `citool` Rust crate:
 
 ```
-cargo --manifest-path src/ci/citool/Cargo.toml run run-local <job-name>
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
 ```
 
 For example, to run the `x86_64-gnu-llvm-18-1` job:
 ```
-cargo --manifest-path src/ci/citool/Cargo.toml run run-local x86_64-gnu-llvm-18-1
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local x86_64-gnu-llvm-18-1
 ```
 
 The job will output artifacts in an `obj/<image-name>` dir at the root of a repository. Note

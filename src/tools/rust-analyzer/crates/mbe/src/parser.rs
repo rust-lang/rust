@@ -13,8 +13,8 @@ use crate::ParseError;
 /// Consider
 ///
 /// ```
-/// macro_rules! an_macro {
-///     ($x:expr + $y:expr) => ($y * $x)
+/// macro_rules! a_macro {
+///     ($x:expr, $y:expr) => ($y * $x)
 /// }
 /// ```
 ///

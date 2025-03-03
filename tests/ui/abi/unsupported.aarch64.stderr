@@ -206,3 +206,113 @@ LL | extern "C-cmse-nonsecure-entry" fn cmse_entry() {}
 error: aborting due to 19 previous errors; 10 warnings emitted
 
 For more information about this error, try `rustc --explain E0570`.
+Future incompatibility report: Future breakage diagnostic:
+warning: the calling convention "ptx-kernel" is not supported on this target
+  --> $DIR/unsupported.rs:35:15
+   |
+LL | fn ptx_ptr(f: extern "ptx-kernel" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "aapcs" is not supported on this target
+  --> $DIR/unsupported.rs:51:17
+   |
+LL | fn aapcs_ptr(f: extern "aapcs" fn()) {
+   |                 ^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "msp430-interrupt" is not supported on this target
+  --> $DIR/unsupported.rs:73:18
+   |
+LL | fn msp430_ptr(f: extern "msp430-interrupt" fn()) {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "avr-interrupt" is not supported on this target
+  --> $DIR/unsupported.rs:83:15
+   |
+LL | fn avr_ptr(f: extern "avr-interrupt" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "riscv-interrupt-m" is not supported on this target
+  --> $DIR/unsupported.rs:96:17
+   |
+LL | fn riscv_ptr(f: extern "riscv-interrupt-m" fn()) {
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "x86-interrupt" is not supported on this target
+  --> $DIR/unsupported.rs:118:15
+   |
+LL | fn x86_ptr(f: extern "x86-interrupt" fn()) {
+   |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "thiscall" is not supported on this target
+  --> $DIR/unsupported.rs:141:20
+   |
+LL | fn thiscall_ptr(f: extern "thiscall" fn()) {
+   |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "stdcall" is not supported on this target
+  --> $DIR/unsupported.rs:167:19
+   |
+LL | fn stdcall_ptr(f: extern "stdcall" fn()) {
+   |                   ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "C-cmse-nonsecure-call" is not supported on this target
+  --> $DIR/unsupported.rs:187:21
+   |
+LL | fn cmse_call_ptr(f: extern "C-cmse-nonsecure-call" fn()) {
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+
+Future breakage diagnostic:
+warning: the calling convention "C-cmse-nonsecure-entry" is not supported on this target
+  --> $DIR/unsupported.rs:195:22
+   |
+LL | fn cmse_entry_ptr(f: extern "C-cmse-nonsecure-entry" fn()) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #130260 <https://github.com/rust-lang/rust/issues/130260>
+   = note: `#[warn(unsupported_fn_ptr_calling_conventions)]` on by default
+

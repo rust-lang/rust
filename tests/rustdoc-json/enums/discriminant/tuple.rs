@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #[repr(u32)]
 //@ is "$.index[*][?(@.name=='Foo')].attrs" '["#[attr=\"Repr([ReprInt(UnsignedInt(U32))])\")]\n"]'
 pub enum Foo {

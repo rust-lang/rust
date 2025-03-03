@@ -42,8 +42,6 @@ ty_utils_logical_op_not_supported = unsupported operation in generic constants, 
 
 ty_utils_loop_not_supported = loops and loop control flow are not supported in generic constants
 
-ty_utils_multiple_array_fields_simd_type = monomorphising SIMD type `{$ty}` with more than one array field
-
 ty_utils_needs_drop_overflow = overflow while checking whether `{$query_ty}` requires drop
 
 ty_utils_never_to_any_not_supported = coercing the `never` type is not supported in generic constants

@@ -1037,7 +1037,7 @@ fn filter_bounds_in_scope(
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
 ///
-/// ```
+/// ```ignore
 /// let mut names: Vec<String> =
 ///     vec!["foo".into(), "foo".into(), "bar".into(), "baz".into(), "bar".into()];
 /// deduplicate_arg_names(&mut names);

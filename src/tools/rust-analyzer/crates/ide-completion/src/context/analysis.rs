@@ -97,7 +97,8 @@ fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Opt
 /// We do this by recursively expanding all macros and picking the best possible match. We cannot just
 /// choose the first expansion each time because macros can expand to something that does not include
 /// our completion marker, e.g.:
-/// ```
+///
+/// ```ignore
 /// macro_rules! helper { ($v:ident) => {} }
 /// macro_rules! my_macro {
 ///     ($v:ident) => {
@@ -106,7 +107,7 @@ fn token_at_offset_ignore_whitespace(file: &SyntaxNode, offset: TextSize) -> Opt
 ///     };
 /// }
 ///
-/// my_macro!(complete_me_here)
+/// my_macro!(complete_me_here);
 /// ```
 /// If we would expand the first thing we encounter only (which in fact this method used to do), we would
 /// be unable to complete here, because we would be walking directly into the void. So we instead try

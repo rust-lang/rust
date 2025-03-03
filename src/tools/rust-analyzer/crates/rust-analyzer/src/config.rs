@@ -128,6 +128,8 @@ config_data! {
         /// Whether to show keyword hover popups. Only applies when
         /// `#rust-analyzer.hover.documentation.enable#` is set.
         hover_documentation_keywords_enable: bool  = true,
+        /// Whether to show drop glue information on hover.
+        hover_dropGlue_enable: bool                = true,
         /// Use markdown syntax for links on hover.
         hover_links_enable: bool = true,
         /// Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
@@ -1631,6 +1633,7 @@ impl Config {
                 Some(MaxSubstitutionLength::Limit(limit)) => ide::SubstTyLen::LimitTo(*limit),
                 None => ide::SubstTyLen::Unlimited,
             },
+            show_drop_glue: *self.hover_dropGlue_enable(),
         }
     }
 

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(abi_vectorcall)]
 
 //@ is "$.index[*][?(@.name=='AbiRust')].inner.type_alias.type.function_pointer.header.abi" \"Rust\"

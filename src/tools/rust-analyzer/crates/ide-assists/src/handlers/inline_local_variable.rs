@@ -73,39 +73,12 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
             let usage_node =
                 name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
-            let usage_parent_option =
-                usage_node.and_then(|it| it.parent()).and_then(ast::Expr::cast);
+            let usage_parent_option = usage_node.and_then(|it| it.parent());
             let usage_parent = match usage_parent_option {
                 Some(u) => u,
                 None => return Some((range, name_ref, false)),
             };
-            let initializer = matches!(
-                initializer_expr,
-                ast::Expr::CallExpr(_)
-                    | ast::Expr::IndexExpr(_)
-                    | ast::Expr::MethodCallExpr(_)
-                    | ast::Expr::FieldExpr(_)
-                    | ast::Expr::TryExpr(_)
-                    | ast::Expr::Literal(_)
-                    | ast::Expr::TupleExpr(_)
-                    | ast::Expr::ArrayExpr(_)
-                    | ast::Expr::ParenExpr(_)
-                    | ast::Expr::PathExpr(_)
-                    | ast::Expr::BlockExpr(_),
-            );
-            let parent = matches!(
-                usage_parent,
-                ast::Expr::TupleExpr(_)
-                    | ast::Expr::ArrayExpr(_)
-                    | ast::Expr::ParenExpr(_)
-                    | ast::Expr::ForExpr(_)
-                    | ast::Expr::WhileExpr(_)
-                    | ast::Expr::BreakExpr(_)
-                    | ast::Expr::ReturnExpr(_)
-                    | ast::Expr::MatchExpr(_)
-                    | ast::Expr::BlockExpr(_)
-            );
-            Some((range, name_ref, !(initializer || parent)))
+            Some((range, name_ref, initializer_expr.needs_parens_in(&usage_parent)))
         })
         .collect::<Option<Vec<_>>>()?;
 
@@ -281,11 +254,11 @@ fn foo() {
             r"
 fn bar(a: usize) {}
 fn foo() {
-    (1 + 1) + 1;
-    if (1 + 1) > 10 {
+    1 + 1 + 1;
+    if 1 + 1 > 10 {
     }
 
-    while (1 + 1) > 10 {
+    while 1 + 1 > 10 {
 
     }
     let b = (1 + 1) * 10;
@@ -350,14 +323,14 @@ fn foo() {
             r"
 fn bar(a: usize) -> usize { a }
 fn foo() {
-    (bar(1) as u64) + 1;
-    if (bar(1) as u64) > 10 {
+    bar(1) as u64 + 1;
+    if bar(1) as u64 > 10 {
     }
 
-    while (bar(1) as u64) > 10 {
+    while bar(1) as u64 > 10 {
 
     }
-    let b = (bar(1) as u64) * 10;
+    let b = bar(1) as u64 * 10;
     bar(bar(1) as u64);
 }",
         );
@@ -574,7 +547,7 @@ fn foo() {
             r"
 fn foo() {
     let bar = 10;
-    let b = (&bar) * 10;
+    let b = &bar * 10;
 }",
         );
     }

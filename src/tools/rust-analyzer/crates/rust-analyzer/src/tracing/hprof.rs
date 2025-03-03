@@ -6,7 +6,8 @@
 //!
 //! Usage:
 //!
-//! ```rust
+//! ```ignore
+//! # use tracing_subscriber::Registry;
 //! let layer = hprof::SpanTree::default();
 //! Registry::default().with(layer).init();
 //! ```

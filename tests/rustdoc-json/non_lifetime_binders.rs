@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #![feature(non_lifetime_binders)]
 #![allow(incomplete_features)]
 

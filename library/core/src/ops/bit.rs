@@ -493,7 +493,7 @@ macro_rules! shl_impl_all {
     )*)
 }
 
-shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 isize i128 }
+shl_impl_all! { u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize }
 
 /// The right shift operator `>>`. Note that because this trait is implemented
 /// for all integer types with multiple right-hand-side types, Rust's type

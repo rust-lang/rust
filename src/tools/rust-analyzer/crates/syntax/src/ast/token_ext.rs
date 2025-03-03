@@ -269,7 +269,7 @@ impl ast::ByteString {
             }
             (Ok(c), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend_from_slice(text[..prev_end].as_bytes());
+                buf.extend_from_slice(&text.as_bytes()[..prev_end]);
                 buf.push(c as u8);
             }
             (Err(e), _) => has_error = Some(e),
@@ -333,7 +333,7 @@ impl ast::CString {
             }
             (Ok(u), true) => {
                 buf.reserve_exact(text.len());
-                buf.extend(text[..prev_end].as_bytes());
+                buf.extend(&text.as_bytes()[..prev_end]);
                 extend_unit(&mut buf, u);
             }
             (Err(e), _) => has_error = Some(e),
