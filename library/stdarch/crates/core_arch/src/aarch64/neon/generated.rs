@@ -826,7 +826,7 @@ pub fn vaddvq_u64(a: uint64x2_t) -> u64 {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -842,7 +842,7 @@ pub fn vamax_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -858,7 +858,7 @@ pub fn vamaxq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -874,7 +874,7 @@ pub fn vamaxq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -890,7 +890,7 @@ pub fn vamin_f32(a: float32x2_t, b: float32x2_t) -> float32x2_t {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
@@ -906,7 +906,7 @@ pub fn vaminq_f32(a: float32x4_t, b: float32x4_t) -> float32x4_t {
 #[inline]
 #[target_feature(enable = "neon,faminmax")]
 #[cfg_attr(test, assert_instr(nop))]
-#[stable(feature = "neon_intrinsics", since = "1.59.0")]
+#[unstable(feature = "faminmax", issue = "137933")]
 pub fn vaminq_f64(a: float64x2_t, b: float64x2_t) -> float64x2_t {
     unsafe extern "unadjusted" {
         #[cfg_attr(
