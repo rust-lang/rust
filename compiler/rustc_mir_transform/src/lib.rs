@@ -316,6 +316,10 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
     // All body-owners have MIR associated with them.
     let mut set: FxIndexSet<_> = tcx.hir_body_owners().collect();
 
+    // Remove the fake bodies for `global_asm!`, since they're not useful
+    // to be emitted (`--emit=mir`) or encoded (in metadata).
+    set.retain(|&def_id| !matches!(tcx.def_kind(def_id), DefKind::GlobalAsm));
+
     // Coroutine-closures (e.g. async closures) have an additional by-move MIR
     // body that isn't in the HIR.
     for body_owner in tcx.hir_body_owners() {
