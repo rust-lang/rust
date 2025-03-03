@@ -169,7 +169,7 @@ impl<'tcx> SymbolMangler<'tcx> {
         Ok(())
     }
 
-    fn in_binder<T>(
+    fn wrap_binder<T>(
         &mut self,
         value: &ty::Binder<'tcx, T>,
         print_value: impl FnOnce(&mut Self, &T) -> Result<(), PrintError>,
@@ -471,7 +471,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
                 self.push("F");
-                self.in_binder(&sig, |cx, sig| {
+                self.wrap_binder(&sig, |cx, sig| {
                     if sig.safety.is_unsafe() {
                         cx.push("U");
                     }
@@ -554,7 +554,7 @@ impl<'tcx> Printer<'tcx> for SymbolMangler<'tcx> {
         // [<Trait> [{<Projection>}]] [{<Auto>}]
         // Since any predicates after the first one shouldn't change the binders,
         // just put them all in the binders of the first.
-        self.in_binder(&predicates[0], |cx, _| {
+        self.wrap_binder(&predicates[0], |cx, _| {
             for predicate in predicates.iter() {
                 // It would be nice to be able to validate bound vars here, but
                 // projections can actually include bound vars from super traits
