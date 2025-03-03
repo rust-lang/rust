@@ -32,7 +32,7 @@ type DefaultedParam = Either<hir::TypeParam, hir::ConstParam>;
 /// block), you generally want to appropriately qualify the names, and sometimes
 /// you might want to substitute generic parameters as well:
 ///
-/// ```
+/// ```ignore
 /// mod x {
 ///   pub struct A<V>;
 ///   pub trait T<U> { fn foo(&self, _: U) -> A<U>; }

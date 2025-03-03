@@ -40,7 +40,7 @@ fn mod_item_path_str(
 /// Type tree shows how can we get from set of types to some type.
 ///
 /// Consider the following code as an example
-/// ```
+/// ```ignore
 /// fn foo(x: i32, y: bool) -> Option<i32> { None }
 /// fn bar() {
 ///    let a = 1;

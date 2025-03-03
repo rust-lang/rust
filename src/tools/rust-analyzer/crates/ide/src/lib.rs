@@ -104,7 +104,7 @@ pub use crate::{
     navigation_target::{NavigationTarget, TryToNav, UpmappingResult},
     references::ReferenceSearchResult,
     rename::RenameError,
-    runnables::{Runnable, RunnableKind, TestId},
+    runnables::{Runnable, RunnableKind, TestId, UpdateTest},
     signature_help::SignatureHelp,
     static_index::{
         StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,

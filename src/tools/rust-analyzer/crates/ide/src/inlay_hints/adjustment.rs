@@ -258,27 +258,25 @@ fn mode_and_needs_parens_for_adjustment_hints(
 fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, bool) {
     let prec = expr.precedence();
     if postfix {
-        // postfix ops have higher precedence than any other operator, so we need to wrap
-        // any inner expression that is below (except for jumps if they don't have a value)
-        let needs_inner_parens = prec < ExprPrecedence::Unambiguous && {
-            prec != ExprPrecedence::Jump || !expr.is_ret_like_with_no_value()
-        };
+        let needs_inner_parens = prec.needs_parentheses_in(ExprPrecedence::Postfix);
         // given we are the higher precedence, no parent expression will have stronger requirements
         let needs_outer_parens = false;
         (needs_outer_parens, needs_inner_parens)
     } else {
-        // We need to wrap all binary like things, thats everything below prefix except for jumps
-        let needs_inner_parens = prec < ExprPrecedence::Prefix && prec != ExprPrecedence::Jump;
+        let needs_inner_parens = prec.needs_parentheses_in(ExprPrecedence::Prefix);
         let parent = expr
             .syntax()
             .parent()
             .and_then(ast::Expr::cast)
             // if we are already wrapped, great, no need to wrap again
             .filter(|it| !matches!(it, ast::Expr::ParenExpr(_)))
-            .map(|it| it.precedence());
+            .map(|it| it.precedence())
+            .filter(|&prec| prec != ExprPrecedence::Unambiguous);
+
         // if we have no parent, we don't need outer parens to disambiguate
         // otherwise anything with higher precedence than what we insert needs to wrap us
-        let needs_outer_parens = parent.is_some_and(|prec| prec > ExprPrecedence::Prefix);
+        let needs_outer_parens = parent
+            .is_some_and(|parent_prec| ExprPrecedence::Prefix.needs_parentheses_in(parent_prec));
         (needs_outer_parens, needs_inner_parens)
     }
 }
@@ -291,7 +289,7 @@ mod tests {
     };
 
     #[test]
-    fn adjustment_hints() {
+    fn adjustment_hints_prefix() {
         check_with_config(
             InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
             r#"
@@ -381,6 +379,8 @@ fn main() {
     &mut Struct[0];
        //^^^^^^(&mut $
        //^^^^^^)
+    let _: (&mut (),) = (&mut (),);
+                       //^^^^^^^&mut *
 }
 
 #[derive(Copy, Clone)]
@@ -472,6 +472,9 @@ fn main() {
   //^^^^^^.&
     &mut Struct[0];
        //^^^^^^.&mut
+    let _: (&mut (),) = (&mut (),);
+                       //^^^^^^^(
+                       //^^^^^^^).*.&mut
 }
 
 #[derive(Copy, Clone)]

@@ -7,6 +7,7 @@
     "version": "0.5.0-dev",
     "releaseTag": null,
     "publisher": "rust-lang",
+    "type": "commonjs",
     "repository": {
         "url": "https://github.com/rust-lang/rust-analyzer.git",
         "type": "git"
@@ -27,45 +28,51 @@
         }
     },
     "engines": {
-        "vscode": "^1.83.0"
+        "vscode": "^1.93.0"
     },
     "enabledApiProposals": [],
     "scripts": {
         "vscode:prepublish": "npm run build-base -- --minify",
         "package": "vsce package -o rust-analyzer.vsix",
-        "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --target=node16",
+        "build-base": "esbuild ./src/main.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node --target=node20",
         "build": "npm run build-base -- --sourcemap",
         "watch": "npm run build-base -- --sourcemap --watch",
-        "format": "prettier --write .",
-        "format:check": "prettier --check .",
-        "lint": "eslint -c .eslintrc.js --ext ts ./src ./tests",
+        "format": "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs . --write",
+        "format:check": "node --experimental-strip-types node_modules/prettier/bin/prettier.cjs . --check",
+        "lint": "eslint .",
         "lint:fix": "npm run lint -- --fix",
         "typecheck": "tsc",
         "pretest": "npm run typecheck && npm run build",
         "test": "node ./out/tests/runTests.js"
     },
     "dependencies": {
-        "@hpcc-js/wasm": "^2.13.0",
-        "anser": "^2.1.1",
-        "d3": "^7.8.5",
-        "d3-graphviz": "^5.0.2",
+        "@hpcc-js/wasm": "^2.22.4",
+        "anser": "^2.3.2",
+        "d3": "^7.9.0",
+        "d3-graphviz": "^5.6.0",
+        "jiti": "^2.4.2",
         "vscode-languageclient": "^9.0.1"
     },
     "devDependencies": {
-        "@tsconfig/strictest": "^2.0.1",
-        "@types/node": "~16.11.7",
-        "@types/vscode": "~1.83",
-        "@typescript-eslint/eslint-plugin": "^6.0.0",
-        "@typescript-eslint/parser": "^6.0.0",
-        "@vscode/test-electron": "^2.3.8",
-        "@vscode/vsce": "^3.0.0",
+        "@eslint/js": "^9.21.0",
+        "@stylistic/eslint-plugin": "^4.1.0",
+        "@stylistic/eslint-plugin-js": "^4.1.0",
+        "@tsconfig/strictest": "^2.0.5",
+        "@types/node": "~22.13.4",
+        "@types/vscode": "~1.93.0",
+        "@typescript-eslint/eslint-plugin": "^8.25.0",
+        "@typescript-eslint/parser": "^8.25.0",
+        "@vscode/test-electron": "^2.4.1",
+        "@vscode/vsce": "^3.2.2",
         "esbuild": "^0.25.0",
-        "eslint": "^8.44.0",
-        "eslint-config-prettier": "^8.8.0",
-        "ovsx": "^0.8.2",
-        "prettier": "^3.0.0",
-        "tslib": "^2.6.0",
-        "typescript": "^5.6.0"
+        "eslint": "^9.21.0",
+        "eslint-config-prettier": "^10.0.2",
+        "eslint-define-config": "^2.1.0",
+        "ovsx": "0.10.1",
+        "prettier": "^3.5.2",
+        "tslib": "^2.8.1",
+        "typescript": "^5.7.3",
+        "typescript-eslint": "^8.25.0"
     },
     "activationEvents": [
         "workspaceContains:Cargo.toml",
@@ -1636,6 +1643,16 @@
                 "properties": {
                     "rust-analyzer.hover.documentation.keywords.enable": {
                         "markdownDescription": "Whether to show keyword hover popups. Only applies when\n`#rust-analyzer.hover.documentation.enable#` is set.",
+                        "default": true,
+                        "type": "boolean"
+                    }
+                }
+            },
+            {
+                "title": "hover",
+                "properties": {
+                    "rust-analyzer.hover.dropGlue.enable": {
+                        "markdownDescription": "Whether to show drop glue information on hover.",
                         "default": true,
                         "type": "boolean"
                     }

@@ -379,13 +379,15 @@ fn rewrite_intra_doc_link(
     let resolved = resolve_doc_path_for_def(db, def, link, ns)?;
     let mut url = get_doc_base_urls(db, resolved, None, None).0?;
 
-    let (_, file, _) = filename_and_frag_for_def(db, resolved)?;
+    let (_, file, frag) = filename_and_frag_for_def(db, resolved)?;
     if let Some(path) = mod_path_of_def(db, resolved) {
         url = url.join(&path).ok()?;
     }
 
+    let frag = anchor.or(frag.as_deref());
+
     url = url.join(&file).ok()?;
-    url.set_fragment(anchor);
+    url.set_fragment(frag);
 
     Some((url.into(), strip_prefixes_suffixes(title).to_owned()))
 }
@@ -621,11 +623,9 @@ fn filename_and_frag_for_def(
             format!("fn.{}.html", f.name(db).as_str())
         }
         Definition::Variant(ev) => {
-            format!(
-                "enum.{}.html#variant.{}",
-                ev.parent_enum(db).name(db).as_str(),
-                ev.name(db).as_str()
-            )
+            let def = Definition::Adt(ev.parent_enum(db).into());
+            let (_, file, _) = filename_and_frag_for_def(db, def)?;
+            return Some((def, file, Some(format!("variant.{}", ev.name(db).as_str()))));
         }
         Definition::Const(c) => {
             format!("const.{}.html", c.name(db)?.as_str())
@@ -635,12 +635,13 @@ fn filename_and_frag_for_def(
         }
         Definition::Macro(mac) => match mac.kind(db) {
             hir::MacroKind::Declarative
-            | hir::MacroKind::BuiltIn
+            | hir::MacroKind::AttrBuiltIn
+            | hir::MacroKind::DeclarativeBuiltIn
             | hir::MacroKind::Attr
             | hir::MacroKind::ProcMacro => {
                 format!("macro.{}.html", mac.name(db).as_str())
             }
-            hir::MacroKind::Derive => {
+            hir::MacroKind::Derive | hir::MacroKind::DeriveBuiltIn => {
                 format!("derive.{}.html", mac.name(db).as_str())
             }
         },

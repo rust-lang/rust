@@ -10,7 +10,7 @@ use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
 
 use crate::{
     db::{self, ExpandDatabase},
-    map_node_range_up, map_node_range_up_rooted, span_for_offset, MacroFileIdExt,
+    map_node_range_up, map_node_range_up_rooted, span_for_offset, MacroFileIdExt, MacroKind,
 };
 
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
@@ -276,7 +276,11 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
             HirFileIdRepr::FileId(file_id) => {
                 return Some(InRealFile { file_id, value: self.value.borrow().clone() })
             }
-            HirFileIdRepr::MacroFile(m) if m.is_attr_macro(db) => m,
+            HirFileIdRepr::MacroFile(m)
+                if matches!(m.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn) =>
+            {
+                m
+            }
             _ => return None,
         };
 
@@ -453,7 +457,7 @@ impl<N: AstNode> InFile<N> {
             }
             HirFileIdRepr::MacroFile(m) => m,
         };
-        if !file_id.is_attr_macro(db) {
+        if !matches!(file_id.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn) {
             return None;
         }
 

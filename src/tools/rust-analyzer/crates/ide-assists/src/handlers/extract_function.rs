@@ -272,7 +272,7 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
 /// * We want whole node, like `loop {}`, `2 + 2`, `{ let n = 1; }` exprs.
 ///   Then we can use `ast::Expr`
 /// * We want a few statements for a block. E.g.
-///   ```rust,no_run
+///   ```ignore
 ///   fn foo() -> i32 {
 ///     let m = 1;
 ///     $0
@@ -386,7 +386,7 @@ struct ContainerInfo {
 /// Control flow that is exported from extracted function
 ///
 /// E.g.:
-/// ```rust,no_run
+/// ```ignore
 /// loop {
 ///     $0
 ///     if 42 == 42 {

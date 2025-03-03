@@ -184,11 +184,11 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
 
     match def {
         Definition::Macro(it) => match it.kind(db) {
-            MacroKind::Declarative => Macro,
-            MacroKind::Derive => Attribute,
-            MacroKind::BuiltIn => Macro,
-            MacroKind::Attr => Attribute,
-            MacroKind::ProcMacro => Macro,
+            MacroKind::Derive
+            | MacroKind::DeriveBuiltIn
+            | MacroKind::AttrBuiltIn
+            | MacroKind::Attr => Attribute,
+            MacroKind::Declarative | MacroKind::DeclarativeBuiltIn | MacroKind::ProcMacro => Macro,
         },
         Definition::Field(..) | Definition::TupleField(..) => Field,
         Definition::Module(..) | Definition::Crate(..) => Module,

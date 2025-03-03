@@ -3,8 +3,8 @@
 use itertools::Itertools;
 
 use crate::{
-    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
-    TextSize,
+    syntax_editor::Element, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
+    SyntaxToken, TextRange, TextSize,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should
@@ -25,7 +25,7 @@ pub fn ancestors_at_offset(
 /// imprecise: if the cursor is strictly between two nodes of the desired type,
 /// as in
 ///
-/// ```no_run
+/// ```ignore
 /// struct Foo {}|struct Bar;
 /// ```
 ///
@@ -77,6 +77,26 @@ pub fn non_trivia_sibling(element: SyntaxElement, direction: Direction) -> Optio
 pub fn least_common_ancestor(u: &SyntaxNode, v: &SyntaxNode) -> Option<SyntaxNode> {
     if u == v {
         return Some(u.clone());
+    }
+
+    let u_depth = u.ancestors().count();
+    let v_depth = v.ancestors().count();
+    let keep = u_depth.min(v_depth);
+
+    let u_candidates = u.ancestors().skip(u_depth - keep);
+    let v_candidates = v.ancestors().skip(v_depth - keep);
+    let (res, _) = u_candidates.zip(v_candidates).find(|(x, y)| x == y)?;
+    Some(res)
+}
+
+pub fn least_common_ancestor_element(u: impl Element, v: impl Element) -> Option<SyntaxNode> {
+    let u = u.syntax_element();
+    let v = v.syntax_element();
+    if u == v {
+        return match u {
+            NodeOrToken::Node(node) => Some(node),
+            NodeOrToken::Token(token) => token.parent(),
+        };
     }
 
     let u_depth = u.ancestors().count();

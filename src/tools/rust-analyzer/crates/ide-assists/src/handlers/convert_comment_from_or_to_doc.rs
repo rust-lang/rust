@@ -136,7 +136,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 
 /// Not all comments are valid candidates for conversion into doc comments. For example, the
 /// comments in the code:
-/// ```rust
+/// ```ignore
 /// // Brilliant module right here
 ///
 /// // Really good right
@@ -148,7 +148,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 /// mod nice_module {}
 /// ```
 /// can be converted to doc comments. However, the comments in this example:
-/// ```rust
+/// ```ignore
 /// fn foo_bar(foo: Foo /* not bar yet */) -> Bar {
 ///     foo.into_bar()
 ///     // Nicely done
@@ -162,7 +162,7 @@ fn comment_to_doc(acc: &mut Assists, comment: ast::Comment, style: CommentPlacem
 /// are not allowed to become doc comments. Moreover, some comments _are_ allowed, but aren't common
 /// style in Rust. For example, the following comments are allowed to be doc comments, but it is not
 /// common style for them to be:
-/// ```rust
+/// ```ignore
 /// fn foo_bar(foo: Foo) -> Bar {
 ///     // this could be an inner comment with //!
 ///     foo.into_bar()

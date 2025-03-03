@@ -214,6 +214,7 @@ function checkConflictingExtensions() {
                     "both plugins to not work correctly. You should disable one of them.",
                 "Got it",
             )
+            // eslint-disable-next-line no-console
             .then(() => {}, console.error);
     }
 }

@@ -5,7 +5,9 @@
 //!
 //! It is used like this:
 //!
-//! ```
+//! ```ignore
+//! # use hir_def::dyn_map::DynMap;
+//! # use hir_def::dyn_map::Key;
 //! // keys define submaps of a `DynMap`
 //! const STRING_TO_U32: Key<String, u32> = Key::new();
 //! const U32_TO_VEC: Key<u32, Vec<bool>> = Key::new();

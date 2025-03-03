@@ -21,6 +21,7 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_fields_count: Some(5),
     max_enum_variants_count: Some(5),
     max_subst_ty_len: super::SubstTyLen::Unlimited,
+    show_drop_glue: true,
 };
 
 fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
@@ -567,6 +568,10 @@ fn main() {
             ---
 
             size = 8, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -812,6 +817,10 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ---
 
             size = 1, align = 1, offset = 6
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -863,6 +872,10 @@ fn main() {
             ---
 
             size = 4, align = 4, offset = 0
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -933,6 +946,10 @@ struct Foo$0(pub u32) where u32: Copy;
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -959,6 +976,10 @@ struct Foo$0 { field: u32 }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check(
@@ -984,6 +1005,10 @@ struct Foo$0 where u32: Copy { field: u32 }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1013,6 +1038,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1036,6 +1065,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1062,6 +1095,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 16 (0x10), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1083,6 +1120,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1104,6 +1145,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 
@@ -1127,6 +1172,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1152,6 +1201,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1173,6 +1226,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1194,6 +1251,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 16 (0x10), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1215,6 +1276,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1236,6 +1301,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1262,6 +1331,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1284,6 +1357,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1303,6 +1380,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1322,6 +1403,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1359,6 +1444,10 @@ fn hover_enum_limit() {
             ---
 
             size = 12 (0xC), align = 4, niches = a lot
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1385,6 +1474,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1407,6 +1500,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1426,6 +1523,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1445,6 +1546,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1471,6 +1576,10 @@ struct Foo$0 where u32: Copy;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1493,6 +1602,10 @@ type Fo$0o: Trait = S where T: Trait;
             where
                 T: Trait,
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1642,6 +1755,10 @@ fn main() {
             ---
 
             size = 8, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_range(
@@ -1697,6 +1814,10 @@ fn main() { let b$0ar = Some(12); }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1721,6 +1842,10 @@ enum Option<T> {
             ```rust
             None
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -1784,6 +1909,10 @@ fn hover_for_local_variable_pat() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -1816,6 +1945,10 @@ fn hover_for_param_edge() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -1838,6 +1971,10 @@ fn hover_for_param_with_multiple_traits() {
             ```rust
             _x: impl Deref<Target = u8> + DerefMut<Target = u8>
             ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
         "#]],
     )
 }
@@ -1864,6 +2001,10 @@ fn main() { let foo_$0test = Thing::new(); }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -2613,6 +2754,10 @@ fn test_hover_function_pointer_show_identifiers() {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2635,6 +2780,10 @@ fn test_hover_function_pointer_no_identifier() {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2881,6 +3030,10 @@ pub struct B$0ar
 
             ---
 
+            does not contain types with destructors (drop glue); doesn't have a destructor
+
+            ---
+
             [external](https://www.google.com)
         "#]],
     );
@@ -2909,6 +3062,10 @@ pub struct B$0ar
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
 
             ---
 
@@ -3002,6 +3159,10 @@ fn test_hover_layout_of_variant() {
             ---
 
             size = 4, align = 2
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -3023,6 +3184,10 @@ fn test_hover_layout_of_variant_generic() {
             ```rust
             None
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -3048,6 +3213,10 @@ struct S$0<T>(core::marker::PhantomData<T>);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -3076,6 +3245,10 @@ fn test_hover_layout_of_enum() {
             ---
 
             size = 16 (0x10), align = 8, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -3094,6 +3267,10 @@ fn test_hover_no_memory_layout() {
             ```rust
             field_a: u8
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -4405,6 +4582,10 @@ fn main() {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             ```rust
             ra_test_fixture::S
             ```
@@ -4416,6 +4597,10 @@ fn main() {
             ---
 
             size = 4, align = 4, offset = 0
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4441,6 +4626,10 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4466,6 +4655,10 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4492,6 +4685,10 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4516,6 +4713,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4540,6 +4741,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4564,6 +4769,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4588,6 +4797,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4612,6 +4825,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4635,6 +4852,10 @@ impl Foo {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4659,6 +4880,10 @@ impl Foo {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -5149,6 +5374,10 @@ type Fo$0o2 = Foo<2>;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -5202,6 +5431,10 @@ enum E {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             This is a doc
         "#]],
     );
@@ -5228,6 +5461,10 @@ enum E {
             ---
 
             size = 1, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -5261,6 +5498,10 @@ enum E {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             This is a doc
         "#]],
     );
@@ -5288,6 +5529,10 @@ enum E {
             ---
 
             size = 1, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -6219,6 +6464,10 @@ fn main() {
             ---
 
             size = 32 (0x20), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -7518,6 +7767,10 @@ enum Enum {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -7544,6 +7797,10 @@ enum Enum {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8214,6 +8471,10 @@ fn test() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8863,6 +9124,10 @@ fn main(notable$0: u32) {}
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8955,6 +9220,10 @@ extern "C" {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -9101,6 +9370,10 @@ struct Pedro$0<'a> {
             ---
 
             size = 16 (0x10), align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     )
 }
@@ -9118,6 +9391,10 @@ fn main(a$0: impl T) {}
             ```rust
             a: impl T + ?Sized
             ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
         "#]],
     );
 }
@@ -9139,6 +9416,10 @@ fn main(a$0: T) {}
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -9192,6 +9473,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -9529,6 +9814,10 @@ type A$0 = B;
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             *This is the documentation for* `struct B`
 
             Docs for B
@@ -9559,6 +9848,10 @@ type A$0 = B;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -9596,6 +9889,10 @@ type A$0 = B;
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             *This is the documentation for* `struct C`
 
             Docs for C
@@ -9625,6 +9922,10 @@ type A$0 = B;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9749,6 +10050,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9777,6 +10082,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9812,6 +10121,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -10134,6 +10447,10 @@ fn bar() {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             ```rust
             ra_test_fixture::Foo
             ```
@@ -10141,6 +10458,10 @@ fn bar() {
             ```rust
             field: T
             ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
 
             ---
 
@@ -10350,6 +10671,279 @@ macro_rules! str {
                     },
                 ),
             ]
+        "#]],
+    );
+}
+
+#[test]
+fn drop_glue() {
+    check(
+        r#"
+struct NoDrop$0;
+    "#,
+        expect![[r#"
+            *NoDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct NoDrop
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop$0;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+    "#,
+        expect![[r#"
+            *NeedsDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct NeedsDrop
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); has a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: manually_drop, drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+type NoDrop$0 = core::mem::ManuallyDrop<NeedsDrop>;
+    "#,
+        expect![[r#"
+            *NoDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NoDrop = core::mem::ManuallyDrop<NeedsDrop>
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+struct DropField$0 {
+    _x: i32,
+    _y: NeedsDrop,
+}
+    "#,
+        expect![[r#"
+            *DropField*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct DropField {
+                _x: i32,
+                _y: NeedsDrop,
+            }
+            ```
+
+            ---
+
+            size = 4, align = 4
+
+            ---
+
+            contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: sized
+type Foo$0 = impl Sized;
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type Foo = impl Sized
+            ```
+
+            ---
+
+            contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+enum Enum {
+    A$0(&'static str),
+    B(NeedsDrop)
+}
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture::Enum
+            ```
+
+            ```rust
+            A(&'static str)
+            ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+struct Foo$0<T>(T);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(T)
+            ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: copy
+struct Foo$0<T: Copy>(T);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(T)
+            where
+                T: Copy,
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: copy
+trait Trait {
+    type Assoc: Copy;
+}
+struct Foo$0<T: Trait>(T::Assoc);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(<T as Trait>::Assoc)
+            where
+                T: Trait,
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+#[rustc_coherence_is_core]
+
+#[lang = "manually_drop"]
+#[repr(transparent)]
+pub struct ManuallyDrop$0<T: ?Sized> {
+    value: T,
+}
+    "#,
+        expect![[r#"
+            *ManuallyDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub struct ManuallyDrop<T>
+            where
+                T: ?Sized,
+            {
+                value: T,
+            }
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }

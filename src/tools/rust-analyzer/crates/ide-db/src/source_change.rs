@@ -493,7 +493,7 @@ pub enum Snippet {
     Placeholder(TextRange),
     /// A group of placeholder snippets, e.g.
     ///
-    /// ```no_run
+    /// ```ignore
     /// let ${0:new_var} = 4;
     /// fun(1, 2, 3, ${0:new_var});
     /// ```

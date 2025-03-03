@@ -386,7 +386,7 @@ mod __ {
 }
 
 macro_rules! void {
-    ($($tt:tt)*) => {}
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
 }
 
 struct __ where Self:;
@@ -409,6 +409,31 @@ void!('static 'self 'unsafe)
             false,
         );
     }
+}
+
+#[test]
+fn test_keyword_macro_edition_highlighting() {
+    check_highlighting(
+        r#"
+//- /main.rs crate:main edition:2018 deps:lib2015,lib2024
+lib2015::void_2015!(try async await gen);
+lib2024::void_2024!(try async await gen);
+//- /lib2015.rs crate:lib2015 edition:2015
+#[macro_export]
+macro_rules! void_2015 {
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
+}
+
+//- /lib2024.rs crate:lib2024 edition:2024
+#[macro_export]
+macro_rules! void_2024 {
+    ($($tt:tt)*) => {discard!($($tt:tt)*)}
+}
+
+"#,
+        expect_file![format!("./test_data/highlight_keywords_macros.html")],
+        false,
+    );
 }
 
 #[test]
