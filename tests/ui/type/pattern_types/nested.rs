@@ -18,10 +18,12 @@ const BAD_NESTING2: pattern_type!(pattern_type!(i32 is 1..) is ..=-1) = todo!();
 
 const BAD_NESTING3: pattern_type!(pattern_type!(i32 is 1..) is ..0) = todo!();
 //~^ ERROR: not a valid base type for range patterns
+//~| ERROR: not a valid base type for range patterns
 //~| ERROR: mismatched types
 
 const BAD_NESTING4: pattern_type!(() is ..0) = todo!();
 //~^ ERROR: not a valid base type for range patterns
+//~| ERROR: not a valid base type for range patterns
 //~| ERROR: mismatched types
 
 const BAD_NESTING5: pattern_type!(f32 is 1.0 .. 2.0) = todo!();

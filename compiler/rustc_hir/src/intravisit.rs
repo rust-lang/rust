@@ -708,9 +708,9 @@ pub fn walk_arm<'v, V: Visitor<'v>>(visitor: &mut V, arm: &'v Arm<'v>) -> V::Res
 pub fn walk_ty_pat<'v, V: Visitor<'v>>(visitor: &mut V, pattern: &'v TyPat<'v>) -> V::Result {
     try_visit!(visitor.visit_id(pattern.hir_id));
     match pattern.kind {
-        TyPatKind::Range(lower_bound, upper_bound, _) => {
-            visit_opt!(visitor, visit_const_arg_unambig, lower_bound);
-            visit_opt!(visitor, visit_const_arg_unambig, upper_bound);
+        TyPatKind::Range(lower_bound, upper_bound) => {
+            try_visit!(visitor.visit_const_arg_unambig(lower_bound));
+            try_visit!(visitor.visit_const_arg_unambig(upper_bound));
         }
         TyPatKind::Err(_) => (),
     }
