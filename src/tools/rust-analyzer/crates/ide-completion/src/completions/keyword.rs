@@ -347,7 +347,7 @@ fn main() {
 "#,
         );
         check_edit(
-            "let mut",
+            "letm",
             r#"
 fn main() {
     $0
