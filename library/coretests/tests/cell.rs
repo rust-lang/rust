@@ -494,7 +494,8 @@ fn const_refcell() {
         {
             assert!(a.try_borrow().is_ok());
             assert!(a.try_borrow_mut().is_ok());
-            let _a = a.borrow();
+            let a_ref = a.borrow();
+            assert!(*a_ref == 0);
             assert!(a.try_borrow().is_ok());
             assert!(a.try_borrow_mut().is_err());
         }
@@ -502,14 +503,18 @@ fn const_refcell() {
     };
     // Check that `borrow_mut` is usable at compile-time
     const BORROW_MUT_TEST: RefCell<u32> = {
-        let a = RefCell::new(0);
+        let mut a = RefCell::new(0);
         {
             assert!(a.try_borrow().is_ok());
             assert!(a.try_borrow_mut().is_ok());
-            let _a = a.borrow_mut();
+            let mut a_ref = a.borrow_mut();
+            assert!(*a_ref == 0);
+            *a_ref = 10;
+            assert!(*a_ref == 10);
             assert!(a.try_borrow().is_err());
             assert!(a.try_borrow_mut().is_err());
         }
+        assert!(*a.get_mut() == 10);
         a
     };
 

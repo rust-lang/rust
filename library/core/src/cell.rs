@@ -1502,7 +1502,8 @@ pub struct Ref<'b, T: ?Sized + 'b> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized> Deref for Ref<'_, T> {
+#[rustc_const_unstable(feature = "const_deref", issue = "88955")]
+impl<T: ?Sized> const Deref for Ref<'_, T> {
     type Target = T;
 
     #[inline]
