@@ -1173,7 +1173,7 @@ pub trait Read {
     where
         Self: Sized,
     {
-        Take { inner: self, limit }
+        Take { inner: self, len: limit, limit }
     }
 }
 
@@ -2822,6 +2822,7 @@ impl<T, U> SizeHint for Chain<T, U> {
 #[derive(Debug)]
 pub struct Take<T> {
     inner: T,
+    len: u64,
     limit: u64,
 }
 
@@ -2856,6 +2857,12 @@ impl<T> Take<T> {
         self.limit
     }
 
+    /// Returns the number of bytes read so far.
+    #[stable(feature = "seek_io_take", since = "CURRENT_RUSTC_VERSION")]
+    pub fn position(&self) -> u64 {
+        self.len - self.limit
+    }
+
     /// Sets the number of bytes that can be read before this instance will
     /// return EOF. This is the same as constructing a new `Take` instance, so
     /// the amount of bytes read and the previous limit value don't matter when
@@ -2881,6 +2888,7 @@ impl<T> Take<T> {
     /// ```
     #[stable(feature = "take_set_limit", since = "1.27.0")]
     pub fn set_limit(&mut self, limit: u64) {
+        self.len = limit;
         self.limit = limit;
     }
 
@@ -3060,6 +3068,53 @@ impl<T> SizeHint for Take<T> {
         match SizeHint::upper_bound(&self.inner) {
             Some(upper_bound) => Some(cmp::min(upper_bound as u64, self.limit) as usize),
             None => self.limit.try_into().ok(),
+        }
+    }
+}
+
+#[stable(feature = "seek_io_take", since = "CURRENT_RUSTC_VERSION")]
+impl<T: Seek> Seek for Take<T> {
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
+        let offset_from_start = match pos {
+            SeekFrom::Start(offset) => offset,
+            SeekFrom::End(offset) => {
+                if offset > 0 {
+                    return Ok(self.position());
+                }
+                if offset.unsigned_abs() > self.len {
+                    return Err(Error::from(ErrorKind::InvalidInput));
+                }
+                self.len - offset.unsigned_abs()
+            }
+            SeekFrom::Current(offset) => {
+                if offset >= 0 {
+                    self.position() + offset.unsigned_abs()
+                } else {
+                    self.position() - offset.unsigned_abs()
+                }
+            }
+        };
+        let offset_from_start = offset_from_start.min(self.len);
+        if offset_from_start > self.position() {
+            let mut offset_from_current = offset_from_start - self.position();
+            while offset_from_current > i64::MAX as u64 {
+                self.inner.seek(SeekFrom::Current(i64::MAX))?;
+                self.limit -= i64::MAX as u64;
+                offset_from_current -= i64::MAX as u64;
+            }
+            self.inner.seek(SeekFrom::Current(offset_from_current as i64))?;
+            self.limit -= offset_from_current;
+            Ok(self.position())
+        } else {
+            let mut offset_from_current = self.position() - offset_from_start;
+            while offset_from_current > i64::MIN.unsigned_abs() {
+                self.inner.seek(SeekFrom::Current(i64::MIN))?;
+                self.limit += i64::MIN.unsigned_abs();
+                offset_from_current -= i64::MIN.unsigned_abs();
+            }
+            self.inner.seek(SeekFrom::Current(-(offset_from_current as i64)))?;
+            self.limit += offset_from_current;
+            Ok(self.position())
         }
     }
 }
