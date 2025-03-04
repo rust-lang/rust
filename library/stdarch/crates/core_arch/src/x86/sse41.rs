@@ -189,6 +189,7 @@ pub fn _mm_blend_ps<const IMM4: i32>(a: __m128, b: __m128) -> __m128 {
 /// # fn main() {
 /// #    if is_x86_feature_detected!("sse4.1") {
 /// #       #[target_feature(enable = "sse4.1")]
+/// #       #[allow(unused_unsafe)] // FIXME remove after stdarch bump in rustc
 /// #       unsafe fn worker() { unsafe {
 /// let mut float_store = vec![1.0, 1.0, 2.0, 3.0];
 /// let simd_floats = _mm_set_ps(2.5, 5.0, 7.5, 10.0);
