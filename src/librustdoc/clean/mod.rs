@@ -741,7 +741,7 @@ pub(crate) fn clean_generics<'tcx>(
     for p in gens.params.iter().filter(|p| !is_impl_trait(p) && !is_elided_lifetime(p)) {
         let mut p = clean_generic_param(cx, Some(gens), p);
         match &mut p.kind {
-            GenericParamDefKind::Lifetime { ref mut outlives } => {
+            GenericParamDefKind::Lifetime { outlives } => {
                 if let Some(region_pred) = region_predicates.get_mut(&Lifetime(p.name)) {
                     // We merge bounds in the `where` clause.
                     for outlive in outlives.drain(..) {
@@ -2688,7 +2688,7 @@ fn filter_doc_attr_ident(ident: Symbol, is_inline: bool) -> bool {
 /// Before calling this function, make sure `normal` is a `#[doc]` attribute.
 fn filter_doc_attr(args: &mut hir::AttrArgs, is_inline: bool) {
     match args {
-        hir::AttrArgs::Delimited(ref mut args) => {
+        hir::AttrArgs::Delimited(args) => {
             let tokens = filter_tokens_from_list(&args.tokens, |token| {
                 !matches!(
                     token,
