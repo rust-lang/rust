@@ -48,5 +48,17 @@ LL -         let _err = io::Error::new(io::ErrorKind::Other, super::E);
 LL +         let _err = io::Error::other(super::E);
    |
 
-error: aborting due to 4 previous errors
+error: this can be `std::io::Error::other(_)`
+  --> tests/ui/io_other_error.rs:58:5
+   |
+LL |     std::io::Error::new(std::io::ErrorKind::Other, format!("{x}"))
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: use `std::io::Error::other`
+   |
+LL -     std::io::Error::new(std::io::ErrorKind::Other, format!("{x}"))
+LL +     std::io::Error::other(format!("{x}"))
+   |
+
+error: aborting due to 5 previous errors
 

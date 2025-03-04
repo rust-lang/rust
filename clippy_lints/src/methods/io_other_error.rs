@@ -27,7 +27,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, path: &Expr<'_>, args
                     "use `std::io::Error::other`",
                     vec![
                         (new_segment.ident.span, "other".to_owned()),
-                        (error_kind.span.until(error.span), String::new()),
+                        (error_kind.span.until(error.span.source_callsite()), String::new()),
                     ],
                     Applicability::MachineApplicable,
                 );
