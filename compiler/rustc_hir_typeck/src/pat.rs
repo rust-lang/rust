@@ -277,12 +277,14 @@ struct ResolvedPat<'tcx> {
 #[derive(Clone, Copy, Debug)]
 enum ResolvedPatKind<'tcx> {
     Path { res: Res, pat_res: Res, segments: &'tcx [hir::PathSegment<'tcx>] },
+    Struct { variant: &'tcx VariantDef },
 }
 
 impl<'tcx> ResolvedPat<'tcx> {
     fn adjust_mode(&self) -> AdjustMode {
-        let ResolvedPatKind::Path { res, .. } = self.kind;
-        if matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _)) {
+        if let ResolvedPatKind::Path { res, .. } = self.kind
+            && matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
+        {
             // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
             // Peeling the reference types too early will cause type checking failures.
             // Although it would be possible to *also* peel the types of the constants too.
@@ -378,6 +380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
                 Some(self.resolve_pat_path(*hir_id, *span, qpath))
             }
+            PatKind::Struct(ref qpath, ..) => Some(self.resolve_pat_struct(pat, qpath)),
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, opt_path_res);
@@ -575,9 +578,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
             }
-            PatKind::Struct(ref qpath, fields, has_rest_pat) => {
-                self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
-            }
+            PatKind::Struct(_, fields, has_rest_pat) => match opt_path_res.unwrap() {
+                Ok(ResolvedPat { ty, kind: ResolvedPatKind::Struct { variant } }) => self
+                    .check_pat_struct(pat, fields, has_rest_pat, ty, variant, expected, pat_info),
+                Err(guar) => {
+                    let ty_err = Ty::new_error(self.tcx, guar);
+                    for field in fields {
+                        self.check_pat(field.pat, ty_err, pat_info);
+                    }
+                    ty_err
+                }
+                Ok(pr) => span_bug!(pat.span, "struct pattern resolved to {pr:?}"),
+            },
             PatKind::Guard(pat, cond) => {
                 self.check_pat(pat, expected, pat_info);
                 self.check_expr_has_type_or_error(cond, self.tcx.types.bool, |_| {});
@@ -1220,27 +1232,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         Ok(())
     }
 
-    fn check_pat_struct(
+    fn resolve_pat_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
         qpath: &hir::QPath<'tcx>,
+    ) -> Result<ResolvedPat<'tcx>, ErrorGuaranteed> {
+        // Resolve the path and check the definition for errors.
+        let (variant, pat_ty) = self.check_struct_path(qpath, pat.hir_id)?;
+        Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::Struct { variant } })
+    }
+
+    fn check_pat_struct(
+        &self,
+        pat: &'tcx Pat<'tcx>,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
+        pat_ty: Ty<'tcx>,
+        variant: &'tcx VariantDef,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
-            Ok(data) => data,
-            Err(guar) => {
-                let err = Ty::new_error(self.tcx, guar);
-                for field in fields {
-                    self.check_pat(field.pat, err, pat_info);
-                }
-                return err;
-            }
-        };
-
         // Type-check the path.
         let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
 
@@ -1366,7 +1377,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat_span: Span,
         resolved_pat: &ResolvedPat<'tcx>,
     ) {
-        let ResolvedPatKind::Path { res, pat_res, segments } = resolved_pat.kind;
+        let ResolvedPatKind::Path { res, pat_res, segments } = resolved_pat.kind else {
+            span_bug!(pat_span, "unexpected resolution for path pattern: {resolved_pat:?}");
+        };
 
         if let Some(span) = self.tcx.hir_res_span(pat_res) {
             e.span_label(span, format!("{} defined here", res.descr()));
