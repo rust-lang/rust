@@ -638,7 +638,6 @@ function getNextElem(query, parserState, elems, isInGenerics) {
                 getFilteredNextElem(query, parserState, generics, isInGenerics);
                 generics[generics.length - 1].bindingName = makePrimitiveElement("output");
             } else {
-                // @ts-expect-error
                 generics.push(makePrimitiveElement(null, {
                     bindingName: makePrimitiveElement("output"),
                     typeFilter: null,
@@ -791,7 +790,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
         generics: generics.filter(gen => {
             // Syntactically, bindings are parsed as generics,
             // but the query engine treats them differently.
-            if (gen.bindingName !== null) {
+            if (gen.bindingName !== null && gen.bindingName.name !== null) {
                 if (gen.name !== null) {
                     gen.bindingName.generics.unshift(gen);
                 }
@@ -811,8 +810,8 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
 
 /**
  *
- * @param {string} name
- * @param {Object=} extra
+ * @param {string|null} name
+ * @param {rustdoc.ParserQueryElementFields=} extra
  * @returns {rustdoc.ParserQueryElement}
  */
 function makePrimitiveElement(name, extra) {
