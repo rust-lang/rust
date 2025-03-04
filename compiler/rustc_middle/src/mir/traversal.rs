@@ -23,19 +23,13 @@ pub struct Preorder<'a, 'tcx> {
     body: &'a Body<'tcx>,
     visited: DenseBitSet<BasicBlock>,
     worklist: Vec<BasicBlock>,
-    root_is_start_block: bool,
 }
 
 impl<'a, 'tcx> Preorder<'a, 'tcx> {
     pub fn new(body: &'a Body<'tcx>, root: BasicBlock) -> Preorder<'a, 'tcx> {
         let worklist = vec![root];
 
-        Preorder {
-            body,
-            visited: DenseBitSet::new_empty(body.basic_blocks.len()),
-            worklist,
-            root_is_start_block: root == START_BLOCK,
-        }
+        Preorder { body, visited: DenseBitSet::new_empty(body.basic_blocks.len()), worklist }
     }
 }
 
@@ -71,15 +65,11 @@ impl<'a, 'tcx> Iterator for Preorder<'a, 'tcx> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        // All the blocks, minus the number of blocks we've visited.
-        let upper = self.body.basic_blocks.len() - self.visited.count();
+        // The worklist might be only things already visited.
+        let lower = 0;
 
-        let lower = if self.root_is_start_block {
-            // We will visit all remaining blocks exactly once.
-            upper
-        } else {
-            self.worklist.len()
-        };
+        // This is extremely loose, but it's not worth a popcnt loop to do better.
+        let upper = self.body.basic_blocks.len();
 
         (lower, Some(upper))
     }
