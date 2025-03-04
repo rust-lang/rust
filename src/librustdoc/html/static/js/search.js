@@ -1573,7 +1573,6 @@ class DocSearch {
         /**
          *  @type {Array<rustdoc.Row>}
          */
-        // @ts-expect-error
         this.searchIndex = this.buildIndex(rawSearchIndex);
     }
 
@@ -1902,6 +1901,7 @@ class DocSearch {
      * Convert raw search index into in-memory search index.
      *
      * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
+     * @returns {rustdoc.Row[]}
      */
     buildIndex(rawSearchIndex) {
         /**
@@ -2001,6 +2001,7 @@ class DocSearch {
             return cb;
         };
 
+        /** @type {rustdoc.Row[]} */
         const searchIndex = [];
         let currentIndex = 0;
         let id = 0;
@@ -2225,6 +2226,7 @@ class DocSearch {
                 // object defined above.
                 const itemParentIdx = itemParentIdxDecoder.next();
                 normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
+                /** @type {rustdoc.Row} */
                 const row = {
                     crate,
                     ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"

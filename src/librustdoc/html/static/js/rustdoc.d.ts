@@ -182,10 +182,11 @@ declare namespace rustdoc {
         name: string,
         normalizedName: string,
         word: string,
+        paramNames: string[],
         parent: ({ty: number, name: string, path: string, exactPath: string}|null|undefined),
         path: string,
         ty: number,
-        type?: FunctionSearchType
+        type: FunctionSearchType | null,
     }
 
     /**
