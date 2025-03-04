@@ -1242,59 +1242,6 @@ macro_rules! test {
     };
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
-pub struct RunMakeSupport {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for RunMakeSupport {
-    type Output = PathBuf;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.never()
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
-    }
-
-    /// Builds run-make-support and returns the path to the resulting rlib.
-    fn run(self, builder: &Builder<'_>) -> PathBuf {
-        builder.ensure(compile::Std::new(self.compiler, self.target));
-
-        let cargo = tool::prepare_tool_cargo(
-            builder,
-            self.compiler,
-            Mode::ToolStd,
-            self.target,
-            Kind::Build,
-            "src/tools/run-make-support",
-            SourceType::InTree,
-            &[],
-        );
-
-        let _guard = builder.msg_tool(
-            Kind::Build,
-            Mode::ToolStd,
-            "run-make-support",
-            self.compiler.stage,
-            &self.compiler.host,
-            &self.target,
-        );
-        cargo.into_cmd().run(builder);
-
-        let lib_name = "librun_make_support.rlib";
-        let lib = builder.tools_dir(self.compiler).join(lib_name);
-
-        let cargo_out = builder.cargo_out(self.compiler, Mode::ToolStd, self.target).join(lib_name);
-        builder.copy_link(&cargo_out, &lib);
-        lib
-    }
-}
-
 /// Runs `cargo test` on the `src/tools/run-make-support` crate.
 /// That crate is used by run-make tests.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -1446,40 +1393,7 @@ test!(Pretty {
     only_hosts: true,
 });
 
-/// Special-handling is needed for `run-make`, so don't use `test!` for defining `RunMake`
-/// tests.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct RunMake {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for RunMake {
-    type Output = ();
-    const DEFAULT: bool = true;
-    const ONLY_HOSTS: bool = false;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("tests/run-make")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        let compiler = run.builder.compiler(run.builder.top_stage, run.build_triple());
-        run.builder.ensure(RunMakeSupport { compiler, target: run.build_triple() });
-        run.builder.ensure(RunMake { compiler, target: run.target });
-    }
-
-    fn run(self, builder: &Builder<'_>) {
-        builder.ensure(Compiletest {
-            compiler: self.compiler,
-            target: self.target,
-            mode: "run-make",
-            suite: "run-make",
-            path: "tests/run-make",
-            compare_mode: None,
-        });
-    }
-}
+test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make", default: true });
 
 test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly", default: true });
 
@@ -1722,6 +1636,9 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 host: target,
             });
         }
+        if suite == "run-make" {
+            builder.tool_exe(Tool::RunMakeSupport);
+        }
 
         // Also provide `rust_test_helpers` for the host.
         builder.ensure(TestHelpers { target: compiler.host });
@@ -1774,6 +1691,11 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
             };
 
             cmd.arg("--cargo-path").arg(cargo_path);
+
+            // We need to pass the compiler that was used to compile run-make-support,
+            // because we have to use the same compiler to compile rmake.rs recipes.
+            let stage0_rustc_path = builder.compiler(0, compiler.host);
+            cmd.arg("--stage0-rustc-path").arg(builder.rustc(stage0_rustc_path));
         }
 
         // Avoid depending on rustdoc when we don't need it.
