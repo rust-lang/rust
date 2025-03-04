@@ -2398,9 +2398,9 @@ class DocSearch {
                     continue;
                 }
                 if (!foundStopChar) {
-                    let extra = "";
+                    /** @type String[] */
+                    let extra = [];
                     if (isLastElemGeneric(query.elems, parserState)) {
-                        // @ts-expect-error
                         extra = [" after ", ">"];
                     } else if (prevIs(parserState, "\"")) {
                         throw ["Cannot have more than one element if you use quotes"];
