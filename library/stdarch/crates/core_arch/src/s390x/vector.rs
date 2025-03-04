@@ -2606,7 +2606,7 @@ mod sealed {
     ) -> vector_unsigned_int {
         static_assert_uimm_bits!(D, 2);
         let offset: u32 = simd_extract(b, D);
-        let ptr = c.byte_offset(offset as isize);
+        let ptr = c.byte_add(offset as usize);
         let value = ptr.read();
         simd_insert(a, D, value)
     }
@@ -2621,7 +2621,7 @@ mod sealed {
     ) -> vector_unsigned_long_long {
         static_assert_uimm_bits!(D, 1);
         let offset: u64 = simd_extract(b, D);
-        let ptr = c.byte_offset(offset as isize);
+        let ptr = c.byte_add(offset as usize);
         let value = ptr.read();
         simd_insert(a, D, value)
     }
@@ -2666,6 +2666,70 @@ mod sealed {
 
         vgef vector_float
         vgeg vector_double
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vscef, D = 3))]
+    unsafe fn vscef<const D: u32>(a: vector_unsigned_int, b: vector_unsigned_int, c: *mut u32) {
+        static_assert_uimm_bits!(D, 2);
+        let value = simd_extract(a, D);
+        let offset: u32 = simd_extract(b, D);
+        let ptr = c.byte_add(offset as usize);
+        ptr.write(value);
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vsceg, D = 1))]
+    unsafe fn vsceg<const D: u32>(
+        a: vector_unsigned_long_long,
+        b: vector_unsigned_long_long,
+        c: *mut u64,
+    ) {
+        static_assert_uimm_bits!(D, 1);
+        let value = simd_extract(a, D);
+        let offset: u64 = simd_extract(b, D);
+        let ptr = c.byte_add(offset as usize);
+        ptr.write(value);
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorScatterElement {
+        type Element;
+        type Offset;
+        unsafe fn vec_scatter_element<const D: u32>(self, b: Self::Offset, c: *mut Self::Element);
+    }
+
+    macro_rules! impl_vec_scatter_element {
+        ($($instr:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorScatterElement for $ty {
+                    type Element = l_t_t!($ty);
+                    type Offset = t_u!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_scatter_element<const D: u32>(self, b: Self::Offset, c: *mut Self::Element) {
+                        $instr::<D>(transmute(self), b, c.cast())
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_scatter_element! {
+        vscef vector_signed_int
+        vscef vector_bool_int
+        vscef vector_unsigned_int
+
+        vsceg vector_signed_long_long
+        vsceg vector_bool_long_long
+        vsceg vector_unsigned_long_long
+
+        vscef vector_float
+        vsceg vector_double
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
