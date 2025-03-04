@@ -7,7 +7,7 @@ use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{self as hir, LangItem};
 use rustc_middle::span_bug;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DesugaringKind, Ident, Span, kw};
+use rustc_span::{DesugaringKind, Ident, Span};
 
 use super::errors::{
     ArbitraryExpressionInPattern, ExtraDoubleDot, MisplacedDoubleDot, SubTupleBinding,
@@ -523,7 +523,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id = self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
+        let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(
