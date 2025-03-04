@@ -2,7 +2,11 @@ use std::num::IntErrorKind;
 
 use rustc_ast as ast;
 use rustc_errors::codes::*;
-use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
+use rustc_errors::{
+    Applicability, Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level,
+};
+use rustc_feature::AttributeTemplate;
+use rustc_hir::AttrPath;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
@@ -462,6 +466,14 @@ pub(crate) struct UnusedDuplicate {
     pub warning: bool,
 }
 
+// FIXME(jdonszelmann): duplicated in rustc_lints, should be moved here completely.
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_ill_formed_attribute_input)]
+pub(crate) struct IllFormedAttributeInput {
+    pub num_suggestions: usize,
+    pub suggestions: DiagArgValue,
+}
+
 #[derive(Diagnostic)]
 #[diag(attr_parsing_stability_outside_std, code = E0734)]
 pub(crate) struct StabilityOutsideStd {
@@ -489,4 +501,73 @@ pub(crate) struct ReprIdent {
 pub(crate) struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
+}
+
+pub(crate) enum AttributeParseErrorReason {
+    ExpectedStringLiteral,
+    ExpectedSingleArgument,
+    ExpectedSpecificArgument(Vec<&'static str>),
+}
+
+pub(crate) struct AttributeParseError {
+    pub(crate) span: Span,
+    pub(crate) attr_span: Span,
+    pub(crate) template: AttributeTemplate,
+    pub(crate) attribute: AttrPath,
+    pub(crate) reason: AttributeParseErrorReason,
+}
+
+impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
+    fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
+        let name = self.attribute.to_string();
+
+        let mut diag = Diag::new(dcx, level, format!("malformed `{name}` attribute input"));
+        diag.span(self.attr_span);
+        diag.code(E0539);
+        match self.reason {
+            AttributeParseErrorReason::ExpectedStringLiteral => {
+                diag.span_note(self.span, "expected a string literal here");
+            }
+            AttributeParseErrorReason::ExpectedSingleArgument => {
+                diag.span_note(self.span, "expected a single argument here");
+            }
+            AttributeParseErrorReason::ExpectedSpecificArgument(possibilities) => {
+                match possibilities.as_slice() {
+                    &[] => {}
+                    &[x] => {
+                        diag.span_note(self.span, format!("the only valid argument here is `{x}`"));
+                    }
+                    [first, second] => {
+                        diag.span_note(
+                            self.span,
+                            format!("valid arguments are `{first}` or `{second}`"),
+                        );
+                    }
+                    [first @ .., second_to_last, last] => {
+                        let mut res = String::new();
+                        for i in first {
+                            res.push_str(&format!("`{i}`, "));
+                        }
+                        res.push_str(&format!("`{second_to_last}` or `{last}`"));
+
+                        diag.span_note(self.span, format!("valid arguments are {res}"));
+                    }
+                }
+            }
+        }
+
+        let suggestions = self.template.suggestions(false, &name);
+        diag.span_suggestions(
+            self.attr_span,
+            if suggestions.len() == 1 {
+                "must be of the form"
+            } else {
+                "the following are possible correct uses"
+            },
+            suggestions,
+            Applicability::HasPlaceholders,
+        );
+
+        diag
+    }
 }

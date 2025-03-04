@@ -11,7 +11,6 @@ use super::{AcceptContext, AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
 use crate::context::Stage;
 use crate::parser::ArgParser;
-use crate::session_diagnostics::IncorrectMetaItem;
 
 pub(crate) struct InlineParser;
 
@@ -30,7 +29,7 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                     return None;
                 };
 
-                match l.meta_item().and_then(|i| i.word_without_args().map(|i| i.name)) {
+                match l.meta_item().and_then(|i| i.path().word().map(|i| i.name)) {
                     Some(sym::always) => {
                         Some(AttributeKind::Inline(InlineAttr::Always, cx.attr_span))
                     }

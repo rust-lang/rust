@@ -23,6 +23,10 @@ attr_parsing_expects_feature_list =
 attr_parsing_expects_features =
     `{$name}` expects feature names
 
+attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
+        [1] attribute must be of the form {$suggestions}
+        *[other] valid forms for the attribute are {$suggestions}
+    }
 attr_parsing_incorrect_meta_item = expected a quoted string literal
 attr_parsing_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
@@ -136,6 +140,7 @@ attr_parsing_unused_duplicate =
     .suggestion = remove this attribute
     .note = attribute also specified here
     .warn = {-passes_previously_accepted}
+
 attr_parsing_unused_multiple =
     multiple `{$name}` attributes
     .suggestion = remove this attribute
