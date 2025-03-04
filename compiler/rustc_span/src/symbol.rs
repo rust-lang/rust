@@ -2084,6 +2084,7 @@ symbols! {
         type_ascribe,
         type_ascription,
         type_changing_struct_update,
+        type_const,
         type_id,
         type_ir_inherent,
         type_length_limit,
