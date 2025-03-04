@@ -122,6 +122,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsbiq"] fn vsbiq(a: u128, b: u128, c: u128) -> u128;
     #[link_name = "llvm.s390.vsbcbiq"] fn vsbcbiq(a: u128, b: u128, c: u128) -> u128;
 
+    #[link_name = "llvm.s390.vacq"] fn vacq(a: u128, b: u128, c: u128) -> u128;
+
     #[link_name = "llvm.s390.vscbib"] fn vscbib(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
     #[link_name = "llvm.s390.vscbih"] fn vscbih(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vscbif"] fn vscbif(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
@@ -3085,6 +3087,24 @@ pub unsafe fn vec_sum4<T: sealed::VectorSum4>(a: T, b: T) -> vector_unsigned_int
     a.vec_sum4(b)
 }
 
+/// Vector Addition unsigned 128-bits
+///
+/// Adds unsigned quadword values.
+///
+/// This function operates on the vectors as 128-bit unsigned integers. It returns low 128 bits of a + b.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vaq))]
+pub unsafe fn vec_add_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+) -> vector_unsigned_char {
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+    transmute(a.wrapping_add(b))
+}
+
 /// Vector Subtract unsigned 128-bits
 ///
 /// Subtracts unsigned quadword values.
@@ -3130,7 +3150,61 @@ pub unsafe fn vec_subc_u128(
     a: vector_unsigned_char,
     b: vector_unsigned_char,
 ) -> vector_unsigned_char {
+    // FIXME(llvm) sadly this does not work https://github.com/llvm/llvm-project/issues/129608
+    // let a: u128 = transmute(a);
+    // let b: u128 = transmute(b);
+    // transmute(!a.overflowing_sub(b).1 as u128)
     transmute(vscbiq(transmute(a), transmute(b)))
+}
+
+/// Vector Add Compute Carryout unsigned 128-bits
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vaccq))]
+pub unsafe fn vec_addc_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+) -> vector_unsigned_char {
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+    transmute(a.overflowing_add(b).1 as u128)
+}
+
+/// Vector Add With Carry unsigned 128-bits
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vacq))]
+pub unsafe fn vec_adde_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+    let c: u128 = transmute(c);
+    // FIXME(llvm) sadly this does not work
+    //     let (d, _carry) = a.carrying_add(b, c & 1 != 0);
+    //     transmute(d)
+    transmute(vacq(a, b, c))
+}
+
+/// Vector Add With Carry Compute Carry unsigned 128-bits
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vacccq))]
+pub unsafe fn vec_addec_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    let a: u128 = transmute(a);
+    let b: u128 = transmute(b);
+    let c: u128 = transmute(c);
+    let (_d, carry) = a.carrying_add(b, c & 1 != 0);
+    transmute(carry as u128)
 }
 
 /// Subtracts unsigned quadword values with carry bit from a previous operation.
@@ -4245,5 +4319,51 @@ mod tests {
         [1, 2, 3, u32::MAX],
         [5, 6, 7, 8],
         [0, 12, 0, 0]
+    }
+
+    test_vec_2! { test_vec_add_u128, vec_add_u128, u8x16,
+        [0x01, 0x05, 0x0F, 0x1A, 0x2F, 0x3F, 0x50, 0x65,
+                              0x7A, 0x8F, 0x9A, 0xAD, 0xB0, 0xC3, 0xD5, 0xE8],
+        [0xF0, 0xEF, 0xC3, 0xB1, 0x92, 0x71, 0x5A, 0x43,
+                              0x3B, 0x29, 0x13, 0x04, 0xD7, 0xA1, 0x8C, 0x76],
+        [0xF1, 0xF4, 0xD2, 0xCB, 0xC1, 0xB0, 0xAA, 0xA8, 0xB5, 0xB8, 0xAD, 0xB2, 0x88, 0x65, 0x62, 0x5E]
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_addc_u128() {
+        unsafe {
+            let a = u128::MAX;
+            let b = 1u128;
+
+            let d: u128 = transmute(vec_addc_u128(transmute(a), transmute(b)));
+            assert!(a.checked_add(b).is_none());
+            assert_eq!(d, 1);
+
+            let a = 1u128;
+            let b = 1u128;
+
+            let d: u128 = transmute(vec_addc_u128(transmute(a), transmute(b)));
+            assert!(a.checked_add(b).is_some());
+            assert_eq!(d, 0);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_subc_u128() {
+        unsafe {
+            let a = 0u128;
+            let b = 1u128;
+
+            let d: u128 = transmute(vec_subc_u128(transmute(a), transmute(b)));
+            assert!(a.checked_sub(b).is_none());
+            assert_eq!(d, 0);
+
+            let a = 1u128;
+            let b = 1u128;
+
+            let d: u128 = transmute(vec_subc_u128(transmute(a), transmute(b)));
+            assert!(a.checked_sub(b).is_some());
+            assert_eq!(d, 1);
+        }
     }
 }
