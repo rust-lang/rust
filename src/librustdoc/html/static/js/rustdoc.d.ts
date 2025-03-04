@@ -397,7 +397,7 @@ declare namespace rustdoc {
      */
     type RawSearchIndexCrate = {
     doc: string,
-    a: Object,
+    a: { [key: string]: number[] },
     n: Array<string>,
     t: string,
     D: string,

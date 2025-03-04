@@ -2269,16 +2269,14 @@ class DocSearch {
                         continue;
                     }
 
-                    // @ts-expect-error
+                    /** @type{number[]} */
                     let currentNameAliases;
                     if (currentCrateAliases.has(alias_name)) {
                         currentNameAliases = currentCrateAliases.get(alias_name);
                     } else {
                         currentNameAliases = [];
-                        // @ts-expect-error
                         currentCrateAliases.set(alias_name, currentNameAliases);
                     }
-                    // @ts-expect-error
                     for (const local_alias of aliases[alias_name]) {
                         currentNameAliases.push(local_alias + currentIndex);
                     }
