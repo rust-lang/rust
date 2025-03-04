@@ -29,6 +29,9 @@ The targets require a reasonably up-to-date OpenHarmony SDK on the host.
 
 The targets support `cargo`, which require [ohos-openssl](https://github.com/ohos-rs/ohos-openssl).
 
+`miri` isn't supported yet, since its dependencies (`libffi` and `tikv-jemalloc-sys`) don't support
+compiling for the OHOS targets.
+
 ## Setup
 
 The OpenHarmony SDK doesn't currently support Rust compilation directly, so
