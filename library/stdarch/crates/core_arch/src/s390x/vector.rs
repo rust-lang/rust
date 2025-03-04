@@ -206,6 +206,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vgfmah"] fn vgfmah(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vgfmaf"] fn vgfmaf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
     #[link_name = "llvm.s390.vgfmag"] fn vgfmag(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: u128) -> u128;
+
+    #[link_name = "llvm.s390.vbperm"] fn vbperm(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3811,6 +3813,19 @@ pub unsafe fn vec_gfmsum_accum_128(
     transmute(vgfmag(a, b, transmute(c)))
 }
 
+/// Vector Bit Permute
+#[inline]
+#[target_feature(enable = "vector-enhancements-1")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vbperm))]
+pub unsafe fn vec_bperm_u128(
+    a: vector_unsigned_char,
+    b: vector_unsigned_char,
+) -> vector_unsigned_long_long {
+    vbperm(a, b)
+}
+
+/// Vector Gather Element
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4758,6 +4773,16 @@ mod tests {
 
         let d: u128 = unsafe { transmute(vec_gfmsum_128(a, b)) };
         assert_eq!(d, 0xE000E000E000E000E000E000E000E);
+    }
+
+    #[simd_test(enable = "vector-enhancements-1")]
+    fn test_vec_bperm_u128() {
+        let a = vector_unsigned_char([65, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]);
+        let b = vector_unsigned_char([
+            0, 0, 0, 0, 1, 1, 1, 1, 128, 128, 128, 128, 255, 255, 255, 255,
+        ]);
+        let d = unsafe { vec_bperm_u128(a, b) };
+        assert_eq!(d.as_array(), &[0xF00, 0]);
     }
 
     #[simd_test(enable = "vector")]
