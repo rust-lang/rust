@@ -2593,6 +2593,78 @@ mod sealed {
             vec_vgfmaf(self, b, c)
         }
     }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vgef, D = 3))]
+    unsafe fn vgef<const D: u32>(
+        a: vector_unsigned_int,
+        b: vector_unsigned_int,
+        c: *const u32,
+    ) -> vector_unsigned_int {
+        static_assert_uimm_bits!(D, 2);
+        let offset: u32 = simd_extract(b, D);
+        let ptr = c.byte_offset(offset as isize);
+        let value = ptr.read();
+        simd_insert(a, D, value)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vgeg, D = 1))]
+    unsafe fn vgeg<const D: u32>(
+        a: vector_unsigned_long_long,
+        b: vector_unsigned_long_long,
+        c: *const u64,
+    ) -> vector_unsigned_long_long {
+        static_assert_uimm_bits!(D, 1);
+        let offset: u64 = simd_extract(b, D);
+        let ptr = c.byte_offset(offset as isize);
+        let value = ptr.read();
+        simd_insert(a, D, value)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorGatherElement {
+        type Element;
+        type Offset;
+        unsafe fn vec_gather_element<const D: u32>(
+            self,
+            b: Self::Offset,
+            c: *const Self::Element,
+        ) -> Self;
+    }
+
+    macro_rules! impl_vec_gather_element {
+        ($($instr:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorGatherElement for $ty {
+                    type Element = l_t_t!($ty);
+                    type Offset = t_u!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_gather_element<const D: u32>(self, b: Self::Offset, c: *const Self::Element) -> Self {
+                        transmute($instr::<D>(transmute(self), b, c.cast()))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_gather_element! {
+        vgef vector_signed_int
+        vgef vector_bool_int
+        vgef vector_unsigned_int
+
+        vgeg vector_signed_long_long
+        vgeg vector_bool_long_long
+        vgeg vector_unsigned_long_long
+
+        vgef vector_float
+        vgeg vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -3739,6 +3811,17 @@ pub unsafe fn vec_gfmsum_accum_128(
     transmute(vgfmag(a, b, transmute(c)))
 }
 
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_gather_element<T: sealed::VectorGatherElement, const D: u32>(
+    a: T,
+    b: T::Offset,
+    c: *const T::Element,
+) -> T {
+    a.vec_gather_element::<D>(b, c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4675,5 +4758,29 @@ mod tests {
 
         let d: u128 = unsafe { transmute(vec_gfmsum_128(a, b)) };
         assert_eq!(d, 0xE000E000E000E000E000E000E000E);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_gather_element() {
+        let a1: [u32; 10] = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19];
+        let a2: [u32; 10] = [20, 21, 22, 23, 24, 25, 26, 27, 28, 29];
+
+        let v1 = vector_unsigned_int([1, 2, 3, 4]);
+        let v2 = vector_unsigned_int([1, 2, 3, 4]);
+
+        let sizeof_int = core::mem::size_of::<u32>() as u32;
+        let v3 = vector_unsigned_int([
+            5 * sizeof_int,
+            8 * sizeof_int,
+            9 * sizeof_int,
+            6 * sizeof_int,
+        ]);
+
+        unsafe {
+            let d1 = vec_gather_element::<_, 0>(v1, v3, a1.as_ptr());
+            assert_eq!(d1.as_array(), &[15, 2, 3, 4]);
+            let d2 = vec_gather_element::<_, 0>(v2, v3, a2.as_ptr());
+            assert_eq!(d2.as_array(), &[25, 2, 3, 4]);
+        }
     }
 }
