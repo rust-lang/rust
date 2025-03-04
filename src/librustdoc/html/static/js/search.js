@@ -2102,8 +2102,6 @@ class DocSearch {
             // an array of [(Number) item type,
             //              (String) name]
             const rawPaths = crateCorpus.p;
-            // an array of [(String) alias name
-            //             [Number] index to items]
             const aliases = crateCorpus.a;
             // an array of [(Number) item index,
             //              (String) comma-separated list of function generic param names]
