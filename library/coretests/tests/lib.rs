@@ -73,7 +73,6 @@
 #![feature(slice_internals)]
 #![feature(slice_partition_dedup)]
 #![feature(slice_split_once)]
-#![feature(slice_take)]
 #![feature(split_array)]
 #![feature(split_as_slice)]
 #![feature(std_internals)]
