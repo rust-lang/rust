@@ -333,7 +333,7 @@ pub(crate) fn print_src(
     source_context: &SourceContext<'_>,
 ) {
     let mut lines = s.lines().count();
-    let line_info = if let SourceContext::Embedded(ref info) = source_context {
+    let line_info = if let SourceContext::Embedded(info) = source_context {
         highlight::LineInfo::new_scraped(lines as u32, info.offset as u32)
     } else {
         highlight::LineInfo::new(lines as u32)

@@ -4,7 +4,6 @@ use std::fmt::{Display, Write as _};
 
 use rinja::Template;
 use rustc_abi::VariantIdx;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -92,44 +91,32 @@ macro_rules! item_template {
 macro_rules! item_template_methods {
     () => {};
     (document $($rest:tt)*) => {
-        fn document<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let (item, cx) = self.item_and_cx();
-                let v = document(cx, item, None, HeadingOffset::H2);
-                write!(f, "{v}")
-            })
+        fn document(&self) -> impl fmt::Display {
+            let (item, cx) = self.item_and_cx();
+            document(cx, item, None, HeadingOffset::H2)
         }
         item_template_methods!($($rest)*);
     };
     (document_type_layout $($rest:tt)*) => {
-        fn document_type_layout<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let (item, cx) = self.item_and_cx();
-                let def_id = item.item_id.expect_def_id();
-                let v = document_type_layout(cx, def_id);
-                write!(f, "{v}")
-            })
+        fn document_type_layout(&self) -> impl fmt::Display {
+            let (item, cx) = self.item_and_cx();
+            let def_id = item.item_id.expect_def_id();
+            document_type_layout(cx, def_id)
         }
         item_template_methods!($($rest)*);
     };
     (render_attributes_in_pre $($rest:tt)*) => {
-        fn render_attributes_in_pre<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let (item, cx) = self.item_and_cx();
-                let v = render_attributes_in_pre(item, "", cx);
-                write!(f, "{v}")
-            })
+        fn render_attributes_in_pre(&self) -> impl fmt::Display {
+            let (item, cx) = self.item_and_cx();
+            render_attributes_in_pre(item, "", cx)
         }
         item_template_methods!($($rest)*);
     };
     (render_assoc_items $($rest:tt)*) => {
-        fn render_assoc_items<'b>(&'b self) -> impl fmt::Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let (item, cx) = self.item_and_cx();
-                let def_id = item.item_id.expect_def_id();
-                let v = render_assoc_items(cx, item, def_id, AssocItemRender::All);
-                write!(f, "{v}")
-            })
+        fn render_assoc_items(&self) -> impl fmt::Display {
+            let (item, cx) = self.item_and_cx();
+            let def_id = item.item_id.expect_def_id();
+            render_assoc_items(cx, item, def_id, AssocItemRender::All)
         }
         item_template_methods!($($rest)*);
     };
@@ -162,10 +149,7 @@ struct ItemVars<'a> {
     src_href: Option<&'a str>,
 }
 
-pub(super) fn print_item<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    item: &'a clean::Item,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+pub(super) fn print_item(cx: &Context<'_>, item: &clean::Item) -> impl fmt::Display {
     debug_assert!(!item.is_stripped());
 
     fmt::from_fn(|buf| {
@@ -241,30 +225,30 @@ pub(super) fn print_item<'a, 'tcx>(
         item_vars.render_into(buf).unwrap();
 
         match &item.kind {
-            clean::ModuleItem(ref m) => {
+            clean::ModuleItem(m) => {
                 write!(buf, "{}", item_module(cx, item, &m.items))
             }
-            clean::FunctionItem(ref f) | clean::ForeignFunctionItem(ref f, _) => {
+            clean::FunctionItem(f) | clean::ForeignFunctionItem(f, _) => {
                 write!(buf, "{}", item_function(cx, item, f))
             }
-            clean::TraitItem(ref t) => write!(buf, "{}", item_trait(cx, item, t)),
-            clean::StructItem(ref s) => {
+            clean::TraitItem(t) => write!(buf, "{}", item_trait(cx, item, t)),
+            clean::StructItem(s) => {
                 write!(buf, "{}", item_struct(cx, item, s))
             }
-            clean::UnionItem(ref s) => write!(buf, "{}", item_union(cx, item, s)),
-            clean::EnumItem(ref e) => write!(buf, "{}", item_enum(cx, item, e)),
-            clean::TypeAliasItem(ref t) => {
+            clean::UnionItem(s) => write!(buf, "{}", item_union(cx, item, s)),
+            clean::EnumItem(e) => write!(buf, "{}", item_enum(cx, item, e)),
+            clean::TypeAliasItem(t) => {
                 write!(buf, "{}", item_type_alias(cx, item, t))
             }
-            clean::MacroItem(ref m) => write!(buf, "{}", item_macro(cx, item, m)),
-            clean::ProcMacroItem(ref m) => {
+            clean::MacroItem(m) => write!(buf, "{}", item_macro(cx, item, m)),
+            clean::ProcMacroItem(m) => {
                 write!(buf, "{}", item_proc_macro(cx, item, m))
             }
             clean::PrimitiveItem(_) => write!(buf, "{}", item_primitive(cx, item)),
-            clean::StaticItem(ref i) => {
+            clean::StaticItem(i) => {
                 write!(buf, "{}", item_static(cx, item, i, None))
             }
-            clean::ForeignStaticItem(ref i, safety) => {
+            clean::ForeignStaticItem(i, safety) => {
                 write!(buf, "{}", item_static(cx, item, i, Some(*safety)))
             }
             clean::ConstantItem(ci) => {
@@ -274,7 +258,7 @@ pub(super) fn print_item<'a, 'tcx>(
                 write!(buf, "{}", item_foreign_type(cx, item))
             }
             clean::KeywordItem => write!(buf, "{}", item_keyword(cx, item)),
-            clean::TraitAliasItem(ref ta) => {
+            clean::TraitAliasItem(ta) => {
                 write!(buf, "{}", item_trait_alias(cx, item, ta))
             }
             _ => {
@@ -321,11 +305,7 @@ trait ItemTemplate<'a, 'cx: 'a>: rinja::Template + Display {
     fn item_and_cx(&self) -> (&'a clean::Item, &'a Context<'cx>);
 }
 
-fn item_module<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    item: &'a clean::Item,
-    items: &'a [clean::Item],
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_module(cx: &Context<'_>, item: &clean::Item, items: &[clean::Item]) -> impl fmt::Display {
     fmt::from_fn(|w| {
         write!(w, "{}", document(cx, item, None, HeadingOffset::H2))?;
 
@@ -541,14 +521,14 @@ fn item_module<'a, 'tcx>(
 
 /// Render the stability, deprecation and portability tags that are displayed in the item's summary
 /// at the module level.
-fn extra_info_tags<'a, 'tcx: 'a>(
-    tcx: TyCtxt<'tcx>,
-    item: &'a clean::Item,
-    parent: &'a clean::Item,
+fn extra_info_tags(
+    tcx: TyCtxt<'_>,
+    item: &clean::Item,
+    parent: &clean::Item,
     import_def_id: Option<DefId>,
-) -> impl Display + 'a + Captures<'tcx> {
+) -> impl Display {
     fmt::from_fn(move |f| {
-        fn tag_html<'a>(class: &'a str, title: &'a str, contents: &'a str) -> impl Display + 'a {
+        fn tag_html(class: &str, title: &str, contents: &str) -> impl Display {
             fmt::from_fn(move |f| {
                 write!(
                     f,
@@ -597,11 +577,7 @@ fn extra_info_tags<'a, 'tcx: 'a>(
     })
 }
 
-fn item_function<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    f: &'a clean::Function,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_function(cx: &Context<'_>, it: &clean::Item, f: &clean::Function) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
         let header = it.fn_header(tcx).expect("printing a function which isn't a function");
@@ -657,11 +633,7 @@ fn item_function<'a, 'tcx>(
     })
 }
 
-fn item_trait<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    t: &'a clean::Trait,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let tcx = cx.tcx();
         let bounds = bounds(&t.bounds, false, cx);
@@ -831,11 +803,7 @@ fn item_trait<'a, 'tcx>(
         // Trait documentation
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
 
-        fn trait_item<'a, 'tcx>(
-            cx: &'a Context<'tcx>,
-            m: &'a clean::Item,
-            t: &'a clean::Item,
-        ) -> impl fmt::Display + 'a + Captures<'tcx> {
+        fn trait_item(cx: &Context<'_>, m: &clean::Item, t: &clean::Item) -> impl fmt::Display {
             fmt::from_fn(|w| {
                 let name = m.name.unwrap();
                 info!("Documenting {name} on {ty_name:?}", ty_name = t.name);
@@ -1021,7 +989,7 @@ fn item_trait<'a, 'tcx>(
                     extern_crates.insert(did.krate);
                 }
                 match implementor.inner_impl().for_.without_borrowed_ref() {
-                    clean::Type::Path { ref path } if !path.is_assoc_ty() => {
+                    clean::Type::Path { path } if !path.is_assoc_ty() => {
                         let did = path.def_id();
                         let &mut (prev_did, ref mut has_duplicates) =
                             implementor_dups.entry(path.last()).or_insert((did, false));
@@ -1254,11 +1222,11 @@ fn item_trait<'a, 'tcx>(
     })
 }
 
-fn item_trait_alias<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    t: &'a clean::TraitAlias,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_trait_alias(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    t: &clean::TraitAlias,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             write!(
@@ -1285,11 +1253,7 @@ fn item_trait_alias<'a, 'tcx>(
     })
 }
 
-fn item_type_alias<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    t: &'a clean::TypeAlias,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             write!(
@@ -1499,11 +1463,7 @@ fn item_type_alias<'a, 'tcx>(
     })
 }
 
-fn item_union<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    s: &'a clean::Union,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt::Display {
     item_template!(
         #[template(path = "item_union.html")]
         struct ItemUnion<'a, 'cx> {
@@ -1515,35 +1475,20 @@ fn item_union<'a, 'tcx>(
     );
 
     impl<'a, 'cx: 'a> ItemUnion<'a, 'cx> {
-        fn render_union<'b>(&'b self) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let v = render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx);
-                write!(f, "{v}")
-            })
+        fn render_union(&self) -> impl Display {
+            render_union(self.it, Some(&self.s.generics), &self.s.fields, self.cx)
         }
 
-        fn document_field<'b>(
-            &'b self,
-            field: &'a clean::Item,
-        ) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let v = document(self.cx, field, Some(self.it), HeadingOffset::H3);
-                write!(f, "{v}")
-            })
+        fn document_field(&self, field: &'a clean::Item) -> impl Display {
+            document(self.cx, field, Some(self.it), HeadingOffset::H3)
         }
 
         fn stability_field(&self, field: &clean::Item) -> Option<String> {
             field.stability_class(self.cx.tcx())
         }
 
-        fn print_ty<'b>(
-            &'b self,
-            ty: &'a clean::Type,
-        ) -> impl Display + Captures<'a> + 'b + Captures<'cx> {
-            fmt::from_fn(move |f| {
-                let v = ty.print(self.cx);
-                write!(f, "{v}")
-            })
+        fn print_ty(&self, ty: &'a clean::Type) -> impl Display {
+            ty.print(self.cx)
         }
 
         fn fields_iter(
@@ -1566,10 +1511,7 @@ fn item_union<'a, 'tcx>(
     })
 }
 
-fn print_tuple_struct_fields<'a, 'cx: 'a>(
-    cx: &'a Context<'cx>,
-    s: &'a [clean::Item],
-) -> impl Display + 'a + Captures<'cx> {
+fn print_tuple_struct_fields(cx: &Context<'_>, s: &[clean::Item]) -> impl Display {
     fmt::from_fn(|f| {
         if !s.is_empty()
             && s.iter().all(|field| {
@@ -1591,11 +1533,7 @@ fn print_tuple_struct_fields<'a, 'cx: 'a>(
     })
 }
 
-fn item_enum<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    e: &'a clean::Enum,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_enum(cx: &Context<'_>, it: &clean::Item, e: &clean::Enum) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let count_variants = e.variants().count();
         wrap_item(w, |w| {
@@ -1658,14 +1596,14 @@ fn should_show_enum_discriminant(
     repr.c() || repr.int.is_some()
 }
 
-fn display_c_like_variant<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    item: &'a clean::Item,
-    variant: &'a clean::Variant,
+fn display_c_like_variant(
+    cx: &Context<'_>,
+    item: &clean::Item,
+    variant: &clean::Variant,
     index: VariantIdx,
     should_show_enum_discriminant: bool,
     enum_def_id: DefId,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let name = item.name.unwrap();
         if let Some(ref value) = variant.discriminant {
@@ -1685,15 +1623,15 @@ fn display_c_like_variant<'a, 'tcx>(
     })
 }
 
-fn render_enum_fields<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    g: Option<&'a clean::Generics>,
-    variants: &'a IndexVec<VariantIdx, clean::Item>,
+fn render_enum_fields(
+    cx: &Context<'_>,
+    g: Option<&clean::Generics>,
+    variants: &IndexVec<VariantIdx, clean::Item>,
     count_variants: usize,
     has_stripped_entries: bool,
     is_non_exhaustive: bool,
     enum_def_id: DefId,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let should_show_enum_discriminant =
             should_show_enum_discriminant(cx, enum_def_id, variants);
@@ -1764,12 +1702,12 @@ fn render_enum_fields<'a, 'tcx>(
     })
 }
 
-fn item_variants<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    variants: &'a IndexVec<VariantIdx, clean::Item>,
+fn item_variants(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    variants: &IndexVec<VariantIdx, clean::Item>,
     enum_def_id: DefId,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let tcx = cx.tcx();
         write!(
@@ -1895,11 +1833,7 @@ fn item_variants<'a, 'tcx>(
     })
 }
 
-fn item_macro<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    t: &'a clean::Macro,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_macro(cx: &Context<'_>, it: &clean::Item, t: &clean::Macro) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             // FIXME: Also print `#[doc(hidden)]` for `macro_rules!` if it `is_doc_hidden`.
@@ -1912,11 +1846,7 @@ fn item_macro<'a, 'tcx>(
     })
 }
 
-fn item_proc_macro<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    m: &'a clean::ProcMacro,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_proc_macro(cx: &Context<'_>, it: &clean::Item, m: &clean::ProcMacro) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             let name = it.name.expect("proc-macros always have names");
@@ -1947,10 +1877,7 @@ fn item_proc_macro<'a, 'tcx>(
     })
 }
 
-fn item_primitive<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_primitive(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     fmt::from_fn(|w| {
         let def_id = it.item_id.expect_def_id();
         write!(w, "{}", document(cx, it, None, HeadingOffset::H2))?;
@@ -1968,13 +1895,13 @@ fn item_primitive<'a, 'tcx>(
     })
 }
 
-fn item_constant<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    generics: &'a clean::Generics,
-    ty: &'a clean::Type,
-    c: &'a clean::ConstantKind,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_constant(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    generics: &clean::Generics,
+    ty: &clean::Type,
+    c: &clean::ConstantKind,
+) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             let tcx = cx.tcx();
@@ -2028,11 +1955,7 @@ fn item_constant<'a, 'tcx>(
     })
 }
 
-fn item_struct<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    s: &'a clean::Struct,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_struct(cx: &Context<'_>, it: &clean::Item, s: &clean::Struct) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, cx);
@@ -2056,12 +1979,12 @@ fn item_struct<'a, 'tcx>(
     })
 }
 
-fn item_fields<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    fields: &'a [clean::Item],
+fn item_fields(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    fields: &[clean::Item],
     ctor_kind: Option<CtorKind>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         let mut fields = fields
             .iter()
@@ -2111,12 +2034,12 @@ fn item_fields<'a, 'tcx>(
     })
 }
 
-fn item_static<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-    s: &'a clean::Static,
+fn item_static(
+    cx: &Context<'_>,
+    it: &clean::Item,
+    s: &clean::Static,
     safety: Option<hir::Safety>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         wrap_item(w, |w| {
             render_attributes_in_code(w, it, cx);
@@ -2135,10 +2058,7 @@ fn item_static<'a, 'tcx>(
     })
 }
 
-fn item_foreign_type<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_foreign_type(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     fmt::from_fn(|w| {
         wrap_item(w, |w| {
             w.write_str("extern {\n")?;
@@ -2155,10 +2075,7 @@ fn item_foreign_type<'a, 'tcx>(
     })
 }
 
-fn item_keyword<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    it: &'a clean::Item,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn item_keyword(cx: &Context<'_>, it: &clean::Item) -> impl fmt::Display {
     document(cx, it, None, HeadingOffset::H2)
 }
 
@@ -2268,18 +2185,14 @@ pub(super) fn full_path(cx: &Context<'_>, item: &clean::Item) -> String {
     s
 }
 
-pub(super) fn item_path(ty: ItemType, name: &str) -> impl Display + '_ {
+pub(super) fn item_path(ty: ItemType, name: &str) -> impl Display {
     fmt::from_fn(move |f| match ty {
         ItemType::Module => write!(f, "{}index.html", ensure_trailing_slash(name)),
         _ => write!(f, "{ty}.{name}.html"),
     })
 }
 
-fn bounds<'a, 'tcx>(
-    bounds: &'a [clean::GenericBound],
-    trait_alias: bool,
-    cx: &'a Context<'tcx>,
-) -> impl Display + 'a + Captures<'tcx> {
+fn bounds(bounds: &[clean::GenericBound], trait_alias: bool, cx: &Context<'_>) -> impl Display {
     (!bounds.is_empty())
         .then_some(fmt::from_fn(move |f| {
             let has_lots_of_bounds = bounds.len() > 2;
@@ -2329,13 +2242,13 @@ impl Ord for ImplString {
     }
 }
 
-fn render_implementor<'a, 'tcx>(
-    cx: &'a Context<'tcx>,
-    implementor: &'a Impl,
-    trait_: &'a clean::Item,
-    implementor_dups: &'a FxHashMap<Symbol, (DefId, bool)>,
-    aliases: &'a [String],
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+fn render_implementor(
+    cx: &Context<'_>,
+    implementor: &Impl,
+    trait_: &clean::Item,
+    implementor_dups: &FxHashMap<Symbol, (DefId, bool)>,
+    aliases: &[String],
+) -> impl fmt::Display {
     // If there's already another implementor that has the same abridged name, use the
     // full path, for example in `std::iter::ExactSizeIterator`
     let use_absolute = match implementor.inner_impl().for_ {
@@ -2364,12 +2277,12 @@ fn render_implementor<'a, 'tcx>(
     )
 }
 
-fn render_union<'a, 'cx: 'a>(
-    it: &'a clean::Item,
-    g: Option<&'a clean::Generics>,
-    fields: &'a [clean::Item],
-    cx: &'a Context<'cx>,
-) -> impl Display + 'a + Captures<'cx> {
+fn render_union(
+    it: &clean::Item,
+    g: Option<&clean::Generics>,
+    fields: &[clean::Item],
+    cx: &Context<'_>,
+) -> impl Display {
     fmt::from_fn(move |mut f| {
         write!(f, "{}union {}", visibility_print_with_space(it, cx), it.name.unwrap(),)?;
 
@@ -2421,15 +2334,15 @@ fn render_union<'a, 'cx: 'a>(
     })
 }
 
-fn render_struct<'a, 'tcx>(
-    it: &'a clean::Item,
-    g: Option<&'a clean::Generics>,
+fn render_struct(
+    it: &clean::Item,
+    g: Option<&clean::Generics>,
     ty: Option<CtorKind>,
-    fields: &'a [clean::Item],
-    tab: &'a str,
+    fields: &[clean::Item],
+    tab: &str,
     structhead: bool,
-    cx: &'a Context<'tcx>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+    cx: &Context<'_>,
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         write!(
             w,
@@ -2457,15 +2370,15 @@ fn render_struct<'a, 'tcx>(
     })
 }
 
-fn render_struct_fields<'a, 'tcx>(
-    g: Option<&'a clean::Generics>,
+fn render_struct_fields(
+    g: Option<&clean::Generics>,
     ty: Option<CtorKind>,
-    fields: &'a [clean::Item],
-    tab: &'a str,
+    fields: &[clean::Item],
+    tab: &str,
     structhead: bool,
     has_stripped_entries: bool,
-    cx: &'a Context<'tcx>,
-) -> impl fmt::Display + 'a + Captures<'tcx> {
+    cx: &Context<'_>,
+) -> impl fmt::Display {
     fmt::from_fn(move |w| {
         match ty {
             None => {
@@ -2581,7 +2494,7 @@ fn document_non_exhaustive_header(item: &clean::Item) -> &str {
     if item.is_non_exhaustive() { " (Non-exhaustive)" } else { "" }
 }
 
-fn document_non_exhaustive(item: &clean::Item) -> impl Display + '_ {
+fn document_non_exhaustive(item: &clean::Item) -> impl Display {
     fmt::from_fn(|f| {
         if item.is_non_exhaustive() {
             write!(
