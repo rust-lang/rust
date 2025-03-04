@@ -35,7 +35,7 @@ use super::NoConstantGenericsReason;
 use crate::diagnostics::{ImportSuggestion, LabelSuggestion, TypoSuggestion};
 use crate::late::{
     AliasPossibility, LateResolutionVisitor, LifetimeBinderKind, LifetimeRes, LifetimeRibKind,
-    LifetimeUseSet, RibKind,
+    LifetimeUseSet, QSelf, RibKind,
 };
 use crate::ty::fast_reject::SimplifiedType;
 use crate::{
@@ -421,6 +421,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         span: Span,
         source: PathSource<'_>,
         res: Option<Res>,
+        qself: Option<&QSelf>,
     ) -> (Diag<'tcx>, Vec<ImportSuggestion>) {
         debug!(?res, ?source);
         let base_error = self.make_base_error(path, span, source, res);
@@ -461,6 +462,15 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
 
         self.suggest_self_or_self_ref(&mut err, path, span);
         self.detect_assoc_type_constraint_meant_as_path(&mut err, &base_error);
+        self.detect_rtn_with_fully_qualified_path(
+            &mut err,
+            path,
+            following_seg,
+            span,
+            source,
+            res,
+            qself,
+        );
         if self.suggest_self_ty(&mut err, source, path, span)
             || self.suggest_self_value(&mut err, source, path, span)
         {
@@ -507,6 +517,33 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         }
 
         (err, candidates)
+    }
+
+    fn detect_rtn_with_fully_qualified_path(
+        &self,
+        err: &mut Diag<'_>,
+        path: &[Segment],
+        following_seg: Option<&Segment>,
+        span: Span,
+        source: PathSource<'_>,
+        res: Option<Res>,
+        qself: Option<&QSelf>,
+    ) {
+        if let Some(Res::Def(DefKind::AssocFn, _)) = res
+            && let PathSource::TraitItem(TypeNS) = source
+            && let None = following_seg
+            && let Some(qself) = qself
+            && let TyKind::Path(None, ty_path) = &qself.ty.kind
+            && ty_path.segments.len() == 1
+            && self.diag_metadata.current_where_predicate.is_some()
+        {
+            err.span_suggestion_verbose(
+                span,
+                "you might have meant to use the return type notation syntax",
+                format!("{}::{}(..)", ty_path.segments[0].ident, path[path.len() - 1].ident),
+                Applicability::MaybeIncorrect,
+            );
+        }
     }
 
     fn detect_assoc_type_constraint_meant_as_path(
