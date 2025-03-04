@@ -813,7 +813,9 @@ fn configure_cmake(
         cflags.push(" ");
         cflags.push(s);
     }
-
+    if target.contains("ohos") {
+        cflags.push(" -D_LINUX_SYSINFO_H");
+    }
     if builder.config.llvm_clang_cl.is_some() {
         cflags.push(format!(" --target={target}"));
     }
@@ -833,6 +835,9 @@ fn configure_cmake(
     if let Some(ref s) = builder.config.llvm_cxxflags {
         cxxflags.push(" ");
         cxxflags.push(s);
+    }
+    if target.contains("ohos") {
+        cxxflags.push(" -D_LINUX_SYSINFO_H");
     }
     if builder.config.llvm_clang_cl.is_some() {
         cxxflags.push(format!(" --target={target}"));
@@ -1219,6 +1224,10 @@ impl Step for Sanitizers {
         cfg.define("COMPILER_RT_DEFAULT_TARGET_ONLY", "ON");
         cfg.define("COMPILER_RT_USE_LIBCXX", "OFF");
         cfg.define("LLVM_CONFIG_PATH", &llvm_config);
+
+        if self.target.contains("ohos") {
+            cfg.define("COMPILER_RT_USE_BUILTINS_LIBRARY", "ON");
+        }
 
         // On Darwin targets the sanitizer runtimes are build as universal binaries.
         // Unfortunately sccache currently lacks support to build them successfully.
