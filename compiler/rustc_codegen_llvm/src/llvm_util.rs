@@ -304,6 +304,7 @@ pub(crate) fn to_llvm_features<'a>(sess: &Session, s: &'a str) -> Option<LLVMFea
         {
             None
         }
+        ("x86", "movrs") if get_version().0 < 20 => None,
         (_, s) => Some(LLVMFeature::new(s)),
     }
 }

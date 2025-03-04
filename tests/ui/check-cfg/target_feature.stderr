@@ -153,6 +153,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mclass`
 `mops`
 `movbe`
+`movrs`
 `mp`
 `mp1e2`
 `msa`
