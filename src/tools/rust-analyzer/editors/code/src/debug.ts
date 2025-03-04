@@ -22,6 +22,7 @@ export async function makeDebugConfig(ctx: Ctx, runnable: ra.Runnable): Promise<
     if (!debugConfig) return;
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch", scope);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
     const index = configurations.findIndex((c) => c.name === debugConfig.name);
@@ -46,6 +47,7 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     let message = "";
 
     const wsLaunchSection = vscode.workspace.getConfiguration("launch");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const configurations = wsLaunchSection.get<any[]>("configurations") || [];
 
     // The runnable label is the name of the test with the "test prefix"
@@ -121,7 +123,7 @@ async function getDebugConfiguration(
         debugOutput.show(true);
     }
     // folder exists or RA is not active.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+
     const workspaceFolders = vscode.workspace.workspaceFolders!;
     const isMultiFolderWorkspace = workspaceFolders.length > 1;
     const firstWorkspace = workspaceFolders[0];
@@ -189,8 +191,9 @@ async function getDebugConfiguration(
         sourceFileMap,
     );
     if (debugConfig.type in debugOptions.engineSettings) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const settingsMap = (debugOptions.engineSettings as any)[debugConfig.type];
-        for (var key in settingsMap) {
+        for (const key in settingsMap) {
             debugConfig[key] = settingsMap[key];
         }
     }
@@ -409,7 +412,7 @@ function quote(xs: string[]) {
                 return "'" + s.replace(/(['\\])/g, "\\$1") + "'";
             }
             if (/["'\s]/.test(s)) {
-                return '"' + s.replace(/(["\\$`!])/g, "\\$1") + '"';
+                return `"${s.replace(/(["\\$`!])/g, "\\$1")}"`;
             }
             return s.replace(/([A-Za-z]:)?([#!"$&'()*,:;<=>?@[\\\]^`{|}])/g, "$1\\$2");
         })

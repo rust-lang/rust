@@ -628,11 +628,9 @@ fn compute_ref_match(
     let expected_type = ctx.expected_type.as_ref()?;
     let expected_without_ref = expected_type.remove_ref();
     let completion_without_ref = completion_ty.remove_ref();
-
-    if completion_ty == expected_type {
+    if expected_type.could_unify_with(ctx.db, completion_ty) {
         return None;
     }
-
     if let Some(expected_without_ref) = &expected_without_ref {
         if completion_ty.autoderef(ctx.db).any(|ty| ty == *expected_without_ref) {
             cov_mark::hit!(suggest_ref);
@@ -2003,6 +2001,30 @@ fn f() {
 "#,
             expect![[r#"
                 me aaa() fn(&self) -> u64 [name]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn test_avoid_redundant_suggestion() {
+        check_relevance(
+            r#"
+struct aa([u8]);
+
+impl aa {
+    fn from_bytes(bytes: &[u8]) -> &Self {
+        unsafe { &*(bytes as *const [u8] as *const aa) }
+    }
+}
+
+fn bb()-> &'static aa {
+    let bytes = b"hello";
+    aa::$0
+}
+"#,
+            expect![[r#"
+                ex bb()  [type]
+                fn from_bytes(…) fn(&[u8]) -> &aa [type_could_unify]
             "#]],
         );
     }

@@ -697,7 +697,7 @@ struct SeverityAttr {
     /// #[warn(non_snake_case)]
     /// mod foo {
     ///     #[allow(nonstandard_style)]
-    ///     mod bar;
+    ///     mod bar {}
     /// }
     /// ```
     /// We want to not warn on non snake case inside `bar`. If we are traversing this for the first

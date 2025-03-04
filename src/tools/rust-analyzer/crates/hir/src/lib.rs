@@ -142,7 +142,7 @@ pub use {
         name::Name,
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
-        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
+        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt, MacroKind,
     },
     hir_ty::{
         consteval::ConstEvalError,
@@ -152,7 +152,7 @@ pub use {
         layout::LayoutError,
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
-        CastError, FnAbi, PointerCast, Safety, Variance,
+        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -699,7 +699,10 @@ impl Module {
             let source_map = tree_source_maps.impl_(loc.id.value).item();
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
-            if file_id.macro_file().is_some_and(|it| it.is_builtin_derive(db.upcast())) {
+            if file_id
+                .macro_file()
+                .is_some_and(|it| it.kind(db.upcast()) == MacroKind::DeriveBuiltIn)
+            {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
@@ -1391,6 +1394,10 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
+    }
+
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_value_def(db, self.id)
     }
@@ -1434,6 +1441,10 @@ impl Union {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
@@ -1488,6 +1499,10 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     /// The type of the enum variant bodies.
@@ -2929,6 +2944,10 @@ impl TypeAlias {
         Type::from_def(db, self.id)
     }
 
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
+    }
+
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.type_alias_data(self.id).name.clone()
     }
@@ -3034,20 +3053,6 @@ impl BuiltinType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroKind {
-    /// `macro_rules!` or Macros 2.0 macro.
-    Declarative,
-    /// A built-in or custom derive.
-    Derive,
-    /// A built-in function-like macro.
-    BuiltIn,
-    /// A procedural attribute macro.
-    Attr,
-    /// A function-like procedural macro.
-    ProcMacro,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro {
     pub(crate) id: MacroId,
 }
@@ -3077,15 +3082,19 @@ impl Macro {
         match self.id {
             MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
-                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
-                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
+                    MacroKind::DeclarativeBuiltIn
+                }
+                MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
+                MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
-                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
-                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
+                    MacroKind::DeclarativeBuiltIn
+                }
+                MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
+                MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
@@ -3096,10 +3105,10 @@ impl Macro {
     }
 
     pub fn is_fn_like(&self, db: &dyn HirDatabase) -> bool {
-        match self.kind(db) {
-            MacroKind::Declarative | MacroKind::BuiltIn | MacroKind::ProcMacro => true,
-            MacroKind::Attr | MacroKind::Derive => false,
-        }
+        matches!(
+            self.kind(db),
+            MacroKind::Declarative | MacroKind::DeclarativeBuiltIn | MacroKind::ProcMacro
+        )
     }
 
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
@@ -3139,11 +3148,11 @@ impl Macro {
     }
 
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
-        matches!(self.kind(db), MacroKind::Attr)
+        matches!(self.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn)
     }
 
     pub fn is_derive(&self, db: &dyn HirDatabase) -> bool {
-        matches!(self.kind(db), MacroKind::Derive)
+        matches!(self.kind(db), MacroKind::Derive | MacroKind::DeriveBuiltIn)
     }
 }
 
@@ -4708,6 +4717,19 @@ impl Type {
         Type::new(db, def, ty.substitute(Interner, &substs))
     }
 
+    fn from_def_placeholders(db: &dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Type {
+        let ty = db.ty(def.into());
+        let substs = TyBuilder::placeholder_subst(
+            db,
+            match def.into() {
+                TyDefId::AdtId(it) => GenericDefId::AdtId(it),
+                TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
+                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+            },
+        );
+        Type::new(db, def, ty.substitute(Interner, &substs))
+    }
+
     fn from_value_def(db: &dyn HirDatabase, def: impl Into<ValueTyDefId> + HasResolver) -> Type {
         let Some(ty) = db.value_ty(def.into()) else {
             return Type::new(db, def, TyKind::Error.intern(Interner));
@@ -5736,6 +5758,10 @@ impl Type {
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(self.ty.clone(), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
+    }
+
+    pub fn drop_glue(&self, db: &dyn HirDatabase) -> DropGlue {
+        db.has_drop_glue(self.ty.clone(), self.env.clone())
     }
 }
 

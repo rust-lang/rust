@@ -17,10 +17,13 @@ Since rust-analyzer is a Rust project, you will need to install Rust. You can do
 **Step 04**: Install the language server locally by running the following command:
 
 ```sh
-cargo xtask install --server --code-bin code-insiders --dev-rel
+# Install only the language server  
+cargo xtask install --server \  
+    --code-bin code-insiders \  # Target a specific editor (code, code-exploration, code-insiders, codium, or code-oss)  
+    --dev-rel  # Build in release mode with debug info level 2  
 ```
 
-In the output of this command, there should be a file path provided to the installed binary on  your local machine.
+In the output of this command, there should be a file path provided to the installed binary on your local machine.
 It should look something like the following output below:
 
 ```
@@ -48,9 +51,12 @@ An example debugging statement could go into the `main_loop.rs` file which can b
 ```rs
 eprintln!("Hello, world!");
 ```
+Now, run the following commands to check the project and reinstall the server:  
 
-Now we run `cargo build` and `sh
-cargo xtask install --server --code-bin code-insiders --dev-rel` to reinstall the server.
+```sh  
+cargo check  
+cargo xtask install --server --code-bin code-insiders --dev-rel  
+```  
 
 Now on Visual Studio Code Insiders, we should be able to open the Output tab on our terminal and switch to Rust Analyzer Language Server to see the `eprintln!` statement we just wrote.
 

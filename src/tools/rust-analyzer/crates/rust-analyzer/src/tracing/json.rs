@@ -2,7 +2,8 @@
 //!
 //! Usage:
 //!
-//! ```rust
+//! ```ignore
+//! # use tracing_subscriber::Registry;
 //! let layer = json::TimingLayer::new(std::io::stderr);
 //! Registry::default().with(layer).init();
 //! ```

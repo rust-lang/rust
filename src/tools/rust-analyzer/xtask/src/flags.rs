@@ -57,6 +57,8 @@ xflags::xflags! {
             /// Use jemalloc allocator for server
             optional --jemalloc
             optional --client-patch-version version: String
+            /// Use cargo-zigbuild
+            optional --zig
         }
         /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
         cmd publish-release-notes {
@@ -144,6 +146,7 @@ pub struct Dist {
     pub mimalloc: bool,
     pub jemalloc: bool,
     pub client_patch_version: Option<String>,
+    pub zig: bool,
 }
 
 #[derive(Debug)]
