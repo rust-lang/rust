@@ -96,6 +96,15 @@ impl Timespec {
         }
     }
 
+    #[cfg_attr(
+        all(
+            target_os = "linux",
+            target_env = "gnu",
+            target_pointer_width = "32",
+            not(target_arch = "riscv32")
+        ),
+        no_sanitize(cfi)
+    )]
     pub fn now(clock: libc::clockid_t) -> Timespec {
         use crate::mem::MaybeUninit;
         use crate::sys::cvt;

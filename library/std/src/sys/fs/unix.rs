@@ -1454,6 +1454,18 @@ impl File {
         Ok(())
     }
 
+    #[cfg_attr(
+        any(
+            target_os = "android",
+            all(
+                target_os = "linux",
+                target_env = "gnu",
+                target_pointer_width = "32",
+                not(target_arch = "riscv32")
+            )
+        ),
+        no_sanitize(cfi)
+    )]
     pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
         #[cfg(not(any(
             target_os = "redox",
