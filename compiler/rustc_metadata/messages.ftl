@@ -244,6 +244,9 @@ metadata_prev_alloc_error_handler =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
+metadata_raw_dylib_elf_unstable =
+    link kind `raw-dylib` is unstable on ELF platforms
+
 metadata_raw_dylib_no_nul =
     link name must not contain NUL characters if link kind is `raw-dylib`
 

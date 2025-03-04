@@ -167,6 +167,16 @@ fn parse_cfg_name_directive<'a>(
     }
 
     condition! {
+        name: "elf",
+        condition: !config.target.contains("windows")
+            && !config.target.contains("wasm")
+            && !config.target.contains("apple")
+            && !config.target.contains("aix")
+            && !config.target.contains("uefi"),
+        message: "when the target binary format is ELF"
+    }
+
+    condition! {
         name: "enzyme",
         condition: config.has_enzyme,
         message: "when rustc is built with LLVM Enzyme"
