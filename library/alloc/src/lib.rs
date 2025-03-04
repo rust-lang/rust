@@ -102,7 +102,6 @@
 #![feature(assert_matches)]
 #![feature(async_fn_traits)]
 #![feature(async_iterator)]
-#![feature(box_uninit_write)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
 #![feature(char_max_len)]
