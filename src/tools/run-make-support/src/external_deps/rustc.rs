@@ -365,31 +365,6 @@ impl Rustc {
 
     /// `EXTRARSCXXFLAGS`
     pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
-        // Adapted from tools.mk (trimmed):
-        //
-        // ```makefile
-        // ifdef IS_WINDOWS
-        //     ifdef IS_MSVC
-        //     else
-        //         EXTRARSCXXFLAGS := -lstatic:-bundle=stdc++
-        //     endif
-        // else
-        //     ifeq ($(UNAME),Darwin)
-        //         EXTRARSCXXFLAGS := -lc++
-        //     else
-        //         ifeq ($(UNAME),FreeBSD)
-        //         else
-        //             ifeq ($(UNAME),SunOS)
-        //             else
-        //                 ifeq ($(UNAME),OpenBSD)
-        //                 else
-        //                     EXTRARSCXXFLAGS := -lstdc++
-        //                 endif
-        //             endif
-        //         endif
-        //     endif
-        // endif
-        // ```
         if is_windows() {
             // So this is a bit hacky: we can't use the DLL version of libstdc++ because
             // it pulls in the DLL version of libgcc, which means that we end up with 2

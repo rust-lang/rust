@@ -80,17 +80,6 @@ impl Cc {
 
     /// Specify `-o` or `-Fe`/`-Fo` depending on platform/compiler.
     pub fn out_exe(&mut self, name: &str) -> &mut Self {
-        // Ref: tools.mk (irrelevant lines omitted):
-        //
-        // ```makefile
-        // ifdef IS_MSVC
-        //     OUT_EXE=-Fe:`cygpath -w $(TMPDIR)/$(call BIN,$(1))` \
-        //         -Fo:`cygpath -w $(TMPDIR)/$(1).obj`
-        // else
-        //     OUT_EXE=-o $(TMPDIR)/$(1)
-        // endif
-        // ```
-
         let mut path = std::path::PathBuf::from(name);
 
         if is_msvc() {
