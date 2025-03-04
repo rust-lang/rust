@@ -12,6 +12,7 @@ enum Feature {
     NoSysF16,
     NoSysF16F64Convert,
     NoSysF16F128Convert,
+    NoSysF16GnuConvert,
 }
 
 impl Feature {
@@ -19,9 +20,15 @@ impl Feature {
         match self {
             Self::NoSysF128 => [Self::NoSysF128IntConvert, Self::NoSysF16F128Convert].as_slice(),
             Self::NoSysF128IntConvert => [].as_slice(),
-            Self::NoSysF16 => [Self::NoSysF16F64Convert, Self::NoSysF16F128Convert].as_slice(),
+            Self::NoSysF16 => [
+                Self::NoSysF16F64Convert,
+                Self::NoSysF16F128Convert,
+                Feature::NoSysF16GnuConvert,
+            ]
+            .as_slice(),
             Self::NoSysF16F64Convert => [].as_slice(),
             Self::NoSysF16F128Convert => [].as_slice(),
+            Self::NoSysF16GnuConvert => [].as_slice(),
         }
     }
 }
@@ -84,6 +91,11 @@ fn main() {
         features.insert(Feature::NoSysF16F64Convert);
     }
 
+    // These platforms do not have `__gnu_f2h_ieee` or `__gnu_h2f_ieee`.
+    if false {
+        features.insert(Feature::NoSysF16GnuConvert);
+    }
+
     // Add implied features. Collection is required for borrows.
     features.extend(
         features
@@ -107,6 +119,10 @@ fn main() {
             Feature::NoSysF16F128Convert => (
                 "no-sys-f16-f128-convert",
                 "using apfloat fallback for f16 <-> f128 conversions",
+            ),
+            Feature::NoSysF16GnuConvert => (
+                "no-sys-f16-gnu-convert",
+                "using apfloat fallback for __gnu f16",
             ),
             Feature::NoSysF16 => ("no-sys-f16", "using apfloat fallback for f16"),
         };

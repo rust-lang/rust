@@ -44,8 +44,9 @@ no-sys-f128 = ["no-sys-f128-int-convert", "no-sys-f16-f128-convert"]
 no-sys-f128-int-convert = []
 no-sys-f16-f128-convert = []
 no-sys-f16-f64-convert = []
+no-sys-f16-gnu-convert = []
 # Skip tests that rely on f16 symbols being available on the system
-no-sys-f16 = ["no-sys-f16-f64-convert"]
+no-sys-f16 = ["no-sys-f16-f64-convert", "no-sys-f16-gnu-convert"]
 
 # Enable report generation without bringing in more dependencies by default
 benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
