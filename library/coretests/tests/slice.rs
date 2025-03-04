@@ -5,8 +5,6 @@ use core::num::NonZero;
 use core::ops::{Range, RangeInclusive};
 use core::slice;
 
-use rand::seq::IndexedRandom;
-
 #[test]
 fn test_position() {
     let b = [1, 2, 3, 5, 5];
@@ -1810,6 +1808,7 @@ fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
 
     use rand::Rng;
+    use rand::seq::IndexedRandom;
 
     let mut rng = crate::test_rng();
 
