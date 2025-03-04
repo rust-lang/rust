@@ -2319,7 +2319,7 @@ class DocSearch {
          * @param {rustdoc.ParserQueryElement} elem
          */
         function convertTypeFilterOnElem(elem) {
-            if (typeof elem.typeFilter === 'string') {
+            if (typeof elem.typeFilter === "string") {
                 let typeFilter = elem.typeFilter;
                 if (typeFilter === "const") {
                     typeFilter = "constant";
