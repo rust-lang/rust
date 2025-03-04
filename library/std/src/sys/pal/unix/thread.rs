@@ -188,6 +188,7 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+    #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
         weak! {
             fn pthread_setname_np(
