@@ -151,7 +151,9 @@ impl fmt::Display for ByteStr {
         };
         let nchars: usize = self
             .utf8_chunks()
-            .map(|chunk| chunk.valid().len() + if chunk.invalid().is_empty() { 0 } else { 1 })
+            .map(|chunk| {
+                chunk.valid().chars().count() + if chunk.invalid().is_empty() { 0 } else { 1 }
+            })
             .sum();
         let padding = f.width().unwrap_or(0).saturating_sub(nchars);
         let fill = f.fill();
