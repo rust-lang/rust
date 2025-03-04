@@ -1997,22 +1997,22 @@ dependencies = [
 ]
 
 [[package]]
-name = "libffi-sys2"
-version = "2.4.0"
+name = "libffi"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47aedd9774ffb3dcab5c96f593cb5a0caf421a5e38b16bab3b8cdef5facb6ea2"
+checksum = "ce826c243048e3d5cec441799724de52e2d42f820468431fc3fceee2341871e2"
 dependencies = [
- "cc",
+ "libc",
+ "libffi-sys",
 ]
 
 [[package]]
-name = "libffi2"
-version = "3.3.0"
+name = "libffi-sys"
+version = "2.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c88a3402cad8ff58216ec6d07e5ecfa9e15fc36613c0a832db541e4e1a718a7b"
+checksum = "f36115160c57e8529781b4183c2bb51fdc1f6d6d1ed345591d84be7703befb3c"
 dependencies = [
- "libc",
- "libffi-sys2",
+ "cc",
 ]
 
 [[package]]
@@ -2273,7 +2273,7 @@ dependencies = [
  "directories",
  "getrandom 0.3.1",
  "libc",
- "libffi2",
+ "libffi",
  "libloading",
  "measureme 11.0.1",
  "rand 0.9.0",
