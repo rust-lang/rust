@@ -196,6 +196,10 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vmleb"] fn vmleb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vmleh"] fn vmleh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vmlef"] fn vmlef(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vgfmb"] fn vgfmb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vgfmh"] fn vgfmh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vgfmf"] fn vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2491,6 +2495,19 @@ mod sealed {
     impl_mul!([VectorMule vec_mule] vec_vmleb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_short );
     impl_mul!([VectorMule vec_mule] vec_vmleh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_int);
     impl_mul!([VectorMule vec_mule] vec_vmlef (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_long_long );
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorGfmsum<Result> {
+        unsafe fn vec_gfmsum(self, b: Self) -> Result;
+    }
+
+    test_impl! { vec_vgfmb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short [ vgfmb, vgfmb ] }
+    test_impl! { vec_vgfmh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int[ vgfmh, vgfmh] }
+    test_impl! { vec_vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long [ vgfmf, vgfmf ] }
+
+    impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_short );
+    impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_int);
+    impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmf (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_long_long );
 }
 
 /// Load Count to Block Boundary
@@ -3584,6 +3601,14 @@ pub unsafe fn vec_mule<T: sealed::VectorMule<U>, U>(a: T, b: T) -> U {
     a.vec_mule(b)
 }
 
+/// Vector Galois Field Multiply Sum
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_gfmsum<T: sealed::VectorGfmsum<U>, U>(a: T, b: T) -> U {
+    a.vec_gfmsum(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4493,5 +4518,17 @@ mod tests {
         [i16::MIN, 0, -2, 0, 2, 0, 1, 0],
         [i16::MIN, 0, 4, 0, i16::MAX, 0, 2, 0],
         [0x4000_0000, -8, 0xFFFE, 2]
+    }
+
+    test_vec_2! { test_vec_gfmsum_1, vec_gfmsum, u16x8, u16x8 -> u32x4,
+        [0x1234, 0x5678, 0x9ABC, 0xDEF0, 0x1357, 0x2468, 0xACE0, 0xBDF0],
+        [0xFFFF, 0x0001, 0x8000, 0x7FFF, 0xAAAA, 0x5555, 0x1234, 0x5678],
+        [0xE13A794, 0x68764A50, 0x94AA3E, 0x2C93F300]
+    }
+
+    test_vec_2! { test_vec_gfmsum_2, vec_gfmsum, u16x8, u16x8 -> u32x4,
+        [0x0000, 0xFFFF, 0xAAAA, 0x5555, 0x1234, 0x5678, 0x9ABC, 0xDEF0],
+        [0xFFFF, 0x0000, 0x5555, 0xAAAA, 0x0001, 0x8000, 0x7FFF, 0x1357],
+        [0, 0, 0x2B3C1234, 0x3781D244]
     }
 }
