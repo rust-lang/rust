@@ -364,6 +364,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PatKind::Struct(ref qpath, fields, has_rest_pat) => {
                     Some { 0: &self.check_pat_struct(pat, qpath, fields, has_rest_pat) }
                 }
+                PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
+                    Some { 0: &self.check_pat_tuple_struct(pat, qpath, subpats, ddpos) }
+                }
                 _ => None,
             };
         let adjust_mode = self.calc_adjust_mode(pat, resolved_pat.and_then(|r| r.path_res));
@@ -393,9 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Binding(ba, var_id, ident, sub) => {
                 self.check_pat_ident(pat, ba, var_id, ident, sub, expected, pat_info)
             }
-            PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
-                self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
-            }
+            PatKind::TupleStruct(..) => (resolved_pat.unwrap().check)(expected, pat_info),
             PatKind::Struct(..) => (resolved_pat.unwrap().check)(expected, pat_info),
             PatKind::Guard(pat, cond) => {
                 self.check_pat(pat, expected, pat_info);
@@ -1451,97 +1452,107 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         let tcx = self.tcx;
-        let on_error = |e| {
-            for pat in subpats {
-                self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
-            }
-        };
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
-            on_error(e);
-            e
+            report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected)
         };
 
-        // Resolve the path and check the definition for errors.
-        let (res, opt_ty, segments) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
-        if res == Res::Err {
-            let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
-            self.set_tainted_by_errors(e);
-            on_error(e);
-            return Ty::new_error(tcx, e);
-        }
-
-        // Type-check the path.
-        let (pat_ty, res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
-        if !pat_ty.is_fn() {
-            let e = report_unexpected_res(res);
-            return Ty::new_error(tcx, e);
-        }
-
-        let variant = match res {
-            Res::Err => {
-                self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+        let pat_ty_and_res_and_variant = try {
+            // Resolve the path and check the definition for errors.
+            let (res, opt_ty, segments) =
+                self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
+            if res == Res::Err {
+                let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                do yeet e;
             }
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
-                let e = report_unexpected_res(res);
-                return Ty::new_error(tcx, e);
+
+            // Type-check the path.
+            let (pat_ty, res) =
+                self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
+            if !pat_ty.is_fn() {
+                do yeet report_unexpected_res(res);
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
-            _ => bug!("unexpected pattern resolution: {:?}", res),
-        };
 
-        // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
-
-        // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
-        let had_err = diag.map_err(|diag| diag.emit());
-
-        // Type-check subpatterns.
-        if subpats.len() == variant.fields.len()
-            || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
-        {
-            let ty::Adt(_, args) = pat_ty.kind() else {
-                bug!("unexpected pattern type {:?}", pat_ty);
+            let variant = match res {
+                Res::Err => {
+                    self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+                }
+                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
+                    do yeet report_unexpected_res(res);
+                }
+                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
+                _ => bug!("unexpected pattern resolution: {:?}", res),
             };
-            for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
-                let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, args);
-                self.check_pat(subpat, field_ty, pat_info);
 
-                self.tcx.check_stability(
-                    variant.fields[FieldIdx::from_usize(i)].did,
-                    Some(subpat.hir_id),
-                    subpat.span,
-                    None,
+            // Replace constructor type with constructed type for tuple struct patterns.
+            let pat_ty = pat_ty.fn_sig(tcx).output();
+            let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
+
+            (pat_ty, res, variant)
+        };
+
+        let check = move |expected: Ty<'tcx>, pat_info: PatInfo<'tcx>| -> Ty<'tcx> {
+            let on_error = |e| {
+                for pat in subpats {
+                    self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
+                }
+            };
+            let (pat_ty, res, variant) = match pat_ty_and_res_and_variant {
+                Ok(data) => data,
+                Err(guar) => {
+                    on_error(guar);
+                    return Ty::new_error(tcx, guar);
+                }
+            };
+
+            // Type-check the tuple struct pattern against the expected type.
+            let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
+            let had_err = diag.map_err(|diag| diag.emit());
+
+            // Type-check subpatterns.
+            if subpats.len() == variant.fields.len()
+                || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
+            {
+                let ty::Adt(_, args) = pat_ty.kind() else {
+                    bug!("unexpected pattern type {:?}", pat_ty);
+                };
+                for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos)
+                {
+                    let field = &variant.fields[FieldIdx::from_usize(i)];
+                    let field_ty = self.field_ty(subpat.span, field, args);
+                    self.check_pat(subpat, field_ty, pat_info);
+
+                    self.tcx.check_stability(
+                        variant.fields[FieldIdx::from_usize(i)].did,
+                        Some(subpat.hir_id),
+                        subpat.span,
+                        None,
+                    );
+                }
+                if let Err(e) = had_err {
+                    on_error(e);
+                    return Ty::new_error(tcx, e);
+                }
+            } else {
+                let e = self.emit_err_pat_wrong_number_of_fields(
+                    pat.span,
+                    res,
+                    qpath,
+                    subpats,
+                    &variant.fields.raw,
+                    expected,
+                    had_err,
                 );
-            }
-            if let Err(e) = had_err {
                 on_error(e);
                 return Ty::new_error(tcx, e);
             }
-        } else {
-            let e = self.emit_err_pat_wrong_number_of_fields(
-                pat.span,
-                res,
-                qpath,
-                subpats,
-                &variant.fields.raw,
-                expected,
-                had_err,
-            );
-            on_error(e);
-            return Ty::new_error(tcx, e);
-        }
-        pat_ty
+            pat_ty
+        };
+
+        ResolvedPat { path_res: None, check }
     }
 
     fn emit_err_pat_wrong_number_of_fields(
