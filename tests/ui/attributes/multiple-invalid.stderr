@@ -1,12 +1,3 @@
-error[E0518]: attribute should be applied to function or closure
-  --> $DIR/multiple-invalid.rs:4:1
-   |
-LL | #[inline]
-   | ^^^^^^^^^
-...
-LL | const FOO: u8 = 0;
-   | ------------------ not a function or closure
-
 error: attribute should be applied to a function definition
   --> $DIR/multiple-invalid.rs:6:1
    |
@@ -15,6 +6,15 @@ LL | #[target_feature(enable = "sse2")]
 LL |
 LL | const FOO: u8 = 0;
    | ------------------ not a function definition
+
+error[E0518]: attribute should be applied to function or closure
+  --> $DIR/multiple-invalid.rs:4:1
+   |
+LL | #[inline]
+   | ^^^^^^^^^
+...
+LL | const FOO: u8 = 0;
+   | ------------------ not a function or closure
 
 error: aborting due to 2 previous errors
 

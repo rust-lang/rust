@@ -3,14 +3,16 @@
 //                      SingleAttributeParser which is what we have two of here.
 
 use rustc_attr_data_structures::{AttributeKind, InlineAttr};
-use rustc_errors::{E0534, E0535, struct_span_code_err};
+use rustc_errors::DiagArgValue;
+use rustc_feature::{AttributeTemplate, template};
+use rustc_session::lint::builtin::ILL_FORMED_ATTRIBUTE_INPUT;
 use rustc_span::sym;
 
 use super::{AcceptContext, AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
 use crate::context::Stage;
 use crate::parser::ArgParser;
-use crate::session_diagnostics::IncorrectMetaItem;
+use crate::session_diagnostics::IllFormedAttributeInput;
 
 pub(crate) struct InlineParser;
 
@@ -18,14 +20,14 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
     const PATH: &'static [rustc_span::Symbol] = &[sym::inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "always|never");
 
     fn convert(cx: &AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         match args {
             ArgParser::NoArgs => Some(AttributeKind::Inline(InlineAttr::Hint, cx.attr_span)),
             ArgParser::List(list) => {
                 let Some(l) = list.single() else {
-                    struct_span_code_err!(cx.dcx(), cx.attr_span, E0534, "expected one argument")
-                        .emit();
+                    cx.expected_single_argument(list.span);
                     return None;
                 };
 
@@ -37,17 +39,25 @@ impl<S: Stage> SingleAttributeParser<S> for InlineParser {
                         Some(AttributeKind::Inline(InlineAttr::Never, cx.attr_span))
                     }
                     _ => {
-                        struct_span_code_err!(cx.dcx(), l.span(), E0535, "invalid argument")
-                            .with_help("valid inline arguments are `always` and `never`")
-                            .emit();
+                        cx.expected_specific_argument(l.span(), vec!["always", "never"]);
                         return None;
                     }
                 }
             }
             ArgParser::NameValue(_) => {
-                // silently ignored, we warn somewhere else.
-                // FIXME(jdonszelmann): that warning *should* go here.
-                None
+                let suggestions =
+                    <Self as SingleAttributeParser<S>>::TEMPLATE.suggestions(false, "inline");
+                cx.emit_lint(
+                    ILL_FORMED_ATTRIBUTE_INPUT,
+                    cx.attr_span,
+                    IllFormedAttributeInput {
+                        num_suggestions: suggestions.len(),
+                        suggestions: DiagArgValue::StrListSepByAnd(
+                            suggestions.into_iter().map(|s| format!("`{s}`").into()).collect(),
+                        ),
+                    },
+                );
+                return None;
             }
         }
     }
@@ -59,21 +69,31 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
     const PATH: &'static [rustc_span::Symbol] = &[sym::rustc_force_inline];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepLast;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::WarnButFutureError;
+    const TEMPLATE: AttributeTemplate = template!(Word, List: "reason", NameValueStr: "reason");
 
     fn convert(cx: &AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let reason = match args {
             ArgParser::NoArgs => None,
             ArgParser::List(list) => {
-                cx.emit_err(IncorrectMetaItem { span: list.span, suggestion: None });
-                return None;
-            }
-            ArgParser::NameValue(v) => {
-                let Some(str) = v.value_as_str() else {
-                    cx.emit_err(IncorrectMetaItem { span: v.value_span, suggestion: None });
+                let Some(l) = list.single() else {
+                    cx.expected_single_argument(list.span);
                     return None;
                 };
 
-                Some(str)
+                let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
+                    cx.expected_string_literal(l.span());
+                    return None;
+                };
+
+                Some(reason)
+            }
+            ArgParser::NameValue(v) => {
+                let Some(reason) = v.value_as_str() else {
+                    cx.expected_string_literal(v.value_span);
+                    return None;
+                };
+
+                Some(reason)
             }
         };
 
