@@ -2759,9 +2759,9 @@ class DocSearch {
          * Add extra data to result objects, and filter items that have been
          * marked for removal.
          *
-         * @param {[rustdoc.ResultObject]} results
+         * @param {rustdoc.ResultObject[]} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @returns {[rustdoc.ResultObject]}
+         * @returns {rustdoc.ResultObject[]}
          */
         const transformResults = (results, typeInfo) => {
             const duplicates = new Set();
@@ -3175,7 +3175,7 @@ class DocSearch {
          * @param {rustdoc.Results} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
          * @param {string} preferredCrate
-         * @returns {Promise<[rustdoc.ResultObject]>}
+         * @returns {Promise<rustdoc.ResultObject[]>}
          */
         const sortResults = async(results, typeInfo, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
@@ -3331,7 +3331,6 @@ class DocSearch {
                 return 0;
             });
 
-            // @ts-expect-error
             return transformResults(result_list, typeInfo);
         };
 
