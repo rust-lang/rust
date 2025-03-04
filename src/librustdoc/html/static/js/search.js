@@ -2740,7 +2740,11 @@ class DocSearch {
             return [displayPath, href, `${exactPath}::${name}`];
         };
 
-        // @ts-expect-error
+        /**
+         *
+         * @param {string} path
+         * @returns {string}
+         */
         function pathSplitter(path) {
             const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
             if (tmp.endsWith("<span>")) {
