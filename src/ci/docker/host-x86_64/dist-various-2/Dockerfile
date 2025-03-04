@@ -43,12 +43,6 @@ ENV \
     CXX_aarch64_unknown_fuchsia=aarch64-unknown-fuchsia-clang++ \
     CXXFLAGS_aarch64_unknown_fuchsia="--target=aarch64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
     LDFLAGS_aarch64_unknown_fuchsia="--target=aarch64-unknown-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib" \
-    AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
-    CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
-    CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
-    AR_x86_64_pc_solaris=x86_64-pc-solaris2.10-ar \
-    CC_x86_64_pc_solaris=x86_64-pc-solaris2.10-gcc \
-    CXX_x86_64_pc_solaris=x86_64-pc-solaris2.10-g++ \
     CC_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-gcc-9 \
     CXX_armv7_unknown_linux_gnueabi=arm-linux-gnueabi-g++-9 \
     AR_x86_64_fortanix_unknown_sgx=ar \
@@ -84,9 +78,6 @@ WORKDIR /tmp
 COPY scripts/shared.sh /tmp/
 COPY scripts/build-fuchsia-toolchain.sh /tmp/
 RUN /tmp/build-fuchsia-toolchain.sh
-COPY host-x86_64/dist-various-2/build-solaris-toolchain.sh /tmp/
-RUN /tmp/build-solaris-toolchain.sh x86_64  amd64   solaris-i386  pc
-RUN /tmp/build-solaris-toolchain.sh sparcv9 sparcv9 solaris-sparc sun
 COPY host-x86_64/dist-various-2/build-x86_64-fortanix-unknown-sgx-toolchain.sh /tmp/
 RUN /tmp/build-x86_64-fortanix-unknown-sgx-toolchain.sh
 
@@ -118,8 +109,6 @@ ENV TARGETS=$TARGETS,wasm32-wasip1
 ENV TARGETS=$TARGETS,wasm32-wasip1-threads
 ENV TARGETS=$TARGETS,wasm32-wasip2
 ENV TARGETS=$TARGETS,wasm32v1-none
-ENV TARGETS=$TARGETS,sparcv9-sun-solaris
-ENV TARGETS=$TARGETS,x86_64-pc-solaris
 ENV TARGETS=$TARGETS,x86_64-unknown-linux-gnux32
 ENV TARGETS=$TARGETS,x86_64-fortanix-unknown-sgx
 ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
