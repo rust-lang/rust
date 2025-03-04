@@ -79,7 +79,6 @@ pub(crate) mod iter_header;
 pub mod known_bug;
 pub mod mir_opt_tests;
 pub mod pal;
-pub mod run_make_tests;
 pub mod rustdoc_css_themes;
 pub mod rustdoc_gui_tests;
 pub mod rustdoc_templates;
