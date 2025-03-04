@@ -278,6 +278,7 @@ struct ResolvedPat<'tcx> {
 enum ResolvedPatKind<'tcx> {
     Path { res: Res, pat_res: Res, segments: &'tcx [hir::PathSegment<'tcx>] },
     Struct { variant: &'tcx VariantDef },
+    TupleStruct { res: Res, variant: &'tcx VariantDef },
 }
 
 impl<'tcx> ResolvedPat<'tcx> {
@@ -381,6 +382,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Some(self.resolve_pat_path(*hir_id, *span, qpath))
             }
             PatKind::Struct(ref qpath, ..) => Some(self.resolve_pat_struct(pat, qpath)),
+            PatKind::TupleStruct(ref qpath, ..) => Some(self.resolve_pat_tuple_struct(pat, qpath)),
             _ => None,
         };
         let adjust_mode = self.calc_adjust_mode(pat, opt_path_res);
@@ -575,9 +577,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Binding(ba, var_id, ident, sub) => {
                 self.check_pat_ident(pat, ba, var_id, ident, sub, expected, pat_info)
             }
-            PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
-                self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
-            }
+            PatKind::TupleStruct(ref qpath, subpats, ddpos) => match opt_path_res.unwrap() {
+                Ok(ResolvedPat { ty, kind: ResolvedPatKind::TupleStruct { res, variant } }) => self
+                    .check_pat_tuple_struct(
+                        pat, qpath, subpats, ddpos, res, ty, variant, expected, pat_info,
+                    ),
+                Err(guar) => {
+                    let ty_err = Ty::new_error(self.tcx, guar);
+                    for subpat in subpats {
+                        self.check_pat(subpat, ty_err, pat_info);
+                    }
+                    ty_err
+                }
+                Ok(pr) => span_bug!(pat.span, "tuple struct pattern resolved to {pr:?}"),
+            },
             PatKind::Struct(_, fields, has_rest_pat) => match opt_path_res.unwrap() {
                 Ok(ResolvedPat { ty, kind: ResolvedPatKind::Struct { variant } }) => self
                     .check_pat_struct(pat, fields, has_rest_pat, ty, variant, expected, pat_info),
@@ -1443,12 +1456,61 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         e.emit();
     }
 
+    fn resolve_pat_tuple_struct(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        qpath: &'tcx hir::QPath<'tcx>,
+    ) -> Result<ResolvedPat<'tcx>, ErrorGuaranteed> {
+        let tcx = self.tcx;
+        let report_unexpected_res = |res: Res| {
+            let expected = "tuple struct or tuple variant";
+            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
+            Err(e)
+        };
+
+        // Resolve the path and check the definition for errors.
+        let (res, opt_ty, segments) =
+            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
+        if res == Res::Err {
+            let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+            self.set_tainted_by_errors(e);
+            return Err(e);
+        }
+
+        // Type-check the path.
+        let (pat_ty, res) =
+            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
+        if !pat_ty.is_fn() {
+            return report_unexpected_res(res);
+        }
+
+        let variant = match res {
+            Res::Err => {
+                self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+            }
+            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
+                return report_unexpected_res(res);
+            }
+            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
+            _ => bug!("unexpected pattern resolution: {:?}", res),
+        };
+
+        // Replace constructor type with constructed type for tuple struct patterns.
+        let pat_ty = pat_ty.fn_sig(tcx).output();
+        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
+
+        Ok(ResolvedPat { ty: pat_ty, kind: ResolvedPatKind::TupleStruct { res, variant } })
+    }
+
     fn check_pat_tuple_struct(
         &self,
         pat: &'tcx Pat<'tcx>,
         qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
+        res: Res,
+        pat_ty: Ty<'tcx>,
+        variant: &'tcx VariantDef,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -1458,46 +1520,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
             }
         };
-        let report_unexpected_res = |res: Res| {
-            let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
-            on_error(e);
-            e
-        };
-
-        // Resolve the path and check the definition for errors.
-        let (res, opt_ty, segments) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
-        if res == Res::Err {
-            let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
-            self.set_tainted_by_errors(e);
-            on_error(e);
-            return Ty::new_error(tcx, e);
-        }
-
-        // Type-check the path.
-        let (pat_ty, res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
-        if !pat_ty.is_fn() {
-            let e = report_unexpected_res(res);
-            return Ty::new_error(tcx, e);
-        }
-
-        let variant = match res {
-            Res::Err => {
-                self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
-            }
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
-                let e = report_unexpected_res(res);
-                return Ty::new_error(tcx, e);
-            }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
-            _ => bug!("unexpected pattern resolution: {:?}", res),
-        };
-
-        // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
 
         // Type-check the tuple struct pattern against the expected type.
         let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
