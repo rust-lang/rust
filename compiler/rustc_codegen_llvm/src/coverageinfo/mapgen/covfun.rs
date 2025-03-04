@@ -120,12 +120,17 @@ fn fill_region_tables<'tcx>(
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
 
-    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
-        &mut covfun.regions;
-
     let make_cov_span =
         |span: Span| spans::make_coverage_span(local_file_id, source_map, &source_file, span);
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+
+    let ffi::Regions {
+        code_regions,
+        expansion_regions: _, // FIXME(Zalathar): Fill out support for expansion regions
+        branch_regions,
+        mcdc_branch_regions,
+        mcdc_decision_regions,
+    } = &mut covfun.regions;
 
     // For each counter/region pair in this function+file, convert it to a
     // form suitable for FFI.

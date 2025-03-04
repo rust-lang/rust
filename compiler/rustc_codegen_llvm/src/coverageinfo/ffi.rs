@@ -146,6 +146,7 @@ pub(crate) struct CoverageSpan {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Regions {
     pub(crate) code_regions: Vec<CodeRegion>,
+    pub(crate) expansion_regions: Vec<ExpansionRegion>,
     pub(crate) branch_regions: Vec<BranchRegion>,
     pub(crate) mcdc_branch_regions: Vec<MCDCBranchRegion>,
     pub(crate) mcdc_decision_regions: Vec<MCDCDecisionRegion>,
@@ -154,10 +155,16 @@ pub(crate) struct Regions {
 impl Regions {
     /// Returns true if none of this structure's tables contain any regions.
     pub(crate) fn has_no_regions(&self) -> bool {
-        let Self { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
-            self;
+        let Self {
+            code_regions,
+            expansion_regions,
+            branch_regions,
+            mcdc_branch_regions,
+            mcdc_decision_regions,
+        } = self;
 
         code_regions.is_empty()
+            && expansion_regions.is_empty()
             && branch_regions.is_empty()
             && mcdc_branch_regions.is_empty()
             && mcdc_decision_regions.is_empty()
@@ -170,6 +177,14 @@ impl Regions {
 pub(crate) struct CodeRegion {
     pub(crate) cov_span: CoverageSpan,
     pub(crate) counter: Counter,
+}
+
+/// Must match the layout of `LLVMRustCoverageExpansionRegion`.
+#[derive(Clone, Debug)]
+#[repr(C)]
+pub(crate) struct ExpansionRegion {
+    pub(crate) cov_span: CoverageSpan,
+    pub(crate) expanded_file_id: u32,
 }
 
 /// Must match the layout of `LLVMRustCoverageBranchRegion`.
