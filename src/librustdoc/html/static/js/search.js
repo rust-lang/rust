@@ -3062,7 +3062,7 @@ class DocSearch {
                         name: fnParamNames[-1 - fnType.id],
                         highlighted: !!fnType.highlighted,
                     }, result);
-                    // @ts-expect-error
+                    /** @type{string[]} */
                     const where = [];
                     onEachBtwn(
                         fnType.generics,
@@ -3072,7 +3072,6 @@ class DocSearch {
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
-                        // @ts-expect-error
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
