@@ -1477,73 +1477,61 @@ class DocSearch {
          * Special type name IDs for searching by array.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfArray = this.buildTypeMapIndex("array");
         /**
          * Special type name IDs for searching by slice.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfSlice = this.buildTypeMapIndex("slice");
         /**
          * Special type name IDs for searching by both array and slice (`[]` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfArrayOrSlice = this.buildTypeMapIndex("[]");
         /**
          * Special type name IDs for searching by tuple.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfTuple = this.buildTypeMapIndex("tuple");
         /**
          * Special type name IDs for searching by unit.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfUnit = this.buildTypeMapIndex("unit");
         /**
          * Special type name IDs for searching by both tuple and unit (`()` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfTupleOrUnit = this.buildTypeMapIndex("()");
         /**
          * Special type name IDs for searching `fn`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFn = this.buildTypeMapIndex("fn");
         /**
          * Special type name IDs for searching `fnmut`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFnMut = this.buildTypeMapIndex("fnmut");
         /**
          * Special type name IDs for searching `fnonce`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFnOnce = this.buildTypeMapIndex("fnonce");
         /**
          * Special type name IDs for searching higher order functions (`->` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfHof = this.buildTypeMapIndex("->");
         /**
          * Special type name IDs the output assoc type.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfOutput = this.buildTypeMapIndex("output", true);
         /**
          * Special type name IDs for searching by reference.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfReference = this.buildTypeMapIndex("reference");
 
         /**
@@ -1596,11 +1584,17 @@ class DocSearch {
      * This is effectively string interning, so that function matching can be
      * done more quickly. Two types with the same name but different item kinds
      * get the same ID.
-     *
-     * @param {string} name
+	 *
+	 * @template T extends string
+	 * @overload
+     * @param {T} name
      * @param {boolean=} isAssocType - True if this is an assoc type
-     *
-     * @returns {number?}
+     * @returns {T extends "" ? null : number}
+	 *
+	 * @param {string} name
+     * @param {boolean=} isAssocType
+     * @returns {number | null}
+	 * 
      */
     buildTypeMapIndex(name, isAssocType) {
         if (name === "" || name === null) {
