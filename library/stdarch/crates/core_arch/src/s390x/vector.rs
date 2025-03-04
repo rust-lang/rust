@@ -650,6 +650,47 @@ mod sealed {
     impl_vec_trait! { [VectorNabs vec_nabs] vec_nabs_f64 (vector_double) }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorNmsub {
+        unsafe fn vec_nmsub(self, b: Self, c: Self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vfnmssb)
+    )]
+    unsafe fn vec_nmsub_f32(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
+        simd_neg(simd_fma(a, b, simd_neg(c)))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorNmsub for vector_float {
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_nmsub(self, b: Self, c: Self) -> Self {
+            vec_nmsub_f32(self, b, c)
+        }
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vfnmsdb)
+    )]
+    unsafe fn vec_nmsub_f64(a: vector_double, b: vector_double, c: vector_double) -> vector_double {
+        simd_neg(simd_fma(a, b, simd_neg(c)))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorNmsub for vector_double {
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_nmsub(self, b: Self, c: Self) -> Self {
+            vec_nmsub_f64(self, b, c)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorSplat {
         unsafe fn vec_splat<const IMM: u32>(self) -> Self;
     }
@@ -2571,11 +2612,16 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_nabs<T>(a: T) -> T
-where
-    T: sealed::VectorNabs,
-{
+pub unsafe fn vec_nabs<T: sealed::VectorNabs>(a: T) -> T {
     a.vec_nabs()
+}
+
+/// Vector Negative Multiply Subtract
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_nmsub<T: sealed::VectorNmsub>(a: T, b: T, c: T) -> T {
+    a.vec_nmsub(b, c)
 }
 
 /// Vector square root.
