@@ -425,6 +425,10 @@
 # a specific version.
 #ccache = false
 
+# List of paths to exclude from the build and test processes. 
+# For example, exclude = ["tests/ui", "src/tools/tidy"].
+#exclude = []
+
 # =============================================================================
 # General install configuration options
 # =============================================================================

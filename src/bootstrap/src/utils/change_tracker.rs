@@ -365,4 +365,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`rust.channel` now supports \"auto-detect\" to load the channel from `src/ci/channel`",
     },
+    ChangeInfo {
+        change_id: 137147,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.exclude` that adds support for excluding test.",
+    },
 ];
