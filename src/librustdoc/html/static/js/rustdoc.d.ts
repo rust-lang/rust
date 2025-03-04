@@ -132,7 +132,7 @@ declare namespace rustdoc {
         generics: Array<ParserQueryElement>,
         bindings: Map<string, Array<ParserQueryElement>>,
         bindingName: {name: string|null, generics: ParserQueryElement[]}|null,
-        typeFilter: string|null,
+        typeFilter: number|string|null,
     }
 
     /**

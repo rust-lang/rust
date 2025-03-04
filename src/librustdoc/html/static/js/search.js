@@ -2319,15 +2319,13 @@ class DocSearch {
          * @param {rustdoc.ParserQueryElement} elem
          */
         function convertTypeFilterOnElem(elem) {
-            if (elem.typeFilter !== null) {
+            if (typeof elem.typeFilter === 'string') {
                 let typeFilter = elem.typeFilter;
                 if (typeFilter === "const") {
                     typeFilter = "constant";
                 }
-                // @ts-expect-error
                 elem.typeFilter = itemTypeFromName(typeFilter);
             } else {
-                // @ts-expect-error
                 elem.typeFilter = NO_TYPE_FILTER;
             }
             for (const elem2 of elem.generics) {
