@@ -33,6 +33,7 @@ inherits = "release"
 debug = 2
 
 [patch.'crates-io']
+nix = { git = "https://github.com/psumbera/nix.git", branch = "mypatch-v28" }
 # rowan = { path = "../rowan" }
 
 # chalk-solve = { path = "../chalk/chalk-solve" }

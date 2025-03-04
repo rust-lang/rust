@@ -1129,8 +1129,7 @@ dependencies = [
 [[package]]
 name = "nix"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab2156c4fce2f8df6c499cc1c763e4394b7482525bf2a9701c9d79d215f519e4"
+source = "git+https://github.com/psumbera/nix.git?branch=mypatch-v28#140320211308037d7e1bd32a9884a936737ac59f"
 dependencies = [
  "bitflags 2.7.0",
  "cfg-if",
