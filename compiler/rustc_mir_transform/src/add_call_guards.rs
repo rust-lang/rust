@@ -40,6 +40,16 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         let mut new_blocks = Vec::new();
 
         let cur_len = body.basic_blocks.len();
+        let mut new_block = |source_info: SourceInfo, is_cleanup: bool, target: BasicBlock| {
+            let block = BasicBlockData {
+                statements: vec![],
+                is_cleanup,
+                terminator: Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+            };
+            let idx = cur_len + new_blocks.len();
+            new_blocks.push(block);
+            BasicBlock::new(idx)
+        };
 
         for block in body.basic_blocks_mut() {
             match block.terminator {
@@ -53,19 +63,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
                     ) || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
-                    let call_guard = BasicBlockData {
-                        statements: vec![],
-                        is_cleanup: block.is_cleanup,
-                        terminator: Some(Terminator {
-                            source_info,
-                            kind: TerminatorKind::Goto { target: *destination },
-                        }),
-                    };
-
-                    // Get the index it will be when inserted into the MIR
-                    let idx = cur_len + new_blocks.len();
-                    new_blocks.push(call_guard);
-                    *destination = BasicBlock::new(idx);
+                    *destination = new_block(source_info, block.is_cleanup, *destination);
                 }
                 _ => {}
             }
