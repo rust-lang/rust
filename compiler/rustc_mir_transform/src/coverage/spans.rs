@@ -69,7 +69,14 @@ pub(super) fn extract_refined_covspans(
     covspans.dedup_by(|b, a| a.span.source_equal(b.span));
 
     // Sort the holes, and merge overlapping/adjacent holes.
-    let mut holes = hir_info.hole_spans.iter().map(|&span| Hole { span }).collect::<Vec<_>>();
+    let mut holes = hir_info
+        .hole_spans
+        .iter()
+        .copied()
+        // Discard any holes that aren't directly visible within the body span.
+        .filter(|&hole_span| body_span.contains(hole_span) && body_span.eq_ctxt(hole_span))
+        .map(|span| Hole { span })
+        .collect::<Vec<_>>();
     holes.sort_by(|a, b| compare_spans(a.span, b.span));
     holes.dedup_by(|b, a| a.merge_if_overlapping_or_adjacent(b));
 
