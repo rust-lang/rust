@@ -1,4 +1,4 @@
-#[inline()] //~ ERROR E0534
+#[inline()] //~ ERROR malformed `inline` attribute input
 pub fn something() {}
 
 fn main() {

@@ -1,4 +1,5 @@
 use rustc_attr_data_structures::{AttributeKind, DeprecatedSince, Deprecation};
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol, sym};
 
@@ -49,6 +50,11 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
     const PATH: &[rustc_span::Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
+    const TEMPLATE: AttributeTemplate = template!(
+        Word,
+        List: r#"/*opt*/ since = "version", /*opt*/ note = "reason""#,
+        NameValueStr: "reason"
+    );
 
     fn convert(cx: &AcceptContext<'_, '_, S>, args: &ArgParser<'_>) -> Option<AttributeKind> {
         let features = cx.features();
