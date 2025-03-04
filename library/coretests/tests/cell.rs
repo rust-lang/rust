@@ -500,7 +500,7 @@ fn const_refcell() {
         }
         a
     };
-    // Check that `borrow` is usable at compile-time
+    // Check that `borrow_mut` is usable at compile-time
     const BORROW_MUT_TEST: RefCell<u32> = {
         let a = RefCell::new(0);
         {
