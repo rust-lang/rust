@@ -188,6 +188,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vavglg"] fn vavglg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> vector_unsigned_long_long;
 
     #[link_name = "llvm.s390.vcksm"] fn vcksm(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.s390.vmeb"] fn vmeb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmeh"] fn vmeh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int;
+    #[link_name = "llvm.s390.vmef"] fn vmef(a: vector_signed_int, b: vector_signed_int) -> vector_signed_long_long;
+
+    #[link_name = "llvm.s390.vmleb"] fn vmleb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmleh"] fn vmleh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vmlef"] fn vmlef(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2388,6 +2396,59 @@ mod sealed {
     }
 
     impl_vec_trait! { [VectorAvg vec_avg] 2 (vec_vavglb, vec_vavgb, vec_vavglh, vec_vavgh, vec_vavglf, vec_vavgf, vec_vavglg, vec_vavgg) }
+
+    macro_rules! impl_mul {
+        ([$Trait:ident $m:ident] $fun:ident ($a:ty, $b:ty) -> $r:ty) => {
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl $Trait<$r> for $a {
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn $m(self, b: $b) -> $r {
+                    $fun(transmute(self), transmute(b))
+                }
+            }
+        };
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMule<Result> {
+        unsafe fn vec_mule(self, b: Self) -> Result;
+    }
+
+    // FIXME(llvm) sadly this does not yet work https://github.com/llvm/llvm-project/issues/129705
+    //    #[target_feature(enable = "vector")]
+    //    #[cfg_attr(test, assert_instr(vmleh))]
+    //    unsafe fn vec_vmleh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int {
+    //        let even_a: vector_unsigned_int = simd_as(simd_shuffle::<_, _, u16x4>(
+    //            a,
+    //            a,
+    //            const { ShuffleMask([0, 2, 4, 6]) },
+    //        ));
+    //
+    //        let even_b: vector_unsigned_int = simd_as(simd_shuffle::<_, _, u16x4>(
+    //            b,
+    //            b,
+    //            const { ShuffleMask([0, 2, 4, 6]) },
+    //        ));
+    //
+    //        simd_mul(even_a, even_b)
+    //    }
+
+    test_impl! { vec_vmeb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_short [ vmeb, vmeb ] }
+    test_impl! { vec_vmeh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_int[ vmeh, vmeh ] }
+    test_impl! { vec_vmef(a: vector_signed_int, b: vector_signed_int) -> vector_signed_long_long [ vmef, vmef ] }
+
+    test_impl! { vec_vmleb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short [ vmleb, vmleb ] }
+    test_impl! { vec_vmleh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int[ vmleh, vmleh ] }
+    test_impl! { vec_vmlef(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long [ vmlef, vmlef ] }
+
+    impl_mul!([VectorMule vec_mule] vec_vmeb (vector_signed_char, vector_signed_char) -> vector_signed_short );
+    impl_mul!([VectorMule vec_mule] vec_vmeh (vector_signed_short, vector_signed_short) -> vector_signed_int);
+    impl_mul!([VectorMule vec_mule] vec_vmef (vector_signed_int, vector_signed_int) -> vector_signed_long_long );
+
+    impl_mul!([VectorMule vec_mule] vec_vmleb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_short );
+    impl_mul!([VectorMule vec_mule] vec_vmleh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_int);
+    impl_mul!([VectorMule vec_mule] vec_vmlef (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_long_long );
 }
 
 /// Load Count to Block Boundary
@@ -3468,6 +3529,14 @@ pub unsafe fn vec_checksum(a: vector_unsigned_int, b: vector_unsigned_int) -> ve
     vcksm(a, b)
 }
 
+/// Vector Multiply Even
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mule<T: sealed::VectorMule<U>, U>(a: T, b: T) -> U {
+    a.vec_mule(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4365,5 +4434,17 @@ mod tests {
             assert!(a.checked_sub(b).is_some());
             assert_eq!(d, 1);
         }
+    }
+
+    test_vec_2! { test_vec_mule_u, vec_mule, u16x8, u16x8 -> u32x4,
+        [0xFFFF, 0, 2, 0, 2, 0, 1, 0],
+        [0xFFFF, 0, 4, 0, 0xFFFF, 0, 2, 0],
+        [0xFFFE_0001, 8, 0x0001_FFFE, 2]
+    }
+
+    test_vec_2! { test_vec_mule_i, vec_mule, i16x8, i16x8 -> i32x4,
+        [i16::MIN, 0, -2, 0, 2, 0, 1, 0],
+        [i16::MIN, 0, 4, 0, i16::MAX, 0, 2, 0],
+        [0x4000_0000, -8, 0xFFFE, 2]
     }
 }
