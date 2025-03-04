@@ -10,6 +10,8 @@ serde = { version = "1", features = ["derive"] }
 serde_yaml = "0.9"
 serde_json = "1"
 
+build_helper = { path = "../../build_helper" }
+
 [dev-dependencies]
 insta = "1"
 
