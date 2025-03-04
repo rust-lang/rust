@@ -1,7 +1,11 @@
 use std::collections::HashSet;
 
+mod builtins_configure {
+    include!("../configure.rs");
+}
+
 /// Features to enable
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 enum Feature {
     NoSysF128,
     NoSysF128IntConvert,
@@ -10,8 +14,16 @@ enum Feature {
     NoSysF16F128Convert,
 }
 
-mod builtins_configure {
-    include!("../configure.rs");
+impl Feature {
+    fn implies(self) -> &'static [Self] {
+        match self {
+            Self::NoSysF128 => [Self::NoSysF128IntConvert, Self::NoSysF16F128Convert].as_slice(),
+            Self::NoSysF128IntConvert => [].as_slice(),
+            Self::NoSysF16 => [Self::NoSysF16F64Convert, Self::NoSysF16F128Convert].as_slice(),
+            Self::NoSysF16F64Convert => [].as_slice(),
+            Self::NoSysF16F128Convert => [].as_slice(),
+        }
+    }
 }
 
 fn main() {
@@ -40,8 +52,6 @@ fn main() {
         || target.arch == "powerpc64"
     {
         features.insert(Feature::NoSysF128);
-        features.insert(Feature::NoSysF128IntConvert);
-        features.insert(Feature::NoSysF16F128Convert);
     }
 
     if target.arch == "x86" {
@@ -67,14 +77,21 @@ fn main() {
         || target.arch == "wasm64"
     {
         features.insert(Feature::NoSysF16);
-        features.insert(Feature::NoSysF16F64Convert);
-        features.insert(Feature::NoSysF16F128Convert);
     }
 
     // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
     if target.vendor == "apple" || target.os == "windows" {
         features.insert(Feature::NoSysF16F64Convert);
     }
+
+    // Add implied features. Collection is required for borrows.
+    features.extend(
+        features
+            .iter()
+            .flat_map(|x| x.implies())
+            .copied()
+            .collect::<Vec<_>>(),
+    );
 
     for feature in features {
         let (name, warning) = match feature {
