@@ -33,7 +33,7 @@ float_bench! {
     sig: (a: f64) -> f16,
     crate_fn: trunc::__truncdfhf2,
     sys_fn: __truncdfhf2,
-    sys_available: not(feature = "no-sys-f16"),
+    sys_available: not(feature = "no-sys-f16-f64-convert"),
     asm: [
         #[cfg(target_arch = "aarch64")] {
             let ret: f16;

@@ -6,6 +6,7 @@ enum Feature {
     NoSysF128,
     NoSysF128IntConvert,
     NoSysF16,
+    NoSysF16F64Convert,
     NoSysF16F128Convert,
 }
 
@@ -66,7 +67,13 @@ fn main() {
         || target.arch == "wasm64"
     {
         features.insert(Feature::NoSysF16);
+        features.insert(Feature::NoSysF16F64Convert);
         features.insert(Feature::NoSysF16F128Convert);
+    }
+
+    // These platforms are missing either `__extendhfdf2` or `__truncdfhf2`.
+    if target.vendor == "apple" || target.os == "windows" {
+        features.insert(Feature::NoSysF16F64Convert);
     }
 
     for feature in features {
@@ -75,6 +82,10 @@ fn main() {
             Feature::NoSysF128IntConvert => (
                 "no-sys-f128-int-convert",
                 "using apfloat fallback for f128 <-> int conversions",
+            ),
+            Feature::NoSysF16F64Convert => (
+                "no-sys-f16-f64-convert",
+                "using apfloat fallback for f16 <-> f64 conversions",
             ),
             Feature::NoSysF16F128Convert => (
                 "no-sys-f16-f128-convert",

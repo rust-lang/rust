@@ -98,6 +98,14 @@ intrinsics! {
 
     #[avr_skip]
     #[aapcs_on_arm]
+    #[apple_f16_arg_abi]
+    #[cfg(f16_enabled)]
+    pub extern "C" fn __extendhfdf2(a: f16) -> f64 {
+        extend(a)
+    }
+
+    #[avr_skip]
+    #[aapcs_on_arm]
     #[ppc_alias = __extendhfkf2]
     #[cfg(all(f16_enabled, f128_enabled))]
     pub extern "C" fn __extendhftf2(a: f16) -> f128 {

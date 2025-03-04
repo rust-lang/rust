@@ -311,6 +311,7 @@ mod extend {
         extend,
         f16 => f32, Half => Single, __extendhfsf2, not(feature = "no-sys-f16");
         f16 => f32, Half => Single, __gnu_h2f_ieee, not(feature = "no-sys-f16");
+        f16 => f64, Half => Double, __extendhfdf2, not(feature = "no-sys-f16-f64-convert");
         f16 => f128, Half => Quad, __extendhftf2, not(feature = "no-sys-f16-f128-convert");
         f32 => f128, Single => Quad, __extendsftf2, not(feature = "no-sys-f128");
         f64 => f128, Double => Quad, __extenddftf2, not(feature = "no-sys-f128");
@@ -340,6 +341,7 @@ mod trunc {
         trunc,
         f32 => f16, Single => Half, __truncsfhf2, not(feature = "no-sys-f16");
         f32 => f16, Single => Half, __gnu_f2h_ieee, not(feature = "no-sys-f16");
+        f64 => f16, Double => Half, __truncdfhf2, not(feature = "no-sys-f16-f64-convert");
         f128 => f16, Quad => Half, __trunctfhf2, not(feature = "no-sys-f16-f128-convert");
         f128 => f32, Quad => Single, __trunctfsf2, not(feature = "no-sys-f128");
         f128 => f64, Quad => Double, __trunctfdf2, not(feature = "no-sys-f128");
