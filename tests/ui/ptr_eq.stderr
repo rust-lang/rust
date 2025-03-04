@@ -13,5 +13,47 @@ error: use `std::ptr::eq` when comparing raw pointers
 LL |     let _ = a as *const _ == b as *const _;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a, b)`
 
-error: aborting due to 2 previous errors
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:23:13
+   |
+LL |     let _ = a.as_ptr() == b as *const _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a.as_ptr(), b as *const _)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:25:13
+   |
+LL |     let _ = a.as_ptr() == b.as_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a.as_ptr(), b.as_ptr())`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:36:13
+   |
+LL |     let _ = a.as_mut_ptr() == b as *mut [i32] as *mut _;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a.as_mut_ptr(), b as *mut [i32] as *mut _)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:38:13
+   |
+LL |     let _ = a.as_mut_ptr() == b.as_mut_ptr();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(a.as_mut_ptr(), b.as_mut_ptr())`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:45:13
+   |
+LL |     let _ = x as *const u32 == y as *mut u32 as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(x, y)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:48:13
+   |
+LL |     let _ = x as *const u32 != y as *mut u32 as *const u32;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!std::ptr::eq(x, y)`
+
+error: use `std::ptr::eq` when comparing raw pointers
+  --> tests/ui/ptr_eq.rs:52:23
+   |
+LL |     let _issue14337 = main as *const () == main as *const ();
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::ptr::eq(main as *const (), main as *const ())`
+
+error: aborting due to 9 previous errors
 
