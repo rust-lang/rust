@@ -2538,7 +2538,7 @@ class DocSearch {
          * See `buildTypeMapIndex` for more information.
          *
          * @param {rustdoc.QueryElement} elem
-         * @param {boolean} isAssocType
+         * @param {boolean=} isAssocType
          */
         const convertNameToId = (elem, isAssocType) => {
             const loweredName = elem.pathLast.toLowerCase();
@@ -2618,7 +2618,6 @@ class DocSearch {
                 ];
             }
             for (const elem2 of elem.generics) {
-                // @ts-expect-error
                 convertNameToId(elem2);
             }
             elem.bindings = new Map(Array.from(elem.bindings.entries())
