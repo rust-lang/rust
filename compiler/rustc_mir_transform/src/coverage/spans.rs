@@ -6,10 +6,8 @@ use rustc_span::{DesugaringKind, ExpnKind, MacroKind, Span};
 use tracing::{debug, debug_span, instrument};
 
 use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph};
-use crate::coverage::spans::from_mir::{
-    ExtractedCovspans, Hole, SpanFromMir, extract_covspans_from_mir,
-};
-use crate::coverage::{ExtractedHirInfo, mappings};
+use crate::coverage::spans::from_mir::{Hole, RawSpanFromMir, SpanFromMir};
+use crate::coverage::{ExtractedHirInfo, mappings, unexpand};
 
 mod from_mir;
 
@@ -19,7 +17,35 @@ pub(super) fn extract_refined_covspans(
     graph: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
 ) {
-    let ExtractedCovspans { mut covspans } = extract_covspans_from_mir(mir_body, hir_info, graph);
+    let &ExtractedHirInfo { body_span, .. } = hir_info;
+
+    let raw_spans = from_mir::extract_raw_spans_from_mir(mir_body, graph);
+    let mut covspans = raw_spans
+        .into_iter()
+        .filter_map(|RawSpanFromMir { raw_span, bcb }| try {
+            let (span, expn_kind) =
+                unexpand::unexpand_into_body_span_with_expn_kind(raw_span, body_span)?;
+            // Discard any spans that fill the entire body, because they tend
+            // to represent compiler-inserted code, e.g. implicitly returning `()`.
+            if span.source_equal(body_span) {
+                return None;
+            };
+            SpanFromMir { span, expn_kind, bcb }
+        })
+        .collect::<Vec<_>>();
+
+    // Only proceed if we found at least one usable span.
+    if covspans.is_empty() {
+        return;
+    }
+
+    // Also add the adjusted function signature span, if available.
+    // Otherwise, add a fake span at the start of the body, to avoid an ugly
+    // gap between the start of the body and the first real span.
+    // FIXME: Find a more principled way to solve this problem.
+    covspans.push(SpanFromMir::for_fn_sig(
+        hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo()),
+    ));
 
     // First, perform the passes that need macro information.
     covspans.sort_by(|a, b| graph.cmp_in_dominator_order(a.bcb, b.bcb));
