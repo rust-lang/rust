@@ -1,6 +1,6 @@
 #![allow(clippy::similar_names)] // `expr` and `expn`
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use crate::get_unique_attr;
 use crate::visitors::{Descend, for_each_expr_without_closures};
@@ -8,7 +8,6 @@ use crate::visitors::{Descend, for_each_expr_without_closures};
 use arrayvec::ArrayVec;
 use rustc_ast::{FormatArgs, FormatArgument, FormatPlaceholder};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sync::OnceLock;
 use rustc_hir::{self as hir, Expr, ExprKind, HirId, Node, QPath};
 use rustc_lint::{LateContext, LintContext};
 use rustc_span::def_id::DefId;

@@ -1,5 +1,4 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/104923>
-// ignore-tidy-linelength
 
 #![feature(trait_alias)]
 

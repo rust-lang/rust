@@ -133,40 +133,22 @@ fn layout_of_simd_ty(
     env: Arc<TraitEnvironment>,
     dl: &TargetDataLayout,
 ) -> Result<Arc<Layout>, LayoutError> {
-    let fields = db.field_types(id.into());
-
-    // Supported SIMD vectors are homogeneous ADTs with at least one field:
+    // Supported SIMD vectors are homogeneous ADTs with exactly one array field:
     //
-    // * #[repr(simd)] struct S(T, T, T, T);
-    // * #[repr(simd)] struct S { it: T, y: T, z: T, w: T }
     // * #[repr(simd)] struct S([T; 4])
     //
     // where T is a primitive scalar (integer/float/pointer).
-
-    let f0_ty = match fields.iter().next() {
-        Some(it) => it.1.clone().substitute(Interner, subst),
-        None => return Err(LayoutError::InvalidSimdType),
+    let fields = db.field_types(id.into());
+    let mut fields = fields.iter();
+    let Some(TyKind::Array(e_ty, e_len)) = fields
+        .next()
+        .filter(|_| fields.next().is_none())
+        .map(|f| f.1.clone().substitute(Interner, subst).kind(Interner).clone())
+    else {
+        return Err(LayoutError::InvalidSimdType);
     };
 
-    // The element type and number of elements of the SIMD vector
-    // are obtained from:
-    //
-    // * the element type and length of the single array field, if
-    // the first field is of array type, or
-    //
-    // * the homogeneous field type and the number of fields.
-    let (e_ty, e_len, is_array) = if let TyKind::Array(e_ty, _) = f0_ty.kind(Interner) {
-        // Extract the number of elements from the layout of the array field:
-        let FieldsShape::Array { count, .. } = db.layout_of_ty(f0_ty.clone(), env.clone())?.fields
-        else {
-            return Err(LayoutError::Unknown);
-        };
-
-        (e_ty.clone(), count, true)
-    } else {
-        // First ADT field is not an array:
-        (f0_ty, fields.iter().count() as u64, false)
-    };
+    let e_len = try_const_usize(db, &e_len).ok_or(LayoutError::HasErrorConst)? as u64;
 
     // Compute the ABI of the element type:
     let e_ly = db.layout_of_ty(e_ty, env)?;
@@ -182,16 +164,9 @@ fn layout_of_simd_ty(
     let align = dl.llvmlike_vector_align(size);
     let size = size.align_to(align.abi);
 
-    // Compute the placement of the vector fields:
-    let fields = if is_array {
-        FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() }
-    } else {
-        FieldsShape::Array { stride: e_ly.size, count: e_len }
-    };
-
     Ok(Arc::new(Layout {
         variants: Variants::Single { index: struct_variant_idx() },
-        fields,
+        fields: FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() },
         backend_repr: BackendRepr::SimdVector { element: e_abi, count: e_len },
         largest_niche: e_ly.largest_niche,
         uninhabited: false,

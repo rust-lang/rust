@@ -95,7 +95,7 @@ pub struct HirFormatter<'a> {
 enum BoundsFormattingCtx {
     Entered {
         /// We can have recursive bounds like the following case:
-        /// ```rust
+        /// ```ignore
         /// where
         ///     T: Foo,
         ///     T::FooAssoc: Baz<<T::FooAssoc as Bar>::BarAssoc> + Bar

@@ -276,7 +276,7 @@ impl ConstAndTypeMap {
 /// 1. Map the provided instance's generic args to the type alias's generic
 ///    params:
 ///
-///    ```
+///    ```ignore
 ///    type A<'a, const N: usize, T = u64> = &'a [T; N];
 ///          ^ alias generic params
 ///    let a: A<100>;

@@ -39,25 +39,10 @@ pub(crate) fn inline_const_as_literal(acc: &mut Assists, ctx: &AssistContext<'_>
         // FIXME: Add support to handle type aliases for builtin scalar types.
         validate_type_recursively(ctx, Some(&konst_ty), false, fuel)?;
 
-        let expr = konst.value(ctx.sema.db)?;
-
-        let value = match expr {
-            ast::Expr::BlockExpr(_)
-            | ast::Expr::Literal(_)
-            | ast::Expr::RefExpr(_)
-            | ast::Expr::ArrayExpr(_)
-            | ast::Expr::TupleExpr(_)
-            | ast::Expr::IfExpr(_)
-            | ast::Expr::ParenExpr(_)
-            | ast::Expr::MatchExpr(_)
-            | ast::Expr::MacroExpr(_)
-            | ast::Expr::BinExpr(_)
-            | ast::Expr::CallExpr(_) => konst
-                .eval(ctx.sema.db)
-                .ok()?
-                .render(ctx.sema.db, konst.krate(ctx.sema.db).edition(ctx.sema.db)),
-            _ => return None,
-        };
+        let value = konst
+            .eval(ctx.sema.db)
+            .ok()?
+            .render(ctx.sema.db, konst.krate(ctx.sema.db).edition(ctx.sema.db));
 
         let id = AssistId("inline_const_as_literal", AssistKind::RefactorInline);
 

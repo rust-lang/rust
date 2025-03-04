@@ -59,7 +59,7 @@ pub use crate::{
 ///
 /// That is, for something like
 ///
-/// ```
+/// ```ignore
 /// quick_check! {
 ///    fn prop() {}
 /// }

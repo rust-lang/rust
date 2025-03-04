@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ count "$.index[*][?(@.name=='foo')].inner.function.generics.params[*]" 3
 //@ is "$.index[*][?(@.name=='foo')].inner.function.generics.where_predicates" []
 //@ is "$.index[*][?(@.name=='foo')].inner.function.generics.params[0].name" \"\'a\"

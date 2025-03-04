@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ count '$.index[*][?(@.name=="outlives")].inner.function.generics.params[*]' 2
 //@ is    '$.index[*][?(@.name=="outlives")].inner.function.generics.params[0].name' \"\'a\"
 //@ is    '$.index[*][?(@.name=="outlives")].inner.function.generics.params[0].kind.lifetime.outlives' []

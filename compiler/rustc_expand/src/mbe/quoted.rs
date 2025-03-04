@@ -302,8 +302,8 @@ fn parse_tree<'a>(
 /// `None`.
 fn kleene_op(token: &Token) -> Option<KleeneOp> {
     match token.kind {
-        token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
-        token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
+        token::Star => Some(KleeneOp::ZeroOrMore),
+        token::Plus => Some(KleeneOp::OneOrMore),
         token::Question => Some(KleeneOp::ZeroOrOne),
         _ => None,
     }

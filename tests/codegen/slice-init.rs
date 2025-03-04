@@ -2,8 +2,6 @@
 
 #![crate_type = "lib"]
 
-use std::mem::MaybeUninit;
-
 // CHECK-LABEL: @zero_sized_elem
 #[no_mangle]
 pub fn zero_sized_elem() {
@@ -78,64 +76,31 @@ pub fn u16_init_one_bytes() -> [u16; N] {
     [const { u16::from_be_bytes([1, 1]) }; N]
 }
 
+// FIXME: undef bytes can just be initialized with the same value as the
+// defined bytes, if the defines bytes are all the same.
 // CHECK-LABEL: @option_none_init
 #[no_mangle]
 pub fn option_none_init() -> [Option<u8>; N] {
     // CHECK-NOT: select
-    // CHECK-NOT: br
+    // CHECK: br label %repeat_loop_header{{.*}}
     // CHECK-NOT: switch
-    // CHECK-NOT: icmp
-    // CHECK: call void @llvm.memset.p0
-    [const { None }; N]
+    // CHECK: icmp
+    // CHECK-NOT: call void @llvm.memset.p0
+    [None; N]
 }
 
-// If there is partial provenance or some bytes are initialized and some are not,
-// we can't really do better than initialize bytes or groups of bytes together.
-// CHECK-LABEL: @option_maybe_uninit_init
+use std::mem::MaybeUninit;
+
+// FIXME: This could be optimized into a memset.
+// Regression test for <https://github.com/rust-lang/rust/issues/137892>.
 #[no_mangle]
-pub fn option_maybe_uninit_init() -> [MaybeUninit<u16>; N] {
+pub fn half_uninit() -> [(u128, MaybeUninit<u128>); N] {
     // CHECK-NOT: select
     // CHECK: br label %repeat_loop_header{{.*}}
     // CHECK-NOT: switch
     // CHECK: icmp
     // CHECK-NOT: call void @llvm.memset.p0
-    [const {
-        let mut val: MaybeUninit<u16> = MaybeUninit::uninit();
-        let ptr = val.as_mut_ptr() as *mut u8;
-        unsafe {
-            ptr.write(0);
-        }
-        val
-    }; N]
-}
-
-#[repr(packed)]
-struct Packed {
-    start: u8,
-    ptr: &'static (),
-    rest: u16,
-    rest2: u8,
-}
-
-// If there is partial provenance or some bytes are initialized and some are not,
-// we can't really do better than initialize bytes or groups of bytes together.
-// CHECK-LABEL: @option_maybe_uninit_provenance
-#[no_mangle]
-pub fn option_maybe_uninit_provenance() -> [MaybeUninit<Packed>; N] {
-    // CHECK-NOT: select
-    // CHECK: br label %repeat_loop_header{{.*}}
-    // CHECK-NOT: switch
-    // CHECK: icmp
-    // CHECK-NOT: call void @llvm.memset.p0
-    [const {
-        let mut val: MaybeUninit<Packed> = MaybeUninit::uninit();
-        unsafe {
-            let ptr = &raw mut (*val.as_mut_ptr()).ptr;
-            static HAS_ADDR: () = ();
-            ptr.write_unaligned(&HAS_ADDR);
-        }
-        val
-    }; N]
+    [const { (0, MaybeUninit::uninit()) }; N]
 }
 
 // Use an opaque function to prevent rustc from removing useless drops.

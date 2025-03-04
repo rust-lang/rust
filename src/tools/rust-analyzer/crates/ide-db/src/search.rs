@@ -373,7 +373,9 @@ impl Definition {
                         SearchScope::krate(db, module.krate())
                     }
                 }
-                hir::MacroKind::BuiltIn => SearchScope::crate_graph(db),
+                hir::MacroKind::AttrBuiltIn
+                | hir::MacroKind::DeriveBuiltIn
+                | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
                 hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
                     SearchScope::reverse_dependencies(db, module.krate())
                 }
