@@ -102,8 +102,6 @@ fn main() {
     let has_reliable_f16 = match (target_arch.as_str(), target_os.as_str()) {
         // We can always enable these in Miri as that is not affected by codegen bugs.
         _ if is_miri => true,
-        // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
-        ("s390x", _) => false,
         // Unsupported <https://github.com/llvm/llvm-project/issues/94434>
         ("arm64ec", _) => false,
         // LLVM crash <https://github.com/llvm/llvm-project/issues/129394>
