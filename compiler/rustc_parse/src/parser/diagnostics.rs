@@ -1167,7 +1167,7 @@ impl<'a> Parser<'a> {
         let mut number_of_gt = 0;
         while self.look_ahead(position, |t| {
             trace!("check_trailing_angle_brackets: t={:?}", t);
-            if *t == token::BinOp(token::BinOpToken::Shr) {
+            if *t == token::Shr {
                 number_of_shr += 1;
                 true
             } else if *t == token::Gt {
@@ -1222,7 +1222,7 @@ impl<'a> Parser<'a> {
                     let span = lo.to(self.prev_token.span);
                     // Detect trailing `>` like in `x.collect::Vec<_>>()`.
                     let mut trailing_span = self.prev_token.span.shrink_to_hi();
-                    while self.token == token::BinOp(token::Shr) || self.token == token::Gt {
+                    while self.token == token::Shr || self.token == token::Gt {
                         trailing_span = trailing_span.to(self.token.span);
                         self.bump();
                     }
@@ -1468,8 +1468,7 @@ impl<'a> Parser<'a> {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
-                        let modifiers =
-                            [(token::Lt, 1), (token::Gt, -1), (token::BinOp(token::Shr), -2)];
+                        let modifiers = [(token::Lt, 1), (token::Gt, -1), (token::Shr, -2)];
                         self.consume_tts(1, &modifiers);
 
                         if !&[token::OpenDelim(Delimiter::Parenthesis), token::PathSep]
@@ -1962,7 +1961,7 @@ impl<'a> Parser<'a> {
         &mut self,
         await_sp: Span,
     ) -> PResult<'a, P<Expr>> {
-        let (hi, expr, is_question) = if self.token == token::Not {
+        let (hi, expr, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
         } else {
@@ -1974,7 +1973,7 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
-        self.expect(exp!(Not))?;
+        self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(CloseParen))?;
@@ -2034,7 +2033,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
-        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(Delimiter::Parenthesis)); //check for (
 
         if is_try && is_questionmark && is_open {
@@ -2613,8 +2612,7 @@ impl<'a> Parser<'a> {
             || self.token == TokenKind::Dot;
         // This will be true when a trait object type `Foo +` or a path which was a `const fn` with
         // type params has been parsed.
-        let was_op =
-            matches!(self.prev_token.kind, token::BinOp(token::Plus | token::Shr) | token::Gt);
+        let was_op = matches!(self.prev_token.kind, token::Plus | token::Shr | token::Gt);
         if !is_op_or_dot && !was_op {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);
@@ -2992,8 +2990,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
-        else {
+        let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
             return;
         };
         let mut spans = Vec::with_capacity(3);
@@ -3008,15 +3005,13 @@ impl<'a> Parser<'a> {
             if self.token == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
-            {
+            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or) {
                 middlediff3 = Some(span);
             }
             if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
-            {
+            if let Some(span) = self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt) {
                 spans.push(span);
                 end = Some(span);
                 break;

@@ -941,9 +941,7 @@ pub(crate) fn handle_runnables(
 
         let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if let Some(runnable) =
-                to_proto::make_update_runnable(&runnable, &update_test.label(), &update_test.env())
-            {
+            if let Some(runnable) = to_proto::make_update_runnable(&runnable, update_test) {
                 res.push(runnable);
             }
 
@@ -2158,7 +2156,7 @@ fn runnable_action_links(
 
     if hover_actions_config.update_test && client_commands_config.run_single {
         let label = update_test.label();
-        if let Some(r) = to_proto::make_update_runnable(&r, &label, &update_test.env()) {
+        if let Some(r) = to_proto::make_update_runnable(&r, update_test) {
             let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
             group.commands.push(to_command_link(update_command, r.label.clone()));
         }

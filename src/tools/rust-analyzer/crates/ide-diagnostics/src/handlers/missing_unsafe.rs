@@ -854,7 +854,7 @@ fn main() {
 #[target_feature(enable = "avx")]
 fn foo() {}
 
-#[target_feature(enable = "avx,avx2")]
+#[target_feature(enable = "avx2")]
 fn bar() {
     foo();
 }

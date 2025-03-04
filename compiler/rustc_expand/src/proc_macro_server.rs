@@ -180,28 +180,28 @@ impl FromInternal<(TokenStream, &mut Rustc<'_, '_>)> for Vec<TokenTree<TokenStre
                 Gt => op(">"),
                 AndAnd => op("&&"),
                 OrOr => op("||"),
-                Not => op("!"),
+                Bang => op("!"),
                 Tilde => op("~"),
-                BinOp(Plus) => op("+"),
-                BinOp(Minus) => op("-"),
-                BinOp(Star) => op("*"),
-                BinOp(Slash) => op("/"),
-                BinOp(Percent) => op("%"),
-                BinOp(Caret) => op("^"),
-                BinOp(And) => op("&"),
-                BinOp(Or) => op("|"),
-                BinOp(Shl) => op("<<"),
-                BinOp(Shr) => op(">>"),
-                BinOpEq(Plus) => op("+="),
-                BinOpEq(Minus) => op("-="),
-                BinOpEq(Star) => op("*="),
-                BinOpEq(Slash) => op("/="),
-                BinOpEq(Percent) => op("%="),
-                BinOpEq(Caret) => op("^="),
-                BinOpEq(And) => op("&="),
-                BinOpEq(Or) => op("|="),
-                BinOpEq(Shl) => op("<<="),
-                BinOpEq(Shr) => op(">>="),
+                Plus => op("+"),
+                Minus => op("-"),
+                Star => op("*"),
+                Slash => op("/"),
+                Percent => op("%"),
+                Caret => op("^"),
+                And => op("&"),
+                Or => op("|"),
+                Shl => op("<<"),
+                Shr => op(">>"),
+                PlusEq => op("+="),
+                MinusEq => op("-="),
+                StarEq => op("*="),
+                SlashEq => op("/="),
+                PercentEq => op("%="),
+                CaretEq => op("^="),
+                AndEq => op("&="),
+                OrEq => op("|="),
+                ShlEq => op("<<="),
+                ShrEq => op(">>="),
                 At => op("@"),
                 Dot => op("."),
                 DotDot => op(".."),
@@ -322,16 +322,16 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                     b'=' => Eq,
                     b'<' => Lt,
                     b'>' => Gt,
-                    b'!' => Not,
+                    b'!' => Bang,
                     b'~' => Tilde,
-                    b'+' => BinOp(Plus),
-                    b'-' => BinOp(Minus),
-                    b'*' => BinOp(Star),
-                    b'/' => BinOp(Slash),
-                    b'%' => BinOp(Percent),
-                    b'^' => BinOp(Caret),
-                    b'&' => BinOp(And),
-                    b'|' => BinOp(Or),
+                    b'+' => Plus,
+                    b'-' => Minus,
+                    b'*' => Star,
+                    b'/' => Slash,
+                    b'%' => Percent,
+                    b'^' => Caret,
+                    b'&' => And,
+                    b'|' => Or,
                     b'@' => At,
                     b'.' => Dot,
                     b',' => Comma,
@@ -372,10 +372,9 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
-                let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
                 smallvec![a, b]
             }
@@ -385,10 +384,9 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 suffix,
                 span,
             }) if symbol.as_str().starts_with('-') => {
-                let minus = BinOp(BinOpToken::Minus);
                 let symbol = Symbol::intern(&symbol.as_str()[1..]);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
-                let a = tokenstream::TokenTree::token_joint_hidden(minus, span);
+                let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);
                 smallvec![a, b]
             }
@@ -599,10 +597,7 @@ impl server::TokenStream for Rustc<'_, '_> {
                         Ok(Self::TokenStream::from_iter([
                             // FIXME: The span of the `-` token is lost when
                             // parsing, so we cannot faithfully recover it here.
-                            tokenstream::TokenTree::token_joint_hidden(
-                                token::BinOp(token::Minus),
-                                e.span,
-                            ),
+                            tokenstream::TokenTree::token_joint_hidden(token::Minus, e.span),
                             tokenstream::TokenTree::token_alone(token::Literal(*token_lit), e.span),
                         ]))
                     }

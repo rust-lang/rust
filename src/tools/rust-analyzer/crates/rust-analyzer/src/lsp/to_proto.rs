@@ -14,13 +14,13 @@ use ide::{
     InlayFieldsToResolve, InlayHint, InlayHintLabel, InlayHintLabelPart, InlayKind, LazyProperty,
     Markup, NavigationTarget, ReferenceCategory, RenameError, Runnable, Severity, SignatureHelp,
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
+    UpdateTest,
 };
 use ide_db::{assists, rust_doc::format_docs, FxHasher};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
 use serde_json::to_value;
-use syntax::SmolStr;
 use vfs::AbsPath;
 
 use crate::{
@@ -1623,8 +1623,7 @@ pub(crate) fn code_lens(
                     }
                     if lens_config.update_test && client_commands_config.run_single {
                         let label = update_test.label();
-                        let env = update_test.env();
-                        if let Some(r) = make_update_runnable(&r, &label, &env) {
+                        if let Some(r) = make_update_runnable(&r, update_test) {
                             let command = command::run_single(&r, label.unwrap().as_str());
                             acc.push(lsp_types::CodeLens {
                                 range: annotation_range,
@@ -1871,22 +1870,22 @@ pub(crate) mod command {
 
 pub(crate) fn make_update_runnable(
     runnable: &lsp_ext::Runnable,
-    label: &Option<SmolStr>,
-    env: &[(&str, &str)],
+    update_test: UpdateTest,
 ) -> Option<lsp_ext::Runnable> {
-    if !matches!(runnable.args, lsp_ext::RunnableArgs::Cargo(_)) {
-        return None;
-    }
-    let label = label.as_ref()?;
+    let label = update_test.label()?;
 
     let mut runnable = runnable.clone();
     runnable.label = format!("{} + {}", runnable.label, label);
 
     let lsp_ext::RunnableArgs::Cargo(r) = &mut runnable.args else {
-        unreachable!();
+        return None;
     };
 
-    r.environment.extend(env.iter().map(|(k, v)| (k.to_string(), v.to_string())));
+    r.environment.extend(update_test.env().iter().map(|(k, v)| (k.to_string(), v.to_string())));
+
+    if update_test.insta {
+        r.cargo_args.insert(0, "insta".to_owned());
+    }
 
     Some(runnable)
 }

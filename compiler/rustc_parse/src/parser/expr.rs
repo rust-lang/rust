@@ -239,8 +239,8 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
-            if self.prev_token == token::BinOp(token::Plus)
-                && self.token == token::BinOp(token::Plus)
+            if self.prev_token == token::Plus
+                && self.token == token::Plus
                 && self.prev_token.span.between(self.token.span).is_empty()
             {
                 let op_span = self.prev_token.span.to(self.token.span);
@@ -250,8 +250,8 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if self.prev_token == token::BinOp(token::Minus)
-                && self.token == token::BinOp(token::Minus)
+            if self.prev_token == token::Minus
+                && self.token == token::Minus
                 && self.prev_token.span.between(self.token.span).is_empty()
                 && !self.look_ahead(1, |tok| tok.can_begin_expr())
             {
@@ -505,23 +505,23 @@ impl<'a> Parser<'a> {
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
             // `!expr`
-            token::Not => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
+            token::Bang => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
             // `~expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
             // `-expr`
-            token::BinOp(token::Minus) => {
+            token::Minus => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Neg))
             }
             // `*expr`
-            token::BinOp(token::Star) => {
+            token::Star => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Deref))
             }
             // `&expr` and `&&expr`
-            token::BinOp(token::And) | token::AndAnd => {
+            token::And | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_expr_borrow(lo))
             }
             // `+lit`
-            token::BinOp(token::Plus) if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
+            token::Plus if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
                 let mut err = errors::LeadingPlusNotSupported {
                     span: lo,
                     remove_plus: None,
@@ -541,9 +541,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_prefix(attrs)
             }
             // Recover from `++x`:
-            token::BinOp(token::Plus)
-                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
-            {
+            token::Plus if this.look_ahead(1, |t| *t == token::Plus) => {
                 let starts_stmt = this.prev_token == token::Semi
                     || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
@@ -567,7 +565,11 @@ impl<'a> Parser<'a> {
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_prefix(attrs)?;
+        let expr = if self.token.is_range_separator() {
+            self.parse_expr_prefix_range(attrs)
+        } else {
+            self.parse_expr_prefix(attrs)
+        }?;
         let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
@@ -723,14 +725,12 @@ impl<'a> Parser<'a> {
                                     suggestion,
                                 })
                             }
-                            token::BinOp(token::Shl) => {
-                                self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
-                                    shift: self.token.span,
-                                    r#type: path,
-                                    args: args_span,
-                                    suggestion,
-                                })
-                            }
+                            token::Shl => self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
+                                shift: self.token.span,
+                                r#type: path,
+                                args: args_span,
+                                suggestion,
+                            }),
                             _ => {
                                 // We can end up here even without `<` being the next token, for
                                 // example because `parse_ty_no_plus` returns `Err` on keywords,
@@ -1574,7 +1574,7 @@ impl<'a> Parser<'a> {
         };
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (span, kind) = if self.eat(exp!(Not)) {
+        let (span, kind) = if self.eat(exp!(Bang)) {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
@@ -2595,7 +2595,7 @@ impl<'a> Parser<'a> {
                 missing_let: None,
                 comparison: None,
             };
-            if self.prev_token == token::BinOp(token::Or) {
+            if self.prev_token == token::Or {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
             } else {

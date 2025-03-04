@@ -382,7 +382,7 @@ impl<'a> Parser<'a> {
 
     /// Are we sure this could not possibly be a macro invocation?
     fn isnt_macro_invocation(&mut self) -> bool {
-        self.check_ident() && self.look_ahead(1, |t| *t != token::Not && *t != token::PathSep)
+        self.check_ident() && self.look_ahead(1, |t| *t != token::Bang && *t != token::PathSep)
     }
 
     /// Recover on encountering a struct, enum, or method definition where the user
@@ -480,7 +480,7 @@ impl<'a> Parser<'a> {
     /// Parses an item macro, e.g., `item!();`.
     fn parse_item_macro(&mut self, vis: &Visibility) -> PResult<'a, MacCall> {
         let path = self.parse_path(PathStyle::Mod)?; // `foo::bar`
-        self.expect(exp!(Not))?; // `!`
+        self.expect(exp!(Bang))?; // `!`
         match self.parse_delim_args() {
             // `( .. )` or `[ .. ]` (followed by `;`), or `{ .. }`.
             Ok(args) => {
@@ -540,7 +540,7 @@ impl<'a> Parser<'a> {
 
     fn parse_polarity(&mut self) -> ast::ImplPolarity {
         // Disambiguate `impl !Trait for Type { ... }` and `impl ! { ... }` for the never type.
-        if self.check(exp!(Not)) && self.look_ahead(1, |t| t.can_begin_type()) {
+        if self.check(exp!(Bang)) && self.look_ahead(1, |t| t.can_begin_type()) {
             self.bump(); // `!`
             ast::ImplPolarity::Negative(self.prev_token.span)
         } else {
@@ -1293,7 +1293,7 @@ impl<'a> Parser<'a> {
                 if token.is_keyword(kw::Move) {
                     return true;
                 }
-                matches!(token.kind, token::BinOp(token::Or) | token::OrOr)
+                matches!(token.kind, token::Or | token::OrOr)
             })
         } else {
             // `$qual static`
@@ -1579,7 +1579,7 @@ impl<'a> Parser<'a> {
             }
             let ident = this.parse_field_ident("enum", vlo)?;
 
-            if this.token == token::Not {
+            if this.token == token::Bang {
                 if let Err(err) = this.unexpected() {
                     err.with_note(fluent::parse_macro_expands_to_enum_variant).emit();
                 }
@@ -1814,7 +1814,7 @@ impl<'a> Parser<'a> {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens(None, attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
-                if p.is_vcs_conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                if p.is_vcs_conflict_marker(&TokenKind::Shl, &TokenKind::Lt) {
                     // Account for `<<<<<<<` diff markers. We can't proactively error here because
                     // that can be a valid type start, so we snapshot and reparse only we've
                     // encountered another parse error.
@@ -2034,7 +2034,7 @@ impl<'a> Parser<'a> {
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;
-        if self.token == token::Not {
+        if self.token == token::Bang {
             if let Err(mut err) = self.unexpected() {
                 // Encounter the macro invocation
                 err.subdiagnostic(MacroExpandsToAdtField { adt_ty });
@@ -2184,7 +2184,7 @@ impl<'a> Parser<'a> {
         if self.check_keyword(exp!(MacroRules)) {
             let macro_rules_span = self.token.span;
 
-            if self.look_ahead(1, |t| *t == token::Not) && self.look_ahead(2, |t| t.is_ident()) {
+            if self.look_ahead(1, |t| *t == token::Bang) && self.look_ahead(2, |t| t.is_ident()) {
                 return IsMacroRulesItem::Yes { has_bang: true };
             } else if self.look_ahead(1, |t| (t.is_ident())) {
                 // macro_rules foo
@@ -2209,11 +2209,11 @@ impl<'a> Parser<'a> {
         self.expect_keyword(exp!(MacroRules))?; // `macro_rules`
 
         if has_bang {
-            self.expect(exp!(Not))?; // `!`
+            self.expect(exp!(Bang))?; // `!`
         }
         let ident = self.parse_ident()?;
 
-        if self.eat(exp!(Not)) {
+        if self.eat(exp!(Bang)) {
             // Handle macro_rules! foo!
             let span = self.prev_token.span;
             self.dcx().emit_err(errors::MacroNameRemoveBang { span });
@@ -3011,7 +3011,7 @@ impl<'a> Parser<'a> {
         // else is parsed as a normal function parameter list, so some lookahead is required.
         let eself_lo = self.token.span;
         let (eself, eself_ident, eself_hi) = match self.token.uninterpolate().kind {
-            token::BinOp(token::And) => {
+            token::And => {
                 let eself = if is_isolated_self(self, 1) {
                     // `&self`
                     self.bump();
@@ -3041,12 +3041,12 @@ impl<'a> Parser<'a> {
                 (eself, self_ident, hi)
             }
             // `*self`
-            token::BinOp(token::Star) if is_isolated_self(self, 1) => {
+            token::Star if is_isolated_self(self, 1) => {
                 self.bump();
                 recover_self_ptr(self)?
             }
             // `*mut self` and `*const self`
-            token::BinOp(token::Star)
+            token::Star
                 if self.look_ahead(1, |t| t.is_mutability()) && is_isolated_self(self, 2) =>
             {
                 self.bump();
@@ -3077,7 +3077,7 @@ impl<'a> Parser<'a> {
                 }
                 _ => 0,
             },
-            token::BinOp(token::And) | token::AndAnd => 1,
+            token::And | token::AndAnd => 1,
             _ if self.token.is_keyword(kw::Mut) => 1,
             _ => 0,
         };

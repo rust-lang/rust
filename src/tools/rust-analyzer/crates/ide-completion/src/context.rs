@@ -249,8 +249,8 @@ pub(crate) enum Qualified {
         /// This would be None, if path is not solely made of
         /// `super` segments, e.g.
         ///
-        /// ```rust
-        ///   use super::foo;
+        /// ```ignore
+        /// use super::foo;
         /// ```
         ///
         /// Otherwise it should be Some(count of `super`)

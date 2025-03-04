@@ -7,7 +7,7 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 pub enum ExprPrecedence {
-    // return, break, yield, closures
+    // return val, break val, yield val, closures
     Jump,
     // = += -= *= /= %= &= |= ^= <<= >>=
     Assign,
@@ -35,8 +35,25 @@ pub enum ExprPrecedence {
     Cast,
     // unary - * ! & &mut
     Prefix,
-    // paths, loops, function calls, array indexing, field expressions, method calls
+    // function calls, array indexing, field expressions, method calls
+    Postfix,
+    // paths, loops,
     Unambiguous,
+}
+
+impl ExprPrecedence {
+    pub fn needs_parentheses_in(self, other: ExprPrecedence) -> bool {
+        match other {
+            ExprPrecedence::Unambiguous => false,
+            // postfix ops have higher precedence than any other operator, so we need to wrap
+            // any inner expression that is below
+            ExprPrecedence::Postfix => self < ExprPrecedence::Postfix,
+            // We need to wrap all binary like things, thats everything below prefix except for
+            // jumps (as those are prefix operations as well)
+            ExprPrecedence::Prefix => ExprPrecedence::Jump < self && self < ExprPrecedence::Prefix,
+            parent => self <= parent,
+        }
+    }
 }
 
 #[derive(PartialEq, Debug)]
@@ -56,11 +73,18 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
             Some(_) => ExprPrecedence::Unambiguous,
         },
 
+        Expr::BreakExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::BecomeExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::ReturnExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::YeetExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+        Expr::YieldExpr(e) if e.expr().is_some() => ExprPrecedence::Jump,
+
         Expr::BreakExpr(_)
-        | Expr::ContinueExpr(_)
+        | Expr::BecomeExpr(_)
         | Expr::ReturnExpr(_)
         | Expr::YeetExpr(_)
-        | Expr::YieldExpr(_) => ExprPrecedence::Jump,
+        | Expr::YieldExpr(_)
+        | Expr::ContinueExpr(_) => ExprPrecedence::Unambiguous,
 
         Expr::RangeExpr(..) => ExprPrecedence::Range,
 
@@ -89,27 +113,27 @@ pub fn precedence(expr: &ast::Expr) -> ExprPrecedence {
 
         Expr::LetExpr(_) | Expr::PrefixExpr(_) | Expr::RefExpr(_) => ExprPrecedence::Prefix,
 
-        Expr::ArrayExpr(_)
-        | Expr::AsmExpr(_)
-        | Expr::AwaitExpr(_)
-        | Expr::BecomeExpr(_)
-        | Expr::BlockExpr(_)
+        Expr::AwaitExpr(_)
         | Expr::CallExpr(_)
         | Expr::FieldExpr(_)
+        | Expr::IndexExpr(_)
+        | Expr::MethodCallExpr(_)
+        | Expr::TryExpr(_) => ExprPrecedence::Postfix,
+
+        Expr::ArrayExpr(_)
+        | Expr::AsmExpr(_)
+        | Expr::BlockExpr(_)
         | Expr::ForExpr(_)
         | Expr::FormatArgsExpr(_)
         | Expr::IfExpr(_)
-        | Expr::IndexExpr(_)
         | Expr::Literal(_)
         | Expr::LoopExpr(_)
         | Expr::MacroExpr(_)
         | Expr::MatchExpr(_)
-        | Expr::MethodCallExpr(_)
         | Expr::OffsetOfExpr(_)
         | Expr::ParenExpr(_)
         | Expr::PathExpr(_)
         | Expr::RecordExpr(_)
-        | Expr::TryExpr(_)
         | Expr::TupleExpr(_)
         | Expr::UnderscoreExpr(_)
         | Expr::WhileExpr(_) => ExprPrecedence::Unambiguous,
@@ -128,7 +152,7 @@ impl Expr {
     //   - https://github.com/rust-lang/rust/blob/b6852428a8ea9728369b64b9964cad8e258403d3/compiler/rustc_ast/src/util/parser.rs#L296
 
     /// Returns `true` if `self` would need to be wrapped in parentheses given that its parent is `parent`.
-    pub fn needs_parens_in(&self, parent: SyntaxNode) -> bool {
+    pub fn needs_parens_in(&self, parent: &SyntaxNode) -> bool {
         match_ast! {
             match parent {
                 ast::Expr(e) => self.needs_parens_in_expr(&e),
@@ -384,6 +408,7 @@ impl Expr {
             BreakExpr(e) => e.expr().is_none(),
             ContinueExpr(_) => true,
             YieldExpr(e) => e.expr().is_none(),
+            BecomeExpr(e) => e.expr().is_none(),
             _ => false,
         }
     }

@@ -76,6 +76,8 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
     let cfg = ctx.config.import_path_config();
 
+    let make = SyntaxFactory::new();
+
     let module = ctx.sema.scope(expr.syntax())?.module();
     let (mut missing_pats, is_non_exhaustive, has_hidden_variants): (
         Peekable<Box<dyn Iterator<Item = (ast::Pat, bool)>>>,
@@ -93,7 +95,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
             .into_iter()
             .filter_map(|variant| {
                 Some((
-                    build_pat(ctx, module, variant, cfg)?,
+                    build_pat(ctx, &make, module, variant, cfg)?,
                     variant.should_be_hidden(ctx.db(), module.krate()),
                 ))
             })
@@ -144,10 +146,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns =
-                    variants.into_iter().filter_map(|variant| build_pat(ctx, module, variant, cfg));
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
 
-                (ast::Pat::from(make::tuple_pat(patterns)), is_hidden)
+                (ast::Pat::from(make.tuple_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
         (
@@ -176,9 +179,11 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 let is_hidden = variants
                     .iter()
                     .any(|variant| variant.should_be_hidden(ctx.db(), module.krate()));
-                let patterns =
-                    variants.into_iter().filter_map(|variant| build_pat(ctx, module, variant, cfg));
-                (ast::Pat::from(make::slice_pat(patterns)), is_hidden)
+                let patterns = variants
+                    .into_iter()
+                    .filter_map(|variant| build_pat(ctx, &make, module, variant, cfg));
+
+                (ast::Pat::from(make.slice_pat(patterns)), is_hidden)
             })
             .filter(|(variant_pat, _)| is_variant_missing(&top_lvl_pats, variant_pat));
         (
@@ -203,8 +208,6 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
         "Fill match arms",
         ctx.sema.original_range(match_expr.syntax()).range,
         |builder| {
-            let make = SyntaxFactory::new();
-
             // having any hidden variants means that we need a catch-all arm
             needs_catch_all_arm |= has_hidden_variants;
 
@@ -243,7 +246,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
 
             if needs_catch_all_arm && !has_catch_all_arm {
                 cov_mark::hit!(added_wildcard_pattern);
-                let arm = make.match_arm(make::wildcard_pat().into(), None, make::ext::expr_todo());
+                let arm = make.match_arm(make.wildcard_pat().into(), None, make::ext::expr_todo());
                 arms.push(arm);
             }
 
@@ -290,7 +293,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
                 }
             }
 
-            editor.add_mappings(make.finish_with_mappings());
+            editor.add_mappings(make.take());
             builder.add_file_edits(ctx.file_id(), editor);
         },
     )
@@ -445,6 +448,7 @@ fn resolve_array_of_enum_def(
 
 fn build_pat(
     ctx: &AssistContext<'_>,
+    make: &SyntaxFactory,
     module: hir::Module,
     var: ExtendedVariant,
     cfg: ImportPathConfig,
@@ -455,31 +459,32 @@ fn build_pat(
             let edition = module.krate().edition(db);
             let path = mod_path_to_ast(&module.find_path(db, ModuleDef::from(var), cfg)?, edition);
             let fields = var.fields(db);
-            let pat = match var.kind(db) {
+            let pat: ast::Pat = match var.kind(db) {
                 hir::StructKind::Tuple => {
                     let mut name_generator = suggest_name::NameGenerator::new();
                     let pats = fields.into_iter().map(|f| {
                         let name = name_generator.for_type(&f.ty(db), db, edition);
                         match name {
-                            Some(name) => make::ext::simple_ident_pat(make::name(&name)).into(),
-                            None => make::wildcard_pat().into(),
+                            Some(name) => make::ext::simple_ident_pat(make.name(&name)).into(),
+                            None => make.wildcard_pat().into(),
                         }
                     });
-                    make::tuple_struct_pat(path, pats).into()
+                    make.tuple_struct_pat(path, pats).into()
                 }
                 hir::StructKind::Record => {
-                    let pats = fields
+                    let fields = fields
                         .into_iter()
-                        .map(|f| make::name(f.name(db).as_str()))
-                        .map(|name| make::ext::simple_ident_pat(name).into());
-                    make::record_pat(path, pats).into()
+                        .map(|f| make.name_ref(f.name(db).as_str()))
+                        .map(|name_ref| make.record_pat_field_shorthand(name_ref));
+                    let fields = make.record_pat_field_list(fields, None);
+                    make.record_pat_with_fields(path, fields).into()
                 }
-                hir::StructKind::Unit => make::path_pat(path),
+                hir::StructKind::Unit => make.path_pat(path),
             };
             Some(pat)
         }
-        ExtendedVariant::True => Some(ast::Pat::from(make::literal_pat("true"))),
-        ExtendedVariant::False => Some(ast::Pat::from(make::literal_pat("false"))),
+        ExtendedVariant::True => Some(ast::Pat::from(make.literal_pat("true"))),
+        ExtendedVariant::False => Some(ast::Pat::from(make.literal_pat("false"))),
     }
 }
 

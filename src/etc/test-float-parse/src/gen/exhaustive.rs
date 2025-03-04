@@ -13,7 +13,6 @@ impl<F: Float> Generator<F> for Exhaustive<F>
 where
     RangeInclusive<F::Int>: Iterator<Item = F::Int>,
 {
-    const NAME: &'static str = "exhaustive";
     const SHORT_NAME: &'static str = "exhaustive";
 
     type WriteCtx = F;

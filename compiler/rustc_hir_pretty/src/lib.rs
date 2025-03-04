@@ -2386,6 +2386,7 @@ impl<'a> State<'a> {
     }
 
     fn print_where_predicate(&mut self, predicate: &hir::WherePredicate<'_>) {
+        self.print_attrs_as_outer(self.attrs(predicate.hir_id));
         match *predicate.kind {
             hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params,

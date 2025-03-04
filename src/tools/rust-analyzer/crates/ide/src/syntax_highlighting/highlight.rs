@@ -23,6 +23,7 @@ pub(super) fn token(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
     edition: Edition,
+    in_tt: bool,
 ) -> Option<Highlight> {
     if let Some(comment) = ast::Comment::cast(token.clone()) {
         let h = HlTag::Comment;
@@ -40,13 +41,20 @@ pub(super) fn token(
         INT_NUMBER | FLOAT_NUMBER => HlTag::NumericLiteral.into(),
         BYTE => HlTag::ByteLiteral.into(),
         CHAR => HlTag::CharLiteral.into(),
-        IDENT if token.parent().and_then(ast::TokenTree::cast).is_some() => {
+        IDENT if in_tt => {
             // from this point on we are inside a token tree, this only happens for identifiers
             // that were not mapped down into macro invocations
             HlTag::None.into()
         }
         p if p.is_punct() => punctuation(sema, token, p),
-        k if k.is_keyword(edition) => keyword(sema, token, k)?,
+        k if k.is_keyword(edition) => {
+            if in_tt && token.prev_token().is_some_and(|t| t.kind() == T![$]) {
+                // we are likely within a macro definition where our keyword is a fragment name
+                HlTag::None.into()
+            } else {
+                keyword(sema, token, k)?
+            }
+        }
         _ => return None,
     };
     Some(highlight)
@@ -81,7 +89,7 @@ pub(super) fn name_like(
             Some(IdentClass::NameRefClass(NameRefClass::Definition(def, _))) => {
                 highlight_def(sema, krate, def, edition)
             }
-            // FIXME: Fallback for 'static and '_, as we do not resolve these yet
+            // FIXME: Fallback for '_, as we do not resolve these yet
             _ => SymbolKind::LifetimeParam.into(),
         },
     };
@@ -214,12 +222,6 @@ fn keyword(
         T![true] | T![false] => HlTag::BoolLiteral.into(),
         // crate is handled just as a token if it's in an `extern crate`
         T![crate] if parent_matches::<ast::ExternCrate>(&token) => h,
-        // self, crate, super and `Self` are handled as either a Name or NameRef already, unless they
-        // are inside unmapped token trees
-        T![self] | T![crate] | T![super] | T![Self] if parent_matches::<ast::NameRef>(&token) => {
-            return None
-        }
-        T![self] if parent_matches::<ast::Name>(&token) => return None,
         T![ref] => match token.parent().and_then(ast::IdentPat::cast) {
             Some(ident) if sema.is_unsafe_ident_pat(&ident) => h | HlMod::Unsafe,
             _ => h,
