@@ -117,6 +117,80 @@ impl<'a> State<'a> {
                 ));
                 self.hardbreak()
             }
+            hir::Attribute::Parsed(AttributeKind::Deprecation { deprecation, .. }) => {
+                self.word("#[deprecated");
+
+                // There are three possible forms here:
+                // 1. a form with explicit components like
+                //    `#[deprecated(since = "1.2.3", note = "some note", suggestion = "something")]`
+                //    where each component may be present or absent.
+                // 2. `#[deprecated = "message"]`
+                // 3. `#[deprecated]`
+                //
+                // Let's figure out which we need.
+                // If there's a `since` or `suggestion` value, we're definitely in form 1.
+                if matches!(
+                    deprecation.since,
+                    rustc_attr_parsing::DeprecatedSince::RustcVersion(..)
+                        | rustc_attr_parsing::DeprecatedSince::Future
+                        | rustc_attr_parsing::DeprecatedSince::NonStandard(..)
+                ) || deprecation.suggestion.is_some()
+                {
+                    self.word("(");
+                    let mut use_comma = false;
+
+                    match &deprecation.since {
+                        rustc_attr_parsing::DeprecatedSince::RustcVersion(rustc_version) => {
+                            self.word("since = \"");
+                            self.word(format!(
+                                "{}.{}.{}",
+                                rustc_version.major, rustc_version.minor, rustc_version.patch
+                            ));
+                            self.word("\"");
+                            use_comma = true;
+                        }
+                        rustc_attr_parsing::DeprecatedSince::Future => {
+                            self.word("since = \"future\"");
+                            use_comma = true;
+                        }
+                        rustc_attr_parsing::DeprecatedSince::NonStandard(symbol) => {
+                            self.word("since = \"");
+                            self.word(symbol.to_ident_string());
+                            self.word("\"");
+                            use_comma = true;
+                        }
+                        _ => {}
+                    }
+
+                    if let Some(note) = &deprecation.note {
+                        if use_comma {
+                            self.word(", ");
+                        }
+                        self.word("note = \"");
+                        self.word(note.to_ident_string());
+                        self.word("\"");
+                        use_comma = true;
+                    }
+
+                    if let Some(suggestion) = &deprecation.suggestion {
+                        if use_comma {
+                            self.word(", ");
+                        }
+                        self.word("suggestion = \"");
+                        self.word(suggestion.to_ident_string());
+                        self.word("\"");
+                    }
+                } else if let Some(note) = &deprecation.note {
+                    // We're in form 2: `#[deprecated = "message"]`.
+                    self.word(" = \"");
+                    self.word(note.to_ident_string());
+                    self.word("\"");
+                } else {
+                    // We're in form 3: `#[deprecated]`. Nothing to do here.
+                }
+
+                self.word("]");
+            }
             hir::Attribute::Parsed(pa) => {
                 self.word("#[attr=\"");
                 pa.print_attribute(self);
