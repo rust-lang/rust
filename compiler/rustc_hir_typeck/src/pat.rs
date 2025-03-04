@@ -361,6 +361,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
                     Some { 0: &self.check_pat_path(*hir_id, pat.hir_id, *span, qpath, &ti) }
                 }
+                PatKind::Struct(ref qpath, fields, has_rest_pat) => {
+                    Some { 0: &self.check_pat_struct(pat, qpath, fields, has_rest_pat) }
+                }
                 _ => None,
             };
         let adjust_mode = self.calc_adjust_mode(pat, resolved_pat.and_then(|r| r.path_res));
@@ -393,9 +396,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
                 self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
             }
-            PatKind::Struct(ref qpath, fields, has_rest_pat) => {
-                self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
-            }
+            PatKind::Struct(..) => (resolved_pat.unwrap().check)(expected, pat_info),
             PatKind::Guard(pat, cond) => {
                 self.check_pat(pat, expected, pat_info);
                 self.check_expr_has_type_or_error(cond, self.tcx.types.bool, |_| {});
@@ -1234,29 +1235,34 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &hir::QPath<'tcx>,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
-            Ok(data) => data,
-            Err(guar) => {
-                let err = Ty::new_error(self.tcx, guar);
-                for field in fields {
-                    self.check_pat(field.pat, err, pat_info);
+        let variant_and_pat_ty = self.check_struct_path(qpath, pat.hir_id);
+
+        let check = move |expected: Ty<'tcx>, pat_info: PatInfo<'tcx>| -> Ty<'tcx> {
+            let (variant, pat_ty) = match variant_and_pat_ty {
+                Ok(data) => data,
+                Err(guar) => {
+                    let err = Ty::new_error(self.tcx, guar);
+                    for field in fields {
+                        self.check_pat(field.pat, err, pat_info);
+                    }
+                    return err;
                 }
-                return err;
+            };
+
+            // Type-check the path.
+            let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
+
+            // Type-check subpatterns.
+            match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info)
+            {
+                Ok(()) => pat_ty,
+                Err(guar) => Ty::new_error(self.tcx, guar),
             }
         };
 
-        // Type-check the path.
-        let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
-
-        // Type-check subpatterns.
-        match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
-            Ok(()) => pat_ty,
-            Err(guar) => Ty::new_error(self.tcx, guar),
-        }
+        ResolvedPat { path_res: None, check }
     }
 
     fn check_pat_path(
