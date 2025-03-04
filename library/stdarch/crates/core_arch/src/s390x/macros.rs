@@ -396,6 +396,9 @@ macro_rules! t_b {
     (vector_bool_int) => {
         vector_bool_int
     };
+    (vector_bool_long_long) => {
+        vector_bool_long_long
+    };
     (vector_signed_char) => {
         vector_bool_char
     };

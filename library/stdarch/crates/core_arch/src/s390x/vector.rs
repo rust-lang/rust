@@ -2667,6 +2667,58 @@ mod sealed {
         vgef vector_float
         vgeg vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSel<Mask>: Sized {
+        unsafe fn vec_sel(self, b: Self, c: Mask) -> Self;
+    }
+
+    macro_rules! impl_vec_sel {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSel<t_u!($ty)> for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_sel(self, b: Self, c: t_u!($ty)) -> Self {
+                        let b = simd_and(b, transmute(c));
+                        let a = simd_and(self, simd_xor(transmute(c), transmute(vector_signed_char([!0; 16]))));
+                        simd_or(a, b)
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSel<t_b!($ty)> for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_sel(self, b: Self, c: t_b!($ty)) -> Self {
+                        // defer to the implementation with an unsigned mask
+                        self.vec_sel(b, transmute::<_, t_u!($ty)>(c))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_sel! {
+        vector_signed_char
+        vector_signed_short
+        vector_signed_int
+        vector_signed_long_long
+
+        vector_unsigned_char
+        vector_unsigned_short
+        vector_unsigned_int
+        vector_unsigned_long_long
+
+        vector_bool_char
+        vector_bool_short
+        vector_bool_int
+        vector_bool_long_long
+
+        vector_float
+        vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -3837,6 +3889,14 @@ pub unsafe fn vec_gather_element<T: sealed::VectorGatherElement, const D: u32>(
     a.vec_gather_element::<D>(b, c)
 }
 
+/// Vector Select
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sel<T: sealed::VectorSel<U>, U>(a: T, b: T, c: U) -> T {
+    a.vec_sel(b, c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4783,6 +4843,20 @@ mod tests {
         ]);
         let d = unsafe { vec_bperm_u128(a, b) };
         assert_eq!(d.as_array(), &[0xF00, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_sel() {
+        let a = vector_signed_int([1, 2, 3, 4]);
+        let b = vector_signed_int([5, 6, 7, 8]);
+
+        let e = vector_unsigned_int([9, 10, 11, 12]);
+        let f = vector_unsigned_int([9, 9, 11, 11]);
+
+        let c: vector_bool_int = unsafe { simd_eq(e, f) };
+        assert_eq!(c.as_array(), &[!0, 0, !0, 0]);
+        let d: vector_signed_int = unsafe { vec_sel(a, b, c) };
+        assert_eq!(d.as_array(), &[5, 2, 7, 4]);
     }
 
     #[simd_test(enable = "vector")]
