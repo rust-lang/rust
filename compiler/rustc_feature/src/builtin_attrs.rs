@@ -111,6 +111,7 @@ pub enum AttributeGate {
     Ungated,
 }
 
+// FIXME(jdonszelmann): move to rustc_attr_data_structures
 /// A template that the attribute input must match.
 /// Only top-level shape (`#[attr]` vs `#[attr(...)]` vs `#[attr = ...]`) is considered now.
 #[derive(Clone, Copy, Default)]
@@ -125,6 +126,26 @@ pub struct AttributeTemplate {
     /// If `Some`, the attribute is allowed to be a name/value pair where the
     /// value is a string, like `#[must_use = "reason"]`.
     pub name_value_str: Option<&'static str>,
+}
+
+impl AttributeTemplate {
+    pub fn suggestions(&self, inner: bool, name: impl std::fmt::Display) -> Vec<String> {
+        let mut suggestions = vec![];
+        let inner = if inner { "!" } else { "" };
+        if self.word {
+            suggestions.push(format!("#{inner}[{name}]"));
+        }
+        if let Some(descr) = self.list {
+            suggestions.push(format!("#{inner}[{name}({descr})]"));
+        }
+        suggestions.extend(self.one_of.iter().map(|&word| format!("#{inner}[{name}({word})]")));
+        if let Some(descr) = self.name_value_str {
+            suggestions.push(format!("#{inner}[{name} = \"{descr}\"]"));
+        }
+        suggestions.sort();
+
+        suggestions
+    }
 }
 
 /// How to handle multiple duplicate attributes on the same item.
@@ -181,20 +202,21 @@ pub enum AttributeDuplicates {
 /// A convenience macro for constructing attribute templates.
 /// E.g., `template!(Word, List: "description")` means that the attribute
 /// supports forms `#[attr]` and `#[attr(description)]`.
+#[macro_export]
 macro_rules! template {
-    (Word) => { template!(@ true, None, &[], None) };
-    (List: $descr: expr) => { template!(@ false, Some($descr), &[], None) };
-    (OneOf: $one_of: expr) => { template!(@ false, None, $one_of, None) };
-    (NameValueStr: $descr: expr) => { template!(@ false, None, &[], Some($descr)) };
-    (Word, List: $descr: expr) => { template!(@ true, Some($descr), &[], None) };
-    (Word, NameValueStr: $descr: expr) => { template!(@ true, None, &[], Some($descr)) };
+    (Word) => { $crate::template!(@ true, None, &[], None) };
+    (List: $descr: expr) => { $crate::template!(@ false, Some($descr), &[], None) };
+    (OneOf: $one_of: expr) => { $crate::template!(@ false, None, $one_of, None) };
+    (NameValueStr: $descr: expr) => { $crate::template!(@ false, None, &[], Some($descr)) };
+    (Word, List: $descr: expr) => { $crate::template!(@ true, Some($descr), &[], None) };
+    (Word, NameValueStr: $descr: expr) => { $crate::template!(@ true, None, &[], Some($descr)) };
     (List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        template!(@ false, Some($descr1), &[], Some($descr2))
+        $crate::template!(@ false, Some($descr1), &[], Some($descr2))
     };
     (Word, List: $descr1: expr, NameValueStr: $descr2: expr) => {
-        template!(@ true, Some($descr1), &[], Some($descr2))
+        $crate::template!(@ true, Some($descr1), &[], Some($descr2))
     };
-    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr) => { AttributeTemplate {
+    (@ $word: expr, $list: expr, $one_of: expr, $name_value_str: expr) => { $crate::AttributeTemplate {
         word: $word, list: $list, one_of: $one_of, name_value_str: $name_value_str
     } };
 }

@@ -1,6 +1,7 @@
 use rustc_abi::Align;
 use rustc_ast::{IntTy, LitIntType, LitKind, UintTy};
 use rustc_attr_data_structures::{AttributeKind, IntType, ReprAttr};
+use rustc_feature::{AttributeTemplate, template};
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 
 use super::{CombineAttributeParser, ConvertFn};
@@ -23,6 +24,8 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
     const PATH: &[Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
+    // FIXME(jdonszelmann): never used
+    const TEMPLATE: AttributeTemplate = template!(List: "C");
 
     fn extend<'c>(
         cx: &'c mut AcceptContext<'_, '_, S>,

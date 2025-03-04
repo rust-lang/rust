@@ -235,8 +235,6 @@ pub enum AttributeKind {
 
     /// Represents [`#[repr]`](https://doc.rust-lang.org/stable/reference/type-layout.html#representations).
     Repr(ThinVec<(ReprAttr, Span)>),
-    /// Represents `#[rustc_force_inline]`
-    RustcForceInline(Span, Option<Symbol>),
     /// Represents `#[stable]`, `#[unstable]` and `#[rustc_allowed_through_unstable_modules]`.
     Stability {
         stability: Stability,
