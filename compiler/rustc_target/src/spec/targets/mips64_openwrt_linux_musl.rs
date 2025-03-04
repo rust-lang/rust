@@ -23,6 +23,7 @@ pub(crate) fn target() -> Target {
         data_layout: "E-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: "mips64".into(),
         options: TargetOptions {
+            vendor: "openwrt".into(),
             abi: "abi64".into(),
             endian: Endian::Big,
             mcount: "_mcount".into(),
