@@ -2834,7 +2834,7 @@ class DocSearch {
             }
             let fnInputs = null;
             let fnOutput = null;
-            // @ts-expect-error
+            /** @type {Map<number, number> | null} */
             let mgens = null;
             if (typeInfo !== "elems" && typeInfo !== "returned") {
                 fnInputs = unifyFunctionTypes(
@@ -3047,7 +3047,6 @@ class DocSearch {
                             writeFn(nested, result);
                         }
                         return;
-                    // @ts-expect-error
                     } else if (mgens) {
                         for (const [queryId, fnId] of mgens) {
                             if (fnId === fnType.id) {
