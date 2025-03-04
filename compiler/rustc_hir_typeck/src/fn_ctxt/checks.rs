@@ -3,9 +3,7 @@ use std::{fmt, iter, mem};
 use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, a_or_an, listify, pluralize,
-};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -2190,62 +2188,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
                 (res, LoweredTy::from_raw(self, path_span, ty))
             }
-        }
-    }
-
-    pub(super) fn collect_unused_stmts_for_coerce_return_ty(
-        &self,
-        errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
-    ) {
-        for (span, code) in errors_causecode {
-            self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
-                if let Some(fn_sig) = self.body_fn_sig()
-                    && let ObligationCauseCode::WhereClauseInExpr(_, _, binding_hir_id, ..) = code
-                    && !fn_sig.output().is_unit()
-                {
-                    let mut block_num = 0;
-                    let mut found_semi = false;
-                    for (hir_id, node) in self.tcx.hir_parent_iter(binding_hir_id) {
-                        // Don't proceed into parent bodies
-                        if hir_id.owner != binding_hir_id.owner {
-                            break;
-                        }
-                        match node {
-                            hir::Node::Stmt(stmt) => {
-                                if let hir::StmtKind::Semi(expr) = stmt.kind {
-                                    let expr_ty = self.typeck_results.borrow().expr_ty(expr);
-                                    let return_ty = fn_sig.output();
-                                    if !matches!(expr.kind, hir::ExprKind::Ret(..))
-                                        && self.may_coerce(expr_ty, return_ty)
-                                    {
-                                        found_semi = true;
-                                    }
-                                }
-                            }
-                            hir::Node::Block(_block) => {
-                                if found_semi {
-                                    block_num += 1;
-                                }
-                            }
-                            hir::Node::Item(item) => {
-                                if let hir::ItemKind::Fn { .. } = item.kind {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    if block_num > 1 && found_semi {
-                        err.span_suggestion_verbose(
-                            // use the span of the *whole* expr
-                            self.tcx.hir().span(binding_hir_id).shrink_to_lo(),
-                            "you might have meant to return this to infer its type parameters",
-                            "return ",
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
-            });
         }
     }
 
