@@ -202,6 +202,10 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vgfmf"] fn vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
     #[link_name = "llvm.s390.vgfmg"] fn vgfmg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
 
+    #[link_name = "llvm.s390.vgfmab"] fn vgfmab(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vgfmah"] fn vgfmah(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vgfmaf"] fn vgfmaf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
+    #[link_name = "llvm.s390.vgfmag"] fn vgfmag(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: u128) -> u128;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2510,6 +2514,44 @@ mod sealed {
     impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_short );
     impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_int);
     impl_mul!([VectorGfmsum vec_gfmsum] vec_vgfmf (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_long_long );
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorGfmsumAccum {
+        type Result;
+        unsafe fn vec_gfmsum_accum(self, b: Self, c: Self::Result) -> Self::Result;
+    }
+
+    test_impl! { vec_vgfmab(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short [ vgfmab, vgfmab ] }
+    test_impl! { vec_vgfmah(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int[ vgfmah, vgfmah] }
+    test_impl! { vec_vgfmaf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long [ vgfmaf, vgfmaf ] }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorGfmsumAccum for vector_unsigned_char {
+        type Result = vector_unsigned_short;
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_gfmsum_accum(self, b: Self, c: Self::Result) -> Self::Result {
+            vec_vgfmab(self, b, c)
+        }
+    }
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorGfmsumAccum for vector_unsigned_short {
+        type Result = vector_unsigned_int;
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_gfmsum_accum(self, b: Self, c: Self::Result) -> Self::Result {
+            vec_vgfmah(self, b, c)
+        }
+    }
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorGfmsumAccum for vector_unsigned_int {
+        type Result = vector_unsigned_long_long;
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_gfmsum_accum(self, b: Self, c: Self::Result) -> Self::Result {
+            vec_vgfmaf(self, b, c)
+        }
+    }
 }
 
 /// Load Count to Block Boundary
@@ -3611,6 +3653,18 @@ pub unsafe fn vec_gfmsum<T: sealed::VectorGfmsum<U>, U>(a: T, b: T) -> U {
     a.vec_gfmsum(b)
 }
 
+/// Vector Galois Field Multiply Sum
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_gfmsum_accum<T: sealed::VectorGfmsumAccum>(
+    a: T,
+    b: T,
+    c: T::Result,
+) -> T::Result {
+    a.vec_gfmsum_accum(b, c)
+}
+
 /// Vector Galois Field Multiply Sum 128-bits
 #[inline]
 #[target_feature(enable = "vector")]
@@ -3621,6 +3675,19 @@ pub unsafe fn vec_gfmsum_128(
     b: vector_unsigned_long_long,
 ) -> vector_unsigned_char {
     transmute(vgfmg(a, b))
+}
+
+/// Vector Galois Field Multiply Sum and Accumulate 128-bits
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vgfmag))]
+pub unsafe fn vec_gfmsum_accum_128(
+    a: vector_unsigned_long_long,
+    b: vector_unsigned_long_long,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    transmute(vgfmag(a, b, transmute(c)))
 }
 
 #[cfg(test)]
