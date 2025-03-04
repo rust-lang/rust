@@ -200,6 +200,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vgfmb"] fn vgfmb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vgfmh"] fn vgfmh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vgfmf"] fn vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
+    #[link_name = "llvm.s390.vgfmg"] fn vgfmg(a: vector_unsigned_long_long, b: vector_unsigned_long_long) -> u128;
+
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3609,6 +3611,18 @@ pub unsafe fn vec_gfmsum<T: sealed::VectorGfmsum<U>, U>(a: T, b: T) -> U {
     a.vec_gfmsum(b)
 }
 
+/// Vector Galois Field Multiply Sum 128-bits
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(test, assert_instr(vgfmg))]
+pub unsafe fn vec_gfmsum_128(
+    a: vector_unsigned_long_long,
+    b: vector_unsigned_long_long,
+) -> vector_unsigned_char {
+    transmute(vgfmg(a, b))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4530,5 +4544,20 @@ mod tests {
         [0x0000, 0xFFFF, 0xAAAA, 0x5555, 0x1234, 0x5678, 0x9ABC, 0xDEF0],
         [0xFFFF, 0x0000, 0x5555, 0xAAAA, 0x0001, 0x8000, 0x7FFF, 0x1357],
         [0, 0, 0x2B3C1234, 0x3781D244]
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_gfmsum_128() {
+        let a = vector_unsigned_long_long([1, 2]);
+        let b = vector_unsigned_long_long([3, 4]);
+
+        let d: u128 = unsafe { transmute(vec_gfmsum_128(a, b)) };
+        assert_eq!(d, 11);
+
+        let a = vector_unsigned_long_long([0x0101010101010101, 0x0202020202020202]);
+        let b = vector_unsigned_long_long([0x0404040404040404, 0x0505050505050505]);
+
+        let d: u128 = unsafe { transmute(vec_gfmsum_128(a, b)) };
+        assert_eq!(d, 0xE000E000E000E000E000E000E000E);
     }
 }
