@@ -86,7 +86,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     let rust_target_features = tcx.rust_target_features(LOCAL_CRATE);
 
-    let mut inline_span = None;
     let mut link_ordinal_span = None;
     let mut no_sanitize_span = None;
     let mut mixed_export_name_no_mangle_lint_state = MixedExportNameAndNoMangleState::default();
@@ -518,8 +517,14 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     mixed_export_name_no_mangle_lint_state.lint_if_mixed(tcx);
 
-    codegen_fn_attrs.inline =
-        find_attr!(attrs, AttributeKind::Inline(i, _) => *i).unwrap_or(InlineAttr::None);
+    let inline_span;
+    (codegen_fn_attrs.inline, inline_span) = if let Some((inline_attr, span)) =
+        find_attr!(attrs, AttributeKind::Inline(i, span) => (*i, *span))
+    {
+        (inline_attr, Some(span))
+    } else {
+        (InlineAttr::None, None)
+    };
 
     // naked function MUST NOT be inlined! This attribute is required for the rust compiler itself,
     // but not for the code generation backend because at that point the naked function will just be
@@ -541,7 +546,6 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
             return OptimizeAttr::Default;
         };
 
-        inline_span = Some(attr.span());
         let [item] = &items[..] else {
             err(attr.span(), "expected one argument");
             return OptimizeAttr::Default;

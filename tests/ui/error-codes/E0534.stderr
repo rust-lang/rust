@@ -1,9 +1,22 @@
-error[E0534]: expected one argument
+error[E0539]: malformed `inline` attribute input
   --> $DIR/E0534.rs:1:1
    |
 LL | #[inline()]
    | ^^^^^^^^^^^
+   |
+note: expected a single argument here
+  --> $DIR/E0534.rs:1:9
+   |
+LL | #[inline()]
+   |         ^^
+help: the following are possible correct uses
+   |
+LL | #[inline(always|never)]
+   |          ++++++++++++
+LL - #[inline()]
+LL + #[inline]
+   |
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0534`.
+For more information about this error, try `rustc --explain E0539`.
