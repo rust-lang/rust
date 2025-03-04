@@ -701,6 +701,47 @@ mod sealed {
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorNmadd {
+        unsafe fn vec_nmadd(self, b: Self, c: Self) -> Self;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vfnmasb)
+    )]
+    unsafe fn vec_nmadd_f32(a: vector_float, b: vector_float, c: vector_float) -> vector_float {
+        simd_neg(simd_fma(a, b, c))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorNmadd for vector_float {
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_nmadd(self, b: Self, c: Self) -> Self {
+            vec_nmadd_f32(self, b, c)
+        }
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vfnmadb)
+    )]
+    unsafe fn vec_nmadd_f64(a: vector_double, b: vector_double, c: vector_double) -> vector_double {
+        simd_neg(simd_fma(a, b, c))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorNmadd for vector_double {
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_nmadd(self, b: Self, c: Self) -> Self {
+            vec_nmadd_f64(self, b, c)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorSplat {
         unsafe fn vec_splat<const IMM: u32>(self) -> Self;
     }
@@ -2676,6 +2717,14 @@ where
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_nabs<T: sealed::VectorNabs>(a: T) -> T {
     a.vec_nabs()
+}
+
+/// Vector Negative Multiply Add
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_nmadd<T: sealed::VectorNmadd>(a: T, b: T, c: T) -> T {
+    a.vec_nmadd(b, c)
 }
 
 /// Vector Negative Multiply Subtract
