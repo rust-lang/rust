@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/parent_generics_of_encoding_impl_trait.rs:9:5
    |
 LL |     generics_of_parent_impl_trait::foo([()]);
@@ -12,4 +12,4 @@ LL | pub fn foo<const N: usize>(foo: impl Into<[(); N + 1]>) {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

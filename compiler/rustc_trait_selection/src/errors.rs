@@ -220,27 +220,6 @@ pub struct AmbiguousImpl<'a> {
     pub path: PathBuf,
 }
 
-// Copy of `AnnotationRequired` for E0284
-#[derive(Diagnostic)]
-#[diag(trait_selection_type_annotations_needed, code = E0284)]
-pub struct AmbiguousReturn<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub source_kind: &'static str,
-    pub source_name: &'a str,
-    #[label]
-    pub failure_span: Option<Span>,
-    #[subdiagnostic]
-    pub bad_label: Option<InferenceBadError<'a>>,
-    #[subdiagnostic]
-    pub infer_subdiags: Vec<SourceKindSubdiag<'a>>,
-    #[subdiagnostic]
-    pub multi_suggestions: Vec<SourceKindMultiSuggestion<'a>>,
-    #[note(trait_selection_full_type_written)]
-    pub was_written: bool,
-    pub path: PathBuf,
-}
-
 // Used when a better one isn't available
 #[derive(Subdiagnostic)]
 #[label(trait_selection_label_bad)]

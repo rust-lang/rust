@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed for `SmallCString<_>`
+error[E0283]: type annotations needed for `SmallCString<_>`
   --> $DIR/issue-98299.rs:4:36
    |
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
@@ -16,7 +16,7 @@ help: consider giving this closure parameter an explicit type, where the value o
 LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
    |                                        +++++++++++++++++
 
-error[E0284]: type annotations needed for `SmallCString<_>`
+error[E0283]: type annotations needed for `SmallCString<_>`
   --> $DIR/issue-98299.rs:4:36
    |
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
@@ -36,7 +36,7 @@ help: consider giving this closure parameter an explicit type, where the value o
 LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
    |                                        +++++++++++++++++
 
-error[E0284]: type annotations needed for `SmallCString<_>`
+error[E0283]: type annotations needed for `SmallCString<_>`
   --> $DIR/issue-98299.rs:4:36
    |
 LL |     SmallCString::try_from(p).map(|cstr| cstr);
@@ -58,4 +58,4 @@ LL |     SmallCString::try_from(p).map(|cstr: SmallCString<N>| cstr);
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

@@ -20,7 +20,7 @@ note: tuple struct defined here
 LL | struct ArrayHolder<const X: usize>([u32; X]);
    |        ^^^^^^^^^^^
 
-error[E0284]: type annotations needed for `ArrayHolder<_>`
+error[E0283]: type annotations needed for `ArrayHolder<_>`
   --> $DIR/issue-62504.rs:26:9
    |
 LL |     let mut array = ArrayHolder::new();
@@ -36,7 +36,7 @@ help: consider giving `array` an explicit type, where the value of const paramet
 LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();
    |                  ++++++++++++++++
 
-error[E0284]: type annotations needed for `ArrayHolder<_>`
+error[E0283]: type annotations needed for `ArrayHolder<_>`
   --> $DIR/issue-62504.rs:26:9
    |
 LL |     let mut array = ArrayHolder::new();
@@ -56,5 +56,5 @@ LL |     let mut array: ArrayHolder<X> = ArrayHolder::new();
 
 error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0284, E0308.
-For more information about an error, try `rustc --explain E0284`.
+Some errors have detailed explanations: E0283, E0308.
+For more information about an error, try `rustc --explain E0283`.

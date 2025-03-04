@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed: cannot satisfy `_ == A`
+error[E0283]: type annotations needed: cannot satisfy `_ == A`
   --> $DIR/two_tait_defining_each_other2.rs:11:8
    |
 LL | fn muh(x: A) -> B {
@@ -6,4 +6,4 @@ LL | fn muh(x: A) -> B {
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

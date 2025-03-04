@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-69683.rs:30:10
    |
 LL |     0u16.foo(b);
@@ -41,5 +41,4 @@ LL +     <u16 as Foo<I>>::foo(0u16, b);
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0283, E0284.
-For more information about an error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0283`.

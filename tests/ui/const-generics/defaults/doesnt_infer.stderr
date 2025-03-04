@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed for `Foo<_>`
+error[E0283]: type annotations needed for `Foo<_>`
   --> $DIR/doesnt_infer.rs:13:9
    |
 LL |     let foo = Foo::foo();
@@ -14,7 +14,7 @@ help: consider giving `foo` an explicit type, where the value of const parameter
 LL |     let foo: Foo<N> = Foo::foo();
    |            ++++++++
 
-error[E0284]: type annotations needed for `Foo<_>`
+error[E0283]: type annotations needed for `Foo<_>`
   --> $DIR/doesnt_infer.rs:13:9
    |
 LL |     let foo = Foo::foo();
@@ -34,4 +34,4 @@ LL |     let foo: Foo<N> = Foo::foo();
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

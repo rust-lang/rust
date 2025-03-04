@@ -1,8 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_errors::{
-    Applicability, Diag, E0283, E0284, E0790, MultiSpan, StashKey, struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, E0283, E0790, MultiSpan, StashKey, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
@@ -534,7 +532,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         obligation.cause.body_id,
                         span,
                         arg,
-                        TypeAnnotationNeeded::E0284,
+                        TypeAnnotationNeeded::E0283,
                         true,
                     )
                     .with_note(format!("cannot satisfy `{predicate}`"))
@@ -543,7 +541,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     struct_span_code_err!(
                         self.dcx(),
                         span,
-                        E0284,
+                        E0283,
                         "type annotations needed: cannot satisfy `{predicate}`",
                     )
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
@@ -563,7 +561,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         obligation.cause.body_id,
                         span,
                         arg,
-                        TypeAnnotationNeeded::E0284,
+                        TypeAnnotationNeeded::E0283,
                         true,
                     );
                     err
@@ -573,7 +571,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     struct_span_code_err!(
                         self.dcx(),
                         span,
-                        E0284,
+                        E0283,
                         "type annotations needed: cannot satisfy `{predicate}`",
                     )
                     .with_span_label(span, format!("cannot satisfy `{predicate}`"))
@@ -585,7 +583,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     obligation.cause.body_id,
                     span,
                     ct.into(),
-                    TypeAnnotationNeeded::E0284,
+                    TypeAnnotationNeeded::E0283,
                     true,
                 ),
             ty::PredicateKind::NormalizesTo(ty::NormalizesTo { alias, term })
@@ -598,7 +596,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 struct_span_code_err!(
                     self.dcx(),
                     span,
-                    E0284,
+                    E0283,
                     "type annotations needed: cannot normalize `{alias}`",
                 )
                 .with_span_label(span, format!("cannot normalize `{alias}`"))
@@ -612,7 +610,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 struct_span_code_err!(
                     self.dcx(),
                     span,
-                    E0284,
+                    E0283,
                     "type annotations needed: cannot satisfy `{predicate}`",
                 )
                 .with_span_label(span, format!("cannot satisfy `{predicate}`"))

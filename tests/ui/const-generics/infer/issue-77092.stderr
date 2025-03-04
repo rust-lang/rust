@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-77092.rs:11:26
    |
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
@@ -14,7 +14,7 @@ help: consider specifying the generic arguments
 LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
    |                                             ++++++++++
 
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-77092.rs:11:26
    |
 LL |         println!("{:?}", take_array_from_mut(&mut arr, i));
@@ -34,4 +34,4 @@ LL |         println!("{:?}", take_array_from_mut::<i32, N>(&mut arr, i));
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.
