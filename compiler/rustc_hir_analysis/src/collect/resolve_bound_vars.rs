@@ -1462,7 +1462,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed = self.tcx.create_def(opaque_def_id, ident.name, DefKind::LifetimeParam);
+                let feed =
+                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()
