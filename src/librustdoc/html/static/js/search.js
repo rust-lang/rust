@@ -1584,17 +1584,17 @@ class DocSearch {
      * This is effectively string interning, so that function matching can be
      * done more quickly. Two types with the same name but different item kinds
      * get the same ID.
-	 *
-	 * @template T extends string
-	 * @overload
+     *
+     * @template T extends string
+     * @overload
      * @param {T} name
      * @param {boolean=} isAssocType - True if this is an assoc type
      * @returns {T extends "" ? null : number}
-	 *
-	 * @param {string} name
+     *
+     * @param {string} name
      * @param {boolean=} isAssocType
      * @returns {number | null}
-	 * 
+     *
      */
     buildTypeMapIndex(name, isAssocType) {
         if (name === "" || name === null) {
