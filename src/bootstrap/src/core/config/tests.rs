@@ -518,7 +518,9 @@ fn test_explicit_stage() {
 
 #[test]
 fn test_exclude() {
-    let config = parse("build.exclude=[\"test/codegen\"]");
+    use std::path::MAIN_SEPARATOR;
+    let exclude_path = format!("test{}codegen", MAIN_SEPARATOR);
+    let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
 
     let first_excluded = config
         .skip
@@ -527,5 +529,5 @@ fn test_exclude() {
         .to_str()
         .expect("Failed to convert excluded path to string");
 
-    assert_eq!(first_excluded, "test/codegen");
+    assert_eq!(first_excluded, exclude_path);
 }
