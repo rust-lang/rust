@@ -709,11 +709,11 @@ impl TestProps {
 /// returns a struct containing various parts of the directive.
 fn line_directive<'line>(
     line_number: usize,
-    comment: &str,
     original_line: &'line str,
 ) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
-    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
+    let after_comment =
+        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
 
     let revision;
     let raw_directive;
@@ -722,7 +722,7 @@ fn line_directive<'line>(
         // A comment like `//@[foo]` only applies to revision `foo`.
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
-                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
             )
         };
 
@@ -836,6 +836,8 @@ pub(crate) fn check_directive<'a>(
     CheckDirectiveResult { is_known_directive: is_known(&directive_name), trailing_directive }
 }
 
+const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+
 fn iter_header(
     mode: Mode,
     _suite: &str,
@@ -849,8 +851,7 @@ fn iter_header(
     }
 
     // Coverage tests in coverage-run mode always have these extra directives, without needing to
-    // specify them manually in every test file. (Some of the comments below have been copied over
-    // from the old `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    // specify them manually in every test file.
     //
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == Mode::CoverageRun {
@@ -867,9 +868,6 @@ fn iter_header(
         }
     }
 
-    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
-
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
@@ -882,7 +880,7 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        let Some(directive_line) = line_directive(line_number, comment, ln) else {
+        let Some(directive_line) = line_directive(line_number, ln) else {
             continue;
         };
 
