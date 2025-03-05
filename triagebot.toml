@@ -1096,6 +1096,10 @@ title = "[stable"
 branch = "stable"
 
 [assign.adhoc_groups]
+compiler_leads = [
+    "@davidtwco",
+    "@wesleywiser",
+]
 compiler = [
     "@BoxyUwU",
     "@cjgillot",
