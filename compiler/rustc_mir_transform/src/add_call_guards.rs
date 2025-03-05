@@ -65,6 +65,32 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
                     // It's a critical edge, break it
                     *destination = new_block(source_info, block.is_cleanup, *destination);
                 }
+                Some(Terminator {
+                    kind:
+                        TerminatorKind::InlineAsm {
+                            asm_macro: InlineAsmMacro::Asm,
+                            ref mut targets,
+                            ref operands,
+                            unwind,
+                            ..
+                        },
+                    source_info,
+                }) if self == &CriticalCallEdges => {
+                    let has_outputs = operands.iter().any(|op| {
+                        matches!(op, InlineAsmOperand::InOut { .. } | InlineAsmOperand::Out { .. })
+                    });
+                    let has_labels =
+                        operands.iter().any(|op| matches!(op, InlineAsmOperand::Label { .. }));
+                    let invoke =
+                        matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate(_));
+                    if has_outputs && (has_labels || invoke) {
+                        for target in targets.iter_mut() {
+                            if pred_count[*target] > 1 {
+                                *target = new_block(source_info, block.is_cleanup, *target);
+                            }
+                        }
+                    }
+                }
                 _ => {}
             }
         }
