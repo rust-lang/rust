@@ -211,6 +211,8 @@ unsafe extern "unadjusted" {
 
     #[link_name = "llvm.s390.vftcisb"] fn vftcisb(a: vector_float, b: u32) -> PackedTuple<vector_bool_int, i32>;
     #[link_name = "llvm.s390.vftcidb"] fn vftcidb(a: vector_double, b: u32) -> PackedTuple<vector_bool_long_long, i32>;
+
+    #[link_name = "llvm.s390.vtm"] fn vtm(a: i8x16, b: i8x16) -> i32;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2818,6 +2820,44 @@ mod sealed {
             x
         }
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorTestMask {
+        type Mask;
+        unsafe fn vec_test_mask(self, other: Self::Mask) -> i32;
+    }
+
+    macro_rules! impl_vec_test_mask {
+        ($($instr:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorTestMask for $ty {
+                    type Mask = t_u!($ty);
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_test_mask(self, other: Self::Mask) -> i32 {
+                        vtm(transmute(self), transmute(other))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_test_mask! {
+        vector_signed_char
+        vector_signed_short
+        vector_signed_int
+        vector_signed_long_long
+
+        vector_unsigned_char
+        vector_unsigned_short
+        vector_unsigned_int
+        vector_unsigned_long_long
+
+        vector_float
+        vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4051,6 +4091,16 @@ pub unsafe fn vec_fp_test_data_class<T: sealed::VectorFpTestDataClass, const CLA
     a.vec_fp_test_data_class::<CLASS>(c)
 }
 
+/// Vector Test under Mask
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_test_mask<T: sealed::VectorTestMask>(a: T, b: T::Mask) -> i32 {
+    // I can't find much information about this, but this might just be a check for whether the
+    // bitwise and of a and b is non-zero?
+    a.vec_test_mask(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5069,6 +5119,27 @@ mod tests {
             let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_NORMAL>(v3, &mut cc);
             assert_eq!(cc, 0);
             assert_eq!(d.as_array(), &[!0, !0]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_test_mask() {
+        unsafe {
+            let v = vector_unsigned_long_long([0xFF00FF00FF00FF00; 2]);
+            let m = vector_unsigned_long_long([0x0000FF000000FF00; 2]);
+            assert_eq!(vec_test_mask(v, m), 3);
+
+            let v = vector_unsigned_long_long([u64::MAX; 2]);
+            let m = vector_unsigned_long_long([0; 2]);
+            assert_eq!(vec_test_mask(v, m), 0);
+
+            let v = vector_unsigned_long_long([0; 2]);
+            let m = vector_unsigned_long_long([u64::MAX; 2]);
+            assert_eq!(vec_test_mask(v, m), 0);
+
+            let v = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA; 2]);
+            let m = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA; 2]);
+            assert_eq!(vec_test_mask(v, m), 3);
         }
     }
 }
