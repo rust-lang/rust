@@ -620,6 +620,8 @@ hir_analysis_variances_of = {$variances}
 hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
     .label = `main` cannot have a `where` clause
 
+hir_analysis_within_macro = due to this macro variable
+
 hir_analysis_wrong_number_of_generic_arguments_to_intrinsic =
     intrinsic has wrong number of {$descr} parameters: found {$found}, expected {$expected}
     .label = expected {$expected} {$descr} {$expected ->
