@@ -5,7 +5,7 @@
 macro_rules! simd_ty {
     ($id:ident [$elem_type:ty ; $len:literal]: $($param_name:ident),*) => {
         #[repr(simd)]
-        #[derive(Copy, Clone, Debug, PartialEq)]
+        #[derive(Copy, Clone)]
         pub(crate) struct $id([$elem_type; $len]);
 
         #[allow(clippy::use_self)]
@@ -38,13 +38,32 @@ macro_rules! simd_ty {
             /// Use for testing only.
             // FIXME: Workaround rust@60637
             #[inline(always)]
-            pub(crate) fn extract(self, index: usize) -> $elem_type {
-                assert!(index < $len);
-                // Now that we know this is in-bounds, use pointer arithmetic to access the right element.
-                let self_ptr = &self as *const Self as *const $elem_type;
-                unsafe {
-                    self_ptr.add(index).read()
-                }
+            pub(crate) fn extract(&self, index: usize) -> $elem_type {
+                self.as_array()[index]
+            }
+
+            #[inline]
+            pub(crate) fn as_array(&self) -> &[$elem_type; $len] {
+                let simd_ptr: *const Self = self;
+                let array_ptr: *const [$elem_type; $len] = simd_ptr.cast();
+                // SAFETY: We can always read the prefix of a simd type as an array.
+                // There might be more padding afterwards for some widths, but
+                // that's not a problem for reading less than that.
+                unsafe { &*array_ptr }
+            }
+        }
+
+        impl core::cmp::PartialEq for $id {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                self.as_array() == other.as_array()
+            }
+        }
+
+        impl core::fmt::Debug for $id {
+            #[inline]
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                debug_simd_finish(f, stringify!($id), self.as_array())
             }
         }
     }
@@ -53,7 +72,7 @@ macro_rules! simd_ty {
 macro_rules! simd_m_ty {
     ($id:ident [$elem_type:ident ; $len:literal]: $($param_name:ident),*) => {
         #[repr(simd)]
-        #[derive(Copy, Clone, Debug, PartialEq)]
+        #[derive(Copy, Clone)]
         pub(crate) struct $id([$elem_type; $len]);
 
         #[allow(clippy::use_self)]
@@ -78,6 +97,30 @@ macro_rules! simd_m_ty {
                 // SAFETY: 0 is always in-bounds because we're shuffling
                 // a simd type with exactly one element.
                 unsafe { simd_shuffle!(one, one, [0; $len]) }
+            }
+
+            #[inline]
+            pub(crate) fn as_array(&self) -> &[$elem_type; $len] {
+                let simd_ptr: *const Self = self;
+                let array_ptr: *const [$elem_type; $len] = simd_ptr.cast();
+                // SAFETY: We can always read the prefix of a simd type as an array.
+                // There might be more padding afterwards for some widths, but
+                // that's not a problem for reading less than that.
+                unsafe { &*array_ptr }
+            }
+        }
+
+        impl core::cmp::PartialEq for $id {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                self.as_array() == other.as_array()
+            }
+        }
+
+        impl core::fmt::Debug for $id {
+            #[inline]
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                debug_simd_finish(f, stringify!($id), self.as_array())
             }
         }
     }
@@ -968,7 +1011,7 @@ simd_ty!(
 pub(crate) fn debug_simd_finish<T: crate::fmt::Debug, const N: usize>(
     formatter: &mut crate::fmt::Formatter<'_>,
     type_name: &str,
-    array: [T; N],
+    array: &[T; N],
 ) -> crate::fmt::Result {
     crate::fmt::Formatter::debug_tuple_fields_finish(
         formatter,

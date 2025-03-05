@@ -132,7 +132,7 @@ macro_rules! types {
         impl crate::fmt::Debug for $name {
             #[inline]
             fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
-                crate::core_arch::simd::debug_simd_finish(f, stringify!($name), self.0)
+                crate::core_arch::simd::debug_simd_finish(f, stringify!($name), self.as_array())
             }
         }
     )*);
