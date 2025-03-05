@@ -171,6 +171,17 @@ impl LldMode {
     }
 }
 
+/// Determines how will GCC be provided.
+#[derive(Default, Clone)]
+pub enum GccCiMode {
+    /// Build GCC from the local `src/gcc` submodule.
+    #[default]
+    BuildLocally,
+    /// Try to download GCC from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    DownloadFromCi,
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
@@ -282,6 +293,9 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+
+    // gcc codegen options
+    pub gcc_ci_mode: GccCiMode,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -999,7 +1013,9 @@ define_config! {
 
 define_config! {
     /// TOML representation of how the GCC build is configured.
-    struct Gcc {}
+    struct Gcc {
+        download_ci_gcc: Option<bool> = "download-ci-gcc",
+    }
 }
 
 define_config! {
@@ -2141,6 +2157,16 @@ impl Config {
             }
         } else {
             config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
+        }
+
+        if let Some(gcc) = toml.gcc {
+            config.gcc_ci_mode = match gcc.download_ci_gcc {
+                Some(value) => match value {
+                    true => GccCiMode::DownloadFromCi,
+                    false => GccCiMode::BuildLocally,
+                },
+                None => GccCiMode::default(),
+            };
         }
 
         if let Some(t) = toml.target {
