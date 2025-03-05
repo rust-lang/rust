@@ -208,6 +208,9 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vgfmag"] fn vgfmag(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: u128) -> u128;
 
     #[link_name = "llvm.s390.vbperm"] fn vbperm(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vftcisb"] fn vftcisb(a: vector_float, b: u32) -> PackedTuple<vector_bool_int, i32>;
+    #[link_name = "llvm.s390.vftcidb"] fn vftcidb(a: vector_double, b: u32) -> PackedTuple<vector_bool_long_long, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2783,6 +2786,38 @@ mod sealed {
         vector_float
         vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFpTestDataClass {
+        type Result;
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorFpTestDataClass for vector_float {
+        type Result = vector_bool_int;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result {
+            let PackedTuple { x, y } = vftcisb(self, CLASS);
+            unsafe { ptr.write(y) };
+            x
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorFpTestDataClass for vector_double {
+        type Result = vector_bool_long_long;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result {
+            let PackedTuple { x, y } = vftcidb(self, CLASS);
+            unsafe { ptr.write(y) };
+            x
+        }
+    }
 }
 
 /// Load Count to Block Boundary
@@ -3961,6 +3996,61 @@ pub unsafe fn vec_sel<T: sealed::VectorSel<U>, U>(a: T, b: T, c: U) -> T {
     a.vec_sel(b, c)
 }
 
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_ZERO_P: u32 = 1 << 11;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_ZERO_N: u32 = 1 << 10;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_ZERO: u32 = __VEC_CLASS_FP_ZERO_P | __VEC_CLASS_FP_ZERO_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_NORMAL_P: u32 = 1 << 9;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_NORMAL_N: u32 = 1 << 8;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_NORMAL: u32 = __VEC_CLASS_FP_NORMAL_P | __VEC_CLASS_FP_NORMAL_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SUBNORMAL_P: u32 = 1 << 7;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SUBNORMAL_N: u32 = 1 << 6;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SUBNORMAL: u32 = __VEC_CLASS_FP_SUBNORMAL_P | __VEC_CLASS_FP_SUBNORMAL_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_INFINITY_P: u32 = 1 << 5;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_INFINITY_N: u32 = 1 << 4;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_INFINITY: u32 = __VEC_CLASS_FP_INFINITY_P | __VEC_CLASS_FP_INFINITY_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_QNAN_P: u32 = 1 << 3;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_QNAN_N: u32 = 1 << 2;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_QNAN: u32 = __VEC_CLASS_FP_QNAN_P | __VEC_CLASS_FP_QNAN_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SNAN_P: u32 = 1 << 1;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SNAN_N: u32 = 1 << 0;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_SNAN: u32 = __VEC_CLASS_FP_SNAN_P | __VEC_CLASS_FP_SNAN_N;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_NAN: u32 = __VEC_CLASS_FP_QNAN | __VEC_CLASS_FP_SNAN;
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub const __VEC_CLASS_FP_NOT_NORMAL: u32 =
+    __VEC_CLASS_FP_NAN | __VEC_CLASS_FP_SUBNORMAL | __VEC_CLASS_FP_ZERO | __VEC_CLASS_FP_INFINITY;
+
+/// Vector Floating-Point Test Data Class
+///
+/// You can use the `__VEC_CLASS_FP_*` constants as the argument for this operand
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_fp_test_data_class<T: sealed::VectorFpTestDataClass, const CLASS: u32>(
+    a: T,
+    c: *mut i32,
+) -> T::Result {
+    a.vec_fp_test_data_class::<CLASS>(c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -4944,6 +5034,41 @@ mod tests {
             assert_eq!(d1.as_array(), &[15, 2, 3, 4]);
             let d2 = vec_gather_element::<_, 0>(v2, v3, a2.as_ptr());
             assert_eq!(d2.as_array(), &[25, 2, 3, 4]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_fp_test_data_class() {
+        let mut cc = 42;
+
+        let v1 = vector_double([0.0, f64::NAN]);
+        let v2 = vector_double([f64::INFINITY, 1.0]);
+        let v3 = vector_double([1.0, 2.0]);
+
+        unsafe {
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_ZERO>(v1, &mut cc);
+            assert_eq!(cc, 1);
+            assert_eq!(d.as_array(), &[!0, 0]);
+
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_NAN>(v1, &mut cc);
+            assert_eq!(cc, 1);
+            assert_eq!(d.as_array(), &[0, !0]);
+
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_INFINITY>(v2, &mut cc);
+            assert_eq!(cc, 1);
+            assert_eq!(d.as_array(), &[!0, 0]);
+
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_INFINITY_N>(v2, &mut cc);
+            assert_eq!(cc, 3);
+            assert_eq!(d.as_array(), &[0, 0]);
+
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_NORMAL>(v2, &mut cc);
+            assert_eq!(cc, 1);
+            assert_eq!(d.as_array(), &[0, !0]);
+
+            let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_NORMAL>(v3, &mut cc);
+            assert_eq!(cc, 0);
+            assert_eq!(d.as_array(), &[!0, !0]);
         }
     }
 }
