@@ -248,23 +248,32 @@ pub fn prepare_tool_cargo(
     cargo.env("CFG_VERSION", builder.rust_version());
     cargo.env("CFG_RELEASE_NUM", &builder.version);
     cargo.env("DOC_RUST_LANG_ORG_CHANNEL", builder.doc_rust_lang_org_channel());
+
     if let Some(ref ver_date) = builder.rust_info().commit_date() {
         cargo.env("CFG_VER_DATE", ver_date);
     }
+
     if let Some(ref ver_hash) = builder.rust_info().sha() {
         cargo.env("CFG_VER_HASH", ver_hash);
+    }
+
+    if let Some(description) = &builder.config.description {
+        cargo.env("CFG_VER_DESCRIPTION", description);
     }
 
     let info = GitInfo::new(builder.config.omit_git_hash, &dir);
     if let Some(sha) = info.sha() {
         cargo.env("CFG_COMMIT_HASH", sha);
     }
+
     if let Some(sha_short) = info.sha_short() {
         cargo.env("CFG_SHORT_COMMIT_HASH", sha_short);
     }
+
     if let Some(date) = info.commit_date() {
         cargo.env("CFG_COMMIT_DATE", date);
     }
+
     if !features.is_empty() {
         cargo.arg("--features").arg(features.join(", "));
     }
