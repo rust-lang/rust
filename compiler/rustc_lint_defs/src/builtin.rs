@@ -2711,7 +2711,7 @@ declare_lint! {
     ///
     /// ```rust
     /// const fn foo<T>() -> usize {
-    ///     if std::mem::size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
+    ///     if size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
     ///         4
     ///     } else {
     ///         8

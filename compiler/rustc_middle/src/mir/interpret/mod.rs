@@ -573,7 +573,7 @@ pub fn write_target_uint(
 #[inline]
 pub fn read_target_uint(endianness: Endian, mut source: &[u8]) -> Result<u128, io::Error> {
     // This u128 holds an "any-size uint" (since smaller uints can fits in it)
-    let mut buf = [0u8; std::mem::size_of::<u128>()];
+    let mut buf = [0u8; size_of::<u128>()];
     // So we do not read exactly 16 bytes into the u128, just the "payload".
     let uint = match endianness {
         Endian::Little => {
