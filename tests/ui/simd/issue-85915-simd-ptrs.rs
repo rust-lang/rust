@@ -9,19 +9,22 @@
 use std::intrinsics::simd::{simd_gather, simd_scatter};
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct cptrx4<T>([*const T; 4]);
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct mptrx4<T>([*mut T; 4]);
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct f32x4([f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct i32x4([i32; 4]);
 
 fn main() {
@@ -43,7 +46,7 @@ fn main() {
 
         let r_strided = simd_gather(default, pointers, mask);
 
-        assert_eq!(r_strided, s_strided);
+        assert_eq!(r_strided.to_array(), s_strided.to_array());
     }
 
     // writing to *mut

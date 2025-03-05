@@ -7,6 +7,10 @@ use std::intrinsics::simd::{simd_masked_load, simd_masked_store};
 #[repr(simd)]
 struct Simd<T, const N: usize>([T; N]);
 
+impl<T, const N: usize> Simd<T, N> {
+    fn to_array(self) -> [T; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
+
 fn main() {
     unsafe {
         let a = Simd::<u8, 4>([0, 1, 2, 3]);
@@ -15,7 +19,7 @@ fn main() {
         let b: Simd<u8, 4> =
             simd_masked_load(Simd::<i8, 4>([-1, 0, -1, -1]), b_src.as_ptr(), b_default);
 
-        assert_eq!(&b.0, &[4, 9, 6, 7]);
+        assert_eq!(b.to_array(), [4, 9, 6, 7]);
 
         let mut output = [u8::MAX; 5];
 

@@ -9,8 +9,11 @@
 use std::intrinsics::simd::simd_gather;
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct x4<T>(pub [T; 4]);
+impl<T> x4<T> {
+    fn to_array(self) -> [T; 4] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 fn main() {
     let x: [usize; 4] = [10, 11, 12, 13];
@@ -24,7 +27,7 @@ fn main() {
         let pointers =
             x4([pointer.offset(0), pointer.offset(1), pointer.offset(2), pointer.offset(3)]);
         let result = simd_gather(default, pointers, mask);
-        assert_eq!(result, expected);
+        assert_eq!(result.to_array(), expected.to_array());
     }
 
     // and again for isize
@@ -37,6 +40,6 @@ fn main() {
         let pointers =
             x4([pointer.offset(0), pointer.offset(1), pointer.offset(2), pointer.offset(3)]);
         let result = simd_gather(default, pointers, mask);
-        assert_eq!(result, expected);
+        assert_eq!(result.to_array(), expected.to_array());
     }
 }

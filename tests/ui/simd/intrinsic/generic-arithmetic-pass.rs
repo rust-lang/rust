@@ -5,20 +5,29 @@
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct i32x4(pub [i32; 4]);
+impl i32x4 {
+    fn to_array(self) -> [i32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct U32<const N: usize>([u32; N]);
+impl<const N: usize> U32<N> {
+    fn to_array(self) -> [u32; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct f32x4(pub [f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 macro_rules! all_eq {
     ($a: expr, $b: expr) => {{
         let a = $a;
         let b = $b;
-        assert!(a.0 == b.0);
+        assert!(a.to_array() == b.to_array());
     }};
 }
 
