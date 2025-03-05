@@ -41,7 +41,6 @@ fn main() {
 
     // Remove env vars to get `rustc`'s default
     let output = rustc()
-        .target(target())
         .env_remove("MACOSX_DEPLOYMENT_TARGET")
         .env_remove("IPHONEOS_DEPLOYMENT_TARGET")
         .env_remove("WATCHOS_DEPLOYMENT_TARGET")
@@ -58,7 +57,6 @@ fn main() {
     run_in_tmpdir(|| {
         let rustc = || {
             let mut rustc = rustc();
-            rustc.target(target());
             rustc.crate_type("lib");
             rustc.emit("obj");
             rustc.input("foo.rs");
@@ -82,7 +80,6 @@ fn main() {
 
         let rustc = || {
             let mut rustc = rustc();
-            rustc.target(target());
             rustc.crate_type("dylib");
             rustc.input("foo.rs");
             rustc.output("libfoo.dylib");
@@ -108,7 +105,6 @@ fn main() {
     run_in_tmpdir(|| {
         let rustc = || {
             let mut rustc = rustc();
-            rustc.target(target());
             rustc.crate_type("bin");
             rustc.input("foo.rs");
             rustc.output("foo");
@@ -147,7 +143,6 @@ fn main() {
     run_in_tmpdir(|| {
         let rustc = || {
             let mut rustc = rustc();
-            rustc.target(target());
             rustc.incremental("incremental");
             rustc.crate_type("lib");
             rustc.emit("obj");
