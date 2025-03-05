@@ -836,6 +836,8 @@ impl<T, E> Result<T, E> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(result_option_map_or_default)]
+    ///
     /// let x: Result<_, &str> = Ok("foo");
     /// let y: Result<&str, _> = Err("bar");
     ///

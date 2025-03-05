@@ -1232,6 +1232,8 @@ impl<T> Option<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(result_option_map_or_default)]
+    ///
     /// let x: Option<&str> = Some("hi");
     /// let y: Option<&str> = None;
     ///
