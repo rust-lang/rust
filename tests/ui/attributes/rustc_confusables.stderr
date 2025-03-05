@@ -1,25 +1,32 @@
-error: malformed `rustc_confusables` attribute input
-  --> $DIR/rustc_confusables.rs:34:5
-   |
-LL |     #[rustc_confusables]
-   |     ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
-
 error: expected at least one confusable name
   --> $DIR/rustc_confusables.rs:30:5
    |
 LL |     #[rustc_confusables()]
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0539]: expected a quoted string literal
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/rustc_confusables.rs:34:5
+   |
+LL |     #[rustc_confusables]
+   |     ^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+   |
+note: expected this to be a list
+  --> $DIR/rustc_confusables.rs:34:5
+   |
+LL |     #[rustc_confusables]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `rustc_confusables` attribute input
+  --> $DIR/rustc_confusables.rs:39:5
+   |
+LL |     #[rustc_confusables(invalid_meta_item)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_confusables("name1", "name2", ...)]`
+   |
+note: expected a string literal here
   --> $DIR/rustc_confusables.rs:39:25
    |
 LL |     #[rustc_confusables(invalid_meta_item)]
    |                         ^^^^^^^^^^^^^^^^^
-   |
-help: consider surrounding this with quotes
-   |
-LL |     #[rustc_confusables("invalid_meta_item")]
-   |                         +                 +
 
 error: attribute should be applied to an inherent method
   --> $DIR/rustc_confusables.rs:45:1

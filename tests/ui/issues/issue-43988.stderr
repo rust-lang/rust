@@ -21,7 +21,7 @@ note: valid arguments are `always` or `never`
    |
 LL |     #[inline(XYZ)]
    |              ^^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(XYZ)]
 LL +     #[inline(always|never)]
@@ -57,7 +57,7 @@ note: valid arguments are `always` or `never`
    |
 LL |     #[inline(ABC)]
    |              ^^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(ABC)]
 LL +     #[inline(always|never)]
