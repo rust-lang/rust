@@ -97,6 +97,10 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vsrlb"] fn vsrlb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
     #[link_name = "llvm.s390.vslb"] fn vslb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
 
+    #[link_name = "llvm.s390.vsldb"] fn vsldb(a: i8x16, b: i8x16, c: u32) -> i8x16;
+    #[link_name = "llvm.s390.vsld"] fn vsld(a: i8x16, b: i8x16, c: u32) -> i8x16;
+    #[link_name = "llvm.s390.vsrd"] fn vsrd(a: i8x16, b: i8x16, c: u32) -> i8x16;
+
     #[link_name = "llvm.fshl.v16i8"] fn fshlb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char;
     #[link_name = "llvm.fshl.v8i16"] fn fshlh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.fshl.v4i32"] fn fshlf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
@@ -3170,6 +3174,86 @@ mod sealed {
         vec_vistrfs vector_bool_int
         vec_vistrfs vector_unsigned_int
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSrdb {
+        unsafe fn vec_srdb<const C: u32>(self, b: Self) -> Self;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSld {
+        unsafe fn vec_sld<const C: u32>(self, b: Self) -> Self;
+
+        unsafe fn vec_sldw<const C: u32>(self, b: Self) -> Self;
+
+        unsafe fn vec_sldb<const C: u32>(self, b: Self) -> Self;
+    }
+
+    // FIXME(llvm) https://github.com/llvm/llvm-project/issues/129955
+    // ideally we could implement this in terms of llvm.fshl.i128
+    // #[link_name = "llvm.fshl.i128"] fn fshl_i128(a: u128, b: u128, c: u128) -> u128;
+    // transmute(fshl_i128(transmute(a), transmute(b), const { C * 8 } ))
+
+    macro_rules! impl_vec_sld {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSld for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_sld<const C: u32>(self, b: Self) -> Self {
+                        static_assert_uimm_bits!(C, 4);
+                        transmute(vsldb(transmute(self), transmute(b), C))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_sldw<const C: u32>(self, b: Self) -> Self {
+                        static_assert_uimm_bits!(C, 2);
+                        transmute(vsldb(transmute(self), transmute(b), const { 4 * C }))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector-enhancements-2")]
+                    unsafe fn vec_sldb<const C: u32>(self, b: Self) -> Self {
+                        static_assert_uimm_bits!(C, 3);
+                        transmute(vsld(transmute(self), transmute(b), C))
+                    }
+                }
+
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSrdb for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector-enhancements-2")]
+                    unsafe fn vec_srdb<const C: u32>(self, b: Self) -> Self {
+                        static_assert_uimm_bits!(C, 3);
+                        transmute(vsrd(transmute(self), transmute(b), C))
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_sld! {
+        vector_signed_char
+        vector_bool_char
+        vector_unsigned_char
+
+        vector_signed_short
+        vector_bool_short
+        vector_unsigned_short
+
+        vector_signed_int
+        vector_bool_int
+        vector_unsigned_int
+
+        vector_signed_long_long
+        vector_bool_long_long
+        vector_unsigned_long_long
+
+        vector_float
+        vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4542,6 +4626,42 @@ pub unsafe fn vec_msum_u128<const D: u32>(
     transmute(vmslg(a, b, transmute(c), D))
 }
 
+/// Vector Shift Left Double by Byte
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sld<T: sealed::VectorSld, const C: u32>(a: T, b: T) -> T {
+    static_assert_uimm_bits!(C, 4);
+    a.vec_sld::<C>(b)
+}
+
+/// Vector Shift Left Double by Word
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sldw<T: sealed::VectorSld, const C: u32>(a: T, b: T) -> T {
+    static_assert_uimm_bits!(C, 2);
+    a.vec_sldw::<C>(b)
+}
+
+/// Vector Shift Left Double by Bit
+#[inline]
+#[target_feature(enable = "vector-enhancements-2")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_sldb<T: sealed::VectorSld, const C: u32>(a: T, b: T) -> T {
+    static_assert_uimm_bits!(C, 3);
+    a.vec_sldb::<C>(b)
+}
+
+/// Vector Shift Right Double by Bit
+#[inline]
+#[target_feature(enable = "vector-enhancements-2")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_srdb<T: sealed::VectorSrdb, const C: u32>(a: T, b: T) -> T {
+    static_assert_uimm_bits!(C, 3);
+    a.vec_srdb::<C>(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5773,6 +5893,51 @@ mod tests {
 
             let d: u128 = transmute(vec_msum_u128::<12>(a, b, c));
             assert_eq!(d, (1 * 3) * 2 + (2 * 4) * 2 + 100);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_sld() {
+        let a = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA]);
+        let b = vector_unsigned_long_long([0xBBBBBBBBBBBBBBBB, 0xBBBBBBBBBBBBBBBB]);
+
+        unsafe {
+            let d = vec_sld::<_, 4>(a, b);
+            assert_eq!(d.as_array(), &[0xAAAAAAAAAAAAAAAA, 0xAAAAAAAABBBBBBBB]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_sldw() {
+        let a = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA]);
+        let b = vector_unsigned_long_long([0xBBBBBBBBBBBBBBBB, 0xBBBBBBBBBBBBBBBB]);
+
+        unsafe {
+            let d = vec_sldw::<_, 1>(a, b);
+            assert_eq!(d.as_array(), &[0xAAAAAAAAAAAAAAAA, 0xAAAAAAAABBBBBBBB]);
+        }
+    }
+
+    #[simd_test(enable = "vector-enhancements-2")]
+    fn test_vec_sldb() {
+        let a = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA]);
+        let b = vector_unsigned_long_long([0xBBBBBBBBBBBBBBBB, 0xBBBBBBBBBBBBBBBB]);
+
+        unsafe {
+            let d = vec_sldb::<_, 4>(a, b);
+            assert_eq!(d.as_array(), &[0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAB]);
+        }
+    }
+
+    #[simd_test(enable = "vector-enhancements-2")]
+    fn test_vec_srdb() {
+        let a = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA, 0xAAAAAAAAAAAAAAAA]);
+        let b = vector_unsigned_long_long([0xBBBBBBBBBBBBBBBB, 0xBBBBBBBBBBBBBBBB]);
+
+        unsafe {
+            let d = vec_srdb::<_, 4>(a, b);
+            println!("{:x?}", &d);
+            assert_eq!(d.as_array(), &[0xABBBBBBBBBBBBBBB, 0xBBBBBBBBBBBBBBBB]);
         }
     }
 }
