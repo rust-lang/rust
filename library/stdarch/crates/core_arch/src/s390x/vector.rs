@@ -2923,6 +2923,86 @@ mod sealed {
         vstrsf vstrszf vector_bool_int
         vstrsf vstrszf vector_unsigned_int
     }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vcdgb))]
+    pub unsafe fn vcdgb(a: vector_signed_long_long) -> vector_double {
+        simd_as(a)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(test, assert_instr(vcdlgb))]
+    pub unsafe fn vcdlgb(a: vector_unsigned_long_long) -> vector_double {
+        simd_as(a)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorDouble {
+        unsafe fn vec_double(self) -> vector_double;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorDouble for vector_signed_long_long {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_double(self) -> vector_double {
+            vcdgb(self)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorDouble for vector_unsigned_long_long {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_double(self) -> vector_double {
+            vcdlgb(self)
+        }
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vcefb)
+    )]
+    pub unsafe fn vcefb(a: vector_signed_int) -> vector_float {
+        simd_as(a)
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    #[cfg_attr(
+        all(test, target_feature = "vector-enhancements-2"),
+        assert_instr(vcelfb)
+    )]
+    pub unsafe fn vcelfb(a: vector_unsigned_int) -> vector_float {
+        simd_as(a)
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorFloat {
+        unsafe fn vec_float(self) -> vector_float;
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorFloat for vector_signed_int {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_float(self) -> vector_float {
+            vcefb(self)
+        }
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorFloat for vector_unsigned_int {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_float(self) -> vector_float {
+            vcelfb(self)
+        }
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4192,6 +4272,48 @@ pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
     a.vec_search_string_until_zero_cc(b, c, d)
 }
 
+/// Vector Convert from float (even elements) to double
+#[inline]
+#[target_feature(enable = "vector-enhancements-1")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+// FIXME: this emits `vflls` where `vldeb` is expected
+// #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vldeb))]
+pub unsafe fn vec_doublee(a: vector_float) -> vector_double {
+    let even = simd_shuffle::<_, _, f32x2>(a, a, const { u32x2::from_array([0, 2]) });
+    simd_as(even)
+}
+
+/// Vector Convert from double to float (even elements)
+#[inline]
+#[target_feature(enable = "vector-enhancements-1")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+// FIXME: the C version uses a shuffle mask with poison; we can't do that
+// #[cfg_attr(all(test, target_feature = "vector-enhancements-1"), assert_instr(vledb))]
+pub unsafe fn vec_floate(a: vector_double) -> vector_float {
+    let truncated: f32x2 = simd_as(a);
+    simd_shuffle(
+        truncated,
+        truncated,
+        const { u32x4::from_array([0, 0, 1, 1]) },
+    )
+}
+
+/// Vector Convert from int to float
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_float(a: impl sealed::VectorFloat) -> vector_float {
+    a.vec_float()
+}
+
+/// Vector Convert from long long to double
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_double(a: impl sealed::VectorDouble) -> vector_double {
+    a.vec_double()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5299,6 +5421,42 @@ mod tests {
             let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
             assert_eq!(result.as_array()[7], 16);
             assert_eq!(d, 1);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_doublee() {
+        unsafe {
+            let v = vector_float([1.0, 2.0, 3.0, 4.0]);
+            assert_eq!(vec_doublee(v).as_array(), &[1.0, 3.0]);
+
+            let v = vector_float([f32::NAN, 2.0, f32::INFINITY, 4.0]);
+            let d = vec_doublee(v);
+            assert!(d.as_array()[0].is_nan());
+            assert_eq!(d.as_array()[1], f64::INFINITY);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_floate() {
+        // NOTE: indices 1 and 3 can have an arbitrary value. With the C version
+        // these are poison values, our version initializes the memory but its
+        // value still should not be relied upon by application code.
+        unsafe {
+            let v = vector_double([1.0, 2.0]);
+            let d = vec_floate(v);
+            assert_eq!(d.as_array()[0], 1.0);
+            assert_eq!(d.as_array()[2], 2.0);
+
+            let v = vector_double([f64::NAN, f64::INFINITY]);
+            let d = vec_floate(v);
+            assert!(d.as_array()[0].is_nan());
+            assert_eq!(d.as_array()[2], f32::INFINITY);
+
+            let v = vector_double([f64::MIN, f64::MAX]);
+            let d = vec_floate(v);
+            assert_eq!(d.as_array()[0], f64::MIN as f32);
+            assert_eq!(d.as_array()[2], f64::MAX as f32);
         }
     }
 }
