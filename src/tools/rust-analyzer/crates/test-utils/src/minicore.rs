@@ -1874,6 +1874,7 @@ pub mod prelude {
             marker::Sized,                           // :sized
             marker::Sync,                            // :sync
             mem::drop,                               // :drop
+            mem::size_of,                            // :size_of
             ops::Drop,                               // :drop
             ops::{AsyncFn, AsyncFnMut, AsyncFnOnce}, // :async_fn
             ops::{Fn, FnMut, FnOnce},                // :fn
@@ -1893,6 +1894,10 @@ pub mod prelude {
     }
 
     pub mod rust_2021 {
+        pub use super::v1::*;
+    }
+
+    pub mod rust_2024 {
         pub use super::v1::*;
     }
 }
