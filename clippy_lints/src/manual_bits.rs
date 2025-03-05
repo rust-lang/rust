@@ -14,7 +14,7 @@ use rustc_span::{Span, sym};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for usage of `std::mem::size_of::<T>() * 8` when
+    /// Checks for usage of `size_of::<T>() * 8` when
     /// `T::BITS` is available.
     ///
     /// ### Why is this bad?
@@ -22,7 +22,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```no_run
-    /// std::mem::size_of::<usize>() * 8;
+    /// size_of::<usize>() * 8;
     /// ```
     /// Use instead:
     /// ```no_run
@@ -68,7 +68,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualBits {
                 cx,
                 MANUAL_BITS,
                 expr.span,
-                "usage of `mem::size_of::<T>()` to obtain the size of `T` in bits",
+                "usage of `size_of::<T>()` to obtain the size of `T` in bits",
                 "consider using",
                 sugg,
                 app,
