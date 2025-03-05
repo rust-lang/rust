@@ -78,7 +78,7 @@ pub use raw::{from_raw_parts, from_raw_parts_mut};
 
 /// Calculates the direction and split point of a one-sided range.
 ///
-/// This is a helper function for `take` and `take_mut` that returns
+/// This is a helper function for `split_off` and `split_off_mut` that returns
 /// the direction of the split (front or back) as well as the index at
 /// which to split. Returns `None` if the split index would overflow.
 #[inline]
@@ -4313,8 +4313,6 @@ impl<T> [T] {
     /// Splitting off the first three elements of a slice:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
     /// let mut first_three = slice.split_off(..3).unwrap();
     ///
@@ -4325,8 +4323,6 @@ impl<T> [T] {
     /// Splitting off the last two elements of a slice:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
     /// let mut tail = slice.split_off(2..).unwrap();
     ///
@@ -4337,8 +4333,6 @@ impl<T> [T] {
     /// Getting `None` when `range` is out of bounds:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &[_] = &['a', 'b', 'c', 'd'];
     ///
     /// assert_eq!(None, slice.split_off(5..));
@@ -4349,7 +4343,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[must_use = "method does not modify the slice if the range is out of bounds"]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off<'a, R: OneSidedRange<usize>>(
         self: &mut &'a Self,
         range: R,
@@ -4385,8 +4379,6 @@ impl<T> [T] {
     /// Splitting off the first three elements of a slice:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
     /// let mut first_three = slice.split_off_mut(..3).unwrap();
     ///
@@ -4397,8 +4389,6 @@ impl<T> [T] {
     /// Taking the last two elements of a slice:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
     /// let mut tail = slice.split_off_mut(2..).unwrap();
     ///
@@ -4409,8 +4399,6 @@ impl<T> [T] {
     /// Getting `None` when `range` is out of bounds:
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c', 'd'];
     ///
     /// assert_eq!(None, slice.split_off_mut(5..));
@@ -4421,7 +4409,7 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[must_use = "method does not modify the slice if the range is out of bounds"]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off_mut<'a, R: OneSidedRange<usize>>(
         self: &mut &'a mut Self,
         range: R,
@@ -4451,8 +4439,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &[_] = &['a', 'b', 'c'];
     /// let first = slice.split_off_first().unwrap();
     ///
@@ -4460,7 +4446,7 @@ impl<T> [T] {
     /// assert_eq!(first, &'a');
     /// ```
     #[inline]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
         let (first, rem) = self.split_first()?;
         *self = rem;
@@ -4475,8 +4461,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
     /// let first = slice.split_off_first_mut().unwrap();
     /// *first = 'd';
@@ -4485,7 +4469,7 @@ impl<T> [T] {
     /// assert_eq!(first, &'d');
     /// ```
     #[inline]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         let (first, rem) = mem::take(self).split_first_mut()?;
         *self = rem;
@@ -4500,8 +4484,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &[_] = &['a', 'b', 'c'];
     /// let last = slice.split_off_last().unwrap();
     ///
@@ -4509,7 +4491,7 @@ impl<T> [T] {
     /// assert_eq!(last, &'c');
     /// ```
     #[inline]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
         let (last, rem) = self.split_last()?;
         *self = rem;
@@ -4524,8 +4506,6 @@ impl<T> [T] {
     /// # Examples
     ///
     /// ```
-    /// #![feature(slice_take)]
-    ///
     /// let mut slice: &mut [_] = &mut ['a', 'b', 'c'];
     /// let last = slice.split_off_last_mut().unwrap();
     /// *last = 'd';
@@ -4534,7 +4514,7 @@ impl<T> [T] {
     /// assert_eq!(last, &'d');
     /// ```
     #[inline]
-    #[unstable(feature = "slice_take", issue = "62280")]
+    #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
     pub fn split_off_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
         let (last, rem) = mem::take(self).split_last_mut()?;
         *self = rem;

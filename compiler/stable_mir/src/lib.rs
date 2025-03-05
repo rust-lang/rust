@@ -129,11 +129,19 @@ crate_def_with_ty! {
 }
 
 impl CrateItem {
-    /// This will return the body of an item.
-    ///
-    /// This will panic if no body is available.
-    pub fn body(&self) -> mir::Body {
+    /// This will return the body of an item or panic if it's not available.
+    pub fn expect_body(&self) -> mir::Body {
         with(|cx| cx.mir_body(self.0))
+    }
+
+    /// Return the body of an item if available.
+    pub fn body(&self) -> Option<mir::Body> {
+        with(|cx| cx.has_body(self.0).then(|| cx.mir_body(self.0)))
+    }
+
+    /// Check if a body is available for this item.
+    pub fn has_body(&self) -> bool {
+        with(|cx| cx.has_body(self.0))
     }
 
     pub fn span(&self) -> Span {
@@ -156,8 +164,11 @@ impl CrateItem {
         with(|cx| cx.is_foreign_item(self.0))
     }
 
+    /// Emit MIR for this item body.
     pub fn emit_mir<W: io::Write>(&self, w: &mut W) -> io::Result<()> {
-        self.body().dump(w, &self.name())
+        self.body()
+            .ok_or_else(|| io::Error::other(format!("No body found for `{}`", self.name())))?
+            .dump(w, &self.name())
     }
 }
 
