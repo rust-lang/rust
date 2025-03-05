@@ -2439,9 +2439,5 @@ fn get_maybe_pointer_size(value: RValue<'_>) -> u32 {
 #[cfg(not(feature = "master"))]
 fn get_maybe_pointer_size(value: RValue<'_>) -> u32 {
     let type_ = value.get_type();
-    if type_.get_pointee().is_some() {
-        std::mem::size_of::<*const ()>() as _
-    } else {
-        type_.get_size()
-    }
+    if type_.get_pointee().is_some() { size_of::<*const ()>() as _ } else { type_.get_size() }
 }
