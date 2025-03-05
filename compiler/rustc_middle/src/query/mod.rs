@@ -2262,22 +2262,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
-    query implied_outlives_bounds_compat(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
-        NoSolution,
-    > {
-        desc { "computing implied outlives bounds for `{}`", goal.canonical.value.value.ty }
-    }
-
     query implied_outlives_bounds(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
+        key: (CanonicalImpliedOutlivesBoundsGoal<'tcx>, bool)
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds v2 for `{}`", goal.canonical.value.value.ty }
+        desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
     }
 
     /// Do not call this query directly:
