@@ -27,7 +27,7 @@ use crate::attributes::stability::{
 use crate::attributes::transparency::TransparencyParser;
 use crate::attributes::{AttributeParser as _, Combine, Single};
 use crate::parser::{ArgParser, MetaItemParser};
-use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason};
+use crate::session_diagnostics::{AttributeParseError, AttributeParseErrorReason, UnknownMetaItem};
 
 macro_rules! group_type {
     ($stage: ty) => {
@@ -191,8 +191,16 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         (self.emit_lint)(AttributeLint { id, span, kind: lint });
     }
 
+    pub(crate) fn unknown_key(
+        &self,
+        span: Span,
+        found: String,
+        options: &'static [&'static str],
+    ) -> ErrorGuaranteed {
+        self.emit_err(UnknownMetaItem { span, item: found, expected: options })
+    }
+
     pub(crate) fn expected_string_literal(&self, span: Span) -> ErrorGuaranteed {
-        // 539?
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
@@ -202,12 +210,40 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         })
     }
 
-    // pub(crate) fn expected_any_arguments(&self, span: Span) -> ErrorGuaranteed {
-    //
-    // }
+    pub(crate) fn expected_list(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedList,
+        })
+    }
+
+    /// emit an error that a `name = value` pair was expected at this span. The symbol can be given for
+    /// a nicer error message talking about the specific name that was found lacking a value.
+    pub(crate) fn expected_name_value(&self, span: Span, name: Option<Symbol>) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedNameValue(name),
+        })
+    }
+
+    /// emit an error that a `name = value` pair was found where that name was already seen.
+    pub(crate) fn duplicate_key(&self, span: Span, key: Symbol) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::DuplicateKey(key),
+        })
+    }
 
     pub(crate) fn expected_single_argument(&self, span: Span) -> ErrorGuaranteed {
-        // E534?
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
@@ -220,15 +256,34 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
     pub(crate) fn expected_specific_argument(
         &self,
         span: Span,
-        options: Vec<&'static str>,
+        possibilities: Vec<&'static str>,
     ) -> ErrorGuaranteed {
-        // E535?
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
-            reason: AttributeParseErrorReason::ExpectedSpecificArgument(options),
+            reason: AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings: false,
+            },
+        })
+    }
+
+    pub(crate) fn expected_specific_argument_strings(
+        &self,
+        span: Span,
+        possibilities: Vec<&'static str>,
+    ) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::ExpectedSpecificArgument {
+                possibilities,
+                strings: true,
+            },
         })
     }
 }

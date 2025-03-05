@@ -15,7 +15,7 @@ note: expected a single argument here
    |
 LL | #[rustc_force_inline(bar, baz)]
    |                     ^^^^^^^^^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline(bar, baz)]
 LL + #[rustc_force_inline = "reason"]
@@ -38,7 +38,7 @@ note: expected a string literal here
    |
 LL | #[rustc_force_inline(2)]
    |                      ^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline(2)]
 LL + #[rustc_force_inline = "reason"]
@@ -61,7 +61,7 @@ note: expected a string literal here
    |
 LL | #[rustc_force_inline = 2]
    |                        ^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[rustc_force_inline = 2]
 LL + #[rustc_force_inline = "reason"]

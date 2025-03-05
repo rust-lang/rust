@@ -27,8 +27,6 @@ attr_parsing_ill_formed_attribute_input = {$num_suggestions ->
         [1] attribute must be of the form {$suggestions}
         *[other] valid forms for the attribute are {$suggestions}
     }
-attr_parsing_incorrect_meta_item = expected a quoted string literal
-attr_parsing_incorrect_meta_item_suggestion = consider surrounding this with quotes
 
 attr_parsing_incorrect_repr_format_align_one_arg =
     incorrect `repr(align)` attribute format: `align` takes exactly one argument in parentheses
@@ -84,9 +82,6 @@ attr_parsing_missing_note =
 
 attr_parsing_missing_since =
     missing 'since'
-
-attr_parsing_multiple_item =
-    multiple '{$item}' items
 
 attr_parsing_multiple_stability_levels =
     multiple stability levels

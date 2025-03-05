@@ -9,7 +9,7 @@ note: valid arguments are `always` or `never`
    |
 LL | #[inline(unknown)]
    |          ^^^^^^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(unknown)]
 LL + #[inline(always|never)]

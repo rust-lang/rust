@@ -9,7 +9,7 @@ note: expected a single argument here
    |
 LL | #[inline(please,no)]
    |         ^^^^^^^^^^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[inline(please,no)]
 LL + #[inline(always|never)]
@@ -29,7 +29,7 @@ note: expected a single argument here
    |
 LL | #[inline()]
    |         ^^
-help: the following are possible correct uses
+help: try changing it to one of the following valid forms of the attribute
    |
 LL | #[inline(always|never)]
    |          ++++++++++++

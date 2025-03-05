@@ -19,7 +19,7 @@ fn get<S: Stage>(
     item: &Option<Symbol>,
 ) -> Option<Symbol> {
     if item.is_some() {
-        cx.emit_err(session_diagnostics::MultipleItem { span: param_span, item: name.to_string() });
+        cx.duplicate_key(param_span, name);
         return None;
     }
     if let Some(v) = arg.name_value() {
@@ -36,8 +36,7 @@ fn get<S: Stage>(
             None
         }
     } else {
-        // FIXME(jdonszelmann): suggestion?
-        cx.emit_err(session_diagnostics::IncorrectMetaItem { span: param_span, suggestion: None });
+        cx.expected_name_value(param_span, Some(name));
         None
     }
 }
@@ -99,15 +98,15 @@ impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
                         suggestion = Some(get(cx, name, param_span, param.args(), &suggestion)?);
                     }
                     _ => {
-                        cx.emit_err(session_diagnostics::UnknownMetaItem {
-                            span: param_span,
-                            item: param.path().to_string(),
-                            expected: if features.deprecated_suggestion() {
+                        cx.unknown_key(
+                            param_span,
+                            param.path().to_string(),
+                            if features.deprecated_suggestion() {
                                 &["since", "note", "suggestion"]
                             } else {
                                 &["since", "note"]
                             },
-                        });
+                        );
                         return None;
                     }
                 }

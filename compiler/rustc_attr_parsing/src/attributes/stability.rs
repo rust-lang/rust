@@ -6,7 +6,7 @@ use rustc_attr_data_structures::{
 };
 use rustc_errors::ErrorGuaranteed;
 use rustc_feature::{AttributeTemplate, template};
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 
 use super::util::parse_version;
 use super::{AcceptMapping, AttributeOrder, AttributeParser, OnDuplicate, SingleAttributeParser};
@@ -217,12 +217,10 @@ fn insert_value_into_option_or_error<S: Stage>(
     cx: &AcceptContext<'_, '_, S>,
     param: &MetaItemParser<'_>,
     item: &mut Option<Symbol>,
+    name: Ident,
 ) -> Option<()> {
     if item.is_some() {
-        cx.emit_err(session_diagnostics::MultipleItem {
-            span: param.span(),
-            item: param.path().to_string(),
-        });
+        cx.duplicate_key(name.span, name.name);
         None
     } else if let Some(v) = param.args().name_value()
         && let Some(s) = v.value_as_str()
@@ -230,10 +228,7 @@ fn insert_value_into_option_or_error<S: Stage>(
         *item = Some(s);
         Some(())
     } else {
-        cx.emit_err(session_diagnostics::IncorrectMetaItem {
-            span: param.span(),
-            suggestion: None,
-        });
+        cx.expected_name_value(param.span(), Some(name.name));
         None
     }
 }
@@ -259,9 +254,14 @@ pub(crate) fn parse_stability<S: Stage>(
             return None;
         };
 
-        match param.path().word_sym() {
-            Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            Some(sym::since) => insert_value_into_option_or_error(cx, &param, &mut since)?,
+        let word = param.path().word();
+        match word.map(|i| i.name) {
+            Some(sym::feature) => {
+                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+            }
+            Some(sym::since) => {
+                insert_value_into_option_or_error(cx, &param, &mut since, word.unwrap())?
+            }
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param_span,
@@ -328,11 +328,16 @@ pub(crate) fn parse_unstability<S: Stage>(
             return None;
         };
 
-        match param.path().word_sym() {
-            Some(sym::feature) => insert_value_into_option_or_error(cx, &param, &mut feature)?,
-            Some(sym::reason) => insert_value_into_option_or_error(cx, &param, &mut reason)?,
+        let word = param.path().word();
+        match word.map(|i| i.name) {
+            Some(sym::feature) => {
+                insert_value_into_option_or_error(cx, &param, &mut feature, word.unwrap())?
+            }
+            Some(sym::reason) => {
+                insert_value_into_option_or_error(cx, &param, &mut reason, word.unwrap())?
+            }
             Some(sym::issue) => {
-                insert_value_into_option_or_error(cx, &param, &mut issue)?;
+                insert_value_into_option_or_error(cx, &param, &mut issue, word.unwrap())?;
 
                 // These unwraps are safe because `insert_value_into_option_or_error` ensures the meta item
                 // is a name/value pair string literal.
@@ -362,7 +367,7 @@ pub(crate) fn parse_unstability<S: Stage>(
                 is_soft = true;
             }
             Some(sym::implied_by) => {
-                insert_value_into_option_or_error(cx, &param, &mut implied_by)?
+                insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
             }
             Some(sym::old_name) => insert_value_into_option_or_error(cx, &param, &mut old_name)?,
             _ => {
