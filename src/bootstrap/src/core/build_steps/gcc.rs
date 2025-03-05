@@ -13,10 +13,11 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
+use build_helper::git::get_closest_merge_commit;
 
 use crate::Config;
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::TargetSelection;
+use crate::core::config::{GccCiMode, TargetSelection};
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -89,17 +90,39 @@ pub enum GccBuildStatus {
     ShouldBuild(Meta),
 }
 
-/// This returns whether we've already previously built GCC.
+/// Tries to download GCC from CI if it is enabled and GCC artifacts
+/// are available for the given target.
+/// Returns a path to the libgccjit.so file.
+fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<PathBuf> {
+    // Try to download GCC from CI if configured and available
+    if !matches!(builder.config.gcc_ci_mode, GccCiMode::DownloadFromCi) {
+        return None;
+    }
+    if target != "x86_64-unknown-linux-gnu" {
+        eprintln!("GCC CI download is only available for the `x86_64-unknown-linux-gnu` target");
+        return None;
+    }
+    let sha =
+        detect_gcc_sha(&builder.config, builder.config.rust_info.is_managed_git_subrepository());
+    let root = ci_gcc_root(&builder.config);
+    let gcc_stamp = BuildStamp::new(&root).with_prefix("gcc").add_stamp(&sha);
+    if !gcc_stamp.is_up_to_date() && !builder.config.dry_run() {
+        builder.config.download_ci_gcc(&sha, &root);
+        t!(gcc_stamp.write());
+    }
+    // FIXME: put libgccjit.so into a lib directory in dist::Gcc
+    Some(root.join("libgccjit.so"))
+}
+
+/// This returns information about whether GCC should be built or if it's already built.
+/// It transparently handles downloading GCC from CI if needed.
 ///
 /// It's used to avoid busting caches during x.py check -- if we've already built
 /// GCC, it's fine for us to not try to avoid doing so.
 pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
-    // Initialize the gcc submodule if not initialized already.
-    builder.config.update_submodule("src/gcc");
-
-    let root = builder.src.join("src/gcc");
-    let out_dir = builder.gcc_out(target).join("build");
-    let install_dir = builder.gcc_out(target).join("install");
+    if let Some(path) = try_download_gcc(builder, target) {
+        return GccBuildStatus::AlreadyBuilt(path);
+    }
 
     static STAMP_HASH_MEMO: OnceLock<String> = OnceLock::new();
     let smart_stamp_hash = STAMP_HASH_MEMO.get_or_init(|| {
@@ -109,6 +132,13 @@ pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> G
             builder.in_tree_gcc_info.sha().unwrap_or_default(),
         )
     });
+
+    // Initialize the gcc submodule if not initialized already.
+    builder.config.update_submodule("src/gcc");
+
+    let root = builder.src.join("src/gcc");
+    let out_dir = builder.gcc_out(target).join("build");
+    let install_dir = builder.gcc_out(target).join("install");
 
     let stamp = BuildStamp::new(&out_dir).with_prefix("gcc").add_stamp(smart_stamp_hash);
 
@@ -142,7 +172,7 @@ fn libgccjit_built_path(install_dir: &Path) -> PathBuf {
     install_dir.join("lib/libgccjit.so")
 }
 
-fn build_gcc(metadata: &Meta, builder: &Builder, target: TargetSelection) {
+fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
     let Meta { stamp: _, out_dir, install_dir, root } = metadata;
 
     t!(fs::create_dir_all(out_dir));
@@ -202,21 +232,47 @@ fn build_gcc(metadata: &Meta, builder: &Builder, target: TargetSelection) {
     }
     configure_cmd.run(builder);
 
-        command("make")
-            .current_dir(&out_dir)
-            .arg("--silent")
-            .arg(format!("-j{}", builder.jobs()))
-            .run_capture_stdout(builder);
-        command("make")
-            .current_dir(&out_dir)
-            .arg("--silent")
-            .arg("install")
-            .run_capture_stdout(builder);
-    }
+    command("make")
+        .current_dir(out_dir)
+        .arg("--silent")
+        .arg(format!("-j{}", builder.jobs()))
+        .run_capture_stdout(builder);
+    command("make").current_dir(out_dir).arg("--silent").arg("install").run_capture_stdout(builder);
 }
 
 /// Configures a Cargo invocation so that it can build the GCC codegen backend.
 pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
     // Add the path to libgccjit.so to the linker search paths.
     cargo.rustflag(&format!("-L{}", gcc.libgccjit.parent().unwrap().to_str().unwrap()));
+}
+
+/// The absolute path to the downloaded GCC artifacts.
+fn ci_gcc_root(config: &Config) -> PathBuf {
+    config.out.join(config.build).join("ci-gcc")
+}
+
+/// This retrieves the GCC sha we *want* to use, according to git history.
+fn detect_gcc_sha(config: &Config, is_git: bool) -> String {
+    let gcc_sha = if is_git {
+        get_closest_merge_commit(
+            Some(&config.src),
+            &config.git_config(),
+            &[config.src.join("src/gcc"), config.src.join("src/bootstrap/download-ci-gcc-stamp")],
+        )
+        .unwrap()
+    } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
+        info.sha.trim().to_owned()
+    } else {
+        "".to_owned()
+    };
+
+    if gcc_sha.is_empty() {
+        eprintln!("error: could not find commit hash for downloading GCC");
+        eprintln!("HELP: maybe your repository history is too shallow?");
+        eprintln!("HELP: consider disabling `download-ci-gcc`");
+        eprintln!("HELP: or fetch enough history to include one upstream commit");
+        panic!();
+    }
+
+    gcc_sha
 }
