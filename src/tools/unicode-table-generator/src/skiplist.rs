@@ -108,11 +108,21 @@ impl RawEmitter {
         } else {
             writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
         }
-        writeln!(&mut self.file, "    super::skip_search(",).unwrap();
-        writeln!(&mut self.file, "        c as u32,").unwrap();
-        writeln!(&mut self.file, "        &SHORT_OFFSET_RUNS,").unwrap();
-        writeln!(&mut self.file, "        &OFFSETS,").unwrap();
-        writeln!(&mut self.file, "    )").unwrap();
+        writeln!(
+            &mut self.file,
+            "    const {{ assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }}",
+        )
+        .unwrap();
+        writeln!(
+            &mut self.file,
+            "    // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.",
+        )
+        .unwrap();
+        writeln!(
+            &mut self.file,
+            "    unsafe {{ super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }}"
+        )
+        .unwrap();
         writeln!(&mut self.file, "}}").unwrap();
     }
 }

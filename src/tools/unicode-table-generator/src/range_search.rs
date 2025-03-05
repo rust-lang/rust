@@ -53,24 +53,31 @@ fn decode_length(short_offset_run_header: u32) -> usize {
     (short_offset_run_header >> 21) as usize
 }
 
+/// # Safety
+///
+/// The last element of `short_offset_runs` must be greater than `std::char::MAX`.
 #[inline(always)]
-fn skip_search<const SOR: usize, const OFFSETS: usize>(
-    needle: u32,
+unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
+    needle: char,
     short_offset_runs: &[u32; SOR],
     offsets: &[u8; OFFSETS],
 ) -> bool {
-    // Note that this *cannot* be past the end of the array, as the last
-    // element is greater than std::char::MAX (the largest possible needle).
-    //
-    // So, we cannot have found it (i.e. Ok(idx) + 1 != length) and the correct
-    // location cannot be past it, so Err(idx) != length either.
-    //
-    // This means that we can avoid bounds checking for the accesses below, too.
+    let needle = needle as u32;
+
     let last_idx =
         match short_offset_runs.binary_search_by_key(&(needle << 11), |header| header << 11) {
             Ok(idx) => idx + 1,
             Err(idx) => idx,
         };
+    // SAFETY: `last_idx` *cannot* be past the end of the array, as the last
+    // element is greater than `std::char::MAX` (the largest possible needle)
+    // as guaranteed by the caller.
+    //
+    // So, we cannot have found it (i.e. `Ok(idx) => idx + 1 != length`) and the
+    // correct location cannot be past it, so `Err(idx) => idx != length` either.
+    //
+    // This means that we can avoid bounds checking for the accesses below, too.
+    unsafe { crate::hint::assert_unchecked(last_idx < SOR) };
 
     let mut offset_idx = decode_length(short_offset_runs[last_idx]);
     let length = if let Some(next) = short_offset_runs.get(last_idx + 1) {

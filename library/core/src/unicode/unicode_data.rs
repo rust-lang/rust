@@ -55,24 +55,31 @@ fn decode_length(short_offset_run_header: u32) -> usize {
     (short_offset_run_header >> 21) as usize
 }
 
+/// # Safety
+///
+/// The last element of `short_offset_runs` must be greater than `std::char::MAX`.
 #[inline(always)]
-fn skip_search<const SOR: usize, const OFFSETS: usize>(
-    needle: u32,
+unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
+    needle: char,
     short_offset_runs: &[u32; SOR],
     offsets: &[u8; OFFSETS],
 ) -> bool {
-    // Note that this *cannot* be past the end of the array, as the last
-    // element is greater than std::char::MAX (the largest possible needle).
-    //
-    // So, we cannot have found it (i.e. Ok(idx) + 1 != length) and the correct
-    // location cannot be past it, so Err(idx) != length either.
-    //
-    // This means that we can avoid bounds checking for the accesses below, too.
+    let needle = needle as u32;
+
     let last_idx =
         match short_offset_runs.binary_search_by_key(&(needle << 11), |header| header << 11) {
             Ok(idx) => idx + 1,
             Err(idx) => idx,
         };
+    // SAFETY: `last_idx` *cannot* be past the end of the array, as the last
+    // element is greater than `std::char::MAX` (the largest possible needle)
+    // as guaranteed by the caller.
+    //
+    // So, we cannot have found it (i.e. `Ok(idx) => idx + 1 != length`) and the
+    // correct location cannot be past it, so `Err(idx) => idx != length` either.
+    //
+    // This means that we can avoid bounds checking for the accesses below, too.
+    unsafe { crate::hint::assert_unchecked(last_idx < SOR) };
 
     let mut offset_idx = decode_length(short_offset_runs[last_idx]);
     let length = if let Some(next) = short_offset_runs.get(last_idx + 1) {
@@ -169,11 +176,9 @@ pub mod alphabetic {
         0, 0, 0, 0, 5, 0, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -222,11 +227,9 @@ pub mod case_ignorable {
         1, 61, 4, 0, 5, 254, 2, 0, 7, 109, 8, 0, 5, 0, 1, 30, 96, 128, 240, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -252,11 +255,9 @@ pub mod cased {
         8, 0, 10, 1, 20, 6, 6, 0, 62, 0, 68, 0, 26, 6, 26, 6, 26, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -269,11 +270,9 @@ pub mod cc {
         0, 32, 95, 33, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -320,11 +319,9 @@ pub mod grapheme_extend {
         (c as u32) >= 0x300 && lookup_slow(c)
     }
     fn lookup_slow(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
@@ -459,11 +456,9 @@ pub mod n {
         10, 247, 10, 0, 9, 128, 10, 0, 59, 1, 3, 1, 4, 76, 45, 1, 15, 0, 13, 0, 10, 0,
     ];
     pub fn lookup(c: char) -> bool {
-        super::skip_search(
-            c as u32,
-            &SHORT_OFFSET_RUNS,
-            &OFFSETS,
-        )
+        const { assert!(*SHORT_OFFSET_RUNS.last().unwrap() > (char::MAX as u32)); }
+        // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`.
+        unsafe { super::skip_search(c, &SHORT_OFFSET_RUNS, &OFFSETS) }
     }
 }
 
