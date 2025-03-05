@@ -838,13 +838,7 @@ message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
-message = """
-This PR modifies `tests/run-make/`. If this PR is trying to port a Makefile
-run-make test to use rmake.rs, please update the
-[run-make port tracking issue](https://github.com/rust-lang/rust/issues/121876)
-so we can track our progress. You can either modify the tracking issue
-directly, or you can comment on the tracking issue and link this PR.
-"""
+message = "This PR modifies `run-make` tests."
 cc = ["@jieyouxu"]
 
 [mentions."src/rustdoc-json-types"]

@@ -238,30 +238,6 @@ This is much faster, but doesn't always work. For example, some tests include
 directives that specify specific compiler flags, or which rely on other crates,
 and they may not run the same without those options.
 
-## Running `run-make` tests
-
-### Windows
-
-Running the `run-make` test suite on Windows is a currently bit more involved.
-There are numerous prerequisites and environmental requirements:
-
-- Install msys2: <https://www.msys2.org/>
-- Specify `MSYS2_PATH_TYPE=inherit` in `msys2.ini` in the msys2 installation directory, run the
-  following with `MSYS2 MSYS`:
-  - `pacman -Syuu`
-  - `pacman -S make`
-  - `pacman -S diffutils`
-  - `pacman -S binutils`
-  - `./x test run-make` (`./x test tests/run-make` doesn't work)
-
-There is [on-going work][port-run-make] to not rely on `Makefile`s in the
-run-make test suite. Once this work is completed, you can run the entire
-`run-make` test suite on native Windows inside `cmd` or `PowerShell` without
-needing to install and use MSYS2. As of <!--date-check --> Oct 2024, it is
-already possible to run the vast majority of the `run-make` test suite outside
-of MSYS2, but there will be failures for the tests that still use `Makefile`s
-due to not finding `make`.
-
 ## Running tests on a remote machine
 
 Tests may be run on a remote machine (e.g. to test builds for a different
@@ -406,4 +382,3 @@ If you encounter bugs or problems, don't hesitate to open issues on the
 repository](https://github.com/rust-lang/rustc_codegen_gcc/).
 
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui
-[port-run-make]: https://github.com/rust-lang/rust/issues/121876
