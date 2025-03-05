@@ -221,6 +221,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vstrszb"] fn vstrszb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
     #[link_name = "llvm.s390.vstrszh"] fn vstrszh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
     #[link_name = "llvm.s390.vstrszf"] fn vstrszf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+
+    #[link_name = "llvm.s390.vistrb"] fn vistrb(a: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vistrh"] fn vistrh(a: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vistrf"] fn vistrf(a: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.s390.vistrbs"] fn vistrbs(a: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vistrhs"] fn vistrhs(a: vector_unsigned_short) -> PackedTuple<vector_unsigned_short, i32>;
+    #[link_name = "llvm.s390.vistrfs"] fn vistrfs(a: vector_unsigned_int) -> PackedTuple<vector_unsigned_int, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3098,6 +3106,68 @@ mod sealed {
 
     impl_vec_trait! { [VectorUnsigned vec_unsigned] vclgsb (vector_float) -> vector_unsigned_int }
     impl_vec_trait! { [VectorUnsigned vec_unsigned] vclgdb (vector_double) -> vector_unsigned_long_long }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorCopyUntilZero {
+        unsafe fn vec_cp_until_zero(self) -> Self;
+    }
+
+    test_impl! { vec_vistrb (a: vector_unsigned_char) -> vector_unsigned_char [vistrb, vistrb] }
+    test_impl! { vec_vistrh (a: vector_unsigned_short) -> vector_unsigned_short [vistrh, vistrh] }
+    test_impl! { vec_vistrf (a: vector_unsigned_int) -> vector_unsigned_int [vistrf, vistrf] }
+
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrb (vector_signed_char) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrb (vector_bool_char) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrb (vector_unsigned_char) }
+
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrh (vector_signed_short) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrh (vector_bool_short) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrh (vector_unsigned_short) }
+
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrf (vector_signed_int) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrf (vector_bool_int) }
+    impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrf (vector_unsigned_int) }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorCopyUntilZeroCC {
+        unsafe fn vec_cp_until_zero_cc(self, cc: *mut i32) -> Self;
+    }
+
+    test_impl! { vec_vistrbs (a: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32> [vistrbs, vistrbs] }
+    test_impl! { vec_vistrhs (a: vector_unsigned_short) -> PackedTuple<vector_unsigned_short, i32> [vistrhs, vistrhs] }
+    test_impl! { vec_vistrfs (a: vector_unsigned_int) -> PackedTuple<vector_unsigned_int, i32> [vistrfs, vistrfs] }
+
+    macro_rules! impl_vec_copy_until_zero_cc {
+        ($($intr:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorCopyUntilZeroCC for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cp_until_zero_cc(self, cc: *mut i32) -> Self {
+                        let PackedTuple { x,y } = $intr(transmute(self));
+                        cc.write(y);
+                        transmute(x)
+                    }
+                }
+
+            )*
+        }
+    }
+
+    impl_vec_copy_until_zero_cc! {
+        vec_vistrbs vector_signed_char
+        vec_vistrbs vector_bool_char
+        vec_vistrbs vector_unsigned_char
+
+        vec_vistrhs vector_signed_short
+        vec_vistrhs vector_bool_short
+        vec_vistrhs vector_unsigned_short
+
+        vec_vistrfs vector_signed_int
+        vec_vistrfs vector_bool_int
+        vec_vistrfs vector_unsigned_int
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4433,6 +4503,22 @@ pub unsafe fn vec_unsigned<T: sealed::VectorUnsigned>(a: T) -> T::Result {
     a.vec_unsigned()
 }
 
+/// Vector Copy Until Zero
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cp_until_zero<T: sealed::VectorCopyUntilZero>(a: T) -> T {
+    a.vec_cp_until_zero()
+}
+
+/// Vector Copy Until Zero
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cp_until_zero_cc<T: sealed::VectorCopyUntilZeroCC>(a: T, cc: *mut i32) -> T {
+    a.vec_cp_until_zero_cc(cc)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5613,6 +5699,35 @@ mod tests {
 
             let v = vector_double([2.5, 3.5]);
             assert_eq!(vec_unsigned(v).as_array(), &[2, 3]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cp_until_zero() {
+        unsafe {
+            let v = vector_signed_int([1, 2, 3, 4]);
+            let d = vec_cp_until_zero(v);
+            assert_eq!(d.as_array(), &[1, 2, 3, 4]);
+
+            let v = vector_signed_int([1, 2, 0, 4]);
+            let d = vec_cp_until_zero(v);
+            assert_eq!(d.as_array(), &[1, 2, 0, 0]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cp_until_zero_cc() {
+        let mut cc = 0;
+        unsafe {
+            let v = vector_signed_int([1, 2, 3, 4]);
+            let d = vec_cp_until_zero_cc(v, &mut cc);
+            assert_eq!(d.as_array(), &[1, 2, 3, 4]);
+            assert_eq!(cc, 3);
+
+            let v = vector_signed_int([1, 2, 0, 4]);
+            let d = vec_cp_until_zero_cc(v, &mut cc);
+            assert_eq!(d.as_array(), &[1, 2, 0, 0]);
+            assert_eq!(cc, 0);
         }
     }
 }
