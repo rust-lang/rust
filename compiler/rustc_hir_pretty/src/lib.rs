@@ -117,9 +117,9 @@ impl<'a> State<'a> {
                 self.hardbreak()
             }
             hir::Attribute::Parsed(pa) => {
-                self.word("#[attr=\"");
+                self.word("#[attr = ");
                 pa.print_attribute(self);
-                self.word("\")]");
+                self.word("]");
                 self.hardbreak()
             }
         }
