@@ -302,14 +302,14 @@ macro_rules! impl_trait {
 
             #[inline]
             fn to_bits(self) -> Simd<$bits_ty, N> {
-                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                assert_eq!(size_of::<Self>(), size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&self) }
             }
 
             #[inline]
             fn from_bits(bits: Simd<$bits_ty, N>) -> Self {
-                assert_eq!(core::mem::size_of::<Self>(), core::mem::size_of::<Self::Bits>());
+                assert_eq!(size_of::<Self>(), size_of::<Self::Bits>());
                 // Safety: transmuting between vector types is safe
                 unsafe { core::mem::transmute_copy(&bits) }
             }
