@@ -302,7 +302,7 @@ impl Address {
         }
     }
 
-    fn to_bytes(&self) -> [u8; mem::size_of::<usize>()] {
+    fn to_bytes(&self) -> [u8; size_of::<usize>()] {
         usize::to_le_bytes(self.to_usize())
     }
 
@@ -589,7 +589,7 @@ pub fn interpret_mir(
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
-        if evaluator.ptr_size() != std::mem::size_of::<usize>() {
+        if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
         let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;

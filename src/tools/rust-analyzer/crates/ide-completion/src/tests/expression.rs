@@ -1920,6 +1920,7 @@ fn bar() {
             md rust_2015 (use core::prelude::rust_2015)
             md rust_2018 (use core::prelude::rust_2018)
             md rust_2021 (use core::prelude::rust_2021)
+            md rust_2024 (use core::prelude::rust_2024)
             tt Clone
             tt Copy
             tt IntoIterator
