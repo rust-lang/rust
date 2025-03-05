@@ -57,28 +57,10 @@ impl<'tcx> UniverseInfo<'tcx> {
         error_element: RegionElement,
         cause: ObligationCause<'tcx>,
     ) {
-        match *self {
-            UniverseInfo::RelateTys { expected, found } => {
-                let err = mbcx.infcx.err_ctxt().report_mismatched_types(
-                    &cause,
-                    mbcx.infcx.param_env,
-                    expected,
-                    found,
-                    TypeError::RegionsPlaceholderMismatch,
-                );
-                mbcx.buffer_error(err);
-            }
-            UniverseInfo::TypeOp(ref type_op_info) => {
-                type_op_info.report_erroneous_element(mbcx, placeholder, error_element, cause);
-            }
-            UniverseInfo::Other => {
-                // FIXME: This error message isn't great, but it doesn't show
-                // up in the existing UI tests. Consider investigating this
-                // some more.
-                mbcx.buffer_error(
-                    mbcx.dcx().create_err(HigherRankedSubtypeError { span: cause.span }),
-                );
-            }
+        if let UniverseInfo::TypeOp(ref type_op_info) = *self {
+            type_op_info.report_erroneous_element(mbcx, placeholder, error_element, cause);
+        } else {
+            self.report_generic_error(mbcx, cause);
         }
     }
 
@@ -90,7 +72,18 @@ impl<'tcx> UniverseInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_b: ty::PlaceholderRegion,
     ) {
-        // FIXME(amandasystems) this function is now a direct copy of the one above and that's not great.
+        if let UniverseInfo::TypeOp(ref type_op_info) = *self {
+            type_op_info.report_placeholder_mismatch(mbcx, placeholder_a, cause, placeholder_b);
+        } else {
+            self.report_generic_error(mbcx, cause);
+        }
+    }
+
+    fn report_generic_error(
+        &self,
+        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
+        cause: ObligationCause<'tcx>,
+    ) {
         match *self {
             UniverseInfo::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
@@ -102,9 +95,8 @@ impl<'tcx> UniverseInfo<'tcx> {
                 );
                 mbcx.buffer_error(err);
             }
-            UniverseInfo::TypeOp(ref type_op_info) => {
-                // FIXME(amandasystems) maybe...I can just use the type error above?!?!?!?!
-                type_op_info.report_placeholder_mismatch(mbcx, placeholder_a, cause, placeholder_b);
+            UniverseInfo::TypeOp(_) => {
+                unreachable!("This case should already have been handled!");
             }
             UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
@@ -189,44 +181,40 @@ pub(crate) trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         placeholder_b: ty::PlaceholderRegion,
     ) {
-        // FIXME(amandasystems) -- this fn is a duplicate of the one below and it shouldn't be.
-        // This really is the dumbest version of this function.
         let tcx = mbcx.infcx.tcx;
-        let base_universe = self.base_universe();
-        debug!(?base_universe);
 
-        let Some(adjusted_universe_a) =
-            placeholder_a.universe.as_u32().checked_sub(base_universe.as_u32())
-        else {
-            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
-            return;
-        };
-
-        let Some(adjusted_universe_b) =
-            placeholder_b.universe.as_u32().checked_sub(base_universe.as_u32())
-        else {
-            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
-            return;
-        };
-
-        let placeholder_a = ty::Region::new_placeholder(
-            tcx,
-            ty::Placeholder { universe: adjusted_universe_a.into(), bound: placeholder_a.bound },
-        );
-
-        let placeholder_b = ty::Region::new_placeholder(
-            tcx,
-            ty::Placeholder { universe: adjusted_universe_b.into(), bound: placeholder_b.bound },
-        );
+        let placeholder_a = self.region_with_adjusted_universe(placeholder_a, tcx);
+        let placeholder_b = self.region_with_adjusted_universe(placeholder_b, tcx);
 
         debug!(?placeholder_a, ?placeholder_b);
 
         let span = cause.span;
-        // FIXME(amandasystems) -- propagate or flatten the changes and remove error_region here.
+        // FIXME: see note in `report_erroneous_element()` below!
         let nice_error = self.nice_error(mbcx, cause, placeholder_a, Some(placeholder_b));
-        // I think this should never fail?!
         debug!(?nice_error);
         mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
+    }
+
+    /// Turn a placeholder region into a Region with its universe adjusted by
+    /// the base universe.
+    fn region_with_adjusted_universe(
+        &self,
+        placeholder: ty::PlaceholderRegion,
+        tcx: TyCtxt<'tcx>,
+    ) -> ty::Region<'tcx> {
+        let Some(adjusted_universe) =
+            placeholder.universe.as_u32().checked_sub(self.base_universe().as_u32())
+        else {
+            unreachable!(
+                "Could not adjust universe {:?} of {placeholder:?} by base universe {:?}",
+                placeholder.universe,
+                self.base_universe()
+            );
+        };
+        ty::Region::new_placeholder(
+            tcx,
+            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
+        )
     }
 
     #[instrument(level = "debug", skip(self, mbcx))]
@@ -238,28 +226,22 @@ pub(crate) trait TypeOpInfo<'tcx> {
         cause: ObligationCause<'tcx>,
     ) {
         let tcx = mbcx.infcx.tcx;
-        let base_universe = self.base_universe();
-        debug!(?base_universe);
 
-        let Some(adjusted_universe) =
-            placeholder.universe.as_u32().checked_sub(base_universe.as_u32())
-        else {
-            mbcx.buffer_error(self.fallback_error(tcx, cause.span));
-            return;
-        };
-
-        // FIXME(amandasystems) -- construct this earlier when we have
-        // adjusted universes and pass it in rather than placeholder
-        let placeholder_region = ty::Region::new_placeholder(
-            tcx,
-            ty::Placeholder { universe: adjusted_universe.into(), bound: placeholder.bound },
-        );
+        // FIXME: these adjusted universes are not (always) the same ones as we compute
+        // earlier. They probably should be, but the logic downstream is complicated,
+        // and assumes they use whatever this is.
+        //
+        // In fact, this  function throws away a lot of interesting information that would
+        // probably allow bypassing lots of logic downstream for a much simpler flow.
+        let placeholder_region = self.region_with_adjusted_universe(placeholder, tcx);
 
         debug!(?placeholder_region);
 
         let span = cause.span;
-        // FIXME(amandasystems) -- propagate or flatten the changes and remove error_region here.
-        // --- I think we always fall back!!!
+        // FIXME: it's not good that we have one variant that always sends None,
+        // and one variant with always sends Some. We should break out these code
+        // paths -- but the downstream code is complicated and that's not straight-
+        // forward.
         let nice_error = self.nice_error(mbcx, cause, placeholder_region, None);
 
         debug!(?nice_error);
@@ -286,7 +268,6 @@ impl<'tcx> TypeOpInfo<'tcx> for PredicateQuery<'tcx> {
         self.base_universe
     }
 
-    // NOTE(amandasystems) this is the method being executed!
     fn nice_error<'infcx>(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, 'infcx, 'tcx>,
