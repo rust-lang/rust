@@ -223,6 +223,7 @@ const KNOWN_DIRECTIVE_NAMES: &[&str] = &[
     "only-x86_64-pc-windows-gnu",
     "only-x86_64-pc-windows-msvc",
     "only-x86_64-unknown-linux-gnu",
+    "parallel-front-end-robustness",
     "pp-exact",
     "pretty-compare-only",
     "pretty-mode",
