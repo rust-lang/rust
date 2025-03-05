@@ -16,12 +16,14 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                 let name = field.ident.as_ref().unwrap();
                 let string_name = name.to_string();
                 disps.push(quote! {
-                    if __printed_anything && #name.should_render() {
-                        __p.word_space(",");
+                    if #name.should_render() {
+                        if __printed_anything {
+                            __p.word_space(",");
+                        }
+                        __p.word(#string_name);
+                        __p.word_space(":");
                         __printed_anything = true;
                     }
-                    __p.word(#string_name);
-                    __p.word_space(":");
                     #name.print_attribute(__p);
                 });
                 field_names.push(name);
@@ -35,6 +37,7 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                         return;
                     }
 
+                    __p.nbsp();
                     __p.word("{");
                     #(#disps)*
                     __p.word("}");
@@ -48,8 +51,10 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
             for idx in 0..fields_unnamed.unnamed.len() {
                 let name = format_ident!("f{idx}");
                 disps.push(quote! {
-                    if __printed_anything && #name.should_render() {
-                        __p.word_space(",");
+                    if #name.should_render() {
+                        if __printed_anything {
+                            __p.word_space(",");
+                        }
                         __printed_anything = true;
                     }
                     #name.print_attribute(__p);
@@ -66,9 +71,9 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                         return;
                     }
 
-                    __p.word("(");
+                    __p.popen();
                     #(#disps)*
-                    __p.word(")");
+                    __p.pclose();
                 },
                 quote! { true },
             )
