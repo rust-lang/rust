@@ -2887,14 +2887,6 @@ impl PpMode {
             | StableMir => true,
         }
     }
-    pub fn needs_hir(&self) -> bool {
-        use PpMode::*;
-        match *self {
-            Source(_) | AstTree | AstTreeExpanded => false,
-
-            Hir(_) | HirTree | ThirTree | ThirFlat | Mir | MirCFG | StableMir => true,
-        }
-    }
 
     pub fn needs_analysis(&self) -> bool {
         use PpMode::*;
