@@ -650,15 +650,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
 
         bar.render_into(&mut sidebar).unwrap();
 
-        let v = layout::render(
-            &shared.layout,
-            &page,
-            sidebar,
-            BufDisplay(|buf: &mut String| {
-                all.print(buf);
-            }),
-            &shared.style_files,
-        );
+        let v = layout::render(&shared.layout, &page, sidebar, all.print(), &shared.style_files);
         shared.fs.write(final_file, v)?;
 
         // if to avoid writing help, settings files to doc root unless we're on the final invocation

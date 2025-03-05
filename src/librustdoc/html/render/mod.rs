@@ -439,44 +439,49 @@ impl AllTypes {
         sections
     }
 
-    fn print(&self, f: &mut String) {
-        fn print_entries(f: &mut String, e: &FxIndexSet<ItemEntry>, kind: ItemSection) {
-            if !e.is_empty() {
-                let mut e: Vec<&ItemEntry> = e.iter().collect();
-                e.sort();
-                write_str(
-                    f,
-                    format_args!(
-                        "<h3 id=\"{id}\">{title}</h3><ul class=\"all-items\">",
-                        id = kind.id(),
-                        title = kind.name(),
-                    ),
-                );
-
-                for s in e.iter() {
-                    write_str(f, format_args!("<li>{}</li>", s.print()));
+    fn print(&self) -> impl fmt::Display {
+        fn print_entries(e: &FxIndexSet<ItemEntry>, kind: ItemSection) -> impl fmt::Display {
+            fmt::from_fn(move |f| {
+                if e.is_empty() {
+                    return Ok(());
                 }
 
-                f.push_str("</ul>");
-            }
+                let mut e: Vec<&ItemEntry> = e.iter().collect();
+                e.sort();
+                write!(
+                    f,
+                    "<h3 id=\"{id}\">{title}</h3><ul class=\"all-items\">",
+                    id = kind.id(),
+                    title = kind.name(),
+                )?;
+
+                for s in e.iter() {
+                    write!(f, "<li>{}</li>", s.print())?;
+                }
+
+                f.write_str("</ul>")
+            })
         }
 
-        f.push_str("<h1>List of all items</h1>");
-        // Note: print_entries does not escape the title, because we know the current set of titles
-        // doesn't require escaping.
-        print_entries(f, &self.structs, ItemSection::Structs);
-        print_entries(f, &self.enums, ItemSection::Enums);
-        print_entries(f, &self.unions, ItemSection::Unions);
-        print_entries(f, &self.primitives, ItemSection::PrimitiveTypes);
-        print_entries(f, &self.traits, ItemSection::Traits);
-        print_entries(f, &self.macros, ItemSection::Macros);
-        print_entries(f, &self.attribute_macros, ItemSection::AttributeMacros);
-        print_entries(f, &self.derive_macros, ItemSection::DeriveMacros);
-        print_entries(f, &self.functions, ItemSection::Functions);
-        print_entries(f, &self.type_aliases, ItemSection::TypeAliases);
-        print_entries(f, &self.trait_aliases, ItemSection::TraitAliases);
-        print_entries(f, &self.statics, ItemSection::Statics);
-        print_entries(f, &self.constants, ItemSection::Constants);
+        fmt::from_fn(|f| {
+            f.write_str("<h1>List of all items</h1>")?;
+            // Note: print_entries does not escape the title, because we know the current set of titles
+            // doesn't require escaping.
+            print_entries(&self.structs, ItemSection::Structs).fmt(f)?;
+            print_entries(&self.enums, ItemSection::Enums).fmt(f)?;
+            print_entries(&self.unions, ItemSection::Unions).fmt(f)?;
+            print_entries(&self.primitives, ItemSection::PrimitiveTypes).fmt(f)?;
+            print_entries(&self.traits, ItemSection::Traits).fmt(f)?;
+            print_entries(&self.macros, ItemSection::Macros).fmt(f)?;
+            print_entries(&self.attribute_macros, ItemSection::AttributeMacros).fmt(f)?;
+            print_entries(&self.derive_macros, ItemSection::DeriveMacros).fmt(f)?;
+            print_entries(&self.functions, ItemSection::Functions).fmt(f)?;
+            print_entries(&self.type_aliases, ItemSection::TypeAliases).fmt(f)?;
+            print_entries(&self.trait_aliases, ItemSection::TraitAliases).fmt(f)?;
+            print_entries(&self.statics, ItemSection::Statics).fmt(f)?;
+            print_entries(&self.constants, ItemSection::Constants).fmt(f)?;
+            Ok(())
+        })
     }
 }
 
