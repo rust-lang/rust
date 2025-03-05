@@ -2331,6 +2331,18 @@ pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     matches!(tcx.parent_hir_node(expr.hir_id), Node::Block(..))
 }
 
+/// Checks if the expression is a temporary value.
+// This logic is the same as the one used in rustc's `check_named_place_expr function`.
+// https://github.com/rust-lang/rust/blob/3ed2a10d173d6c2e0232776af338ca7d080b1cd4/compiler/rustc_hir_typeck/src/expr.rs#L482-L499
+pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    !expr.is_place_expr(|base| {
+        cx.typeck_results()
+            .adjustments()
+            .get(base.hir_id)
+            .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
+    })
+}
+
 pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
     if !is_no_std_crate(cx) {
         Some("std")
