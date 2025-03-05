@@ -926,7 +926,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
-                        tracing::info!(?data, ?data.inputs);
                         let err = match (&data.inputs[..], &data.output) {
                             ([_, ..], FnRetTy::Default(_)) => {
                                 errors::BadReturnTypeNotation::Inputs { span: data.inputs_span }
