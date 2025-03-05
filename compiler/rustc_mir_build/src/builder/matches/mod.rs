@@ -26,7 +26,6 @@ use crate::builder::{
 
 // helper functions, broken out by category:
 mod match_pair;
-mod simplify;
 mod test;
 mod util;
 
@@ -987,18 +986,16 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
-/// patterns simplified away, and or-patterns sorted to the end.
+/// patterns simplified away.
 ///
-/// Here, "flat" indicates that the pattern's match pairs have been recursively
-/// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
-/// flat in an absolute sense.
+/// Here, "flat" indicates that irrefutable nodes in the pattern tree have been
+/// recursively replaced with their refutable subpatterns. They are not
+/// necessarily flat in an absolute sense.
 ///
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the match pairs are recursively simplified.
-    // Invariant: or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
@@ -1017,7 +1014,6 @@ impl<'tcx> FlatPat<'tcx> {
             is_never: pattern.is_never_pattern(),
         };
         MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
-        cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
 
         Self { match_pairs, extra_data }
     }
@@ -1124,7 +1120,7 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
-        Candidate {
+        let mut this = Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
             has_guard,
@@ -1133,7 +1129,14 @@ impl<'tcx> Candidate<'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
-        }
+        };
+        this.sort_match_pairs();
+        this
+    }
+
+    /// Restores the invariant that or-patterns must be sorted to the end.
+    fn sort_match_pairs(&mut self) {
+        self.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
