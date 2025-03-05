@@ -442,7 +442,7 @@ pub struct SearchGraph<D: Delegate<Cx = X>, X: Cx = <D as Delegate>::Cx> {
 ///
 /// `nested_goals` are only used when checking whether global cache entries
 /// are applicable. This only cares about whether a goal is actually accessed.
-/// Given that the usage of the provisional cache is fully determinstic, we
+/// Given that the usage of the provisional cache is fully deterministic, we
 /// don't need to track the nested goals used while computing a provisional
 /// cache entry.
 enum UpdateParentGoalCtxt<'a, X: Cx> {

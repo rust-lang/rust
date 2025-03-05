@@ -126,7 +126,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_repeat_expr_checks = self.deferred_repeat_expr_checks.borrow_mut();
         debug!("FnCtxt::check_repeat_exprs: {} deferred checks", deferred_repeat_expr_checks.len());
         for (element, element_ty, count) in deferred_repeat_expr_checks.drain(..) {
-            // We want to emit an error if the const is not structurally resolveable as otherwise
+            // We want to emit an error if the const is not structurally resolvable as otherwise
             // we can find up conservatively proving `Copy` which may infer the repeat expr count
             // to something that never required `Copy` in the first place.
             let count =
