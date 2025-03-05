@@ -1009,7 +1009,8 @@ impl<'tcx> FlatPat<'tcx> {
     /// for the given pattern.
     fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
         // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
+        let mut match_pairs = vec![];
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs);
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),

@@ -22,7 +22,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ) {
         for fieldpat in subpatterns {
             let place = place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
-            match_pairs.push(MatchPairTree::for_pattern(place, &fieldpat.pattern, self));
+            MatchPairTree::for_pattern(place, &fieldpat.pattern, self, match_pairs);
         }
     }
 
@@ -53,11 +53,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ((prefix.len() + suffix.len()).try_into().unwrap(), false)
         };
 
-        match_pairs.extend(prefix.iter().enumerate().map(|(idx, subpattern)| {
+        for (idx, subpattern) in prefix.iter().enumerate() {
             let elem =
                 ProjectionElem::ConstantIndex { offset: idx as u64, min_length, from_end: false };
-            MatchPairTree::for_pattern(place.clone_project(elem), subpattern, self)
-        }));
+            let place = place.clone_project(elem);
+            MatchPairTree::for_pattern(place, subpattern, self, match_pairs);
+        }
 
         if let Some(subslice_pat) = opt_slice {
             let suffix_len = suffix.len() as u64;
@@ -66,10 +67,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 to: if exact_size { min_length - suffix_len } else { suffix_len },
                 from_end: !exact_size,
             });
-            match_pairs.push(MatchPairTree::for_pattern(subslice, subslice_pat, self));
+            MatchPairTree::for_pattern(subslice, subslice_pat, self, match_pairs);
         }
 
-        match_pairs.extend(suffix.iter().rev().enumerate().map(|(idx, subpattern)| {
+        for (idx, subpattern) in suffix.iter().rev().enumerate() {
             let end_offset = (idx + 1) as u64;
             let elem = ProjectionElem::ConstantIndex {
                 offset: if exact_size { min_length - end_offset } else { end_offset },
@@ -77,8 +78,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 from_end: !exact_size,
             };
             let place = place.clone_project(elem);
-            MatchPairTree::for_pattern(place, subpattern, self)
-        }));
+            MatchPairTree::for_pattern(place, subpattern, self, match_pairs);
+        }
     }
 }
 
@@ -89,7 +90,8 @@ impl<'tcx> MatchPairTree<'tcx> {
         mut place_builder: PlaceBuilder<'tcx>,
         pattern: &Pat<'tcx>,
         cx: &mut Builder<'_, 'tcx>,
-    ) -> MatchPairTree<'tcx> {
+        match_pairs: &mut Vec<Self>, // Newly-created nodes are added to this vector
+    ) {
         // Force the place type to the pattern's type.
         // FIXME(oli-obk): can we use this to simplify slice/array pattern hacks?
         if let Some(resolved) = place_builder.resolve_upvar(cx) {
@@ -142,7 +144,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     variance,
                 });
 
-                subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
+                MatchPairTree::for_pattern(place_builder, subpattern, cx, &mut subpairs);
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
@@ -156,13 +158,13 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    subpairs.push(MatchPairTree::for_pattern(place_builder, subpattern, cx));
+                    MatchPairTree::for_pattern(place_builder, subpattern, cx, &mut subpairs);
                 }
                 TestCase::Irrefutable { ascription: None, binding }
             }
 
             PatKind::ExpandedConstant { subpattern: ref pattern, def_id: _, is_inline: false } => {
-                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
+                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs);
                 default_irrefutable()
             }
             PatKind::ExpandedConstant { subpattern: ref pattern, def_id, is_inline: true } => {
@@ -189,7 +191,7 @@ impl<'tcx> MatchPairTree<'tcx> {
                     super::Ascription { annotation, source, variance: ty::Contravariant }
                 });
 
-                subpairs.push(MatchPairTree::for_pattern(place_builder, pattern, cx));
+                MatchPairTree::for_pattern(place_builder, pattern, cx, &mut subpairs);
                 TestCase::Irrefutable { ascription, binding: None }
             }
 
@@ -235,7 +237,7 @@ impl<'tcx> MatchPairTree<'tcx> {
             }
 
             PatKind::Deref { ref subpattern } => {
-                subpairs.push(MatchPairTree::for_pattern(place_builder.deref(), subpattern, cx));
+                MatchPairTree::for_pattern(place_builder.deref(), subpattern, cx, &mut subpairs);
                 default_irrefutable()
             }
 
@@ -246,23 +248,24 @@ impl<'tcx> MatchPairTree<'tcx> {
                     Ty::new_ref(cx.tcx, cx.tcx.lifetimes.re_erased, subpattern.ty, mutability),
                     pattern.span,
                 );
-                subpairs.push(MatchPairTree::for_pattern(
+                MatchPairTree::for_pattern(
                     PlaceBuilder::from(temp).deref(),
                     subpattern,
                     cx,
-                ));
+                    &mut subpairs,
+                );
                 TestCase::Deref { temp, mutability }
             }
 
             PatKind::Never => TestCase::Never,
         };
 
-        MatchPairTree {
+        match_pairs.push(MatchPairTree {
             place,
             test_case,
             subpairs,
             pattern_ty: pattern.ty,
             pattern_span: pattern.span,
-        }
+        });
     }
 }
