@@ -288,7 +288,22 @@ impl CargoWorkspace {
         locked: bool,
         progress: &dyn Fn(String),
     ) -> anyhow::Result<(cargo_metadata::Metadata, Option<anyhow::Error>)> {
-        Self::fetch_metadata_(cargo_toml, current_dir, config, sysroot, locked, false, progress)
+        let res = Self::fetch_metadata_(
+            cargo_toml,
+            current_dir,
+            config,
+            sysroot,
+            locked,
+            false,
+            progress,
+        );
+        if let Ok((_, Some(ref e))) = res {
+            tracing::warn!(
+                "`cargo metadata` failed on `{cargo_toml}`, but retry with `--no-deps` succeeded"
+            );
+            tracing::debug!("{e:?}");
+        }
+        res
     }
 
     fn fetch_metadata_(
