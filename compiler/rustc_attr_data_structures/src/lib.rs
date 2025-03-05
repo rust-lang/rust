@@ -126,7 +126,7 @@ macro_rules! print_tup {
                 let ($t, $($ts),*) = self;
                 let parens = print_tup!(num_should_render $t $($ts)*) > 1;
                 if parens {
-                    p.word("(");
+                    p.popen();
                 }
 
                 let mut printed_anything = $t.should_render();
@@ -135,14 +135,16 @@ macro_rules! print_tup {
 
                 $(
                     if $ts.should_render() {
-                        p.word_space(",");
+                        if printed_anything {
+                            p.word_space(",");
+                        }
                         printed_anything = true;
                     }
                     $ts.print_attribute(p);
                 )*
 
                 if parens {
-                    p.word(")");
+                    p.pclose();
                 }
             }
         }
@@ -153,5 +155,5 @@ macro_rules! print_tup {
 
 print_tup!(A B C D E F G H);
 print_skip!(Span, ());
-print_disp!(Symbol, u16, bool, NonZero<u32>);
-print_debug!(UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
+print_disp!(u16, bool, NonZero<u32>);
+print_debug!(Symbol, UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
