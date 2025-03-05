@@ -6,10 +6,7 @@
 FIXME(jieyouxu) completely revise this chapter.
 -->
 
-Directives are special comments that tell compiletest how to build and interpret
-a test. They must appear before the Rust source in the test. They may also
-appear in `rmake.rs` or legacy Makefiles for [run-make
-tests](compiletest.md#run-make-tests).
+Directives are special comments that tell compiletest how to build and interpret a test. They must appear before the Rust source in the test. They may also appear in `rmake.rs` [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this
 test. Compiletest test suites use `//@` to signal that a comment is a directive.
@@ -222,8 +219,6 @@ The following directives will check LLVM support:
     [`aarch64-gnu-debug`]), which only runs a
     subset of `run-make` tests. Other tests with this directive will not
     run at all, which is usually not what you want.
-  - Notably, the [`aarch64-gnu-debug`] CI job *currently* only runs `run-make`
-    tests which additionally contain `clang` in their test name.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for
 ignoring debuggers.

@@ -8,23 +8,6 @@ use crate::targets::is_msvc;
 /// Construct the static library name based on the target.
 #[must_use]
 pub fn static_lib_name(name: &str) -> String {
-    // See tools.mk (irrelevant lines omitted):
-    //
-    // ```makefile
-    // ifeq ($(UNAME),Darwin)
-    //     STATICLIB = $(TMPDIR)/lib$(1).a
-    // else
-    //     ifdef IS_WINDOWS
-    //         ifdef IS_MSVC
-    //             STATICLIB = $(TMPDIR)/$(1).lib
-    //         else
-    //             STATICLIB = $(TMPDIR)/lib$(1).a
-    //         endif
-    //     else
-    //         STATICLIB = $(TMPDIR)/lib$(1).a
-    //     endif
-    // endif
-    // ```
     assert!(!name.contains(char::is_whitespace), "static library name cannot contain whitespace");
 
     if is_msvc() { format!("{name}.lib") } else { format!("lib{name}.a") }

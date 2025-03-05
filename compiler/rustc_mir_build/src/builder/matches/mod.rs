@@ -26,7 +26,6 @@ use crate::builder::{
 
 // helper functions, broken out by category:
 mod match_pair;
-mod simplify;
 mod test;
 mod util;
 
@@ -987,18 +986,16 @@ impl<'tcx> PatternExtraData<'tcx> {
 }
 
 /// A pattern in a form suitable for lowering the match tree, with all irrefutable
-/// patterns simplified away, and or-patterns sorted to the end.
+/// patterns simplified away.
 ///
-/// Here, "flat" indicates that the pattern's match pairs have been recursively
-/// simplified by [`Builder::simplify_match_pairs`]. They are not necessarily
-/// flat in an absolute sense.
+/// Here, "flat" indicates that irrefutable nodes in the pattern tree have been
+/// recursively replaced with their refutable subpatterns. They are not
+/// necessarily flat in an absolute sense.
 ///
 /// Will typically be incorporated into a [`Candidate`].
 #[derive(Debug, Clone)]
 struct FlatPat<'tcx> {
     /// To match the pattern, all of these must be satisfied...
-    // Invariant: all the match pairs are recursively simplified.
-    // Invariant: or-patterns must be sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
     extra_data: PatternExtraData<'tcx>,
@@ -1008,17 +1005,15 @@ impl<'tcx> FlatPat<'tcx> {
     /// Creates a `FlatPat` containing a simplified [`MatchPairTree`] list/forest
     /// for the given pattern.
     fn new(place: PlaceBuilder<'tcx>, pattern: &Pat<'tcx>, cx: &mut Builder<'_, 'tcx>) -> Self {
-        // First, recursively build a tree of match pairs for the given pattern.
-        let mut match_pairs = vec![MatchPairTree::for_pattern(place, pattern, cx)];
+        // Recursively build a tree of match pairs for the given pattern.
+        let mut match_pairs = vec![];
         let mut extra_data = PatternExtraData {
             span: pattern.span,
             bindings: Vec::new(),
             ascriptions: Vec::new(),
             is_never: pattern.is_never_pattern(),
         };
-        // Recursively remove irrefutable match pairs, while recording their
-        // bindings/ascriptions, and sort or-patterns after other match pairs.
-        cx.simplify_match_pairs(&mut match_pairs, &mut extra_data);
+        MatchPairTree::for_pattern(place, pattern, cx, &mut match_pairs, &mut extra_data);
 
         Self { match_pairs, extra_data }
     }
@@ -1055,7 +1050,6 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
     /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
@@ -1126,7 +1120,7 @@ impl<'tcx> Candidate<'tcx> {
 
     /// Incorporates an already-simplified [`FlatPat`] into a new candidate.
     fn from_flat_pat(flat_pat: FlatPat<'tcx>, has_guard: bool) -> Self {
-        Candidate {
+        let mut this = Candidate {
             match_pairs: flat_pat.match_pairs,
             extra_data: flat_pat.extra_data,
             has_guard,
@@ -1135,7 +1129,14 @@ impl<'tcx> Candidate<'tcx> {
             otherwise_block: None,
             pre_binding_block: None,
             false_edge_start_block: None,
-        }
+        };
+        this.sort_match_pairs();
+        this
+    }
+
+    /// Restores the invariant that or-patterns must be sorted to the end.
+    fn sort_match_pairs(&mut self) {
+        self.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
     }
 
     /// Returns whether the first match pair of this candidate is an or-pattern.
@@ -1227,17 +1228,11 @@ struct Ascription<'tcx> {
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
 ///
-/// Two variants are unlike the others and deserve special mention:
-///
-/// - [`Self::Irrefutable`] is only used temporarily when building a [`MatchPairTree`].
-///   They are then flattened away by [`Builder::simplify_match_pairs`], with any
-///   bindings/ascriptions incorporated into the enclosing [`FlatPat`].
-/// - [`Self::Or`] are not tested directly like the other variants. Instead they
-///   participate in or-pattern expansion, where they are transformed into subcandidates.
-///   - See [`Builder::expand_and_match_or_candidates`].
+/// Note that or-patterns are not tested directly like the other variants.
+/// Instead they participate in or-pattern expansion, where they are transformed into
+/// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
-    Irrefutable { binding: Option<Binding<'tcx>>, ascription: Option<Ascription<'tcx>> },
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
     Range(Arc<PatRange<'tcx>>),
@@ -1261,19 +1256,9 @@ impl<'tcx> TestCase<'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPairTree<'tcx> {
     /// This place...
-    ///
-    /// ---
-    /// This can be `None` if it referred to a non-captured place in a closure.
-    ///
-    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
-    /// Therefore this must be `Some(_)` after simplification.
-    place: Option<Place<'tcx>>,
+    place: Place<'tcx>,
 
     /// ... must pass this test...
-    ///
-    /// ---
-    /// Invariant: after creation and simplification in [`FlatPat::new`],
-    /// this must not be [`TestCase::Irrefutable`].
     test_case: TestCase<'tcx>,
 
     /// ... and these subpairs must match.
@@ -2091,11 +2076,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
-        // Unwrap is ok after simplification.
-        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
-        (match_place, test)
+        (match_pair.place, test)
     }
 
     /// Given a test, we partition the input candidates into several buckets.

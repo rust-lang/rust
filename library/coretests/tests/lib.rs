@@ -87,7 +87,6 @@
 #![feature(try_find)]
 #![feature(try_trait_v2)]
 #![feature(unsize)]
-#![feature(unsized_tuple_coercion)]
 #![feature(unwrap_infallible)]
 // tidy-alphabetical-end
 #![allow(internal_features)]

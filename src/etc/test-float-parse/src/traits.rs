@@ -147,12 +147,12 @@ pub trait Float:
 }
 
 macro_rules! impl_float {
-    ($($fty:ty, $ity:ty, $bits:literal);+) => {
+    ($($fty:ty, $ity:ty);+) => {
         $(
             impl Float for $fty {
                 type Int = $ity;
                 type SInt = <Self::Int as Int>::Signed;
-                const BITS: u32 = $bits;
+                const BITS: u32 = <$ity>::BITS;
                 const MAN_BITS: u32 = Self::MANTISSA_DIGITS - 1;
                 const MAN_MASK: Self::Int = (Self::Int::ONE << Self::MAN_BITS) - Self::Int::ONE;
                 const SIGN_MASK: Self::Int = Self::Int::ONE << (Self::BITS-1);
@@ -168,7 +168,7 @@ macro_rules! impl_float {
     }
 }
 
-impl_float!(f32, u32, 32; f64, u64, 64);
+impl_float!(f32, u32; f64, u64);
 
 /// A test generator. Should provide an iterator that produces unique patterns to parse.
 ///

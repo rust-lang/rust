@@ -7,7 +7,6 @@
 //! [rustc dev guide]:
 //! https://rustc-dev-guide.rust-lang.org/traits/resolution.html#confirmation
 
-use std::iter;
 use std::ops::ControlFlow;
 
 use rustc_ast::Mutability;
@@ -1313,34 +1312,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 nested.push(tail_unsize_obligation);
 
                 ImplSource::Builtin(BuiltinImplSource::Misc, nested)
-            }
-
-            // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
-                assert_eq!(tys_a.len(), tys_b.len());
-
-                // The last field of the tuple has to exist.
-                let (&a_last, a_mid) = tys_a.split_last().ok_or(Unimplemented)?;
-                let &b_last = tys_b.last().unwrap();
-
-                // Check that the source tuple with the target's
-                // last element is equal to the target.
-                let new_tuple =
-                    Ty::new_tup_from_iter(tcx, a_mid.iter().copied().chain(iter::once(b_last)));
-                let InferOk { mut obligations, .. } = self
-                    .infcx
-                    .at(&obligation.cause, obligation.param_env)
-                    .eq(DefineOpaqueTypes::Yes, target, new_tuple)
-                    .map_err(|_| Unimplemented)?;
-
-                // Add a nested `T: Unsize<U>` predicate.
-                let last_unsize_obligation = obligation.with(
-                    tcx,
-                    ty::TraitRef::new(tcx, obligation.predicate.def_id(), [a_last, b_last]),
-                );
-                obligations.push(last_unsize_obligation);
-
-                ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, obligations)
             }
 
             _ => bug!("source: {source}, target: {target}"),
