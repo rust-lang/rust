@@ -213,6 +213,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vftcidb"] fn vftcidb(a: vector_double, b: u32) -> PackedTuple<vector_bool_long_long, i32>;
 
     #[link_name = "llvm.s390.vtm"] fn vtm(a: i8x16, b: i8x16) -> i32;
+
+    #[link_name = "llvm.s390.vstrsb"] fn vstrsb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vstrsh"] fn vstrsh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vstrsf"] fn vstrsf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+
+    #[link_name = "llvm.s390.vstrszb"] fn vstrszb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vstrszh"] fn vstrszh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
+    #[link_name = "llvm.s390.vstrszf"] fn vstrszf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -2858,6 +2866,63 @@ mod sealed {
         vector_float
         vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSearchString {
+        unsafe fn vec_search_string_cc(
+            self,
+            b: Self,
+            c: vector_unsigned_char,
+            d: &mut i32,
+        ) -> vector_unsigned_char;
+
+        unsafe fn vec_search_string_until_zero_cc(
+            self,
+            b: Self,
+            c: vector_unsigned_char,
+            d: &mut i32,
+        ) -> vector_unsigned_char;
+    }
+
+    macro_rules! impl_vec_search_string{
+        ($($intr_s:ident $intr_sz:ident $ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorSearchString for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char, d: &mut i32) -> vector_unsigned_char {
+                        let PackedTuple { x,y } = $intr_s(transmute(self), transmute(b), c);
+                        *d = y;
+                        x
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char, d: &mut i32) -> vector_unsigned_char {
+                        let PackedTuple { x,y } = $intr_sz(transmute(self), transmute(b), c);
+                        *d = y;
+                        x
+                    }
+                }
+
+            )*
+        }
+    }
+
+    impl_vec_search_string! {
+        vstrsb vstrszb vector_signed_char
+        vstrsb vstrszb vector_bool_char
+        vstrsb vstrszb vector_unsigned_char
+
+        vstrsh vstrszh vector_signed_short
+        vstrsh vstrszh vector_bool_short
+        vstrsh vstrszh vector_unsigned_short
+
+        vstrsf vstrszf vector_signed_int
+        vstrsf vstrszf vector_bool_int
+        vstrsf vstrszf vector_unsigned_int
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4101,6 +4166,32 @@ pub unsafe fn vec_test_mask<T: sealed::VectorTestMask>(a: T, b: T::Mask) -> i32 
     a.vec_test_mask(b)
 }
 
+/// Vector Search String
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_search_string_cc<T: sealed::VectorSearchString>(
+    a: T,
+    b: T,
+    c: vector_unsigned_char,
+    d: &mut i32,
+) -> vector_unsigned_char {
+    a.vec_search_string_cc(b, c, d)
+}
+
+/// Vector Search String Until Zero
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
+    a: T,
+    b: T,
+    c: vector_unsigned_char,
+    d: &mut i32,
+) -> vector_unsigned_char {
+    a.vec_search_string_until_zero_cc(b, c, d)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5140,6 +5231,74 @@ mod tests {
             let v = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA; 2]);
             let m = vector_unsigned_long_long([0xAAAAAAAAAAAAAAAA; 2]);
             assert_eq!(vec_test_mask(v, m), 3);
+        }
+    }
+
+    #[simd_test(enable = "vector-enhancements-2")]
+    fn test_vec_search_string_cc() {
+        unsafe {
+            let b = vector_unsigned_char(*b"ABCD------------");
+            let c = vector_unsigned_char([4; 16]);
+            let mut d = 0i32;
+
+            let haystack = vector_unsigned_char(*b"__ABCD__________");
+            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 2);
+            assert_eq!(d, 2);
+
+            let haystack = vector_unsigned_char(*b"___ABCD_________");
+            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 3);
+            assert_eq!(d, 2);
+
+            let haystack = vector_unsigned_char(*b"________________");
+            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 16);
+            assert_eq!(d, 0);
+
+            let haystack = vector_unsigned_char(*b"______\0_________");
+            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 16);
+            assert_eq!(d, 0);
+
+            let haystack = vector_unsigned_char(*b"______\0__ABCD___");
+            let result = vec_search_string_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 9);
+            assert_eq!(d, 2);
+        }
+    }
+
+    #[simd_test(enable = "vector-enhancements-2")]
+    fn test_vec_search_string_until_zero_cc() {
+        unsafe {
+            let b = vector_unsigned_char(*b"ABCD\0\0\0\0\0\0\0\0\0\0\0\0");
+            let c = vector_unsigned_char([16; 16]);
+            let mut d = 0i32;
+
+            let haystack = vector_unsigned_char(*b"__ABCD__________");
+            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 2);
+            assert_eq!(d, 2);
+
+            let haystack = vector_unsigned_char(*b"___ABCD_________");
+            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 3);
+            assert_eq!(d, 2);
+
+            let haystack = vector_unsigned_char(*b"________________");
+            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 16);
+            assert_eq!(d, 0);
+
+            let haystack = vector_unsigned_char(*b"______\0_________");
+            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 16);
+            assert_eq!(d, 1);
+
+            let haystack = vector_unsigned_char(*b"______\0__ABCD___");
+            let result = vec_search_string_until_zero_cc(haystack, b, c, &mut d);
+            assert_eq!(result.as_array()[7], 16);
+            assert_eq!(d, 1);
         }
     }
 }
