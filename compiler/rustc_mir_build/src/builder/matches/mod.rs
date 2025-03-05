@@ -1054,7 +1054,6 @@ struct Candidate<'tcx> {
     ///   (see [`Builder::test_remaining_match_pairs_after_or`]).
     ///
     /// Invariants:
-    /// - All [`TestCase::Irrefutable`] patterns have been removed by simplification.
     /// - All or-patterns ([`TestCase::Or`]) have been sorted to the end.
     match_pairs: Vec<MatchPairTree<'tcx>>,
 
@@ -1226,17 +1225,11 @@ struct Ascription<'tcx> {
 /// - [`Builder::pick_test_for_match_pair`] (to choose a test)
 /// - [`Builder::sort_candidate`] (to see how the test interacts with a match pair)
 ///
-/// Two variants are unlike the others and deserve special mention:
-///
-/// - [`Self::Irrefutable`] is only used temporarily when building a [`MatchPairTree`].
-///   They are then flattened away by [`Builder::simplify_match_pairs`], with any
-///   bindings/ascriptions incorporated into the enclosing [`FlatPat`].
-/// - [`Self::Or`] are not tested directly like the other variants. Instead they
-///   participate in or-pattern expansion, where they are transformed into subcandidates.
-///   - See [`Builder::expand_and_match_or_candidates`].
+/// Note that or-patterns are not tested directly like the other variants.
+/// Instead they participate in or-pattern expansion, where they are transformed into
+/// subcandidates. See [`Builder::expand_and_match_or_candidates`].
 #[derive(Debug, Clone)]
 enum TestCase<'tcx> {
-    Irrefutable {},
     Variant { adt_def: ty::AdtDef<'tcx>, variant_index: VariantIdx },
     Constant { value: mir::Const<'tcx> },
     Range(Arc<PatRange<'tcx>>),
@@ -1269,10 +1262,6 @@ pub(crate) struct MatchPairTree<'tcx> {
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
-    ///
-    /// ---
-    /// Invariant: after creation and simplification in [`FlatPat::new`],
-    /// this must not be [`TestCase::Irrefutable`].
     test_case: TestCase<'tcx>,
 
     /// ... and these subpairs must match.
