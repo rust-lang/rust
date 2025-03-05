@@ -2858,7 +2858,7 @@ impl<T> Take<T> {
     }
 
     /// Returns the number of bytes read so far.
-    #[stable(feature = "seek_io_take", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "seek_io_take_position", issue = "97227")]
     pub fn position(&self) -> u64 {
         self.len - self.limit
     }
