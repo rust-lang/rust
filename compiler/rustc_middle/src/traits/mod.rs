@@ -397,9 +397,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     RustCall,
 
-    /// Obligations to prove that a `std::ops::Drop` impl is not stronger than
+    /// Obligations to prove that a `Drop` or negative auto trait impl is not stronger than
     /// the ADT it's being implemented for.
-    DropImpl,
+    AlwaysApplicableImpl,
 
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
