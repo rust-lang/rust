@@ -745,14 +745,10 @@ fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     match tcx.def_kind(def_id) {
         DefKind::Static { .. } => {
-            tcx.ensure_ok().typeck(def_id);
-            maybe_check_static_with_link_section(tcx, def_id);
             check_static_inhabited(tcx, def_id);
             check_static_linkage(tcx, def_id);
         }
-        DefKind::Const => {
-            tcx.ensure_ok().typeck(def_id);
-        }
+        DefKind::Const => {}
         DefKind::Enum => {
             check_enum(tcx, def_id);
         }
@@ -766,7 +762,6 @@ pub(crate) fn check_item_type(tcx: TyCtxt<'_>, def_id: LocalDefId) {
                     ExternAbi::Rust,
                 )
             }
-            // Everything else is checked entirely within check_item_body
         }
         DefKind::Impl { of_trait } => {
             if of_trait && let Some(impl_trait_header) = tcx.impl_trait_header(def_id) {
