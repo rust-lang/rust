@@ -1825,7 +1825,7 @@ macro_rules! impl_int {
     ($($t:ty)*) => {
         $(
             impl $t {
-                pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                pub const fn from_ne_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
                     unsafe { mem::transmute(bytes) }
                 }
             }

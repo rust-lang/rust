@@ -1394,7 +1394,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 .layout_of_ty(ty.clone(), self.db.trait_environment_for_body(self.owner))
                 .map(|it| it.size.bytes_usize())
         };
-        const USIZE_SIZE: usize = mem::size_of::<usize>();
+        const USIZE_SIZE: usize = size_of::<usize>();
         let bytes: Box<[_]> = match l {
             hir_def::hir::Literal::String(b) => {
                 let b = b.as_str();

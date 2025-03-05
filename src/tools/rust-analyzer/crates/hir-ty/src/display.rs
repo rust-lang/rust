@@ -4,7 +4,7 @@
 
 use std::{
     fmt::{self, Debug},
-    mem::{self, size_of},
+    mem,
 };
 
 use base_db::CrateId;
