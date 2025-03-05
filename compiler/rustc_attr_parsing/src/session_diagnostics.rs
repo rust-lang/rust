@@ -36,37 +36,6 @@ pub(crate) struct InvalidPredicate {
     pub predicate: String,
 }
 
-#[derive(Diagnostic)]
-#[diag(attr_parsing_multiple_item, code = E0538)]
-pub(crate) struct MultipleItem {
-    #[primary_span]
-    pub span: Span,
-
-    pub item: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(attr_parsing_incorrect_meta_item, code = E0539)]
-pub(crate) struct IncorrectMetaItem {
-    #[primary_span]
-    pub span: Span,
-
-    #[subdiagnostic]
-    pub suggestion: Option<IncorrectMetaItemSuggestion>,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    attr_parsing_incorrect_meta_item_suggestion,
-    applicability = "maybe-incorrect"
-)]
-pub(crate) struct IncorrectMetaItemSuggestion {
-    #[suggestion_part(code = "\"")]
-    pub lo: Span,
-    #[suggestion_part(code = "\"")]
-    pub hi: Span,
-}
-
 /// Error code: E0541
 pub(crate) struct UnknownMetaItem<'a> {
     pub span: Span,
@@ -506,7 +475,10 @@ pub(crate) struct UnrecognizedReprHint {
 pub(crate) enum AttributeParseErrorReason {
     ExpectedStringLiteral,
     ExpectedSingleArgument,
-    ExpectedSpecificArgument(Vec<&'static str>),
+    ExpectedList,
+    ExpectedNameValue(Option<Symbol>),
+    DuplicateKey(Symbol),
+    ExpectedSpecificArgument { possibilities: Vec<&'static str>, strings: bool },
 }
 
 pub(crate) struct AttributeParseError {
@@ -531,24 +503,46 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             AttributeParseErrorReason::ExpectedSingleArgument => {
                 diag.span_note(self.span, "expected a single argument here");
             }
-            AttributeParseErrorReason::ExpectedSpecificArgument(possibilities) => {
+            AttributeParseErrorReason::ExpectedList => {
+                diag.span_note(self.span, "expected this to be a list");
+            }
+            AttributeParseErrorReason::DuplicateKey(key) => {
+                diag.span_note(self.span, format!("found `{key}` used as a key more than once"));
+                diag.code(E0538);
+            }
+            AttributeParseErrorReason::ExpectedNameValue(None) => {
+                diag.span_note(
+                    self.span,
+                    format!("expected this to be of the form `{name} = \"...\"`"),
+                );
+            }
+            AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
+                diag.span_note(
+                    self.span,
+                    format!("expected this to be of the form `{name} = \"...\"`"),
+                );
+            }
+            AttributeParseErrorReason::ExpectedSpecificArgument { possibilities, strings } => {
+                let quote = if strings { '"' } else { '`' };
                 match possibilities.as_slice() {
                     &[] => {}
                     &[x] => {
-                        diag.span_note(self.span, format!("the only valid argument here is `{x}`"));
-                    }
-                    [first, second] => {
                         diag.span_note(
                             self.span,
-                            format!("valid arguments are `{first}` or `{second}`"),
+                            format!("the only valid argument here is {quote}{x}{quote}"),
                         );
+                    }
+                    [first, second] => {
+                        diag.span_note(self.span, format!("valid arguments are {quote}{first}{quote} or {quote}{second}{quote}"));
                     }
                     [first @ .., second_to_last, last] => {
                         let mut res = String::new();
                         for i in first {
-                            res.push_str(&format!("`{i}`, "));
+                            res.push_str(&format!("{quote}{i}{quote}, "));
                         }
-                        res.push_str(&format!("`{second_to_last}` or `{last}`"));
+                        res.push_str(&format!(
+                            "{quote}{second_to_last}{quote} or {quote}{last}{quote}"
+                        ));
 
                         diag.span_note(self.span, format!("valid arguments are {res}"));
                     }
@@ -562,7 +556,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
             if suggestions.len() == 1 {
                 "must be of the form"
             } else {
-                "the following are possible correct uses"
+                "try changing it to one of the following valid forms of the attribute"
             },
             suggestions,
             Applicability::HasPlaceholders,
