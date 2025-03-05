@@ -229,6 +229,8 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vistrbs"] fn vistrbs(a: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32>;
     #[link_name = "llvm.s390.vistrhs"] fn vistrhs(a: vector_unsigned_short) -> PackedTuple<vector_unsigned_short, i32>;
     #[link_name = "llvm.s390.vistrfs"] fn vistrfs(a: vector_unsigned_int) -> PackedTuple<vector_unsigned_int, i32>;
+
+    #[link_name = "llvm.s390.vmslg"] fn vmslg(a: vector_unsigned_long_long, b: vector_unsigned_long_long, c: u128, d: u32) -> u128;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -4519,6 +4521,27 @@ pub unsafe fn vec_cp_until_zero_cc<T: sealed::VectorCopyUntilZeroCC>(a: T, cc: *
     a.vec_cp_until_zero_cc(cc)
 }
 
+/// Vector Multiply Sum Logical
+#[inline]
+#[target_feature(enable = "vector-enhancements-1")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+#[cfg_attr(
+    all(test, target_feature = "vector-enhancements-1"),
+    assert_instr(vmslg, D = 4)
+)]
+pub unsafe fn vec_msum_u128<const D: u32>(
+    a: vector_unsigned_long_long,
+    b: vector_unsigned_long_long,
+    c: vector_unsigned_char,
+) -> vector_unsigned_char {
+    const {
+        if !matches!(D, 0 | 4 | 8 | 12) {
+            panic!("D needs to be one of 0, 4, 8, 12");
+        }
+    };
+    transmute(vmslg(a, b, transmute(c), D))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5728,6 +5751,28 @@ mod tests {
             let d = vec_cp_until_zero_cc(v, &mut cc);
             assert_eq!(d.as_array(), &[1, 2, 0, 0]);
             assert_eq!(cc, 0);
+        }
+    }
+
+    #[simd_test(enable = "vector-enhancements-1")]
+    fn test_vec_msum_u128() {
+        let a = vector_unsigned_long_long([1, 2]);
+        let b = vector_unsigned_long_long([3, 4]);
+
+        unsafe {
+            let c: vector_unsigned_char = transmute(100u128);
+
+            let d: u128 = transmute(vec_msum_u128::<0>(a, b, c));
+            assert_eq!(d, (1 * 3) + (2 * 4) + 100);
+
+            let d: u128 = transmute(vec_msum_u128::<4>(a, b, c));
+            assert_eq!(d, (1 * 3) + (2 * 4) * 2 + 100);
+
+            let d: u128 = transmute(vec_msum_u128::<8>(a, b, c));
+            assert_eq!(d, (1 * 3) * 2 + (2 * 4) + 100);
+
+            let d: u128 = transmute(vec_msum_u128::<12>(a, b, c));
+            assert_eq!(d, (1 * 3) * 2 + (2 * 4) * 2 + 100);
         }
     }
 }
