@@ -453,8 +453,8 @@ impl Copy for ! {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
 
-/// Marker trait for the types that are allowed in union fields, unsafe fields,
-/// and unsafe binder types.
+/// Marker trait for the types that are allowed in union fields and unsafe
+/// binder types.
 ///
 /// Implemented for:
 /// * `&T`, `&mut T` for all `T`,
