@@ -22,11 +22,7 @@ fn run_test(variant: &str) {
         flags
     };
     println!("{variant} test...");
-    rustc()
-        .input(format!("foo_{variant}.rs"))
-        .target(target())
-        .linker("aarch64-linux-gnu-gcc")
-        .run();
+    rustc().input(format!("foo_{variant}.rs")).linker("aarch64-linux-gnu-gcc").run();
     gcc()
         .input(format!("bar_{variant}.c"))
         .input(dynamic_lib_name("foo"))

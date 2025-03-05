@@ -6,7 +6,7 @@ use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
 use crate::util::set_host_compiler_dylib_path;
-use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
+use crate::{is_aix, is_darwin, is_msvc, is_windows, target, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
 /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
@@ -33,9 +33,15 @@ pub fn aux_build() -> Rustc {
 #[must_use]
 pub struct Rustc {
     cmd: Command,
+    target: Option<String>,
 }
 
-crate::macros::impl_common_helpers!(Rustc);
+// Only fill in the target just before execution, so that it can be overridden.
+crate::macros::impl_common_helpers!(Rustc, |rustc: &mut Rustc| {
+    if let Some(target) = &rustc.target {
+        rustc.cmd.arg(&format!("--target={target}"));
+    }
+});
 
 pub fn rustc_path() -> String {
     env_var("RUSTC")
@@ -52,19 +58,22 @@ impl Rustc {
     // `rustc` invocation constructor methods
 
     /// Construct a new `rustc` invocation. This will automatically set the library
-    /// search path as `-L cwd()`. Use [`bare_rustc`] to avoid this.
+    /// search path as `-L cwd()` and also the compilation target.
+    /// Use [`bare_rustc`] to avoid this.
     #[track_caller]
     pub fn new() -> Self {
         let mut cmd = setup_common();
         cmd.arg("-L").arg(cwd());
-        Self { cmd }
+
+        // Automatically default to cross-compilation
+        Self { cmd, target: Some(target()) }
     }
 
     /// Construct a bare `rustc` invocation with no flags set.
     #[track_caller]
     pub fn bare() -> Self {
         let cmd = setup_common();
-        Self { cmd }
+        Self { cmd, target: None }
     }
 
     /// Construct a new `rustc` invocation with `aux_build` preset (setting `--crate-type=lib`).
@@ -72,7 +81,7 @@ impl Rustc {
     pub fn new_aux_build() -> Self {
         let mut cmd = setup_common();
         cmd.arg("--crate-type=lib");
-        Self { cmd }
+        Self { cmd, target: None }
     }
 
     // Argument provider methods
@@ -248,8 +257,9 @@ impl Rustc {
 
     /// Specify the target triple, or a path to a custom target json spec file.
     pub fn target<S: AsRef<str>>(&mut self, target: S) -> &mut Self {
-        let target = target.as_ref();
-        self.cmd.arg(format!("--target={target}"));
+        // We store the target as a separate field, so that it can be specified multiple times.
+        // This is in particular useful to override the default target set in Rustc::new().
+        self.target = Some(target.as_ref().to_string());
         self
     }
 

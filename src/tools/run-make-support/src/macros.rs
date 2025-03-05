@@ -23,10 +23,16 @@
 /// }
 /// ```
 ///
+/// You can pass an optional second parameter which should be a function that is passed
+/// `&mut self` just before the command is executed.
+///
 /// [`Command`]: crate::command::Command
 /// [`CompletedProcess`]: crate::command::CompletedProcess
 macro_rules! impl_common_helpers {
     ($wrapper: ident) => {
+        $crate::macros::impl_common_helpers!($wrapper, |_| {});
+    };
+    ($wrapper: ident, $before_exec: expr) => {
         impl $wrapper {
             /// Specify an environment variable.
             pub fn env<K, V>(&mut self, key: K, value: V) -> &mut Self
@@ -118,12 +124,14 @@ macro_rules! impl_common_helpers {
             /// Run the constructed command and assert that it is successfully run.
             #[track_caller]
             pub fn run(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run()
             }
 
             /// Run the constructed command and assert that it does not successfully run.
             #[track_caller]
             pub fn run_fail(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run_fail()
             }
 
@@ -133,6 +141,7 @@ macro_rules! impl_common_helpers {
             /// whenever possible.
             #[track_caller]
             pub fn run_unchecked(&mut self) -> crate::command::CompletedProcess {
+                $before_exec(&mut *self);
                 self.cmd.run_unchecked()
             }
 
