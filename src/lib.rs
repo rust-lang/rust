@@ -215,7 +215,7 @@ impl CodegenBackend for CraneliftCodegenBackend {
         });
         if config.jit_mode {
             #[cfg(feature = "jit")]
-            driver::jit::run_jit(tcx, config.lazy_jit, config.jit_args);
+            driver::jit::run_jit(tcx, config.jit_args);
 
             #[cfg(not(feature = "jit"))]
             tcx.dcx().fatal("jit support was disabled when compiling rustc_codegen_cranelift");
