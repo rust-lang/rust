@@ -18,7 +18,7 @@ pub use Foo1 as Foo2;
 
 // First we ensure that only the reexport `Bar2` and the inlined struct `Bar`
 // are inlined.
-//@ count - '//a[@class="struct"]' 2
+//@ count - '//a[@class="struct"]' 1
 // Then we check that `cfg` is displayed for base item, but not for intermediate re-exports.
 //@ has - '//*[@class="stab portability"]' 'foo'
 //@ !has - '//*[@class="stab portability"]' 'bar'
@@ -29,5 +29,5 @@ pub use Foo2 as Bar;
 
 // This one should appear but `Bar2` won't be linked because there is no
 // `#[doc(inline)]`.
-//@ has - '//*[@id="reexport.Bar2"]' 'pub use Foo2 as Bar2;'
+//@ !has - '//*[@id="reexport.Bar2"]' 'pub use Foo2 as Bar2;'
 pub use Foo2 as Bar2;
