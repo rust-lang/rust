@@ -436,10 +436,7 @@ fn fn_abi_sanity_check<'tcx>(
     ) {
         let tcx = cx.tcx();
 
-        if spec_abi == ExternAbi::Rust
-            || spec_abi == ExternAbi::RustCall
-            || spec_abi == ExternAbi::RustCold
-        {
+        if spec_abi.is_rustic_abi() {
             if arg.layout.is_zst() {
                 // Casting closures to function pointers depends on ZST closure types being
                 // omitted entirely in the calling convention.
@@ -687,7 +684,7 @@ fn fn_abi_adjust_for_abi<'tcx>(
 
     let tcx = cx.tcx();
 
-    if abi == ExternAbi::Rust || abi == ExternAbi::RustCall || abi == ExternAbi::RustIntrinsic {
+    if abi.is_rustic_abi() {
         fn_abi.adjust_for_rust_abi(cx, abi);
 
         // Look up the deduced parameter attributes for this function, if we have its def ID and

@@ -1,7 +1,7 @@
 use std::iter;
 use std::ops::ControlFlow;
 
-use rustc_abi::{BackendRepr, ExternAbi, TagEncoding, VariantIdx, Variants, WrappingRange};
+use rustc_abi::{BackendRepr, TagEncoding, VariantIdx, Variants, WrappingRange};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::DiagMessage;
 use rustc_hir::intravisit::VisitorExt;
@@ -1349,7 +1349,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             ty::FnPtr(sig_tys, hdr) => {
                 let sig = sig_tys.with(hdr);
-                if self.is_internal_abi(sig.abi()) {
+                if sig.abi().is_rustic_abi() {
                     return FfiUnsafe {
                         ty,
                         reason: fluent::lint_improper_ctypes_fnptr_reason,
@@ -1552,13 +1552,6 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         self.check_type_for_ffi_and_report_errors(span, ty, true, false);
     }
 
-    fn is_internal_abi(&self, abi: ExternAbi) -> bool {
-        matches!(
-            abi,
-            ExternAbi::Rust | ExternAbi::RustCall | ExternAbi::RustCold | ExternAbi::RustIntrinsic
-        )
-    }
-
     /// Find any fn-ptr types with external ABIs in `ty`.
     ///
     /// For example, `Option<extern "C" fn()>` returns `extern "C" fn()`
@@ -1567,17 +1560,16 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
         hir_ty: &hir::Ty<'tcx>,
         ty: Ty<'tcx>,
     ) -> Vec<(Ty<'tcx>, Span)> {
-        struct FnPtrFinder<'a, 'b, 'tcx> {
-            visitor: &'a ImproperCTypesVisitor<'b, 'tcx>,
+        struct FnPtrFinder<'tcx> {
             spans: Vec<Span>,
             tys: Vec<Ty<'tcx>>,
         }
 
-        impl<'a, 'b, 'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'a, 'b, 'tcx> {
+        impl<'tcx> hir::intravisit::Visitor<'_> for FnPtrFinder<'tcx> {
             fn visit_ty(&mut self, ty: &'_ hir::Ty<'_, AmbigArg>) {
                 debug!(?ty);
                 if let hir::TyKind::BareFn(hir::BareFnTy { abi, .. }) = ty.kind
-                    && !self.visitor.is_internal_abi(*abi)
+                    && !abi.is_rustic_abi()
                 {
                     self.spans.push(ty.span);
                 }
@@ -1586,12 +1578,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        impl<'a, 'b, 'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'a, 'b, 'tcx> {
+        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for FnPtrFinder<'tcx> {
             type Result = ();
 
             fn visit_ty(&mut self, ty: Ty<'tcx>) -> Self::Result {
                 if let ty::FnPtr(_, hdr) = ty.kind()
-                    && !self.visitor.is_internal_abi(hdr.abi)
+                    && !hdr.abi.is_rustic_abi()
                 {
                     self.tys.push(ty);
                 }
@@ -1600,7 +1592,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
         }
 
-        let mut visitor = FnPtrFinder { visitor: self, spans: Vec::new(), tys: Vec::new() };
+        let mut visitor = FnPtrFinder { spans: Vec::new(), tys: Vec::new() };
         ty.visit_with(&mut visitor);
         visitor.visit_ty_unambig(hir_ty);
 
@@ -1615,13 +1607,13 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDeclarations {
 
         match it.kind {
             hir::ForeignItemKind::Fn(sig, _, _) => {
-                if vis.is_internal_abi(abi) {
+                if abi.is_rustic_abi() {
                     vis.check_fn(it.owner_id.def_id, sig.decl)
                 } else {
                     vis.check_foreign_fn(it.owner_id.def_id, sig.decl);
                 }
             }
-            hir::ForeignItemKind::Static(ty, _, _) if !vis.is_internal_abi(abi) => {
+            hir::ForeignItemKind::Static(ty, _, _) if !abi.is_rustic_abi() => {
                 vis.check_foreign_static(it.owner_id, ty.span);
             }
             hir::ForeignItemKind::Static(..) | hir::ForeignItemKind::Type => (),
@@ -1775,7 +1767,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
         };
 
         let mut vis = ImproperCTypesVisitor { cx, mode: CItemKind::Definition };
-        if vis.is_internal_abi(abi) {
+        if abi.is_rustic_abi() {
             vis.check_fn(id, decl);
         } else {
             vis.check_foreign_fn(id, decl);
