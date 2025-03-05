@@ -84,9 +84,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
+                && !self.maybe_suggest_dyn_trait(self_ty, label, sugg, &mut diag)
             {
-                // FIXME: Only emit this suggestion if the trait is dyn-compatible.
-                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                self.maybe_suggest_add_generic_impl_trait(self_ty, &mut diag);
             }
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
@@ -123,6 +123,33 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
+    fn maybe_suggest_add_generic_impl_trait(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        diag: &mut Diag<'_>,
+    ) -> bool {
+        let tcx = self.tcx();
+        let msg = "you might be missing a type parameter";
+        let mut sugg = vec![];
+
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
+        let parent_item = tcx.hir_node_by_def_id(parent_id).expect_item();
+        match parent_item.kind {
+            hir::ItemKind::Struct(_, generics) | hir::ItemKind::Enum(_, generics) => {
+                sugg.push((
+                    generics.where_clause_span,
+                    format!(
+                        "<T: {}>",
+                        self.tcx().sess.source_map().span_to_snippet(self_ty.span).unwrap()
+                    ),
+                ));
+                sugg.push((self_ty.span, "T".to_string()));
+            }
+            _ => {}
+        }
+        diag.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        true
+    }
     /// Make sure that we are in the condition to suggest the blanket implementation.
     fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
         &self,
@@ -169,6 +196,38 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Applicability::MaybeIncorrect,
             );
         }
+    }
+
+    fn maybe_suggest_dyn_trait(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        label: &str,
+        sugg: Vec<(Span, String)>,
+        diag: &mut Diag<'_>,
+    ) -> bool {
+        let tcx = self.tcx();
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
+        let parent_item = tcx.hir_node_by_def_id(parent_id).expect_item();
+
+        // If the parent item is an enum, don't suggest the dyn trait.
+        if let hir::ItemKind::Enum(..) = parent_item.kind {
+            return false;
+        }
+
+        // If the parent item is a struct, check if self_ty is the last field.
+        if let hir::ItemKind::Struct(variant_data, _) = parent_item.kind {
+            if variant_data.fields().last().unwrap().ty.span != self_ty.span {
+                return false;
+            }
+        }
+
+        // FIXME: Only emit this suggestion if the trait is dyn-compatible.
+        diag.multipart_suggestion_verbose(
+            label.to_string(),
+            sugg,
+            Applicability::MachineApplicable,
+        );
+        true
     }
 
     fn add_generic_param_suggestion(
