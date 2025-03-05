@@ -405,7 +405,7 @@ marker_impls! {
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`size_of::<T>`]: crate::mem::size_of
+/// [`size_of::<T>`]: size_of
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
@@ -731,7 +731,6 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// # }
 /// # fn convert_params(_: ParamType) -> usize { 42 }
 /// use std::marker::PhantomData;
-/// use std::mem;
 ///
 /// struct ExternalResource<R> {
 ///    resource_handle: *mut (),
@@ -740,7 +739,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// impl<R: ResType> ExternalResource<R> {
 ///     fn new() -> Self {
-///         let size_of_res = mem::size_of::<R>();
+///         let size_of_res = size_of::<R>();
 ///         Self {
 ///             resource_handle: foreign_lib::new(size_of_res),
 ///             resource_type: PhantomData,

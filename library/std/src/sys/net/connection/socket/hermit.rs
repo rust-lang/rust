@@ -183,7 +183,7 @@ impl Socket {
 
     fn recv_from_with_flags(&self, buf: &mut [u8], flags: i32) -> io::Result<(usize, SocketAddr)> {
         let mut storage: netc::sockaddr_storage = unsafe { mem::zeroed() };
-        let mut addrlen = mem::size_of_val(&storage) as netc::socklen_t;
+        let mut addrlen = size_of_val(&storage) as netc::socklen_t;
 
         let n = cvt(unsafe {
             netc::recvfrom(

@@ -5,7 +5,7 @@
 // Based on https://github.com/voultapher/tiny-sort-rs.
 
 use alloc::alloc::{Layout, alloc, dealloc};
-use std::{mem, ptr};
+use std::ptr;
 
 /// Sort `v` preserving initial order of equal elements.
 ///
@@ -26,7 +26,7 @@ pub fn sort<T: Ord>(v: &mut [T]) {
 
 #[inline(always)]
 fn stable_sort<T, F: FnMut(&T, &T) -> bool>(v: &mut [T], mut is_less: F) {
-    if mem::size_of::<T>() == 0 {
+    if size_of::<T>() == 0 {
         return;
     }
 
@@ -166,7 +166,7 @@ struct BufGuard<T> {
 impl<T> BufGuard<T> {
     // SAFETY: The caller has to ensure that len is not 0 and that T is not a ZST.
     unsafe fn new(len: usize) -> Self {
-        debug_assert!(len > 0 && mem::size_of::<T>() > 0);
+        debug_assert!(len > 0 && size_of::<T>() > 0);
 
         // SAFETY: See function safety description.
         let layout = unsafe { unwrap_unchecked(Layout::array::<T>(len).ok()) };

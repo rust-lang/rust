@@ -2274,7 +2274,7 @@ impl<T: ?Sized + CloneToUninit, A: Allocator + Clone> Arc<T, A> {
     #[inline]
     #[stable(feature = "arc_unique", since = "1.4.0")]
     pub fn make_mut(this: &mut Self) -> &mut T {
-        let size_of_val = mem::size_of_val::<T>(&**this);
+        let size_of_val = size_of_val::<T>(&**this);
 
         // Note that we hold both a strong reference and a weak reference.
         // Thus, releasing our strong reference only will not, by itself, cause
@@ -3544,7 +3544,7 @@ impl<T> Default for Arc<[T]> {
     /// This may or may not share an allocation with other Arcs.
     #[inline]
     fn default() -> Self {
-        if mem::align_of::<T>() <= MAX_STATIC_INNER_SLICE_ALIGNMENT {
+        if align_of::<T>() <= MAX_STATIC_INNER_SLICE_ALIGNMENT {
             // We take a reference to the whole struct instead of the ArcInner<[u8; 1]> inside it so
             // we don't shrink the range of bytes the ptr is allowed to access under Stacked Borrows.
             // (Miri complains on 32-bit targets with Arc<[Align16]> otherwise.)

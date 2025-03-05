@@ -500,11 +500,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     /// [1]: <https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-updateprocthreadattribute#parameters>
     pub fn attribute<T>(self, attribute: usize, value: &'a T) -> Self {
         unsafe {
-            self.raw_attribute(
-                attribute,
-                ptr::addr_of!(*value).cast::<c_void>(),
-                crate::mem::size_of::<T>(),
-            )
+            self.raw_attribute(attribute, ptr::addr_of!(*value).cast::<c_void>(), size_of::<T>())
         }
     }
 
@@ -574,7 +570,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///         .raw_attribute(
     ///             PROC_THREAD_ATTRIBUTE_PSEUDOCONSOLE,
     ///             h_pc as *const c_void,
-    ///             std::mem::size_of::<isize>(),
+    ///             size_of::<isize>(),
     ///         )
     ///         .finish()?
     /// };

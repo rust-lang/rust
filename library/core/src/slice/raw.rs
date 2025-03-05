@@ -11,7 +11,7 @@ use crate::{array, ptr, ub_checks};
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be non-null, [valid] for reads for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for reads for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
@@ -28,7 +28,7 @@ use crate::{array, ptr, ub_checks};
 /// * The memory referenced by the returned slice must not be mutated for the duration
 ///   of lifetime `'a`, except inside an `UnsafeCell`.
 ///
-/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
+/// * The total size `len * size_of::<T>()` of the slice must be no larger than `isize::MAX`,
 ///   and adding that size to `data` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
@@ -146,7 +146,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be non-null, [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for both reads and writes for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
@@ -163,7 +163,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///   (not derived from the return value) for the duration of lifetime `'a`.
 ///   Both read and write accesses are forbidden.
 ///
-/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
+/// * The total size `len * size_of::<T>()` of the slice must be no larger than `isize::MAX`,
 ///   and adding that size to `data` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///

@@ -490,7 +490,7 @@ mod uefi_command_internal {
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
             let len = args.len();
-            let args_size: u32 = (len * crate::mem::size_of::<u16>()).try_into().unwrap();
+            let args_size: u32 = (len * size_of::<u16>()).try_into().unwrap();
             let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {

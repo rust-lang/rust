@@ -8,7 +8,7 @@
 //! will likely change over time.
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-const WORD_SIZE: usize = core::mem::size_of::<u32>();
+const WORD_SIZE: usize = size_of::<u32>();
 
 pub mod abi;
 #[path = "../zkvm/args.rs"]

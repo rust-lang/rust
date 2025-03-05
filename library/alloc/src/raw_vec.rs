@@ -480,7 +480,7 @@ impl<A: Allocator> RawVecInner<A> {
 
         // Allocators currently return a `NonNull<[u8]>` whose length
         // matches the size requested. If that ever changes, the capacity
-        // here should change to `ptr.len() / mem::size_of::<T>()`.
+        // here should change to `ptr.len() / size_of::<T>()`.
         Ok(Self {
             ptr: Unique::from(ptr.cast()),
             cap: unsafe { Cap::new_unchecked(capacity) },
@@ -627,7 +627,7 @@ impl<A: Allocator> RawVecInner<A> {
     unsafe fn set_ptr_and_cap(&mut self, ptr: NonNull<[u8]>, cap: usize) {
         // Allocators currently return a `NonNull<[u8]>` whose length matches
         // the size requested. If that ever changes, the capacity here should
-        // change to `ptr.len() / mem::size_of::<T>()`.
+        // change to `ptr.len() / size_of::<T>()`.
         self.ptr = Unique::from(ptr.cast());
         self.cap = unsafe { Cap::new_unchecked(cap) };
     }

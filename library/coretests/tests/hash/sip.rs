@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 
 use core::hash::{Hash, Hasher, SipHasher, SipHasher13};
-use core::{mem, slice};
+use core::slice;
 
 // Hash just the bytes of the slice, without length prefix
 struct Bytes<'a>(&'a [u8]);
@@ -314,7 +314,7 @@ fn test_write_short_works() {
     h1.write_u8(0x01u8);
     let mut h2 = SipHasher::new();
     h2.write(unsafe {
-        slice::from_raw_parts(&test_usize as *const _ as *const u8, mem::size_of::<usize>())
+        slice::from_raw_parts(&test_usize as *const _ as *const u8, size_of::<usize>())
     });
     h2.write(b"bytes");
     h2.write(b"string");

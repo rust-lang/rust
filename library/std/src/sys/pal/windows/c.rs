@@ -6,7 +6,7 @@
 #![allow(clippy::style)]
 
 use core::ffi::{CStr, c_uint, c_ulong, c_ushort, c_void};
-use core::{mem, ptr};
+use core::ptr;
 
 mod windows_sys;
 pub use windows_sys::*;
@@ -39,7 +39,7 @@ pub fn nt_success(status: NTSTATUS) -> bool {
 
 impl UNICODE_STRING {
     pub fn from_ref(slice: &[u16]) -> Self {
-        let len = mem::size_of_val(slice);
+        let len = size_of_val(slice);
         Self { Length: len as _, MaximumLength: len as _, Buffer: slice.as_ptr() as _ }
     }
 }
@@ -47,7 +47,7 @@ impl UNICODE_STRING {
 impl Default for OBJECT_ATTRIBUTES {
     fn default() -> Self {
         Self {
-            Length: mem::size_of::<Self>() as _,
+            Length: size_of::<Self>() as _,
             RootDirectory: ptr::null_mut(),
             ObjectName: ptr::null_mut(),
             Attributes: 0,

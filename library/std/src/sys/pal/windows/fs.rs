@@ -477,7 +477,7 @@ impl File {
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
                     (&raw mut attr_tag).cast(),
-                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                    size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                     reparse_tag = attr_tag.ReparseTag;
@@ -504,7 +504,7 @@ impl File {
     pub fn file_attr(&self) -> io::Result<FileAttr> {
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
-            let size = mem::size_of_val(&info);
+            let size = size_of_val(&info);
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
@@ -536,7 +536,7 @@ impl File {
                 file_index: None,
             };
             let mut info: c::FILE_STANDARD_INFO = mem::zeroed();
-            let size = mem::size_of_val(&info);
+            let size = size_of_val(&info);
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileStandardInfo,
@@ -551,7 +551,7 @@ impl File {
                     self.handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
                     (&raw mut attr_tag).cast(),
-                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                    size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))?;
                 if attr_tag.FileAttributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                     attr.reparse_tag = attr_tag.ReparseTag;
@@ -649,7 +649,7 @@ impl File {
                     ptr::null_mut(),
                 )
             })?;
-            const _: () = assert!(core::mem::align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
+            const _: () = assert!(align_of::<c::REPARSE_DATA_BUFFER>() <= 8);
             Ok((bytes, space.0.as_mut_ptr().cast::<c::REPARSE_DATA_BUFFER>()))
         }
     }
@@ -753,7 +753,7 @@ impl File {
     fn basic_info(&self) -> io::Result<c::FILE_BASIC_INFO> {
         unsafe {
             let mut info: c::FILE_BASIC_INFO = mem::zeroed();
-            let size = mem::size_of_val(&info);
+            let size = size_of_val(&info);
             cvt(c::GetFileInformationByHandleEx(
                 self.handle.as_raw_handle(),
                 c::FileBasicInfo,
@@ -886,7 +886,6 @@ impl<'a> DirBuffIter<'a> {
 impl<'a> Iterator for DirBuffIter<'a> {
     type Item = (Cow<'a, [u16]>, bool);
     fn next(&mut self) -> Option<Self::Item> {
-        use crate::mem::size_of;
         let buffer = &self.buffer?[self.cursor..];
 
         // Get the name and next entry from the buffer.
@@ -1249,8 +1248,8 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     // Therefore we need to make sure to not allocate less than
     // size_of::<c::FILE_RENAME_INFO>() bytes, which would be the case with
     // 0 or 1 character paths + a null byte.
-    let struct_size = mem::size_of::<c::FILE_RENAME_INFO>()
-        .max(mem::offset_of!(c::FILE_RENAME_INFO, FileName) + new.len() * mem::size_of::<u16>());
+    let struct_size = size_of::<c::FILE_RENAME_INFO>()
+        .max(mem::offset_of!(c::FILE_RENAME_INFO, FileName) + new.len() * size_of::<u16>());
 
     let struct_size: u32 = struct_size.try_into().unwrap();
 
@@ -1282,7 +1281,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
                     handle.as_raw_handle(),
                     c::FileAttributeTagInfo,
                     file_attribute_tag_info.as_mut_ptr().cast(),
-                    mem::size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
+                    size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
                 ))
             };
 
@@ -1321,11 +1320,9 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     }
     .unwrap_or_else(|| create_file(0, 0))?;
 
-    let layout = core::alloc::Layout::from_size_align(
-        struct_size as _,
-        mem::align_of::<c::FILE_RENAME_INFO>(),
-    )
-    .unwrap();
+    let layout =
+        core::alloc::Layout::from_size_align(struct_size as _, align_of::<c::FILE_RENAME_INFO>())
+            .unwrap();
 
     let file_rename_info = unsafe { alloc(layout) } as *mut c::FILE_RENAME_INFO;
 

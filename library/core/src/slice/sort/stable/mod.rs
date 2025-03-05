@@ -3,7 +3,7 @@
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::cmp;
 use crate::intrinsics;
-use crate::mem::{self, MaybeUninit, SizedTypeProperties};
+use crate::mem::{MaybeUninit, SizedTypeProperties};
 #[cfg(not(any(feature = "optimize_for_size", target_pointer_width = "16")))]
 use crate::slice::sort::shared::smallsort::{
     SMALL_SORT_GENERAL_SCRATCH_LEN, StableSmallSortTypeImpl, insertion_sort_shift_left,
@@ -107,7 +107,7 @@ fn driftsort_main<T, F: FnMut(&T, &T) -> bool, BufT: BufGuard<T>>(v: &mut [T], i
     // If min_good_run_len is ever modified, this code must be updated to allocate
     // the correct scratch size for it.
     const MAX_FULL_ALLOC_BYTES: usize = 8_000_000; // 8MB
-    let max_full_alloc = MAX_FULL_ALLOC_BYTES / mem::size_of::<T>();
+    let max_full_alloc = MAX_FULL_ALLOC_BYTES / size_of::<T>();
     let len = v.len();
     let alloc_len = cmp::max(
         cmp::max(len - len / 2, cmp::min(len, max_full_alloc)),
@@ -155,7 +155,7 @@ impl<T, const N: usize> AlignedStorage<T, N> {
     }
 
     fn as_uninit_slice_mut(&mut self) -> &mut [MaybeUninit<T>] {
-        let len = N / mem::size_of::<T>();
+        let len = N / size_of::<T>();
 
         // SAFETY: `_align` ensures we are correctly aligned.
         unsafe { core::slice::from_raw_parts_mut(self.storage.as_mut_ptr().cast(), len) }
