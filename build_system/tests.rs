@@ -374,7 +374,7 @@ impl<'a> TestRunner<'a> {
                 TestCaseCmd::JitBin { source, args } => {
                     let mut jit_cmd = self.rustc_command([
                         "-Zunstable-options",
-                        "-Cllvm-args=mode=jit",
+                        "-Cllvm-args=jit-mode",
                         "-Cprefer-dynamic",
                         source,
                         "--cfg",
