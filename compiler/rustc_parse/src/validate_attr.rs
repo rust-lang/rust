@@ -283,7 +283,7 @@ fn emit_malformed_attribute(
     template: AttributeTemplate,
 ) {
     // attrs with new parsers are locally validated so excluded here
-    if matches!(name, sym::inline | sym::rustc_force_inline) {
+    if matches!(name, sym::inline | sym::rustc_force_inline | sym::rustc_confusables) {
         return;
     }
 
