@@ -593,7 +593,7 @@ fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool 
                 *tag = HlTag::Punctuation(HlPunct::Other);
             }
         }
-        HlTag::Punctuation(_) if !config.punctuation => return false,
+        HlTag::Punctuation(_) if !config.punctuation && highlight.mods.is_empty() => return false,
         tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
             *tag = HlTag::Punctuation(HlPunct::Other);
         }

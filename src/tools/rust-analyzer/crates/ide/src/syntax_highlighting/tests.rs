@@ -651,10 +651,9 @@ fn main() {
         let Union { field: _ };
         // but not these
         let Union { field };
-        let Union { field: true };
         let Union { field: field };
         let Union { field: ref field };
-        let Union { field: (ref field | 0) };
+        let Union { field: (_ | ref field) };
 
         // unsafe deref
         *&raw const*&*x;
@@ -672,7 +671,7 @@ fn main() {
 
         core::arch::asm!(
             "push {base}",
-            base$0 = const 0
+            base = const 0
         );
     }
 }
