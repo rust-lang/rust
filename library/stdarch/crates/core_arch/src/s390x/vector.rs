@@ -3003,6 +3003,72 @@ mod sealed {
             vcelfb(self)
         }
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorExtendSigned64 {
+        unsafe fn vec_extend_s64(self) -> vector_signed_long_long;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
+    // #[cfg_attr(test, assert_instr(vsegb))]
+    pub unsafe fn vsegb(a: vector_signed_char) -> vector_signed_long_long {
+        simd_as(simd_shuffle::<_, _, i8x2>(
+            a,
+            a,
+            const { u32x2::from_array([7, 15]) },
+        ))
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
+    // #[cfg_attr(test, assert_instr(vsegh))]
+    pub unsafe fn vsegh(a: vector_signed_short) -> vector_signed_long_long {
+        simd_as(simd_shuffle::<_, _, i16x2>(
+            a,
+            a,
+            const { u32x2::from_array([3, 7]) },
+        ))
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    // FIXME(llvm): https://github.com/llvm/llvm-project/issues/129899
+    // #[cfg_attr(test, assert_instr(vsegf))]
+    pub unsafe fn vsegf(a: vector_signed_int) -> vector_signed_long_long {
+        simd_as(simd_shuffle::<_, _, i32x2>(
+            a,
+            a,
+            const { u32x2::from_array([1, 3]) },
+        ))
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorExtendSigned64 for vector_signed_char {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_extend_s64(self) -> vector_signed_long_long {
+            vsegb(self)
+        }
+    }
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorExtendSigned64 for vector_signed_short {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_extend_s64(self) -> vector_signed_long_long {
+            vsegh(self)
+        }
+    }
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    impl VectorExtendSigned64 for vector_signed_int {
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_extend_s64(self) -> vector_signed_long_long {
+            vsegf(self)
+        }
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4314,6 +4380,14 @@ pub unsafe fn vec_double(a: impl sealed::VectorDouble) -> vector_double {
     a.vec_double()
 }
 
+/// Vector Sign Extend to Doubleword
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_extend_s64(a: impl sealed::VectorExtendSigned64) -> vector_signed_long_long {
+    a.vec_extend_s64()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5457,6 +5531,20 @@ mod tests {
             let d = vec_floate(v);
             assert_eq!(d.as_array()[0], f64::MIN as f32);
             assert_eq!(d.as_array()[2], f64::MAX as f32);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_extend_s64() {
+        unsafe {
+            let v = vector_signed_char([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+            assert_eq!(vec_extend_s64(v).as_array(), &[7, 15]);
+
+            let v = vector_signed_short([0, 1, 2, 3, 4, 5, 6, 7]);
+            assert_eq!(vec_extend_s64(v).as_array(), &[3, 7]);
+
+            let v = vector_signed_int([0, 1, 2, 3]);
+            assert_eq!(vec_extend_s64(v).as_array(), &[1, 3]);
         }
     }
 }
