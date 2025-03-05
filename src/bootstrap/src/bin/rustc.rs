@@ -21,8 +21,8 @@ use std::process::{Child, Command};
 use std::time::Instant;
 
 use shared_helpers::{
-    dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage, parse_rustc_verbose,
-    parse_value_from_args,
+    FLAGS_FOR_RUSTC, dylib_path, dylib_path_var, exe, maybe_dump, parse_rustc_stage,
+    parse_rustc_verbose, parse_value_from_args,
 };
 
 #[path = "../utils/shared_helpers.rs"]
@@ -145,6 +145,35 @@ fn main() {
         cmd.arg("-Z").arg("on-broken-pipe=kill");
     }
 
+    // In `cargo.rs` we add the `FLAGS_FOR_RUSTC` flags for all `compiler/`
+    // crates to RUSTFLAGS. However, RUSTFLAGS is ignored for `compiler/` proc
+    // macro crates, because RUSTFLAGS is ignored when `--target` is given. So,
+    // we add the `FLAGS_FOR_RUSTC` flags directly to the command here if they
+    // are also in RUSTFLAGS.
+    let crate_type = parse_value_from_args(&orig_args, "--crate-type");
+    if crate_type == Some("proc-macro") {
+        if let Ok(rustflags) = env::var("RUSTFLAGS") {
+            // Count how many of flags from `FLAGS_FOR_RUSTC` are in RUSTFLAGS.
+            let n = FLAGS_FOR_RUSTC.iter().filter(|&flag| rustflags.contains(flag)).count();
+            if n == FLAGS_FOR_RUSTC.len() {
+                // All the FLAGS_FOR_RUSTC flags are in RUSTFLAGS, which means
+                // this is a `compiler/` proc macro crate. Insert the flags
+                // directly into the command.
+                for flag in shared_helpers::FLAGS_FOR_RUSTC {
+                    cmd.arg(flag);
+                }
+            } else if n == 0 {
+                // None of the FLAGS_FOR_RUSTC flags are in RUSTFLAGS.
+                // Therefore it's a non-`compiler/` proc macro crate:
+                // third-party, clippy, etc. Do nothing.
+            } else {
+                // Some but not all of the FLAGS_FOR_RUSTC flags are in
+                // RUSTFLAGS. Huh?
+                panic!("RUSTFLAGS is missing some expected flags");
+            }
+        }
+    }
+
     if target.is_some() {
         // The stage0 compiler has a special sysroot distinct from what we
         // actually downloaded, so we just always pass the `--sysroot` option,
@@ -165,7 +194,6 @@ fn main() {
             cmd.arg("-C").arg("panic=abort");
         }
 
-        let crate_type = parse_value_from_args(&orig_args, "--crate-type");
         // `-Ztls-model=initial-exec` must not be applied to proc-macros, see
         // issue https://github.com/rust-lang/rust/issues/100530
         if env::var("RUSTC_TLS_MODEL_INITIAL_EXEC").is_ok()

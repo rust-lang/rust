@@ -1071,13 +1071,13 @@ impl Builder<'_> {
             rustdocflags.arg("-Wrustdoc::invalid_codeblock_attributes");
         }
 
+        // Add some flags to RUSTFLAGS for `compiler/` crates. Note: proc macro
+        // crates need additional special handling. See the `FLAGS_FOR_RUSTC`
+        // use in `rustc.rs` for details.
         if mode == Mode::Rustc {
-            rustflags.arg("-Wrustc::internal");
-            rustflags.arg("-Drustc::symbol_intern_string_literal");
-            // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
-            // of the individual lints are satisfied.
-            rustflags.arg("-Wkeyword_idents_2024");
-            rustflags.arg("-Wunsafe_op_in_unsafe_fn");
+            for flag in crate::utils::shared_helpers::FLAGS_FOR_RUSTC {
+                rustflags.arg(flag);
+            }
         }
 
         if self.config.rust_frame_pointers {

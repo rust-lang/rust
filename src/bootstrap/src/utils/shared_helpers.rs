@@ -113,3 +113,13 @@ pub fn parse_value_from_args<'a>(args: &'a [OsString], key: &str) -> Option<&'a 
 
     None
 }
+
+// Flags used to compile all crates in `compiler/`.
+pub const FLAGS_FOR_RUSTC: &[&'static str] = &[
+    "-Wrustc::internal",
+    "-Drustc::symbol_intern_string_literal",
+    // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all of the
+    // individual lints are satisfied.
+    "-Wkeyword_idents_2024",
+    "-Wunsafe_op_in_unsafe_fn",
+];
