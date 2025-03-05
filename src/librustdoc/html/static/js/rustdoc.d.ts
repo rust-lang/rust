@@ -123,7 +123,7 @@ declare namespace rustdoc {
      * Same as QueryElement, but bindings and typeFilter support strings
      */
     interface ParserQueryElement {
-        name: string,
+        name: string|null,
         id: number|null,
         fullPath: Array<string>,
         pathWithoutLast: Array<string>,
@@ -131,10 +131,16 @@ declare namespace rustdoc {
         normalizedPathLast: string,
         generics: Array<ParserQueryElement>,
         bindings: Map<string, Array<ParserQueryElement>>,
-        bindingName: {name: string, generics: ParserQueryElement[]}|null,
-        typeFilter: string|null,
+        bindingName: {name: string|null, generics: ParserQueryElement[]}|null,
+        typeFilter: number|string|null,
     }
 
+    /**
+     * Same as ParserQueryElement, but all fields are optional.
+     */
+    type ParserQueryElementFields = {
+        [K in keyof ParserQueryElement]?: ParserQueryElement[T]
+    }
     /**
      * Intermediate parser state. Discarded when parsing is done.
      */
@@ -176,10 +182,11 @@ declare namespace rustdoc {
         name: string,
         normalizedName: string,
         word: string,
+        paramNames: string[],
         parent: ({ty: number, name: string, path: string, exactPath: string}|null|undefined),
         path: string,
         ty: number,
-        type?: FunctionSearchType
+        type: FunctionSearchType | null,
     }
 
     /**
@@ -390,7 +397,7 @@ declare namespace rustdoc {
      */
     type RawSearchIndexCrate = {
     doc: string,
-    a: Object,
+    a: { [key: string]: number[] },
     n: Array<string>,
     t: string,
     D: string,
