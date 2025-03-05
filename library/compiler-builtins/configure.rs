@@ -76,10 +76,8 @@ pub fn configure_f16_f128(target: &Target) {
         // Selection failure <https://github.com/llvm/llvm-project/issues/50374>
         "s390x" => false,
         // Infinite recursion <https://github.com/llvm/llvm-project/issues/97981>
-        // FIXME(llvm20): loongarch fixed by <https://github.com/llvm/llvm-project/pull/107791>
         "csky" => false,
         "hexagon" => false,
-        "loongarch64" => false,
         "powerpc" | "powerpc64" => false,
         "sparc" | "sparc64" => false,
         "wasm32" | "wasm64" => false,

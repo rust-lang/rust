@@ -306,7 +306,11 @@ mod extend {
     }
 
     #[cfg(all(f16_enabled, f128_enabled))]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[cfg(not(any(
+        target_arch = "powerpc",
+        target_arch = "powerpc64",
+        target_arch = "loongarch64"
+    )))]
     f_to_f! {
         extend,
         f16 => f32, Half => Single, __extendhfsf2, not(feature = "no-sys-f16");
@@ -336,7 +340,11 @@ mod trunc {
     }
 
     #[cfg(all(f16_enabled, f128_enabled))]
-    #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
+    #[cfg(not(any(
+        target_arch = "powerpc",
+        target_arch = "powerpc64",
+        target_arch = "loongarch64"
+    )))]
     f_to_f! {
         trunc,
         f32 => f16, Single => Half, __truncsfhf2, not(feature = "no-sys-f16");
