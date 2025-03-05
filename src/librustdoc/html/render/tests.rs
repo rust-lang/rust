@@ -47,8 +47,7 @@ fn test_all_types_prints_header_once() {
     // Regression test for #82477
     let all_types = AllTypes::new();
 
-    let mut buffer = String::new();
-    all_types.print(&mut buffer);
+    let buffer = all_types.print().to_string();
 
     assert_eq!(1, buffer.matches("List of all items").count());
 }
