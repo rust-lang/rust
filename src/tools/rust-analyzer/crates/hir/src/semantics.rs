@@ -12,6 +12,7 @@ use std::{
 
 use either::Either;
 use hir_def::{
+    expr_store::ExprOrPatSource,
     hir::{Expr, ExprOrPatId},
     lower::LowerCtx,
     nameres::{MacroSubNs, ModuleOrigin},
@@ -30,6 +31,7 @@ use hir_expand::{
     name::AsName,
     ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
+use hir_ty::diagnostics::unsafe_operations_for_body;
 use intern::{sym, Symbol};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -48,8 +50,8 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{name_hygiene, resolve_hir_path, SourceAnalyzer},
-    Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
+    Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const, ConstParam,
+    Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
     HirFileId, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
     Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait,
     TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
@@ -1555,6 +1557,19 @@ impl<'db> SemanticsImpl<'db> {
             .matched_arm
     }
 
+    pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
+        let def = DefWithBodyId::from(def);
+        let (body, source_map) = self.db.body_with_source_map(def);
+        let infer = self.db.infer(def);
+        let mut res = FxHashSet::default();
+        unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
+            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                res.insert(node);
+            }
+        });
+        res
+    }
+
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let Some(mac) = self.resolve_macro_call(macro_call) else { return false };
         if mac.is_asm_or_global_asm(self.db) {
@@ -1682,6 +1697,15 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
+    pub fn body_for(&self, node: InFile<&SyntaxNode>) -> Option<DefWithBody> {
+        let container = self.with_ctx(|ctx| ctx.find_container(node))?;
+
+        match container {
+            ChildContainer::DefWithBodyId(def) => Some(def.into()),
+            _ => None,
+        }
+    }
+
     /// Returns none if the file of the node is not part of a crate.
     fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
         let node = self.find_file(node);
@@ -1781,91 +1805,6 @@ impl<'db> SemanticsImpl<'db> {
             )
         });
         InFile::new(file_id, node)
-    }
-
-    pub fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
-        method_call_expr
-            .receiver()
-            .and_then(|expr| {
-                let field_expr = match expr {
-                    ast::Expr::FieldExpr(field_expr) => field_expr,
-                    _ => return None,
-                };
-                let ty = self.type_of_expr(&field_expr.expr()?)?.original;
-                if !ty.is_packed(self.db) {
-                    return None;
-                }
-
-                let func = self.resolve_method_call(method_call_expr)?;
-                let res = match func.self_param(self.db)?.access(self.db) {
-                    Access::Shared | Access::Exclusive => true,
-                    Access::Owned => false,
-                };
-                Some(res)
-            })
-            .unwrap_or(false)
-    }
-
-    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
-        ref_expr
-            .expr()
-            .and_then(|expr| {
-                let field_expr = match expr {
-                    ast::Expr::FieldExpr(field_expr) => field_expr,
-                    _ => return None,
-                };
-                let expr = field_expr.expr()?;
-                self.type_of_expr(&expr)
-            })
-            // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.original.is_packed(self.db))
-            .unwrap_or(false)
-
-        // FIXME This needs layout computation to be correct. It will highlight
-        // more than it should with the current implementation.
-    }
-
-    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
-        if ident_pat.ref_token().is_none() {
-            return false;
-        }
-
-        ident_pat
-            .syntax()
-            .parent()
-            .and_then(|parent| {
-                // `IdentPat` can live under `RecordPat` directly under `RecordPatField` or
-                // `RecordPatFieldList`. `RecordPatField` also lives under `RecordPatFieldList`,
-                // so this tries to lookup the `IdentPat` anywhere along that structure to the
-                // `RecordPat` so we can get the containing type.
-                let record_pat = ast::RecordPatField::cast(parent.clone())
-                    .and_then(|record_pat| record_pat.syntax().parent())
-                    .or_else(|| Some(parent.clone()))
-                    .and_then(|parent| {
-                        ast::RecordPatFieldList::cast(parent)?
-                            .syntax()
-                            .parent()
-                            .and_then(ast::RecordPat::cast)
-                    });
-
-                // If this doesn't match a `RecordPat`, fallback to a `LetStmt` to see if
-                // this is initialized from a `FieldExpr`.
-                if let Some(record_pat) = record_pat {
-                    self.type_of_pat(&ast::Pat::RecordPat(record_pat))
-                } else if let Some(let_stmt) = ast::LetStmt::cast(parent) {
-                    let field_expr = match let_stmt.initializer()? {
-                        ast::Expr::FieldExpr(field_expr) => field_expr,
-                        _ => return None,
-                    };
-
-                    self.type_of_expr(&field_expr.expr()?)
-                } else {
-                    None
-                }
-            })
-            // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.original.is_packed(self.db))
-            .unwrap_or(false)
     }
 
     /// Returns `true` if the `node` is inside an `unsafe` context.
