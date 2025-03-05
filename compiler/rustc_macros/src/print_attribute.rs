@@ -16,7 +16,7 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                 let name = field.ident.as_ref().unwrap();
                 let string_name = name.to_string();
                 disps.push(quote! {
-                    if __printed_anything && #name.print_something() {
+                    if __printed_anything && #name.should_render() {
                         __p.word_space(",");
                         __printed_anything = true;
                     }
@@ -31,7 +31,7 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                 quote! { {#(#field_names),*} },
                 quote! {
                     __p.word(#string_name);
-                    if true #(&& !#field_names.print_something())* {
+                    if true #(&& !#field_names.should_render())* {
                         return;
                     }
 
@@ -48,7 +48,7 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
             for idx in 0..fields_unnamed.unnamed.len() {
                 let name = format_ident!("f{idx}");
                 disps.push(quote! {
-                    if __printed_anything && #name.print_something() {
+                    if __printed_anything && #name.should_render() {
                         __p.word_space(",");
                         __printed_anything = true;
                     }
@@ -62,7 +62,7 @@ fn print_fields(name: &Ident, fields: &Fields) -> (TokenStream, TokenStream, Tok
                 quote! {
                     __p.word(#string_name);
 
-                    if true #(&& !#field_names.print_something())* {
+                    if true #(&& !#field_names.should_render())* {
                         return;
                     }
 
@@ -138,7 +138,7 @@ pub(crate) fn print_attribute(input: Structure<'_>) -> TokenStream {
     input.gen_impl(quote! {
         #[allow(unused)]
         gen impl PrintAttribute for @Self {
-            fn print_something(&self) -> bool { #printed }
+            fn should_render(&self) -> bool { #printed }
             fn print_attribute(&self, __p: &mut rustc_ast_pretty::pp::Printer) { #code }
         }
     })
