@@ -14,6 +14,8 @@ pub fn load_cpu_usage(path: &Path) -> anyhow::Result<Vec<f64>> {
         if cols.len() == 2 {
             if let Ok(idle) = cols[1].parse::<f64>() {
                 entries.push(100.0 - idle);
+            } else {
+                eprintln!("Warning: cannot parse CPU CSV entry {}", cols[1]);
             }
         }
     }

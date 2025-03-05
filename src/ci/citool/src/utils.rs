@@ -7,6 +7,5 @@ pub fn load_env_var(name: &str) -> anyhow::Result<String> {
 }
 
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
-    let error = format!("Cannot read file {:?}", path.as_ref());
-    std::fs::read_to_string(path).context(error)
+    std::fs::read_to_string(&path).with_context(|| format!("Cannot read file {:?}", path.as_ref()))
 }
