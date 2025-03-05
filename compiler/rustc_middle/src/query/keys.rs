@@ -508,6 +508,14 @@ impl<'tcx, T: Clone> Key for CanonicalQueryInput<'tcx, T> {
     }
 }
 
+impl<'tcx, T: Clone> Key for (CanonicalQueryInput<'tcx, T>, bool) {
+    type Cache<V> = DefaultCache<Self, V>;
+
+    fn default_span(&self, _tcx: TyCtxt<'_>) -> Span {
+        DUMMY_SP
+    }
+}
+
 impl Key for (Symbol, u32, u32) {
     type Cache<V> = DefaultCache<Self, V>;
 
