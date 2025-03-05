@@ -14,12 +14,67 @@ use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
 
-use crate::Kind;
-use crate::core::builder::{Builder, Cargo, RunConfig, ShouldRun, Step};
+use crate::Config;
+use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
+
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+pub struct Gcc {
+    pub target: TargetSelection,
+}
+
+#[derive(Clone)]
+pub struct GccOutput {
+    pub libgccjit: PathBuf,
+}
+
+impl Step for Gcc {
+    type Output = GccOutput;
+
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/gcc").alias("gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Gcc { target: run.target });
+    }
+
+    /// Compile GCC (specifically `libgccjit`) for `target`.
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let target = self.target;
+
+        // If GCC has already been built, we avoid building it again.
+        let metadata = match get_gcc_build_status(builder, target) {
+            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path },
+            GccBuildStatus::ShouldBuild(m) => m,
+        };
+
+        let _guard = builder.msg_unstaged(Kind::Build, "GCC", target);
+        t!(metadata.stamp.remove());
+        let _time = helpers::timeit(builder);
+
+        let libgccjit_path = libgccjit_built_path(&metadata.install_dir);
+        if builder.config.dry_run() {
+            return GccOutput { libgccjit: libgccjit_path };
+        }
+
+        build_gcc(&metadata, builder, target);
+
+        let lib_alias = metadata.install_dir.join("lib/libgccjit.so.0");
+        if !lib_alias.exists() {
+            t!(builder.symlink_file(&libgccjit_path, lib_alias));
+        }
+
+        t!(metadata.stamp.write());
+
+        GccOutput { libgccjit: libgccjit_path }
+    }
+}
 
 pub struct Meta {
     stamp: BuildStamp,
@@ -38,7 +93,7 @@ pub enum GccBuildStatus {
 ///
 /// It's used to avoid busting caches during x.py check -- if we've already built
 /// GCC, it's fine for us to not try to avoid doing so.
-pub fn prebuilt_gcc_config(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
+pub fn get_gcc_build_status(builder: &Builder<'_>, target: TargetSelection) -> GccBuildStatus {
     // Initialize the gcc submodule if not initialized already.
     builder.config.update_submodule("src/gcc");
 
@@ -87,104 +142,65 @@ fn libgccjit_built_path(install_dir: &Path) -> PathBuf {
     install_dir.join("lib/libgccjit.so")
 }
 
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub struct Gcc {
-    pub target: TargetSelection,
-}
+fn build_gcc(metadata: &Meta, builder: &Builder, target: TargetSelection) {
+    let Meta { stamp: _, out_dir, install_dir, root } = metadata;
 
-#[derive(Clone)]
-pub struct GccOutput {
-    pub libgccjit: PathBuf,
-}
+    t!(fs::create_dir_all(out_dir));
+    t!(fs::create_dir_all(install_dir));
 
-impl Step for Gcc {
-    type Output = GccOutput;
-
-    const ONLY_HOSTS: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.path("src/gcc").alias("gcc")
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Gcc { target: run.target });
-    }
-
-    /// Compile GCC (specifically `libgccjit`) for `target`.
-    fn run(self, builder: &Builder<'_>) -> Self::Output {
-        let target = self.target;
-
-        // If GCC has already been built, we avoid building it again.
-        let Meta { stamp, out_dir, install_dir, root } = match prebuilt_gcc_config(builder, target)
-        {
-            GccBuildStatus::AlreadyBuilt(path) => return GccOutput { libgccjit: path },
-            GccBuildStatus::ShouldBuild(m) => m,
-        };
-
-        let _guard = builder.msg_unstaged(Kind::Build, "GCC", target);
-        t!(stamp.remove());
-        let _time = helpers::timeit(builder);
-        t!(fs::create_dir_all(&out_dir));
-        t!(fs::create_dir_all(&install_dir));
-
-        let libgccjit_path = libgccjit_built_path(&install_dir);
-        if builder.config.dry_run() {
-            return GccOutput { libgccjit: libgccjit_path };
+    // GCC creates files (e.g. symlinks to the downloaded dependencies)
+    // in the source directory, which does not work with our CI setup, where we mount
+    // source directories as read-only on Linux.
+    // Therefore, as a part of the build in CI, we first copy the whole source directory
+    // to the build directory, and perform the build from there.
+    let src_dir = if CiEnv::is_ci() {
+        let src_dir = builder.gcc_out(target).join("src");
+        if src_dir.exists() {
+            builder.remove_dir(&src_dir);
         }
+        builder.create_dir(&src_dir);
+        builder.cp_link_r(root, &src_dir);
+        src_dir
+    } else {
+        root.clone()
+    };
 
-        // GCC creates files (e.g. symlinks to the downloaded dependencies)
-        // in the source directory, which does not work with our CI setup, where we mount
-        // source directories as read-only on Linux.
-        // Therefore, as a part of the build in CI, we first copy the whole source directory
-        // to the build directory, and perform the build from there.
-        let src_dir = if CiEnv::is_ci() {
-            let src_dir = builder.gcc_out(target).join("src");
-            if src_dir.exists() {
-                builder.remove_dir(&src_dir);
-            }
-            builder.create_dir(&src_dir);
-            builder.cp_link_r(&root, &src_dir);
-            src_dir
-        } else {
-            root
-        };
+    command(src_dir.join("contrib/download_prerequisites")).current_dir(&src_dir).run(builder);
+    let mut configure_cmd = command(src_dir.join("configure"));
+    configure_cmd
+        .current_dir(out_dir)
+        // On CI, we compile GCC with Clang.
+        // The -Wno-everything flag is needed to make GCC compile with Clang 19.
+        // `-g -O2` are the default flags that are otherwise used by Make.
+        // FIXME(kobzol): change the flags once we have [gcc] configuration in config.toml.
+        .env("CXXFLAGS", "-Wno-everything -g -O2")
+        .env("CFLAGS", "-Wno-everything -g -O2")
+        .arg("--enable-host-shared")
+        .arg("--enable-languages=jit")
+        .arg("--enable-checking=release")
+        .arg("--disable-bootstrap")
+        .arg("--disable-multilib")
+        .arg(format!("--prefix={}", install_dir.display()));
+    let cc = builder.build.cc(target).display().to_string();
+    let cc = builder
+        .build
+        .config
+        .ccache
+        .as_ref()
+        .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
+    configure_cmd.env("CC", cc);
 
-        command(src_dir.join("contrib/download_prerequisites")).current_dir(&src_dir).run(builder);
-        let mut configure_cmd = command(src_dir.join("configure"));
-        configure_cmd
-            .current_dir(&out_dir)
-            // On CI, we compile GCC with Clang.
-            // The -Wno-everything flag is needed to make GCC compile with Clang 19.
-            // `-g -O2` are the default flags that are otherwise used by Make.
-            // FIXME(kobzol): change the flags once we have [gcc] configuration in config.toml.
-            .env("CXXFLAGS", "-Wno-everything -g -O2")
-            .env("CFLAGS", "-Wno-everything -g -O2")
-            .arg("--enable-host-shared")
-            .arg("--enable-languages=jit")
-            .arg("--enable-checking=release")
-            .arg("--disable-bootstrap")
-            .arg("--disable-multilib")
-            .arg(format!("--prefix={}", install_dir.display()));
-        let cc = builder.build.cc(target).display().to_string();
-        let cc = builder
+    if let Ok(ref cxx) = builder.build.cxx(target) {
+        let cxx = cxx.display().to_string();
+        let cxx = builder
             .build
             .config
             .ccache
             .as_ref()
-            .map_or_else(|| cc.clone(), |ccache| format!("{ccache} {cc}"));
-        configure_cmd.env("CC", cc);
-
-        if let Ok(ref cxx) = builder.build.cxx(target) {
-            let cxx = cxx.display().to_string();
-            let cxx = builder
-                .build
-                .config
-                .ccache
-                .as_ref()
-                .map_or_else(|| cxx.clone(), |ccache| format!("{ccache} {cxx}"));
-            configure_cmd.env("CXX", cxx);
-        }
-        configure_cmd.run(builder);
+            .map_or_else(|| cxx.clone(), |ccache| format!("{ccache} {cxx}"));
+        configure_cmd.env("CXX", cxx);
+    }
+    configure_cmd.run(builder);
 
         command("make")
             .current_dir(&out_dir)
@@ -196,15 +212,6 @@ impl Step for Gcc {
             .arg("--silent")
             .arg("install")
             .run_capture_stdout(builder);
-
-        let lib_alias = install_dir.join("lib/libgccjit.so.0");
-        if !lib_alias.exists() {
-            t!(builder.symlink_file(&libgccjit_path, lib_alias));
-        }
-
-        t!(stamp.write());
-
-        GccOutput { libgccjit: libgccjit_path }
     }
 }
 
