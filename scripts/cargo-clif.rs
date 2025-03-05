@@ -50,7 +50,7 @@ fn main() {
                 .chain([
                     "--".to_string(),
                     "-Zunstable-options".to_string(),
-                    "-Cllvm-args=mode=jit".to_string(),
+                    "-Cllvm-args=jit-mode".to_string(),
                 ])
                 .collect()
         }
@@ -62,7 +62,8 @@ fn main() {
                 .chain([
                     "--".to_string(),
                     "-Zunstable-options".to_string(),
-                    "-Cllvm-args=mode=jit-lazy".to_string(),
+                    "-Cllvm-args=jit-mode".to_string(),
+                    "-Cllvm-args=jit-lazy".to_string(),
                 ])
                 .collect()
         }

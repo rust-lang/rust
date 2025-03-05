@@ -13,10 +13,10 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_session::Session;
 use rustc_span::sym;
 
+use crate::CodegenCx;
 use crate::debuginfo::TypeDebugContext;
 use crate::prelude::*;
 use crate::unwind_module::UnwindModule;
-use crate::{CodegenCx, CodegenMode};
 
 struct JitState {
     jit_module: UnwindModule<JITModule>,
@@ -79,7 +79,7 @@ fn create_jit_module(tcx: TyCtxt<'_>, hotswap: bool) -> (UnwindModule<JITModule>
     (jit_module, cx)
 }
 
-pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<String>) -> ! {
+pub(crate) fn run_jit(tcx: TyCtxt<'_>, jit_lazy: bool, jit_args: Vec<String>) -> ! {
     if !tcx.sess.opts.output_types.should_codegen() {
         tcx.dcx().fatal("JIT mode doesn't work with `cargo check`");
     }
@@ -88,8 +88,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
         tcx.dcx().fatal("can't jit non-executable crate");
     }
 
-    let (mut jit_module, mut cx) =
-        create_jit_module(tcx, matches!(codegen_mode, CodegenMode::JitLazy));
+    let (mut jit_module, mut cx) = create_jit_module(tcx, jit_lazy);
     let mut cached_context = Context::new();
 
     let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
@@ -105,9 +104,10 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
         super::predefine_mono_items(tcx, &mut jit_module, &mono_items);
         for (mono_item, _) in mono_items {
             match mono_item {
-                MonoItem::Fn(inst) => match codegen_mode {
-                    CodegenMode::Aot => unreachable!(),
-                    CodegenMode::Jit => {
+                MonoItem::Fn(inst) => {
+                    if jit_lazy {
+                        codegen_shim(tcx, &mut cached_context, &mut jit_module, inst)
+                    } else {
                         codegen_and_compile_fn(
                             tcx,
                             &mut cx,
@@ -116,10 +116,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, codegen_mode: CodegenMode, jit_args: Vec<
                             inst,
                         );
                     }
-                    CodegenMode::JitLazy => {
-                        codegen_shim(tcx, &mut cached_context, &mut jit_module, inst)
-                    }
-                },
+                }
                 MonoItem::Static(def_id) => {
                     crate::constant::codegen_static(tcx, &mut jit_module, def_id);
                 }
