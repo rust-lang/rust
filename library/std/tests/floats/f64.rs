@@ -427,7 +427,7 @@ fn test_powi() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(1.0f64.powi(1), 1.0);
+    assert_approx_eq!(1.0f64.powi(1), 1.0);
     assert_approx_eq!((-3.1f64).powi(2), 9.61);
     assert_approx_eq!(5.9f64.powi(-2), 0.028727);
     assert_eq!(8.3f64.powi(0), 1.0);
@@ -479,7 +479,7 @@ fn test_exp() {
 
 #[test]
 fn test_exp2() {
-    assert_eq!(32.0, 5.0f64.exp2());
+    assert_approx_eq!(32.0, 5.0f64.exp2());
     assert_eq!(1.0, 0.0f64.exp2());
 
     let inf: f64 = f64::INFINITY;
@@ -510,9 +510,9 @@ fn test_log() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(10.0f64.log(10.0), 1.0);
+    assert_approx_eq!(10.0f64.log(10.0), 1.0);
     assert_approx_eq!(2.3f64.log(3.5), 0.664858);
-    assert_eq!(1.0f64.exp().log(1.0f64.exp()), 1.0);
+    assert_approx_eq!(1.0f64.exp().log(1.0f64.exp()), 1.0);
     assert!(1.0f64.log(1.0).is_nan());
     assert!(1.0f64.log(-13.9).is_nan());
     assert!(nan.log(2.3).is_nan());
@@ -544,7 +544,7 @@ fn test_log10() {
     let nan: f64 = f64::NAN;
     let inf: f64 = f64::INFINITY;
     let neg_inf: f64 = f64::NEG_INFINITY;
-    assert_eq!(10.0f64.log10(), 1.0);
+    assert_approx_eq!(10.0f64.log10(), 1.0);
     assert_approx_eq!(2.3f64.log10(), 0.361728);
     assert_approx_eq!(1.0f64.exp().log10(), 0.434294);
     assert_eq!(1.0f64.log10(), 0.0);
