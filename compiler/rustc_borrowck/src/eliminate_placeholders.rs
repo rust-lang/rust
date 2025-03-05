@@ -19,11 +19,15 @@ use rustc_middle::ty::{self, Region, RegionVid, TyCtxt, UniverseIndex};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
+use crate::ConstraintCategory;
 use crate::constraints::graph::{ConstraintGraph, Normal};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
+use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::{RegionErrorKind, RegionErrors};
 use crate::member_constraints::MemberConstraintSet;
 use crate::region_infer::{RegionDefinition, Representative, TypeTest};
+use crate::ty::VarianceDiagInfo;
+use crate::type_check::Locations;
 use crate::universal_regions::UniversalRegions;
 
 pub(crate) struct LoweredConstraints<'tcx> {
@@ -520,12 +524,18 @@ fn rewrite_outlives<'tcx>(
         };
 
         outlives_static.insert(scc);
-        outlives_constraints.add_placeholder_violation_constraint(
-            annotation.representative_rvid(),
-            annotation.representative_rvid(),
-            blame_to,
-            fr_static,
-        );
+        outlives_constraints.push(OutlivesConstraint {
+            sup: annotation.representative_rvid(),
+            sub: fr_static,
+            category: ConstraintCategory::IllegalPlaceholder(
+                annotation.representative_rvid(),
+                blame_to,
+            ),
+            locations: Locations::All(rustc_span::DUMMY_SP),
+            span: rustc_span::DUMMY_SP,
+            variance_info: VarianceDiagInfo::None,
+            from_closure: false,
+        });
     }
     outlives_static
 }

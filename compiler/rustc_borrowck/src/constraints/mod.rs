@@ -69,27 +69,6 @@ impl<'tcx> OutlivesConstraintSet<'tcx> {
         let region_graph = &constraint_graph.region_graph(self, static_region);
         scc::Sccs::new_with_annotation(&region_graph, annotations)
     }
-
-    /// There is a placeholder violation; add a requirement
-    /// that some SCC outlive static and explain which region
-    /// reaching which other region caused that.
-    pub(crate) fn add_placeholder_violation_constraint(
-        &mut self,
-        outlives_static: RegionVid,
-        blame_from: RegionVid,
-        blame_to: RegionVid,
-        fr_static: RegionVid,
-    ) {
-        self.push(OutlivesConstraint {
-            sup: outlives_static,
-            sub: fr_static,
-            category: ConstraintCategory::IllegalPlaceholder(blame_from, blame_to),
-            locations: Locations::All(rustc_span::DUMMY_SP),
-            span: rustc_span::DUMMY_SP,
-            variance_info: VarianceDiagInfo::None,
-            from_closure: false,
-        });
-    }
 }
 
 impl<'tcx> Index<OutlivesConstraintIndex> for OutlivesConstraintSet<'tcx> {
