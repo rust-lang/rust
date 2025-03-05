@@ -3069,6 +3069,35 @@ mod sealed {
             vsegf(self)
         }
     }
+
+    // NOTE: VectorSigned and VectorUnsigned make strong safety assumptions around floats.
+    // This is what C provides, but even IBM does not clearly document these constraints.
+    //
+    // https://doc.rust-lang.org/std/intrinsics/simd/fn.simd_cast.html
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorSigned {
+        type Result;
+        unsafe fn vec_signed(self) -> Self::Result;
+    }
+
+    test_impl! { vcgsb (a: vector_float) -> vector_signed_int [simd_cast, "vector-enhancements-2" vcgsb] }
+    test_impl! { vcgdb (a: vector_double) -> vector_signed_long_long [simd_cast, vcgdb] }
+
+    impl_vec_trait! { [VectorSigned vec_signed] vcgsb (vector_float) -> vector_signed_int }
+    impl_vec_trait! { [VectorSigned vec_signed] vcgdb (vector_double) -> vector_signed_long_long }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorUnsigned {
+        type Result;
+        unsafe fn vec_unsigned(self) -> Self::Result;
+    }
+
+    test_impl! { vclgsb (a: vector_float) -> vector_unsigned_int [simd_cast, "vector-enhancements-2" vclgsb] }
+    test_impl! { vclgdb (a: vector_double) -> vector_unsigned_long_long [simd_cast, vclgdb] }
+
+    impl_vec_trait! { [VectorUnsigned vec_unsigned] vclgsb (vector_float) -> vector_unsigned_int }
+    impl_vec_trait! { [VectorUnsigned vec_unsigned] vclgdb (vector_double) -> vector_unsigned_long_long }
 }
 
 /// Load Count to Block Boundary
@@ -4388,6 +4417,22 @@ pub unsafe fn vec_extend_s64(a: impl sealed::VectorExtendSigned64) -> vector_sig
     a.vec_extend_s64()
 }
 
+/// Vector Convert floating point to signed
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_signed<T: sealed::VectorSigned>(a: T) -> T::Result {
+    a.vec_signed()
+}
+
+/// Vector Convert floating point to unsigned
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_unsigned<T: sealed::VectorUnsigned>(a: T) -> T::Result {
+    a.vec_unsigned()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -5545,6 +5590,29 @@ mod tests {
 
             let v = vector_signed_int([0, 1, 2, 3]);
             assert_eq!(vec_extend_s64(v).as_array(), &[1, 3]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_signed() {
+        unsafe {
+            let v = vector_float([1.0, 2.5, -2.5, -0.0]);
+            assert_eq!(vec_signed(v).as_array(), &[1, 2, -2, 0]);
+
+            let v = vector_double([2.5, -2.5]);
+            assert_eq!(vec_signed(v).as_array(), &[2, -2]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_unsigned() {
+        // NOTE: converting a negative floating point value is UB!
+        unsafe {
+            let v = vector_float([1.0, 2.5, 3.5, 0.0]);
+            assert_eq!(vec_unsigned(v).as_array(), &[1, 2, 3, 0]);
+
+            let v = vector_double([2.5, 3.5]);
+            assert_eq!(vec_unsigned(v).as_array(), &[2, 3]);
         }
     }
 }
