@@ -82,7 +82,7 @@ mod for_windows {
             job,
             JobObjectExtendedLimitInformation,
             &info as *const _ as *const c_void,
-            mem::size_of_val(&info) as u32,
+            size_of_val(&info) as u32,
         );
         assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
