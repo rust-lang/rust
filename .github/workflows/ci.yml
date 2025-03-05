@@ -58,8 +58,8 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
         run: |
           cd src/ci/citool
-          cargo test
-          cargo run calculate-job-matrix >> $GITHUB_OUTPUT
+          CARGO_INCREMENTAL=0 cargo test
+          CARGO_INCREMENTAL=0 cargo run calculate-job-matrix >> $GITHUB_OUTPUT
         id: jobs
   job:
     name: ${{ matrix.full_name }}
@@ -183,11 +183,11 @@ jobs:
         run: src/ci/scripts/dump-environment.sh
 
       # Pre-build citool before the following step uninstalls rustup
-      # Build is into the build directory, to avoid modifying sources
+      # Build it into the build directory, to avoid modifying sources
       - name: build citool
         run: |
           cd src/ci/citool
-          CARGO_TARGET_DIR=../../../build/citool cargo build
+          CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
       - name: run the build
         # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
@@ -238,13 +238,9 @@ jobs:
       - name: upload job metrics to DataDog
         if: needs.calculate_matrix.outputs.run_type != 'pr'
         env:
-          DATADOG_SITE: datadoghq.com
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
           DD_GITHUB_JOB_NAME: ${{ matrix.full_name }}
-        run: |
-          cd src/ci
-          npm ci
-          python3 scripts/upload-build-metrics.py ../../build/cpu-usage.csv
+        run: ./build/citool/debug/citool upload-build-metrics build/cpu-usage.csv
 
   # This job isused to tell bors the final status of the build, as there is no practical way to detect
   # when a workflow is successful listening to webhooks only in our current bors implementation (homu).
