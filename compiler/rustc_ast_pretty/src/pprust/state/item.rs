@@ -125,7 +125,7 @@ impl<'a> State<'a> {
         defaultness: ast::Defaultness,
     ) {
         let (before_predicates, after_predicates) =
-            generics.where_clause.predicates.split_at(where_clauses.split);
+            generics.where_clause.predicates.split_at(where_clauses.before_count);
         self.head("");
         self.print_visibility(vis);
         self.print_defaultness(defaultness);

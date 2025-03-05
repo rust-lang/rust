@@ -3429,7 +3429,9 @@ pub struct TyAliasWhereClauses {
     /// The index in `TyAlias.generics.where_clause.predicates` that would split
     /// into predicates from the where clause before the equals sign and the ones
     /// from the where clause after the equals sign.
-    pub split: usize,
+    pub before_count: usize,
+    /// The count of the clauses that appear before the equals sign and have attrbutes.
+    pub before_with_attr_count: usize,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

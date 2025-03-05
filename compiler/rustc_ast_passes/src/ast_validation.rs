@@ -136,8 +136,10 @@ impl<'a> AstValidator<'a> {
             return Ok(());
         }
 
+        let split =
+            ty_alias.where_clauses.before_count - ty_alias.where_clauses.before_with_attr_count;
         let (before_predicates, after_predicates) =
-            ty_alias.generics.where_clause.predicates.split_at(ty_alias.where_clauses.split);
+            ty_alias.generics.where_clause.predicates.split_at(split);
         let span = ty_alias.where_clauses.before.span;
 
         let sugg = if !before_predicates.is_empty() || !ty_alias.where_clauses.after.has_where_token
