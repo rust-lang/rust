@@ -54,6 +54,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
         .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
+        .optopt(
+            "",
+            "stage0-rustc-path",
+            "path to rustc to use for compiling run-make recipes",
+            "PATH",
+        )
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
@@ -320,6 +326,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
+        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(PathBuf::from),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
