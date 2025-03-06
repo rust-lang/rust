@@ -182,6 +182,10 @@ fn yaml_map_to_json(map: &BTreeMap<String, Value>) -> BTreeMap<String, serde_jso
         .collect()
 }
 
+/// Maximum number of custom try jobs that can be requested in a single
+/// `@bors try` request.
+const MAX_TRY_JOBS_COUNT: usize = 20;
+
 fn calculate_jobs(
     run_type: &RunType,
     db: &JobDatabase,
@@ -191,9 +195,9 @@ fn calculate_jobs(
         RunType::PullRequest => (db.pr_jobs.clone(), "PR", &db.envs.pr_env),
         RunType::TryJob { custom_jobs } => {
             let jobs = if let Some(custom_jobs) = custom_jobs {
-                if custom_jobs.len() > 10 {
+                if custom_jobs.len() > MAX_TRY_JOBS_COUNT {
                     return Err(anyhow::anyhow!(
-                        "It is only possible to schedule up to 10 custom jobs, received {} custom jobs",
+                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs",
                         custom_jobs.len()
                     ));
                 }
