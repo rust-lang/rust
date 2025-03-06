@@ -3372,7 +3372,7 @@ where
 #[stable(feature = "slice_group_by", since = "1.77.0")]
 impl<'a, T: 'a, P> FusedIterator for ChunkBy<'a, T, P> where P: FnMut(&T, &T) -> bool {}
 
-#[stable(feature = "slice_group_by", since = "1.77.0")]
+#[stable(feature = "slice_group_by_clone", since = "CURRENT_RUSTC_VERSION")]
 impl<'a, T: 'a, P: Clone> Clone for ChunkBy<'a, T, P> {
     fn clone(&self) -> Self {
         Self { slice: self.slice, predicate: self.predicate.clone() }
