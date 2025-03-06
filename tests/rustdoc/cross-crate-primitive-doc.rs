@@ -2,11 +2,8 @@
 //@ compile-flags: --extern-html-root-url=primitive_doc=../ -Z unstable-options
 //@ only-linux
 
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
-
-#[lang = "sized"]
-trait Sized {}
 
 extern crate primitive_doc;
 

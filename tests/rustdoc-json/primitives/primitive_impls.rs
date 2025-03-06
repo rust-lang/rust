@@ -1,13 +1,10 @@
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![no_core]
 #![rustc_coherence_is_core]
 
 //@ set impl_i32 = "$.index[*][?(@.docs=='Only core can do this')].id"
-
-#[lang = "sized"]
-trait Sized {}
 
 /// Only core can do this
 impl i32 {
