@@ -69,6 +69,7 @@
     - [mipsisa\*r6\*-unknown-linux-gnu\*](platform-support/mips-release-6.md)
     - [nvptx64-nvidia-cuda](platform-support/nvptx64-nvidia-cuda.md)
     - [powerpc-unknown-openbsd](platform-support/powerpc-unknown-openbsd.md)
+    - [powerpc-unknown-linux-gnuspe](platform-support/powerpc-unknown-linux-gnuspe.md)
     - [powerpc-unknown-linux-muslspe](platform-support/powerpc-unknown-linux-muslspe.md)
     - [powerpc64-ibm-aix](platform-support/aix.md)
     - [powerpc64le-unknown-linux-musl](platform-support/powerpc64le-unknown-linux-musl.md)
