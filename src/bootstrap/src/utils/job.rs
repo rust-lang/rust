@@ -42,7 +42,7 @@ pub unsafe fn setup(build: &mut crate::Build) {
 #[cfg(windows)]
 mod for_windows {
     use std::ffi::c_void;
-    use std::{io, mem};
+    use std::io;
 
     use windows::Win32::Foundation::CloseHandle;
     use windows::Win32::System::Diagnostics::Debug::{
@@ -82,7 +82,7 @@ mod for_windows {
             job,
             JobObjectExtendedLimitInformation,
             &info as *const _ as *const c_void,
-            mem::size_of_val(&info) as u32,
+            size_of_val(&info) as u32,
         );
         assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
