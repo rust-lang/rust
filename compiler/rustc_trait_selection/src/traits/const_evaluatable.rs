@@ -76,6 +76,9 @@ pub fn is_const_evaluatable<'tcx>(
                             "Missing value for constant, but no error reported?",
                         )))
                     }
+                    Err(EvaluateConstErr::ImpossibleClauses) => {
+                        unreachable!("under gce constants shouldnt be wf checked before evaluating")
+                    }
                     Err(
                         EvaluateConstErr::EvaluationFailure(e)
                         | EvaluateConstErr::InvalidConstParamTy(e),
@@ -86,9 +89,16 @@ pub fn is_const_evaluatable<'tcx>(
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         }
     } else if tcx.features().min_generic_const_args() {
-        // This is a sanity check to make sure that non-generics consts are checked to
-        // be evaluatable in case they aren't cchecked elsewhere. This will NOT error
-        // if the const uses generics, as desired.
+        // `ConstEvaluatable` goals don't really need to exist under `mgca` as we can assume all
+        // generic const args can be sucessfully evaluated as they have been checked at def site.
+        //
+        // The only reason we keep this around is so that wf checking of signatures is guaranteed
+        // to wind up normalizing constants emitting errors if they are ill formed. The equivalent
+        // check does not exist for types and results in diverging aliases not being normalized during
+        // wfck sometimes.
+        //
+        // Regardless, the point being that the behaviour of this goal doesn't really matter so we just
+        // always return `Ok` and evaluate for the CTFE side effect of emitting an error.
         crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
         Ok(())
     } else {
@@ -143,6 +153,12 @@ pub fn is_const_evaluatable<'tcx>(
                 };
 
                 Err(err)
+            }
+            Err(EvaluateConstErr::ImpossibleClauses) => {
+                let e = tcx
+                    .dcx()
+                    .delayed_bug("constants with impossible preds shouldnt error on stable");
+                return Err(NotConstEvaluatable::Error(e));
             }
             Err(
                 EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e),

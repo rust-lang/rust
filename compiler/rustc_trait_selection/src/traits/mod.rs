@@ -493,6 +493,10 @@ pub enum EvaluateConstErr {
     /// CTFE failed to evaluate the constant in some unrecoverable way (e.g. encountered a `panic!`).
     /// This is also used when the constant was already tainted by error.
     EvaluationFailure(ErrorGuaranteed),
+    /// The constant requires impossible clauses to hold in order for it to be evaluated. This does not
+    /// necessarily imply that type checking should error as there may be similar impossible clauses in
+    /// the type checking environment that can be used to prove this constant wf.
+    ImpossibleClauses,
 }
 
 // FIXME(BoxyUwU): Private this once we `generic_const_exprs` isn't doing its own normalization routine
@@ -514,7 +518,7 @@ pub fn evaluate_const<'tcx>(
         Err(EvaluateConstErr::EvaluationFailure(e) | EvaluateConstErr::InvalidConstParamTy(e)) => {
             ty::Const::new_error(infcx.tcx, e)
         }
-        Err(EvaluateConstErr::HasGenericsOrInfers) => ct,
+        Err(EvaluateConstErr::ImpossibleClauses | EvaluateConstErr::HasGenericsOrInfers) => ct,
     }
 }
 
@@ -671,7 +675,7 @@ pub fn try_evaluate_const<'tcx>(
                 // If we are dealing with a fully monomorphic constant then we should ensure that
                 // it is well formed as otherwise CTFE will ICE. For the same reasons as with
                 // deferring evaluation of generic/uninferred constants, we do not have to worry
-                // about `generic_const_expr`
+                // about `generic_const_exprs`
                 //
                 // This check is done in an empty environment which is a little weird, however, mir
                 // bodies with impossible predicates (in an empty environment) are sometimes built as
@@ -681,17 +685,9 @@ pub fn try_evaluate_const<'tcx>(
                     uv.def,
                     tcx.erase_regions(uv.args),
                 )) {
-                    // We treat these consts as rigid instead of an error or delaying a bug as we may
-                    // be checking a constant with a trivialy-false where clause that is satisfied from
-                    // a trivially-false clause in the environment.
-                    //
-                    // Delaying a bug would ICE the compiler as we may be in an environment where the
-                    // impossible pred actually holds.
-                    //
-                    // Emitting an error would be wrong as we may be normalizing inside of a probe where
-                    // an inference variable was inferred to a concrete value resulting in an impossible
-                    // predicate.
-                    return Ok(ct);
+                    // We can't delay a bug here as that could ICE the compiler if we are in an environment
+                    // where the impossible pred actually holds due to it also existing in this env.
+                    return Err(EvaluateConstErr::ImpossibleClauses);
                 }
 
                 let typing_env = infcx

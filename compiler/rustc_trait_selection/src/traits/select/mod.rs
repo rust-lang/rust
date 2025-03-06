@@ -932,6 +932,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 Err(_) => Ok(EvaluatedToErr),
                             }
                         }
+                        (Err(EvaluateConstErr::ImpossibleClauses), _)
+                        | (_, Err(EvaluateConstErr::ImpossibleClauses)) => {
+                            unreachable!(
+                                "under gce constants shouldnt be wf checked before evaluating"
+                            )
+                        }
                         (Err(EvaluateConstErr::InvalidConstParamTy(..)), _)
                         | (_, Err(EvaluateConstErr::InvalidConstParamTy(..))) => Ok(EvaluatedToErr),
                         (Err(EvaluateConstErr::EvaluationFailure(..)), _)
