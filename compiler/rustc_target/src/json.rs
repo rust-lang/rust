@@ -140,3 +140,9 @@ impl ToJson for rustc_abi::Endian {
         self.as_str().to_json()
     }
 }
+
+impl ToJson for rustc_abi::CanonAbi {
+    fn to_json(&self) -> Json {
+        self.to_string().to_json()
+    }
+}
