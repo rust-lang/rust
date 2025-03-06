@@ -152,46 +152,20 @@ rm tests/ui/process/process-panic-after-fork.rs # same
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
 cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
-# prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
-# rustdoc-clif
 cat <<EOF | git apply -
-diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
-index ea06b620c4c..b969d0009c6 100644
---- a/tests/run-make/tools.mk
-+++ b/tests/run-make/tools.mk
-@@ -9,7 +9,7 @@ RUSTC_ORIGINAL := \$(RUSTC)
- BARE_RUSTC := \$(HOST_RPATH_ENV) '\$(RUSTC)'
- BARE_RUSTDOC := \$(HOST_RPATH_ENV) '\$(RUSTDOC)'
- RUSTC := \$(BARE_RUSTC) --out-dir \$(TMPDIR) -L \$(TMPDIR) \$(RUSTFLAGS) -Ainternal_features
--RUSTDOC := \$(BARE_RUSTDOC) -L \$(TARGET_RPATH_DIR)
-+RUSTDOC := \$(BARE_RUSTDOC)
- ifdef RUSTC_LINKER
- RUSTC := \$(RUSTC) -Clinker='\$(RUSTC_LINKER)'
- RUSTDOC := \$(RUSTDOC) -Clinker='\$(RUSTC_LINKER)'
-diff --git a/src/tools/run-make-support/src/rustdoc.rs b/src/tools/run-make-support/src/rustdoc.rs
-index 9607ff02f96..b7d97caf9a2 100644
---- a/src/tools/run-make-support/src/external_deps/rustdoc.rs
-+++ b/src/tools/run-make-support/src/external_deps/rustdoc.rs
-@@ -34,7 +34,6 @@ pub fn bare() -> Self {
-     #[track_caller]
-     pub fn new() -> Self {
-         let mut cmd = setup_common();
--        cmd.arg("-L").arg(env_var_os("TARGET_RPATH_DIR"));
-         Self { cmd }
-     }
-
 diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
 index e7ae773ffa1d3..04bc2d7787da7 100644
 --- a/src/tools/compiletest/src/runtest/run_make.rs
 +++ b/src/tools/compiletest/src/runtest/run_make.rs
-@@ -329,7 +329,6 @@ impl TestCx<'_> {
+@@ -117,7 +117,6 @@ impl TestCx<'_> {
              .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
              .arg("--edition=2021")
-             .arg(&self.testpaths.file.join("rmake.rs"))
--            .arg("-Cprefer-dynamic")
-             // Provide necessary library search paths for rustc.
-             .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
+-            .arg(&self.testpaths.file.join("rmake.rs"))
+-            .arg("-Cprefer-dynamic");
++            .arg(&self.testpaths.file.join("rmake.rs"));
 
+         // In test code we want to be very pedantic about values being silently discarded that are
+         // annotated with \`#[must_use]\`.
 diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
 index 30387af428c..f7895b12961 100644
 --- a/tests/run-make/linker-warning/rmake.rs
@@ -205,7 +179,7 @@ index 30387af428c..f7895b12961 100644
                  regex::escape(run_make_support::build_root().to_str().unwrap()),
                  "/build-root",
              )
-             .run();
+             .normalize(r#""[^"]*\/symbols.o""#, "\\"/symbols.o\\"")
 EOF
 
 echo "[TEST] rustc test suite"
