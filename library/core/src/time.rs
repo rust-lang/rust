@@ -77,7 +77,7 @@ const DAYS_PER_WEEK: u64 = 7;
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Duration")]
+#[rustc_diagnostic_item = "Duration"]
 pub struct Duration {
     secs: u64,
     nanos: Nanoseconds, // Always 0 <= nanos < NANOS_PER_SEC
