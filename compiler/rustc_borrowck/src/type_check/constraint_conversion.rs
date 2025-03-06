@@ -1,4 +1,4 @@
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
@@ -88,7 +88,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn apply_closure_requirements(
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_args: ty::GenericArgsRef<'tcx>,
     ) {
         // Extract the values of the free regions in `closure_args`
@@ -98,7 +98,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             self.tcx,
             closure_args,
             closure_requirements.num_external_vids,
-            closure_def_id.expect_local(),
+            closure_def_id,
         );
         debug!(?closure_mapping);
 

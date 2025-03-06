@@ -2582,7 +2582,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ConstraintCategory::Boring, // same as above.
                 self.constraints,
             )
-            .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
+            .apply_closure_requirements(closure_requirements, def_id, args);
         }
 
         // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.
