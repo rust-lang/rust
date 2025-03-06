@@ -74,6 +74,7 @@ exclude = [
 # FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all of the
 # individual lints are satisfied.
 keyword_idents_2024 = "warn"
+unreachable_pub = "warn"
 unsafe_op_in_unsafe_fn = "warn"
 
 [profile.release.package.rustc-rayon-core]
