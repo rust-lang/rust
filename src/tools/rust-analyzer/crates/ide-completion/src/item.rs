@@ -350,7 +350,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > 0
+        self.score() > (!0 / 2)
     }
 }
 
