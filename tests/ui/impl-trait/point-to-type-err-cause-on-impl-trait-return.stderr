@@ -181,8 +181,9 @@ LL | fn hat() -> dyn std::fmt::Display {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn hat() -> impl std::fmt::Display {
-   |             ~~~~
+LL - fn hat() -> dyn std::fmt::Display {
+LL + fn hat() -> impl std::fmt::Display {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn hat() -> Box<dyn std::fmt::Display> {
@@ -202,8 +203,9 @@ LL | fn pug() -> dyn std::fmt::Display {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn pug() -> impl std::fmt::Display {
-   |             ~~~~
+LL - fn pug() -> dyn std::fmt::Display {
+LL + fn pug() -> impl std::fmt::Display {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn pug() -> Box<dyn std::fmt::Display> {
