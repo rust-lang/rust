@@ -3,6 +3,11 @@
 
 #![crate_type = "lib"]
 
+// The bug here was that it was loading and storing the whole value.
+// It's ok for it to load the discriminant,
+// to preserve the UB from `unreachable_unchecked`,
+// but it better only store the constant discriminant of `B`.
+
 pub enum State {
     A([u8; 753]),
     B([u8; 753]),
@@ -11,9 +16,27 @@ pub enum State {
 // CHECK-LABEL: @update
 #[no_mangle]
 pub unsafe fn update(s: *mut State) {
-    // CHECK-NEXT: start:
-    // CHECK-NEXT: store i8
-    // CHECK-NEXT: ret
+    // CHECK-NOT: alloca
+
+    // CHECK-NOT: load
+    // CHECK-NOT: store
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: 75{{3|4}}
+
+    // CHECK: %[[TAG:.+]] = load i8, ptr %s, align 1
+    // CHECK-NEXT: trunc nuw i8 %[[TAG]] to i1
+
+    // CHECK-NOT: load
+    // CHECK-NOT: store
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: 75{{3|4}}
+
+    // CHECK: store i8 1, ptr %s, align 1
+
+    // CHECK-NOT: load
+    // CHECK-NOT: store
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: 75{{3|4}}
     let State::A(v) = s.read() else { std::hint::unreachable_unchecked() };
     s.write(State::B(v));
 }
