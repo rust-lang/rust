@@ -327,6 +327,12 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         debug!("delegate_consume_or_clone(place_with_id={:?})", place_with_id);
 
+        // `x.use` will do one of the following
+        // * if it implements `Copy`, it will be a copy
+        // * if it implements `UseCloned`, it will be a call to `clone`
+        // * otherwise, it is a move
+        //
+        // we do a conservative approximation of this, treating it as a move unless we know that it implements copy or `UseCloned`
         if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
             self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
         } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
