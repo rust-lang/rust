@@ -364,6 +364,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ) -> Bx::Value {
         assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
 
+        // While optimizations will remove no-op transmutes, they might still be
+        // there in debug or things that aren't no-op in MIR because they change
+        // the Rust type but not the underlying layout/niche.
+        if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+            return imm;
+        }
+
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
 
