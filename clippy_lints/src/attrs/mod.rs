@@ -16,7 +16,7 @@ mod utils;
 use clippy_config::Conf;
 use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
-use rustc_hir::{ImplItem, Item, TraitItem};
+use rustc_hir::{ImplItem, Item, ItemKind, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 use rustc_span::sym;
@@ -466,8 +466,8 @@ impl Attributes {
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir_attrs(item.hir_id());
-        if is_relevant_item(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, attrs);
+        if let ItemKind::Fn { ident, .. } = item.kind && is_relevant_item(cx, item) {
+            inline_always::check(cx, item.span, ident.name, attrs);
         }
         repr_attributes::check(cx, item.span, attrs, self.msrv);
     }
