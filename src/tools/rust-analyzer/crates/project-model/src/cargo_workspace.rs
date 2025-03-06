@@ -300,10 +300,9 @@ impl CargoWorkspace {
         if let Ok((_, Some(ref e))) = res {
             tracing::warn!(
                 %cargo_toml,
-                %e,
+                ?e,
                 "`cargo metadata` failed, but retry with `--no-deps` succeeded"
             );
-            tracing::debug!("{e:?}");
         }
         res
     }
