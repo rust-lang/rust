@@ -24,7 +24,6 @@ use rustc_traits::{type_op_ascribe_user_type_with_span, type_op_prove_predicate_
 use tracing::{debug, instrument};
 
 use crate::MirBorrowckCtxt;
-use crate::region_infer::values::RegionElement;
 use crate::session_diagnostics::{
     HigherRankedErrorCause, HigherRankedLifetimeError, HigherRankedSubtypeError,
 };
@@ -54,26 +53,11 @@ impl<'tcx> UniverseInfo<'tcx> {
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
         cause: ObligationCause<'tcx>,
+        error_element: Option<ty::PlaceholderRegion>,
     ) {
         if let UniverseInfo::TypeOp(ref type_op_info) = *self {
-            type_op_info.report_erroneous_element(mbcx, placeholder, error_element, cause);
-        } else {
-            self.report_generic_error(mbcx, cause);
-        }
-    }
-
-    /// Report an error where a placeholder erroneously outlives another.
-    pub(crate) fn report_placeholder_mismatch(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder_a: ty::PlaceholderRegion,
-        cause: ObligationCause<'tcx>,
-        placeholder_b: ty::PlaceholderRegion,
-    ) {
-        if let UniverseInfo::TypeOp(ref type_op_info) = *self {
-            type_op_info.report_placeholder_mismatch(mbcx, placeholder_a, cause, placeholder_b);
+            type_op_info.report_erroneous_element(mbcx, placeholder, cause, error_element);
         } else {
             self.report_generic_error(mbcx, cause);
         }
@@ -173,28 +157,6 @@ pub(crate) trait TypeOpInfo<'tcx> {
         error_region: Option<ty::Region<'tcx>>,
     ) -> Option<Diag<'infcx>>;
 
-    #[instrument(level = "debug", skip(self, mbcx))]
-    fn report_placeholder_mismatch(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        placeholder_a: ty::PlaceholderRegion,
-        cause: ObligationCause<'tcx>,
-        placeholder_b: ty::PlaceholderRegion,
-    ) {
-        let tcx = mbcx.infcx.tcx;
-
-        let placeholder_a = self.region_with_adjusted_universe(placeholder_a, tcx);
-        let placeholder_b = self.region_with_adjusted_universe(placeholder_b, tcx);
-
-        debug!(?placeholder_a, ?placeholder_b);
-
-        let span = cause.span;
-        // FIXME: see note in `report_erroneous_element()` below!
-        let nice_error = self.nice_error(mbcx, cause, placeholder_a, Some(placeholder_b));
-        debug!(?nice_error);
-        mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
-    }
-
     /// Turn a placeholder region into a Region with its universe adjusted by
     /// the base universe.
     fn region_with_adjusted_universe(
@@ -217,13 +179,16 @@ pub(crate) trait TypeOpInfo<'tcx> {
         )
     }
 
+    /// Report an error where an erroneous element reaches `placeholder`.
+    /// The erroneous element is either another placeholder that we provide,
+    ///  or we figure out what happened later.
     #[instrument(level = "debug", skip(self, mbcx))]
     fn report_erroneous_element(
         &self,
         mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
         placeholder: ty::PlaceholderRegion,
-        error_element: RegionElement,
         cause: ObligationCause<'tcx>,
+        error_element: Option<ty::PlaceholderRegion>,
     ) {
         let tcx = mbcx.infcx.tcx;
 
@@ -234,15 +199,12 @@ pub(crate) trait TypeOpInfo<'tcx> {
         // In fact, this  function throws away a lot of interesting information that would
         // probably allow bypassing lots of logic downstream for a much simpler flow.
         let placeholder_region = self.region_with_adjusted_universe(placeholder, tcx);
+        let error_element = error_element.map(|e| self.region_with_adjusted_universe(e, tcx));
 
         debug!(?placeholder_region);
 
         let span = cause.span;
-        // FIXME: it's not good that we have one variant that always sends None,
-        // and one variant with always sends Some. We should break out these code
-        // paths -- but the downstream code is complicated and that's not straight-
-        // forward.
-        let nice_error = self.nice_error(mbcx, cause, placeholder_region, None);
+        let nice_error = self.nice_error(mbcx, cause, placeholder_region, error_element);
 
         debug!(?nice_error);
         mbcx.buffer_error(nice_error.unwrap_or_else(|| self.fallback_error(tcx, span)));
