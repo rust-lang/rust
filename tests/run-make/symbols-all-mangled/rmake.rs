@@ -1,4 +1,5 @@
 // Check that all symbols in cdylibs, staticlibs and bins are mangled
+//@ only-elf some object file formats create multiple symbols for each function with different names
 
 use run_make_support::object::read::{Object, ObjectSymbol};
 use run_make_support::{bin_name, dynamic_lib_name, object, rfs, rustc, static_lib_name};
