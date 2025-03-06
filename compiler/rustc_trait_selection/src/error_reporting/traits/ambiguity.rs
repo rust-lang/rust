@@ -1,8 +1,6 @@
 use std::ops::ControlFlow;
 
-use rustc_errors::{
-    Applicability, Diag, E0283, E0284, E0790, MultiSpan, StashKey, struct_span_code_err,
-};
+use rustc_errors::{Applicability, Diag, E0283, E0284, E0790, MultiSpan, struct_span_code_err};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::{DefKind, Res};
@@ -197,7 +195,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 // be ignoring the fact that we don't KNOW the type works
                 // out. Though even that would probably be harmless, given that
                 // we're only talking about builtin traits, which are known to be
-                // inhabited. We used to check for `self.tcx.sess.has_errors()` to
+                // inhabited. We used to check for `self.tainted_by_errors()` to
                 // avoid inundating the user with unnecessary errors, but we now
                 // check upstream for type errors and don't add the obligations to
                 // begin with in those cases.
@@ -211,7 +209,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 TypeAnnotationNeeded::E0282,
                                 false,
                             );
-                            return err.stash(span, StashKey::MaybeForgetReturn).unwrap();
+                            return err.emit();
                         }
                         Some(e) => return e,
                     }
