@@ -1,0 +1,12 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/impossible_preds_on_anon_const.rs:28:5
+   |
+LL | /     const GLOBAL: usize = 1
+LL | |
+LL | |     where
+LL | |         for<'a> (): Unimplemented<'a>;
+   | |______________________________________^ entering unreachable code
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0080`.
