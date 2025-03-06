@@ -2903,14 +2903,14 @@ mod sealed {
             self,
             b: Self,
             c: vector_unsigned_char,
-            d: &mut i32,
+            d: *mut i32,
         ) -> vector_unsigned_char;
 
         unsafe fn vec_search_string_until_zero_cc(
             self,
             b: Self,
             c: vector_unsigned_char,
-            d: &mut i32,
+            d: *mut i32,
         ) -> vector_unsigned_char;
     }
 
@@ -2921,17 +2921,17 @@ mod sealed {
                 impl VectorSearchString for $ty {
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char, d: &mut i32) -> vector_unsigned_char {
+                    unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char, d: *mut i32) -> vector_unsigned_char {
                         let PackedTuple { x,y } = $intr_s(transmute(self), transmute(b), c);
-                        *d = y;
+                        d.write(y);
                         x
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char, d: &mut i32) -> vector_unsigned_char {
+                    unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char, d: *mut i32) -> vector_unsigned_char {
                         let PackedTuple { x,y } = $intr_sz(transmute(self), transmute(b), c);
-                        *d = y;
+                        d.write(y);
                         x
                     }
                 }
@@ -4584,7 +4584,7 @@ pub unsafe fn vec_search_string_cc<T: sealed::VectorSearchString>(
     a: T,
     b: T,
     c: vector_unsigned_char,
-    d: &mut i32,
+    d: *mut i32,
 ) -> vector_unsigned_char {
     a.vec_search_string_cc(b, c, d)
 }
@@ -4597,7 +4597,7 @@ pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
     a: T,
     b: T,
     c: vector_unsigned_char,
-    d: &mut i32,
+    d: *mut i32,
 ) -> vector_unsigned_char {
     a.vec_search_string_until_zero_cc(b, c, d)
 }
