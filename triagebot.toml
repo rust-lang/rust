@@ -178,6 +178,18 @@ Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
 if you have time? Thanks <3
 """
 
+[ping.codegen-gcc]
+message = """\
+Hey GCC codegen backend team, this issue or PR could use some cg_gcc guidance.
+Could one of you take a look? Thanks <3
+"""
+
+[ping.codegen-cranelift]
+message = """\
+Hey cranelift codegen backend team, this issue or PR could use some cg_cranelift
+guidance. Could one of you take a look? Thanks <3
+"""
+
 [prioritize]
 label = "I-prioritize"
 
