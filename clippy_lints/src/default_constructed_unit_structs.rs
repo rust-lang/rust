@@ -70,6 +70,8 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             && let var @ ty::VariantDef { ctor: Some((hir::def::CtorKind::Const, _)), .. } = def.non_enum_variant()
             && !var.is_field_list_non_exhaustive()
             && !expr.span.from_expansion() && !qpath.span().from_expansion()
+            // do not suggest replacing an expression by a type name with placeholders
+            && !base.is_suggestable_infer_ty()
         {
             span_lint_and_sugg(
                 cx,

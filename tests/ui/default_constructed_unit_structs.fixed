@@ -161,3 +161,12 @@ fn main() {
 
     let _ = <struct_from_macro!()>::default();
 }
+
+fn issue12654() {
+    #[derive(Default)]
+    struct G;
+
+    fn f(_g: G) {}
+
+    f(<_>::default());
+}
