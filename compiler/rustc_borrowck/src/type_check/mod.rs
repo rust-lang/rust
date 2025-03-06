@@ -328,9 +328,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        debug!(?constant, ?location, "visit_const_operand");
-
         self.super_const_operand(constant, location);
         let ty = constant.const_.ty();
 
@@ -339,14 +338,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             self.typeck.constraints.liveness_constraints.add_location(live_region_vid, location);
         });
 
-        // HACK(compiler-errors): Constants that are gathered into Body.required_consts
-        // have their locations erased...
-        let locations = if location != Location::START {
-            location.to_locations()
-        } else {
-            Locations::All(constant.span)
-        };
-
+        let locations = location.to_locations();
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.typeck.relate_type_and_user_type(
                 constant.const_.ty(),
@@ -491,9 +483,28 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        // The types of local_decls are checked above which is called in super_body.
-        self.super_body(body);
+        // We intentionally do not recursive into `body.required_consts` or
+        // `body.mentioned_items` here as the MIR at this phase should still
+        // refer to all items and we don't want to check them multiple times.
+
+        for (local, local_decl) in body.local_decls.iter_enumerated() {
+            self.visit_local_decl(local, local_decl);
+        }
+
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
+            let mut location = Location { block, statement_index: 0 };
+            for stmt in &block_data.statements {
+                if !stmt.source_info.span.is_dummy() {
+                    self.last_span = stmt.source_info.span;
+                }
+                self.visit_statement(stmt, location);
+                location.statement_index += 1;
+            }
+
+            self.visit_terminator(block_data.terminator(), location);
+        }
     }
 }
 
