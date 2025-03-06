@@ -28,8 +28,8 @@
 	shallow = true
 [submodule "src/llvm-project"]
 	path = src/llvm-project
-	url = https://github.com/rust-lang/llvm-project.git
-	branch = rustc/20.1-2025-02-13
+	url = https://github.com/tgross35/llvm-project.git
+	branch = s390x-f16
 	shallow = true
 [submodule "src/doc/embedded-book"]
 	path = src/doc/embedded-book
