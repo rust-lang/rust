@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![allow(incomplete_features)]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
