@@ -983,8 +983,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 return Err(SelectionError::Unimplemented);
             }
         } else {
-            nested.push(obligation.with(
+            nested.push(Obligation::new(
                 self.tcx(),
+                obligation.derived_cause(ObligationCauseCode::BuiltinDerived),
+                obligation.param_env,
                 ty::TraitRef::new(
                     self.tcx(),
                     self.tcx().require_lang_item(
