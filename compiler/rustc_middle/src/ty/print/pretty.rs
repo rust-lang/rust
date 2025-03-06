@@ -63,6 +63,7 @@ thread_local! {
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static TYPE_FOR_SUGGESTION: Cell<bool> = const { Cell::new(false) };
 }
 
 macro_rules! define_helper {
@@ -122,6 +123,11 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+    /// Render a type for the purposes of a suggestion, rather than for diagnostic
+    /// clarity. Right now, this suppresses the "{{ path::to::Trait::method(..) }}"
+    /// for RPITITs, but it could be used to render more friendly representations
+    /// for things like `FnDef`, too.
+    fn with_types_for_suggestion(TypeForSuggestionGuard, TYPE_FOR_SUGGESTION);
 );
 
 /// Avoids running any queries during prints.
@@ -1224,6 +1230,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         if self.tcx().features().return_type_notation()
+            && !with_types_for_suggestion()
             && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
                 self.tcx().opt_rpitit_info(def_id)
             && let ty::Alias(_, alias_ty) =
