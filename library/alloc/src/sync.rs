@@ -4205,25 +4205,6 @@ impl<T: ?Sized + PartialEq, A: Allocator> PartialEq for UniqueArc<T, A> {
     fn eq(&self, other: &Self) -> bool {
         PartialEq::eq(&**self, &**other)
     }
-
-    /// Inequality for two `UniqueArc`s.
-    ///
-    /// Two `UniqueArc`s are not equal if their inner values are not equal.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(unique_rc_arc)]
-    /// use std::sync::UniqueArc;
-    ///
-    /// let five = UniqueArc::new(5);
-    ///
-    /// assert!(five != UniqueArc::new(6));
-    /// ```
-    #[inline]
-    fn ne(&self, other: &Self) -> bool {
-        PartialEq::ne(&**self, &**other)
-    }
 }
 
 #[unstable(feature = "unique_rc_arc", issue = "112566")]
