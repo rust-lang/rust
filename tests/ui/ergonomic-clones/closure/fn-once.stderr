@@ -1,5 +1,5 @@
 error[E0525]: expected a closure that implements the `Fn` trait, but this closure only implements `FnOnce`
-  --> $DIR/fn-once.rs:6:19
+  --> $DIR/fn-once.rs:7:19
    |
 LL |     let closure = use || {
    |                   ^^^^^^ this closure implements `FnOnce`, not `Fn`
@@ -9,7 +9,7 @@ LL |         vec
 LL |     Box::new(closure)
    |     ----------------- the requirement to implement `Fn` derives from here
    |
-   = note: required for the cast from `Box<{closure@$DIR/fn-once.rs:6:19: 6:25}>` to `Box<(dyn Fn() -> Vec<u8> + 'static)>`
+   = note: required for the cast from `Box<{closure@$DIR/fn-once.rs:7:19: 7:25}>` to `Box<(dyn Fn() -> Vec<u8> + 'static)>`
 
 error: aborting due to 1 previous error
 

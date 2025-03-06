@@ -2,6 +2,7 @@
 //@ edition:2018
 
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 fn main() {
     let _ = async use |x: x| x; //~ ERROR expected type

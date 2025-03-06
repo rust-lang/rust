@@ -1,6 +1,7 @@
 //@ check-pass
 
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 use std::clone::UseCloned;
 use std::future::Future;

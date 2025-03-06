@@ -1,5 +1,5 @@
 error[E0596]: cannot borrow `callback` as mutable, as it is not declared as mutable
-  --> $DIR/mutation2.rs:8:5
+  --> $DIR/mutation2.rs:9:5
    |
 LL |         my_var = true;
    |         ------ calling `callback` requires mutable binding due to possible mutation of `my_var`

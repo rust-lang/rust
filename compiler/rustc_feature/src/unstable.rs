@@ -474,7 +474,7 @@ declare_features! (
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
     /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
-    (unstable, ergonomic_clones, "CURRENT_RUSTC_VERSION", Some(132290)),
+    (incomplete, ergonomic_clones, "CURRENT_RUSTC_VERSION", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.

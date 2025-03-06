@@ -1,5 +1,5 @@
 error: expected one of `async`, `|`, or `||`, found `{`
-  --> $DIR/parse.rs:4:12
+  --> $DIR/parse.rs:5:12
    |
 LL |     || use {
    |     --     ^ expected one of `async`, `|`, or `||`
@@ -13,13 +13,13 @@ LL ~     || { use {
    |
 
 error: expected one of `async`, `|`, or `||`, found keyword `use`
-  --> $DIR/parse.rs:10:10
+  --> $DIR/parse.rs:11:10
    |
 LL |     move use || {
    |          ^^^ expected one of `async`, `|`, or `||`
 
 error: expected one of `async`, `|`, or `||`, found keyword `move`
-  --> $DIR/parse.rs:16:9
+  --> $DIR/parse.rs:17:9
    |
 LL |     use move || {
    |         ^^^^ expected one of `async`, `|`, or `||`

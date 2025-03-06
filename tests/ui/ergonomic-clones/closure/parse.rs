@@ -1,4 +1,5 @@
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 fn parse1() {
     || use {

@@ -1,29 +1,29 @@
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `!`
-  --> $DIR/parse.rs:4:10
+  --> $DIR/parse.rs:5:10
    |
 LL |     1.use!;
    |          ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `!`
-  --> $DIR/parse.rs:9:10
+  --> $DIR/parse.rs:10:10
    |
 LL |     1.use!(2);
    |          ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `2`
-  --> $DIR/parse.rs:14:11
+  --> $DIR/parse.rs:15:11
    |
 LL |     1.use 2;
    |           ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `2`
-  --> $DIR/parse.rs:19:12
+  --> $DIR/parse.rs:20:12
    |
 LL |     1.use? 2;
    |            ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error: incorrect use of `use`
-  --> $DIR/parse.rs:24:10
+  --> $DIR/parse.rs:25:10
    |
 LL |     1.use();
    |          ^^
@@ -35,13 +35,13 @@ LL +     1.use;
    |
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `{`
-  --> $DIR/parse.rs:34:11
+  --> $DIR/parse.rs:35:11
    |
 LL |     1.use { 2 };
    |           ^ expected one of `.`, `;`, `?`, `}`, or an operator
 
 error[E0618]: expected function, found `{integer}`
-  --> $DIR/parse.rs:29:5
+  --> $DIR/parse.rs:30:5
    |
 LL |     1.use(2);
    |     ^^^^^---

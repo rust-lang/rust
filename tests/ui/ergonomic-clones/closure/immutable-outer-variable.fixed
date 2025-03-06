@@ -3,6 +3,7 @@
 // Point at the captured immutable outer variable
 
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 fn foo(mut f: Box<dyn FnMut()>) {
     f();

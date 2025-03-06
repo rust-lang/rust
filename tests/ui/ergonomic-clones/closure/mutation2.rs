@@ -1,4 +1,5 @@
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 fn main() {
     let mut my_var = false;

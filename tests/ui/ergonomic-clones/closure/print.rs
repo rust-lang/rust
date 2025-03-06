@@ -1,4 +1,5 @@
 #![feature(ergonomic_clones)]
+#![allow(incomplete_features)]
 
 fn to_fn_once<F: FnOnce()>(f: F) -> F {
     f
