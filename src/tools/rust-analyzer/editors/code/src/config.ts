@@ -27,6 +27,7 @@ export class Config {
         "server",
         "files",
         "cfg",
+        "showSyntaxTree",
     ].map((opt) => `${this.rootSection}.${opt}`);
 
     private readonly requiresWindowReloadOpts = ["testExplorer"].map(
