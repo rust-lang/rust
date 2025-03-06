@@ -150,22 +150,8 @@ rm tests/ui/intrinsics/panic-uninitialized-zeroed.rs # same
 rm tests/ui/process/process-panic-after-fork.rs # same
 
 cp ../dist/bin/rustdoc-clif ../dist/bin/rustdoc # some tests expect bin/rustdoc to exist
-cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 cat <<EOF | git apply -
-diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
-index e7ae773ffa1d3..04bc2d7787da7 100644
---- a/src/tools/compiletest/src/runtest/run_make.rs
-+++ b/src/tools/compiletest/src/runtest/run_make.rs
-@@ -117,7 +117,6 @@ impl TestCx<'_> {
-             .arg(format!("run_make_support={}", &support_lib_path.to_string_lossy()))
-             .arg("--edition=2021")
--            .arg(&self.testpaths.file.join("rmake.rs"))
--            .arg("-Cprefer-dynamic");
-+            .arg(&self.testpaths.file.join("rmake.rs"));
-
-         // In test code we want to be very pedantic about values being silently discarded that are
-         // annotated with \`#[must_use]\`.
 diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
 index 30387af428c..f7895b12961 100644
 --- a/tests/run-make/linker-warning/rmake.rs
