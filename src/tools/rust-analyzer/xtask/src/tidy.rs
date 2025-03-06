@@ -147,6 +147,7 @@ MIT/Apache-2.0
 MPL-2.0
 Unlicense OR MIT
 Unlicense/MIT
+Zlib
 Zlib OR Apache-2.0 OR MIT
 "
     .lines()
