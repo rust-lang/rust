@@ -3117,6 +3117,14 @@ impl<T: Seek> Seek for Take<T> {
             Ok(self.position())
         }
     }
+
+    fn stream_len(&mut self) -> Result<u64> {
+        Ok(self.len)
+    }
+
+    fn stream_position(&mut self) -> Result<u64> {
+        Ok(self.position())
+    }
 }
 
 /// An iterator over `u8` values of a reader.
