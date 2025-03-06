@@ -243,6 +243,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vstrcbs"] fn vstrcbs(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char, d: u32) -> PackedTuple<vector_bool_char, i32>;
     #[link_name = "llvm.s390.vstrchs"] fn vstrchs(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short, d: u32) -> PackedTuple<vector_bool_short, i32>;
     #[link_name = "llvm.s390.vstrcfs"] fn vstrcfs(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int, d: u32) -> PackedTuple<vector_bool_int, i32>;
+
+    #[link_name = "llvm.s390.vstrczb"] fn vstrczb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char, d: u32) -> vector_bool_char;
+    #[link_name = "llvm.s390.vstrczh"] fn vstrczh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short, d: u32) -> vector_bool_short;
+    #[link_name = "llvm.s390.vstrczf"] fn vstrczf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int, d: u32) -> vector_bool_int;
+
+    #[link_name = "llvm.s390.vstrczbs"] fn vstrczbs(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char, d: u32) -> PackedTuple<vector_bool_char, i32>;
+    #[link_name = "llvm.s390.vstrczhs"] fn vstrczhs(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short, d: u32) -> PackedTuple<vector_bool_short, i32>;
+    #[link_name = "llvm.s390.vstrczfs"] fn vstrczfs(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int, d: u32) -> PackedTuple<vector_bool_int, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3268,11 +3276,19 @@ mod sealed {
         type Result;
 
         unsafe fn vstrc<const IMM: u32>(self, b: Self, c: Self) -> Self::Result;
+        unsafe fn vstrcz<const IMM: u32>(self, b: Self, c: Self) -> Self::Result;
         unsafe fn vstrcs<const IMM: u32>(self, b: Self, c: Self) -> (Self::Result, i32);
+        unsafe fn vstrczs<const IMM: u32>(self, b: Self, c: Self) -> (Self::Result, i32);
+    }
+
+    const fn validate_compare_range_imm(imm: u32) {
+        if !matches!(imm, 0 | 4 | 8 | 12) {
+            panic!("IMM needs to be one of 0, 4, 8, 12");
+        }
     }
 
     macro_rules! impl_compare_range {
-        ($($ty:ident $vstrc:ident $vstrcs:ident)*) => {
+        ($($ty:ident $vstrc:ident $vstrcs:ident $vstrcz:ident $vstrczs:ident)*) => {
             $(
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
                 impl VectorCompareRange for $ty {
@@ -3281,25 +3297,30 @@ mod sealed {
                     #[inline]
                     #[target_feature(enable = "vector")]
                     unsafe fn vstrc<const IMM: u32>(self, b: Self, c: Self) -> Self::Result {
-                        const {
-                            if !matches!(IMM, 0 | 4 | 8 | 12) {
-                                panic!("IMM needs to be one of 0, 4, 8, 12");
-                            }
-                        };
-
+                        const { validate_compare_range_imm };
                         $vstrc(self, b, c, IMM)
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vstrcs<const IMM: u32>(self, b: Self, c: Self) -> (Self::Result, i32) {
-                        const {
-                            if !matches!(IMM, 0 | 4 | 8 | 12) {
-                                panic!("IMM needs to be one of 0, 4, 8, 12");
-                            }
-                        };
+                    unsafe fn vstrcz<const IMM: u32>(self, b: Self, c: Self) -> Self::Result {
+                        const { validate_compare_range_imm };
+                        $vstrcz(self, b, c, IMM)
+                    }
 
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vstrcs<const IMM: u32>(self, b: Self, c: Self) -> (Self::Result, i32) {
+                        const { validate_compare_range_imm };
                         let PackedTuple { x, y } = $vstrcs(self, b, c, IMM);
+                        (x,y)
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vstrczs<const IMM: u32>(self, b: Self, c: Self) -> (Self::Result, i32) {
+                        const { validate_compare_range_imm };
+                        let PackedTuple { x, y } = $vstrczs(self, b, c, IMM);
                         (x,y)
                     }
                 }
@@ -3308,9 +3329,9 @@ mod sealed {
     }
 
     impl_compare_range! {
-        vector_unsigned_char    vstrcb vstrcbs
-        vector_unsigned_short   vstrch vstrchs
-        vector_unsigned_int     vstrcf vstrcfs
+        vector_unsigned_char    vstrcb vstrcbs vstrczb vstrczbs
+        vector_unsigned_short   vstrch vstrchs vstrczh vstrczhs
+        vector_unsigned_int     vstrcf vstrcfs vstrczf vstrczfs
     }
 }
 
@@ -4756,8 +4777,13 @@ pub unsafe fn vec_cmpnrg_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) ->
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmprg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
-    let (x,y) = a.vstrcs::<{ FindImm::Eq as u32 }>(b, c);
+pub unsafe fn vec_cmprg_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrcs::<{ FindImm::Eq as u32 }>(b, c);
     d.write(y);
     x
 }
@@ -4766,8 +4792,13 @@ pub unsafe fn vec_cmprg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpnrg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
-    let (x,y) = a.vstrcs::<{ FindImm::Ne as u32 }>(b, c);
+pub unsafe fn vec_cmpnrg_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrcs::<{ FindImm::Ne as u32 }>(b, c);
     d.write(y);
     x
 }
@@ -4776,8 +4807,13 @@ pub unsafe fn vec_cmpnrg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: 
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmprg_idx_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
-    let (x,y) = a.vstrcs::<{ FindImm::EqIdx as u32 }>(b, c);
+pub unsafe fn vec_cmprg_idx_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrcs::<{ FindImm::EqIdx as u32 }>(b, c);
     d.write(y);
     x
 }
@@ -4786,10 +4822,30 @@ pub unsafe fn vec_cmprg_idx_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, 
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cmpnrg_idx_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
-    let (x,y) = a.vstrcs::<{ FindImm::NeIdx as u32 }>(b, c);
+pub unsafe fn vec_cmpnrg_idx_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrcs::<{ FindImm::NeIdx as u32 }>(b, c);
     d.write(y);
     x
+}
+
+/// Vector Compare Ranges or Zero Index#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmprg_or_0_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
+    a.vstrcz::<{ FindImm::EqIdx as u32 }>(b, c)
+}
+
+/// Vector Compare Not in Ranges or Zero Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg_or_0_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
+    a.vstrcz::<{ FindImm::NeIdx as u32 }>(b, c)
 }
 
 #[cfg(test)]
@@ -6134,5 +6190,25 @@ mod tests {
         let c = vector_unsigned_int([GT, LT, GT, LT]);
         let d = unsafe { vec_cmpnrg_idx(a, b, c) };
         assert_eq!(d.as_array(), &[0, 0, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cmprg_or_0_idx() {
+        let a = vector_unsigned_int([1, 0, 22, 33]);
+        let b = vector_unsigned_int([10, 20, 30, 40]);
+
+        let c = vector_unsigned_int([GT, LT, GT, LT]);
+        let d = unsafe { vec_cmprg_or_0_idx(a, b, c) };
+        assert_eq!(d.as_array(), &[0, 4, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cmpnrg_or_0_idx() {
+        let a = vector_unsigned_int([11, 33, 0, 22]);
+        let b = vector_unsigned_int([10, 20, 30, 40]);
+
+        let c = vector_unsigned_int([GT, LT, GT, LT]);
+        let d = unsafe { vec_cmpnrg_or_0_idx(a, b, c) };
+        assert_eq!(d.as_array(), &[0, 8, 0, 0]);
     }
 }
