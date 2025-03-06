@@ -645,10 +645,10 @@ impl Options {
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
-        if let Some(ref p) = extension_css {
-            if !p.is_file() {
-                dcx.fatal("option --extend-css argument must be a file");
-            }
+        if let Some(ref p) = extension_css
+            && !p.is_file()
+        {
+            dcx.fatal("option --extend-css argument must be a file");
         }
 
         let mut themes = Vec::new();
@@ -720,10 +720,10 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page {
-            if !index_page.is_file() {
-                dcx.fatal("option `--index-page` argument must be a file");
-            }
+        if let Some(ref index_page) = index_page
+            && !index_page.is_file()
+        {
+            dcx.fatal("option `--index-page` argument must be a file");
         }
 
         let target = parse_target_triple(early_dcx, matches);

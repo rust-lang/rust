@@ -828,30 +828,26 @@ fn clean_ty_generics<'tcx>(
         .iter()
         .flat_map(|(pred, _)| {
             let mut projection = None;
-            let param_idx = (|| {
+            let param_idx = {
                 let bound_p = pred.kind();
                 match bound_p.skip_binder() {
-                    ty::ClauseKind::Trait(pred) => {
-                        if let ty::Param(param) = pred.self_ty().kind() {
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::Trait(pred) if let ty::Param(param) = pred.self_ty().kind() => {
+                        Some(param.index)
                     }
-                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg)) => {
-                        if let ty::Param(param) = ty.kind() {
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::TypeOutlives(ty::OutlivesPredicate(ty, _reg))
+                        if let ty::Param(param) = ty.kind() =>
+                    {
+                        Some(param.index)
                     }
-                    ty::ClauseKind::Projection(p) => {
-                        if let ty::Param(param) = p.projection_term.self_ty().kind() {
-                            projection = Some(bound_p.rebind(p));
-                            return Some(param.index);
-                        }
+                    ty::ClauseKind::Projection(p)
+                        if let ty::Param(param) = p.projection_term.self_ty().kind() =>
+                    {
+                        projection = Some(bound_p.rebind(p));
+                        Some(param.index)
                     }
-                    _ => (),
+                    _ => None,
                 }
-
-                None
-            })();
+            };
 
             if let Some(param_idx) = param_idx
                 && let Some(bounds) = impl_trait.get_mut(&param_idx)
@@ -1378,12 +1374,12 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                     tcx.fn_sig(assoc_item.def_id).instantiate_identity().input(0).skip_binder();
                 if self_arg_ty == self_ty {
                     item.decl.inputs.values[0].type_ = SelfTy;
-                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind() {
-                    if ty == self_ty {
-                        match item.decl.inputs.values[0].type_ {
-                            BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
-                            _ => unreachable!(),
-                        }
+                } else if let ty::Ref(_, ty, _) = *self_arg_ty.kind()
+                    && ty == self_ty
+                {
+                    match item.decl.inputs.values[0].type_ {
+                        BorrowedRef { ref mut type_, .. } => **type_ = SelfTy,
+                        _ => unreachable!(),
                     }
                 }
             }
@@ -2331,25 +2327,22 @@ fn clean_middle_opaque_bounds<'tcx>(
             let bindings: ThinVec<_> = bounds
                 .iter()
                 .filter_map(|(bound, _)| {
-                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder() {
-                        if proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder() {
-                            Some(AssocItemConstraint {
-                                assoc: projection_to_path_segment(
-                                    // FIXME: This needs to be made resilient for `AliasTerm`s that
-                                    // are associated consts.
-                                    bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
-                                    cx,
-                                ),
-                                kind: AssocItemConstraintKind::Equality {
-                                    term: clean_middle_term(bound.kind().rebind(proj.term), cx),
-                                },
-                            })
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
+                    if let ty::ClauseKind::Projection(proj) = bound.kind().skip_binder()
+                        && proj.projection_term.trait_ref(cx.tcx) == trait_ref.skip_binder()
+                    {
+                        return Some(AssocItemConstraint {
+                            assoc: projection_to_path_segment(
+                                // FIXME: This needs to be made resilient for `AliasTerm`s that
+                                // are associated consts.
+                                bound.kind().rebind(proj.projection_term.expect_ty(cx.tcx)),
+                                cx,
+                            ),
+                            kind: AssocItemConstraintKind::Equality {
+                                term: clean_middle_term(bound.kind().rebind(proj.term), cx),
+                            },
+                        });
                     }
+                    None
                 })
                 .collect();
 
@@ -2743,23 +2736,20 @@ fn add_without_unwanted_attributes<'hir>(
         }
         let mut attr = attr.clone();
         match attr {
-            hir::Attribute::Unparsed(ref mut normal) => {
-                if let [ident] = &*normal.path.segments {
-                    let ident = ident.name;
-                    if ident == sym::doc {
-                        filter_doc_attr(&mut normal.args, is_inline);
-                        attrs.push((Cow::Owned(attr), import_parent));
-                    } else if is_inline || ident != sym::cfg {
-                        // If it's not a `cfg()` attribute, we keep it.
-                        attrs.push((Cow::Owned(attr), import_parent));
-                    }
-                }
-            }
-            hir::Attribute::Parsed(..) => {
-                if is_inline {
+            hir::Attribute::Unparsed(ref mut normal) if let [ident] = &*normal.path.segments => {
+                let ident = ident.name;
+                if ident == sym::doc {
+                    filter_doc_attr(&mut normal.args, is_inline);
+                    attrs.push((Cow::Owned(attr), import_parent));
+                } else if is_inline || ident != sym::cfg {
+                    // If it's not a `cfg()` attribute, we keep it.
                     attrs.push((Cow::Owned(attr), import_parent));
                 }
             }
+            hir::Attribute::Parsed(..) if is_inline => {
+                attrs.push((Cow::Owned(attr), import_parent));
+            }
+            _ => {}
         }
     }
 }
@@ -2961,16 +2951,16 @@ fn clean_extern_crate<'tcx>(
         && !cx.is_json_output();
 
     let krate_owner_def_id = krate.owner_id.def_id;
-    if please_inline {
-        if let Some(items) = inline::try_inline(
+    if please_inline
+        && let Some(items) = inline::try_inline(
             cx,
             Res::Def(DefKind::Mod, crate_def_id),
             name,
             Some((attrs, Some(krate_owner_def_id))),
             &mut Default::default(),
-        ) {
-            return items;
-        }
+        )
+    {
+        return items;
     }
 
     vec![Item::from_def_id_and_parts(

@@ -1334,14 +1334,12 @@ impl LinkCollector<'_, '_> {
             }
 
         // item can be non-local e.g. when using `#[rustc_doc_primitive = "pointer"]`
-        if let Some((src_id, dst_id)) = id.as_local().and_then(|dst_id| {
-            diag_info.item.item_id.expect_def_id().as_local().map(|src_id| (src_id, dst_id))
-        }) {
-            if self.cx.tcx.effective_visibilities(()).is_exported(src_id)
-                && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
-            {
-                privacy_error(self.cx, diag_info, path_str);
-            }
+        if let Some(dst_id) = id.as_local()
+            && let Some(src_id) = diag_info.item.item_id.expect_def_id().as_local()
+            && self.cx.tcx.effective_visibilities(()).is_exported(src_id)
+            && !self.cx.tcx.effective_visibilities(()).is_exported(dst_id)
+        {
+            privacy_error(self.cx, diag_info, path_str);
         }
 
         Some(())
@@ -1405,10 +1403,10 @@ impl LinkCollector<'_, '_> {
         // which we want in some cases but not in others.
         cache_errors: bool,
     ) -> Option<Vec<(Res, Option<UrlFragment>)>> {
-        if let Some(res) = self.visited_links.get(&key) {
-            if res.is_some() || cache_errors {
-                return res.clone().map(|r| vec![r]);
-            }
+        if let Some(res) = self.visited_links.get(&key)
+            && (res.is_some() || cache_errors)
+        {
+            return res.clone().map(|r| vec![r]);
         }
 
         let mut candidates = self.resolve_with_disambiguator(&key, diag.clone());
@@ -1432,10 +1430,10 @@ impl LinkCollector<'_, '_> {
         // and after removing duplicated kinds, only one remains, the `ambiguity_error` function
         // won't emit an error. So at this point, we can just take the first candidate as it was
         // the first retrieved and use it to generate the link.
-        if let [candidate, _candidate2, ..] = *candidates {
-            if !ambiguity_error(self.cx, &diag, &key.path_str, &candidates, false) {
-                candidates = vec![candidate];
-            }
+        if let [candidate, _candidate2, ..] = *candidates
+            && !ambiguity_error(self.cx, &diag, &key.path_str, &candidates, false)
+        {
+            candidates = vec![candidate];
         }
 
         let mut out = Vec::with_capacity(candidates.len());
@@ -1480,17 +1478,16 @@ impl LinkCollector<'_, '_> {
                         // See https://github.com/rust-lang/rust/pull/76955#discussion_r493953382 for a good approach.
                         let mut err = ResolutionFailure::NotResolved(err);
                         for other_ns in [TypeNS, ValueNS, MacroNS] {
-                            if other_ns != expected_ns {
-                                if let Ok(&[res, ..]) = self
+                            if other_ns != expected_ns
+                                && let Ok(&[res, ..]) = self
                                     .resolve(path_str, other_ns, None, item_id, module_id)
                                     .as_deref()
-                                {
-                                    err = ResolutionFailure::WrongNamespace {
-                                        res: full_res(self.cx.tcx, res),
-                                        expected_ns,
-                                    };
-                                    break;
-                                }
+                            {
+                                err = ResolutionFailure::WrongNamespace {
+                                    res: full_res(self.cx.tcx, res),
+                                    expected_ns,
+                                };
+                                break;
                             }
                         }
                         resolution_failure(self, diag, path_str, disambiguator, smallvec![err]);
@@ -1674,11 +1671,11 @@ impl Disambiguator {
             Ok(Some((d, &rest[1..], &rest[1..])))
         } else {
             for (suffix, kind) in suffixes {
-                if let Some(path_str) = link.strip_suffix(suffix) {
-                    // Avoid turning `!` or `()` into an empty string
-                    if !path_str.is_empty() {
-                        return Ok(Some((Kind(kind), path_str, link)));
-                    }
+                // Avoid turning `!` or `()` into an empty string
+                if let Some(path_str) = link.strip_suffix(suffix)
+                    && !path_str.is_empty()
+                {
+                    return Ok(Some((Kind(kind), path_str, link)));
                 }
             }
             Ok(None)

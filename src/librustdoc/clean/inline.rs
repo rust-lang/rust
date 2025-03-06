@@ -563,11 +563,13 @@ pub(crate) fn build_impl(
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
     let mut stack: Vec<&Type> = vec![&for_];
 
-    if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        if !document_hidden && tcx.is_doc_hidden(did) {
-            return;
-        }
+    if let Some(did) = trait_.as_ref().map(|t| t.def_id())
+        && !document_hidden
+        && tcx.is_doc_hidden(did)
+    {
+        return;
     }
+
     if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
         stack.extend(generics);
     }
