@@ -90,6 +90,10 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }
 
+export function isCargoTomlEditor(editor: vscode.TextEditor): editor is RustEditor {
+    return isCargoTomlDocument(editor.document);
+}
+
 export function isDocumentInWorkspace(document: RustDocument): boolean {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
