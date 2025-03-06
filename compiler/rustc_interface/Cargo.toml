@@ -56,3 +56,6 @@ tracing = "0.1"
 # tidy-alphabetical-start
 llvm = ['dep:rustc_codegen_llvm']
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

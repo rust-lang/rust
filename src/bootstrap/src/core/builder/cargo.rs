@@ -1072,12 +1072,17 @@ impl Builder<'_> {
         }
 
         if mode == Mode::Rustc {
+            // NOTE: rustc-specific lints are specified here. Normal rust lints
+            // are specified in the `[workspace.lints.rust]` section in the
+            // top-level `Cargo.toml`. If/when tool lints are supported by
+            // Cargo, these lints can be move to a `[workspace.lints.rustc]`
+            // section in the top-level `Cargo.toml`.
+            //
+            // NOTE: these flags are added to RUSTFLAGS, which is ignored when
+            // compiling proc macro crates such as `rustc_macros`,
+            // unfortunately.
             rustflags.arg("-Wrustc::internal");
             rustflags.arg("-Drustc::symbol_intern_string_literal");
-            // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
-            // of the individual lints are satisfied.
-            rustflags.arg("-Wkeyword_idents_2024");
-            rustflags.arg("-Wunsafe_op_in_unsafe_fn");
         }
 
         if self.config.rust_frame_pointers {

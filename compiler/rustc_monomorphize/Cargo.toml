@@ -22,3 +22,6 @@ serde = "1"
 serde_json = "1"
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true
