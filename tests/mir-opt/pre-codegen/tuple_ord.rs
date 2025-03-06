@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=0 -Z inline-mir-hint-threshold=9999
+//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=0
 //@ needs-unwind
 
 #![crate_type = "lib"]
@@ -12,5 +12,5 @@ pub fn demo_le_total(a: &(u16, i16), b: &(u16, i16)) -> bool {
 // EMIT_MIR tuple_ord.demo_ge_partial.PreCodegen.after.mir
 pub fn demo_ge_partial(a: &(f32, f32), b: &(f32, f32)) -> bool {
     // CHECK-LABEL: demo_ge_partial
-    a <= b
+    a >= b
 }
