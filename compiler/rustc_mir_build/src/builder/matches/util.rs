@@ -173,14 +173,10 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
             // }
             // ```
             // Hence we fake borrow using a deep borrow.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Deep);
-            }
+            self.fake_borrow(match_pair.place, FakeBorrowKind::Deep);
         } else {
             // Insert a Shallow borrow of any place that is switched on.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Shallow);
-            }
+            self.fake_borrow(match_pair.place, FakeBorrowKind::Shallow);
 
             for subpair in &match_pair.subpairs {
                 self.visit_match_pair(subpair);

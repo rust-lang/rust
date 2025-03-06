@@ -38,6 +38,7 @@ pub struct HoverConfig {
     pub max_fields_count: Option<usize>,
     pub max_enum_variants_count: Option<usize>,
     pub max_subst_ty_len: SubstTyLen,
+    pub show_drop_glue: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 //! Everything related to verifying that parsed outputs are correct.
 
-use std::any::type_name;
+use std::any::{Any, type_name};
 use std::collections::BTreeMap;
 use std::ops::RangeInclusive;
 use std::str::FromStr;
@@ -9,7 +9,7 @@ use std::sync::LazyLock;
 use num::bigint::ToBigInt;
 use num::{BigInt, BigRational, FromPrimitive, Signed, ToPrimitive};
 
-use crate::{CheckFailure, Float, Int, Update};
+use crate::{CheckFailure, Float, Int};
 
 /// Powers of two that we store for constants. Account for binary128 which has a 15-bit exponent.
 const POWERS_OF_TWO_RANGE: RangeInclusive<i32> = (-(2 << 15))..=(2 << 15);
@@ -89,10 +89,16 @@ impl Constants {
 }
 
 /// Validate that a string parses correctly
-pub fn validate<F: Float>(input: &str) -> Result<(), Update> {
-    let parsed: F = input
-        .parse()
-        .unwrap_or_else(|e| panic!("parsing failed for {}: {e}. Input: {input}", type_name::<F>()));
+pub fn validate<F: Float>(input: &str) -> Result<(), CheckError> {
+    // Catch panics in case debug assertions within `std` fail.
+    let parsed = std::panic::catch_unwind(|| {
+        input.parse::<F>().map_err(|e| CheckError {
+            fail: CheckFailure::ParsingFailed(e.to_string().into()),
+            input: input.into(),
+            float_res: "none".into(),
+        })
+    })
+    .map_err(|e| convert_panic_error(&e, input))??;
 
     // Parsed float, decoded into significand and exponent
     let decoded = decode(parsed);
@@ -102,6 +108,21 @@ pub fn validate<F: Float>(input: &str) -> Result<(), Update> {
 
     // Verify that the values match
     decoded.check(rational, input)
+}
+
+/// Turn panics into concrete error types.
+fn convert_panic_error(e: &dyn Any, input: &str) -> CheckError {
+    let msg = e
+        .downcast_ref::<String>()
+        .map(|s| s.as_str())
+        .or_else(|| e.downcast_ref::<&str>().copied())
+        .unwrap_or("(no contents)");
+
+    CheckError {
+        fail: CheckFailure::Panic(msg.into()),
+        input: input.into(),
+        float_res: "none".into(),
+    }
 }
 
 /// The result of parsing a string to a float type.
@@ -118,10 +139,19 @@ pub enum FloatRes<F: Float> {
     },
 }
 
+#[derive(Clone, Debug)]
+pub struct CheckError {
+    pub fail: CheckFailure,
+    /// String for which parsing was attempted.
+    pub input: Box<str>,
+    /// The parsed & decomposed `FloatRes`, already stringified so we don't need generics here.
+    pub float_res: Box<str>,
+}
+
 impl<F: Float> FloatRes<F> {
     /// Given a known exact rational, check that this representation is accurate within the
     /// limits of the float representation. If not, construct a failure `Update` to send.
-    fn check(self, expected: Rational, input: &str) -> Result<(), Update> {
+    fn check(self, expected: Rational, input: &str) -> Result<(), CheckError> {
         let consts = F::constants();
         // let bool_helper = |cond: bool, err| cond.then_some(()).ok_or(err);
 
@@ -173,7 +203,7 @@ impl<F: Float> FloatRes<F> {
             (Rational::Finite(r), FloatRes::Real { sig, exp }) => Self::validate_real(r, sig, exp),
         };
 
-        res.map_err(|fail| Update::Failure {
+        res.map_err(|fail| CheckError {
             fail,
             input: input.into(),
             float_res: format!("{self:?}").into(),

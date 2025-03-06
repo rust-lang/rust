@@ -301,7 +301,7 @@ target | std | host | notes
 [`armv8r-none-eabihf`](platform-support/armv8r-none-eabihf.md) | * |  | Bare Armv8-R, hardfloat
 [`armv7a-nuttx-eabi`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX
 [`armv7a-nuttx-eabihf`](platform-support/nuttx.md) | ✓ |  | ARMv7-A with NuttX, hardfloat
-`avr-none` | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
+[`avr-none`](platform-support/avr-none.md) | * |  | AVR; requires `-Zbuild-std=core` and `-Ctarget-cpu=...`
 `bpfeb-unknown-none` | * |  | BPF (big endian)
 `bpfel-unknown-none` | * |  | BPF (little endian)
 `csky-unknown-linux-gnuabiv2` | ✓ |  | C-SKY abiv2 Linux (little endian)

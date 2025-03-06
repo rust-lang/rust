@@ -1196,6 +1196,23 @@ fn main() {
 }
 
 #[test]
+fn doctest_flip_or_pattern() {
+    check_doc_test(
+        "flip_or_pattern",
+        r#####"
+fn foo() {
+    let (a |$0 b) = 1;
+}
+"#####,
+        r#####"
+fn foo() {
+    let (b | a) = 1;
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_flip_trait_bound() {
     check_doc_test(
         "flip_trait_bound",
@@ -1961,7 +1978,7 @@ struct Ctx<T: Clone> {
     data: T,
 }
 
-impl<T: Clone> ${0:_} for Ctx<T> {}
+impl<T: Clone> ${1:_} for Ctx<T> {$0}
 "#####,
     )
 }

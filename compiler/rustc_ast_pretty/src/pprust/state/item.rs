@@ -735,7 +735,8 @@ impl<'a> State<'a> {
     }
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
-        let ast::WherePredicate { kind, id: _, span: _ } = predicate;
+        let ast::WherePredicate { attrs, kind, id: _, span: _, is_placeholder: _ } = predicate;
+        self.print_outer_attributes(attrs);
         match kind {
             ast::WherePredicateKind::BoundPredicate(where_bound_predicate) => {
                 self.print_where_bound_predicate(where_bound_predicate);

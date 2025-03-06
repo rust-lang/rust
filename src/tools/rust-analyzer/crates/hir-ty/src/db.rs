@@ -13,6 +13,7 @@ use hir_def::{
     ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
     LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
+use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use triomphe::Arc;
@@ -20,6 +21,7 @@ use triomphe::Arc;
 use crate::{
     chalk_db,
     consteval::ConstEvalError,
+    drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
@@ -28,7 +30,6 @@ use crate::{
     Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
     PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
-use hir_expand::name::Name;
 
 #[ra_salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
@@ -305,6 +306,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         block: Option<BlockId>,
         env: chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner>;
+
+    #[ra_salsa::invoke(crate::drop::has_drop_glue)]
+    #[ra_salsa::cycle(crate::drop::has_drop_glue_recover)]
+    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue {}
 }
 
 #[test]

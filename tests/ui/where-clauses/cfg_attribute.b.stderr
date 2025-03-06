@@ -1,0 +1,288 @@
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:32:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:43:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:54:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:66:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:76:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:87:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:100:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:114:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:129:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:144:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:155:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:165:11
+   |
+LL |         #[derive(Clone)] ():,
+   |           ^^^^^^ not a non-macro attribute
+
+error: expected non-macro attribute, found attribute macro `derive`
+  --> $DIR/cfg_attribute.rs:178:7
+   |
+LL |     #[derive(Clone)] ():,
+   |       ^^^^^^ not a non-macro attribute
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:32:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:35:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:66:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:69:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:100:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:103:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:114:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:117:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:129:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:132:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:144:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:147:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:155:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:158:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:178:5
+   |
+LL |     #[derive(Clone)] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:181:5
+   |
+LL |     #[rustfmt::skip] ():,
+   |     ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:43:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:46:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:54:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:57:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:76:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:79:9
+   |
+LL |         #[rustfmt::skip] ():;
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:87:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:90:9
+   |
+LL |         #[rustfmt::skip] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:165:9
+   |
+LL |         #[derive(Clone)] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: most attributes are not supported in `where` clauses
+  --> $DIR/cfg_attribute.rs:168:9
+   |
+LL |         #[rustfmt::skip] ():,
+   |         ^^^^^^^^^^^^^^^^
+   |
+   = help: only `#[cfg]` and `#[cfg_attr]` are supported
+
+error: aborting due to 39 previous errors
+

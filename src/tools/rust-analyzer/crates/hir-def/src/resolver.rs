@@ -532,16 +532,17 @@ impl Resolver {
     /// Note that in Rust one name can be bound to several items:
     ///
     /// ```
+    /// # #![allow(non_camel_case_types)]
     /// macro_rules! t { () => (()) }
     /// type t = t!();
-    /// const t: t = t!()
+    /// const t: t = t!();
     /// ```
     ///
     /// That's why we return a multimap.
     ///
     /// The shadowing is accounted for: in
     ///
-    /// ```
+    /// ```ignore
     /// let it = 92;
     /// {
     ///     let it = 92;

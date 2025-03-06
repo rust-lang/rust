@@ -126,4 +126,4 @@ Here is an example of how can `opt-dist` be used locally (outside of CI):
 [`Environment`]: https://github.com/rust-lang/rust/blob/ee451f8faccf3050c76cdcd82543c917b40c7962/src/tools/opt-dist/src/environment.rs#L5
 
 > Note: if you want to run the actual CI pipeline, instead of running `opt-dist` locally,
-> you can execute `python3 src/ci/github-actions/ci.py run-local dist-x86_64-linux`.
+> you can execute `cargo run --manifest-path src/ci/citool/Cargo.toml run-local dist-x86_64-linux`.

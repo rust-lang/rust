@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(impl_trait_in_assoc_type)]
 
 pub struct AlwaysTrue;

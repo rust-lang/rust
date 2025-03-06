@@ -189,11 +189,6 @@ pub enum BuiltinImplSource {
     ///
     /// The index is only used for winnowing.
     TraitUpcasting(usize),
-    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
-    ///
-    /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only
-    /// use it to detect when unsizing tuples in hir typeck.
-    TupleUnsizing,
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]

@@ -1094,7 +1094,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .and_then(|partial_res| partial_res.full_res())
                         {
                             if !res.matches_ns(Namespace::TypeNS)
-                                && path.is_potential_trivial_const_arg()
+                                && path.is_potential_trivial_const_arg(false)
                             {
                                 debug!(
                                     "lower_generic_arg: Lowering type argument as const argument: {:?}",
@@ -2061,8 +2061,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
-        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
-        let ct_kind = if path.is_potential_trivial_const_arg()
+        let ct_kind = if path
+            .is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
             && (tcx.features().min_generic_const_args()
                 || matches!(res, Res::Def(DefKind::ConstParam, _)))
         {
@@ -2072,7 +2072,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
@@ -2136,19 +2136,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         let maybe_res =
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
-        if let ExprKind::Path(None, path) = &expr.kind
-            && path.is_potential_trivial_const_arg()
+        if let ExprKind::Path(qself, path) = &expr.kind
+            && path.is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
             && (tcx.features().min_generic_const_args()
                 || matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _))))
         {
             let qpath = self.lower_qpath(
                 expr.id,
-                &None,
+                qself,
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

@@ -601,6 +601,8 @@ declare_features! (
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
+    /// Allows the use of raw-dylibs on ELF platforms
+    (incomplete, raw_dylib_elf, "CURRENT_RUSTC_VERSION", Some(135694)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -657,10 +659,10 @@ declare_features! (
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
-    /// Allows unsized tuple coercion.
-    (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
+    /// Allows use of attributes in `where` clauses.
+    (unstable, where_clause_attrs, "CURRENT_RUSTC_VERSION", Some(115590)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
     (unstable, x86_amx_intrinsics, "1.81.0", Some(126622)),
     /// Allows use of the `xop` target-feature

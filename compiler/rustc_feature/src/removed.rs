@@ -244,6 +244,8 @@ declare_features! (
     /// Allows unnamed fields of struct and union type
     (removed, unnamed_fields, "1.83.0", Some(49804), Some("feature needs redesign")),
     (removed, unsafe_no_drop_flag, "1.0.0", None, None),
+    (removed, unsized_tuple_coercion, "CURRENT_RUSTC_VERSION", Some(42877),
+     Some("The feature restricts possible layouts for tuples, and this restriction is not worth it.")),
     /// Allows `union` fields that don't implement `Copy` as long as they don't have any drop glue.
     (removed, untagged_unions, "1.13.0", Some(55149),
      Some("unions with `Copy` and `ManuallyDrop` fields are stable; there is no intent to stabilize more")),

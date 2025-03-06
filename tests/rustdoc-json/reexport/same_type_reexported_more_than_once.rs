@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 // Regression test for <https://github.com/rust-lang/rust/issues/97432>.
 
 #![no_std]

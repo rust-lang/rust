@@ -83,12 +83,6 @@ pub(crate) struct ZeroLengthSimdType<'tcx> {
 }
 
 #[derive(Diagnostic)]
-#[diag(ty_utils_multiple_array_fields_simd_type)]
-pub(crate) struct MultipleArrayFieldsSimdType<'tcx> {
-    pub ty: Ty<'tcx>,
-}
-
-#[derive(Diagnostic)]
 #[diag(ty_utils_oversized_simd_type)]
 pub(crate) struct OversizedSimdType<'tcx> {
     pub ty: Ty<'tcx>,

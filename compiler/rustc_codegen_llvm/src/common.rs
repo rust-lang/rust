@@ -127,10 +127,6 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         unsafe { llvm::LLVMGetUndef(t) }
     }
 
-    fn is_undef(&self, v: &'ll Value) -> bool {
-        unsafe { llvm::LLVMIsUndef(v) == True }
-    }
-
     fn const_poison(&self, t: &'ll Type) -> &'ll Value {
         unsafe { llvm::LLVMGetPoison(t) }
     }
@@ -209,28 +205,24 @@ impl<'ll, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     }
 
     fn const_str(&self, s: &str) -> (&'ll Value, &'ll Value) {
-        let str_global = *self
-            .const_str_cache
-            .borrow_mut()
-            .raw_entry_mut()
-            .from_key(s)
-            .or_insert_with(|| {
-                let sc = self.const_bytes(s.as_bytes());
-                let sym = self.generate_local_symbol_name("str");
-                let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
-                    bug!("symbol `{}` is already defined", sym);
-                });
-                llvm::set_initializer(g, sc);
-                unsafe {
-                    llvm::LLVMSetGlobalConstant(g, True);
-                    llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
-                }
-                llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
-                // Cast to default address space if globals are in a different addrspace
-                let g = self.const_pointercast(g, self.type_ptr());
-                (s.to_owned(), g)
-            })
-            .1;
+        let mut const_str_cache = self.const_str_cache.borrow_mut();
+        let str_global = const_str_cache.get(s).copied().unwrap_or_else(|| {
+            let sc = self.const_bytes(s.as_bytes());
+            let sym = self.generate_local_symbol_name("str");
+            let g = self.define_global(&sym, self.val_ty(sc)).unwrap_or_else(|| {
+                bug!("symbol `{}` is already defined", sym);
+            });
+            llvm::set_initializer(g, sc);
+            unsafe {
+                llvm::LLVMSetGlobalConstant(g, True);
+                llvm::LLVMSetUnnamedAddress(g, llvm::UnnamedAddr::Global);
+            }
+            llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
+            // Cast to default address space if globals are in a different addrspace
+            let g = self.const_pointercast(g, self.type_ptr());
+            const_str_cache.insert(s.to_owned(), g);
+            g
+        });
         let len = s.len();
         (str_global, self.const_usize(len as u64))
     }

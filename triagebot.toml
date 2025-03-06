@@ -207,7 +207,7 @@ trigger_files = [
     "tests/rustdoc",
     "tests/rustdoc-ui",
     "tests/rustdoc-gui",
-    "tests/rustdoc-js",
+    "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
     "tests/rustdoc-json",
 
@@ -775,7 +775,7 @@ cc = ["@fmease"]
 message = "Some changes occurred in diagnostic error codes"
 cc = ["@GuillaumeGomez"]
 
-[mentions."compiler/rustc_mir_build/src/build/matches"]
+[mentions."compiler/rustc_mir_build/src/builder/matches"]
 message = "Some changes occurred in match lowering"
 cc = ["@Nadrieril"]
 
@@ -838,13 +838,7 @@ message = "Some changes occurred in GUI tests."
 cc = ["@GuillaumeGomez"]
 
 [mentions."tests/run-make/"]
-message = """
-This PR modifies `tests/run-make/`. If this PR is trying to port a Makefile
-run-make test to use rmake.rs, please update the
-[run-make port tracking issue](https://github.com/rust-lang/rust/issues/121876)
-so we can track our progress. You can either modify the tracking issue
-directly, or you can comment on the tracking issue and link this PR.
-"""
+message = "This PR modifies `run-make` tests."
 cc = ["@jieyouxu"]
 
 [mentions."src/rustdoc-json-types"]
@@ -1035,7 +1029,7 @@ cc = ["@rust-lang/project-exploit-mitigations", "@rcvalle"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
-[mentions."compiler/rustc_mir_build/src/build/coverageinfo.rs"]
+[mentions."compiler/rustc_mir_build/src/builder/coverageinfo.rs"]
 message = "Some changes occurred in coverage instrumentation."
 cc = ["@Zalathar"]
 
@@ -1264,7 +1258,7 @@ project-exploit-mitigations = [
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
 "/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
-"/compiler/rustc_mir_build/src/build" =                  ["compiler", "mir"]
+"/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
 "/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
 "/compiler/rustc_parse" =                                ["compiler", "parser"]
@@ -1307,7 +1301,7 @@ project-exploit-mitigations = [
 "/tests/rustdoc" =                                       ["rustdoc"]
 "/tests/rustdoc-gui" =                                   ["rustdoc"]
 "/tests/rustdoc-js-std" =                                ["rustdoc"]
-"/tests/rustdoc-js" =                                    ["rustdoc"]
+"/tests/rustdoc-js/" =                                   ["rustdoc"]
 "/tests/rustdoc-json" =                                  ["@aDotInTheVoid"]
 "/tests/rustdoc-ui" =                                    ["rustdoc"]
 "/tests/ui" =                                            ["compiler"]
