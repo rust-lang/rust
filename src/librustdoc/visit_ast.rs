@@ -144,9 +144,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 && inserted.insert(def_id)
             {
                 let item = self.cx.tcx.hir_expect_item(local_def_id);
-                top_level_module
-                    .items
-                    .insert((local_def_id, Some(item.ident.name)), (item, None, None));
+                let (ident, _, _) = item.expect_macro();
+                top_level_module.items.insert((local_def_id, Some(ident.name)), (item, None, None));
             }
         }
 
@@ -224,11 +223,11 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         def_id: LocalDefId,
         res: Res,
         renamed: Option<Symbol>,
-        glob: bool,
         please_inline: bool,
     ) -> bool {
         debug!("maybe_inline_local (renamed: {renamed:?}) res: {res:?}");
 
+        let glob = renamed.is_none();
         if renamed == Some(kw::Underscore) {
             // We never inline `_` reexports.
             return false;
@@ -286,7 +285,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 is_hidden &&
                 // If it's a doc hidden module, we need to keep it in case some of its inner items
                 // are re-exported.
-                !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_), .. }))
+                !matches!(item, Node::Item(&hir::Item { kind: hir::ItemKind::Mod(..), .. }))
             ) ||
                 // The imported item is public and not `doc(hidden)` so no need to inline it.
                 self.reexport_public_and_not_hidden(def_id, res_did)
@@ -297,7 +296,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
         let is_bang_macro = matches!(
             item,
-            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, MacroKind::Bang), .. })
+            Node::Item(&hir::Item { kind: hir::ItemKind::Macro(_, _, MacroKind::Bang), .. })
         );
 
         if !self.view_item_stack.insert(res_did) && !is_bang_macro {
@@ -311,7 +310,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             Node::Item(_) if is_bang_macro && !please_inline && renamed.is_some() && is_hidden => {
                 return false;
             }
-            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(m), .. }) if glob => {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Mod(_, m), .. }) if glob => {
                 let prev = mem::replace(&mut self.inlining, true);
                 for &i in m.item_ids {
                     let i = tcx.hir_item(i);
@@ -378,7 +377,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             // attribute can still be visible.
             || match item.kind {
                 hir::ItemKind::Impl(..) => true,
-                hir::ItemKind::Macro(_, MacroKind::Bang) => {
+                hir::ItemKind::Macro(_, _, MacroKind::Bang) => {
                     self.cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export)
                 }
                 _ => false,
@@ -419,7 +418,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             }
             return;
         }
-        let name = renamed.unwrap_or(item.ident.name);
+        let get_name = || renamed.unwrap_or(item.kind.ident().unwrap().name);
         let tcx = self.cx.tcx;
 
         let def_id = item.owner_id.to_def_id();
@@ -459,15 +458,13 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                             }
                             _ => false,
                         });
-                        let is_glob = kind == hir::UseKind::Glob;
-                        let ident = if is_glob { None } else { Some(name) };
-                        if self.maybe_inline_local(
-                            item.owner_id.def_id,
-                            res,
-                            ident,
-                            is_glob,
-                            please_inline,
-                        ) {
+                        let ident = match kind {
+                            hir::UseKind::Single(ident) => Some(renamed.unwrap_or(ident.name)),
+                            hir::UseKind::Glob => None,
+                            hir::UseKind::ListStem => unreachable!(),
+                        };
+                        if self.maybe_inline_local(item.owner_id.def_id, res, ident, please_inline)
+                        {
                             debug!("Inlining {:?}", item.owner_id.def_id);
                             continue;
                         }
@@ -475,7 +472,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }
-            hir::ItemKind::Macro(macro_def, _) => {
+            hir::ItemKind::Macro(_, macro_def, _) => {
                 // `#[macro_export] macro_rules!` items are handled separately in `visit()`,
                 // above, since they need to be documented at the module top level. Accordingly,
                 // we only want to handle macros if one of three conditions holds:
@@ -495,8 +492,8 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }
-            hir::ItemKind::Mod(m) => {
-                self.enter_mod(item.owner_id.def_id, m, name, renamed, import_id);
+            hir::ItemKind::Mod(_, m) => {
+                self.enter_mod(item.owner_id.def_id, m, get_name(), renamed, import_id);
             }
             hir::ItemKind::Fn { .. }
             | hir::ItemKind::ExternCrate(..)
@@ -512,7 +509,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             hir::ItemKind::Const(..) => {
                 // Underscore constants do not correspond to a nameable item and
                 // so are never useful in documentation.
-                if name != kw::Underscore {
+                if get_name() != kw::Underscore {
                     self.add_to_current_mod(item, renamed, import_id);
                 }
             }

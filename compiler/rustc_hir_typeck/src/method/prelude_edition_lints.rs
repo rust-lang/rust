@@ -367,20 +367,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .collect();
 
         // Find an identifier with which this trait was imported (note that `_` doesn't count).
-        let any_id = import_items.iter().find_map(|item| {
-            if item.ident.name != kw::Underscore { Some(item.ident) } else { None }
-        });
-        if let Some(any_id) = any_id {
-            if any_id.name == kw::Empty {
-                // Glob import, so just use its name.
-                return None;
-            } else {
-                return Some(format!("{any_id}"));
+        for item in import_items.iter() {
+            let (_, kind) = item.expect_use();
+            match kind {
+                hir::UseKind::Single(ident) => {
+                    if ident.name != kw::Underscore {
+                        return Some(format!("{}", ident.name));
+                    }
+                }
+                hir::UseKind::Glob => return None, // Glob import, so just use its name.
+                hir::UseKind::ListStem => unreachable!(),
             }
         }
 
-        // All that is left is `_`! We need to use the full path. It doesn't matter which one we pick,
-        // so just take the first one.
+        // All that is left is `_`! We need to use the full path. It doesn't matter which one we
+        // pick, so just take the first one.
         match import_items[0].kind {
             ItemKind::Use(path, _) => Some(
                 path.segments

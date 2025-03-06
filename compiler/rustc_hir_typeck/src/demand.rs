@@ -721,8 +721,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         },
                     )) => {
                         if let Some(hir::Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..),
+                            kind:
+                                hir::ItemKind::Static(ident, ty, ..)
+                                | hir::ItemKind::Const(ident, ty, ..),
                             ..
                         })) = self.tcx.hir_get_if_local(*def_id)
                         {
