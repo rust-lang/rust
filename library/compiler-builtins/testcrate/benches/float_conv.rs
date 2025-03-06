@@ -2,7 +2,7 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 
 use compiler_builtins::float::conv;
-use criterion::{criterion_main, Criterion};
+use criterion::{Criterion, criterion_main};
 use testcrate::float_bench;
 
 /* unsigned int -> float */

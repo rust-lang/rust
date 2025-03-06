@@ -89,6 +89,10 @@ pub fn skip_asm_checks(_test_name: &str) -> bool {
 
 /// Create a comparison of the system symbol, compiler_builtins, and optionally handwritten
 /// assembly.
+///
+/// # Safety
+///
+/// The signature must be correct and any assembly must be sound.
 #[macro_export]
 macro_rules! float_bench {
     (
@@ -120,8 +124,9 @@ macro_rules! float_bench {
         ]
         $(,)?
     ) => {paste::paste! {
+        // SAFETY: macro invocation must use the correct signature
         #[cfg($sys_available)]
-        extern "C" {
+        unsafe extern "C" {
             /// Binding for the system function
             #[cfg(not(any(target_arch = "powerpc", target_arch = "powerpc64")))]
             fn $sys_fn($($arg: $arg_ty),*) -> $ret_ty;

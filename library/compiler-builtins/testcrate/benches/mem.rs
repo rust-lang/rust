@@ -1,7 +1,7 @@
 #![feature(test)]
 
 extern crate test;
-use test::{black_box, Bencher};
+use test::{Bencher, black_box};
 
 extern crate compiler_builtins;
 use compiler_builtins::mem::{memcmp, memcpy, memmove, memset};
