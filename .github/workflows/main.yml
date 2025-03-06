@@ -261,12 +261,9 @@ jobs:
           rmdir artifacts/ # verify all artifacts are represented in release/
           ls -R release/
 
-      - run: npm install --production
-        working-directory: .github/actions/github-release
-
-      - name: Publish Release
-        uses: ./.github/actions/github-release
-        with:
-          files: "release/*"
-          token: ${{ github.token }}
-        continue-on-error: true
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete --cleanup-tag -y dev || true
+          gh release create --target $GITHUB_SHA --prerelease dev release/*
