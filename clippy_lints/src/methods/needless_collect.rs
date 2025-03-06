@@ -38,11 +38,14 @@ pub(super) fn check<'tcx>(
         Node::Expr(parent) => {
             check_collect_into_intoiterator(cx, parent, collect_expr, call_span, iter_expr);
 
+            let sugg: String;
+            let mut app;
+
             if let ExprKind::MethodCall(name, _, args @ ([] | [_]), _) = parent.kind {
-                let mut app = Applicability::MachineApplicable;
+                app = Applicability::MachineApplicable;
                 let collect_ty = cx.typeck_results().expr_ty(collect_expr);
 
-                let sugg: String = match name.ident.name {
+                sugg = match name.ident.name {
                     sym::len => {
                         if let Some(adt) = collect_ty.ty_adt_def()
                             && matches!(
@@ -78,17 +81,23 @@ pub(super) fn check<'tcx>(
                     },
                     _ => return,
                 };
-
-                span_lint_and_sugg(
-                    cx,
-                    NEEDLESS_COLLECT,
-                    call_span.with_hi(parent.span.hi()),
-                    NEEDLESS_COLLECT_MSG,
-                    "replace with",
-                    sugg,
-                    app,
-                );
+            } else if let ExprKind::Index(_, index, _) = parent.kind {
+                app = Applicability::MaybeIncorrect;
+                let snip = snippet_with_applicability(cx, index.span, "_", &mut app);
+                sugg = format!("nth({snip}).unwrap()");
+            } else {
+                return;
             }
+
+            span_lint_and_sugg(
+                cx,
+                NEEDLESS_COLLECT,
+                call_span.with_hi(parent.span.hi()),
+                NEEDLESS_COLLECT_MSG,
+                "replace with",
+                sugg,
+                app,
+            );
         },
         Node::LetStmt(l) => {
             if let PatKind::Binding(BindingMode::NONE | BindingMode::MUT, id, _, None) = l.pat.kind
