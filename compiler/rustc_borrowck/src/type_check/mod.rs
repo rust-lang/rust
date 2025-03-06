@@ -2120,8 +2120,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 //
                                 // Note that other checks (such as denying `dyn Send` -> `dyn
                                 // Debug`) are in `rustc_hir_typeck`.
-                                if let ty::Dynamic(src_tty, _src_lt, _) = *src_tail.kind()
-                                    && let ty::Dynamic(dst_tty, dst_lt, _) = *dst_tail.kind()
+                                if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) = *src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) = *dst_tail.kind()
                                     && src_tty.principal().is_some()
                                     && dst_tty.principal().is_some()
                                 {

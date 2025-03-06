@@ -244,9 +244,6 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
-hir_analysis_invalid_base_type = `{$ty}` is not a valid base type for range patterns
-    .note = range patterns only support integers
-
 hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
     .note = type of `self` must not be a method generic parameter type
 
@@ -276,13 +273,6 @@ hir_analysis_invalid_union_field =
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 hir_analysis_invalid_union_field_sugg =
-    wrap the field type in `ManuallyDrop<...>`
-
-hir_analysis_invalid_unsafe_field =
-    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
-    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
-
-hir_analysis_invalid_unsafe_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
@@ -619,6 +609,8 @@ hir_analysis_variances_of = {$variances}
 
 hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
     .label = `main` cannot have a `where` clause
+
+hir_analysis_within_macro = due to this macro variable
 
 hir_analysis_wrong_number_of_generic_arguments_to_intrinsic =
     intrinsic has wrong number of {$descr} parameters: found {$found}, expected {$expected}

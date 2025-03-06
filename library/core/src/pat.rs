@@ -12,3 +12,65 @@ macro_rules! pattern_type {
         /* compiler built-in */
     };
 }
+
+/// A trait implemented for integer types and `char`.
+/// Useful in the future for generic pattern types, but
+/// used right now to simplify ast lowering of pattern type ranges.
+#[unstable(feature = "pattern_type_range_trait", issue = "123646")]
+#[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+#[const_trait]
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a valid base type for range patterns",
+    label = "only integer types and `char` are supported"
+)]
+pub trait RangePattern {
+    /// Trait version of the inherent `MIN` assoc const.
+    #[cfg_attr(not(bootstrap), lang = "RangeMin")]
+    const MIN: Self;
+
+    /// Trait version of the inherent `MIN` assoc const.
+    #[cfg_attr(not(bootstrap), lang = "RangeMax")]
+    const MAX: Self;
+
+    /// A compile-time helper to subtract 1 for exclusive ranges.
+    #[cfg_attr(not(bootstrap), lang = "RangeSub")]
+    #[track_caller]
+    fn sub_one(self) -> Self;
+}
+
+macro_rules! impl_range_pat {
+    ($($ty:ty,)*) => {
+        $(
+            #[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+            impl const RangePattern for $ty {
+                const MIN: $ty = <$ty>::MIN;
+                const MAX: $ty = <$ty>::MAX;
+                fn sub_one(self) -> Self {
+                    match self.checked_sub(1) {
+                        Some(val) => val,
+                        None => panic!("exclusive range end at minimum value of type")
+                    }
+                }
+            }
+        )*
+    }
+}
+
+impl_range_pat! {
+    i8, i16, i32, i64, i128, isize,
+    u8, u16, u32, u64, u128, usize,
+}
+
+#[rustc_const_unstable(feature = "pattern_type_range_trait", issue = "123646")]
+impl const RangePattern for char {
+    const MIN: Self = char::MIN;
+
+    const MAX: Self = char::MAX;
+
+    fn sub_one(self) -> Self {
+        match char::from_u32(self as u32 - 1) {
+            None => panic!("exclusive range to start of valid chars"),
+            Some(val) => val,
+        }
+    }
+}

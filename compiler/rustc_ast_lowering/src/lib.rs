@@ -136,6 +136,7 @@ struct LoweringContext<'a, 'hir> {
 
     allow_try_trait: Arc<[Symbol]>,
     allow_gen_future: Arc<[Symbol]>,
+    allow_pattern_type: Arc<[Symbol]>,
     allow_async_iterator: Arc<[Symbol]>,
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
@@ -176,6 +177,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
@@ -926,7 +928,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
-                        tracing::info!(?data, ?data.inputs);
                         let err = match (&data.inputs[..], &data.output) {
                             ([_, ..], FnRetTy::Default(_)) => {
                                 errors::BadReturnTypeNotation::Inputs { span: data.inputs_span }
@@ -1365,7 +1366,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             TyKind::Pat(ty, pat) => {
-                hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_ty_pat(pat))
+                hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_ty_pat(pat, ty.span))
             }
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
