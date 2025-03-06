@@ -1943,17 +1943,10 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.kind {
-            TyPatKind::Range(begin, end, end_kind) => {
-                if let Some(expr) = begin {
-                    self.print_const_arg(expr);
-                }
-                match end_kind {
-                    RangeEnd::Included => self.word("..."),
-                    RangeEnd::Excluded => self.word(".."),
-                }
-                if let Some(expr) = end {
-                    self.print_const_arg(expr);
-                }
+            TyPatKind::Range(begin, end) => {
+                self.print_const_arg(begin);
+                self.word("..=");
+                self.print_const_arg(end);
             }
             TyPatKind::Err(_) => {
                 self.popen();

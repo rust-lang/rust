@@ -708,7 +708,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             ty::Pat(subty, pat) => {
                 self.require_sized(subty, ObligationCauseCode::Misc);
                 match *pat {
-                    ty::PatternKind::Range { start, end, include_end: _ } => {
+                    ty::PatternKind::Range { start, end } => {
                         let mut check = |c| {
                             let cause = self.cause(ObligationCauseCode::Misc);
                             self.out.push(traits::Obligation::with_depth(
@@ -738,12 +738,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                                 }
                             }
                         };
-                        if let Some(start) = start {
-                            check(start)
-                        }
-                        if let Some(end) = end {
-                            check(end)
-                        }
+                        check(start);
+                        check(end);
                     }
                 }
             }
