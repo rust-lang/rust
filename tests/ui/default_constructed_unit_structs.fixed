@@ -8,8 +8,7 @@ struct UnitStruct;
 impl UnitStruct {
     fn new() -> Self {
         //should lint
-        Self
-        //~^ default_constructed_unit_structs
+        Self//~^ default_constructed_unit_structs
     }
 }
 
