@@ -82,6 +82,8 @@ pub(crate) struct AssocItemNotFound<'a> {
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
     pub sugg: Option<AssocItemNotFoundSugg<'a>>,
+    #[label(hir_analysis_within_macro)]
+    pub within_macro_span: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
