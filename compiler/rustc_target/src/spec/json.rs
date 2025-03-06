@@ -546,7 +546,6 @@ impl Target {
                 incorrect_type.push("frame-pointer".into())
             }
         }
-
         key!(c_int_width = "target-c-int-width");
         key!(c_enum_min_bits, Option<u64>); // if None, matches c_int_width
         key!(os);
