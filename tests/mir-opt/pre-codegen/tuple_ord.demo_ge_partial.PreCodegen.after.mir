@@ -1,0 +1,237 @@
+// MIR for `demo_ge_partial` after PreCodegen
+
+fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: bool;
+    scope 1 (inlined std::cmp::impls::<impl PartialOrd for &(f32, f32)>::le) {
+        scope 2 (inlined core::tuple::<impl PartialOrd for (f32, f32)>::le) {
+            let mut _12: bool;
+            let _15: std::option::Option<std::cmp::Ordering>;
+            let _19: &f32;
+            let _20: &f32;
+            scope 3 {
+                let mut _9: &std::option::Option<std::cmp::Ordering>;
+                let mut _13: &std::option::Option<std::cmp::Ordering>;
+                scope 4 (inlined <Option<std::cmp::Ordering> as PartialEq>::ne) {
+                    let mut _11: bool;
+                    scope 5 (inlined <Option<std::cmp::Ordering> as PartialEq>::eq) {
+                        let mut _10: isize;
+                        let mut _16: isize;
+                        scope 6 {
+                            scope 7 (inlined <std::cmp::Ordering as PartialEq>::eq) {
+                                let _17: i8;
+                                scope 8 {
+                                    let _18: i8;
+                                    scope 9 {
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                scope 10 (inlined <Option<std::cmp::Ordering> as PartialEq>::eq) {
+                    let mut _14: isize;
+                    let mut _21: isize;
+                    scope 11 {
+                        scope 12 (inlined <std::cmp::Ordering as PartialEq>::eq) {
+                            let _22: i8;
+                            scope 13 {
+                                let _23: i8;
+                                scope 14 {
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            scope 15 (inlined std::cmp::impls::<impl PartialOrd for f32>::partial_cmp) {
+                let mut _3: f32;
+                let mut _4: f32;
+                let mut _5: bool;
+                let mut _6: f32;
+                let mut _7: f32;
+                let mut _8: bool;
+            }
+        }
+    }
+
+    bb0: {
+        StorageLive(_19);
+        StorageLive(_20);
+        StorageLive(_13);
+        StorageLive(_9);
+        StorageLive(_15);
+        StorageLive(_5);
+        StorageLive(_8);
+        StorageLive(_3);
+        _3 = copy ((*_1).0: f32);
+        StorageLive(_4);
+        _4 = copy ((*_2).0: f32);
+        _5 = Le(move _3, move _4);
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageLive(_6);
+        _6 = copy ((*_1).0: f32);
+        StorageLive(_7);
+        _7 = copy ((*_2).0: f32);
+        _8 = Ge(move _6, move _7);
+        StorageDead(_7);
+        StorageDead(_6);
+        switchInt(copy _5) -> [0: bb1, otherwise: bb5];
+    }
+
+    bb1: {
+        switchInt(copy _8) -> [0: bb2, otherwise: bb4];
+    }
+
+    bb2: {
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageLive(_12);
+        _9 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[1];
+        StorageLive(_11);
+        StorageLive(_16);
+        StorageLive(_10);
+        _10 = discriminant((*_9));
+        _11 = Eq(copy _10, const 0_isize);
+        StorageDead(_10);
+        StorageDead(_16);
+        _12 = Not(move _11);
+        StorageDead(_11);
+        switchInt(move _12) -> [0: bb11, otherwise: bb3];
+    }
+
+    bb3: {
+        _13 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[0];
+        StorageLive(_21);
+        StorageLive(_14);
+        _14 = discriminant((*_13));
+        _0 = Eq(copy _14, const 0_isize);
+        goto -> bb16;
+    }
+
+    bb4: {
+        _15 = const Option::<std::cmp::Ordering>::Some(Greater);
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageLive(_12);
+        _9 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[1];
+        StorageLive(_11);
+        StorageLive(_16);
+        StorageLive(_10);
+        goto -> bb8;
+    }
+
+    bb5: {
+        switchInt(copy _8) -> [0: bb6, otherwise: bb7];
+    }
+
+    bb6: {
+        _15 = const Option::<std::cmp::Ordering>::Some(Less);
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageLive(_12);
+        _9 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[1];
+        StorageLive(_11);
+        StorageLive(_16);
+        StorageLive(_10);
+        goto -> bb8;
+    }
+
+    bb7: {
+        _15 = const Option::<std::cmp::Ordering>::Some(Equal);
+        StorageDead(_8);
+        StorageDead(_5);
+        StorageLive(_12);
+        _9 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[1];
+        StorageLive(_11);
+        StorageLive(_16);
+        StorageLive(_10);
+        goto -> bb8;
+    }
+
+    bb8: {
+        _16 = discriminant((*_9));
+        switchInt(move _16) -> [0: bb9, 1: bb10, otherwise: bb18];
+    }
+
+    bb9: {
+        StorageDead(_10);
+        StorageDead(_16);
+        StorageDead(_11);
+        _13 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[0];
+        StorageLive(_21);
+        StorageLive(_14);
+        goto -> bb13;
+    }
+
+    bb10: {
+        StorageLive(_17);
+        StorageLive(_18);
+        _17 = discriminant(((_15 as Some).0: std::cmp::Ordering));
+        _18 = discriminant((((*_9) as Some).0: std::cmp::Ordering));
+        _11 = Eq(copy _17, copy _18);
+        StorageDead(_18);
+        StorageDead(_17);
+        StorageDead(_10);
+        StorageDead(_16);
+        _12 = Not(move _11);
+        StorageDead(_11);
+        switchInt(move _12) -> [0: bb11, otherwise: bb12];
+    }
+
+    bb11: {
+        _19 = &((*_1).1: f32);
+        _20 = &((*_2).1: f32);
+        _0 = <f32 as PartialOrd>::le(move _19, move _20) -> [return: bb17, unwind continue];
+    }
+
+    bb12: {
+        _13 = const core::tuple::<impl std::cmp::PartialOrd for (f32, f32)>::le::promoted[0];
+        StorageLive(_21);
+        StorageLive(_14);
+        goto -> bb13;
+    }
+
+    bb13: {
+        _21 = discriminant((*_13));
+        switchInt(move _21) -> [0: bb14, 1: bb15, otherwise: bb18];
+    }
+
+    bb14: {
+        _0 = const false;
+        goto -> bb16;
+    }
+
+    bb15: {
+        StorageLive(_22);
+        StorageLive(_23);
+        _22 = discriminant(((_15 as Some).0: std::cmp::Ordering));
+        _23 = discriminant((((*_13) as Some).0: std::cmp::Ordering));
+        _0 = Eq(copy _22, copy _23);
+        StorageDead(_23);
+        StorageDead(_22);
+        goto -> bb16;
+    }
+
+    bb16: {
+        StorageDead(_14);
+        StorageDead(_21);
+        goto -> bb17;
+    }
+
+    bb17: {
+        StorageDead(_12);
+        StorageDead(_15);
+        StorageDead(_9);
+        StorageDead(_13);
+        StorageDead(_20);
+        StorageDead(_19);
+        return;
+    }
+
+    bb18: {
+        unreachable;
+    }
+}
