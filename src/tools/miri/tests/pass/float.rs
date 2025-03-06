@@ -1104,7 +1104,7 @@ pub fn libm() {
         // sin() should be clamped to [-1, 1] so asin() can never return NaN
         assert!(!halve_pi_single.sin().asin().is_nan());
         assert!(!halve_pi_double.sin().asin().is_nan());
-        // sin() should be clamped to [-1, 1] so acos() can never return NaN
+        // cos() should be clamped to [-1, 1] so acos() can never return NaN
         assert!(!pi_single.cos().acos().is_nan());
         assert!(!pi_double.cos().acos().is_nan());
     }
