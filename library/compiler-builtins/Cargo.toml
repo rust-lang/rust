@@ -76,6 +76,7 @@ name = "intrinsics"
 required-features = ["compiler-builtins"]
 
 [workspace]
+resolver = "2"
 members = ["testcrate"]
 
 [profile.release]
