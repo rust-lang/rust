@@ -1,13 +1,13 @@
 error: arguments for inline assembly must be copyable
-  --> $DIR/type-check-2.rs:32:32
+  --> $DIR/type-check-2.rs:36:32
    |
 LL |         asm!("{}", in(xmm_reg) SimdNonCopy([0.0, 0.0, 0.0, 0.0]));
    |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: `SimdNonCopy` does not implement the Copy trait
 
-error: cannot use value of type `{closure@$DIR/type-check-2.rs:44:28: 44:36}` for inline assembly
-  --> $DIR/type-check-2.rs:44:28
+error: cannot use value of type `{closure@$DIR/type-check-2.rs:48:28: 48:36}` for inline assembly
+  --> $DIR/type-check-2.rs:48:28
    |
 LL |         asm!("{}", in(reg) |x: i32| x);
    |                            ^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         asm!("{}", in(reg) |x: i32| x);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `Vec<i32>` for inline assembly
-  --> $DIR/type-check-2.rs:46:28
+  --> $DIR/type-check-2.rs:50:28
    |
 LL |         asm!("{}", in(reg) vec![0]);
    |                            ^^^^^^^
@@ -24,7 +24,7 @@ LL |         asm!("{}", in(reg) vec![0]);
    = note: this error originates in the macro `vec` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: cannot use value of type `(i32, i32, i32)` for inline assembly
-  --> $DIR/type-check-2.rs:48:28
+  --> $DIR/type-check-2.rs:52:28
    |
 LL |         asm!("{}", in(reg) (1, 2, 3));
    |                            ^^^^^^^^^
@@ -32,7 +32,7 @@ LL |         asm!("{}", in(reg) (1, 2, 3));
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `[i32; 3]` for inline assembly
-  --> $DIR/type-check-2.rs:50:28
+  --> $DIR/type-check-2.rs:54:28
    |
 LL |         asm!("{}", in(reg) [1, 2, 3]);
    |                            ^^^^^^^^^
@@ -40,7 +40,7 @@ LL |         asm!("{}", in(reg) [1, 2, 3]);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `fn() {main}` for inline assembly
-  --> $DIR/type-check-2.rs:58:31
+  --> $DIR/type-check-2.rs:62:31
    |
 LL |         asm!("{}", inout(reg) f);
    |                               ^
@@ -48,7 +48,7 @@ LL |         asm!("{}", inout(reg) f);
    = note: only integers, floats, SIMD vectors, pointers and function pointers can be used as arguments for inline assembly
 
 error: cannot use value of type `&mut i32` for inline assembly
-  --> $DIR/type-check-2.rs:61:31
+  --> $DIR/type-check-2.rs:65:31
    |
 LL |         asm!("{}", inout(reg) r);
    |                               ^
