@@ -94,45 +94,49 @@ fn tmod_push_impl(
     tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
     tmods: &mut Vec<TargetModifier>,
 ) {
-    tmods.push(TargetModifier { opt, value_name: tmod_vals.get(&opt).cloned().unwrap_or_default() })
+    if let Some(v) = tmod_vals.get(&opt) {
+        tmods.push(TargetModifier { opt, value_name: v.clone() })
+    }
 }
 
 macro_rules! tmod_push {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $mods:expr, $tmod_vals:expr) => {
-        tmod_push_impl(
-            OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
-            $tmod_vals,
-            $mods,
-        );
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr) => {
+        if *$opt_expr != $init {
+            tmod_push_impl(
+                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
+                $tmod_vals,
+                $mods,
+            );
+        }
     };
 }
 
 macro_rules! gather_tmods {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], [TARGET_MODIFIER]) => {
         compile_error!("SUBSTRUCT can't be target modifier");
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], []) => {
         $opt_expr.gather_target_modifiers($mods, $tmod_vals);
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], []) => {{}};
 }
 
@@ -474,7 +478,8 @@ macro_rules! tmod_enum {
                 $($pout)*
                 Self::$opt => {
                     let mut parsed : $t = Default::default();
-                    parse::$parse(&mut parsed, Some($puser_value));
+                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
+                    parse::$parse(&mut parsed, val);
                     ExtendedTargetModifierInfo {
                         prefix: $prefix.to_string(),
                         name: stringify!($opt).to_string().replace('_', "-"),
@@ -569,7 +574,7 @@ macro_rules! options {
             _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
         ) {
             $({
-                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, _mods, _tmod_vals,
+                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
                     [$dep_tracking_marker], [$($tmod),*]);
             })*
         }
@@ -681,10 +686,9 @@ fn build_options<O: Default>(
                         ),
                     }
                 }
-                if let Some(tmod) = *tmod
-                    && let Some(value) = value
-                {
-                    target_modifiers.insert(tmod, value.to_string());
+                if let Some(tmod) = *tmod {
+                    let v = value.map_or(String::new(), ToOwned::to_owned);
+                    target_modifiers.insert(tmod, v);
                 }
             }
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
