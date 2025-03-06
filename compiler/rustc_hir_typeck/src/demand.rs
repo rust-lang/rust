@@ -1265,7 +1265,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     CallableKind::Function
                 };
-                maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
+                maybe_emit_help(def_id, path.segments.last().unwrap().ident, args, callable_kind);
             }
             hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
                 let Some(def_id) =
