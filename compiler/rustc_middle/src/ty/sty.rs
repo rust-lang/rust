@@ -1918,11 +1918,10 @@ impl<'tcx> Ty<'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Error(_)
+            | ty::Tuple(_)
             | ty::Dynamic(_, _, ty::DynStar) => true,
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
-
-            ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.is_trivially_sized(tcx)),
 
             ty::Adt(def, args) => def
                 .sized_constraint(tcx)

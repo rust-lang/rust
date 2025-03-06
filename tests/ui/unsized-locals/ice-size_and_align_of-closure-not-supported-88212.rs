@@ -15,6 +15,7 @@ fn example() -> Box<dyn Example> {
 fn main() {
     let x: dyn Example = *example();
     (move || {
+        //~^ ERROR the size for values of type `dyn Example` cannot be known at compilation time
         let _y = x;
         //~^ ERROR the size for values of type `dyn Example` cannot be known at compilation time
     })();

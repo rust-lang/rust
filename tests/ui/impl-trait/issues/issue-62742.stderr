@@ -9,7 +9,7 @@ LL |     WrongImpl::foo(0i32);
 note: required by a bound in `SafeImpl`
   --> $DIR/issue-62742.rs:33:35
    |
-LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<A>, PhantomData<T>);
    |                                   ^^^^^^ required by this bound in `SafeImpl`
 
 error[E0599]: the function or associated item `foo` exists for struct `SafeImpl<_, RawImpl<_>>`, but its trait bounds were not satisfied
@@ -21,7 +21,7 @@ LL |     WrongImpl::foo(0i32);
 LL | pub struct RawImpl<T>(PhantomData<T>);
    | --------------------- doesn't satisfy `RawImpl<_>: Raw<_>`
 ...
-LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<A>, PhantomData<T>);
    | ----------------------------------------- function or associated item `foo` not found for this struct
    |
 note: trait bound `RawImpl<_>: Raw<_>` was not satisfied
@@ -49,7 +49,7 @@ LL |     WrongImpl::<()>::foo(0i32);
 note: required by a bound in `SafeImpl`
   --> $DIR/issue-62742.rs:33:35
    |
-LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<A>, PhantomData<T>);
    |                                   ^^^^^^ required by this bound in `SafeImpl`
 
 error[E0599]: the function or associated item `foo` exists for struct `SafeImpl<(), RawImpl<()>>`, but its trait bounds were not satisfied
@@ -61,7 +61,7 @@ LL |     WrongImpl::<()>::foo(0i32);
 LL | pub struct RawImpl<T>(PhantomData<T>);
    | --------------------- doesn't satisfy `RawImpl<()>: Raw<()>`
 ...
-LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<A>, PhantomData<T>);
    | ----------------------------------------- function or associated item `foo` not found for this struct
    |
 note: trait bound `RawImpl<()>: Raw<()>` was not satisfied

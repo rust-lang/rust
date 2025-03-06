@@ -4,7 +4,7 @@
 use std::marker::PhantomData;
 use std::ops::Deref;
 
-pub struct Cow<'a, B: ?Sized>(PhantomData<(&'a (),B)>);
+pub struct Cow<'a, B: ?Sized>(PhantomData<&'a ()>, PhantomData<B>);
 
 /// Trait for moving into a `Cow`
 pub trait IntoCow<'a, B: ?Sized> {
@@ -14,7 +14,7 @@ pub trait IntoCow<'a, B: ?Sized> {
 
 impl<'a, B: ?Sized> IntoCow<'a, B> for <B as ToOwned>::Owned where B: ToOwned {
     fn into_cow(self) -> Cow<'a, B> {
-        Cow(PhantomData)
+        Cow(PhantomData, PhantomData)
     }
 }
 
@@ -28,7 +28,7 @@ impl<'a, B: ?Sized> IntoCow<'a, B> for Cow<'a, B> where B: ToOwned {
 impl<'a, B: ?Sized> IntoCow<'a, B> for &'a B where B: ToOwned {
 //~^ ERROR E0119
     fn into_cow(self) -> Cow<'a, B> {
-        Cow(PhantomData)
+        Cow(PhantomData, PhantomData)
     }
 }
 

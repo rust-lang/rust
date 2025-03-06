@@ -23,8 +23,10 @@ fn main() {
     //~^ ERROR the size for values of type `str` cannot be known at compilation time
     //~| HELP consider not dereferencing the expression
     //~| HELP the trait `Sized` is not implemented for `str`
+    //~| HELP use a unary tuple instead
     S.baz(*"");
     //~^ ERROR the size for values of type `str` cannot be known at compilation time
     //~| HELP consider not dereferencing the expression
     //~| HELP the trait `Sized` is not implemented for `str`
+    //~| HELP use a unary tuple instead
 }

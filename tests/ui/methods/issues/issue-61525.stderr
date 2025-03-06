@@ -12,6 +12,10 @@ note: required by an implicit `Sized` bound in `Example::query`
    |
 LL |     fn query<Q>(self, q: Q);
    |              ^ required by the implicit `Sized` requirement on this type parameter in `Example::query`
+help: use a unary tuple instead
+   |
+LL |         (1,).query::<dyn ToString>("")
+   |         + ++
 help: consider relaxing the implicit `Sized` restriction
    |
 LL |     fn query<Q: ?Sized>(self, q: Q);

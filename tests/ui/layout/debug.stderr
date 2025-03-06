@@ -608,7 +608,6 @@ LL | type Impossible = (str, str);
    |                   ^^^^^^^^^^ doesn't have a size known at compile-time
    |
    = help: the trait `Sized` is not implemented for `str`
-   = note: only the last element of a tuple may have a dynamically sized type
 
 error: the type has an unknown layout
   --> $DIR/debug.rs:83:1

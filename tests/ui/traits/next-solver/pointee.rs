@@ -15,7 +15,6 @@ fn works<T>() {
     meta_is::<str, usize>();
     meta_is::<dyn Trait<T>, DynMetadata<dyn Trait<T>>>();
     meta_is::<MyDst<T>, ()>();
-    meta_is::<((((([u8],),),),),), usize>();
 }
 
 fn main() {}

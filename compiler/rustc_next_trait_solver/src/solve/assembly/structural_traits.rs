@@ -108,6 +108,7 @@ where
     match ty.kind() {
         // impl Sized for u*, i*, bool, f*, FnDef, FnPtr, *(const/mut) T, char, &mut? T, [T; N], dyn* Trait, !
         // impl Sized for Coroutine, CoroutineWitness, Closure, CoroutineClosure
+        // impl Sized for tuple
         ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
         | ty::Uint(_)
         | ty::Int(_)
@@ -126,6 +127,7 @@ where
         | ty::CoroutineClosure(..)
         | ty::Never
         | ty::Dynamic(_, _, ty::DynStar)
+        | ty::Tuple(_)
         | ty::Error(_) => Ok(ty::Binder::dummy(vec![])),
 
         ty::Str
@@ -142,10 +144,6 @@ where
         }
 
         ty::UnsafeBinder(bound_ty) => Ok(bound_ty.map_bound(|ty| vec![ty])),
-
-        // impl Sized for ()
-        // impl Sized for (T1, T2, .., Tn) where Tn: Sized if n >= 1
-        ty::Tuple(tys) => Ok(ty::Binder::dummy(tys.last().map_or_else(Vec::new, |ty| vec![ty]))),
 
         // impl Sized for Adt<Args...> where sized_constraint(Adt)<Args...>: Sized
         //   `sized_constraint(Adt)` is the deepest struct trail that can be determined

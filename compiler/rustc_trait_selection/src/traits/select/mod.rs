@@ -2090,16 +2090,13 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::CoroutineClosure(..)
             | ty::Never
             | ty::Dynamic(_, _, ty::DynStar)
+            | ty::Tuple(_)
             | ty::Error(_) => {
                 // safe for everything
                 Where(ty::Binder::dummy(Vec::new()))
             }
 
             ty::Str | ty::Slice(_) | ty::Dynamic(..) | ty::Foreign(..) => None,
-
-            ty::Tuple(tys) => Where(
-                obligation.predicate.rebind(tys.last().map_or_else(Vec::new, |&last| vec![last])),
-            ),
 
             ty::Pat(ty, _) => Where(obligation.predicate.rebind(vec![*ty])),
 

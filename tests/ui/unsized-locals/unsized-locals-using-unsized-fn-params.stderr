@@ -1,3 +1,11 @@
+error[E0277]: the size for values of type `[i32]` cannot be known at compilation time
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:8:17
+   |
+LL | fn f2((_x, _y): (i32, [i32])) {}
+   |                 ^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[i32]`
+
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/unsized-locals-using-unsized-fn-params.rs:5:15
    |
@@ -19,7 +27,7 @@ LL | fn f2((_x, _y): (i32, [i32])) {}
    = help: unsized locals are gated as an unstable feature
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/unsized-locals-using-unsized-fn-params.rs:13:9
+  --> $DIR/unsized-locals-using-unsized-fn-params.rs:14:9
    |
 LL |     let _foo: [u8] = *foo;
    |         ^^^^ doesn't have a size known at compile-time
@@ -32,6 +40,6 @@ help: consider borrowing here
 LL |     let _foo: &[u8] = *foo;
    |               +
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

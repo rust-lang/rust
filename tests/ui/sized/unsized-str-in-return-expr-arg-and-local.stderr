@@ -43,6 +43,10 @@ note: required by a bound in `bar`
    |
 LL | fn bar(_: impl Sized) {}
    |                ^^^^^ required by this bound in `bar`
+help: use a unary tuple instead
+   |
+LL |     bar((*"",));
+   |         +   ++
 help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
    |
 LL -     bar(*"");
@@ -50,7 +54,7 @@ LL +     bar("");
    |
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/unsized-str-in-return-expr-arg-and-local.rs:26:11
+  --> $DIR/unsized-str-in-return-expr-arg-and-local.rs:27:11
    |
 LL |     S.baz(*"");
    |       --- ^^^ doesn't have a size known at compile-time
@@ -63,6 +67,10 @@ note: required by a bound in `S::baz`
    |
 LL |     fn baz(&self, _: impl Sized) {}
    |                           ^^^^^ required by this bound in `S::baz`
+help: use a unary tuple instead
+   |
+LL |     S.baz((*"",));
+   |           +   ++
 help: references are always `Sized`, even if they point to unsized data; consider not dereferencing the expression
    |
 LL -     S.baz(*"");

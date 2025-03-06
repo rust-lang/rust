@@ -1,9 +1,21 @@
+error[E0277]: the size for values of type `Self` cannot be known at compilation time
+  --> $DIR/unused-substs-2.rs:11:18
+   |
+LL |     fn bind() -> (T, Self);
+   |                  ^^^^^^^^^ doesn't have a size known at compile-time
+   |
+help: consider further restricting `Self`
+   |
+LL |     fn bind() -> (T, Self) where Self: Sized;
+   |                            +++++++++++++++++
+
 error[E0308]: mismatched types
-  --> $DIR/unused-substs-2.rs:22:24
+  --> $DIR/unused-substs-2.rs:24:24
    |
 LL |     let (mut t, foo) = Foo::bind();
    |                        ^^^^^^^^^^^ cyclic type of infinite size
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0308`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

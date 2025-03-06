@@ -2712,9 +2712,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::ArrayLen(array_ty) => {
                 err.note(format!("the length of array `{array_ty}` must be type `usize`"));
             }
-            ObligationCauseCode::TupleElem => {
-                err.note("only the last element of a tuple may have a dynamically sized type");
-            }
+            ObligationCauseCode::TupleElem => {}
             ObligationCauseCode::WhereClause(item_def_id, span)
             | ObligationCauseCode::WhereClauseInExpr(item_def_id, span, ..)
             | ObligationCauseCode::HostEffectInExpr(item_def_id, span, ..)

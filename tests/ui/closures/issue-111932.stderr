@@ -20,6 +20,10 @@ LL |         println!("{:?}", foo);
 note: required by an implicit `Sized` bound in `core::fmt::rt::Argument::<'_>::new_debug`
   --> $SRC_DIR/core/src/fmt/rt.rs:LL:COL
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+help: use a unary tuple instead
+   |
+LL |         println!("{:?}", (foo,));
+   |                          +   ++
 
 error: aborting due to 2 previous errors
 

@@ -27,11 +27,8 @@ struct T {
     y: S,
 }
 
-type Tup = (i16, <[i32] as Mirror>::Assoc);
-
 fn main() {
     assert_eq!(offset_of!(S, c), 4);
     assert_eq!(offset_of!(T, y), 4);
     assert_eq!(offset_of!(T, y.c), 8);
-    assert_eq!(offset_of!(Tup, 1), 4);
 }

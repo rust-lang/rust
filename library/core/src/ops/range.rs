@@ -1211,7 +1211,7 @@ pub enum OneSidedRangeBound {
 /// Types that implement `OneSidedRange<T>` must return `Bound::Unbounded`
 /// from one of `RangeBounds::start_bound` or `RangeBounds::end_bound`.
 #[unstable(feature = "one_sided_range", issue = "69780")]
-pub trait OneSidedRange<T: ?Sized>: RangeBounds<T> {
+pub trait OneSidedRange<T>: RangeBounds<T> {
     /// An internal-only helper function for `split_off` and
     /// `split_off_mut` that returns the bound of the one-sided range.
     fn bound(self) -> (OneSidedRangeBound, T);

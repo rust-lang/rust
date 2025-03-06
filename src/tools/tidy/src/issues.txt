@@ -2094,7 +2094,6 @@ ui/issues/issue-32950.rs
 ui/issues/issue-32995-2.rs
 ui/issues/issue-32995.rs
 ui/issues/issue-33202.rs
-ui/issues/issue-33241.rs
 ui/issues/issue-33287.rs
 ui/issues/issue-33293.rs
 ui/issues/issue-33387.rs
@@ -2247,7 +2246,6 @@ ui/issues/issue-42007.rs
 ui/issues/issue-4208.rs
 ui/issues/issue-42106.rs
 ui/issues/issue-42148.rs
-ui/issues/issue-42210.rs
 ui/issues/issue-4228.rs
 ui/issues/issue-42312.rs
 ui/issues/issue-42453.rs

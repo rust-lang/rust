@@ -292,7 +292,6 @@ mod unsized_ {
     use super::*;
     test_transparent_unsized!(str_, str);
     test_transparent_unsized!(slice, [u8]);
-    test_transparent_unsized!(slice_with_prefix, (usize, [u8]));
     test_transparent_unsized!(dyn_trait, dyn Any);
 }
 

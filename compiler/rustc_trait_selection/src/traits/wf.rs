@@ -749,10 +749,8 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
             }
 
             ty::Tuple(tys) => {
-                if let Some((_last, rest)) = tys.split_last() {
-                    for &elem in rest {
-                        self.require_sized(elem, ObligationCauseCode::TupleElem);
-                    }
+                for elem in tys {
+                    self.require_sized(elem, ObligationCauseCode::TupleElem);
                 }
             }
 

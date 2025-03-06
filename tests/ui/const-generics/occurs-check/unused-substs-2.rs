@@ -9,6 +9,8 @@ struct Foo<const N: usize>;
 
 trait Bind<T> {
     fn bind() -> (T, Self);
+    //~^ ERROR: the size for values of type `Self` cannot be known at compilation time
+    //~| NOTE: doesn't have a size known at compile-time
 }
 
 // `N` has to be `ConstKind::Unevaluated`.

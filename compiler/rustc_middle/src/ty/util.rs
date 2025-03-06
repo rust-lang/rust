@@ -269,11 +269,6 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                ty::Tuple(tys) if let Some((&last_ty, _)) = tys.split_last() => {
-                    f();
-                    ty = last_ty;
-                }
-
                 ty::Tuple(_) => break,
 
                 ty::Pat(inner, _) => {

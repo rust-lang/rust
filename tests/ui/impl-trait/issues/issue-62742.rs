@@ -30,7 +30,7 @@ impl<T> Raw<[T]> for RawImpl<T> {
     type Value = T;
 }
 
-pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
+pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<A>, PhantomData<T>);
 
 impl<T: ?Sized, A: Raw<T>> SafeImpl<T, A> {
     pub fn foo(value: A::Value) {}
