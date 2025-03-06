@@ -18,7 +18,7 @@ use crate::unwind_module::UnwindModule;
 fn create_jit_module(tcx: TyCtxt<'_>) -> (UnwindModule<JITModule>, CodegenCx) {
     let crate_info = CrateInfo::new(tcx, "dummy_target_cpu".to_string());
 
-    let isa = crate::build_isa(tcx.sess);
+    let isa = crate::build_isa(tcx.sess, true);
     let mut jit_builder = JITBuilder::with_isa(isa, cranelift_module::default_libcall_names());
     crate::compiler_builtins::register_functions_for_jit(&mut jit_builder);
     jit_builder.symbol_lookup_fn(dep_symbol_lookup_fn(tcx.sess, crate_info));

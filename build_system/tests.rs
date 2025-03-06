@@ -325,10 +325,8 @@ impl<'a> TestRunner<'a> {
         target_compiler.rustflags.extend(rustflags_from_env("RUSTFLAGS"));
         target_compiler.rustdocflags.extend(rustflags_from_env("RUSTDOCFLAGS"));
 
-        let jit_supported = use_unstable_features
-            && is_native
-            && target_compiler.triple.contains("x86_64")
-            && !target_compiler.triple.contains("windows");
+        let jit_supported =
+            use_unstable_features && is_native && !target_compiler.triple.contains("windows");
 
         Self { is_native, jit_supported, skip_tests, dirs, target_compiler, stdlib_source }
     }
