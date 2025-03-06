@@ -707,7 +707,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     ) -> Option<RegionErrorKind<'tcx>> {
         let bound_failure = verify_bound.either(
             |verify_bound| {
-                if self.eval_verify_bound(infcx, generic_kind, lower_bound, verify_bound) {
+                if self.eval_verify_bound(
+                    infcx,
+                    generic_kind.to_ty(infcx.tcx),
+                    lower_bound,
+                    verify_bound,
+                ) {
                     None
                 } else {
                     Some(RegionErrorKind::TypeTestError {
@@ -1026,7 +1031,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_rewritten_verify_bound(
         &self,
         infcx: &InferCtxt<'tcx>,
-        generic_kind: &GenericKind<'tcx>, // FIXME(amandasystems): make into Generic_ty
+        generic_kind: &GenericKind<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &RewrittenVerifyBound<'tcx>,
         span: Span,
@@ -1042,8 +1047,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             |verify_bound: &Either<VerifyBound<'tcx>, RewrittenVerifyBound<'tcx>>| {
                 verify_bound.as_ref().either(
                     |verify_bound| {
-                        let bound_fails =
-                            !self.eval_verify_bound(infcx, generic_kind, lower_bound, verify_bound);
+                        let bound_fails = !self.eval_verify_bound(
+                            infcx,
+                            generic_kind.to_ty(infcx.tcx),
+                            lower_bound,
+                            verify_bound,
+                        );
                         bound_fails.then(|| bound_fails_due_to_static(false))
                     },
                     |rewritten| {
@@ -1107,13 +1116,13 @@ impl<'tcx> RegionInferenceContext<'tcx> {
     fn eval_verify_bound(
         &self,
         infcx: &InferCtxt<'tcx>,
-        generic_kind: &GenericKind<'tcx>, // FIXME(amandasystems): make into Generic_ty
+        generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
     ) -> bool {
         match verify_bound {
             VerifyBound::IfEq(verify_if_eq_b) => {
-                self.eval_if_eq(infcx, generic_kind.to_ty(infcx.tcx), lower_bound, *verify_if_eq_b)
+                self.eval_if_eq(infcx, generic_ty, lower_bound, *verify_if_eq_b)
             }
 
             VerifyBound::IsEmpty => {
@@ -1127,11 +1136,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_kind, lower_bound, verify_bound)
+                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
             }),
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(infcx, generic_kind, lower_bound, verify_bound)
+                self.eval_verify_bound(infcx, generic_ty, lower_bound, verify_bound)
             }),
         }
     }
@@ -1926,7 +1935,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             | NllRegionVariableOrigin::Existential { from_forall: true } => false,
         };
 
-        // FIXME(amandasystems) This closure is tooe big to inline, it should be a method if plausible.
         // To pick a constraint to blame, we organize constraints by how interesting we expect them
         // to be in diagnostics, then pick the most interesting one closest to either the source or
         // the target on our constraint path.
