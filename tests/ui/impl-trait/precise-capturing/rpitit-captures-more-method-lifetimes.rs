@@ -2,8 +2,6 @@
 // trait definition, which is not allowed. Due to the default lifetime capture
 // rules of RPITITs, this is only doable if we use precise capturing.
 
-#![feature(precise_capturing_in_traits)]
-
 pub trait Foo {
     fn bar<'tr: 'tr>(&'tr mut self) -> impl Sized + use<Self>;
 }

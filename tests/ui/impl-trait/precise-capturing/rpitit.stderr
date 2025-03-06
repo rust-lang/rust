@@ -1,5 +1,5 @@
 error: `impl Trait` captures lifetime parameter, but it is not mentioned in `use<...>` precise captures list
-  --> $DIR/rpitit.rs:11:19
+  --> $DIR/rpitit.rs:9:19
    |
 LL | trait TraitLt<'a: 'a> {
    |               -- all lifetime parameters originating from a trait are captured implicitly
@@ -7,7 +7,7 @@ LL |     fn hello() -> impl Sized + use<Self>;
    |                   ^^^^^^^^^^^^^^^^^^^^^^
 
 error: lifetime may not live long enough
-  --> $DIR/rpitit.rs:15:5
+  --> $DIR/rpitit.rs:13:5
    |
 LL |   fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
    |               --  -- lifetime `'b` defined here
@@ -24,7 +24,7 @@ LL | |     );
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/rpitit.rs:15:5
+  --> $DIR/rpitit.rs:13:5
    |
 LL |   fn trait_lt<'a, 'b, T: for<'r> TraitLt<'r>> () {
    |               --  -- lifetime `'b` defined here
