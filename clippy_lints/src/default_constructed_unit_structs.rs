@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_ty_alias;
-use clippy_utils::sugg::DiagExt as _;
+use clippy_utils::source::SpanRangeExt as _;
 use hir::ExprKind;
 use hir::def::Res;
 use rustc_errors::Applicability;
@@ -74,16 +74,20 @@ impl LateLintPass<'_> for DefaultConstructedUnitStructs {
             // do not suggest replacing an expression by a type name with placeholders
             && !base.is_suggestable_infer_ty()
         {
+            let mut removals = vec![(expr.span.with_lo(qpath.qself_span().hi()), String::new())];
+            if expr.span.with_source_text(cx, |s| s.starts_with('<')) == Some(true) {
+                // Remove `<`, '>` has already been removed by the existing removal expression.
+                removals.push((expr.span.with_hi(qpath.qself_span().lo()), String::new()));
+            }
             span_lint_and_then(
                 cx,
                 DEFAULT_CONSTRUCTED_UNIT_STRUCTS,
                 expr.span,
                 "use of `default` to create a unit struct",
                 |diag| {
-                    diag.suggest_remove_item(
-                        cx,
-                        expr.span.with_lo(qpath.qself_span().hi()),
+                    diag.multipart_suggestion(
                         "remove this call to `default`",
+                        removals,
                         Applicability::MachineApplicable,
                     );
                 },

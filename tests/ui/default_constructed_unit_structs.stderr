@@ -1,10 +1,10 @@
 error: use of `default` to create a unit struct
   --> tests/ui/default_constructed_unit_structs.rs:11:9
    |
-LL |           Self::default()
-   |  _________^^^^-^^^^^^^^^^
-LL | |
-   | |________- help: remove this call to `default`
+LL |         Self::default()
+   |         ^^^^-----------
+   |             |
+   |             help: remove this call to `default`
    |
    = note: `-D clippy::default-constructed-unit-structs` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::default_constructed_unit_structs)]`
@@ -49,5 +49,17 @@ LL |     let _ = UnitStruct::default();
    |                       |
    |                       help: remove this call to `default`
 
-error: aborting due to 6 previous errors
+error: use of `default` to create a unit struct
+  --> tests/ui/default_constructed_unit_structs.rs:172:7
+   |
+LL |     f(<G>::default());
+   |       ^^^^^^^^^^^^^^
+   |
+help: remove this call to `default`
+   |
+LL -     f(<G>::default());
+LL +     f(G);
+   |
+
+error: aborting due to 7 previous errors
 

@@ -169,4 +169,9 @@ fn issue12654() {
     fn f(_g: G) {}
 
     f(<_>::default());
+    f(<G>::default());
+    //~^ default_constructed_unit_structs
+
+    // No lint because `as Default` hides the singleton
+    f(<G as Default>::default());
 }
