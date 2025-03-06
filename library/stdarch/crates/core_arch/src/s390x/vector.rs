@@ -4848,6 +4848,36 @@ pub unsafe fn vec_cmpnrg_or_0_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: 
     a.vstrcz::<{ FindImm::NeIdx as u32 }>(b, c)
 }
 
+/// Vector Compare Ranges or Zero Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmprg_or_0_idx_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrczs::<{ FindImm::EqIdx as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
+/// Vector Compare Not in Ranges or Zero Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg_or_0_idx_cc<T: sealed::VectorCompareRange>(
+    a: T,
+    b: T,
+    c: T,
+    d: *mut i32,
+) -> T::Result {
+    let (x, y) = a.vstrczs::<{ FindImm::NeIdx as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
