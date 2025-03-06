@@ -223,7 +223,7 @@ fn clean_middle_generic_args_with_constraints<'tcx>(
 
     let args = clean_middle_generic_args(cx, args.map_bound(|args| &args[..]), has_self, did);
 
-    GenericArgs::AngleBracketed { args: args.into(), constraints }
+    GenericArgs::AngleBracketed { args: args, constraints }
 }
 
 pub(super) fn clean_middle_path<'tcx>(
@@ -524,7 +524,7 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
             | AssocConst
             | Variant
             | Fn
-            | TyAlias { .. }
+            | TyAlias
             | Enum
             | Trait
             | Struct

@@ -1192,8 +1192,7 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         // to already be in the HTML, and will be ignored.
         //
         // [JSONP]: https://en.wikipedia.org/wiki/JSONP
-        let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
-            .take(cx.current.len())
+        let mut js_src_path: UrlPartsBuilder = std::iter::repeat_n("..", cx.current.len())
             .chain(std::iter::once("trait.impl"))
             .collect();
         if let Some(did) = it.item_id.as_def_id()
@@ -1446,8 +1445,7 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
             && let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) }
             && let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local)
         {
-            let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
-                .take(cx.current.len())
+            let mut js_src_path: UrlPartsBuilder = std::iter::repeat_n("..", cx.current.len())
                 .chain(std::iter::once("type.impl"))
                 .collect();
             js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());

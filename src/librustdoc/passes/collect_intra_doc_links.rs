@@ -2060,7 +2060,7 @@ fn resolution_failure(
                                 return;
                             }
                             Trait
-                            | TyAlias { .. }
+                            | TyAlias
                             | ForeignTy
                             | OpaqueTy
                             | TraitAlias
