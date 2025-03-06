@@ -1243,7 +1243,7 @@ impl<T> Option<T> {
     ///
     /// [default value]: Default::default
     #[inline]
-    #[unstable(feature = "result_option_map_or_default", issue = "none")]
+    #[unstable(feature = "result_option_map_or_default", issue = "138099")]
     pub fn map_or_default<U, F>(self, f: F) -> U
     where
         U: Default,
