@@ -4720,11 +4720,20 @@ pub unsafe fn vec_srdb<T: sealed::VectorSrdb, const C: u32>(a: T, b: T) -> T {
     a.vec_srdb::<C>(b)
 }
 
+/// Vector Compare Ranges
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_cmprg<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
     a.vstrc::<{ FindImm::Eq as u32 }>(b, c)
+}
+
+/// Vector Compare Not in Ranges
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
+    a.vstrc::<{ FindImm::Ne as u32 }>(b, c)
 }
 
 #[cfg(test)]
@@ -6005,12 +6014,12 @@ mod tests {
         }
     }
 
+    const GT: u32 = 0x20000000;
+    const LT: u32 = 0x40000000;
+    const EQ: u32 = 0x80000000;
+
     #[simd_test(enable = "vector")]
     fn test_vec_cmprg() {
-        const GT: u32 = 0x20000000;
-        const LT: u32 = 0x40000000;
-        const EQ: u32 = 0x80000000;
-
         let a = vector_unsigned_int([11, 22, 33, 44]);
         let b = vector_unsigned_int([10, 20, 30, 40]);
 
@@ -6028,5 +6037,26 @@ mod tests {
         let c = vector_unsigned_int([GT, LT, EQ, EQ]);
         let d = unsafe { vec_cmprg(a, b, c) };
         assert_eq!(d.as_array(), &[!0, 0, 0, !0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cmpnrg() {
+        let a = vector_unsigned_int([11, 22, 33, 44]);
+        let b = vector_unsigned_int([10, 20, 30, 40]);
+
+        let c = vector_unsigned_int([GT, LT, GT, LT]);
+        let d = unsafe { vec_cmpnrg(a, b, c) };
+        assert_eq!(d.as_array(), &[0, !0, 0, !0]);
+
+        let c = vector_unsigned_int([GT, LT, 0, 0]);
+        let d = unsafe { vec_cmpnrg(a, b, c) };
+        assert_eq!(d.as_array(), &[0, !0, !0, !0]);
+
+        let a = vector_unsigned_int([11, 22, 33, 30]);
+        let b = vector_unsigned_int([10, 20, 30, 30]);
+
+        let c = vector_unsigned_int([GT, LT, EQ, EQ]);
+        let d = unsafe { vec_cmpnrg(a, b, c) };
+        assert_eq!(d.as_array(), &[0, !0, !0, 0]);
     }
 }
