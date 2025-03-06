@@ -485,7 +485,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        // We intentionally do not recursive into `body.required_consts` or
+        // We intentionally do not recurse into `body.required_consts` or
         // `body.mentioned_items` here as the MIR at this phase should still
         // refer to all items and we don't want to check them multiple times.
 
