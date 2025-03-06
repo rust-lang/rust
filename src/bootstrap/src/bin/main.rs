@@ -187,7 +187,8 @@ fn check_version(config: &Config) -> Option<String> {
             "update `config.toml` to use `change-id = {latest_change_id}` instead"
         ));
 
-        if io::stdout().is_terminal() && !config.dry_run() {
+        if io::stdout().is_terminal() {
+            t!(std::fs::create_dir_all(warned_id_path.parent().unwrap()));
             t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {
