@@ -450,7 +450,6 @@ pub(crate) fn rewrite_higher_kinded_outlives_as_constraints<'tcx>(
         scc_annotations[sccs.scc(r1)].min_universe() != scc_annotations[sccs.scc(r2)].min_universe()
     };
 
-    // FIXME(amandasystems) it's probably better to destroy and recreate the member constraints from scratch.
     let member_constraints = member_constraints.into_mapped(
         |r| sccs.scc(r),
         |r| scc_annotations[sccs.scc(r)].in_root_universe(),
@@ -540,9 +539,8 @@ fn rewrite_outlives<'tcx>(
     outlives_static
 }
 
+// FIXME this is at least partially duplicated code to the constraint search in `region_infer`.
 /// Find a region matching a predicate in a set of constraints, using BFS.
-// FIXME(amandasystems) this is at least partially duplicated code to the constraint search in `region_infer`.
-// It's probably also very expensive.
 fn find_region<'tcx>(
     constraints: &OutlivesConstraintSet<'tcx>,
     graph: &ConstraintGraph<Normal>,

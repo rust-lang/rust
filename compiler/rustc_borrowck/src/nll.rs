@@ -131,7 +131,6 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         &constraints,
     );
 
-    // FIXME(amandasystems) Polonius should happen *after* the constraint rewrite!
     let var_infos = infcx.get_region_var_infos();
     let MirTypeckRegionConstraints {
         liveness_constraints,
