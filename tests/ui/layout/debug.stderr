@@ -10,7 +10,7 @@ error: layout_of(E) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -49,7 +49,7 @@ error: layout_of(E) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -71,7 +71,7 @@ error: layout_of(E) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -112,7 +112,7 @@ error: layout_of(S) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I32,
@@ -160,7 +160,7 @@ error: layout_of(U) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -186,7 +186,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I32,
@@ -238,7 +238,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I32,
@@ -277,7 +277,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I32,
@@ -327,7 +327,7 @@ error: layout_of(i32) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -357,7 +357,7 @@ error: layout_of(V) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -383,7 +383,7 @@ error: layout_of(W) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -409,7 +409,7 @@ error: layout_of(Y) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -435,7 +435,7 @@ error: layout_of(P1) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -461,7 +461,7 @@ error: layout_of(P2) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -487,7 +487,7 @@ error: layout_of(P3) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -513,7 +513,7 @@ error: layout_of(P4) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
@@ -539,7 +539,7 @@ error: layout_of(P5) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Union {
                    value: Int(
                        I8,
@@ -570,7 +570,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Union {
                    value: Int(
                        I8,
