@@ -55,9 +55,7 @@ use tracing::{debug, instrument};
 
 use self::errors::assoc_kind_str;
 use crate::check::check_abi_fn_ptr;
-use crate::errors::{
-    AmbiguousLifetimeBound, BadReturnTypeNotation, InvalidBaseType, NoVariantNamed,
-};
+use crate::errors::{AmbiguousLifetimeBound, BadReturnTypeNotation, NoVariantNamed};
 use crate::hir_ty_lowering::errors::{GenericsArgsErrExtend, prohibit_assoc_item_constraint};
 use crate::hir_ty_lowering::generics::{check_generic_arg_count, lower_generic_args};
 use crate::middle::resolve_bound_vars as rbv;
@@ -2692,28 +2690,26 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 let ty_span = ty.span;
                 let ty = self.lower_ty(ty);
                 let pat_ty = match pat.kind {
-                    hir::TyPatKind::Range(start, end, include_end) => {
-                        let ty = match ty.kind() {
-                            ty::Int(_) | ty::Uint(_) | ty::Char => ty,
-                            _ => Ty::new_error(
-                                tcx,
-                                self.dcx().emit_err(InvalidBaseType {
-                                    ty,
-                                    pat: "range",
+                    hir::TyPatKind::Range(start, end) => {
+                        let (ty, start, end) = match ty.kind() {
+                            // Keep this list of types in sync with the list of types that
+                            // the `RangePattern` trait is implemented for.
+                            ty::Int(_) | ty::Uint(_) | ty::Char => {
+                                let start = self.lower_const_arg(start, FeedConstTy::No);
+                                let end = self.lower_const_arg(end, FeedConstTy::No);
+                                (ty, start, end)
+                            }
+                            _ => {
+                                let guar = self.dcx().span_delayed_bug(
                                     ty_span,
-                                    pat_span: pat.span,
-                                }),
-                            ),
-                        };
-                        let start = start.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
-                        let end = end.map(|expr| self.lower_const_arg(expr, FeedConstTy::No));
-
-                        let include_end = match include_end {
-                            hir::RangeEnd::Included => true,
-                            hir::RangeEnd::Excluded => false,
+                                    "invalid base type for range pattern",
+                                );
+                                let errc = ty::Const::new_error(tcx, guar);
+                                (Ty::new_error(tcx, guar), errc, errc)
+                            }
                         };
 
-                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end, include_end });
+                        let pat = tcx.mk_pat(ty::PatternKind::Range { start, end });
                         Ty::new_pat(tcx, ty, pat)
                     }
                     hir::TyPatKind::Err(e) => Ty::new_error(tcx, e),
