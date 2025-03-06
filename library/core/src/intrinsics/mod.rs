@@ -10,7 +10,7 @@
 //!
 //! In order to make an intrinsic usable at compile-time, it needs to be declared in the "new"
 //! style, i.e. as a `#[rustc_intrinsic]` function, not inside an `extern` block. Then copy the
-//! implementation from <https://github.com/rust-lang/miri/blob/master/src/shims/intrinsics> to
+//! implementation from <https://github.com/rust-lang/miri/blob/master/src/intrinsics> to
 //! <https://github.com/rust-lang/rust/blob/master/compiler/rustc_const_eval/src/interpret/intrinsics.rs>
 //! and make the intrinsic declaration a `const fn`.
 //!
