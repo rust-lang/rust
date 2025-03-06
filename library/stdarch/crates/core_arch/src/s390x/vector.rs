@@ -4752,6 +4752,46 @@ pub unsafe fn vec_cmpnrg_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) ->
     a.vstrc::<{ FindImm::NeIdx as u32 }>(b, c)
 }
 
+/// Vector Compare Ranges with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmprg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
+    let (x,y) = a.vstrcs::<{ FindImm::Eq as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
+/// Vector Compare Not in Ranges with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
+    let (x,y) = a.vstrcs::<{ FindImm::Ne as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
+/// Vector Compare Ranges Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmprg_idx_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
+    let (x,y) = a.vstrcs::<{ FindImm::EqIdx as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
+/// Vector Compare Not in Ranges Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg_idx_cc<T: sealed::VectorCompareRange>(a: T, b: T, c: T, d: *mut i32) -> T::Result {
+    let (x,y) = a.vstrcs::<{ FindImm::NeIdx as u32 }>(b, c);
+    d.write(y);
+    x
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
