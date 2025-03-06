@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=0 -Z inline-mir-hint-threshold=9999
+//@ compile-flags: -O -Zmir-opt-level=2 -Cdebuginfo=0
 //@ needs-unwind
 
 #![crate_type = "lib"]
