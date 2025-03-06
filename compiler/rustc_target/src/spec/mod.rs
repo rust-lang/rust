@@ -59,9 +59,11 @@ use crate::spec::crt_objects::CrtObjects;
 
 pub mod crt_objects;
 
+mod abi_map;
 mod base;
 mod json;
 
+pub use abi_map::AbiMap;
 pub use base::apple;
 pub use base::avr::ef_avr_arch;
 

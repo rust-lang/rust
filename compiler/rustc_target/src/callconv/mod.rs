@@ -8,6 +8,7 @@ use rustc_abi::{
 };
 use rustc_macros::HashStable_Generic;
 
+pub use crate::spec::AbiMap;
 use crate::spec::{HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, RustcAbi, WasmCAbi};
 
 mod aarch64;
