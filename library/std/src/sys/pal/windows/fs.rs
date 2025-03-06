@@ -1,6 +1,6 @@
 use super::api::{self, WinError};
 use super::{IoResult, to_u16s};
-use crate::alloc::{Layout, alloc, dealloc, handle_alloc_error};
+use crate::alloc::{Layout, alloc, dealloc};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
@@ -1266,7 +1266,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
             unsafe {
                 file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFO>();
                 if file_rename_info.is_null() {
-                    handle_alloc_error(layout);
+                    return Err(io::ErrorKind::OutOfMemory.into());
                 }
 
                 (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
