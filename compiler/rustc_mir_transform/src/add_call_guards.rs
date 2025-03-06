@@ -57,10 +57,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
                     kind: TerminatorKind::Call { target: Some(ref mut destination), unwind, .. },
                     source_info,
                 }) if pred_count[*destination] > 1
-                    && (matches!(
-                        unwind,
-                        UnwindAction::Cleanup(_) | UnwindAction::Terminate(_)
-                    ) || self == &AllCallEdges) =>
+                    && (generates_invoke(unwind) || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
                     *destination = new_block(source_info, block.is_cleanup, *destination);
@@ -81,9 +78,7 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
                     });
                     let has_labels =
                         operands.iter().any(|op| matches!(op, InlineAsmOperand::Label { .. }));
-                    let invoke =
-                        matches!(unwind, UnwindAction::Cleanup(_) | UnwindAction::Terminate(_));
-                    if has_outputs && (has_labels || invoke) {
+                    if has_outputs && (has_labels || generates_invoke(unwind)) {
                         for target in targets.iter_mut() {
                             if pred_count[*target] > 1 {
                                 *target = new_block(source_info, block.is_cleanup, *target);
@@ -102,5 +97,13 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
 
     fn is_required(&self) -> bool {
         true
+    }
+}
+
+/// Returns true if this unwind action is code generated as an invoke as opposed to a call.
+fn generates_invoke(unwind: UnwindAction) -> bool {
+    match unwind {
+        UnwindAction::Continue | UnwindAction::Unreachable => false,
+        UnwindAction::Cleanup(_) | UnwindAction::Terminate(_) => true,
     }
 }
