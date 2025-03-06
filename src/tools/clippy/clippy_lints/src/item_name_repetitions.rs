@@ -8,7 +8,7 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::{EnumDef, FieldDef, Item, ItemKind, OwnerId, Variant, VariantData};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
+use rustc_span::{Ident, Span};
 use rustc_span::symbol::Symbol;
 
 declare_clippy_lint! {
@@ -196,16 +196,16 @@ fn have_no_extra_prefix(prefixes: &[&str]) -> bool {
     prefixes.iter().all(|p| p == &"" || p == &"_")
 }
 
-fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &[FieldDef<'_>]) {
+fn check_fields(cx: &LateContext<'_>, threshold: u64, ident: Ident, span: Span, fields: &[FieldDef<'_>]) {
     if (fields.len() as u64) < threshold {
         return;
     }
 
-    check_struct_name_repetition(cx, item, fields);
+    check_struct_name_repetition(cx, ident, fields);
 
     // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
     // this prevents linting in macros in which the location of the field identifier names differ
-    if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
+    if !fields.iter().all(|field| ident.span.eq_ctxt(field.ident.span)) {
         return;
     }
 
@@ -256,7 +256,7 @@ fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &
         span_lint_and_help(
             cx,
             STRUCT_FIELD_NAMES,
-            item.span,
+            span,
             format!("all fields have the same {what}fix: `{value}`"),
             None,
             format!("remove the {what}fixes"),
@@ -264,11 +264,11 @@ fn check_fields(cx: &LateContext<'_>, threshold: u64, item: &Item<'_>, fields: &
     }
 }
 
-fn check_struct_name_repetition(cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
-    let snake_name = to_snake_case(item.ident.name.as_str());
+fn check_struct_name_repetition(cx: &LateContext<'_>, ident: Ident, fields: &[FieldDef<'_>]) {
+    let snake_name = to_snake_case(ident.name.as_str());
     let item_name_words: Vec<&str> = snake_name.split('_').collect();
     for field in fields {
-        if field.ident.span.eq_ctxt(item.ident.span) {
+        if field.ident.span.eq_ctxt(ident.span) {
             //consider linting only if the field identifier has the same SyntaxContext as the item(struct)
             let field_words: Vec<&str> = field.ident.name.as_str().split('_').collect();
             if field_words.len() >= item_name_words.len() {
@@ -397,19 +397,23 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
 }
 
 impl LateLintPass<'_> for ItemNameRepetitions {
-    fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+        let Some(_ident) = item.kind.ident() else { return };
+
         let last = self.modules.pop();
         assert!(last.is_some());
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let item_name = item.ident.name.as_str();
+        let Some(ident) = item.kind.ident() else { return };
+
+        let item_name = ident.name.as_str();
         let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
             if let [.., (mod_name, mod_camel, mod_owner_id)] = &*self.modules {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    if mod_name == &item.ident.name
+                    if mod_name == &ident.name
                         && let ItemKind::Mod(..) = item.kind
                         && (!self.allow_private_module_inception || cx.tcx.visibility(mod_owner_id.def_id).is_public())
                     {
@@ -438,7 +442,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                                 Some(c) if is_word_beginning(c) => span_lint(
                                     cx,
                                     MODULE_NAME_REPETITIONS,
-                                    item.ident.span,
+                                    ident.span,
                                     "item name starts with its containing module's name",
                                 ),
                                 _ => (),
@@ -450,7 +454,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                             span_lint(
                                 cx,
                                 MODULE_NAME_REPETITIONS,
-                                item.ident.span,
+                                ident.span,
                                 "item name ends with its containing module's name",
                             );
                         }
@@ -462,13 +466,13 @@ impl LateLintPass<'_> for ItemNameRepetitions {
             && span_is_local(item.span)
         {
             match item.kind {
-                ItemKind::Enum(def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
-                ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
-                    check_fields(cx, self.struct_threshold, item, fields);
+                ItemKind::Enum(_, def, _) => check_variant(cx, self.enum_threshold, &def, item_name, item.span),
+                ItemKind::Struct(_, VariantData::Struct { fields, .. }, _) => {
+                    check_fields(cx, self.struct_threshold, ident, item.span, fields);
                 },
                 _ => (),
             }
         }
-        self.modules.push((item.ident.name, item_camel, item.owner_id));
+        self.modules.push((ident.name, item_camel, item.owner_id));
     }
 }

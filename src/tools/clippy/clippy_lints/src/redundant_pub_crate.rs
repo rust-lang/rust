@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
             && is_not_macro_export(item)
             && !item.span.in_external_macro(cx.sess().source_map())
         {
-            let span = item.span.with_hi(item.ident.span.hi());
+            let span = item.span.with_hi(item.kind.ident().unwrap().span.hi());
             let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());
             span_lint_and_then(
                 cx,

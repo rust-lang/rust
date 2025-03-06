@@ -1250,7 +1250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match opt_def_id {
             Some(def_id) => match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Const(_, _, body_id),
+                    kind: hir::ItemKind::Const(_, _, _, body_id),
                     ..
                 })) => match self.tcx.hir_node(body_id.hir_id) {
                     hir::Node::Expr(expr) => {

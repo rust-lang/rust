@@ -467,7 +467,8 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
         if is_relevant_item(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, attrs);
+            let (ident, _, _, _) = item.expect_fn();
+            inline_always::check(cx, item.span, ident.name, attrs);
         }
         repr_attributes::check(cx, item.span, attrs, self.msrv);
     }

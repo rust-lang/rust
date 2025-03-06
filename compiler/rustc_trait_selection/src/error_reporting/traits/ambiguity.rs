@@ -338,7 +338,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 ..
                             },
                             hir::PathSegment {
-                                ident: assoc_item_name,
+                                ident: assoc_item_ident,
                                 res: Res::Def(_, item_id),
                                 ..
                             },
@@ -368,17 +368,16 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                         if let Some(local_def_id) = data.trait_ref.def_id.as_local()
                             && let hir::Node::Item(hir::Item {
-                                ident: trait_name,
-                                kind: hir::ItemKind::Trait(_, _, _, _, trait_item_refs),
+                                kind: hir::ItemKind::Trait(_, _, trait_ident, _, _, trait_item_refs),
                                 ..
                             }) = self.tcx.hir_node_by_def_id(local_def_id)
                             && let Some(method_ref) = trait_item_refs
                                 .iter()
-                                .find(|item_ref| item_ref.ident == *assoc_item_name)
+                                .find(|item_ref| item_ref.ident == *assoc_item_ident)
                         {
                             err.span_label(
                                 method_ref.span,
-                                format!("`{trait_name}::{assoc_item_name}` defined here"),
+                                format!("`{trait_ident}::{assoc_item_ident}` defined here"),
                             );
                         }
 

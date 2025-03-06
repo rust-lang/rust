@@ -904,7 +904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Assumes given function doesn't have a explicit return type.
     fn can_add_return_type(&self, fn_id: LocalDefId) -> bool {
         match self.tcx.hir_node_by_def_id(fn_id) {
-            Node::Item(&hir::Item { ident, .. }) => {
+            Node::Item(item) => {
+                let (ident, _, _, _) = item.expect_fn();
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
