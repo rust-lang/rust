@@ -37,12 +37,16 @@ where
         | ty::Never
         | ty::Char => Ok(ty::Binder::dummy(vec![])),
 
+        // This branch is only for `experimental_default_bounds`.
+        // Other foreign types were rejected earlier in
+        // `disqualify_auto_trait_candidate_due_to_possible_impl`.
+        ty::Foreign(..) => Ok(ty::Binder::dummy(vec![])),
+
         // Treat `str` like it's defined as `struct str([u8]);`
         ty::Str => Ok(ty::Binder::dummy(vec![Ty::new_slice(cx, Ty::new_u8(cx))])),
 
         ty::Dynamic(..)
         | ty::Param(..)
-        | ty::Foreign(..)
         | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
         | ty::Placeholder(..)
         | ty::Bound(..)
