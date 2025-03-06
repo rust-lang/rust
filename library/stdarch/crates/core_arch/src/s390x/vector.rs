@@ -4736,6 +4736,22 @@ pub unsafe fn vec_cmpnrg<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::
     a.vstrc::<{ FindImm::Ne as u32 }>(b, c)
 }
 
+/// Vector Compare Ranges Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmprg_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
+    a.vstrc::<{ FindImm::EqIdx as u32 }>(b, c)
+}
+
+/// Vector Compare Not in Ranges Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpnrg_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
+    a.vstrc::<{ FindImm::NeIdx as u32 }>(b, c)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6058,5 +6074,25 @@ mod tests {
         let c = vector_unsigned_int([GT, LT, EQ, EQ]);
         let d = unsafe { vec_cmpnrg(a, b, c) };
         assert_eq!(d.as_array(), &[0, !0, !0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cmprg_idx() {
+        let a = vector_unsigned_int([1, 11, 22, 33]);
+        let b = vector_unsigned_int([10, 20, 30, 40]);
+
+        let c = vector_unsigned_int([GT, LT, GT, LT]);
+        let d = unsafe { vec_cmprg_idx(a, b, c) };
+        assert_eq!(d.as_array(), &[0, 4, 0, 0]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_cmpnrg_idx() {
+        let a = vector_unsigned_int([1, 11, 22, 33]);
+        let b = vector_unsigned_int([10, 20, 30, 40]);
+
+        let c = vector_unsigned_int([GT, LT, GT, LT]);
+        let d = unsafe { vec_cmpnrg_idx(a, b, c) };
+        assert_eq!(d.as_array(), &[0, 0, 0, 0]);
     }
 }
