@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 use std::fmt::Debug;
 
 //@ count "$.index[*][?(@.name=='dyn')].inner.module.items[*]" 3

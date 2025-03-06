@@ -2534,7 +2534,7 @@ pub trait BufRead: Read {
     fn read_line(&mut self, buf: &mut String) -> Result<usize> {
         // Note that we are not calling the `.read_until` method here, but
         // rather our hardcoded implementation. For more details as to why, see
-        // the comments in `read_to_end`.
+        // the comments in `default_read_to_string`.
         unsafe { append_to_string(buf, |b| read_until(self, b'\n', b)) }
     }
 

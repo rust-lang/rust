@@ -85,6 +85,12 @@ pub fn is_const_evaluatable<'tcx>(
             }
             _ => bug!("unexpected constkind in `is_const_evalautable: {unexpanded_ct:?}`"),
         }
+    } else if tcx.features().min_generic_const_args() {
+        // This is a sanity check to make sure that non-generics consts are checked to
+        // be evaluatable in case they aren't cchecked elsewhere. This will NOT error
+        // if the const uses generics, as desired.
+        crate::traits::evaluate_const(infcx, unexpanded_ct, param_env);
+        Ok(())
     } else {
         let uv = match unexpanded_ct.kind() {
             ty::ConstKind::Unevaluated(uv) => uv,

@@ -7,7 +7,6 @@ edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [lib]
-doctest = false
 
 [build-dependencies]
 cargo_metadata = "0.18.1"

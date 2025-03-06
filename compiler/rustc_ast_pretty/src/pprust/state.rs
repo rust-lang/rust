@@ -11,9 +11,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::AttrIdGenerator;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{
-    self, BinOpToken, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind,
-};
+use rustc_ast::token::{self, CommentKind, Delimiter, IdentIsRaw, Nonterminal, Token, TokenKind};
 use rustc_ast::tokenstream::{Spacing, TokenStream, TokenTree};
 use rustc_ast::util::classify;
 use rustc_ast::util::comments::{Comment, CommentStyle};
@@ -319,7 +317,7 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         (tt1, Tok(Token { kind: Comma | Semi | Dot, .. }, _)) if !is_punct(tt1) => false,
 
         // IDENT + `!`: `println!()`, but `if !x { ... }` needs a space after the `if`
-        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Not, .. }, _))
+        (Tok(Token { kind: Ident(sym, is_raw), span }, _), Tok(Token { kind: Bang, .. }, _))
             if !Ident::new(*sym, *span).is_reserved() || matches!(is_raw, IdentIsRaw::Yes) =>
         {
             false
@@ -341,21 +339,6 @@ fn space_between(tt1: &TokenTree, tt2: &TokenTree) -> bool {
         (Tok(Token { kind: Pound, .. }, _), Del(_, _, Bracket, _)) => false,
 
         _ => true,
-    }
-}
-
-fn binop_to_string(op: BinOpToken) -> &'static str {
-    match op {
-        token::Plus => "+",
-        token::Minus => "-",
-        token::Star => "*",
-        token::Slash => "/",
-        token::Percent => "%",
-        token::Caret => "^",
-        token::And => "&",
-        token::Or => "|",
-        token::Shl => "<<",
-        token::Shr => ">>",
     }
 }
 
@@ -913,12 +896,30 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
             token::Ne => "!=".into(),
             token::Ge => ">=".into(),
             token::Gt => ">".into(),
-            token::Not => "!".into(),
+            token::Bang => "!".into(),
             token::Tilde => "~".into(),
             token::OrOr => "||".into(),
             token::AndAnd => "&&".into(),
-            token::BinOp(op) => binop_to_string(op).into(),
-            token::BinOpEq(op) => format!("{}=", binop_to_string(op)).into(),
+            token::Plus => "+".into(),
+            token::Minus => "-".into(),
+            token::Star => "*".into(),
+            token::Slash => "/".into(),
+            token::Percent => "%".into(),
+            token::Caret => "^".into(),
+            token::And => "&".into(),
+            token::Or => "|".into(),
+            token::Shl => "<<".into(),
+            token::Shr => ">>".into(),
+            token::PlusEq => "+=".into(),
+            token::MinusEq => "-=".into(),
+            token::StarEq => "*=".into(),
+            token::SlashEq => "/=".into(),
+            token::PercentEq => "%=".into(),
+            token::CaretEq => "^=".into(),
+            token::AndEq => "&=".into(),
+            token::OrEq => "|=".into(),
+            token::ShlEq => "<<=".into(),
+            token::ShrEq => ">>=".into(),
 
             /* Structural symbols */
             token::At => "@".into(),

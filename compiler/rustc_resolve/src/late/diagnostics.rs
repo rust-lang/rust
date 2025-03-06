@@ -3515,12 +3515,6 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                         }
                     }
                 }
-
-                // Record as using the suggested resolution.
-                let (_, (_, res)) = in_scope_lifetimes[0];
-                for &lt in &lifetime_refs {
-                    self.r.lifetimes_res_map.insert(lt.id, res);
-                }
             }
             _ => {
                 let lifetime_spans: Vec<_> =

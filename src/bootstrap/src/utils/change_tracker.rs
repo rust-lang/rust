@@ -365,4 +365,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`rust.channel` now supports \"auto-detect\" to load the channel from `src/ci/channel`",
     },
+    ChangeInfo {
+        change_id: 137723,
+        severity: ChangeSeverity::Info,
+        summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
+    },
 ];

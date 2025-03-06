@@ -30,11 +30,13 @@ extern crate ra_ap_rustc_hashes as rustc_hashes;
 mod builder;
 mod chalk_db;
 mod chalk_ext;
+mod drop;
 mod infer;
 mod inhabitedness;
 mod interner;
 mod lower;
 mod mapping;
+mod target_feature;
 mod tls;
 mod utils;
 
@@ -87,6 +89,7 @@ use crate::{
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
+pub use drop::DropGlue;
 pub use infer::{
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
@@ -105,10 +108,9 @@ pub use mapping::{
     to_foreign_def_id, to_placeholder_idx,
 };
 pub use method_resolution::check_orphan_rules;
+pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
-pub use utils::{
-    all_super_traits, direct_super_traits, is_fn_unsafe_to_call, TargetFeatures, Unsafety,
-};
+pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call, Unsafety};
 pub use variance::Variance;
 
 pub use chalk_ir::{

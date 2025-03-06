@@ -67,7 +67,7 @@ pub use llvm::{
 };
 pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, rustc_path, Rustc};
-pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+pub use rustdoc::{rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///

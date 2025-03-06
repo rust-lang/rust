@@ -827,7 +827,7 @@ pub trait RangeBounds<T: ?Sized> {
     }
 
     /// Returns `true` if the range contains no items.
-    /// One-sided ranges (`RangeFrom`, etc) always return `true`.
+    /// One-sided ranges (`RangeFrom`, etc) always return `false`.
     ///
     /// # Examples
     ///
