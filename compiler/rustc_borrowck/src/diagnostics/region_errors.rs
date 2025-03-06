@@ -421,11 +421,16 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         error_vid,
                     );
 
-                    let universe = placeholder.universe;
-                    let universe_info = self.regioncx.universe_info(universe);
-
-                    // FIXME(amandasystems) -- these methods should have better names, and also probably not be this generic.
-                    universe_info.report_erroneous_element(self, placeholder, error_element, cause);
+                    // FIXME these methods should have better names, and also probably not be this generic.
+                    // FIXME note that we *throw away* the error element here! We probably want to
+                    // thread it through the computation further down and use it, but there currently isn't
+                    // anything there to receive it.
+                    self.regioncx.universe_info(placeholder.universe).report_erroneous_element(
+                        self,
+                        placeholder,
+                        cause,
+                        None,
+                    );
                 }
 
                 RegionErrorKind::PlaceholderMismatch { rvid_a, rvid_b, origin_a, origin_b } => {
@@ -439,9 +444,15 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                         rvid_b,
                     );
 
-                    self.regioncx
-                        .universe_info(origin_a.universe)
-                        .report_placeholder_mismatch(self, origin_a, cause, origin_b);
+                    // FIXME We may be able to shorten the code path here, and immediately
+                    // report a `RegionResolutionError::UpperBoundUniverseConflict`, but
+                    // that's left for a future refactoring.
+                    self.regioncx.universe_info(origin_a.universe).report_erroneous_element(
+                        self,
+                        origin_a,
+                        cause,
+                        Some(origin_b),
+                    );
                 }
 
                 RegionErrorKind::RegionError { fr_origin, longer_fr, shorter_fr, is_reported } => {
