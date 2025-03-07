@@ -84,7 +84,7 @@
 
 #[macro_use]
 mod attributes;
-mod context;
+pub(crate) mod context;
 pub mod parser;
 mod session_diagnostics;
 
