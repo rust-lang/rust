@@ -152,11 +152,11 @@ extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
 }
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
-                                            const char *Triple) {
+                                            const char *Target) {
 #if LLVM_VERSION_GE(21, 0)
-  unwrap(M)->setTargetTriple(llvm::Triple(Triple::normalize(Triple)));
+  unwrap(M)->setTargetTriple(Triple(Triple::normalize(Target)));
 #else
-  unwrap(M)->setTargetTriple(Triple::normalize(Triple));
+  unwrap(M)->setTargetTriple(Triple::normalize(Target));
 #endif
 }
 
