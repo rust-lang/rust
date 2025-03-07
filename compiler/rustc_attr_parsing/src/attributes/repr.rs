@@ -21,7 +21,7 @@ pub(crate) struct ReprParser;
 
 impl<S: Stage> CombineAttributeParser<S> for ReprParser {
     type Item = (ReprAttr, Span);
-    const PATH: &'static [Symbol] = &[sym::repr];
+    const PATH: &[Symbol] = &[sym::repr];
     const CONVERT: ConvertFn<Self::Item> = AttributeKind::Repr;
 
     fn extend<'c>(

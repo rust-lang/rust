@@ -2,8 +2,8 @@ use rustc_attr_data_structures::AttributeKind;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Symbol, sym};
 
-use super::{AcceptContext, AttributeOrder, OnDuplicate, SingleAttributeParser};
-use crate::context::Stage;
+use super::{AttributeOrder, OnDuplicate, SingleAttributeParser};
+use crate::context::{AcceptContext, Stage};
 use crate::parser::ArgParser;
 
 pub(crate) struct TransparencyParser;

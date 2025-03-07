@@ -42,7 +42,7 @@ fn get<S: Stage>(
 }
 
 impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
-    const PATH: &'static [Symbol] = &[sym::deprecated];
+    const PATH: &[Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 

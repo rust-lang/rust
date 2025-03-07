@@ -62,7 +62,7 @@
 //! a "stability" of an item. So, the stability attribute has an
 //! [`AttributeParser`](attributes::AttributeParser) that recognizes both the `#[stable()]`
 //! and `#[unstable()]` syntactic attributes, and at the end produce a single
-//! [`AttributeKind::Stability`].
+//! [`AttributeKind::Stability`](rustc_attr_data_structures::AttributeKind::Stability).
 //!
 //! When multiple instances of the same attribute are allowed, they're combined into a single
 //! semantic attribute. For example:
@@ -85,7 +85,7 @@
 
 #[macro_use]
 mod attributes;
-mod context;
+pub(crate) mod context;
 mod lints;
 pub mod parser;
 mod session_diagnostics;

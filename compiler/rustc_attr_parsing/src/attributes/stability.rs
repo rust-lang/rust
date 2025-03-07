@@ -117,7 +117,7 @@ impl<S: Stage> AttributeParser<S> for BodyStabilityParser {
 pub(crate) struct ConstStabilityIndirectParser;
 // FIXME(jdonszelmann): single word attribute group when we have these
 impl<S: Stage> SingleAttributeParser<S> for ConstStabilityIndirectParser {
-    const PATH: &'static [Symbol] = &[sym::rustc_const_stable_indirect];
+    const PATH: &[Symbol] = &[sym::rustc_const_stable_indirect];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Ignore;
 
