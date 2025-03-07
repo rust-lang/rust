@@ -15,11 +15,13 @@ LL ~     type Item = &'a T;
 error[E0261]: use of undeclared lifetime name `'a`
   --> $DIR/missing-lifetime-in-assoc-type-2.rs:7:57
    |
-LL | impl IntoIterator for &S {
-   |     - help: consider introducing lifetime `'a` here: `<'a>`
-...
 LL |     type IntoIter = std::collections::btree_map::Values<'a, i32, T>;
    |                                                         ^^ undeclared lifetime
+   |
+help: consider introducing lifetime `'a` here
+   |
+LL | impl<'a> IntoIterator for &S {
+   |     ++++
 
 error: aborting due to 2 previous errors
 

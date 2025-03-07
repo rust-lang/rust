@@ -21,8 +21,9 @@ LL | impl<'a> Trait for &'_ S {
    |
 help: consider using the named lifetime here instead of an implict lifetime
    |
-LL | impl<'a> Trait for &'a S {
-   |                     ~~
+LL - impl<'a> Trait for &'_ S {
+LL + impl<'a> Trait for &'a S {
+   |
 
 error: aborting due to 2 previous errors
 
