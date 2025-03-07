@@ -169,26 +169,11 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Set the `readonly` attribute for every argument that we concluded is immutable and that
     // contains no UnsafeCells.
-    //
-    // FIXME: This is overly conservative around generic parameters: `is_freeze()` will always
-    // return false for them. For a description of alternatives that could do a better job here,
-    // see [1].
-    //
-    // [1]: https://github.com/rust-lang/rust/pull/103172#discussion_r999139997
-    let typing_env = body.typing_env(tcx);
-    let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
-        body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
-            |(arg_index, local_decl)| DeducedParamAttrs {
-                read_only: deduce.read_only.contains(arg_index) || (
-                            deduce.read_only_when_freeze.contains(arg_index)
-                            // We must normalize here to reveal opaques and normalize
-                            // their generic parameters, otherwise we'll see exponential
-                            // blow-up in compile times: #113372
-                            && tcx.normalize_erasing_regions(typing_env, local_decl.ty).is_freeze(tcx, typing_env))
-
-            }
-        ),
-    );
+    let mut deduced_param_attrs =
+        tcx.arena.alloc_from_iter((0..body.arg_count).map(|arg_index| DeducedParamAttrs {
+            read_only: deduce.read_only.contains(arg_index),
+            read_only_when_freeze: deduce.read_only_when_freeze.contains(arg_index),
+        }));
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
     // default set of attributes, so we don't have to store them explicitly. Pop them off to save a
