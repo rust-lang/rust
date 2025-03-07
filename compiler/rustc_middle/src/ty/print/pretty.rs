@@ -569,7 +569,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             // the children of the visible parent (as was done when computing
             // `visible_parent_map`), looking for the specific child we currently have and then
             // have access to the re-exported name.
-            DefPathData::TypeNs(ref mut name) if Some(visible_parent) != actual_parent => {
+            DefPathData::TypeNs(Some(ref mut name)) if Some(visible_parent) != actual_parent => {
                 // Item might be re-exported several times, but filter for the one
                 // that's public and whose identifier isn't `_`.
                 let reexport = self
@@ -590,7 +590,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             // Re-exported `extern crate` (#43189).
             DefPathData::CrateRoot => {
-                data = DefPathData::TypeNs(self.tcx().crate_name(def_id.krate));
+                data = DefPathData::TypeNs(Some(self.tcx().crate_name(def_id.krate)));
             }
             _ => {}
         }
