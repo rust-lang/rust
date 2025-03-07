@@ -176,9 +176,24 @@ impl DocTestBuilder {
 
         // Now push any outer attributes from the example, assuming they
         // are intended to be crate attributes.
-        prog.push_str(&self.crate_attrs);
-        prog.push_str(&self.maybe_crate_attrs);
-        prog.push_str(&self.crates);
+        if !self.crate_attrs.is_empty() {
+            prog.push_str(&self.crate_attrs);
+            if !self.crate_attrs.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
+        if !self.maybe_crate_attrs.is_empty() {
+            prog.push_str(&self.maybe_crate_attrs);
+            if !self.maybe_crate_attrs.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
+        if !self.crates.is_empty() {
+            prog.push_str(&self.crates);
+            if !self.crates.ends_with('\n') {
+                prog.push('\n');
+            }
+        }
 
         // Don't inject `extern crate std` because it's already injected by the
         // compiler.
@@ -276,7 +291,6 @@ const DOCTEST_CODE_WRAPPER: &str = "fn f(){";
 fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceInfo, ()> {
     use rustc_errors::DiagCtxt;
     use rustc_errors::emitter::{Emitter, HumanEmitter};
-    // use rustc_parse::parser::ForceCollect;
     use rustc_span::source_map::FilePathMapping;
 
     let mut info =
@@ -338,7 +352,8 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         info: &mut ParseSourceInfo,
         crate_name: &Option<&str>,
         is_top_level: bool,
-    ) {
+    ) -> bool {
+        let mut is_crate = false;
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
         {
@@ -354,12 +369,13 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
                         if let StmtKind::Item(ref item) = stmt.kind {
-                            check_item(item, info, crate_name, false)
+                            is_crate |= check_item(item, info, crate_name, false);
                         }
                     }
                 }
             }
             ast::ItemKind::ExternCrate(original) => {
+                is_crate = true;
                 if !info.found_extern_crate
                     && let Some(crate_name) = crate_name
                 {
@@ -374,6 +390,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             }
             _ => {}
         }
+        is_crate
     }
 
     let mut prev_span_hi = None;
@@ -412,8 +429,11 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 }
             }
             for stmt in &body.stmts {
+                let mut is_crate = false;
                 match stmt.kind {
-                    StmtKind::Item(ref item) => check_item(&item, &mut info, crate_name, true),
+                    StmtKind::Item(ref item) => {
+                        is_crate = check_item(&item, &mut info, crate_name, true);
+                    }
                     StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
                         cancel_error_count(&psess);
                         return Err(());
@@ -450,15 +470,15 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 if info.everything_else.is_empty()
                     && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
                 {
-                    // We add potential backlines/comments into attributes if there are some.
-                    push_to_s(
-                        &mut info.maybe_crate_attrs,
-                        source,
-                        span.shrink_to_lo(),
-                        &mut prev_span_hi,
-                    );
+                    // We add potential backlines/comments if there are some in items generated
+                    // before the wrapping function.
+                    push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
                 }
-                push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
+                if !is_crate {
+                    push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
+                } else {
+                    push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
+                }
             }
             Ok(info)
         }

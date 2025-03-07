@@ -127,8 +127,8 @@ fn make_test_manual_extern_crate() {
 use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
 extern crate asdf;
+fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -144,8 +144,8 @@ fn make_test_manual_extern_crate_with_macro_use() {
 use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-fn main() {
 #[macro_use] extern crate asdf;
+fn main() {
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -197,6 +197,7 @@ fn make_test_crate_attrs() {
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #![feature(sick_rad)]
+
 fn main() {
 assert_eq!(2+2, 4);
 }"
@@ -277,10 +278,10 @@ fn make_test_issues_33731() {
 assert_eq!(asdf::foo, 4);";
 
     let expected = "#![allow(unused)]
+extern crate hella_qwop;
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
 fn main() {
-extern crate hella_qwop;
 assert_eq!(asdf::foo, 4);
 }"
     .to_string();
@@ -400,4 +401,27 @@ fn check_split_args() {
     compare("a          b", &["a", "b"]);
     compare("a\n\t \rb", &["a", "b"]);
     compare("a\n\t1 \rb", &["a", "1", "b"]);
+}
+
+#[test]
+fn comment_in_attrs() {
+    // if input already has a fn main, it should insert a space before it
+    let opts = default_global_opts("");
+    let input = "\
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.";
+    let expected = "\
+#![allow(unused)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+fn main() {
+
+}"
+    .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 2));
 }
