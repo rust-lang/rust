@@ -8,7 +8,9 @@
 use rustc_hir::def_id::LocalDefId;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
-use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
+use rustc_middle::mir::{
+    Body, Local, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind,
+};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
 use tracing::instrument;
@@ -31,18 +33,23 @@ impl DeduceReadOnly {
             read_only_when_freeze: DenseBitSet::new_filled(arg_count),
         }
     }
+
+    fn arg_index(&self, local: Local) -> Option<usize> {
+        if local == RETURN_PLACE || local.index() > self.read_only.domain_size() {
+            None
+        } else {
+            Some(local.index() - 1)
+        }
+    }
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
-        // We're only interested in arguments.
-        if place.local == RETURN_PLACE || place.local.index() > self.read_only.domain_size() {
-            return;
-        }
-        let arg_index = place.local.index() - 1;
         if place.is_indirect() {
             return;
         }
+        // We're only interested in arguments.
+        let Some(arg_index) = self.arg_index(place.local) else { return };
         match context {
             PlaceContext::MutatingUse(..) => {
                 // This is a mutation, so mark it as such.
@@ -87,16 +94,13 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
                 if let Operand::Move(place) = arg.node {
-                    let local = place.local;
-                    if place.is_indirect()
-                        || local == RETURN_PLACE
-                        || local.index() > self.read_only.domain_size()
-                    {
+                    if place.is_indirect() {
                         continue;
                     }
-                    let arg_index = local.index() - 1;
-                    self.read_only.remove(arg_index);
-                    self.read_only_when_freeze.remove(arg_index);
+                    if let Some(arg_index) = self.arg_index(place.local) {
+                        self.read_only.remove(arg_index);
+                        self.read_only_when_freeze.remove(arg_index);
+                    }
                 }
             }
         };
