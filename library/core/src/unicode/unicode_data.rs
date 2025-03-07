@@ -94,7 +94,10 @@ unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
     // correct location cannot be past it, so `Err(idx) => idx != length` either.
     //
     // This means that we can avoid bounds checking for the accesses below, too.
-    unsafe { crate::hint::assert_unchecked(last_idx < SOR) };
+    //
+    // We need to use `intrinsics::assume` since the `panic_nounwind` contained
+    // in `hint::assert_unchecked` may not be optimized out.
+    unsafe { crate::intrinsics::assume(last_idx < SOR) };
 
     let mut offset_idx = short_offset_runs[last_idx].start_index();
     let length = if let Some(next) = short_offset_runs.get(last_idx + 1) {
@@ -112,7 +115,10 @@ unsafe fn skip_search<const SOR: usize, const OFFSETS: usize>(
         // SAFETY: It is guaranteed that `length <= OFFSETS - offset_idx`,
         // so it follows that `length - 1 + offset_idx < OFFSETS`, therefore
         // `offset_idx < OFFSETS` is always true in this loop.
-        unsafe { crate::hint::assert_unchecked(offset_idx < OFFSETS) };
+        //
+        // We need to use `intrinsics::assume` since the `panic_nounwind` contained
+        // in `hint::assert_unchecked` may not be optimized out.
+        unsafe { crate::intrinsics::assume(offset_idx < OFFSETS) };
         let offset = offsets[offset_idx];
         prefix_sum += offset as u32;
         if prefix_sum > total {
