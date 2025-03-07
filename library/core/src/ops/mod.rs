@@ -171,7 +171,6 @@ pub use self::deref::DerefPure;
 #[cfg(bootstrap)]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 pub use self::deref::LegacyReceiver;
-#[cfg(not(bootstrap))]
 #[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 pub use self::deref::Receiver;
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -303,9 +303,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
 /// Indicates that a struct can be used as a method receiver.
 /// That is, a type can use this type as a type of `self`, like this:
-/// ```
-/// # // This is currently compile_fail because the compiler-side parts
-/// # // of arbitrary_self_types are not implemented
+/// ```ignore (trying to figure out bootstrap stuff, will be reinstated)
 /// use std::ops::Receiver;
 ///
 /// struct SmartPointer<T>(T);
@@ -365,7 +363,6 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// }
 /// ```
 #[lang = "receiver"]
-#[cfg(not(bootstrap))]
 #[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 pub trait Receiver {
     /// The target type on which the method may be called.
@@ -375,7 +372,6 @@ pub trait Receiver {
     type Target: ?Sized;
 }
 
-#[cfg(not(bootstrap))]
 #[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 impl<P: ?Sized, T: ?Sized> Receiver for P
 where
