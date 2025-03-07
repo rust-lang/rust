@@ -18,6 +18,7 @@ allow-unauthenticated = [
     "WG-*",
     "-Z*",
     "beta-nominated",
+    "CI-spurious-*",
     "const-hack",
     "llvm-*",
     "needs-fcp",
