@@ -1801,6 +1801,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             return Some(candidates.pop().unwrap().candidate);
         }
 
+        // We prefer `Sized` candidates over everything.
+        let mut sized_candidates =
+            candidates.iter().filter(|c| matches!(c.candidate, SizedCandidate));
+        if let Some(_sized_candidate) = sized_candidates.next() {
+            // There should only ever be a single sized candidate
+            // as they would otherwise overlap.
+            debug_assert_eq!(sized_candidates.next(), None);
+            return Some(SizedCandidate);
+        }
+
         // We prefer trivial builtin candidates, i.e. builtin impls without any nested
         // requirements, over all others. This is a fix for #53123 and prevents winnowing
         // from accidentally extending the lifetime of a variable.
@@ -1940,7 +1950,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             // Don't use impl candidates which overlap with other candidates.
             // This should pretty much only ever happen with malformed impls.
             if candidates.iter().all(|c| match c.candidate {
-                BuiltinCandidate { has_nested: _ }
+                SizedCandidate
+                | BuiltinCandidate { has_nested: _ }
                 | TransmutabilityCandidate
                 | AutoImplCandidate
                 | ClosureCandidate { .. }
