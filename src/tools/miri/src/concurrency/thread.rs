@@ -1150,7 +1150,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         loop {
             if CTRL_C_RECEIVED.load(Relaxed) {
                 this.machine.handle_abnormal_termination();
-                std::process::exit(1);
+                throw_machine_stop!(TerminationInfo::Interrupted);
             }
             match this.machine.threads.schedule(&this.machine.clock)? {
                 SchedulingAction::ExecuteStep => {

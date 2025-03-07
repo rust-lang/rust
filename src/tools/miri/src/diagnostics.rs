@@ -16,6 +16,8 @@ pub enum TerminationInfo {
         leak_check: bool,
     },
     Abort(String),
+    /// Miri was interrupted by a Ctrl+C from the user
+    Interrupted,
     UnsupportedInIsolation(String),
     StackedBorrowsUb {
         msg: String,
@@ -63,6 +65,7 @@ impl fmt::Display for TerminationInfo {
         match self {
             Exit { code, .. } => write!(f, "the evaluated program completed with exit code {code}"),
             Abort(msg) => write!(f, "{msg}"),
+            Interrupted => write!(f, "interpretation was interrupted"),
             UnsupportedInIsolation(msg) => write!(f, "{msg}"),
             Int2PtrWithStrictProvenance =>
                 write!(
@@ -226,6 +229,7 @@ pub fn report_error<'tcx>(
         let title = match info {
             &Exit { code, leak_check } => return Some((code, leak_check)),
             Abort(_) => Some("abnormal termination"),
+            Interrupted => None,
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance | UnsupportedForeignItem(_) =>
                 Some("unsupported operation"),
             StackedBorrowsUb { .. } | TreeBorrowsUb { .. } | DataRace { .. } =>
