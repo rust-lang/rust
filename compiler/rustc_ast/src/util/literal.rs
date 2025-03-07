@@ -3,7 +3,7 @@
 use std::{ascii, fmt, str};
 
 use rustc_literal_escaper::{
-    MixedUnit, Mode, byte_from_char, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
+    MixedUnit, unescape_byte, unescape_byte_str, unescape_c_str, unescape_char, unescape_str,
 };
 use rustc_span::{Span, Symbol, kw, sym};
 use tracing::debug;
@@ -87,11 +87,10 @@ impl LitKind {
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be hot in
                     // programs with many long strings containing escapes.
-                    unescape_unicode(
+                    unescape_str(
                         s,
-                        Mode::Str,
-                        &mut #[inline(always)]
-                        |_, c| match c {
+                        #[inline(always)]
+                        |_, res| match res {
                             Ok(c) => buf.push(c),
                             Err(err) => {
                                 assert!(!err.is_fatal(), "failed to unescape string literal")
@@ -111,8 +110,8 @@ impl LitKind {
             token::ByteStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_unicode(s, Mode::ByteStr, &mut |_, c| match c {
-                    Ok(c) => buf.push(byte_from_char(c)),
+                unescape_byte_str(s, |_, res| match res {
+                    Ok(b) => buf.push(b),
                     Err(err) => {
                         assert!(!err.is_fatal(), "failed to unescape string literal")
                     }
@@ -128,7 +127,7 @@ impl LitKind {
             token::CStr => {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
-                unescape_mixed(s, Mode::CStr, &mut |_span, c| match c {
+                unescape_c_str(s, |_span, c| match c {
                     Ok(MixedUnit::Char(c)) => {
                         buf.extend_from_slice(c.encode_utf8(&mut [0; 4]).as_bytes())
                     }

@@ -89,3 +89,8 @@ codegen-units = 1
 # FIXME: LTO cannot be enabled for binaries in a workspace
 # <https://github.com/rust-lang/cargo/issues/9330>
 # lto = true
+
+# If you want to use a crate with local modifications, you can set a path or git dependency here.
+# For git dependencies, also add your source to ALLOWED_SOURCES in src/tools/tidy/src/extdeps.rs.
+#[patch.crates-io]
+
