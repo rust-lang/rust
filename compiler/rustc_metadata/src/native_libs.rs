@@ -82,6 +82,8 @@ pub fn try_find_native_static_library(
     sess: &Session,
     name: &str,
     verbatim: bool,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) -> Option<PathBuf> {
     let formats = if verbatim {
         vec![("".into(), "".into())]
@@ -93,11 +95,10 @@ pub fn try_find_native_static_library(
         if os == unix { vec![os] } else { vec![os, unix] }
     };
 
-    // FIXME: Account for self-contained linking settings and Apple SDK.
     walk_native_lib_search_dirs(
         sess,
-        LinkSelfContainedComponents::empty(),
-        None,
+        self_contained_components,
+        apple_sdk_root,
         |dir, is_framework| {
             if !is_framework {
                 for (prefix, suffix) in &formats {
@@ -117,6 +118,8 @@ pub fn try_find_native_dynamic_library(
     sess: &Session,
     name: &str,
     verbatim: bool,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) -> Option<PathBuf> {
     let formats = if verbatim {
         vec![("".into(), "".into())]
@@ -134,8 +137,8 @@ pub fn try_find_native_dynamic_library(
 
     walk_native_lib_search_dirs(
         sess,
-        LinkSelfContainedComponents::empty(),
-        None,
+        self_contained_components,
+        apple_sdk_root,
         |dir, is_framework| {
             if !is_framework {
                 for (prefix, suffix) in &formats {
@@ -151,8 +154,14 @@ pub fn try_find_native_dynamic_library(
     .break_value()
 }
 
-pub fn find_native_static_library(name: &str, verbatim: bool, sess: &Session) -> PathBuf {
-    try_find_native_static_library(sess, name, verbatim)
+pub fn find_native_static_library(
+    name: &str,
+    verbatim: bool,
+    sess: &Session,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
+) -> PathBuf {
+    try_find_native_static_library(sess, name, verbatim, self_contained_components, apple_sdk_root)
         .unwrap_or_else(|| sess.dcx().emit_fatal(errors::MissingNativeLibrary::new(name, verbatim)))
 }
 
@@ -169,10 +178,17 @@ fn find_bundled_library(
         && (sess.opts.unstable_opts.packed_bundled_libs || has_cfg || whole_archive == Some(true))
     {
         let verbatim = verbatim.unwrap_or(false);
-        return find_native_static_library(name.as_str(), verbatim, sess)
-            .file_name()
-            .and_then(|s| s.to_str())
-            .map(Symbol::intern);
+        // FIXME: Account for self-contained linking settings and Apple SDK.
+        return find_native_static_library(
+            name.as_str(),
+            verbatim,
+            sess,
+            LinkSelfContainedComponents::empty(),
+            None,
+        )
+        .file_name()
+        .and_then(|s| s.to_str())
+        .map(Symbol::intern);
     }
     None
 }

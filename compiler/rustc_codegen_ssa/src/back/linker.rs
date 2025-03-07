@@ -17,7 +17,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, DebugInfo, LinkerPluginLto, Lto, OptLevel, Strip};
 use rustc_span::sym;
-use rustc_target::spec::{Cc, LinkOutputKind, LinkerFlavor, Lld};
+use rustc_target::spec::{Cc, LinkOutputKind, LinkSelfContainedComponents, LinkerFlavor, Lld};
 use tracing::{debug, warn};
 
 use super::command::Command;
@@ -304,7 +304,14 @@ pub(crate) trait Linker {
         crate_type: CrateType,
         out_filename: &Path,
     );
-    fn link_dylib_by_name(&mut self, _name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _as_needed: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         bug!("dylib linked with unsupported linker")
     }
     fn link_dylib_by_path(&mut self, _path: &Path, _as_needed: bool) {
@@ -313,7 +320,14 @@ pub(crate) trait Linker {
     fn link_framework_by_name(&mut self, _name: &str, _verbatim: bool, _as_needed: bool) {
         bug!("framework linked with unsupported linker")
     }
-    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool);
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        whole_archive: bool,
+        self_contained_components: LinkSelfContainedComponents,
+        apple_sdk_root: Option<&Path>,
+    );
     fn link_staticlib_by_path(&mut self, path: &Path, whole_archive: bool);
     fn include_path(&mut self, path: &Path) {
         link_or_cc_args(link_or_cc_args(self, &["-L"]), &[path]);
@@ -581,7 +595,14 @@ impl<'a> Linker for GccLinker<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        as_needed: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         if self.sess.target.os == "illumos" && name == "c" {
             // libc will be added via late_link_args on illumos so that it will
             // appear last in the library search order.
@@ -615,7 +636,14 @@ impl<'a> Linker for GccLinker<'a> {
         self.link_or_cc_args(&["-framework", name]);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        whole_archive: bool,
+        self_contained_components: LinkSelfContainedComponents,
+        apple_sdk_root: Option<&Path>,
+    ) {
         self.hint_static();
         let colon = if verbatim && self.is_gnu { ":" } else { "" };
         if !whole_archive {
@@ -624,7 +652,13 @@ impl<'a> Linker for GccLinker<'a> {
             // -force_load is the macOS equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
             self.link_arg("-force_load");
-            self.link_arg(find_native_static_library(name, verbatim, self.sess));
+            self.link_arg(find_native_static_library(
+                name,
+                verbatim,
+                self.sess,
+                self_contained_components,
+                apple_sdk_root,
+            ));
         } else {
             self.link_arg("--whole-archive")
                 .link_or_cc_arg(format!("-l{colon}{name}"))
@@ -935,10 +969,23 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        _as_needed: bool,
+        self_contained_components: LinkSelfContainedComponents,
+        apple_sdk_root: Option<&Path>,
+    ) {
         // On MSVC-like targets rustc supports import libraries using alternative naming
         // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
-        if let Some(path) = try_find_native_dynamic_library(self.sess, name, verbatim) {
+        if let Some(path) = try_find_native_dynamic_library(
+            self.sess,
+            name,
+            verbatim,
+            self_contained_components,
+            apple_sdk_root,
+        ) {
             self.link_arg(path);
         } else {
             self.link_arg(format!("{}{}", name, if verbatim { "" } else { ".lib" }));
@@ -954,10 +1001,23 @@ impl<'a> Linker for MsvcLinker<'a> {
         }
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        whole_archive: bool,
+        self_contained_components: LinkSelfContainedComponents,
+        apple_sdk_root: Option<&Path>,
+    ) {
         // On MSVC-like targets rustc supports static libraries using alternative naming
         // scheme (`libfoo.a`) unsupported by linker, search for such libraries manually.
-        if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
+        if let Some(path) = try_find_native_static_library(
+            self.sess,
+            name,
+            verbatim,
+            self_contained_components,
+            apple_sdk_root,
+        ) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
             let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
@@ -1183,7 +1243,14 @@ impl<'a> Linker for EmLinker<'a> {
     ) {
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _as_needed: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         // Emscripten always links statically
         self.link_or_cc_args(&["-l", name]);
     }
@@ -1192,7 +1259,14 @@ impl<'a> Linker for EmLinker<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, _whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         self.link_or_cc_args(&["-l", name]);
     }
 
@@ -1350,7 +1424,14 @@ impl<'a> Linker for WasmLd<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _as_needed: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         self.link_or_cc_args(&["-l", name]);
     }
 
@@ -1358,7 +1439,14 @@ impl<'a> Linker for WasmLd<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         if !whole_archive {
             self.link_or_cc_args(&["-l", name]);
         } else {
@@ -1492,7 +1580,14 @@ impl<'a> Linker for L4Bender<'a> {
     ) {
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, _verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         self.hint_static();
         if !whole_archive {
             self.link_arg(format!("-PC{name}"));
@@ -1655,7 +1750,14 @@ impl<'a> Linker for AixLinker<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(
+        &mut self,
+        name: &str,
+        _verbatim: bool,
+        _as_needed: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         self.hint_dynamic();
         self.link_or_cc_arg(format!("-l{name}"));
     }
@@ -1665,13 +1767,26 @@ impl<'a> Linker for AixLinker<'a> {
         self.link_or_cc_arg(path);
     }
 
-    fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        name: &str,
+        verbatim: bool,
+        whole_archive: bool,
+        self_contained_components: LinkSelfContainedComponents,
+        apple_sdk_root: Option<&Path>,
+    ) {
         self.hint_static();
         if !whole_archive {
             self.link_or_cc_arg(format!("-l{name}"));
         } else {
             let mut arg = OsString::from("-bkeepfile:");
-            arg.push(find_native_static_library(name, verbatim, self.sess));
+            arg.push(find_native_static_library(
+                name,
+                verbatim,
+                self.sess,
+                self_contained_components,
+                apple_sdk_root,
+            ));
             self.link_or_cc_arg(arg);
         }
     }
@@ -1854,7 +1969,14 @@ impl<'a> Linker for PtxLinker<'a> {
     ) {
     }
 
-    fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         panic!("staticlibs not supported")
     }
 
@@ -1926,7 +2048,14 @@ impl<'a> Linker for LlbcLinker<'a> {
     ) {
     }
 
-    fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         panic!("staticlibs not supported")
     }
 
@@ -2003,7 +2132,14 @@ impl<'a> Linker for BpfLinker<'a> {
     ) {
     }
 
-    fn link_staticlib_by_name(&mut self, _name: &str, _verbatim: bool, _whole_archive: bool) {
+    fn link_staticlib_by_name(
+        &mut self,
+        _name: &str,
+        _verbatim: bool,
+        _whole_archive: bool,
+        _self_contained_components: LinkSelfContainedComponents,
+        _apple_sdk_root: Option<&Path>,
+    ) {
         panic!("staticlibs not supported")
     }
 
