@@ -11,6 +11,7 @@ use super::{AcceptContext, AttributeOrder, OnDuplicate};
 use crate::attributes::SingleAttributeParser;
 use crate::context::Stage;
 use crate::parser::ArgParser;
+use crate::session_diagnostics::IncorrectMetaItem;
 
 pub(crate) struct InlineParser;
 
