@@ -3300,6 +3300,8 @@ pub struct DeducedParamAttrs {
     /// The parameter is marked immutable in the function and contains no `UnsafeCell` (i.e. its
     /// type is freeze).
     pub read_only: bool,
+    pub requires_freeze: bool,
+    pub requires_nop_drop: bool,
 }
 
 pub fn provide(providers: &mut Providers) {
