@@ -9,7 +9,8 @@ fn hack_external_crate_names() {
     let path = path.path();
     let crates = hack_get_external_crate_names(&path, "").unwrap();
     assert!(crates.is_empty());
-    fs::write(path.join("crates.js"), r#"window.ALL_CRATES = ["a","b","c"];"#).unwrap();
+    fs::write(path.join("crates.js"), r#"window.ALL_CRATES = [{"c":"a"},{"c":"b"},{"c":"c"}];"#)
+        .unwrap();
     let crates = hack_get_external_crate_names(&path, "").unwrap();
     assert_eq!(crates, ["a".to_string(), "b".to_string(), "c".to_string()]);
 }

@@ -48,7 +48,9 @@ call-function: ("switch-theme", {"theme": "light"})
 assert-text: (".sidebar > .sidebar-crate > h2 > a", "test_docs")
 // Crate root has no "location" element
 assert-count: (".sidebar .location", 0)
-assert-count: (".sidebar h2", 1)
+// Crate root has two h2s, the second of which is the the crate list
+assert-count: (".sidebar h2", 2)
+assert-text: (".sidebar #rustdoc-modnav h2", "Crates")
 assert-text: ("#all-types", "All Items")
 assert-css: ("#all-types", {"color": "#356da4"})
 // We check that we have the crates list and that the "current" on is "test_docs".
