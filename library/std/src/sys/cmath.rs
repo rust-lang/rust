@@ -7,13 +7,9 @@ unsafe extern "C" {
     pub fn asin(n: f64) -> f64;
     pub fn atan(n: f64) -> f64;
     pub fn atan2(a: f64, b: f64) -> f64;
-    pub fn cbrt(n: f64) -> f64;
-    pub fn cbrtf(n: f32) -> f32;
     pub fn cosh(n: f64) -> f64;
     pub fn expm1(n: f64) -> f64;
     pub fn expm1f(n: f32) -> f32;
-    pub fn fdim(a: f64, b: f64) -> f64;
-    pub fn fdimf(a: f32, b: f32) -> f32;
     #[cfg_attr(target_env = "msvc", link_name = "_hypot")]
     pub fn hypot(x: f64, y: f64) -> f64;
     #[cfg_attr(target_env = "msvc", link_name = "_hypotf")]

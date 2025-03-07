@@ -285,6 +285,7 @@
 #![feature(cfi_encoding)]
 #![feature(char_max_len)]
 #![feature(concat_idents)]
+#![feature(core_float_math)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
 #![feature(doc_cfg)]
