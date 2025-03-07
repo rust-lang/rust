@@ -127,8 +127,8 @@ fn make_test_manual_extern_crate() {
 use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-extern crate asdf;
 fn main() {
+extern crate asdf;
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -144,8 +144,8 @@ fn make_test_manual_extern_crate_with_macro_use() {
 use asdf::qwop;
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-#[macro_use] extern crate asdf;
 fn main() {
+#[macro_use] extern crate asdf;
 use asdf::qwop;
 assert_eq!(2+2, 4);
 }"
@@ -228,8 +228,8 @@ fn make_test_fake_main() {
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-//Ceci n'est pas une `fn main`
 fn main() {
+//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -259,8 +259,8 @@ fn make_test_issues_21299() {
 assert_eq!(2+2, 4);";
 
     let expected = "#![allow(unused)]
-// fn main
 fn main() {
+// fn main
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -277,10 +277,10 @@ fn make_test_issues_33731() {
 assert_eq!(asdf::foo, 4);";
 
     let expected = "#![allow(unused)]
-extern crate hella_qwop;
 #[allow(unused_extern_crates)]
 extern crate r#asdf;
 fn main() {
+extern crate hella_qwop;
 assert_eq!(asdf::foo, 4);
 }"
     .to_string();

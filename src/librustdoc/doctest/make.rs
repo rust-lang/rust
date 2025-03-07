@@ -5,15 +5,17 @@ use std::fmt::{self, Write as _};
 use std::io;
 use std::sync::Arc;
 
-use rustc_ast::{self as ast, HasAttrs};
+use rustc_ast::token::{Delimiter, TokenKind};
+use rustc_ast::tokenstream::TokenTree;
+use rustc_ast::{self as ast, HasAttrs, StmtKind};
 use rustc_errors::ColorConfig;
 use rustc_errors::emitter::stderr_destination;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
-use rustc_span::FileName;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
+use rustc_span::{FileName, kw};
 use tracing::debug;
 
 use super::GlobalTestOptions;
@@ -319,7 +321,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         let extra_len = DOCTEST_CODE_WRAPPER.len();
         // We need to shift by 1 because we added `{` at the beginning of the source.we provided
         // to the parser.
-        let lo = prev_span_hi.unwrap_or(span.lo().0 as usize - extra_len);
+        let lo = prev_span_hi.unwrap_or(0);
         let mut hi = span.hi().0 as usize - extra_len;
         if hi > source.len() {
             hi = source.len();
@@ -351,11 +353,8 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 }
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
-                        match stmt.kind {
-                            ast::StmtKind::Item(ref item) => {
-                                check_item(item, info, crate_name, false)
-                            }
-                            _ => {}
+                        if let StmtKind::Item(ref item) = stmt.kind {
+                            check_item(item, info, crate_name, false)
                         }
                     }
                 }
@@ -380,8 +379,6 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
     let mut prev_span_hi = None;
     let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny];
     let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
-
-    debug!("+++++> {parsed:#?}");
 
     let result = match parsed {
         Ok(Some(ref item))
@@ -416,10 +413,30 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             }
             for stmt in &body.stmts {
                 match stmt.kind {
-                    ast::StmtKind::Item(ref item) => check_item(&item, &mut info, crate_name, true),
-                    ast::StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
+                    StmtKind::Item(ref item) => check_item(&item, &mut info, crate_name, true),
+                    StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
                         cancel_error_count(&psess);
                         return Err(());
+                    }
+                    StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
+                        let mut iter = mac_call.mac.args.tokens.iter();
+
+                        while let Some(token) = iter.next() {
+                            if let TokenTree::Token(token, _) = token
+                                && let TokenKind::Ident(name, _) = token.kind
+                                && name == kw::Fn
+                                && let Some(TokenTree::Token(fn_token, _)) = iter.peek()
+                                && let TokenKind::Ident(fn_name, _) = fn_token.kind
+                                && fn_name == sym::main
+                                && let Some(TokenTree::Delimited(_, _, Delimiter::Parenthesis, _)) = {
+                                    iter.next();
+                                    iter.peek()
+                                }
+                            {
+                                info.has_main_fn = true;
+                                break;
+                            }
+                        }
                     }
                     _ => {}
                 }
@@ -433,7 +450,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 if info.everything_else.is_empty()
                     && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
                 {
-                    // We add potential backlines into attributes if there are some.
+                    // We add potential backlines/comments into attributes if there are some.
                     push_to_s(
                         &mut info.maybe_crate_attrs,
                         source,
