@@ -7,6 +7,8 @@ declare global {
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
+        /** List of all documented crates. */
+        ALL_CRATES: string[]|undefined;
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
