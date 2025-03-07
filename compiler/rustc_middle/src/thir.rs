@@ -315,6 +315,14 @@ pub enum ExprKind<'tcx> {
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`).
         fn_span: Span,
     },
+    /// A use expression `x.use`.
+    ByUse {
+        /// The expression on which use is applied.
+        expr: ExprId,
+        /// The span of use, without the dot and receiver
+        /// (e.g. `use` in `x.use`).
+        span: Span,
+    },
     /// A *non-overloaded* dereference.
     Deref {
         arg: ExprId,

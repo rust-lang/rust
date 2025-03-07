@@ -55,6 +55,8 @@ pub(crate) enum GenericConstantTooComplexSub {
     BoxNotSupported(#[primary_span] Span),
     #[label(ty_utils_binary_not_supported)]
     BinaryNotSupported(#[primary_span] Span),
+    #[label(ty_utils_by_use_not_supported)]
+    ByUseNotSupported(#[primary_span] Span),
     #[label(ty_utils_logical_op_not_supported)]
     LogicalOpNotSupported(#[primary_span] Span),
     #[label(ty_utils_assign_not_supported)]

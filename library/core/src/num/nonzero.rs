@@ -1,6 +1,7 @@
 //! Definitions of integer that is known not to equal zero.
 
 use super::{IntErrorKind, ParseIntError};
+use crate::clone::UseCloned;
 use crate::cmp::Ordering;
 use crate::hash::{Hash, Hasher};
 use crate::marker::{Freeze, StructuralPartialEq};
@@ -181,6 +182,9 @@ where
         *self
     }
 }
+
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T> UseCloned for NonZero<T> where T: ZeroablePrimitive {}
 
 #[stable(feature = "nonzero", since = "1.28.0")]
 impl<T> Copy for NonZero<T> where T: ZeroablePrimitive {}

@@ -56,6 +56,7 @@
 //! [`Rc`]: rc
 //! [`RefCell`]: core::cell
 
+#![allow(incomplete_features)]
 #![allow(unused_attributes)]
 #![stable(feature = "alloc", since = "1.36.0")]
 #![doc(
@@ -113,6 +114,7 @@
 #![feature(deprecated_suggestion)]
 #![feature(deref_pure_trait)]
 #![feature(dispatch_from_dyn)]
+#![feature(ergonomic_clones)]
 #![feature(error_generic_member_access)]
 #![feature(exact_size_is_empty)]
 #![feature(extend_one)]

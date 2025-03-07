@@ -1211,6 +1211,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         }
         ExprKind::Gen(_capt, body, _kind, _decl_span) => try_visit!(visitor.visit_block(body)),
         ExprKind::Await(expr, _span) => try_visit!(visitor.visit_expr(expr)),
+        ExprKind::Use(expr, _span) => try_visit!(visitor.visit_expr(expr)),
         ExprKind::Assign(lhs, rhs, _span) => {
             try_visit!(visitor.visit_expr(lhs));
             try_visit!(visitor.visit_expr(rhs));
