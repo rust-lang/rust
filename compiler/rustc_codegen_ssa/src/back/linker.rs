@@ -1655,9 +1655,9 @@ impl<'a> Linker for AixLinker<'a> {
         }
     }
 
-    fn link_dylib_by_name(&mut self, name: &str, _verbatim: bool, _as_needed: bool) {
+    fn link_dylib_by_name(&mut self, name: &str, verbatim: bool, _as_needed: bool) {
         self.hint_dynamic();
-        self.link_or_cc_arg(format!("-l{name}"));
+        self.link_or_cc_arg(if verbatim { String::from(name) } else { format!("-l{name}") });
     }
 
     fn link_dylib_by_path(&mut self, path: &Path, _as_needed: bool) {
@@ -1668,7 +1668,7 @@ impl<'a> Linker for AixLinker<'a> {
     fn link_staticlib_by_name(&mut self, name: &str, verbatim: bool, whole_archive: bool) {
         self.hint_static();
         if !whole_archive {
-            self.link_or_cc_arg(format!("-l{name}"));
+            self.link_or_cc_arg(if verbatim { String::from(name) } else { format!("-l{name}") });
         } else {
             let mut arg = OsString::from("-bkeepfile:");
             arg.push(find_native_static_library(name, verbatim, self.sess));
