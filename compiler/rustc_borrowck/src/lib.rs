@@ -1490,14 +1490,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                         let stmt = &bbd.statements[loc.statement_index];
                         debug!("temporary assigned in: stmt={:?}", stmt);
 
-                        if let StatementKind::Assign(box (_, Rvalue::Ref(_, _, source))) = stmt.kind
-                        {
-                            propagate_closure_used_mut_place(self, source);
-                        } else {
-                            bug!(
-                                "closures should only capture user variables \
+                        match stmt.kind {
+                            StatementKind::Assign(box (
+                                _,
+                                Rvalue::Ref(_, _, source)
+                                | Rvalue::Use(Operand::Copy(source) | Operand::Move(source)),
+                            )) => {
+                                propagate_closure_used_mut_place(self, source);
+                            }
+                            _ => {
+                                bug!(
+                                    "closures should only capture user variables \
                                  or references to user variables"
-                            );
+                                );
+                            }
                         }
                     }
                     _ => propagate_closure_used_mut_place(self, place),

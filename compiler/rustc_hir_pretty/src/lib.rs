@@ -1470,6 +1470,10 @@ impl<'a> State<'a> {
             hir::ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.print_expr_method_call(segment, receiver, args);
             }
+            hir::ExprKind::Use(expr, _) => {
+                self.print_expr(expr);
+                self.word(".use");
+            }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
             }
@@ -2220,6 +2224,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
             hir::CaptureBy::Value { .. } => self.word_space("move"),
+            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
         }
     }

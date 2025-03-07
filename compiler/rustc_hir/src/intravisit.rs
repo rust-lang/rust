@@ -821,6 +821,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr<'v>) 
             try_visit!(visitor.visit_expr(receiver));
             walk_list!(visitor, visit_expr, arguments);
         }
+        ExprKind::Use(expr, _) => {
+            try_visit!(visitor.visit_expr(expr));
+        }
         ExprKind::Binary(_, ref left_expression, ref right_expression) => {
             try_visit!(visitor.visit_expr(left_expression));
             try_visit!(visitor.visit_expr(right_expression));

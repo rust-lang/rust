@@ -230,7 +230,9 @@ fn recurse_build<'tcx>(
             error(GenericConstantTooComplexSub::LoopNotSupported(node.span))?
         }
         ExprKind::Box { .. } => error(GenericConstantTooComplexSub::BoxNotSupported(node.span))?,
-
+        ExprKind::ByUse { .. } => {
+            error(GenericConstantTooComplexSub::ByUseNotSupported(node.span))?
+        }
         ExprKind::Unary { .. } => unreachable!(),
         // we handle valid unary/binary ops above
         ExprKind::Binary { .. } => {
@@ -317,6 +319,7 @@ impl<'a, 'tcx> IsThirPolymorphic<'a, 'tcx> {
             | thir::ExprKind::Box { .. }
             | thir::ExprKind::If { .. }
             | thir::ExprKind::Call { .. }
+            | thir::ExprKind::ByUse { .. }
             | thir::ExprKind::Deref { .. }
             | thir::ExprKind::Binary { .. }
             | thir::ExprKind::LogicalOp { .. }
