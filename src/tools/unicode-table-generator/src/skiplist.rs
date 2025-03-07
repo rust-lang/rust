@@ -105,6 +105,8 @@ impl RawEmitter {
             writeln!(&mut self.file, "    (c as u32) >= {first_code_point:#04x} && lookup_slow(c)")
                 .unwrap();
             writeln!(&mut self.file, "}}").unwrap();
+            writeln!(&mut self.file).unwrap();
+            writeln!(&mut self.file, "#[inline(never)]").unwrap();
             writeln!(&mut self.file, "fn lookup_slow(c: char) -> bool {{").unwrap();
         } else {
             writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();

@@ -433,6 +433,8 @@ pub mod grapheme_extend {
     pub fn lookup(c: char) -> bool {
         (c as u32) >= 0x300 && lookup_slow(c)
     }
+
+    #[inline(never)]
     fn lookup_slow(c: char) -> bool {
         const {
             assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
