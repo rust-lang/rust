@@ -9,6 +9,9 @@ fn ergonomic_clone(x: i32) -> i32 {
 #[derive(Clone)]
 struct Foo;
 
+fn foo<T: UseCloned>() {}
+//~^ ERROR use of unstable library feature `ergonomic_clones` [E0658]
+
 impl UseCloned for Foo {}
 //~^ ERROR use of unstable library feature `ergonomic_clones` [E0658]
 
