@@ -1,27 +1,11 @@
 #![stable(feature = "metadata_ext", since = "1.1.0")]
 use crate::fs::Metadata;
-#[allow(deprecated)]
-use crate::os::cygwin::raw;
 use crate::sys_common::AsInner;
 /// OS-specific extensions to [`fs::Metadata`].
 ///
 /// [`fs::Metadata`]: crate::fs::Metadata
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 pub trait MetadataExt {
-    /// Gain a reference to the underlying `stat` structure which contains
-    /// the raw information returned by the OS.
-    ///
-    /// The contents of the returned `stat` are **not** consistent across
-    /// Unix platforms. The `os::unix::fs::MetadataExt` trait contains the
-    /// cross-Unix abstractions contained within the raw stat.
-    #[stable(feature = "metadata_ext", since = "1.1.0")]
-    #[deprecated(
-        since = "1.8.0",
-        note = "deprecated in favor of the accessor \
-                methods of this trait"
-    )]
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_dev(&self) -> u64;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
@@ -61,10 +45,6 @@ pub trait MetadataExt {
 }
 #[stable(feature = "metadata_ext", since = "1.1.0")]
 impl MetadataExt for Metadata {
-    #[allow(deprecated)]
-    fn as_raw_stat(&self) -> &raw::stat {
-        unsafe { &*(self.as_inner().as_inner() as *const libc::stat as *const raw::stat) }
-    }
     fn st_dev(&self) -> u64 {
         self.as_inner().as_inner().st_dev as u64
     }
