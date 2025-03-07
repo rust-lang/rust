@@ -5,7 +5,7 @@
 #![deny(exported_private_dependencies)]
 
 // Ensure the libbar.rlib is loaded first. If the command line parameter `--extern foo` does not
-// exist, previus version would fail to compile
+// exist, previous version would fail to compile
 #![crate_type = "rlib"]
 extern crate bar;
 extern crate foo;
