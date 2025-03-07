@@ -329,20 +329,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let offset = self.layout.fields.offset(i);
 
         if !bx.is_backend_ref(self.layout) && bx.is_backend_ref(field) {
-            if let BackendRepr::SimdVector { count, .. } = self.layout.backend_repr
-                && let BackendRepr::Memory { sized: true } = field.backend_repr
-                && count.is_power_of_two()
-            {
-                assert_eq!(field.size, self.layout.size);
-                // This is being deprecated, but for now stdarch still needs it for
-                // Newtype vector of array, e.g. #[repr(simd)] struct S([i32; 4]);
-                let place = PlaceRef::alloca(bx, field);
-                self.val.store(bx, place.val.with_type(self.layout));
-                return bx.load_operand(place);
-            } else {
-                // Part of https://github.com/rust-lang/compiler-team/issues/838
-                bug!("Non-ref type {self:?} cannot project to ref field type {field:?}");
-            }
+            // Part of https://github.com/rust-lang/compiler-team/issues/838
+            span_bug!(
+                fx.mir.span,
+                "Non-ref type {self:?} cannot project to ref field type {field:?}",
+            );
         }
 
         let val = if field.is_zst() {
