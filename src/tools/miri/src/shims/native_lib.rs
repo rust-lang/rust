@@ -160,16 +160,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let imm = this.read_immediate(arg)?;
             libffi_args.push(imm_to_carg(&imm, this)?);
-            // If we are passing a pointer, prepare the memory it points to.
+            // If we are passing a pointer, expose its provenance. Below, all exposed memory
+            // (previously exposed and new exposed) will then be properly prepared.
             if matches!(arg.layout.ty.kind(), ty::RawPtr(..)) {
                 let ptr = imm.to_scalar().to_pointer(this)?;
                 let Some(prov) = ptr.provenance else {
-                    // Pointer without provenance may not access any memory.
-                    continue;
-                };
-                // We use `get_alloc_id` for its best-effort behaviour with Wildcard provenance.
-                let Some(alloc_id) = prov.get_alloc_id() else {
-                    // Wildcard pointer, whatever it points to must be already exposed.
+                    // Pointer without provenance may not access any memory anyway, skip.
                     continue;
                 };
                 // The first time this happens, print a warning.
@@ -178,12 +174,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
                 }
 
-                this.prepare_for_native_call(alloc_id, prov)?;
+                this.expose_provenance(prov)?;
             }
         }
 
-        // FIXME: In the future, we should also call `prepare_for_native_call` on all previously
-        // exposed allocations, since C may access any of them.
+        // Prepare all exposed memory.
+        this.prepare_exposed_for_native_call()?;
 
         // Convert them to `libffi::high::Arg` type.
         let libffi_args = libffi_args

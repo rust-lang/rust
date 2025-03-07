@@ -870,6 +870,7 @@ impl Token {
     /// Is this a pre-parsed expression dropped into the token stream
     /// (which happens while parsing the result of macro expansion)?
     pub fn is_whole_expr(&self) -> bool {
+        #[allow(irrefutable_let_patterns)] // FIXME: temporary
         if let Interpolated(nt) = &self.kind
             && let NtExpr(_) | NtLiteral(_) | NtBlock(_) = &**nt
         {
@@ -1103,9 +1104,7 @@ pub enum NtExprKind {
 #[derive(Clone, Encodable, Decodable)]
 /// For interpolation during macro expansion.
 pub enum Nonterminal {
-    NtItem(P<ast::Item>),
     NtBlock(P<ast::Block>),
-    NtStmt(P<ast::Stmt>),
     NtExpr(P<ast::Expr>),
     NtLiteral(P<ast::Expr>),
 }
@@ -1196,18 +1195,14 @@ impl fmt::Display for NonterminalKind {
 impl Nonterminal {
     pub fn use_span(&self) -> Span {
         match self {
-            NtItem(item) => item.span,
             NtBlock(block) => block.span,
-            NtStmt(stmt) => stmt.span,
             NtExpr(expr) | NtLiteral(expr) => expr.span,
         }
     }
 
     pub fn descr(&self) -> &'static str {
         match self {
-            NtItem(..) => "item",
             NtBlock(..) => "block",
-            NtStmt(..) => "statement",
             NtExpr(..) => "expression",
             NtLiteral(..) => "literal",
         }
@@ -1227,9 +1222,7 @@ impl PartialEq for Nonterminal {
 impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            NtItem(..) => f.pad("NtItem(..)"),
             NtBlock(..) => f.pad("NtBlock(..)"),
-            NtStmt(..) => f.pad("NtStmt(..)"),
             NtExpr(..) => f.pad("NtExpr(..)"),
             NtLiteral(..) => f.pad("NtLiteral(..)"),
         }

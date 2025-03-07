@@ -2695,7 +2695,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
-            | ObligationCauseCode::DropImpl
+            | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
@@ -3191,7 +3191,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     false
                 };
 
-                if !is_upvar_tys_infer_tuple {
+                let is_builtin_async_fn_trait =
+                    tcx.async_fn_trait_kind_from_def_id(data.parent_trait_pred.def_id()).is_some();
+
+                if !is_upvar_tys_infer_tuple && !is_builtin_async_fn_trait {
                     let ty_str = tcx.short_string(ty, err.long_ty_path());
                     let msg = format!("required because it appears within the type `{ty_str}`");
                     match ty.kind() {

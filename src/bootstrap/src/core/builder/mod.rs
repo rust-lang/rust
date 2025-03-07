@@ -1235,7 +1235,7 @@ impl<'a> Builder<'a> {
         ),
     )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+        self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1273,7 +1273,7 @@ impl<'a> Builder<'a> {
         target: TargetSelection,
     ) -> Compiler {
         #![allow(clippy::let_and_return)]
-        let resolved_compiler = if self.build.force_use_stage2(stage) {
+        let mut resolved_compiler = if self.build.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
@@ -1283,6 +1283,11 @@ impl<'a> Builder<'a> {
             trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
         };
+
+        if stage != resolved_compiler.stage {
+            resolved_compiler.forced_compiler(true);
+        }
+
         trace!(target: "COMPILER_FOR", ?resolved_compiler);
         resolved_compiler
     }
