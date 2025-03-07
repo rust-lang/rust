@@ -8,7 +8,7 @@ declare global {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
         /** List of all documented crates. */
-        ALL_CRATES: string[]|undefined;
+        ALL_CRATES: rustdoc.AllCratesEntry[]|undefined;
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
@@ -349,6 +349,18 @@ declare namespace rustdoc {
         generics: FingerprintableType[];
         bindings: Map<number, FingerprintableType[]>;
     };
+
+    /** Member of ALL_CRATES. */
+    interface AllCratesEntry {
+        /**
+         * Heading under which the crate should be listed.
+         * 
+         * May be empty to specify the first, primary heading.
+         */
+        h: string,
+        /** Crate name. */
+        c: string,
+    }
 
     /**
      * The raw search data for a given crate. `n`, `t`, `d`, `i`, and `f`
