@@ -1,8 +1,8 @@
 use super::FILTER_MAP_BOOL_THEN;
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::ty::is_copy;
-use clippy_utils::{is_from_proc_macro, is_trait_method, peel_blocks};
+use clippy_utils::{contains_return, is_from_proc_macro, is_trait_method, peel_blocks};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LintContext};
@@ -44,17 +44,26 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, arg: &
         && let Some(filter) = recv.span.get_source_text(cx)
         && let Some(map) = then_body.span.get_source_text(cx)
     {
-        span_lint_and_sugg(
+        span_lint_and_then(
             cx,
             FILTER_MAP_BOOL_THEN,
             call_span,
             "usage of `bool::then` in `filter_map`",
-            "use `filter` then `map` instead",
-            format!(
-                "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
-                derefs = "*".repeat(needed_derefs)
-            ),
-            Applicability::MachineApplicable,
+            |diag| {
+                if contains_return(recv) {
+                    diag.help("consider using `filter` then `map` instead");
+                } else {
+                    diag.span_suggestion(
+                        call_span,
+                        "use `filter` then `map` instead",
+                        format!(
+                            "filter(|&{param_snippet}| {derefs}{filter}).map(|{param_snippet}| {map})",
+                            derefs = "*".repeat(needed_derefs)
+                        ),
+                        Applicability::MachineApplicable,
+                    );
+                }
+            },
         );
     }
 }

@@ -1,0 +1,50 @@
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:12:26
+   |
+LL |         let _ = x.iter().filter_map(|&x| x?.then(|| do_something(())));
+   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `filter` then `map` instead
+   = note: `-D clippy::filter-map-bool-then` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::filter_map_bool_then)]`
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:16:14
+   |
+LL |             .filter_map(|&x| if let Some(x) = x { x } else { return None }.then(|| do_something(())));
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:18:26
+   |
+LL |           let _ = x.iter().filter_map(|&x| {
+   |  __________________________^
+LL | |
+LL | |             match x {
+LL | |                 Some(x) => x,
+...  |
+LL | |             .then(|| do_something(()))
+LL | |         });
+   | |__________^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: usage of `bool::then` in `filter_map`
+  --> tests/ui/filter_map_bool_then_unfixable.rs:36:26
+   |
+LL |           let _ = x.iter().filter_map(|&x| {
+   |  __________________________^
+LL | |
+LL | |             match x {
+LL | |                 Foo::One(x) => x,
+...  |
+LL | |             .then(|| do_something(()))
+LL | |         });
+   | |__________^
+   |
+   = help: consider using `filter` then `map` instead
+
+error: aborting due to 4 previous errors
+
