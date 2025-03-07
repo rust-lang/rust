@@ -985,10 +985,8 @@ impl<'psess, 'src> Lexer<'psess, 'src> {
         prefix_len: u32,
         postfix_len: u32,
     ) -> (token::LitKind, Symbol) {
-        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, mode, callback| {
-            unescape::unescape_mixed(src, mode, &mut |span, result| {
-                callback(span, result.map(drop))
-            })
+        self.cook_common(kind, mode, start, end, prefix_len, postfix_len, |src, _mode, callback| {
+            unescape::unescape_cstr(src, &mut |span, result| callback(span, result.map(drop)))
         })
     }
 }

@@ -5,7 +5,9 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_mixed, unescape_unicode, Mode};
+use rustc_lexer::unescape::{
+    self, unescape_byte, unescape_byte_str, unescape_char, unescape_cstr, unescape_str,
+};
 
 use crate::{
     algo,
@@ -140,7 +142,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_unicode(without_quotes, Mode::Str, &mut |range, char| {
+                    unescape_str(without_quotes, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -151,7 +153,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_unicode(without_quotes, Mode::ByteStr, &mut |range, char| {
+                    unescape_byte_str(without_quotes, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -162,7 +164,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_mixed(without_quotes, Mode::CStr, &mut |range, char| {
+                    unescape_cstr(without_quotes, &mut |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -172,20 +174,16 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         }
         ast::LiteralKind::Char(_) => {
             if let Some(without_quotes) = unquote(text, 1, '\'') {
-                unescape_unicode(without_quotes, Mode::Char, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(1, range.start, err);
-                    }
-                });
+                if let Err(err) = unescape_char(without_quotes) {
+                    push_err(1, 0, err);
+                }
             }
         }
         ast::LiteralKind::Byte(_) => {
             if let Some(without_quotes) = unquote(text, 2, '\'') {
-                unescape_unicode(without_quotes, Mode::Byte, &mut |range, char| {
-                    if let Err(err) = char {
-                        push_err(2, range.start, err);
-                    }
-                });
+                if let Err(err) = unescape_byte(without_quotes) {
+                    push_err(2, 0, err);
+                }
             }
         }
         ast::LiteralKind::IntNumber(_)
