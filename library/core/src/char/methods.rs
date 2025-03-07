@@ -337,7 +337,7 @@ impl char {
     /// '1'.is_digit(1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_char_classify", issue = "132241")]
+    #[rustc_const_stable(feature = "const_char_classify", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
@@ -886,7 +886,7 @@ impl char {
     /// ```
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_char_classify", issue = "132241")]
+    #[rustc_const_stable(feature = "const_char_classify", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub const fn is_whitespace(self) -> bool {
         match self {
