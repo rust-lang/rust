@@ -5,9 +5,9 @@ use hir::def_id::DefId;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AbiAndPrefAlign, AddressSpace, Align, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape,
-    HasDataLayout, Layout, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
-    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
+    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
+    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
+    VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
 use rustc_index::bit_set::DenseBitSet;
@@ -16,7 +16,7 @@ use rustc_middle::bug;
 use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
-    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, MAX_SIMD_LANES, TyAndLayout,
+    FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
@@ -123,6 +123,19 @@ fn map_error<'tcx>(
                 .dcx()
                 .delayed_bug(format!("computed impossible repr (packed enum?): {ty:?}"));
             LayoutError::ReferencesError(guar)
+        }
+        LayoutCalculatorError::ZeroLengthSimdType => {
+            // Can't be caught in typeck if the array length is generic.
+            cx.tcx().dcx().emit_fatal(ZeroLengthSimdType { ty })
+        }
+        LayoutCalculatorError::OversizedSimdType { max_lanes } => {
+            // Can't be caught in typeck if the array length is generic.
+            cx.tcx().dcx().emit_fatal(OversizedSimdType { ty, max_lanes })
+        }
+        LayoutCalculatorError::NonPrimitiveSimdType(field) => {
+            // This error isn't caught in typeck, e.g., if
+            // the element type of the vector is generic.
+            cx.tcx().dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty: field.ty })
         }
     };
     error(cx, err)
@@ -423,65 +436,9 @@ fn layout_of_uncached<'tcx>(
                 .try_to_target_usize(tcx)
                 .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
-            // SIMD vectors of zero length are not supported.
-            // Additionally, lengths are capped at 2^16 as a fixed maximum backends must
-            // support.
-            //
-            // Can't be caught in typeck if the array length is generic.
-            if e_len == 0 {
-                tcx.dcx().emit_fatal(ZeroLengthSimdType { ty });
-            } else if e_len > MAX_SIMD_LANES {
-                tcx.dcx().emit_fatal(OversizedSimdType { ty, max_lanes: MAX_SIMD_LANES });
-            }
-
-            // Compute the ABI of the element type:
             let e_ly = cx.layout_of(e_ty)?;
-            let BackendRepr::Scalar(e_abi) = e_ly.backend_repr else {
-                // This error isn't caught in typeck, e.g., if
-                // the element type of the vector is generic.
-                tcx.dcx().emit_fatal(NonPrimitiveSimdType { ty, e_ty });
-            };
 
-            // Compute the size and alignment of the vector:
-            let size = e_ly
-                .size
-                .checked_mul(e_len, dl)
-                .ok_or_else(|| error(cx, LayoutError::SizeOverflow(ty)))?;
-
-            let (abi, align) = if def.repr().packed() && !e_len.is_power_of_two() {
-                // Non-power-of-two vectors have padding up to the next power-of-two.
-                // If we're a packed repr, remove the padding while keeping the alignment as close
-                // to a vector as possible.
-                (
-                    BackendRepr::Memory { sized: true },
-                    AbiAndPrefAlign {
-                        abi: Align::max_aligned_factor(size),
-                        pref: dl.llvmlike_vector_align(size).pref,
-                    },
-                )
-            } else {
-                (
-                    BackendRepr::SimdVector { element: e_abi, count: e_len },
-                    dl.llvmlike_vector_align(size),
-                )
-            };
-            let size = size.align_to(align.abi);
-
-            tcx.mk_layout(LayoutData {
-                variants: Variants::Single { index: FIRST_VARIANT },
-                fields: FieldsShape::Arbitrary {
-                    offsets: [Size::ZERO].into(),
-                    memory_index: [0].into(),
-                },
-                backend_repr: abi,
-                largest_niche: e_ly.largest_niche,
-                uninhabited: false,
-                size,
-                align,
-                max_repr_align: None,
-                unadjusted_abi_align: align.abi,
-                randomization_seed: e_ly.randomization_seed.wrapping_add(Hash64::new(e_len)),
-            })
+            map_layout(cx.calc.simd_type(e_ly, e_len, def.repr().packed()))?
         }
 
         // ADTs.

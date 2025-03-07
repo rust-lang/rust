@@ -150,6 +150,12 @@ impl<'a, Ty> Deref for TyAndLayout<'a, Ty> {
     }
 }
 
+impl<'a, Ty> AsRef<LayoutData<FieldIdx, VariantIdx>> for TyAndLayout<'a, Ty> {
+    fn as_ref(&self) -> &LayoutData<FieldIdx, VariantIdx> {
+        &*self.layout.0.0
+    }
+}
+
 /// Trait that needs to be implemented by the higher-level type representation
 /// (e.g. `rustc_middle::ty::Ty`), to provide `rustc_target::abi` functionality.
 pub trait TyAbiInterface<'a, C>: Sized + std::fmt::Debug {

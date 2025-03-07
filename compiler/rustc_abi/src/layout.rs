@@ -62,17 +62,28 @@ pub enum LayoutCalculatorError<F> {
 
     /// The fields or variants have irreconcilable reprs
     ReprConflict,
+
+    /// The length of an SIMD type is zero
+    ZeroLengthSimdType,
+
+    /// The length of an SIMD type exceeds the maximum number of lanes
+    OversizedSimdType { max_lanes: u64 },
+
+    /// An element type of an SIMD type isn't a primitive
+    NonPrimitiveSimdType(F),
 }
 
 impl<F> LayoutCalculatorError<F> {
     pub fn without_payload(&self) -> LayoutCalculatorError<()> {
-        match self {
-            LayoutCalculatorError::UnexpectedUnsized(_) => {
-                LayoutCalculatorError::UnexpectedUnsized(())
-            }
-            LayoutCalculatorError::SizeOverflow => LayoutCalculatorError::SizeOverflow,
-            LayoutCalculatorError::EmptyUnion => LayoutCalculatorError::EmptyUnion,
-            LayoutCalculatorError::ReprConflict => LayoutCalculatorError::ReprConflict,
+        use LayoutCalculatorError::*;
+        match *self {
+            UnexpectedUnsized(_) => UnexpectedUnsized(()),
+            SizeOverflow => SizeOverflow,
+            EmptyUnion => EmptyUnion,
+            ReprConflict => ReprConflict,
+            ZeroLengthSimdType => ZeroLengthSimdType,
+            OversizedSimdType { max_lanes } => OversizedSimdType { max_lanes },
+            NonPrimitiveSimdType(_) => NonPrimitiveSimdType(()),
         }
     }
 
@@ -80,13 +91,15 @@ impl<F> LayoutCalculatorError<F> {
     ///
     /// Intended for use by rust-analyzer, as neither it nor `rustc_abi` depend on fluent infra.
     pub fn fallback_fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        use LayoutCalculatorError::*;
         f.write_str(match self {
-            LayoutCalculatorError::UnexpectedUnsized(_) => {
-                "an unsized type was found where a sized type was expected"
+            UnexpectedUnsized(_) => "an unsized type was found where a sized type was expected",
+            SizeOverflow => "size overflow",
+            EmptyUnion => "type is a union with no fields",
+            ReprConflict => "type has an invalid repr",
+            ZeroLengthSimdType | OversizedSimdType { .. } | NonPrimitiveSimdType(_) => {
+                "invalid simd type definition"
             }
-            LayoutCalculatorError::SizeOverflow => "size overflow",
-            LayoutCalculatorError::EmptyUnion => "type is a union with no fields",
-            LayoutCalculatorError::ReprConflict => "type has an invalid repr",
         })
     }
 }
@@ -124,6 +137,66 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             max_repr_align: None,
             unadjusted_abi_align: element.align.abi,
             randomization_seed: element.randomization_seed.wrapping_add(Hash64::new(count)),
+        })
+    }
+
+    pub fn simd_type<
+        FieldIdx: Idx,
+        VariantIdx: Idx,
+        F: AsRef<LayoutData<FieldIdx, VariantIdx>> + fmt::Debug,
+    >(
+        &self,
+        element: F,
+        count: u64,
+        repr_packed: bool,
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+        let elt = element.as_ref();
+        if count == 0 {
+            return Err(LayoutCalculatorError::ZeroLengthSimdType);
+        } else if count > crate::MAX_SIMD_LANES {
+            return Err(LayoutCalculatorError::OversizedSimdType {
+                max_lanes: crate::MAX_SIMD_LANES,
+            });
+        }
+
+        let BackendRepr::Scalar(e_repr) = elt.backend_repr else {
+            return Err(LayoutCalculatorError::NonPrimitiveSimdType(element));
+        };
+
+        // Compute the size and alignment of the vector
+        let dl = self.cx.data_layout();
+        let size =
+            elt.size.checked_mul(count, dl).ok_or_else(|| LayoutCalculatorError::SizeOverflow)?;
+        let (repr, align) = if repr_packed && !count.is_power_of_two() {
+            // Non-power-of-two vectors have padding up to the next power-of-two.
+            // If we're a packed repr, remove the padding while keeping the alignment as close
+            // to a vector as possible.
+            (
+                BackendRepr::Memory { sized: true },
+                AbiAndPrefAlign {
+                    abi: Align::max_aligned_factor(size),
+                    pref: dl.llvmlike_vector_align(size).pref,
+                },
+            )
+        } else {
+            (BackendRepr::SimdVector { element: e_repr, count }, dl.llvmlike_vector_align(size))
+        };
+        let size = size.align_to(align.abi);
+
+        Ok(LayoutData {
+            variants: Variants::Single { index: VariantIdx::new(0) },
+            fields: FieldsShape::Arbitrary {
+                offsets: [Size::ZERO].into(),
+                memory_index: [0].into(),
+            },
+            backend_repr: repr,
+            largest_niche: elt.largest_niche,
+            uninhabited: false,
+            size,
+            align,
+            max_repr_align: None,
+            unadjusted_abi_align: elt.align.abi,
+            randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
         })
     }
 

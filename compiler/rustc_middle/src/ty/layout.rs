@@ -182,12 +182,7 @@ pub const WIDE_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const WIDE_PTR_EXTRA: usize = 1;
 
-/// The maximum supported number of lanes in a SIMD vector.
-///
-/// This value is selected based on backend support:
-/// * LLVM does not appear to have a vector width limit.
-/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
-pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+pub const MAX_SIMD_LANES: u64 = rustc_abi::MAX_SIMD_LANES;
 
 /// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
