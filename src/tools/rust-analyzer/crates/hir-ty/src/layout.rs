@@ -6,15 +6,14 @@ use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        BackendRepr, FieldsShape, Float, Integer, LayoutCalculator, LayoutCalculatorError,
-        LayoutData, Primitive, ReprOptions, Scalar, Size, StructKind, TargetDataLayout,
+        Float, Integer, LayoutCalculator, LayoutCalculatorError,
+        LayoutData, Primitive, ReprOptions, Scalar, StructKind, TargetDataLayout,
         WrappingRange,
     },
     LocalFieldId, StructId,
 };
 use la_arena::{Idx, RawIdx};
 use rustc_abi::AddressSpace;
-use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 
 use triomphe::Arc;
@@ -23,7 +22,6 @@ use crate::{
     consteval::try_const_usize,
     db::{HirDatabase, InternedClosure},
     infer::normalize,
-    layout::adt::struct_variant_idx,
     utils::ClosureSubst,
     Interner, ProjectionTy, Substitution, TraitEnvironment, Ty,
 };
@@ -125,10 +123,10 @@ impl<'a> LayoutCx<'a> {
     }
 }
 
-// FIXME: move this to the `rustc_abi`.
 fn layout_of_simd_ty(
     db: &dyn HirDatabase,
     id: StructId,
+    repr_packed: bool,
     subst: &Substitution,
     env: Arc<TraitEnvironment>,
     dl: &TargetDataLayout,
@@ -149,33 +147,10 @@ fn layout_of_simd_ty(
     };
 
     let e_len = try_const_usize(db, &e_len).ok_or(LayoutError::HasErrorConst)? as u64;
-
-    // Compute the ABI of the element type:
     let e_ly = db.layout_of_ty(e_ty, env)?;
-    let BackendRepr::Scalar(e_abi) = e_ly.backend_repr else {
-        return Err(LayoutError::Unknown);
-    };
 
-    // Compute the size and alignment of the vector:
-    let size = e_ly
-        .size
-        .checked_mul(e_len, dl)
-        .ok_or(LayoutError::BadCalc(LayoutCalculatorError::SizeOverflow))?;
-    let align = dl.llvmlike_vector_align(size);
-    let size = size.align_to(align.abi);
-
-    Ok(Arc::new(Layout {
-        variants: Variants::Single { index: struct_variant_idx() },
-        fields: FieldsShape::Arbitrary { offsets: [Size::ZERO].into(), memory_index: [0].into() },
-        backend_repr: BackendRepr::SimdVector { element: e_abi, count: e_len },
-        largest_niche: e_ly.largest_niche,
-        uninhabited: false,
-        size,
-        align,
-        max_repr_align: None,
-        unadjusted_abi_align: align.abi,
-        randomization_seed: Hash64::ZERO,
-    }))
+    let cx = LayoutCx::new(dl);
+    Ok(Arc::new(cx.calc.simd_type(e_ly, e_len, repr_packed)?))
 }
 
 pub fn layout_of_ty_query(
@@ -197,7 +172,7 @@ pub fn layout_of_ty_query(
                 let data = db.struct_data(*s);
                 let repr = data.repr.unwrap_or_default();
                 if repr.simd() {
-                    return layout_of_simd_ty(db, *s, subst, trait_env, &target);
+                    return layout_of_simd_ty(db, *s, repr.packed(), subst, trait_env, &target);
                 }
             };
             return db.layout_of_adt(*def, subst.clone(), trait_env);
