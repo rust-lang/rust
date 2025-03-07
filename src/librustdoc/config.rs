@@ -734,9 +734,7 @@ impl Options {
 
         let sysroot = match &maybe_sysroot {
             Some(s) => s.clone(),
-            None => {
-                rustc_session::filesearch::get_or_default_sysroot().expect("Failed finding sysroot")
-            }
+            None => rustc_session::filesearch::get_or_default_sysroot(),
         };
 
         let libs = matches
