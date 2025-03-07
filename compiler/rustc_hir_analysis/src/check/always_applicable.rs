@@ -124,7 +124,10 @@ pub(crate) fn check_negative_auto_trait_impl<'tcx>(
                 // be implemented here to handle non-ADT rigid types.
                 Ok(())
             } else {
-                span_bug!(tcx.def_span(impl_def_id), "incoherent impl of negative auto trait");
+                Err(tcx.dcx().span_delayed_bug(
+                    tcx.def_span(impl_def_id),
+                    "incoherent impl of negative auto trait",
+                ))
             }
         }
     }
