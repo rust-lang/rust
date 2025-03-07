@@ -59,7 +59,7 @@ pub fn type_is_pointer(typ: Type<'_>) -> bool {
     typ.get_pointee().is_some()
 }
 
-impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
     fn const_null(&self, typ: Type<'gcc>) -> RValue<'gcc> {
         if type_is_pointer(typ) { self.context.new_null(typ) } else { self.const_int(typ, 0) }
     }
@@ -257,7 +257,7 @@ impl<'gcc, 'tcx> ConstCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
     }
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value {
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value {
         const_alloc_to_gcc(self, alloc)
     }
 
