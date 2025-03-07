@@ -87,7 +87,7 @@ pub struct PanicWriter {
 
 impl io::Write for PanicWriter {
     fn write(&mut self, s: &[u8]) -> core::result::Result<usize, io::Error> {
-        for c in s.chunks(core::mem::size_of::<usize>() * 4) {
+        for c in s.chunks(size_of::<usize>() * 4) {
             // Text is grouped into 4x `usize` words. The id is 1100 plus
             // the number of characters in this message.
             // Ignore errors since we're already panicking.

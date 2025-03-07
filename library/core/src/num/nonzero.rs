@@ -86,7 +86,7 @@ impl_zeroable_primitive!(
 /// For example, `Option<NonZero<u32>>` is the same size as `u32`:
 ///
 /// ```
-/// use core::{mem::size_of, num::NonZero};
+/// use core::{num::NonZero};
 ///
 /// assert_eq!(size_of::<Option<NonZero<u32>>>(), size_of::<u32>());
 /// ```
@@ -102,7 +102,6 @@ impl_zeroable_primitive!(
 /// `Option<NonZero<T>>` are guaranteed to have the same size and alignment:
 ///
 /// ```
-/// # use std::mem::{size_of, align_of};
 /// use std::num::NonZero;
 ///
 /// assert_eq!(size_of::<NonZero<u32>>(), size_of::<Option<NonZero<u32>>>());
@@ -500,7 +499,6 @@ macro_rules! nonzero_integer {
         #[doc = concat!("For example, `Option<", stringify!($Ty), ">` is the same size as `", stringify!($Int), "`:")]
         ///
         /// ```rust
-        /// use std::mem::size_of;
         #[doc = concat!("assert_eq!(size_of::<Option<core::num::", stringify!($Ty), ">>(), size_of::<", stringify!($Int), ">());")]
         /// ```
         ///
@@ -516,7 +514,6 @@ macro_rules! nonzero_integer {
         /// are guaranteed to have the same size and alignment:
         ///
         /// ```
-        /// # use std::mem::{size_of, align_of};
         #[doc = concat!("use std::num::", stringify!($Ty), ";")]
         ///
         #[doc = concat!("assert_eq!(size_of::<", stringify!($Ty), ">(), size_of::<Option<", stringify!($Ty), ">>());")]

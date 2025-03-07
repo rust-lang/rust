@@ -669,7 +669,7 @@ fn random_sorted_fill(mut seed: u32, buf: &mut [u32]) {
 // This algorithm was used for Vecs prior to Rust 1.52.
 fn bench_dedup_slice_truncate(b: &mut Bencher, sz: usize) {
     let mut template = vec![0u32; sz];
-    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    b.bytes = size_of_val(template.as_slice()) as u64;
     random_sorted_fill(0x43, &mut template);
 
     let mut vec = template.clone();
@@ -691,7 +691,7 @@ fn bench_dedup_slice_truncate(b: &mut Bencher, sz: usize) {
 // Measures performance of Vec::dedup on random data.
 fn bench_vec_dedup_random(b: &mut Bencher, sz: usize) {
     let mut template = vec![0u32; sz];
-    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    b.bytes = size_of_val(template.as_slice()) as u64;
     random_sorted_fill(0x43, &mut template);
 
     let mut vec = template.clone();
@@ -708,7 +708,7 @@ fn bench_vec_dedup_random(b: &mut Bencher, sz: usize) {
 // Measures performance of Vec::dedup when there is no items removed
 fn bench_vec_dedup_none(b: &mut Bencher, sz: usize) {
     let mut template = vec![0u32; sz];
-    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    b.bytes = size_of_val(template.as_slice()) as u64;
     template.chunks_exact_mut(2).for_each(|w| {
         w[0] = black_box(0);
         w[1] = black_box(5);
@@ -729,7 +729,7 @@ fn bench_vec_dedup_none(b: &mut Bencher, sz: usize) {
 // Measures performance of Vec::dedup when there is all items removed
 fn bench_vec_dedup_all(b: &mut Bencher, sz: usize) {
     let mut template = vec![0u32; sz];
-    b.bytes = std::mem::size_of_val(template.as_slice()) as u64;
+    b.bytes = size_of_val(template.as_slice()) as u64;
     template.iter_mut().for_each(|w| {
         *w = black_box(0);
     });

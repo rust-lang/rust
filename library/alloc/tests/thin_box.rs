@@ -1,5 +1,4 @@
 use core::fmt::Debug;
-use core::mem::size_of;
 use std::boxed::ThinBox;
 
 #[test]
@@ -52,7 +51,7 @@ fn verify_aligned<T>(ptr: *const T) {
         ptr.is_aligned() && !ptr.is_null(),
         "misaligned ThinBox data; valid pointers to `{ty}` should be aligned to {align}: {ptr:p}",
         ty = core::any::type_name::<T>(),
-        align = core::mem::align_of::<T>(),
+        align = align_of::<T>(),
     );
 }
 

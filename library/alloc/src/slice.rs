@@ -16,7 +16,7 @@ use core::borrow::{Borrow, BorrowMut};
 #[cfg(not(no_global_oom_handling))]
 use core::cmp::Ordering::{self, Less};
 #[cfg(not(no_global_oom_handling))]
-use core::mem::{self, MaybeUninit};
+use core::mem::MaybeUninit;
 #[cfg(not(no_global_oom_handling))]
 use core::ptr;
 #[unstable(feature = "array_chunks", issue = "74985")]
@@ -446,7 +446,7 @@ impl<T> [T] {
         // Avoids binary-size usage in cases where the alignment doesn't work out to make this
         // beneficial or on 32-bit platforms.
         let is_using_u32_as_idx_type_helpful =
-            const { mem::size_of::<(K, u32)>() < mem::size_of::<(K, usize)>() };
+            const { size_of::<(K, u32)>() < size_of::<(K, usize)>() };
 
         // It's possible to instantiate this for u8 and u16 but, doing so is very wasteful in terms
         // of compile-times and binary-size, the peak saved heap memory for u16 is (u8 + u16) -> 4

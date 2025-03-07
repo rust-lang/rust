@@ -244,8 +244,8 @@ pub unsafe trait CloneToUninit {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * `dst` must be [valid] for writes for `std::mem::size_of_val(self)` bytes.
-    /// * `dst` must be properly aligned to `std::mem::align_of_val(self)`.
+    /// * `dst` must be [valid] for writes for `size_of_val(self)` bytes.
+    /// * `dst` must be properly aligned to `align_of_val(self)`.
     ///
     /// [valid]: crate::ptr#safety
     /// [pointer metadata]: crate::ptr::metadata()

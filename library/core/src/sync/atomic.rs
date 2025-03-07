@@ -2033,7 +2033,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
+        self.fetch_byte_add(val.wrapping_mul(size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by subtracting `val` (in units of `T`),
@@ -2078,7 +2078,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
+        self.fetch_byte_sub(val.wrapping_mul(size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by adding `val` *bytes*, returning the

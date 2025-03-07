@@ -2417,7 +2417,7 @@ impl ConstantKind {
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
                 rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body))
             }
-            ConstantKind::Infer { .. } => "_".to_string(),
+            ConstantKind::Infer => "_".to_string(),
         }
     }
 

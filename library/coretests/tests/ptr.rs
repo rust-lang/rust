@@ -1,6 +1,6 @@
 use core::cell::RefCell;
 use core::marker::Freeze;
-use core::mem::{self, MaybeUninit};
+use core::mem::MaybeUninit;
 use core::num::NonZero;
 use core::ptr;
 use core::ptr::*;
@@ -388,7 +388,7 @@ fn align_offset_various_strides() {
         let mut expected = usize::MAX;
         // Naive but definitely correct way to find the *first* aligned element of stride::<T>.
         for el in 0..align {
-            if (numptr + el * ::std::mem::size_of::<T>()) % align == 0 {
+            if (numptr + el * size_of::<T>()) % align == 0 {
                 expected = el;
                 break;
             }
@@ -398,7 +398,7 @@ fn align_offset_various_strides() {
             eprintln!(
                 "aligning {:p} (with stride of {}) to {}, expected {}, got {}",
                 ptr,
-                ::std::mem::size_of::<T>(),
+                size_of::<T>(),
                 align,
                 expected,
                 got
@@ -605,9 +605,9 @@ fn dyn_metadata() {
     let meta = metadata(trait_object);
 
     assert_eq!(meta.size_of(), 64);
-    assert_eq!(meta.size_of(), std::mem::size_of::<Something>());
+    assert_eq!(meta.size_of(), size_of::<Something>());
     assert_eq!(meta.align_of(), 32);
-    assert_eq!(meta.align_of(), std::mem::align_of::<Something>());
+    assert_eq!(meta.align_of(), align_of::<Something>());
     assert_eq!(meta.layout(), std::alloc::Layout::new::<Something>());
 
     assert!(format!("{meta:?}").starts_with("DynMetadata(0x"));
@@ -781,7 +781,7 @@ fn nonnull_tagged_pointer_with_provenance() {
 
     impl<T> TaggedPointer<T> {
         /// The ABI-required minimum alignment of the `P` type.
-        pub const ALIGNMENT: usize = core::mem::align_of::<T>();
+        pub const ALIGNMENT: usize = align_of::<T>();
         /// A mask for data-carrying bits of the address.
         pub const DATA_MASK: usize = !Self::ADDRESS_MASK;
         /// Number of available bits of storage in the address.
@@ -865,7 +865,7 @@ fn test_const_copy_ptr() {
             ptr::copy(
                 &ptr1 as *const _ as *const MaybeUninit<u8>,
                 &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-                mem::size_of::<&i32>(),
+                size_of::<&i32>(),
             );
         }
 
@@ -883,7 +883,7 @@ fn test_const_copy_ptr() {
             ptr::copy_nonoverlapping(
                 &ptr1 as *const _ as *const MaybeUninit<u8>,
                 &mut ptr2 as *mut _ as *mut MaybeUninit<u8>,
-                mem::size_of::<&i32>(),
+                size_of::<&i32>(),
             );
         }
 
@@ -928,7 +928,7 @@ fn test_const_swap_ptr() {
         let mut s2 = A(S { ptr: &666, f1: 0, f2: [0; 3] });
 
         // Swap ptr1 and ptr2, as an array.
-        type T = [u8; mem::size_of::<A>()];
+        type T = [u8; size_of::<A>()];
         unsafe {
             ptr::swap(ptr::from_mut(&mut s1).cast::<T>(), ptr::from_mut(&mut s2).cast::<T>());
         }

@@ -681,10 +681,14 @@ impl OutputType {
 }
 
 /// The type of diagnostics output to generate.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ErrorOutputType {
     /// Output meant for the consumption of humans.
-    HumanReadable(HumanReadableErrorType, ColorConfig),
+    #[default]
+    HumanReadable {
+        kind: HumanReadableErrorType = HumanReadableErrorType::Default,
+        color_config: ColorConfig = ColorConfig::Auto,
+    },
     /// Output that's consumed by other tools such as `rustfix` or the `RLS`.
     Json {
         /// Render the JSON in a human readable way (with indents and newlines).
@@ -694,12 +698,6 @@ pub enum ErrorOutputType {
         json_rendered: HumanReadableErrorType,
         color_config: ColorConfig,
     },
-}
-
-impl Default for ErrorOutputType {
-    fn default() -> Self {
-        Self::HumanReadable(HumanReadableErrorType::Default, ColorConfig::Auto)
-    }
 }
 
 #[derive(Clone, Hash, Debug)]
@@ -898,18 +896,13 @@ pub enum PrintKind {
     DeploymentTarget,
 }
 
-#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Default)]
 pub struct NextSolverConfig {
     /// Whether the new trait solver should be enabled in coherence.
-    pub coherence: bool,
+    pub coherence: bool = true,
     /// Whether the new trait solver should be enabled everywhere.
     /// This is only `true` if `coherence` is also enabled.
-    pub globally: bool,
-}
-impl Default for NextSolverConfig {
-    fn default() -> Self {
-        NextSolverConfig { coherence: true, globally: false }
-    }
+    pub globally: bool = false,
 }
 
 #[derive(Clone)]
@@ -1825,7 +1818,7 @@ pub fn parse_json(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> Json
 pub fn parse_error_format(
     early_dcx: &mut EarlyDiagCtxt,
     matches: &getopts::Matches,
-    color: ColorConfig,
+    color_config: ColorConfig,
     json_color: ColorConfig,
     json_rendered: HumanReadableErrorType,
 ) -> ErrorOutputType {
@@ -1835,27 +1828,26 @@ pub fn parse_error_format(
     // `opt_present` because the latter will panic.
     let error_format = if matches.opts_present(&["error-format".to_owned()]) {
         match matches.opt_str("error-format").as_deref() {
-            None | Some("human") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
-            }
-            Some("human-annotate-rs") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::AnnotateSnippet, color)
-            }
+            None | Some("human") => ErrorOutputType::HumanReadable { color_config, .. },
+            Some("human-annotate-rs") => ErrorOutputType::HumanReadable {
+                kind: HumanReadableErrorType::AnnotateSnippet,
+                color_config,
+            },
             Some("json") => {
                 ErrorOutputType::Json { pretty: false, json_rendered, color_config: json_color }
             }
             Some("pretty-json") => {
                 ErrorOutputType::Json { pretty: true, json_rendered, color_config: json_color }
             }
-            Some("short") => ErrorOutputType::HumanReadable(HumanReadableErrorType::Short, color),
-            Some("human-unicode") => {
-                ErrorOutputType::HumanReadable(HumanReadableErrorType::Unicode, color)
+            Some("short") => {
+                ErrorOutputType::HumanReadable { kind: HumanReadableErrorType::Short, color_config }
             }
+            Some("human-unicode") => ErrorOutputType::HumanReadable {
+                kind: HumanReadableErrorType::Unicode,
+                color_config,
+            },
             Some(arg) => {
-                early_dcx.set_error_format(ErrorOutputType::HumanReadable(
-                    HumanReadableErrorType::Default,
-                    color,
-                ));
+                early_dcx.set_error_format(ErrorOutputType::HumanReadable { color_config, .. });
                 early_dcx.early_fatal(format!(
                     "argument for `--error-format` must be `human`, `human-annotate-rs`, \
                     `human-unicode`, `json`, `pretty-json` or `short` (instead was `{arg}`)"
@@ -1863,7 +1855,7 @@ pub fn parse_error_format(
             }
         }
     } else {
-        ErrorOutputType::HumanReadable(HumanReadableErrorType::Default, color)
+        ErrorOutputType::HumanReadable { color_config, .. }
     };
 
     match error_format {
@@ -1918,7 +1910,7 @@ fn check_error_format_stability(
     }
     let format = match format {
         ErrorOutputType::Json { pretty: true, .. } => "pretty-json",
-        ErrorOutputType::HumanReadable(format, _) => match format {
+        ErrorOutputType::HumanReadable { kind, .. } => match kind {
             HumanReadableErrorType::AnnotateSnippet => "human-annotate-rs",
             HumanReadableErrorType::Unicode => "human-unicode",
             _ => return,

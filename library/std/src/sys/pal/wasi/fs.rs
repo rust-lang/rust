@@ -209,7 +209,7 @@ impl Iterator for ReadDir {
             }
             ReadDirState::ProcessEntry { buf, next_read_offset, offset } => {
                 let contents = &buf[*offset..];
-                const DIRENT_SIZE: usize = crate::mem::size_of::<wasi::Dirent>();
+                const DIRENT_SIZE: usize = size_of::<wasi::Dirent>();
                 if contents.len() >= DIRENT_SIZE {
                     let (dirent, data) = contents.split_at(DIRENT_SIZE);
                     let dirent =
