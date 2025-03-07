@@ -1,5 +1,6 @@
 use crate::io;
 use crate::sys::anonymous_pipe::{AnonPipe, pipe as pipe_inner};
+use crate::sys_common::{FromInner, IntoInner};
 
 /// Create an anonymous pipe.
 ///
@@ -81,6 +82,30 @@ pub struct PipeReader(pub(crate) AnonPipe);
 #[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
 #[derive(Debug)]
 pub struct PipeWriter(pub(crate) AnonPipe);
+
+impl FromInner<AnonPipe> for PipeReader {
+    fn from_inner(inner: AnonPipe) -> Self {
+        Self(inner)
+    }
+}
+
+impl IntoInner<AnonPipe> for PipeReader {
+    fn into_inner(self) -> AnonPipe {
+        self.0
+    }
+}
+
+impl FromInner<AnonPipe> for PipeWriter {
+    fn from_inner(inner: AnonPipe) -> Self {
+        Self(inner)
+    }
+}
+
+impl IntoInner<AnonPipe> for PipeWriter {
+    fn into_inner(self) -> AnonPipe {
+        self.0
+    }
+}
 
 impl PipeReader {
     /// Create a new [`PipeReader`] instance that shares the same underlying file description.
