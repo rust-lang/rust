@@ -1013,7 +1013,8 @@ function preLoadCss(cssUrl) {
             return;
         }
 
-        const allCratesHeading = document.createElement("h3");
+        // h2 puts this on the same level as the current crate name heading at the top
+        const allCratesHeading = document.createElement("h2");
         allCratesHeading.textContent = "Crates";
 
         const allCratesSection = document.createElement("section");
@@ -1038,7 +1039,7 @@ function preLoadCss(cssUrl) {
         for (const headingText of headings) {
             // Empty string denotes a group with no named heading.
             if (headingText !== "") {
-                const crateCategoryHeading = document.createElement("h4");
+                const crateCategoryHeading = document.createElement("h3");
                 crateCategoryHeading.textContent = headingText;
                 allCratesSection.appendChild(crateCategoryHeading);
             }
