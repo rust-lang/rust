@@ -357,7 +357,7 @@ declare namespace rustdoc {
          * 
          * May be empty to specify the first, primary heading.
          */
-        h: string,
+        h?: string,
         /** Crate name. */
         c: string,
     }

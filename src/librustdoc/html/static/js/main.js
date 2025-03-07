@@ -1022,7 +1022,7 @@ function preLoadCss(cssUrl) {
         // same heading are grouped.
         const cratesGroupedByHeading = new Map();
         for (const entry of window.ALL_CRATES) {
-            const heading = entry.h;
+            const heading = entry.h || "";
             const crateName = entry.c;
             let group = cratesGroupedByHeading.get(heading);
             if (group === undefined) {
