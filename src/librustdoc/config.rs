@@ -103,6 +103,8 @@ pub(crate) struct Options {
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
+    pub(crate) sysroot: PathBuf,
+    /// Has the same value as `sysroot` except is `None` when the user didn't pass `---sysroot`.
     pub(crate) maybe_sysroot: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
@@ -202,6 +204,7 @@ impl fmt::Debug for Options {
             .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
+            .field("sysroot", &self.sysroot)
             .field("maybe_sysroot", &self.maybe_sysroot)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
@@ -834,6 +837,7 @@ impl Options {
             unstable_opts_strs,
             target,
             edition,
+            sysroot,
             maybe_sysroot,
             lint_opts,
             describe_lints,
