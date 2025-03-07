@@ -74,7 +74,7 @@ pub(crate) trait AttributeParser<S: Stage>: Default + 'static {
 /// [`SingleAttributeParser`] can only convert attributes one-to-one, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait SingleAttributeParser<S: Stage>: 'static {
-    const PATH: &'static [rustc_span::Symbol];
+    const PATH: &[rustc_span::Symbol];
     const ATTRIBUTE_ORDER: AttributeOrder;
     const ON_DUPLICATE: OnDuplicate<S>;
 
@@ -210,7 +210,7 @@ type ConvertFn<E> = fn(ThinVec<E>) -> AttributeKind;
 /// [`CombineAttributeParser`] can only convert a single kind of attribute, and cannot combine multiple
 /// attributes together like is necessary for `#[stable()]` and `#[unstable()]` for example.
 pub(crate) trait CombineAttributeParser<S: Stage>: 'static {
-    const PATH: &'static [rustc_span::Symbol];
+    const PATH: &[rustc_span::Symbol];
 
     type Item;
     const CONVERT: ConvertFn<Self::Item>;
