@@ -326,7 +326,7 @@ impl Socket {
         // so we don't need to zero it here.
         // reference: https://linux.die.net/man/2/recvfrom
         let mut storage: mem::MaybeUninit<libc::sockaddr_storage> = mem::MaybeUninit::uninit();
-        let mut addrlen = mem::size_of_val(&storage) as libc::socklen_t;
+        let mut addrlen = size_of_val(&storage) as libc::socklen_t;
 
         let n = cvt(unsafe {
             libc::recvfrom(

@@ -177,7 +177,7 @@ impl UnixListener {
     #[stable(feature = "unix_socket", since = "1.10.0")]
     pub fn accept(&self) -> io::Result<(UnixStream, SocketAddr)> {
         let mut storage: libc::sockaddr_un = unsafe { mem::zeroed() };
-        let mut len = mem::size_of_val(&storage) as libc::socklen_t;
+        let mut len = size_of_val(&storage) as libc::socklen_t;
         let sock = self.0.accept((&raw mut storage) as *mut _, &mut len)?;
         let addr = SocketAddr::from_parts(storage, len)?;
         Ok((UnixStream(sock), addr))

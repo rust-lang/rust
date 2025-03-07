@@ -1,6 +1,8 @@
 //! This module contains an unstable quicksort and two partition implementations.
 
-use crate::mem::{self, ManuallyDrop};
+#[cfg(not(feature = "optimize_for_size"))]
+use crate::mem;
+use crate::mem::ManuallyDrop;
 #[cfg(not(feature = "optimize_for_size"))]
 use crate::slice::sort::shared::pivot::choose_pivot;
 #[cfg(not(feature = "optimize_for_size"))]
@@ -137,7 +139,7 @@ where
 
 const fn inst_partition<T, F: FnMut(&T, &T) -> bool>() -> fn(&mut [T], &T, &mut F) -> usize {
     const MAX_BRANCHLESS_PARTITION_SIZE: usize = 96;
-    if mem::size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
+    if size_of::<T>() <= MAX_BRANCHLESS_PARTITION_SIZE {
         // Specialize for types that are relatively cheap to copy, where branchless optimizations
         // have large leverage e.g. `u64` and `String`.
         cfg_if! {
@@ -304,7 +306,7 @@ where
 
         // Manual unrolling that works well on x86, Arm and with opt-level=s without murdering
         // compile-times. Leaving this to the compiler yields ok to bad results.
-        let unroll_len = const { if mem::size_of::<T>() <= 16 { 2 } else { 1 } };
+        let unroll_len = const { if size_of::<T>() <= 16 { 2 } else { 1 } };
 
         let unroll_end = v_base.add(len - (unroll_len - 1));
         while state.right < unroll_end {

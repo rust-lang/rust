@@ -814,7 +814,7 @@ impl Command {
 
             let fds: [c_int; 1] = [pidfd as RawFd];
 
-            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+            const SCM_MSG_LEN: usize = size_of::<[c_int; 1]>();
 
             #[repr(C)]
             union Cmsg {
@@ -833,7 +833,7 @@ impl Command {
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
-                msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+                msg.msg_controllen = size_of_val(&cmsg.buf) as _;
                 msg.msg_control = (&raw mut cmsg.buf) as *mut _;
 
                 let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
@@ -865,7 +865,7 @@ impl Command {
         use crate::sys::cvt_r;
 
         unsafe {
-            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+            const SCM_MSG_LEN: usize = size_of::<[c_int; 1]>();
 
             #[repr(C)]
             union Cmsg {
@@ -880,7 +880,7 @@ impl Command {
 
             msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
-            msg.msg_controllen = mem::size_of::<Cmsg>() as _;
+            msg.msg_controllen = size_of::<Cmsg>() as _;
             msg.msg_control = (&raw mut cmsg) as *mut _;
 
             match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {

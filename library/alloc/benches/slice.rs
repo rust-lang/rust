@@ -1,4 +1,4 @@
-use std::{mem, ptr};
+use std::ptr;
 
 use rand::Rng;
 use rand::distr::{Alphanumeric, SampleString, StandardUniform};
@@ -234,7 +234,7 @@ macro_rules! sort {
         fn $name(b: &mut Bencher) {
             let v = $gen($len);
             b.iter(|| v.clone().$f());
-            b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
+            b.bytes = $len * size_of_val(&$gen(1)[0]) as u64;
         }
     };
 }
@@ -246,7 +246,7 @@ macro_rules! sort_strings {
             let v = $gen($len);
             let v = v.iter().map(|s| &**s).collect::<Vec<&str>>();
             b.iter(|| v.clone().$f());
-            b.bytes = $len * mem::size_of::<&str>() as u64;
+            b.bytes = $len * size_of::<&str>() as u64;
         }
     };
 }
@@ -268,7 +268,7 @@ macro_rules! sort_expensive {
                 });
                 black_box(count);
             });
-            b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
+            b.bytes = $len * size_of_val(&$gen(1)[0]) as u64;
         }
     };
 }
@@ -279,7 +279,7 @@ macro_rules! sort_lexicographic {
         fn $name(b: &mut Bencher) {
             let v = $gen($len);
             b.iter(|| v.clone().$f(|x| x.to_string()));
-            b.bytes = $len * mem::size_of_val(&$gen(1)[0]) as u64;
+            b.bytes = $len * size_of_val(&$gen(1)[0]) as u64;
         }
     };
 }
@@ -322,7 +322,7 @@ macro_rules! reverse {
         fn $name(b: &mut Bencher) {
             // odd length and offset by 1 to be as unaligned as possible
             let n = 0xFFFFF;
-            let mut v: Vec<_> = (0..1 + (n / mem::size_of::<$ty>() as u64)).map($f).collect();
+            let mut v: Vec<_> = (0..1 + (n / size_of::<$ty>() as u64)).map($f).collect();
             b.iter(|| black_box(&mut v[1..]).reverse());
             b.bytes = n;
         }
@@ -346,7 +346,7 @@ macro_rules! rotate {
     ($name:ident, $gen:expr, $len:expr, $mid:expr) => {
         #[bench]
         fn $name(b: &mut Bencher) {
-            let size = mem::size_of_val(&$gen(1)[0]);
+            let size = size_of_val(&$gen(1)[0]);
             let mut v = $gen($len * 8 / size);
             b.iter(|| black_box(&mut v).rotate_left(($mid * 8 + size - 1) / size));
             b.bytes = (v.len() * size) as u64;

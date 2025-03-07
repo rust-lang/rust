@@ -1,7 +1,7 @@
 use std::cmp::Ordering::{Equal, Greater, Less};
 use std::convert::identity;
 use std::rc::Rc;
-use std::{fmt, mem, panic};
+use std::{fmt, panic};
 
 fn square(n: usize) -> usize {
     n * n
@@ -73,7 +73,7 @@ fn test_len_divzero() {
     let v0: &[Z] = &[];
     let v1: &[Z] = &[[]];
     let v2: &[Z] = &[[], []];
-    assert_eq!(mem::size_of::<Z>(), 0);
+    assert_eq!(size_of::<Z>(), 0);
     assert_eq!(v0.len(), 0);
     assert_eq!(v1.len(), 1);
     assert_eq!(v2.len(), 2);

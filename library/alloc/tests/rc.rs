@@ -1,7 +1,6 @@
 use std::any::Any;
 use std::cell::{Cell, RefCell};
 use std::iter::TrustedLen;
-use std::mem;
 use std::rc::{Rc, Weak};
 
 #[test]
@@ -125,7 +124,7 @@ fn shared_from_iter_trustedlen_normal() {
         let vec = iter.clone().collect::<Vec<_>>();
         let rc = iter.collect::<Rc<[_]>>();
         assert_eq!(&*vec, &*rc);
-        assert_eq!(mem::size_of::<Box<u16>>() * SHARED_ITER_MAX as usize, mem::size_of_val(&*rc));
+        assert_eq!(size_of::<Box<u16>>() * SHARED_ITER_MAX as usize, size_of_val(&*rc));
 
         // Clone a bit and let these get dropped.
         {
@@ -141,7 +140,7 @@ fn shared_from_iter_trustedlen_normal() {
         let vec = iter.clone().collect::<Vec<_>>();
         let rc = iter.collect::<Rc<[_]>>();
         assert_eq!(&*vec, &*rc);
-        assert_eq!(0, mem::size_of_val(&*rc));
+        assert_eq!(0, size_of_val(&*rc));
         {
             let _rc_2 = rc.clone();
             let _rc_3 = rc.clone();

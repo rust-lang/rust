@@ -203,7 +203,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
-/// use std::mem::{MaybeUninit, size_of, align_of};
+/// use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
 /// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
 /// ```
@@ -215,7 +215,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of};
+/// # use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```

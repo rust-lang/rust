@@ -123,7 +123,7 @@ impl<F> DlsymWeak<F> {
     // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(mem::size_of::<F>(), mem::size_of::<*mut libc::c_void>());
+        assert_eq!(size_of::<F>(), size_of::<*mut libc::c_void>());
 
         let val = fetch(self.name);
         // This synchronizes with the acquire fence in `get`.
