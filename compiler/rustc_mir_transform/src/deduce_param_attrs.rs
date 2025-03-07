@@ -22,7 +22,8 @@ struct DeduceReadOnly {
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
     read_only: DenseBitSet<usize>,
-    read_only_when_freeze: DenseBitSet<usize>,
+    requires_freeze: DenseBitSet<usize>,
+    requires_nop_drop: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
@@ -30,7 +31,8 @@ impl DeduceReadOnly {
     fn new(arg_count: usize) -> Self {
         Self {
             read_only: DenseBitSet::new_filled(arg_count),
-            read_only_when_freeze: DenseBitSet::new_filled(arg_count),
+            requires_freeze: DenseBitSet::new_empty(arg_count),
+            requires_nop_drop: DenseBitSet::new_empty(arg_count),
         }
     }
 
@@ -54,16 +56,14 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
             PlaceContext::MutatingUse(..) => {
                 // This is a mutation, so mark it as such.
                 self.read_only.remove(arg_index);
-                self.read_only_when_freeze.remove(arg_index);
             }
             PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
                 // Whether mutating though a `&raw const` is allowed is still undecided, so we
                 // disable any sketchy `readonly` optimizations for now.
                 self.read_only.remove(arg_index);
-                self.read_only_when_freeze.remove(arg_index);
             }
             PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
-                self.read_only.remove(arg_index);
+                self.requires_freeze.insert(arg_index);
             }
             PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {}
         };
@@ -99,11 +99,18 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                     }
                     if let Some(arg_index) = self.arg_index(place.local) {
                         self.read_only.remove(arg_index);
-                        self.read_only_when_freeze.remove(arg_index);
                     }
                 }
             }
         };
+        if let TerminatorKind::Drop { place, .. } = terminator.kind {
+            if let Some(local) = place.as_local()
+                && let Some(arg_index) = self.arg_index(local)
+            {
+                self.requires_nop_drop.insert(arg_index);
+                return;
+            }
+        }
 
         self.super_terminator(terminator, location);
     }
@@ -173,11 +180,14 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Set the `readonly` attribute for every argument that we concluded is immutable and that
     // contains no UnsafeCells.
-    let mut deduced_param_attrs =
-        tcx.arena.alloc_from_iter((0..body.arg_count).map(|arg_index| DeducedParamAttrs {
-            read_only: deduce.read_only.contains(arg_index),
-            read_only_when_freeze: deduce.read_only_when_freeze.contains(arg_index),
-        }));
+    let mut deduced_param_attrs = tcx.arena.alloc_from_iter((0..body.arg_count).map(|arg_index| {
+        let read_only = deduce.read_only.contains(arg_index);
+        DeducedParamAttrs {
+            read_only,
+            requires_freeze: read_only && deduce.requires_freeze.contains(arg_index),
+            requires_nop_drop: read_only && deduce.requires_nop_drop.contains(arg_index),
+        }
+    }));
 
     // Trailing parameters past the size of the `deduced_param_attrs` array are assumed to have the
     // default set of attributes, so we don't have to store them explicitly. Pop them off to save a
