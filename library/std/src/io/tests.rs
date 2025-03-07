@@ -438,9 +438,7 @@ fn take_seek() -> io::Result<()> {
     take.read_exact(&mut buf1)?;
     assert_eq!(buf1, [b'5']);
     assert_eq!(take.seek(SeekFrom::Start(4))?, 4);
-    assert_eq!(take.seek(SeekFrom::Start(5))?, 4);
 
-    assert_eq!(take.seek(SeekFrom::End(1))?, 4);
     assert_eq!(take.seek(SeekFrom::End(0))?, 4);
     assert_eq!(take.seek(SeekFrom::End(-1))?, 3);
     take.read_exact(&mut buf1)?;
@@ -472,7 +470,6 @@ fn take_seek() -> io::Result<()> {
     assert_eq!(buf2, [b'2', b'3']);
 
     assert_eq!(take.seek(SeekFrom::Current(2))?, 4);
-    assert_eq!(take.seek(SeekFrom::Current(10))?, 4);
 
     Ok(())
 }
@@ -517,7 +514,7 @@ impl Seek for ExampleHugeRangeOfZeroes {
 fn take_seek_big_offsets() -> io::Result<()> {
     let inner = ExampleHugeRangeOfZeroes { position: 1 };
     let mut take = inner.take(u64::MAX - 2);
-    assert_eq!(take.seek(io::SeekFrom::Start(u64::MAX))?, u64::MAX - 2);
+    assert_eq!(take.seek(io::SeekFrom::Start(u64::MAX - 2))?, u64::MAX - 2);
     assert_eq!(take.inner.position, u64::MAX - 1);
     assert_eq!(take.seek(io::SeekFrom::Start(0))?, 0);
     assert_eq!(take.inner.position, 1);

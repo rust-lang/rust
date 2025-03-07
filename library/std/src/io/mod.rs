@@ -3075,47 +3075,27 @@ impl<T> SizeHint for Take<T> {
 #[stable(feature = "seek_io_take", since = "CURRENT_RUSTC_VERSION")]
 impl<T: Seek> Seek for Take<T> {
     fn seek(&mut self, pos: SeekFrom) -> Result<u64> {
-        let offset_from_start = match pos {
-            SeekFrom::Start(offset) => offset,
-            SeekFrom::End(offset) => {
-                if offset > 0 {
-                    return Ok(self.position());
-                }
-                if offset.unsigned_abs() > self.len {
-                    return Err(Error::from(ErrorKind::InvalidInput));
-                }
-                self.len - offset.unsigned_abs()
-            }
-            SeekFrom::Current(offset) => {
-                if offset >= 0 {
-                    self.position() + offset.unsigned_abs()
-                } else {
-                    self.position() - offset.unsigned_abs()
-                }
-            }
+        let new_position = match pos {
+            SeekFrom::Start(v) => Some(v),
+            SeekFrom::Current(v) => self.position().checked_add_signed(v),
+            SeekFrom::End(v) => self.len.checked_add_signed(v),
         };
-        let offset_from_start = offset_from_start.min(self.len);
-        if offset_from_start > self.position() {
-            let mut offset_from_current = offset_from_start - self.position();
-            while offset_from_current > i64::MAX as u64 {
-                self.inner.seek(SeekFrom::Current(i64::MAX))?;
-                self.limit -= i64::MAX as u64;
-                offset_from_current -= i64::MAX as u64;
+        let new_position = match new_position {
+            Some(v) if v <= self.len => v,
+            _ => return Err(ErrorKind::InvalidInput.into()),
+        };
+        while new_position != self.position() {
+            if let Some(offset) = new_position.checked_signed_diff(self.position()) {
+                self.seek_relative(offset)?;
+                break;
             }
-            self.inner.seek(SeekFrom::Current(offset_from_current as i64))?;
-            self.limit -= offset_from_current;
-            Ok(self.position())
-        } else {
-            let mut offset_from_current = self.position() - offset_from_start;
-            while offset_from_current > i64::MIN.unsigned_abs() {
-                self.inner.seek(SeekFrom::Current(i64::MIN))?;
-                self.limit += i64::MIN.unsigned_abs();
-                offset_from_current -= i64::MIN.unsigned_abs();
+            if new_position > self.position() {
+                self.seek_relative(i64::MAX)?;
+            } else {
+                self.seek_relative(i64::MIN)?;
             }
-            self.inner.seek(SeekFrom::Current(-(offset_from_current as i64)))?;
-            self.limit += offset_from_current;
-            Ok(self.position())
         }
+        Ok(new_position)
     }
 
     fn stream_len(&mut self) -> Result<u64> {
@@ -3124,6 +3104,15 @@ impl<T: Seek> Seek for Take<T> {
 
     fn stream_position(&mut self) -> Result<u64> {
         Ok(self.position())
+    }
+
+    fn seek_relative(&mut self, offset: i64) -> Result<()> {
+        if !self.position().checked_add_signed(offset).is_some_and(|p| p <= self.len) {
+            return Err(ErrorKind::InvalidInput.into());
+        }
+        self.inner.seek_relative(offset)?;
+        self.limit = self.limit.wrapping_sub(offset as u64);
+        Ok(())
     }
 }
 
