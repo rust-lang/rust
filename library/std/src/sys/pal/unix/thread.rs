@@ -344,7 +344,6 @@ impl Drop for Thread {
     target_os = "illumos",
     target_os = "vxworks",
     target_vendor = "apple",
-    target_os = "cygwin",
 ))]
 fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
     let mut result = [0; MAX_WITH_NUL];
