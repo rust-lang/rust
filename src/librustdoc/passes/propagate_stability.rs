@@ -39,15 +39,15 @@ impl DocFolder for StabilityPropagator<'_, '_> {
                 let item_stability = self.cx.tcx.lookup_stability(def_id);
                 let inline_stability =
                     item.inline_stmt_id.and_then(|did| self.cx.tcx.lookup_stability(did));
-                let is_glob_export = item.inline_stmt_id.and_then(|id| {
+                let is_glob_export = item.inline_stmt_id.map(|id| {
                     let hir_id = self.cx.tcx.local_def_id_to_hir_id(id);
-                    Some(matches!(
+                    matches!(
                         self.cx.tcx.hir_node(hir_id),
                         rustc_hir::Node::Item(rustc_hir::Item {
                             kind: rustc_hir::ItemKind::Use(_, rustc_hir::UseKind::Glob),
                             ..
                         })
-                    ))
+                    )
                 });
                 let own_stability = if let Some(item_stab) = item_stability
                     && let StabilityLevel::Stable { since: _, allowed_through_unstable_modules } =

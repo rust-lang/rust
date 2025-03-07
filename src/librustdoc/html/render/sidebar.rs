@@ -79,7 +79,7 @@ impl<'a> LinkBlock<'a> {
 }
 
 /// A link to an item. Content should not be escaped.
-#[derive(Ord, PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub(crate) struct Link<'a> {
     /// The content for the anchor tag and title attr
     name: Cow<'a, str>,
@@ -91,17 +91,23 @@ pub(crate) struct Link<'a> {
     children: Vec<Link<'a>>,
 }
 
-impl PartialOrd for Link<'_> {
-    fn partial_cmp(&self, other: &Link<'_>) -> Option<Ordering> {
+impl Ord for Link<'_> {
+    fn cmp(&self, other: &Self) -> Ordering {
         match compare_names(&self.name, &other.name) {
-            Ordering::Equal => (),
-            result => return Some(result),
+            Ordering::Equal => {}
+            result => return result,
         }
-        (&self.name_html, &self.href, &self.children).partial_cmp(&(
+        (&self.name_html, &self.href, &self.children).cmp(&(
             &other.name_html,
             &other.href,
             &other.children,
         ))
+    }
+}
+
+impl PartialOrd for Link<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 

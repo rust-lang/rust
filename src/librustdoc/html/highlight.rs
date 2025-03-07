@@ -100,7 +100,7 @@ fn write_header(
     }
 
     if let Some(extra) = extra_content {
-        out.push_str(&extra);
+        out.push_str(extra);
     }
     if class.is_empty() {
         write_str(
@@ -131,7 +131,7 @@ fn write_header(
 /// * If the other `Class` is unclassified and only contains white characters (backline,
 ///   whitespace, etc), it can be merged.
 /// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
-///    CSS class).
+///   CSS class).
 fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     match (class1, class2) {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
@@ -233,7 +233,7 @@ impl<F: Write> TokenHandler<'_, '_, F> {
 
     #[inline]
     fn write_line_number(&mut self, line: u32, extra: &'static str) {
-        (self.write_line_number)(&mut self.out, line, extra);
+        (self.write_line_number)(self.out, line, extra);
     }
 }
 
@@ -610,7 +610,7 @@ impl Decorations {
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
             .iter()
-            .flat_map(|(&kind, ranges)| ranges.into_iter().map(move |&(lo, hi)| ((lo, kind), hi)))
+            .flat_map(|(&kind, ranges)| ranges.iter().map(move |&(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.

@@ -623,10 +623,9 @@ pub(crate) fn href_relative_parts<'fqp>(
         // e.g. linking to std::iter from std::vec (`dissimilar_part_count` will be 1)
         if f != r {
             let dissimilar_part_count = relative_to_fqp.len() - i;
-            let fqp_module = &fqp[i..fqp.len()];
+            let fqp_module = &fqp[i..];
             return Box::new(
-                iter::repeat(sym::dotdot)
-                    .take(dissimilar_part_count)
+                iter::repeat_n(sym::dotdot, dissimilar_part_count)
                     .chain(fqp_module.iter().copied()),
             );
         }
@@ -639,7 +638,7 @@ pub(crate) fn href_relative_parts<'fqp>(
         Ordering::Greater => {
             // e.g. linking to std::sync from std::sync::atomic
             let dissimilar_part_count = relative_to_fqp.len() - fqp.len();
-            Box::new(iter::repeat(sym::dotdot).take(dissimilar_part_count))
+            Box::new(iter::repeat_n(sym::dotdot, dissimilar_part_count))
         }
         Ordering::Equal => {
             // linking to the same module
@@ -770,10 +769,9 @@ fn primitive_link_fragment(
                     ExternalLocation::Local => {
                         let cname_sym = ExternalCrate { crate_num: def_id.krate }.name(cx.tcx());
                         Some(if cx.current.first() == Some(&cname_sym) {
-                            iter::repeat(sym::dotdot).take(cx.current.len() - 1).collect()
+                            iter::repeat_n(sym::dotdot, cx.current.len() - 1).collect()
                         } else {
-                            iter::repeat(sym::dotdot)
-                                .take(cx.current.len())
+                            iter::repeat_n(sym::dotdot, cx.current.len())
                                 .chain(iter::once(cname_sym))
                                 .collect()
                         })
