@@ -6,6 +6,7 @@
       let _1: (!, !);
 +     let mut _2: fn() -> ! {sleep};
 +     let mut _8: ();
++     let mut _9: ();
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
 +         debug f => _2;
 +         let mut _3: &fn() -> ! {sleep};
@@ -17,6 +18,10 @@
 +             let _6: !;
 +             scope 3 {
 +                 debug b => _6;
++             }
++             scope 6 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
++                 scope 7 (inlined sleep) {
++                 }
 +             }
 +         }
 +         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
