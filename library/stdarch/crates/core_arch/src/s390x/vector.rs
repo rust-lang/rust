@@ -3333,6 +3333,62 @@ mod sealed {
         vector_unsigned_short   vstrch vstrchs vstrczh vstrczhs
         vector_unsigned_int     vstrcf vstrcfs vstrczf vstrczfs
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorComparePredicate: Sized {
+        type Result;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmpgt(self, other: Self) -> Self::Result {
+            simd_gt(self, other)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmpge(self, other: Self) -> Self::Result {
+            simd_ge(self, other)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmplt(self, other: Self) -> Self::Result {
+            simd_lt(self, other)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmple(self, other: Self) -> Self::Result {
+            simd_le(self, other)
+        }
+    }
+
+    macro_rules! impl_compare_predicate {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorComparePredicate for $ty {
+                    type Result = t_b!($ty);
+                }
+            )*
+        }
+    }
+
+    impl_compare_predicate! {
+        vector_signed_char
+        vector_unsigned_char
+
+        vector_signed_short
+        vector_unsigned_short
+
+        vector_signed_int
+        vector_unsigned_int
+        vector_float
+
+        vector_signed_long_long
+        vector_unsigned_long_long
+        vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4878,6 +4934,38 @@ pub unsafe fn vec_cmpnrg_or_0_idx_cc<T: sealed::VectorCompareRange>(
     x
 }
 
+/// Vector Compare Greater Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpgt<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Result {
+    a.vec_cmpgt(b)
+}
+
+/// Vector Compare Greater Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpge<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Result {
+    a.vec_cmpge(b)
+}
+
+/// Vector Compare Less
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmplt<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Result {
+    a.vec_cmplt(b)
+}
+
+/// Vector Compare Less Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmple<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Result {
+    a.vec_cmple(b)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6240,5 +6328,29 @@ mod tests {
         let c = vector_unsigned_int([GT, LT, GT, LT]);
         let d = unsafe { vec_cmpnrg_or_0_idx(a, b, c) };
         assert_eq!(d.as_array(), &[0, 8, 0, 0]);
+    }
+
+    test_vec_2! { test_vec_cmpgt, vec_cmpgt, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 3.14],
+        [2.0, f32::NAN, 5.0, 2.0],
+        [0, 0, 0, !0]
+    }
+
+    test_vec_2! { test_vec_cmpge, vec_cmpge, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 3.14],
+        [1.0, f32::NAN, 5.0, 2.0],
+        [!0, 0, 0, !0]
+    }
+
+    test_vec_2! { test_vec_cmplt, vec_cmplt, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 2.0],
+        [2.0, f32::NAN, 5.0, 2.0],
+        [!0, 0, 0, 0]
+    }
+
+    test_vec_2! { test_vec_cmple, vec_cmple, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 2.0],
+        [1.0, f32::NAN, 5.0, 3.14],
+        [!0, 0, 0, !0]
     }
 }
