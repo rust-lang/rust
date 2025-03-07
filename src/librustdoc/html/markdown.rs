@@ -1308,18 +1308,17 @@ impl LangString {
                         seen_other_tags = true;
                         data.unknown.push(x.to_owned());
                     }
-                    LangStringToken::KeyValueAttribute(key, value) => {
-                        if key == "class" {
-                            data.added_classes.push(value.to_owned());
-                        } else if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr(format!(
-                                "unsupported attribute `{key}`"
-                            ));
-                        }
+                    LangStringToken::KeyValueAttribute("class", value) => {
+                        data.added_classes.push(value.to_owned());
+                    }
+                    LangStringToken::KeyValueAttribute(key, ..) if let Some(extra) = extra => {
+                        extra
+                            .error_invalid_codeblock_attr(format!("unsupported attribute `{key}`"));
                     }
                     LangStringToken::ClassAttribute(class) => {
                         data.added_classes.push(class.to_owned());
                     }
+                    _ => {}
                 }
             }
         };

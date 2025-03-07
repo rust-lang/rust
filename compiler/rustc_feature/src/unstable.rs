@@ -1,6 +1,7 @@
 //! List of the unstable feature gates.
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, Symbol, sym};
@@ -669,6 +670,7 @@ declare_features! (
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
+    (unstable, yield_expr, "CURRENT_RUSTC_VERSION", Some(43122)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -685,11 +687,13 @@ impl Features {
     ) -> Result<(), Box<dyn std::error::Error>> {
         #[derive(serde::Serialize)]
         struct LibFeature {
+            timestamp: u128,
             symbol: String,
         }
 
         #[derive(serde::Serialize)]
         struct LangFeature {
+            timestamp: u128,
             symbol: String,
             since: Option<String>,
         }
@@ -703,10 +707,20 @@ impl Features {
         let metrics_file = std::fs::File::create(metrics_path)?;
         let metrics_file = std::io::BufWriter::new(metrics_file);
 
+        let now = || {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should always be greater than the unix epoch")
+                .as_nanos()
+        };
+
         let lib_features = self
             .enabled_lib_features
             .iter()
-            .map(|EnabledLibFeature { gate_name, .. }| LibFeature { symbol: gate_name.to_string() })
+            .map(|EnabledLibFeature { gate_name, .. }| LibFeature {
+                symbol: gate_name.to_string(),
+                timestamp: now(),
+            })
             .collect();
 
         let lang_features = self
@@ -715,6 +729,7 @@ impl Features {
             .map(|EnabledLangFeature { gate_name, stable_since, .. }| LangFeature {
                 symbol: gate_name.to_string(),
                 since: stable_since.map(|since| since.to_string()),
+                timestamp: now(),
             })
             .collect();
 

@@ -3732,8 +3732,7 @@ impl<T> [T] {
     #[doc(alias = "memcpy")]
     #[inline]
     #[stable(feature = "copy_from_slice", since = "1.9.0")]
-    #[rustc_const_unstable(feature = "const_copy_from_slice", issue = "131415")]
-    #[rustc_const_stable_indirect]
+    #[rustc_const_stable(feature = "const_copy_from_slice", since = "CURRENT_RUSTC_VERSION")]
     #[track_caller]
     pub const fn copy_from_slice(&mut self, src: &[T])
     where

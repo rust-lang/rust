@@ -95,10 +95,8 @@ impl SpanMapVisitor<'_> {
                     .unwrap_or(path.span);
                 self.matches.insert(span, link);
             }
-            Res::Local(_) => {
-                if let Some(span) = self.tcx.hir().res_span(path.res) {
-                    self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
-                }
+            Res::Local(_) if let Some(span) = self.tcx.hir().res_span(path.res) => {
+                self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
@@ -111,15 +109,15 @@ impl SpanMapVisitor<'_> {
 
     /// Used to generate links on items' definition to go to their documentation page.
     pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
-        if let Node::Item(item) = self.tcx.hir_node(hir_id) {
-            if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
-                let cspan = clean::Span::new(span);
-                // If the span isn't from the current crate, we ignore it.
-                if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
-                    return;
-                }
-                self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
+        if let Node::Item(item) = self.tcx.hir_node(hir_id)
+            && let Some(span) = self.tcx.def_ident_span(item.owner_id)
+        {
+            let cspan = clean::Span::new(span);
+            // If the span isn't from the current crate, we ignore it.
+            if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
+                return;
             }
+            self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
         }
     }
 

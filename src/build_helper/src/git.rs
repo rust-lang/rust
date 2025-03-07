@@ -129,7 +129,7 @@ pub fn get_closest_merge_commit(
         git.current_dir(git_dir);
     }
 
-    let channel = include_str!("../../ci/channel");
+    let channel = include_str!("../../ci/channel").trim();
 
     let merge_base = {
         if CiEnv::is_ci() &&
