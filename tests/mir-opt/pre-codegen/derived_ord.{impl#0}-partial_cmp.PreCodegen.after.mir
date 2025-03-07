@@ -44,15 +44,11 @@ fn <impl at $DIR/derived_ord.rs:6:10: 6:20>::partial_cmp(_1: &MultiField, _2: &M
         StorageDead(_8);
         _0 = Option::<std::cmp::Ordering>::Some(move _10);
         StorageDead(_10);
-        goto -> bb3;
+        return;
     }
 
     bb2: {
         _0 = copy _6;
-        goto -> bb3;
-    }
-
-    bb3: {
         return;
     }
 }

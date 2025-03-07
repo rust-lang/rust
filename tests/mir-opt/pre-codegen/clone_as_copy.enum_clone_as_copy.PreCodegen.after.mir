@@ -31,13 +31,16 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         StorageLive(_3);
         StorageLive(_4);
         _2 = discriminant((*_1));
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
 
     bb1: {
         _3 = &(((*_1) as A).0: AllCopy);
         _0 = copy (*_1);
-        goto -> bb3;
+        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 
     bb2: {
@@ -46,17 +49,13 @@ fn enum_clone_as_copy(_1: &Enum1) -> Enum1 {
         _5 = &((((*_1) as B).0: NestCopy).1: AllCopy);
         StorageDead(_5);
         _0 = copy (*_1);
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_4);
         StorageDead(_3);
         StorageDead(_2);
         return;
     }
 
-    bb4: {
+    bb3: {
         unreachable;
     }
 }

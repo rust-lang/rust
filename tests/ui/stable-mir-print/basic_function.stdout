@@ -48,21 +48,18 @@ fn demux(_1: u8) -> u8 {
     }
     bb1: {
         _0 = 0_u8;
-        goto -> bb5;
+        return;
     }
     bb2: {
         _0 = 8_u8;
-        goto -> bb5;
+        return;
     }
     bb3: {
         _0 = 6_u8;
-        goto -> bb5;
+        return;
     }
     bb4: {
         _0 = 10_u8;
-        goto -> bb5;
-    }
-    bb5: {
         return;
     }
 }

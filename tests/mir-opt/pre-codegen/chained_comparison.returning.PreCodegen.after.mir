@@ -87,7 +87,7 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_15);
         StorageDead(_17);
         _0 = const true;
-        goto -> bb11;
+        return;
     }
 
     bb6: {
@@ -95,7 +95,7 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_15);
         _0 = const false;
         StorageDead(_17);
-        goto -> bb11;
+        return;
     }
 
     bb7: {
@@ -103,7 +103,7 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_12);
         _0 = const false;
         StorageDead(_14);
-        goto -> bb11;
+        return;
     }
 
     bb8: {
@@ -111,7 +111,7 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_9);
         _0 = const false;
         StorageDead(_11);
-        goto -> bb11;
+        return;
     }
 
     bb9: {
@@ -119,7 +119,7 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_6);
         _0 = const false;
         StorageDead(_8);
-        goto -> bb11;
+        return;
     }
 
     bb10: {
@@ -127,10 +127,6 @@ fn returning(_1: &Blueprint, _2: &Blueprint) -> bool {
         StorageDead(_3);
         _0 = const false;
         StorageDead(_5);
-        goto -> bb11;
-    }
-
-    bb11: {
         return;
     }
 }
