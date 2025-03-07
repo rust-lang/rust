@@ -68,6 +68,23 @@ pub fn ensure_removed(dcx: DiagCtxtHandle<'_>, path: &Path) {
     }
 }
 
+fn check_link_info_print_request(sess: &Session, crate_type: CrateType) {
+    let print_native_static_libs =
+        sess.opts.prints.iter().any(|p| p.kind == PrintKind::NativeStaticLibs);
+    if print_native_static_libs {
+        if crate_type != CrateType::Staticlib {
+            sess.dcx()
+                .warn(format!("cannot output linkage information without staticlib crate-type"));
+            sess.dcx()
+                .note(format!("consider `--crate-type staticlib` to print linkage information"));
+        } else if !sess.opts.output_types.should_link() {
+            sess.dcx().warn(format!(
+                    "skipping link step due to conflict: cannot output linkage information without emitting link"
+                ));
+        }
+    }
+}
+
 /// Performs the linkage portion of the compilation phase. This will generate all
 /// of the requested outputs for this compilation session.
 pub fn link_binary(
@@ -178,6 +195,8 @@ pub fn link_binary(
                 tempfiles_for_stdout_output.push(out_filename);
             }
         }
+
+        check_link_info_print_request(sess, crate_type);
     }
 
     // Remove the temporary object file and metadata if we aren't saving temps.
