@@ -74,7 +74,7 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
 
     fn process_mod(&mut self, m: &'tcx hir::Mod<'tcx>, n: HirId) {
         lint_callback!(self, check_mod, m, n);
-        hir_visit::walk_mod(self, m, n);
+        hir_visit::walk_mod(self, m);
     }
 }
 
