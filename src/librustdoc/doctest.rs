@@ -580,7 +580,7 @@ fn run_test(
             path_for_rustdoc.to_str().expect("target path must be valid unicode")
         }
     });
-    if let ErrorOutputType::HumanReadable(kind, color_config) = rustdoc_options.error_format {
+    if let ErrorOutputType::HumanReadable { kind, color_config } = rustdoc_options.error_format {
         let short = kind.short();
         let unicode = kind == HumanReadableErrorType::Unicode;
 
