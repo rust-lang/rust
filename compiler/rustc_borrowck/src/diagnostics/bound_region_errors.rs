@@ -56,18 +56,6 @@ impl<'tcx> UniverseInfo<'tcx> {
         cause: ObligationCause<'tcx>,
         error_element: Option<ty::PlaceholderRegion>,
     ) {
-        if let UniverseInfo::TypeOp(ref type_op_info) = *self {
-            type_op_info.report_erroneous_element(mbcx, placeholder, cause, error_element);
-        } else {
-            self.report_generic_error(mbcx, cause);
-        }
-    }
-
-    fn report_generic_error(
-        &self,
-        mbcx: &mut MirBorrowckCtxt<'_, '_, 'tcx>,
-        cause: ObligationCause<'tcx>,
-    ) {
         match *self {
             UniverseInfo::RelateTys { expected, found } => {
                 let err = mbcx.infcx.err_ctxt().report_mismatched_types(
@@ -79,8 +67,8 @@ impl<'tcx> UniverseInfo<'tcx> {
                 );
                 mbcx.buffer_error(err);
             }
-            UniverseInfo::TypeOp(_) => {
-                unreachable!("This case should already have been handled!");
+            UniverseInfo::TypeOp(ref type_op_info) => {
+                type_op_info.report_erroneous_element(mbcx, placeholder, cause, error_element);
             }
             UniverseInfo::Other => {
                 // FIXME: This error message isn't great, but it doesn't show
