@@ -81,7 +81,7 @@ macro_rules! impl_reverse_bits {
             #[inline(always)]
             fn reverse_bits(self, n: usize) -> Self {
                 let rev = <$int>::reverse_bits(self);
-                let bitsize = core::mem::size_of::<$int>() * 8;
+                let bitsize = size_of::<$int>() * 8;
                 if n < bitsize {
                     // Shift things back to the right
                     rev >> (bitsize - n)
