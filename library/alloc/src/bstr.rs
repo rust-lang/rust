@@ -12,13 +12,10 @@ use core::ops::{
     Deref, DerefMut, DerefPure, Index, IndexMut, Range, RangeFrom, RangeFull, RangeInclusive,
     RangeTo, RangeToInclusive,
 };
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 use core::str::FromStr;
 use core::{fmt, hash};
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 use crate::borrow::{Cow, ToOwned};
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 use crate::boxed::Box;
 #[cfg(not(no_rc))]
 use crate::rc::Rc;
@@ -181,7 +178,6 @@ impl Default for ByteString {
 
 // Omitted due to inference failures
 //
-// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a, const N: usize> From<&'a [u8; N]> for ByteString {
 //     #[inline]
@@ -190,7 +186,6 @@ impl Default for ByteString {
 //     }
 // }
 //
-// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<const N: usize> From<[u8; N]> for ByteString {
 //     #[inline]
@@ -199,7 +194,6 @@ impl Default for ByteString {
 //     }
 // }
 //
-// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a [u8]> for ByteString {
 //     #[inline]
@@ -226,7 +220,6 @@ impl From<ByteString> for Vec<u8> {
 
 // Omitted due to inference failures
 //
-// #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 // #[unstable(feature = "bstr", issue = "134915")]
 // impl<'a> From<&'a str> for ByteString {
 //     #[inline]
@@ -243,7 +236,6 @@ impl From<ByteString> for Vec<u8> {
 //     }
 // }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for ByteString {
     #[inline]
@@ -252,7 +244,6 @@ impl<'a> From<&'a ByteStr> for ByteString {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<ByteString> for Cow<'a, ByteStr> {
     #[inline]
@@ -261,7 +252,6 @@ impl<'a> From<ByteString> for Cow<'a, ByteStr> {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteString> for Cow<'a, ByteStr> {
     #[inline]
@@ -330,7 +320,6 @@ impl FromIterator<ByteString> for ByteString {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl FromStr for ByteString {
     type Err = core::convert::Infallible;
@@ -488,7 +477,6 @@ impl PartialEq for ByteString {
 
 macro_rules! impl_partial_eq_ord_cow {
     ($lhs:ty, $rhs:ty) => {
-        #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
         #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<'a> PartialEq<$rhs> for $lhs {
@@ -499,7 +487,6 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
         #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<'a> PartialEq<$lhs> for $rhs {
@@ -510,7 +497,6 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
         #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<'a> PartialOrd<$rhs> for $lhs {
@@ -521,7 +507,6 @@ macro_rules! impl_partial_eq_ord_cow {
             }
         }
 
-        #[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
         #[allow(unused_lifetimes)]
         #[unstable(feature = "bstr", issue = "134915")]
         impl<'a> PartialOrd<$lhs> for $rhs {
@@ -572,7 +557,6 @@ impl PartialOrd for ByteString {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl ToOwned for ByteStr {
     type Owned = ByteString;
@@ -605,7 +589,6 @@ impl<'a> TryFrom<&'a ByteString> for &'a str {
 
 // Additional impls for `ByteStr` that require types from `alloc`:
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl Clone for Box<ByteStr> {
     #[inline]
@@ -614,7 +597,6 @@ impl Clone for Box<ByteStr> {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
     #[inline]
@@ -623,7 +605,6 @@ impl<'a> From<&'a ByteStr> for Cow<'a, ByteStr> {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<[u8]>> for Box<ByteStr> {
     #[inline]
@@ -633,7 +614,6 @@ impl From<Box<[u8]>> for Box<ByteStr> {
     }
 }
 
-#[cfg(not(test))] // https://github.com/rust-lang/rust/issues/135100
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<ByteStr>> for Box<[u8]> {
     #[inline]
