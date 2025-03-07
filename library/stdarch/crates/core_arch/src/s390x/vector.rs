@@ -3389,6 +3389,54 @@ mod sealed {
         vector_unsigned_long_long
         vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorEquality: Sized {
+        type Result;
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmpeq(self, other: Self) -> Self::Result {
+            simd_eq(self, other)
+        }
+
+        #[inline]
+        #[target_feature(enable = "vector")]
+        unsafe fn vec_cmpne(self, other: Self) -> Self::Result {
+            simd_ne(self, other)
+        }
+    }
+
+    macro_rules! impl_compare_equality {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorEquality for $ty {
+                    type Result = t_b!($ty);
+                }
+            )*
+        }
+    }
+
+    impl_compare_equality! {
+        vector_bool_char
+        vector_signed_char
+        vector_unsigned_char
+
+        vector_bool_short
+        vector_signed_short
+        vector_unsigned_short
+
+        vector_bool_int
+        vector_signed_int
+        vector_unsigned_int
+        vector_float
+
+        vector_bool_long_long
+        vector_signed_long_long
+        vector_unsigned_long_long
+        vector_double
+    }
 }
 
 /// Load Count to Block Boundary
@@ -4934,6 +4982,22 @@ pub unsafe fn vec_cmpnrg_or_0_idx_cc<T: sealed::VectorCompareRange>(
     x
 }
 
+/// Vector Compare Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpeq<T: sealed::VectorEquality>(a: T, b: T) -> T::Result {
+    a.vec_cmpeq(b)
+}
+
+/// Vector Compare Not Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpne<T: sealed::VectorEquality>(a: T, b: T) -> T::Result {
+    a.vec_cmpne(b)
+}
+
 /// Vector Compare Greater Than
 #[inline]
 #[target_feature(enable = "vector")]
@@ -6352,5 +6416,17 @@ mod tests {
         [1.0, f32::NAN, f32::NAN, 2.0],
         [1.0, f32::NAN, 5.0, 3.14],
         [!0, 0, 0, !0]
+    }
+
+    test_vec_2! { test_vec_cmpeq, vec_cmpeq, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 2.0],
+        [1.0, f32::NAN, 5.0, 3.14],
+        [!0, 0, 0, 0]
+    }
+
+    test_vec_2! { test_vec_cmpne, vec_cmpne, f32x4, f32x4 -> i32x4,
+        [1.0, f32::NAN, f32::NAN, 2.0],
+        [1.0, f32::NAN, 5.0, 3.14],
+        [0, !0, !0, !0]
     }
 }
