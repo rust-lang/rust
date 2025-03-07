@@ -470,8 +470,47 @@ fn take_seek() -> io::Result<()> {
     assert_eq!(buf2, [b'2', b'3']);
 
     assert_eq!(take.seek(SeekFrom::Current(2))?, 4);
-
     Ok(())
+}
+
+#[test]
+#[should_panic]
+fn take_seek_out_of_bounds_start() {
+    let buf = Cursor::new(b"0123456789");
+    let mut take = buf.take(2);
+    take.seek(SeekFrom::Start(3)).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn take_seek_out_of_bounds_end_forward() {
+    let buf = Cursor::new(b"0123456789");
+    let mut take = buf.take(2);
+    take.seek(SeekFrom::End(1)).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn take_seek_out_of_bounds_end_before_start() {
+    let buf = Cursor::new(b"0123456789");
+    let mut take = buf.take(2);
+    take.seek(SeekFrom::End(-3)).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn take_seek_out_of_bounds_current_before_start() {
+    let buf = Cursor::new(b"0123456789");
+    let mut take = buf.take(2);
+    take.seek(SeekFrom::Current(-1)).unwrap();
+}
+
+#[test]
+#[should_panic]
+fn take_seek_out_of_bounds_current_after_end() {
+    let buf = Cursor::new(b"0123456789");
+    let mut take = buf.take(2);
+    take.seek(SeekFrom::Current(3)).unwrap();
 }
 
 struct ExampleHugeRangeOfZeroes {
