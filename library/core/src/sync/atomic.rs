@@ -44,8 +44,9 @@
 //! The most important aspect of this model is that *data races* are undefined behavior. A data race
 //! is defined as conflicting non-synchronized accesses where at least one of the accesses is
 //! non-atomic. Here, accesses are *conflicting* if they affect overlapping regions of memory and at
-//! least one of them is a write. They are *non-synchronized* if neither of them *happens-before*
-//! the other, according to the happens-before order of the memory model.
+//! least one of them is a write. (A `compare_exchange` or `compare_exchange_weak` that does not
+//! succeed is not considered a write.) They are *non-synchronized* if neither of them
+//! *happens-before* the other, according to the happens-before order of the memory model.
 //!
 //! The other possible cause of undefined behavior in the memory model are mixed-size accesses: Rust
 //! inherits the C++ limitation that non-synchronized conflicting atomic accesses may not partially
