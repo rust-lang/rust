@@ -11,6 +11,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
+use tracing::instrument;
 
 /// A visitor that determines which arguments have been mutated. We can't use the mutability field
 /// on LocalDecl for this because it has no meaning post-optimization.
@@ -125,6 +126,7 @@ fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
 /// body of the function instead of just the signature. These can be useful for optimization
 /// purposes on a best-effort basis. We compute them here and store them into the crate metadata so
 /// dependent crates can use them.
+#[instrument(level = "debug", ret, skip(tcx))]
 pub(super) fn deduced_param_attrs<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
