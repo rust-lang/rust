@@ -3,6 +3,7 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
+use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_errors::FatalError;
 use tracing::{debug, trace};
 
@@ -286,7 +287,8 @@ pub(crate) fn differentiate<'ll>(
     }
 
     let diag_handler = cgcx.create_dcx();
-    let cx = SimpleCx { llmod: module.module_llvm.llmod(), llcx: module.module_llvm.llcx };
+
+    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
 
     // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
     if !diff_items.is_empty()
