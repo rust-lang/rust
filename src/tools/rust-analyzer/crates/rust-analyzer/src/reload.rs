@@ -178,26 +178,15 @@ impl GlobalState {
         }
 
         if !self.workspaces.is_empty() {
+            self.check_workspaces_msrv().for_each(|e| {
+                status.health |= lsp_ext::Health::Warning;
+                format_to!(message, "{e}");
+            });
+
             let proc_macro_clients =
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
             for (ws, proc_macro_client) in self.workspaces.iter().zip(proc_macro_clients) {
-                if let Some(toolchain) = &ws.toolchain {
-                    if *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION {
-                        status.health |= lsp_ext::Health::Warning;
-                        format_to!(
-                            message,
-                            "Workspace `{}` is using an outdated toolchain version `{}` but \
-                            rust-analyzer only supports `{}` and higher.\n\
-                            Consider using the rust-analyzer rustup component for your toolchain or
-                            upgrade your toolchain to a supported version.\n\n",
-                            ws.manifest_or_root(),
-                            toolchain,
-                            crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
-                        );
-                    }
-                }
-
                 if let ProjectWorkspaceKind::Cargo { error: Some(error), .. }
                 | ProjectWorkspaceKind::DetachedFile {
                     cargo: Some((_, _, Some(error))), ..
@@ -529,6 +518,11 @@ impl GlobalState {
             // we don't care about build-script results, they are stale.
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
+            self.check_workspaces_msrv().for_each(|message| {
+                self.send_notification::<lsp_types::notification::ShowMessage>(
+                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                );
+            });
 
             if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;
