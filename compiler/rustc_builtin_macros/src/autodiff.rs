@@ -8,7 +8,8 @@ mod llvm_enzyme {
     use std::string::String;
 
     use rustc_ast::expand::autodiff_attrs::{
-        AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ty_for_activity,
+        AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
+        valid_ty_for_activity,
     };
     use rustc_ast::ptr::P;
     use rustc_ast::token::{Token, TokenKind};
@@ -632,10 +633,22 @@ mod llvm_enzyme {
                 errors = true;
             }
         }
+
+        if has_ret && !valid_ret_activity(x.mode, x.ret_activity) {
+            dcx.emit_err(errors::AutoDiffInvalidRetAct {
+                span,
+                mode: x.mode.to_string(),
+                act: x.ret_activity.to_string(),
+            });
+            // We don't set `errors = true` to avoid annoying type errors relative
+            // to the expanded macro type signature
+        }
+
         if errors {
             // This is not the right signature, but we can continue parsing.
             return (sig.clone(), new_inputs, idents, true);
         }
+
         let unsafe_activities = x
             .input_activity
             .iter()
