@@ -1124,7 +1124,6 @@ function preLoadCss(cssUrl) {
     }
 
     function addSidebarCrates() {
-        // @ts-expect-error
         if (!window.ALL_CRATES) {
             return;
         }
@@ -1138,7 +1137,6 @@ function preLoadCss(cssUrl) {
         const ul = document.createElement("ul");
         ul.className = "block crate";
 
-        // @ts-expect-error
         for (const crate of window.ALL_CRATES) {
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
