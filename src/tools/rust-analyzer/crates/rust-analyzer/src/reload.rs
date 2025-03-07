@@ -139,10 +139,10 @@ impl GlobalState {
                 "Proc-macros and/or build scripts have changed and need to be rebuilt.\n\n",
             );
         }
-        if let Err(build_data_err) = self.fetch_build_data_error() {
-            status.health |= lsp_ext::Health::Error;
+        if self.fetch_build_data_error().is_err() {
+            status.health |= lsp_ext::Health::Warning;
             message.push_str("Failed to run build scripts of some packages.\n\n");
-            format_to!(message, "{build_data_err}\n");
+            message.push_str("Please refer to the logs for more details on the errors.");
         }
         if let Some(err) = &self.config_errors {
             status.health |= lsp_ext::Health::Warning;
