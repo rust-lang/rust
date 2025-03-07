@@ -1070,7 +1070,7 @@ pub use foo::{Bar, Baz};
 
 
 ### `expand_record_rest_pattern`
-**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L24) 
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L26) 
 
 Fills fields by replacing rest pattern in record patterns.
 
@@ -1094,7 +1094,7 @@ fn foo(bar: Bar) {
 
 
 ### `expand_tuple_struct_rest_pattern`
-**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L80) 
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L82) 
 
 Fills fields by replacing rest pattern in tuple struct patterns.
 
