@@ -237,8 +237,7 @@ inherent interpreter slowdown and a loss of parallelism.
 You can get your test suite's parallelism back by running `cargo miri nextest run -jN`
 (note that you will need [`cargo-nextest`](https://nexte.st) installed).
 This works because `cargo-nextest` collects a list of all tests then launches a
-separate `cargo miri run` for each test. You will need to specify a `-j` or `--test-threads`;
-by default `cargo miri nextest run` runs one test at a time. For more details, see the
+separate `cargo miri run` for each test. For more information about nextest, see the
 [`cargo-nextest` Miri documentation](https://nexte.st/book/miri.html).
 
 Note: This one-test-per-process model means that `cargo miri test` is able to detect data
