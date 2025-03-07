@@ -5,23 +5,21 @@ use hir::def_id::DefId;
 use rustc_abi::Integer::{I8, I32};
 use rustc_abi::Primitive::{self, Float, Int, Pointer};
 use rustc_abi::{
-    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Layout,
-    LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size, StructKind, TagEncoding,
-    VariantIdx, Variants, WrappingRange,
+    AddressSpace, BackendRepr, FIRST_VARIANT, FieldIdx, FieldsShape, HasDataLayout, Integer,
+    Layout, LayoutCalculator, LayoutCalculatorError, LayoutData, Niche, ReprOptions, Scalar, Size,
+    StructKind, TagEncoding, VariantIdx, Variants, WrappingRange,
 };
 use rustc_hashes::Hash64;
-use rustc_index::bit_set::DenseBitSet;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::bit_set::{BitMatrix, DenseBitSet};
+use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{CoroutineLayout, CoroutineSavedLocal};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{
-    self, AdtDef, CoroutineArgsExt, EarlyBinder, GenericArgsRef, PseudoCanonicalInput, Ty, TyCtxt,
-    TypeVisitableExt,
+    self, AdtDef, CoroutineArgsExt, EarlyBinder, PseudoCanonicalInput, Ty, TyCtxt, TypeVisitableExt,
 };
 use rustc_session::{DataTypeKind, FieldInfo, FieldKind, SizeKind, VariantInfo};
 use rustc_span::{Symbol, sym};
@@ -141,16 +139,6 @@ fn map_error<'tcx>(
     error(cx, err)
 }
 
-fn univariant_uninterned<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    ty: Ty<'tcx>,
-    fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>,
-    kind: StructKind,
-) -> Result<LayoutData<FieldIdx, VariantIdx>, &'tcx LayoutError<'tcx>> {
-    let repr = ReprOptions::default();
-    cx.calc.univariant(fields, &repr, kind).map_err(|err| map_error(cx, ty, err))
-}
-
 fn extract_const_value<'tcx>(
     cx: &LayoutCx<'tcx>,
     ty: Ty<'tcx>,
@@ -212,8 +200,10 @@ fn layout_of_uncached<'tcx>(
     };
     let scalar = |value: Primitive| tcx.mk_layout(LayoutData::scalar(cx, scalar_unit(value)));
 
-    let univariant = |fields: &IndexSlice<FieldIdx, TyAndLayout<'tcx>>, kind| {
-        Ok(tcx.mk_layout(univariant_uninterned(cx, ty, fields, kind)?))
+    let univariant = |tys: &[Ty<'tcx>], kind| {
+        let fields = tys.iter().map(|ty| cx.layout_of(*ty)).try_collect::<IndexVec<_, _>>()?;
+        let repr = ReprOptions::default();
+        map_layout(cx.calc.univariant(&fields, &repr, kind))
     };
     debug_assert!(!ty.has_non_region_infer());
 
@@ -389,29 +379,61 @@ fn layout_of_uncached<'tcx>(
             tcx.mk_layout(LayoutData::unit(cx, sized))
         }
 
-        ty::Coroutine(def_id, args) => coroutine_layout(cx, ty, def_id, args)?,
+        ty::Coroutine(def_id, args) => {
+            use rustc_middle::ty::layout::PrimitiveExt as _;
 
-        ty::Closure(_, args) => {
-            let tys = args.as_closure().upvar_tys();
-            univariant(
-                &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
-                StructKind::AlwaysSized,
-            )?
+            let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
+                return Err(error(cx, LayoutError::Unknown(ty)));
+            };
+
+            let local_layouts = info
+                .field_tys
+                .iter()
+                .map(|local| {
+                    let field_ty = EarlyBinder::bind(local.ty);
+                    let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
+                    cx.spanned_layout_of(uninit_ty, local.source_info.span)
+                })
+                .try_collect::<IndexVec<_, _>>()?;
+
+            let prefix_layouts = args
+                .as_coroutine()
+                .prefix_tys()
+                .iter()
+                .map(|ty| cx.layout_of(ty))
+                .try_collect::<IndexVec<_, _>>()?;
+
+            let layout = coroutine_layout(
+                &cx.calc,
+                &local_layouts,
+                prefix_layouts,
+                &info.variant_fields,
+                &info.storage_conflicts,
+                |tag| TyAndLayout {
+                    ty: tag.primitive().to_ty(tcx),
+                    layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
+                },
+            )
+            .map(|mut layout| {
+                // this is similar to how ReprOptions populates its field_shuffle_seed
+                layout.randomization_seed = tcx.def_path_hash(def_id).0.to_smaller_hash();
+                debug!("coroutine layout ({:?}): {:#?}", ty, layout);
+                layout
+            });
+            map_layout(layout)?
         }
 
+        ty::Closure(_, args) => univariant(args.as_closure().upvar_tys(), StructKind::AlwaysSized)?,
+
         ty::CoroutineClosure(_, args) => {
-            let tys = args.as_coroutine_closure().upvar_tys();
-            univariant(
-                &tys.iter().map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
-                StructKind::AlwaysSized,
-            )?
+            univariant(args.as_coroutine_closure().upvar_tys(), StructKind::AlwaysSized)?
         }
 
         ty::Tuple(tys) => {
             let kind =
                 if tys.len() == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
 
-            univariant(&tys.iter().map(|k| cx.layout_of(k)).try_collect::<IndexVec<_, _>>()?, kind)?
+            univariant(tys, kind)?
         }
 
         // SIMD vector types.
@@ -594,7 +616,7 @@ fn layout_of_uncached<'tcx>(
 
 /// Overlap eligibility and variant assignment for each CoroutineSavedLocal.
 #[derive(Clone, Debug, PartialEq)]
-enum SavedLocalEligibility {
+enum SavedLocalEligibility<VariantIdx, FieldIdx> {
     Unassigned,
     Assigned(VariantIdx),
     Ineligible(Option<FieldIdx>),
@@ -620,21 +642,22 @@ enum SavedLocalEligibility {
 // of any variant.
 
 /// Compute the eligibility and assignment of each local.
-fn coroutine_saved_local_eligibility(
-    info: &CoroutineLayout<'_>,
-) -> (DenseBitSet<CoroutineSavedLocal>, IndexVec<CoroutineSavedLocal, SavedLocalEligibility>) {
+fn coroutine_saved_local_eligibility<VariantIdx: Idx, FieldIdx: Idx, LocalIdx: Idx>(
+    nb_locals: usize,
+    variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
+    storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+) -> (DenseBitSet<LocalIdx>, IndexVec<LocalIdx, SavedLocalEligibility<VariantIdx, FieldIdx>>) {
     use SavedLocalEligibility::*;
 
-    let mut assignments: IndexVec<CoroutineSavedLocal, SavedLocalEligibility> =
-        IndexVec::from_elem(Unassigned, &info.field_tys);
+    let mut assignments: IndexVec<LocalIdx, _> = IndexVec::from_elem_n(Unassigned, nb_locals);
 
     // The saved locals not eligible for overlap. These will get
     // "promoted" to the prefix of our coroutine.
-    let mut ineligible_locals = DenseBitSet::new_empty(info.field_tys.len());
+    let mut ineligible_locals = DenseBitSet::new_empty(nb_locals);
 
     // Figure out which of our saved locals are fields in only
     // one variant. The rest are deemed ineligible for overlap.
-    for (variant_index, fields) in info.variant_fields.iter_enumerated() {
+    for (variant_index, fields) in variant_fields.iter_enumerated() {
         for local in fields {
             match assignments[*local] {
                 Unassigned => {
@@ -657,13 +680,13 @@ fn coroutine_saved_local_eligibility(
 
     // Next, check every pair of eligible locals to see if they
     // conflict.
-    for local_a in info.storage_conflicts.rows() {
-        let conflicts_a = info.storage_conflicts.count(local_a);
+    for local_a in storage_conflicts.rows() {
+        let conflicts_a = storage_conflicts.count(local_a);
         if ineligible_locals.contains(local_a) {
             continue;
         }
 
-        for local_b in info.storage_conflicts.iter(local_a) {
+        for local_b in storage_conflicts.iter(local_a) {
             // local_a and local_b are storage live at the same time, therefore they
             // cannot overlap in the coroutine layout. The only way to guarantee
             // this is if they are in the same variant, or one is ineligible
@@ -675,7 +698,7 @@ fn coroutine_saved_local_eligibility(
             // If they conflict, we will choose one to make ineligible.
             // This is not always optimal; it's just a greedy heuristic that
             // seems to produce good results most of the time.
-            let conflicts_b = info.storage_conflicts.count(local_b);
+            let conflicts_b = storage_conflicts.count(local_b);
             let (remove, other) =
                 if conflicts_a > conflicts_b { (local_a, local_b) } else { (local_b, local_a) };
             ineligible_locals.insert(remove);
@@ -690,7 +713,7 @@ fn coroutine_saved_local_eligibility(
     // lay them out with the other locals in the prefix and eliminate
     // unnecessary padding bytes.
     {
-        let mut used_variants = DenseBitSet::new_empty(info.variant_fields.len());
+        let mut used_variants = DenseBitSet::new_empty(variant_fields.len());
         for assignment in &assignments {
             if let Assigned(idx) = assignment {
                 used_variants.insert(*idx);
@@ -707,7 +730,7 @@ fn coroutine_saved_local_eligibility(
     // Write down the order of our locals that will be promoted to the prefix.
     {
         for (idx, local) in ineligible_locals.iter().enumerate() {
-            assignments[local] = Ineligible(Some(FieldIdx::from_usize(idx)));
+            assignments[local] = Ineligible(Some(FieldIdx::new(idx)));
         }
     }
     debug!("coroutine saved local assignments: {:?}", assignments);
@@ -716,52 +739,43 @@ fn coroutine_saved_local_eligibility(
 }
 
 /// Compute the full coroutine layout.
-fn coroutine_layout<'tcx>(
-    cx: &LayoutCx<'tcx>,
-    ty: Ty<'tcx>,
-    def_id: hir::def_id::DefId,
-    args: GenericArgsRef<'tcx>,
-) -> Result<Layout<'tcx>, &'tcx LayoutError<'tcx>> {
+fn coroutine_layout<
+    'a,
+    F: core::ops::Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + core::fmt::Debug + Copy,
+    VariantIdx: Idx,
+    FieldIdx: Idx,
+    LocalIdx: Idx,
+>(
+    calc: &LayoutCalculator<impl HasDataLayout>,
+    local_layouts: &IndexSlice<LocalIdx, F>,
+    mut prefix_layouts: IndexVec<FieldIdx, F>,
+    variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
+    storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+    tag_to_layout: impl Fn(Scalar) -> F,
+) -> Result<LayoutData<FieldIdx, VariantIdx>, LayoutCalculatorError<F>> {
     use SavedLocalEligibility::*;
-    let tcx = cx.tcx();
-    let instantiate_field = |ty: Ty<'tcx>| EarlyBinder::bind(ty).instantiate(tcx, args);
 
-    let Some(info) = tcx.coroutine_layout(def_id, args.as_coroutine().kind_ty()) else {
-        return Err(error(cx, LayoutError::Unknown(ty)));
-    };
-    let (ineligible_locals, assignments) = coroutine_saved_local_eligibility(info);
+    let (ineligible_locals, assignments) =
+        coroutine_saved_local_eligibility(local_layouts.len(), variant_fields, storage_conflicts);
 
     // Build a prefix layout, including "promoting" all ineligible
     // locals as part of the prefix. We compute the layout of all of
     // these fields at once to get optimal packing.
-    let tag_index = args.as_coroutine().prefix_tys().len();
+    let tag_index = prefix_layouts.len();
 
-    // `info.variant_fields` already accounts for the reserved variants, so no need to add them.
-    let max_discr = (info.variant_fields.len() - 1) as u128;
-    let discr_int = abi::Integer::fit_unsigned(max_discr);
+    // `variant_fields` already accounts for the reserved variants, so no need to add them.
+    let max_discr = (variant_fields.len() - 1) as u128;
+    let discr_int = Integer::fit_unsigned(max_discr);
     let tag = Scalar::Initialized {
         value: Primitive::Int(discr_int, /* signed = */ false),
         valid_range: WrappingRange { start: 0, end: max_discr },
     };
-    let tag_layout = TyAndLayout {
-        ty: discr_int.to_ty(tcx, /* signed = */ false),
-        layout: tcx.mk_layout(LayoutData::scalar(cx, tag)),
-    };
 
-    let promoted_layouts = ineligible_locals.iter().map(|local| {
-        let field_ty = instantiate_field(info.field_tys[local].ty);
-        let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty);
-        cx.spanned_layout_of(uninit_ty, info.field_tys[local].source_info.span)
-    });
-    let prefix_layouts = args
-        .as_coroutine()
-        .prefix_tys()
-        .iter()
-        .map(|ty| cx.layout_of(ty))
-        .chain(iter::once(Ok(tag_layout)))
-        .chain(promoted_layouts)
-        .try_collect::<IndexVec<_, _>>()?;
-    let prefix = univariant_uninterned(cx, ty, &prefix_layouts, StructKind::AlwaysSized)?;
+    let promoted_layouts = ineligible_locals.iter().map(|local| local_layouts[local]);
+    prefix_layouts.push(tag_to_layout(tag));
+    prefix_layouts.extend(promoted_layouts);
+    let prefix =
+        calc.univariant(&prefix_layouts, &ReprOptions::default(), StructKind::AlwaysSized)?;
 
     let (prefix_size, prefix_align) = (prefix.size, prefix.align);
 
@@ -776,8 +790,8 @@ fn coroutine_layout<'tcx>(
 
             // "a" (`0..b_start`) and "b" (`b_start..`) correspond to
             // "outer" and "promoted" fields respectively.
-            let b_start = FieldIdx::from_usize(tag_index + 1);
-            let offsets_b = IndexVec::from_raw(offsets.raw.split_off(b_start.as_usize()));
+            let b_start = FieldIdx::new(tag_index + 1);
+            let offsets_b = IndexVec::from_raw(offsets.raw.split_off(b_start.index()));
             let offsets_a = offsets;
 
             // Disentangle the "a" and "b" components of `inverse_memory_index`
@@ -785,9 +799,9 @@ fn coroutine_layout<'tcx>(
             // FIXME(eddyb) build a better abstraction for permutations, if possible.
             let inverse_memory_index_b: IndexVec<u32, FieldIdx> = inverse_memory_index
                 .iter()
-                .filter_map(|&i| i.as_u32().checked_sub(b_start.as_u32()).map(FieldIdx::from_u32))
+                .filter_map(|&i| i.index().checked_sub(b_start.index()).map(FieldIdx::new))
                 .collect();
-            inverse_memory_index.raw.retain(|&i| i < b_start);
+            inverse_memory_index.raw.retain(|&i| i.index() < b_start.index());
             let inverse_memory_index_a = inverse_memory_index;
 
             // Since `inverse_memory_index_{a,b}` each only refer to their
@@ -799,39 +813,34 @@ fn coroutine_layout<'tcx>(
                 FieldsShape::Arbitrary { offsets: offsets_a, memory_index: memory_index_a };
             (outer_fields, offsets_b, memory_index_b)
         }
-        _ => bug!(),
+        _ => unreachable!(),
     };
 
     let mut size = prefix.size;
     let mut align = prefix.align;
-    let variants = info
-        .variant_fields
+    let variants = variant_fields
         .iter_enumerated()
         .map(|(index, variant_fields)| {
             // Only include overlap-eligible fields when we compute our variant layout.
             let variant_only_tys = variant_fields
                 .iter()
                 .filter(|local| match assignments[**local] {
-                    Unassigned => bug!(),
+                    Unassigned => unreachable!(),
                     Assigned(v) if v == index => true,
-                    Assigned(_) => bug!("assignment does not match variant"),
+                    Assigned(_) => unreachable!("assignment does not match variant"),
                     Ineligible(_) => false,
                 })
-                .map(|local| {
-                    let field_ty = instantiate_field(info.field_tys[*local].ty);
-                    Ty::new_maybe_uninit(tcx, field_ty)
-                });
+                .map(|local| local_layouts[*local]);
 
-            let mut variant = univariant_uninterned(
-                cx,
-                ty,
-                &variant_only_tys.map(|ty| cx.layout_of(ty)).try_collect::<IndexVec<_, _>>()?,
+            let mut variant = calc.univariant(
+                &variant_only_tys.collect::<IndexVec<_, _>>(),
+                &ReprOptions::default(),
                 StructKind::Prefixed(prefix_size, prefix_align.abi),
             )?;
             variant.variants = Variants::Single { index };
 
             let FieldsShape::Arbitrary { offsets, memory_index } = variant.fields else {
-                bug!();
+                unreachable!();
             };
 
             // Now, stitch the promoted and variant-only fields back together in
@@ -841,21 +850,18 @@ fn coroutine_layout<'tcx>(
             // `promoted_memory_index` (as we'd end up with gaps).
             // So instead, we build an "inverse memory_index", as if all of the
             // promoted fields were being used, but leave the elements not in the
-            // subset as `INVALID_FIELD_IDX`, which we can filter out later to
+            // subset as `invalid_field_idx`, which we can filter out later to
             // obtain a valid (bijective) mapping.
-            const INVALID_FIELD_IDX: FieldIdx = FieldIdx::MAX;
-            debug_assert!(variant_fields.next_index() <= INVALID_FIELD_IDX);
+            let invalid_field_idx = promoted_memory_index.len() + memory_index.len();
+            let mut combined_inverse_memory_index =
+                IndexVec::from_elem_n(FieldIdx::new(invalid_field_idx), invalid_field_idx);
 
-            let mut combined_inverse_memory_index = IndexVec::from_elem_n(
-                INVALID_FIELD_IDX,
-                promoted_memory_index.len() + memory_index.len(),
-            );
             let mut offsets_and_memory_index = iter::zip(offsets, memory_index);
             let combined_offsets = variant_fields
                 .iter_enumerated()
                 .map(|(i, local)| {
                     let (offset, memory_index) = match assignments[*local] {
-                        Unassigned => bug!(),
+                        Unassigned => unreachable!(),
                         Assigned(_) => {
                             let (offset, memory_index) = offsets_and_memory_index.next().unwrap();
                             (offset, promoted_memory_index.len() as u32 + memory_index)
@@ -872,7 +878,7 @@ fn coroutine_layout<'tcx>(
 
             // Remove the unused slots and invert the mapping to obtain the
             // combined `memory_index` (also see previous comment).
-            combined_inverse_memory_index.raw.retain(|&i| i != INVALID_FIELD_IDX);
+            combined_inverse_memory_index.raw.retain(|&i| i.index() != invalid_field_idx);
             let combined_memory_index = combined_inverse_memory_index.invert_bijective_mapping();
 
             variant.fields = FieldsShape::Arbitrary {
@@ -884,17 +890,14 @@ fn coroutine_layout<'tcx>(
             align = align.max(variant.align);
             Ok(variant)
         })
-        .try_collect::<IndexVec<VariantIdx, _>>()?;
+        .collect::<Result<IndexVec<VariantIdx, _>, _>>()?;
 
     size = size.align_to(align.abi);
 
     let uninhabited = prefix.uninhabited || variants.iter().all(|v| v.is_uninhabited());
     let abi = BackendRepr::Memory { sized: true };
 
-    // this is similar to how ReprOptions populates its field_shuffle_seed
-    let def_hash = tcx.def_path_hash(def_id).0.to_smaller_hash();
-
-    let layout = tcx.mk_layout(LayoutData {
+    Ok(LayoutData {
         variants: Variants::Multiple {
             tag,
             tag_encoding: TagEncoding::Direct,
@@ -915,10 +918,8 @@ fn coroutine_layout<'tcx>(
         align,
         max_repr_align: None,
         unadjusted_abi_align: align.abi,
-        randomization_seed: def_hash,
-    });
-    debug!("coroutine layout ({:?}): {:#?}", ty, layout);
-    Ok(layout)
+        randomization_seed: Default::default(),
+    })
 }
 
 fn record_layout_for_printing<'tcx>(cx: &LayoutCx<'tcx>, layout: TyAndLayout<'tcx>) {
