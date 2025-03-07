@@ -59,6 +59,9 @@ pub fn walk_expr<'thir, 'tcx: 'thir, V: Visitor<'thir, 'tcx>>(
                 visitor.visit_expr(&visitor.thir()[arg]);
             }
         }
+        ByUse { expr, span: _ } => {
+            visitor.visit_expr(&visitor.thir()[expr]);
+        }
         Deref { arg } => visitor.visit_expr(&visitor.thir()[arg]),
         Binary { lhs, rhs, op: _ } | LogicalOp { lhs, rhs, op: _ } => {
             visitor.visit_expr(&visitor.thir()[lhs]);

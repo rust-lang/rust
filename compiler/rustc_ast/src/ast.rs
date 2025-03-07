@@ -1399,6 +1399,7 @@ impl Expr {
             // Never need parens
             ExprKind::Array(_)
             | ExprKind::Await(..)
+            | ExprKind::Use(..)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
@@ -1588,6 +1589,8 @@ pub enum ExprKind {
     Gen(CaptureBy, P<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(P<Expr>, Span),
+    /// A use expression (`x.use`). Span is of use keyword.
+    Use(P<Expr>, Span),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),
@@ -1757,8 +1760,17 @@ pub enum CaptureBy {
         /// The span of the `move` keyword.
         move_kw: Span,
     },
-    /// `move` keyword was not specified.
+    /// `move` or `use` keywords were not specified.
     Ref,
+    /// `use |x| y + x`.
+    ///
+    /// Note that if you have a regular closure like `|| x.use`, this will *not* result
+    /// in a `Use` capture. Instead, the `ExprUseVisitor` will look at the type
+    /// of `x` and treat `x.use` as either a copy/clone/move as appropriate.
+    Use {
+        /// The span of the `use` keyword.
+        use_kw: Span,
+    },
 }
 
 /// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.
