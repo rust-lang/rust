@@ -655,6 +655,10 @@ pub(crate) fn run_pass_manager(
     unsafe {
         write::llvm_optimize(cgcx, dcx, module, None, config, opt_level, opt_stage, stage)?;
     }
+    // This is the final IR, so people should be able to inspect the optimized autodiff output.
+    if config.autodiff.contains(&config::AutoDiff::PrintModAfter) {
+        unsafe { llvm::LLVMDumpModule(module.module_llvm.llmod()) };
+    }
 
     if cfg!(llvm_enzyme) && enable_ad {
         let opt_stage = llvm::OptStage::FatLTO;

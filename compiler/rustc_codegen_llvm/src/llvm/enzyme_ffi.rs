@@ -3,7 +3,7 @@
 
 use libc::{c_char, c_uint};
 
-use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
+use super::ffi::{AttributeKind, BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
 #[link(name = "llvm-wrapper", kind = "static")]
@@ -16,6 +16,7 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustEraseInstFromParent(V: &Value);
     pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
+    pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
 }
 
 unsafe extern "C" {

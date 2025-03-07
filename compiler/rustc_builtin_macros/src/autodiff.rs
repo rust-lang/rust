@@ -1,4 +1,4 @@
-//! This module contains the implementation of the `#[autodiff]` attribute.
+//! This module contains the implementatin of the `#[autodiff]` attribute.
 //! Currently our linter isn't smart enough to see that each import is used in one of the two
 //! configs (autodiff enabled or disabled), so we have to add cfg's to each import.
 //! FIXME(ZuseZ4): Remove this once we have a smarter linter.
@@ -12,7 +12,7 @@ mod llvm_enzyme {
     };
     use rustc_ast::ptr::P;
     use rustc_ast::token::{Token, TokenKind};
-    use rustc_ast::tokenstream::*;
+    use rustc_ast::{tokenstream::*, AngleBracketedArg, AngleBracketedArgs, ExprKind, GenericArg, Path, QSelf};
     use rustc_ast::visit::AssocCtxt::*;
     use rustc_ast::{
         self as ast, AssocItemKind, BindingMode, FnRetTy, FnSig, Generics, ItemKind, MetaItemInner,
@@ -24,6 +24,7 @@ mod llvm_enzyme {
     use tracing::{debug, trace};
 
     use crate::errors;
+    use crate::generic::ty::PathKind;
 
     // If we have a default `()` return type or explicitley `()` return type,
     // then we often can skip doing some work.
@@ -34,6 +35,17 @@ mod llvm_enzyme {
         }
     }
     fn first_ident(x: &MetaItemInner) -> rustc_span::Ident {
+        if x.lit().is_some() {
+            let l = x.lit().unwrap();
+            match l.kind {
+                ast::LitKind::Int(val, _) => {
+                    // get an Ident from a lit
+                    return rustc_span::Ident::from_str(val.get().to_string().as_str());
+                }
+                _ => {}
+            }
+        }
+
         let segments = &x.meta_item().unwrap().path.segments;
         assert!(segments.len() == 1);
         segments[0].ident
@@ -41,6 +53,14 @@ mod llvm_enzyme {
 
     fn name(x: &MetaItemInner) -> String {
         first_ident(x).name.to_string()
+    }
+
+    fn width(x: &MetaItemInner) -> Option<u128> {
+        let lit = x.lit()?;
+        match lit.kind {
+            ast::LitKind::Int(x, _) => Some(x.get()),
+            _ => return None,
+        }
     }
 
     pub(crate) fn from_ast(
@@ -54,9 +74,27 @@ mod llvm_enzyme {
             dcx.emit_err(errors::AutoDiffInvalidMode { span: meta_item[1].span(), mode });
             return AutoDiffAttrs::error();
         };
+
+        // Now we check, whether the user wants autodiff in batch/vector mode, or scalar mode.
+        // If he doesn't specify an integer (=width), we default to scalar mode, thus width=1.
+        let mut first_activity = 2;
+        let width: u32 = match width(&meta_item[2]) {
+            Some(x) => {
+                first_activity = 3;
+                match x.try_into() {
+                    Ok(x) => x,
+                    Err(_) => {
+                        dcx.emit_err(errors::AutoDiffInvalidWidth { span: meta_item[2].span(), width: x });
+                        return AutoDiffAttrs::error();
+                    }
+                }
+            },
+            None => 1,
+        };
+
         let mut activities: Vec<DiffActivity> = vec![];
         let mut errors = false;
-        for x in &meta_item[2..] {
+        for x in &meta_item[first_activity..] {
             let activity_str = name(&x);
             let res = DiffActivity::from_str(&activity_str);
             match res {
@@ -87,7 +125,7 @@ mod llvm_enzyme {
             (&DiffActivity::None, activities.as_slice())
         };
 
-        AutoDiffAttrs { mode, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
+        AutoDiffAttrs { mode, width, ret_activity: *ret_activity, input_activity: input_activity.to_vec() }
     }
 
     /// We expand the autodiff macro to generate a new placeholder function which passes
@@ -193,13 +231,13 @@ mod llvm_enzyme {
             // input and output args.
             dcx.emit_err(errors::AutoDiffMissingConfig { span: item.span() });
             return vec![item];
-        } else {
-            for t in meta_item_vec.clone()[1..].iter() {
-                let val = first_ident(t);
-                let t = Token::from_ast_ident(val);
-                ts.push(TokenTree::Token(t, Spacing::Joint));
-                ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
-            }
+        }
+
+        for t in meta_item_vec.clone()[1..].iter() {
+            let val = first_ident(t);
+            let t = Token::from_ast_ident(val);
+            ts.push(TokenTree::Token(t, Spacing::Joint));
+            ts.push(TokenTree::Token(comma.clone(), Spacing::Alone));
         }
         if !has_ret {
             // We don't want users to provide a return activity if the function doesn't return anything.
@@ -223,7 +261,6 @@ mod llvm_enzyme {
             .filter(|a| **a == DiffActivity::Active || **a == DiffActivity::ActiveOnly)
             .count() as u32;
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
-        let new_decl_span = d_sig.span;
         let d_body = gen_enzyme_body(
             ecx,
             &x,
@@ -234,7 +271,6 @@ mod llvm_enzyme {
             &new_args,
             span,
             sig_span,
-            new_decl_span,
             idents,
             errored,
         );
@@ -363,30 +399,43 @@ mod llvm_enzyme {
         ty
     }
 
-    /// We only want this function to type-check, since we will replace the body
-    /// later on llvm level. Using `loop {}` does not cover all return types anymore,
-    /// so instead we build something that should pass. We also add a inline_asm
-    /// line, as one more barrier for rustc to prevent inlining of this function.
-    /// FIXME(ZuseZ4): We still have cases of incorrect inlining across modules, see
-    /// <https://github.com/EnzymeAD/rust/issues/173>, so this isn't sufficient.
-    /// It also triggers an Enzyme crash if we due to a bug ever try to differentiate
-    /// this function (which should never happen, since it is only a placeholder).
-    /// Finally, we also add back_box usages of all input arguments, to prevent rustc
-    /// from optimizing any arguments away.
-    fn gen_enzyme_body(
+    //fn gen_fwd_body(
+    //    ecx: &ExtCtxt<'_>,
+    //    x: &AutoDiffAttrs,
+    //    n_active: u32,
+    //    sig: &ast::FnSig,
+    //    d_sig: &ast::FnSig,
+    //    primal: Ident,
+    //    new_names: &[String],
+    //    span: Span,
+    //    sig_span: Span,
+    //    new_decl_span: Span,
+    //    idents: Vec<Ident>,
+    //    errored: bool,
+    //) -> P<ast::Block> {
+    //}
+
+    // Will generate a body of the type:
+    // ```
+    // {
+    //   unsafe {
+    //   asm!("NOP");
+    //   }
+    //   ::core::hint::black_box(primal(args));
+    //   ::core::hint::black_box((args, ret));
+    //   <This part remains to be done by following function>
+    // }
+    // ```
+    fn init_body_helper(
         ecx: &ExtCtxt<'_>,
-        x: &AutoDiffAttrs,
-        n_active: u32,
-        sig: &ast::FnSig,
-        d_sig: &ast::FnSig,
+        span: Span,
         primal: Ident,
         new_names: &[String],
-        span: Span,
         sig_span: Span,
         new_decl_span: Span,
-        idents: Vec<Ident>,
+        idents: &[Ident],
         errored: bool,
-    ) -> P<ast::Block> {
+        ) -> (P<ast::Block>, P<ast::Expr>, P<ast::Expr>) {
         let blackbox_path = ecx.std_path(&[sym::hint, sym::black_box]);
         let noop = ast::InlineAsm {
             asm_macro: ast::AsmMacro::Asm,
@@ -435,10 +484,60 @@ mod llvm_enzyme {
         }
         body.stmts.push(ecx.stmt_semi(black_box_remaining_args));
 
+        (body, black_box_primal_call, blackbox_call_expr)
+    }
+
+    /// We only want this function to type-check, since we will replace the body
+    /// later on llvm level. Using `loop {}` does not cover all return types anymore,
+    /// so instead we build something that should pass. We also add a inline_asm
+    /// line, as one more barrier for rustc to prevent inlining of this function.
+    /// FIXME(ZuseZ4): We still have cases of incorrect inlining across modules, see
+    /// <https://github.com/EnzymeAD/rust/issues/173>, so this isn't sufficient.
+    /// It also triggers an Enzyme crash if we due to a bug ever try to differentiate
+    /// this function (which should never happen, since it is only a placeholder).
+    /// Finally, we also add back_box usages of all input arguments, to prevent rustc
+    /// from optimizing any arguments away.
+    fn gen_enzyme_body(
+        ecx: &ExtCtxt<'_>,
+        x: &AutoDiffAttrs,
+        n_active: u32,
+        sig: &ast::FnSig,
+        d_sig: &ast::FnSig,
+        primal: Ident,
+        new_names: &[String],
+        span: Span,
+        sig_span: Span,
+        idents: Vec<Ident>,
+        errored: bool,
+    ) -> P<ast::Block> {
+
+        let new_decl_span = d_sig.span;
+
+        // Just adding some default inline-asm and black_box usages to prevent early inlining
+        // and optimizations which alter the function signature.
+        //
+        // The bb_primal_call is the black_box call of the primal function. We keep it around,
+        // since it has the convenient property of returning the type of the primal function,
+        // while not getting optimized away. Remember, we only care to match types here.
+        let (mut body, bb_primal_call, bb_call_expr) = init_body_helper(
+            ecx,
+            span,
+            primal,
+            new_names,
+            sig_span,
+            new_decl_span,
+            &idents,
+            errored,
+        );
+        let primal_call = gen_primal_call(ecx, span, primal, &idents);
+
+
         if !has_ret(&d_sig.decl.output) {
-            // there is no return type that we have to match, () works fine.
+            // there is no return type that we have to match, implicit () works fine.
             return body;
         }
+
+        // Everything from here onwards just tries to fullfil the return type. Fun!
 
         // having an active-only return means we'll drop the original return type.
         // So that can be treated identical to not having one in the first place.
@@ -446,7 +545,19 @@ mod llvm_enzyme {
 
         if primal_ret && n_active == 0 && x.mode.is_rev() {
             // We only have the primal ret.
-            body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
+            if x.width > 1 {
+                // We have to return [T; width], thus add `[` and `]` and repeat ret
+                // width times.
+                let mut rets = ThinVec::new();
+                for _ in 0..x.width {
+                    rets.push(primal_call.clone());
+                }
+                let exprs = ecx.expr_array(span, rets);
+                let ret = ecx.expr_call(new_decl_span, bb_call_expr.clone(), thin_vec![exprs]);
+                body.stmts.push(ecx.stmt_expr(ret));
+            } else {
+                body.stmts.push(ecx.stmt_expr(bb_primal_call.clone()));
+            }
             return body;
         }
 
@@ -467,91 +578,86 @@ mod llvm_enzyme {
             return body;
         }
 
-        let mut exprs = ThinVec::<P<ast::Expr>>::new();
-        if primal_ret {
-            // We have both primal ret and active floats.
-            // primal ret is first, by construction.
-            exprs.push(primal_call.clone());
-        }
-
-        // Now construct default placeholder for each active float.
-        // Is there something nicer than f32::default() and f64::default()?
+        let mut exprs : P<ast::Expr> = primal_call.clone();
         let d_ret_ty = match d_sig.decl.output {
             FnRetTy::Ty(ref ty) => ty.clone(),
             FnRetTy::Default(span) => {
                 panic!("Did not expect Default ret ty: {:?}", span);
             }
         };
-        let mut d_ret_ty = match d_ret_ty.kind.clone() {
-            TyKind::Tup(ref tys) => tys.clone(),
-            TyKind::Path(_, rustc_ast::Path { segments, .. }) => {
-                if let [segment] = &segments[..]
-                    && segment.args.is_none()
-                {
-                    let id = vec![segments[0].ident];
-                    let kind = TyKind::Path(None, ecx.path(span, id));
-                    let ty = P(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span, tokens: None });
-                    thin_vec![ty]
-                } else {
-                    panic!("Expected tuple or simple path return type");
-                }
-            }
-            _ => {
-                // We messed up construction of d_sig
-                panic!("Did not expect non-tuple ret ty: {:?}", d_ret_ty);
-            }
-        };
 
-        if x.mode.is_fwd() && x.ret_activity == DiffActivity::Dual {
-            assert!(d_ret_ty.len() == 2);
-            // both should be identical, by construction
-            let arg = d_ret_ty[0].kind.is_simple_path().unwrap();
-            let arg2 = d_ret_ty[1].kind.is_simple_path().unwrap();
-            assert!(arg == arg2);
-            let sl: Vec<Symbol> = vec![arg, kw::Default];
-            let tmp = ecx.def_site_path(&sl);
-            let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
-            let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-            exprs.push(default_call_expr);
-        } else if x.mode.is_rev() {
-            if primal_ret {
-                // We have extra handling above for the primal ret
-                d_ret_ty = d_ret_ty[1..].to_vec().into();
-            }
+        if x.mode.is_fwd() && matches!(x.ret_activity,  DiffActivity::Dual | DiffActivity::DualOnly) {
+            let only_shadow = x.ret_activity == DiffActivity::DualOnly;
+            // We have either a scalar, tuple, or an array of [T; width+1].
+            if x.width == 1 {
+                dbg!("fwd-scalar");
+                // We can only have a scalar or tuple, no array (since width == 1).
 
-            for arg in d_ret_ty.iter() {
-                let arg = arg.kind.is_simple_path().unwrap();
+                let arg = match &d_ret_ty.kind {
+                    TyKind::Tup(tys) => {
+                        assert!(!only_shadow);
+                        // Our function returns a tuple of two identical types.
+                        tys[0].clone()
+                    }
+                    TyKind::Path(_, rustc_ast::Path { segments, .. }) => {
+                        assert!(only_shadow);
+                        let id = vec![segments[0].ident];
+                        let kind = TyKind::Path(None, ecx.path(span, id));
+                        P(rustc_ast::Ty { kind, id: ast::DUMMY_NODE_ID, span, tokens: None })
+                    }
+                    _ => {
+                        panic!("Expected tuple or simple path return type");
+                    }
+                };
+                let arg = d_ret_ty.kind.is_simple_path().unwrap();
                 let sl: Vec<Symbol> = vec![arg, kw::Default];
                 let tmp = ecx.def_site_path(&sl);
                 let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
-                let default_call_expr =
-                    ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
-                exprs.push(default_call_expr);
-            }
-        }
+                let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+                exprs = default_call_expr;
+            } else {
+                dbg!("fwd-vector");
+                // This is the pretty branch, we just match any array by returning `<_>::default()`.
+                // TODO: Actually do that, right now we write the full type out instead of using _
+                assert!(matches!(d_ret_ty.kind, TyKind::Array(_, _)));
 
-        let ret: P<ast::Expr>;
-        match &exprs[..] {
-            [] => {
-                assert!(!has_ret(&d_sig.decl.output));
-                // We don't have to match the return type.
-                return body;
-            }
-            [arg] => {
-                ret = ecx.expr_call(
+                let q = QSelf {
+                    ty: d_ret_ty.clone(),
+                    path_span: span,
+                    position: 0,
+                };
+                let y = ExprKind::Path(Some(P(q)), ecx.path_ident(span, Ident::from_str("default")));
+                let default_call_expr = ecx.expr(span, y);
+                let default_call_expr = ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+                exprs = ecx.expr_call(
                     new_decl_span,
-                    blackbox_call_expr.clone(),
-                    thin_vec![arg.clone()],
+                    bb_call_expr,
+                    thin_vec![default_call_expr],
                 );
             }
-            args => {
-                let ret_tuple: P<ast::Expr> = ecx.expr_tuple(span, args.into());
-                ret =
-                    ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![ret_tuple]);
-            }
+        } else if x.mode.is_rev() {
+            //if x.width == 1 {
+            //    if primal_ret {
+            //        // We have extra handling above for the primal ret
+            //        d_ret_ty = d_ret_ty[1..].to_vec().into();
+            //    }
+
+            //    for arg in d_ret_ty.iter() {
+            //        let arg = arg.kind.is_simple_path().unwrap();
+            //        let sl: Vec<Symbol> = vec![arg, kw::Default];
+            //        let tmp = ecx.def_site_path(&sl);
+            //        let default_call_expr = ecx.expr_path(ecx.path(span, tmp));
+            //        let default_call_expr =
+            //            ecx.expr_call(new_decl_span, default_call_expr, thin_vec![]);
+            //        exprs = default_call_expr;
+            //        //exprs.push(default_call_expr);
+            //    }
+            //}
+        } else {
+            panic!("Invalid mode: {:?}", x.mode);
         }
-        assert!(has_ret(&d_sig.decl.output));
-        body.stmts.push(ecx.stmt_expr(ret));
+
+        body.stmts.push(ecx.stmt_expr(exprs));
 
         body
     }
@@ -560,7 +666,7 @@ mod llvm_enzyme {
         ecx: &ExtCtxt<'_>,
         span: Span,
         primal: Ident,
-        idents: Vec<Ident>,
+        idents: &[Ident],
     ) -> P<ast::Expr> {
         let has_self = idents.len() > 0 && idents[0].name == kw::SelfLower;
         if has_self {
@@ -645,50 +751,55 @@ mod llvm_enzyme {
             match activity {
                 DiffActivity::Active => {
                     act_ret.push(arg.ty.clone());
+                    // if width =/= 1, then push [arg.ty; width] to act_ret
                 }
                 DiffActivity::ActiveOnly => {
                     // We will add the active scalar to the return type.
                     // This is handled later.
                 }
                 DiffActivity::Duplicated | DiffActivity::DuplicatedOnly => {
-                    let mut shadow_arg = arg.clone();
-                    // We += into the shadow in reverse mode.
-                    shadow_arg.ty = P(assure_mut_ref(&arg.ty));
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("d{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        // We += into the shadow in reverse mode.
+                        shadow_arg.ty = P(assure_mut_ref(&arg.ty));
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("d{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Dual | DiffActivity::DualOnly => {
-                    let mut shadow_arg = arg.clone();
-                    let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
-                        ident.name
-                    } else {
-                        debug!("{:#?}", &shadow_arg.pat);
-                        panic!("not an ident?");
-                    };
-                    let name: String = format!("b{}", old_name);
-                    new_inputs.push(name.clone());
-                    let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
-                    shadow_arg.pat = P(ast::Pat {
-                        id: ast::DUMMY_NODE_ID,
-                        kind: PatKind::Ident(BindingMode::NONE, ident, None),
-                        span: shadow_arg.pat.span,
-                        tokens: shadow_arg.pat.tokens.clone(),
-                    });
-                    d_inputs.push(shadow_arg);
+                    for i in 0..x.width {
+                        let mut shadow_arg = arg.clone();
+                        let old_name = if let PatKind::Ident(_, ident, _) = arg.pat.kind {
+                            ident.name
+                        } else {
+                            debug!("{:#?}", &shadow_arg.pat);
+                            panic!("not an ident?");
+                        };
+                        let name: String = format!("b{}_{}", old_name, i);
+                        new_inputs.push(name.clone());
+                        let ident = Ident::from_str_and_span(&name, shadow_arg.pat.span);
+                        shadow_arg.pat = P(ast::Pat {
+                            id: ast::DUMMY_NODE_ID,
+                            kind: PatKind::Ident(BindingMode::NONE, ident, None),
+                            span: shadow_arg.pat.span,
+                            tokens: shadow_arg.pat.tokens.clone(),
+                        });
+                        d_inputs.push(shadow_arg.clone());
+                    }
                 }
                 DiffActivity::Const => {
                     // Nothing to do here.
@@ -744,23 +855,37 @@ mod llvm_enzyme {
         d_decl.inputs = d_inputs.into();
 
         if x.mode.is_fwd() {
+            let ty = match d_decl.output {
+                FnRetTy::Ty(ref ty) => ty.clone(),
+                FnRetTy::Default(span) => {
+                    panic!("Did not expect Default ret ty: {:?}", span);
+                }
+            };
+
             if let DiffActivity::Dual = x.ret_activity {
-                let ty = match d_decl.output {
-                    FnRetTy::Ty(ref ty) => ty.clone(),
-                    FnRetTy::Default(span) => {
-                        panic!("Did not expect Default ret ty: {:?}", span);
-                    }
+
+                let kind = if x.width == 1 {
+                    // Dual can only be used for f32/f64 ret.
+                    // In that case we return now a tuple with two floats.
+                    TyKind::Tup(thin_vec![ty.clone(), ty.clone()])
+                } else {
+                    // We have to return [T; width+1], +1 for the primal return.
+                    let anon_const = rustc_ast::AnonConst { id: ast::DUMMY_NODE_ID, value: ecx.expr_usize(span, 1 + x.width as usize) };
+                    TyKind::Array(ty.clone(), anon_const)
                 };
-                // Dual can only be used for f32/f64 ret.
-                // In that case we return now a tuple with two floats.
-                let kind = TyKind::Tup(thin_vec![ty.clone(), ty.clone()]);
                 let ty = P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
                 d_decl.output = FnRetTy::Ty(ty);
             }
             if let DiffActivity::DualOnly = x.ret_activity {
                 // No need to change the return type,
-                // we will just return the shadow in place
-                // of the primal return.
+                // we will just return the shadow in place of the primal return.
+                // However, if we have a width > 1, then we don't return -> T, but -> [T; width]
+                if x.width > 1 {
+                    let anon_const = rustc_ast::AnonConst { id: ast::DUMMY_NODE_ID, value: ecx.expr_usize(span, x.width as usize) };
+                    let kind = TyKind::Array(ty.clone(), anon_const);
+                    let ty = P(rustc_ast::Ty { kind, id: ty.id, span: ty.span, tokens: None });
+                    d_decl.output = FnRetTy::Ty(ty);
+                }
             }
         }
 
