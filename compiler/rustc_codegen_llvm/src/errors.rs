@@ -95,6 +95,10 @@ impl<G: EmissionGuarantee> Diagnostic<'_, G> for ParseTargetMachineConfig<'_> {
 pub(crate) struct AutoDiffWithoutLTO;
 
 #[derive(Diagnostic)]
+#[diag(codegen_llvm_autodiff_unused_args)]
+pub(crate) struct AutoDiffUnusedArgs;
+
+#[derive(Diagnostic)]
 #[diag(codegen_llvm_autodiff_without_enable)]
 pub(crate) struct AutoDiffWithoutEnable;
 

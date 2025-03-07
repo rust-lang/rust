@@ -3,14 +3,14 @@ use std::ptr;
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
-use rustc_errors::FatalError;
+use rustc_errors::{DiagCtxt, FatalError};
 use tracing::{debug, trace};
 
 use crate::back::write::llvm_err;
 use crate::builder::SBuilder;
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::errors::{AutoDiffWithoutEnable, LlvmError};
+use crate::errors::{AutoDiffUnusedArgs, AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True};
 use crate::value::Value;
@@ -27,6 +27,69 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
     }
 }
 
+// A helper object to make sure, that we pass all of the input and output arguments of the outer
+// wrapper into the inner enzyme call.
+struct FunctionArgs {
+    input_args: Vec<bool>,
+    return_arg: bool,
+    has_sret: bool,
+}
+
+
+impl FunctionArgs {
+    fn fully_used(&self) -> bool {
+        self.input_args.iter().all(|x| *x) && self.return_arg
+    }
+
+    fn use_input(&mut self, idx: usize) {
+        assert!(!self.input_args[idx]);
+        self.input_args[idx] = true;
+    }
+
+    fn use_output(&mut self) {
+        assert!(!self.return_arg);
+        self.return_arg = true;
+    }
+
+    fn has_sret(&self) -> bool {
+        self.has_sret
+    }
+}
+
+impl<'ll> From<(&'ll llvm::Context, &'ll Value)> for FunctionArgs {
+    fn from(wrapper: (&'ll llvm::Context, &'ll Value)) -> Self {
+        let (llcx, fnc) = wrapper;
+        let num_args = unsafe { llvm::LLVMCountParams(fnc) as usize };
+        let input_args = vec![false; num_args];
+
+        let fn_ty = unsafe { llvm::LLVMGlobalGetValueType(fnc) };
+        let ret_ty = unsafe { llvm::LLVMGetReturnType(fn_ty) };
+        let void_ty = unsafe { llvm::LLVMVoidTypeInContext(llcx) };
+        let return_arg = ret_ty != void_ty;
+
+
+        let has_sret = if num_args == 0 {
+            false
+        } else {
+            unsafe { llvm::LLVMRustHasAttributeAtIndex(fnc, 0, llvm::AttributeKind::StructRet) }
+        };
+        if has_sret {
+            dbg!("has sret");
+        } else {
+            dbg!("no sret");
+        }
+
+        FunctionArgs { input_args, return_arg, has_sret }
+    }
+}
+
+// The drop implementation makes sure that when we're done, all input and output args are matched.
+//impl Drop for FunctionArgs {
+//    fn drop(&mut self) {
+//        assert!(self.fully_used());
+//    }
+//}
+
 /// When differentiating `fn_to_diff`, take a `outer_fn` and generate another
 /// function with expected naming and calling conventions[^1] which will be
 /// discovered by the enzyme LLVM pass and its body populated with the differentiated
@@ -37,13 +100,17 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
 // FIXME(ZuseZ4): `outer_fn` should include upstream safety checks to
 // cover some assumptions of enzyme/autodiff, which could lead to UB otherwise.
 fn generate_enzyme_call<'ll>(
+    _dcx: &DiagCtxt,
     cx: &SimpleCx<'ll>,
     fn_to_diff: &'ll Value,
     outer_fn: &'ll Value,
     attrs: AutoDiffAttrs,
-) {
+) -> Result<(), FatalError>
+{
     let inputs = attrs.input_activity;
     let output = attrs.ret_activity;
+
+    let fa = FunctionArgs::from((cx.llcx, outer_fn));
 
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
@@ -98,6 +165,9 @@ fn generate_enzyme_call<'ll>(
         // so we can now just go ahead and use that. FIXME(ZuseZ4): This doesn't handle sret yet.
         let fn_ty = llvm::LLVMGlobalGetValueType(outer_fn);
         let ret_ty = llvm::LLVMGetReturnType(fn_ty);
+
+        dbg!(&outer_fn);
+        dbg!(&fn_ty);
 
         // LLVM can figure out the input types on it's own, so we take a shortcut here.
         let enzyme_ty = llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True);
@@ -163,6 +233,15 @@ fn generate_enzyme_call<'ll>(
         // using iterators and peek()?
         let mut outer_pos: usize = 0;
         let mut activity_pos = 0;
+
+        if fa.has_sret() {
+            // Then the first outer arg is the sret pointer. Enzyme doesn't know about sret, so the
+            // inner function will still return something. We increase our outer_pos by one,
+            // and once we're done with all other args we will take the return of the inner call and
+            // update the sret pointer with it
+            outer_pos = 1;
+        }
+
         let outer_args: Vec<&llvm::Value> = get_params(outer_fn);
         while activity_pos < inputs.len() {
             let diff_activity = inputs[activity_pos as usize];
@@ -293,6 +372,11 @@ fn generate_enzyme_call<'ll>(
             llvm::LLVMRustVerifierFailureAction::LLVMAbortProcessAction,
         );
     }
+
+    //if !fa.fully_used() {
+    //    return Err(dcx.handle().emit_almost_fatal(AutoDiffUnusedArgs));
+    //}
+    Ok(())
 }
 
 pub(crate) fn differentiate<'ll>(
@@ -312,8 +396,7 @@ pub(crate) fn differentiate<'ll>(
     if !diff_items.is_empty()
         && !cgcx.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable)
     {
-        let dcx = cgcx.create_dcx();
-        return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutEnable));
+        return Err(diag_handler.handle().emit_almost_fatal(AutoDiffWithoutEnable));
     }
 
     // Before dumping the module, we want all the TypeTrees to become part of the module.
@@ -343,7 +426,7 @@ pub(crate) fn differentiate<'ll>(
             ));
         };
 
-        generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
+        generate_enzyme_call(&diag_handler, &cx, fn_def, fn_target, item.attrs.clone())?;
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
