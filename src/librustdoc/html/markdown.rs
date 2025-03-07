@@ -1791,7 +1791,7 @@ pub(crate) fn markdown_links<'md, R>(
                     }
                 }
             } else if !c.is_ascii_whitespace() {
-                while let Some((j, c)) = iter.next() {
+                for (j, c) in iter.by_ref() {
                     if c.is_ascii_whitespace() {
                         return MarkdownLinkRange::Destination(i + span.start..j + span.start);
                     }

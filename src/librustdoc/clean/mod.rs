@@ -2532,7 +2532,7 @@ fn clean_generic_args<'tcx>(
 ) -> GenericArgs {
     // FIXME(return_type_notation): Fix RTN parens rendering
     if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
-        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect::<ThinVec<_>>().into();
+        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect();
         let output = match output.kind {
             hir::TyKind::Tup(&[]) => None,
             _ => Some(Box::new(clean_ty(output, cx))),
@@ -2553,8 +2553,7 @@ fn clean_generic_args<'tcx>(
                 }
                 hir::GenericArg::Infer(_inf) => GenericArg::Infer,
             })
-            .collect::<ThinVec<_>>()
-            .into();
+            .collect();
         let constraints = generic_args
             .constraints
             .iter()
