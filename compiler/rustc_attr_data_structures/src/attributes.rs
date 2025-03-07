@@ -192,6 +192,7 @@ pub enum AttributeKind {
     Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
+    RustcForceInline(Span, Option<Symbol>),
     Stability {
         stability: Stability,
         /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute
