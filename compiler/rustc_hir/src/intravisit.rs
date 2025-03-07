@@ -316,8 +316,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_ident(&mut self, ident: Ident) -> Self::Result {
         walk_ident(self, ident)
     }
-    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, n: HirId) -> Self::Result {
-        walk_mod(self, m, n)
+    fn visit_mod(&mut self, m: &'v Mod<'v>, _s: Span, _n: HirId) -> Self::Result {
+        walk_mod(self, m)
     }
     fn visit_foreign_item(&mut self, i: &'v ForeignItem<'v>) -> Self::Result {
         walk_foreign_item(self, i)
@@ -464,8 +464,8 @@ pub trait Visitor<'v>: Sized {
     fn visit_field_def(&mut self, s: &'v FieldDef<'v>) -> Self::Result {
         walk_field_def(self, s)
     }
-    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>, item_id: HirId) -> Self::Result {
-        walk_enum_def(self, enum_definition, item_id)
+    fn visit_enum_def(&mut self, enum_definition: &'v EnumDef<'v>) -> Self::Result {
+        walk_enum_def(self, enum_definition)
     }
     fn visit_variant(&mut self, v: &'v Variant<'v>) -> Self::Result {
         walk_variant(self, v)
@@ -539,6 +539,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             visit_opt!(visitor, visit_name, orig_name);
         }
         ItemKind::Use(ref path, _) => {
+            try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_use(path, item.hir_id()));
         }
         ItemKind::Static(ref typ, _, body) => {
@@ -566,7 +567,7 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_id(item.hir_id()));
         }
         ItemKind::Mod(ref module) => {
-            // `visit_mod()` takes care of visiting the `Item`'s `HirId`.
+            try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_mod(module, item.span, item.hir_id()));
         }
         ItemKind::ForeignMod { abi: _, items } => {
@@ -587,9 +588,9 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_generics(generics));
         }
         ItemKind::Enum(ref enum_definition, ref generics) => {
+            try_visit!(visitor.visit_id(item.hir_id()));
             try_visit!(visitor.visit_generics(generics));
-            // `visit_enum_def()` takes care of visiting the `Item`'s `HirId`.
-            try_visit!(visitor.visit_enum_def(enum_definition, item.hir_id()));
+            try_visit!(visitor.visit_enum_def(enum_definition));
         }
         ItemKind::Impl(Impl {
             constness: _,
@@ -638,12 +639,7 @@ pub fn walk_ident<'v, V: Visitor<'v>>(visitor: &mut V, ident: Ident) -> V::Resul
     visitor.visit_name(ident.name)
 }
 
-pub fn walk_mod<'v, V: Visitor<'v>>(
-    visitor: &mut V,
-    module: &'v Mod<'v>,
-    mod_hir_id: HirId,
-) -> V::Result {
-    try_visit!(visitor.visit_id(mod_hir_id));
+pub fn walk_mod<'v, V: Visitor<'v>>(visitor: &mut V, module: &'v Mod<'v>) -> V::Result {
     walk_list!(visitor, visit_nested_item, module.item_ids.iter().copied());
     V::Result::output()
 }
@@ -1145,7 +1141,6 @@ pub fn walk_use<'v, V: Visitor<'v>>(
     path: &'v UsePath<'v>,
     hir_id: HirId,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(hir_id));
     let UsePath { segments, ref res, span } = *path;
     for &res in res {
         try_visit!(visitor.visit_path(&Path { segments, res, span }, hir_id));
@@ -1326,9 +1321,7 @@ pub fn walk_field_def<'v, V: Visitor<'v>>(
 pub fn walk_enum_def<'v, V: Visitor<'v>>(
     visitor: &mut V,
     enum_definition: &'v EnumDef<'v>,
-    item_id: HirId,
 ) -> V::Result {
-    try_visit!(visitor.visit_id(item_id));
     walk_list!(visitor, visit_variant, enum_definition.variants);
     V::Result::output()
 }
