@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/uninferred-consts.rs:9:9
    |
 LL |     Foo.foo();
@@ -14,7 +14,7 @@ help: consider specifying the generic arguments
 LL |     Foo.foo::<A, B>();
    |            ++++++++
 
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/uninferred-consts.rs:9:9
    |
 LL |     Foo.foo();
@@ -32,4 +32,4 @@ LL |     Foo.foo::<A, B>();
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

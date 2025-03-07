@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-12028.rs:27:14
    |
 LL |         self.input_stream(&mut stream);
@@ -13,4 +13,4 @@ LL +         <u8 as StreamHash<H>>::input_stream(self, &mut stream);
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

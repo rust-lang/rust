@@ -20,13 +20,13 @@ error[E0282]: type annotations needed
 LL |     fn intu(&self) -> &Self::Id {
    |                       ^^^^^^^^^ cannot infer type for reference `&<T as Default>::Id`
 
-error[E0284]: type annotations needed: cannot satisfy `<T as Default>::Id normalizes-to T`
+error[E0283]: type annotations needed: cannot satisfy `<T as Default>::Id normalizes-to T`
   --> $DIR/specialization-transmute.rs:17:9
    |
 LL |         self
    |         ^^^^ cannot satisfy `<T as Default>::Id normalizes-to T`
 
-error[E0284]: type annotations needed: cannot satisfy `<u8 as Default>::Id normalizes-to Option<NonZero<u8>>`
+error[E0283]: type annotations needed: cannot satisfy `<u8 as Default>::Id normalizes-to Option<NonZero<u8>>`
   --> $DIR/specialization-transmute.rs:28:13
    |
 LL |     let s = transmute::<u8, Option<NonZero<u8>>>(0);
@@ -40,5 +40,5 @@ LL | fn transmute<T: Default<Id = U>, U: Copy>(t: T) -> U {
 
 error: aborting due to 4 previous errors; 1 warning emitted
 
-Some errors have detailed explanations: E0282, E0284.
+Some errors have detailed explanations: E0282, E0283.
 For more information about an error, try `rustc --explain E0282`.

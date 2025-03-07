@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed for `Mask<_, _>`
+error[E0283]: type annotations needed for `Mask<_, _>`
   --> $DIR/issue-91614.rs:6:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
@@ -11,7 +11,7 @@ help: consider giving `y` an explicit type, where the value of const parameter `
 LL |     let y: Mask<_, N> = Mask::<_, _>::splat(false);
    |          ++++++++++++
 
-error[E0284]: type annotations needed for `Mask<_, _>`
+error[E0283]: type annotations needed for `Mask<_, _>`
   --> $DIR/issue-91614.rs:6:9
    |
 LL |     let y = Mask::<_, _>::splat(false);
@@ -26,4 +26,4 @@ LL |     let y: Mask<_, N> = Mask::<_, _>::splat(false);
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

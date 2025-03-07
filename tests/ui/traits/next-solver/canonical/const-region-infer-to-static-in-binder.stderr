@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed: cannot satisfy `the constant `{ || {} }` can be evaluated`
+error[E0283]: type annotations needed: cannot satisfy `the constant `{ || {} }` can be evaluated`
   --> $DIR/const-region-infer-to-static-in-binder.rs:4:10
    |
 LL | struct X<const FN: fn() = { || {} }>;
@@ -23,4 +23,4 @@ LL | struct X<const FN: fn() = { || {} }>;
 
 error: aborting due to 3 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

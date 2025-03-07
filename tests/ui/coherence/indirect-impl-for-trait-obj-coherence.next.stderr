@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed: cannot normalize `<dyn Object<U, Output = T> as Object<U>>::Output`
+error[E0283]: type annotations needed: cannot normalize `<dyn Object<U, Output = T> as Object<U>>::Output`
   --> $DIR/indirect-impl-for-trait-obj-coherence.rs:25:41
    |
 LL |     foo::<dyn Object<U, Output = T>, U>(x)
@@ -6,4 +6,4 @@ LL |     foo::<dyn Object<U, Output = T>, U>(x)
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

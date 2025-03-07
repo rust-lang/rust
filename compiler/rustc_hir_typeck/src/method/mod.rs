@@ -359,7 +359,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let obligation = traits::Obligation::new(
             self.tcx,
-            cause,
+            cause.clone(),
             self.param_env,
             ty::TraitRef::new_from_args(self.tcx, trait_def_id, args),
         );
@@ -385,6 +385,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         debug!("lookup_in_trait_adjusted: method_item={:?}", method_item);
         let mut obligations = PredicateObligations::new();
+        // Register the operator's obligation first to constrain the "rhs" argument (or inputs
+        // for a fn-like operator). This would happen coincidentally as part of normalizing the
+        // signature below if the output type is constrained but a param-env predicate, but for
+        // `AsyncFn*`, the output type doesn't actually show up in the signature, so we end up
+        // trying to prove other WF predicates first which incompletely constrains the type.
+        obligations.push(obligation);
 
         // Instantiate late-bound regions and instantiate the trait
         // parameters into the method type to get the actual method type.
@@ -393,11 +399,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // function signature so that normalization does not need to deal
         // with bound regions.
         let fn_sig = tcx.fn_sig(def_id).instantiate(self.tcx, args);
-        let fn_sig =
-            self.instantiate_binder_with_fresh_vars(obligation.cause.span, infer::FnCall, fn_sig);
+        let fn_sig = self.instantiate_binder_with_fresh_vars(cause.span, infer::FnCall, fn_sig);
 
         let InferOk { value: fn_sig, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(fn_sig);
+            self.at(&cause, self.param_env).normalize(fn_sig);
         obligations.extend(o);
 
         // Register obligations for the parameters. This will include the
@@ -411,26 +416,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, args);
 
         let InferOk { value: bounds, obligations: o } =
-            self.at(&obligation.cause, self.param_env).normalize(bounds);
+            self.at(&cause, self.param_env).normalize(bounds);
         obligations.extend(o);
         assert!(!bounds.has_escaping_bound_vars());
 
-        let predicates_cause = obligation.cause.clone();
         obligations.extend(traits::predicates_for_generics(
-            move |_, _| predicates_cause.clone(),
+            |_, _| cause.clone(),
             self.param_env,
             bounds,
         ));
 
         // Also add an obligation for the method type being well-formed.
         let method_ty = Ty::new_fn_ptr(tcx, ty::Binder::dummy(fn_sig));
-        debug!(
-            "lookup_method_in_trait: matched method method_ty={:?} obligation={:?}",
-            method_ty, obligation
-        );
+        debug!("lookup_method_in_trait: matched method method_ty={:?}", method_ty);
+
         obligations.push(traits::Obligation::new(
             tcx,
-            obligation.cause,
+            cause.clone(),
             self.param_env,
             ty::Binder::dummy(ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(
                 method_ty.into(),

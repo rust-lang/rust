@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed: cannot normalize `<T as Foo>::Assoc`
+error[E0283]: type annotations needed: cannot normalize `<T as Foo>::Assoc`
   --> $DIR/two-projection-param-candidates-are-ambiguous.rs:26:17
    |
 LL |     needs_bar::<T>();
@@ -17,4 +17,4 @@ LL | fn needs_bar<T: Bar>() {}
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

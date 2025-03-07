@@ -24,8 +24,8 @@ use tracing::{debug, instrument, warn};
 use super::nice_region_error::placeholder_error::Highlighted;
 use crate::error_reporting::TypeErrCtxt;
 use crate::errors::{
-    AmbiguousImpl, AmbiguousReturn, AnnotationRequired, InferenceBadError,
-    SourceKindMultiSuggestion, SourceKindSubdiag,
+    AmbiguousImpl, AnnotationRequired, InferenceBadError, SourceKindMultiSuggestion,
+    SourceKindSubdiag,
 };
 use crate::infer::InferCtxt;
 
@@ -39,11 +39,6 @@ pub enum TypeAnnotationNeeded {
     /// let _ = Default::default();
     /// ```
     E0283,
-    /// ```compile_fail,E0284
-    /// let mut d: u64 = 2;
-    /// d = d % 1u32.into();
-    /// ```
-    E0284,
 }
 
 impl From<TypeAnnotationNeeded> for ErrCode {
@@ -51,7 +46,6 @@ impl From<TypeAnnotationNeeded> for ErrCode {
         match val {
             TypeAnnotationNeeded::E0282 => E0282,
             TypeAnnotationNeeded::E0283 => E0283,
-            TypeAnnotationNeeded::E0284 => E0284,
         }
     }
 }
@@ -453,17 +447,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 was_written: false,
                 path: Default::default(),
             }),
-            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
-                span,
-                source_kind,
-                source_name,
-                failure_span,
-                infer_subdiags,
-                multi_suggestions,
-                bad_label,
-                was_written: false,
-                path: Default::default(),
-            }),
         }
     }
 
@@ -650,17 +633,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 time_version,
             }),
             TypeAnnotationNeeded::E0283 => self.dcx().create_err(AmbiguousImpl {
-                span,
-                source_kind,
-                source_name: &name,
-                failure_span,
-                infer_subdiags,
-                multi_suggestions,
-                bad_label: None,
-                was_written: path.is_some(),
-                path: path.unwrap_or_default(),
-            }),
-            TypeAnnotationNeeded::E0284 => self.dcx().create_err(AmbiguousReturn {
                 span,
                 source_kind,
                 source_name: &name,

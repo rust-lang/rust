@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/dyn-compatibility-ok-infer-err.rs:19:5
    |
 LL |     use_dyn(&());
@@ -14,7 +14,7 @@ help: consider specifying the generic argument
 LL |     use_dyn::<N>(&());
    |            +++++
 
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/dyn-compatibility-ok-infer-err.rs:19:5
    |
 LL |     use_dyn(&());
@@ -37,4 +37,4 @@ LL |     use_dyn::<N>(&());
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.

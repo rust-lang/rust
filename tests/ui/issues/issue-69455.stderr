@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed
+error[E0283]: type annotations needed
   --> $DIR/issue-69455.rs:29:41
    |
 LL |     println!("{}", 23u64.test(xs.iter().sum()));
@@ -35,5 +35,4 @@ LL |     println!("{}", 23u64.test(xs.iter().sum::<S>()));
 
 error: aborting due to 2 previous errors
 
-Some errors have detailed explanations: E0283, E0284.
-For more information about an error, try `rustc --explain E0283`.
+For more information about this error, try `rustc --explain E0283`.

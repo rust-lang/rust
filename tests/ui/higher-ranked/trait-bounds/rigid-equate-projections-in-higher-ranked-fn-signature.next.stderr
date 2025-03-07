@@ -1,4 +1,4 @@
-error[E0284]: type annotations needed: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`
+error[E0283]: type annotations needed: cannot satisfy `for<'a> <_ as Trait<'a>>::Assoc normalizes-to <T as Trait<'_>>::Assoc`
   --> $DIR/rigid-equate-projections-in-higher-ranked-fn-signature.rs:27:50
    |
 LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
@@ -6,4 +6,4 @@ LL |     let _: for<'a> fn(<_ as Trait<'a>>::Assoc) = foo::<T>();
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0284`.
+For more information about this error, try `rustc --explain E0283`.
