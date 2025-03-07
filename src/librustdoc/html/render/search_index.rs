@@ -842,10 +842,7 @@ pub(crate) fn get_function_type_for_search(
         }
         clean::ConstantItem(ref c) => make_nullary_fn(&c.type_),
         clean::StaticItem(ref s) => make_nullary_fn(&s.type_),
-        clean::StructFieldItem(ref t) => {
-            let Some(parent) = parent else {
-                return None;
-            };
+        clean::StructFieldItem(ref t) if let Some(parent) = parent => {
             let mut rgen: FxIndexMap<SimplifiedParam, (isize, Vec<RenderType>)> =
                 Default::default();
             let output = get_index_type(t, vec![], &mut rgen);
