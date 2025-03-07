@@ -671,6 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let (place, capture_kind) = match capture_clause {
                     hir::CaptureBy::Value { .. } => adjust_for_move_closure(place, capture_kind),
+                    hir::CaptureBy::Use { .. } => adjust_for_use_closure(place, capture_kind),
                     hir::CaptureBy::Ref => adjust_for_non_move_closure(place, capture_kind),
                 };
 
@@ -1165,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = match closure_clause {
             hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
-            hir::CaptureBy::Ref => {
+            hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
                 let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
@@ -1292,7 +1293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
-                hir::CaptureBy::Ref => {}
+                hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {}
             }
 
             return None;
@@ -1305,7 +1306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for captured_place in root_var_min_capture_list.iter() {
             match captured_place.info.capture_kind {
                 // Only care about captures that are moved into the closure
-                ty::UpvarCapture::ByValue => {
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                     projections_list.push(captured_place.place.projections.as_slice());
                     diagnostics_info.insert(UpvarMigrationInfo::CapturingPrecise {
                         source_expr: captured_place.info.path_expr_id,
@@ -1689,10 +1690,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
+            //
+            // For example:
+            //
+            // struct Buffer<'a> {
+            //     x: &'a String,
+            //     y: Vec<u8>,
+            // }
+            //
+            // fn get<'a>(b: Buffer<'a>) -> impl Sized + 'a {
+            //     let c = move || b.x;
+            //     drop(b);
+            //     c
+            // }
+            //
+            // Even though the closure is declared as move, when we are capturing borrowed data (in
+            // this case, *b.x) we prefer to capture by reference.
+            // Otherwise you'd get an error in 2021 immediately because you'd be trying to take
+            // ownership of the (borrowed) String or else you'd take ownership of b, as in 2018 and
+            // before, which is also an error.
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => {
+            hir::CaptureBy::Use { .. } if !place.deref_tys().any(Ty::is_ref) => {
+                ty::UpvarCapture::ByUse
+            }
+            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } | hir::CaptureBy::Ref => {
                 ty::UpvarCapture::ByRef(BorrowKind::Immutable)
             }
         }
@@ -1927,7 +1950,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     region: ty::Region<'tcx>,
 ) -> Ty<'tcx> {
     match capture_kind {
-        ty::UpvarCapture::ByValue => ty,
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => ty,
         ty::UpvarCapture::ByRef(kind) => Ty::new_ref(tcx, region, ty, kind.to_mutbl_lossy()),
     }
 }
@@ -2019,6 +2042,21 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
                 capture_kind_expr_id: Some(diag_expr_id),
                 path_expr_id: Some(diag_expr_id),
                 capture_kind: ty::UpvarCapture::ByValue,
+            },
+        ));
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
+        assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
+
+        self.capture_information.push((
+            place_with_id.place.clone(),
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind: ty::UpvarCapture::ByUse,
             },
         ));
     }
@@ -2164,6 +2202,20 @@ fn adjust_for_move_closure(
     (place, ty::UpvarCapture::ByValue)
 }
 
+/// Truncate deref of any reference.
+fn adjust_for_use_closure(
+    mut place: Place<'_>,
+    mut kind: ty::UpvarCapture,
+) -> (Place<'_>, ty::UpvarCapture) {
+    let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
+
+    if let Some(idx) = first_deref {
+        truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
+    }
+
+    (place, ty::UpvarCapture::ByUse)
+}
+
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
 fn adjust_for_non_move_closure(
@@ -2174,7 +2226,7 @@ fn adjust_for_non_move_closure(
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match kind {
-        ty::UpvarCapture::ByValue => {
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
             if let Some(idx) = contains_deref {
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
             }
@@ -2219,6 +2271,7 @@ fn construct_capture_kind_reason_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
+        ty::UpvarCapture::ByUse => "ByUse".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
 
@@ -2240,6 +2293,7 @@ fn construct_capture_info_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
+        ty::UpvarCapture::ByUse => "ByUse".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
     format!("{place_str} -> {capture_kind_str}")
@@ -2335,8 +2389,11 @@ fn determine_capture_info(
     // expressions.
     let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
         (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue) => true,
+        (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse) => true,
         (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => ref_a == ref_b,
-        (ty::UpvarCapture::ByValue, _) | (ty::UpvarCapture::ByRef(_), _) => false,
+        (ty::UpvarCapture::ByValue, _)
+        | (ty::UpvarCapture::ByUse, _)
+        | (ty::UpvarCapture::ByRef(_), _) => false,
     };
 
     if eq_capture_kind {
@@ -2346,10 +2403,20 @@ fn determine_capture_info(
         }
     } else {
         // We select the CaptureKind which ranks higher based the following priority order:
-        // ByValue > MutBorrow > UniqueImmBorrow > ImmBorrow
+        // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
         match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByValue, _) => capture_info_a,
-            (_, ty::UpvarCapture::ByValue) => capture_info_b,
+            (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByUse) => {
+                bug!("Same capture can't be ByUse and ByValue at the same time")
+            }
+            (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse)
+            | (ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse, ty::UpvarCapture::ByRef(_)) => {
+                capture_info_a
+            }
+            (ty::UpvarCapture::ByRef(_), ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse) => {
+                capture_info_b
+            }
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
                 match (ref_a, ref_b) {
                     // Take LHS:
@@ -2401,7 +2468,7 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
         }
 
         ty::UpvarCapture::ByRef(..) => {}
-        ty::UpvarCapture::ByValue => {}
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
     }
 
     place.projections.truncate(len);

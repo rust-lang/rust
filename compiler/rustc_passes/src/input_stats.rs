@@ -255,9 +255,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_body(self, b);
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, _n: HirId) {
         self.record("Mod", None, m);
-        hir_visit::walk_mod(self, m, n)
+        hir_visit::walk_mod(self, m)
     }
 
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {
@@ -328,6 +328,7 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
                 Array,
                 Call,
                 MethodCall,
+                Use,
                 Tup,
                 Binary,
                 Unary,
@@ -626,7 +627,7 @@ impl<'v> ast_visit::Visitor<'v> for StatCollector<'v> {
             (self, e, e.kind, None, ast, Expr, ExprKind),
             [
                 Array, ConstBlock, Call, MethodCall, Tup, Binary, Unary, Lit, Cast, Type, Let,
-                If, While, ForLoop, Loop, Match, Closure, Block, Await, TryBlock, Assign,
+                If, While, ForLoop, Loop, Match, Closure, Block, Await, Use, TryBlock, Assign,
                 AssignOp, Field, Index, Range, Underscore, Path, AddrOf, Break, Continue, Ret,
                 InlineAsm, FormatArgs, OffsetOf, MacCall, Struct, Repeat, Paren, Try, Yield, Yeet,
                 Become, IncludedBytes, Gen, UnsafeBinderCast, Err, Dummy

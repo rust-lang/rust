@@ -13,7 +13,7 @@ use rustc_middle::span_bug;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{Spanned, respan};
-use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use visit::{Visitor, walk_expr};
 
@@ -207,6 +207,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     },
                 ),
                 ExprKind::Await(expr, await_kw_span) => self.lower_expr_await(*await_kw_span, expr),
+                ExprKind::Use(expr, use_kw_span) => self.lower_expr_use(*use_kw_span, expr),
                 ExprKind::Closure(box Closure {
                     binder,
                     capture_clause,
@@ -483,7 +484,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             if legacy_args_idx.contains(&idx) {
                 let parent_def_id = self.current_hir_id_owner.def_id;
                 let node_id = self.next_node_id();
-                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, f.span);
+                self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, f.span);
                 let mut visitor = WillCreateDefIdsVisitor {};
                 let const_value = if let ControlFlow::Break(span) = visitor.visit_expr(&arg) {
                     AstP(Expr {
@@ -1065,6 +1066,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
             arena_vec![self; awaitee_arm],
             hir::MatchSource::AwaitDesugar,
         )
+    }
+
+    fn lower_expr_use(&mut self, use_kw_span: Span, expr: &Expr) -> hir::ExprKind<'hir> {
+        hir::ExprKind::Use(self.lower_expr(expr), use_kw_span)
     }
 
     fn lower_expr_closure(

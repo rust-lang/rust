@@ -1,0 +1,51 @@
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:5:8
+   |
+LL |     a: Trait,
+   |        ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ struct Foo1<T: Trait> {
+LL ~     a: T,
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:12:8
+   |
+LL |     b: Trait,
+   |        ^^^^^
+   |
+help: you can add the `dyn` keyword if you want a trait object
+   |
+LL |     b: dyn Trait,
+   |        +++
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:18:7
+   |
+LL |     A(Trait),
+   |       ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ enum Enum1<T: Trait> {
+LL ~     A(T),
+   |
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:25:7
+   |
+LL |     B(Trait),
+   |       ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ enum Enum2<T: Trait> {
+LL |     A(u32),
+LL ~     B(T),
+   |
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0782`.

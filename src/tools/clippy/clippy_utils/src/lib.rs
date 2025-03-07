@@ -1129,6 +1129,7 @@ pub fn can_move_expr_to_closure_no_visit<'tcx>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CaptureKind {
     Value,
+    Use,
     Ref(Mutability),
 }
 impl CaptureKind {
@@ -1141,6 +1142,7 @@ impl std::ops::BitOr for CaptureKind {
     fn bitor(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (CaptureKind::Value, _) | (_, CaptureKind::Value) => CaptureKind::Value,
+            (CaptureKind::Use, _) | (_, CaptureKind::Use) => CaptureKind::Use,
             (CaptureKind::Ref(Mutability::Mut), CaptureKind::Ref(_))
             | (CaptureKind::Ref(_), CaptureKind::Ref(Mutability::Mut)) => CaptureKind::Ref(Mutability::Mut),
             (CaptureKind::Ref(Mutability::Not), CaptureKind::Ref(Mutability::Not)) => CaptureKind::Ref(Mutability::Not),
@@ -1220,7 +1222,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 },
                 ExprKind::Let(let_expr) => {
                     let mutability = match pat_capture_kind(cx, let_expr.pat) {
-                        CaptureKind::Value => Mutability::Not,
+                        CaptureKind::Value | CaptureKind::Use => Mutability::Not,
                         CaptureKind::Ref(m) => m,
                     };
                     return CaptureKind::Ref(mutability);
@@ -1229,7 +1231,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                     let mut mutability = Mutability::Not;
                     for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {
                         match capture {
-                            CaptureKind::Value => break,
+                            CaptureKind::Value | CaptureKind::Use => break,
                             CaptureKind::Ref(Mutability::Mut) => mutability = Mutability::Mut,
                             CaptureKind::Ref(Mutability::Not) => (),
                         }
@@ -1239,7 +1241,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 _ => break,
             },
             Node::LetStmt(l) => match pat_capture_kind(cx, l.pat) {
-                CaptureKind::Value => break,
+                CaptureKind::Value | CaptureKind::Use => break,
                 capture @ CaptureKind::Ref(_) => return capture,
             },
             _ => break,
@@ -1294,6 +1296,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                         if !self.locals.contains(&local_id) {
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
+                                UpvarCapture::ByUse => CaptureKind::Use,
                                 UpvarCapture::ByRef(kind) => match kind {
                                     BorrowKind::Immutable => CaptureKind::Ref(Mutability::Not),
                                     BorrowKind::UniqueImmutable | BorrowKind::Mutable => {
@@ -3489,7 +3492,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(s) = l {
+                if let DefPathData::TypeNs(Some(s)) = l {
                     path.push(s.to_string());
                 }
                 if let DefPathData::TypeNs(_) = r {
@@ -3500,7 +3503,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(Some(sym))) => path.push(sym.to_string()),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3514,7 +3517,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         // `super` chain would be too long, just use the absolute path instead
         once(String::from("crate"))
             .chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(sym) = el.data {
+                if let DefPathData::TypeNs(Some(sym)) = el.data {
                     Some(sym.to_string())
                 } else {
                     None

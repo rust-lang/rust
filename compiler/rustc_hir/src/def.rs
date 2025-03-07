@@ -253,7 +253,9 @@ impl DefKind {
         }
     }
 
-    pub fn def_path_data(self, name: Symbol) -> DefPathData {
+    // Some `DefKind`s require a name, some don't. Panics if one is needed but
+    // not provided. (`AssocTy` is an exception, see below.)
+    pub fn def_path_data(self, name: Option<Symbol>) -> DefPathData {
         match self {
             DefKind::Mod
             | DefKind::Struct
@@ -264,9 +266,13 @@ impl DefKind {
             | DefKind::TyAlias
             | DefKind::ForeignTy
             | DefKind::TraitAlias
-            | DefKind::AssocTy
             | DefKind::TyParam
-            | DefKind::ExternCrate => DefPathData::TypeNs(name),
+            | DefKind::ExternCrate => DefPathData::TypeNs(Some(name.unwrap())),
+
+            // An associated type names will be missing for an RPITIT. It will
+            // later be given a name with `synthetic` in it, if necessary.
+            DefKind::AssocTy => DefPathData::TypeNs(name),
+
             // It's not exactly an anon const, but wrt DefPathData, there
             // is no difference.
             DefKind::Static { nested: true, .. } => DefPathData::AnonConst,
@@ -276,9 +282,9 @@ impl DefKind {
             | DefKind::Static { .. }
             | DefKind::AssocFn
             | DefKind::AssocConst
-            | DefKind::Field => DefPathData::ValueNs(name),
-            DefKind::Macro(..) => DefPathData::MacroNs(name),
-            DefKind::LifetimeParam => DefPathData::LifetimeNs(name),
+            | DefKind::Field => DefPathData::ValueNs(name.unwrap()),
+            DefKind::Macro(..) => DefPathData::MacroNs(name.unwrap()),
+            DefKind::LifetimeParam => DefPathData::LifetimeNs(name.unwrap()),
             DefKind::Ctor(..) => DefPathData::Ctor,
             DefKind::Use => DefPathData::Use,
             DefKind::ForeignMod => DefPathData::ForeignMod,
