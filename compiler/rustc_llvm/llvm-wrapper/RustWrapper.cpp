@@ -153,7 +153,11 @@ extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
                                             const char *Triple) {
+#if LLVM_VERSION_GE(21, 0)
+  unwrap(M)->setTargetTriple(llvm::Triple(Triple::normalize(Triple)));
+#else
   unwrap(M)->setTargetTriple(Triple::normalize(Triple));
+#endif
 }
 
 extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
