@@ -5,11 +5,19 @@
 //@[paca] error-pattern: the target features paca, pacg must all be either enabled or disabled together
 //@[pacg] compile-flags: -Ctarget-feature=+pacg
 //@[paca] error-pattern: the target features paca, pacg must all be either enabled or disabled together
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_core]
 
-#[lang="sized"]
-trait Sized {}
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
+#[lang = "sized"]
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 // In this test, demonstrate that +paca and +pacg both result in the tied feature error if there
 // isn't something causing an error.

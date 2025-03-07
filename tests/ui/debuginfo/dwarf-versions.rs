@@ -27,12 +27,20 @@
 //@ compile-flags: -g --target x86_64-unknown-linux-gnu --crate-type cdylib
 //@ needs-llvm-components: x86
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 
 #![no_core]
 #![no_std]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 pub fn foo() {}

@@ -208,6 +208,15 @@ impl<'tcx> Clause<'tcx> {
         }
     }
 
+    pub fn as_host_effect_clause(self) -> Option<ty::Binder<'tcx, HostEffectPredicate<'tcx>>> {
+        let clause = self.kind();
+        if let ty::ClauseKind::HostEffect(host_effect_clause) = clause.skip_binder() {
+            Some(clause.rebind(host_effect_clause))
+        } else {
+            None
+        }
+    }
+
     pub fn as_projection_clause(self) -> Option<ty::Binder<'tcx, ProjectionPredicate<'tcx>>> {
         let clause = self.kind();
         if let ty::ClauseKind::Projection(projection_clause) = clause.skip_binder() {

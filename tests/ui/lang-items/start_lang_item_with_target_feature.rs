@@ -2,12 +2,22 @@
 //@ check-fail
 
 #![feature(lang_items, no_core)]
+#![feature(const_trait_impl)]
 #![no_core]
 
 #[lang = "copy"]
 pub trait Copy {}
+
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-pub trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 #[lang = "start"]
 #[target_feature(enable = "avx2")]

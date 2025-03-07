@@ -78,8 +78,8 @@ impl<'tcx> TyCtxt<'tcx> {
                                 ty::ExistentialProjection::erase_self_ty(self, projection_pred),
                             ))
                         }
-                        ty::ClauseKind::TypeOutlives(_) => {
-                            // Type outlives bounds don't really turn into anything,
+                        ty::ClauseKind::TypeOutlives(_) | ty::ClauseKind::HostEffect(_) => {
+                            // Type outlives and host effect bounds don't really turn into anything,
                             // since we must use an intersection region for the `dyn*`'s
                             // region anyways.
                             None
