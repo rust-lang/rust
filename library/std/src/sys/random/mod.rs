@@ -6,9 +6,6 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "windows")] {
         mod windows;
         pub use windows::fill_bytes;
-    } else if #[cfg(target_os = "cygwin")] {
-        mod cygwin;
-        pub use cygwin::fill_bytes;
     } else if #[cfg(target_vendor = "apple")] {
         mod apple;
         pub use apple::fill_bytes;
@@ -38,10 +35,10 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         pub use hermit::fill_bytes;
-    } else if #[cfg(target_os = "horizon")] {
-        // FIXME: add arc4random_buf to shim-3ds
-        mod horizon;
-        pub use horizon::fill_bytes;
+    } else if #[cfg(any(target_os = "horizon", target_os = "cygwin"))] {
+        // FIXME(horizon): add arc4random_buf to shim-3ds
+        mod getrandom;
+        pub use getrandom::fill_bytes;
     } else if #[cfg(any(
         target_os = "aix",
         target_os = "hurd",
