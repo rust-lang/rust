@@ -11,14 +11,14 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::TryReserveErrorKind::*;
 use std::fmt::Debug;
+use std::hint;
 use std::iter::InPlaceIterable;
-use std::mem::{size_of, swap};
+use std::mem::swap;
 use std::ops::Bound::*;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::rc::Rc;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::vec::{Drain, IntoIter};
-use std::{hint, mem};
 
 struct DropCounter<'a> {
     count: &'a mut u32,
@@ -1134,7 +1134,7 @@ fn test_into_iter_zst() {
     impl Drop for AlignedZstWithDrop {
         fn drop(&mut self) {
             let addr = self as *mut _ as usize;
-            assert!(hint::black_box(addr) % mem::align_of::<u64>() == 0);
+            assert!(hint::black_box(addr) % align_of::<u64>() == 0);
         }
     }
 

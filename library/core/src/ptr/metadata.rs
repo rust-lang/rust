@@ -74,7 +74,7 @@ pub trait Pointee {
 /// #![feature(ptr_metadata)]
 ///
 /// fn this_never_panics<T: std::ptr::Thin>() {
-///     assert_eq!(std::mem::size_of::<&T>(), std::mem::size_of::<usize>())
+///     assert_eq!(size_of::<&T>(), size_of::<usize>())
 /// }
 /// ```
 #[unstable(feature = "ptr_metadata", issue = "81513")]

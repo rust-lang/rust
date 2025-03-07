@@ -398,12 +398,12 @@ mod prim_never {}
 /// let v = vec!['h', 'e', 'l', 'l', 'o'];
 ///
 /// // five elements times four bytes for each element
-/// assert_eq!(20, v.len() * std::mem::size_of::<char>());
+/// assert_eq!(20, v.len() * size_of::<char>());
 ///
 /// let s = String::from("hello");
 ///
 /// // five elements times one byte per element
-/// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
+/// assert_eq!(5, s.len() * size_of::<u8>());
 /// ```
 ///
 /// [`String`]: ../std/string/struct.String.html
@@ -443,8 +443,8 @@ mod prim_never {}
 /// let s = String::from("love: ❤️");
 /// let v: Vec<char> = s.chars().collect();
 ///
-/// assert_eq!(12, std::mem::size_of_val(&s[..]));
-/// assert_eq!(32, std::mem::size_of_val(&v[..]));
+/// assert_eq!(12, size_of_val(&s[..]));
+/// assert_eq!(32, size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char {}
@@ -594,10 +594,8 @@ impl () {}
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
-/// use std::mem;
-///
 /// unsafe {
-///     let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>()) as *mut i32;
+///     let my_num: *mut i32 = libc::malloc(size_of::<i32>()) as *mut i32;
 ///     if my_num.is_null() {
 ///         panic!("failed to allocate memory");
 ///     }
@@ -893,11 +891,11 @@ mod prim_array {}
 ///
 /// ```
 /// # use std::rc::Rc;
-/// let pointer_size = std::mem::size_of::<&u8>();
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
+/// let pointer_size = size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, size_of::<Rc<[u8]>>());
 /// ```
 ///
 /// ## Trait Implementations
@@ -1692,15 +1690,13 @@ mod prim_ref {}
 /// This zero-sized type *coerces* to a regular function pointer. For example:
 ///
 /// ```rust
-/// use std::mem;
-///
 /// fn bar(x: i32) {}
 ///
 /// let not_bar_ptr = bar; // `not_bar_ptr` is zero-sized, uniquely identifying `bar`
-/// assert_eq!(mem::size_of_val(&not_bar_ptr), 0);
+/// assert_eq!(size_of_val(&not_bar_ptr), 0);
 ///
 /// let bar_ptr: fn(i32) = not_bar_ptr; // force coercion to function pointer
-/// assert_eq!(mem::size_of_val(&bar_ptr), mem::size_of::<usize>());
+/// assert_eq!(size_of_val(&bar_ptr), size_of::<usize>());
 ///
 /// let footgun = &bar; // this is a shared reference to the zero-sized type identifying `bar`
 /// ```

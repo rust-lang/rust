@@ -2057,15 +2057,13 @@ fn test_align_to_non_trivial() {
 
 #[test]
 fn test_align_to_empty_mid() {
-    use core::mem;
-
     // Make sure that we do not create empty unaligned slices for the mid part, even when the
     // overall slice is too short to contain an aligned address.
     let bytes = [1, 2, 3, 4, 5, 6, 7];
     type Chunk = u32;
     for offset in 0..4 {
         let (_, mid, _) = unsafe { bytes[offset..offset + 1].align_to::<Chunk>() };
-        assert_eq!(mid.as_ptr() as usize % mem::align_of::<Chunk>(), 0);
+        assert_eq!(mid.as_ptr() as usize % align_of::<Chunk>(), 0);
     }
 }
 

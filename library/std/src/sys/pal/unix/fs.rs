@@ -1505,7 +1505,7 @@ impl File {
                     self.as_raw_fd(),
                     (&raw const attrlist).cast::<libc::c_void>().cast_mut(),
                     buf.as_ptr().cast::<libc::c_void>().cast_mut(),
-                    num_times * mem::size_of::<libc::timespec>(),
+                    num_times * size_of::<libc::timespec>(),
                     0
                 ) })?;
                 Ok(())
@@ -1660,7 +1660,7 @@ impl fmt::Debug for File {
         fn get_path(fd: c_int) -> Option<PathBuf> {
             let info = Box::<libc::kinfo_file>::new_zeroed();
             let mut info = unsafe { info.assume_init() };
-            info.kf_structsize = mem::size_of::<libc::kinfo_file>() as libc::c_int;
+            info.kf_structsize = size_of::<libc::kinfo_file>() as libc::c_int;
             let n = unsafe { libc::fcntl(fd, libc::F_KINFO, &mut *info) };
             if n == -1 {
                 return None;

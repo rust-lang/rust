@@ -293,7 +293,7 @@ mod spec_extend;
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if <code>[mem::size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
+/// if <code>[size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
 /// details are very subtle --- if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
 /// own memory-backed collection), be sure to deallocate this memory by using
@@ -393,7 +393,7 @@ mod spec_extend;
 /// [capacity]: Vec::capacity
 /// [`capacity`]: Vec::capacity
 /// [`Vec::capacity`]: Vec::capacity
-/// [mem::size_of::\<T>]: core::mem::size_of
+/// [size_of::\<T>]: size_of
 /// [len]: Vec::len
 /// [`len`]: Vec::len
 /// [`push`]: Vec::push
@@ -1573,7 +1573,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
         // `len` containing properly-initialized `T`s. Data must not be mutated for the returned
-        // lifetime. Further, `len * mem::size_of::<T>` <= `ISIZE::MAX`, and allocation does not
+        // lifetime. Further, `len * size_of::<T>` <= `isize::MAX`, and allocation does not
         // "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
@@ -1605,7 +1605,7 @@ impl<T, A: Allocator> Vec<T, A> {
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
-        // other pointer for the returned lifetime. Further, `len * mem::size_of::<T>` <=
+        // other pointer for the returned lifetime. Further, `len * size_of::<T>` <=
         // `ISIZE::MAX` and allocation does not "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
@@ -2693,7 +2693,7 @@ impl<T, A: Allocator> Vec<T, A> {
         let len = self.len;
 
         // SAFETY: The maximum capacity of `Vec<T>` is `isize::MAX` bytes, so the maximum value can
-        // be returned is `usize::checked_div(mem::size_of::<T>()).unwrap_or(usize::MAX)`, which
+        // be returned is `usize::checked_div(size_of::<T>()).unwrap_or(usize::MAX)`, which
         // matches the definition of `T::MAX_SLICE_LEN`.
         unsafe { intrinsics::assume(len <= T::MAX_SLICE_LEN) };
 
