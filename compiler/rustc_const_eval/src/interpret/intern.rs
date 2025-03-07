@@ -104,7 +104,7 @@ fn intern_as_new_static<'tcx>(
 ) {
     let feed = tcx.create_def(
         static_id,
-        sym::nested,
+        Some(sym::nested),
         DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
     );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
