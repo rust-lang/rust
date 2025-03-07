@@ -1,8 +1,7 @@
 use core::ops::ControlFlow;
 
-use rustc_ast as ast;
 use rustc_ast::visit::visit_opt;
-use rustc_ast::{EnumDef, VariantData, attr};
+use rustc_ast::{self as ast, EnumDef, Safety, VariantData, attr};
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::{ErrorGuaranteed, Ident, Span, kw, sym};
 use smallvec::SmallVec;
@@ -51,6 +50,7 @@ pub(crate) fn expand_deriving_default(
         }],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
     trait_def.expand(cx, mitem, item, push)
 }
