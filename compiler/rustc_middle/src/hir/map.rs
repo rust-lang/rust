@@ -1356,7 +1356,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
             self.submodules.push(item.owner_id);
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
-                intravisit::walk_mod(self, module, item.hir_id());
+                intravisit::walk_mod(self, module);
             }
         } else {
             intravisit::walk_item(self, item)
