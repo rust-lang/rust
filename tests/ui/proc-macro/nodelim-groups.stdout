@@ -165,3 +165,18 @@ PRINT-BANG INPUT (DEBUG): TokenStream [
         span: $DIR/nodelim-groups.rs:16:52: 16:59 (#8),
     },
 ]
+PRINT-BANG INPUT (DISPLAY): 123
+PRINT-BANG INPUT (DEBUG): TokenStream [
+    Group {
+        delimiter: None,
+        stream: TokenStream [
+            Literal {
+                kind: Integer,
+                symbol: "123",
+                suffix: None,
+                span: $DIR/nodelim-groups.rs:34:9: 34:12 (#0),
+            },
+        ],
+        span: $DIR/nodelim-groups.rs:27:54: 27:56 (#16),
+    },
+]

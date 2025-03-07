@@ -92,10 +92,27 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Compiler {
     stage: u32,
     host: TargetSelection,
+    /// Indicates whether `compiler_for` was used to force a specific compiler stage.
+    /// This field is ignored in `Hash` and `PartialEq` implementations as only the `stage`
+    /// and `host` fields are relevant for those.
+    forced_compiler: bool,
+}
+
+impl std::hash::Hash for Compiler {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stage.hash(state);
+        self.host.hash(state);
+    }
+}
+
+impl PartialEq for Compiler {
+    fn eq(&self, other: &Self) -> bool {
+        self.stage == other.stage && self.host == other.host
+    }
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -1963,6 +1980,14 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 impl Compiler {
+    pub fn new(stage: u32, host: TargetSelection) -> Self {
+        Self { stage, host, forced_compiler: false }
+    }
+
+    pub fn forced_compiler(&mut self, forced_compiler: bool) {
+        self.forced_compiler = forced_compiler;
+    }
+
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self
@@ -1971,6 +1996,11 @@ impl Compiler {
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
+    }
+
+    /// Indicates whether `compiler_for` was used to force a specific compiler stage.
+    pub fn is_forced_compiler(&self) -> bool {
+        self.forced_compiler
     }
 }
 

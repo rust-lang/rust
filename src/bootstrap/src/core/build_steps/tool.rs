@@ -322,6 +322,8 @@ pub(crate) fn get_tool_rustc_compiler(
     if builder.download_rustc() && target_compiler.stage == 1 {
         // We already have the stage 1 compiler, we don't need to cut the stage.
         builder.compiler(target_compiler.stage, builder.config.build)
+    } else if target_compiler.is_forced_compiler() {
+        target_compiler
     } else {
         // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
         // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage

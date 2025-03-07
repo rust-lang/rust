@@ -1291,18 +1291,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     /// Called on `ptr as usize` casts.
     /// (Actually computing the resulting `usize` doesn't need machine help,
     /// that's just `Scalar::try_to_int`.)
+    #[inline(always)]
     fn expose_provenance(
         ecx: &InterpCx<'tcx, Self>,
         provenance: Self::Provenance,
     ) -> InterpResult<'tcx> {
-        match provenance {
-            Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
-            Provenance::Wildcard => {
-                // No need to do anything for wildcard pointers as
-                // their provenances have already been previously exposed.
-                interp_ok(())
-            }
-        }
+        ecx.expose_provenance(provenance)
     }
 
     /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.

@@ -70,7 +70,6 @@ fn check_struct(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     check_transparent(tcx, def);
     check_packed(tcx, span, def);
-    check_unsafe_fields(tcx, def_id);
 }
 
 fn check_union(tcx: TyCtxt<'_>, def_id: LocalDefId) {
@@ -142,36 +141,6 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
     }
 
     true
-}
-
-/// Check that the unsafe fields do not need dropping.
-fn check_unsafe_fields(tcx: TyCtxt<'_>, item_def_id: LocalDefId) {
-    let span = tcx.def_span(item_def_id);
-    let def = tcx.adt_def(item_def_id);
-
-    let typing_env = ty::TypingEnv::non_body_analysis(tcx, item_def_id);
-    let args = ty::GenericArgs::identity_for_item(tcx, item_def_id);
-
-    for field in def.all_fields() {
-        if !field.safety.is_unsafe() {
-            continue;
-        }
-
-        if !allowed_union_or_unsafe_field(tcx, field.ty(tcx, args), typing_env, span) {
-            let hir::Node::Field(field) = tcx.hir_node_by_def_id(field.did.expect_local()) else {
-                unreachable!("field has to correspond to hir field")
-            };
-            let ty_span = field.ty.span;
-            tcx.dcx().emit_err(errors::InvalidUnsafeField {
-                field_span: field.span,
-                sugg: errors::InvalidUnsafeFieldSuggestion {
-                    lo: ty_span.shrink_to_lo(),
-                    hi: ty_span.shrink_to_hi(),
-                },
-                note: (),
-            });
-        }
-    }
 }
 
 /// Check that a `static` is inhabited.
@@ -1512,7 +1481,6 @@ fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
 
     detect_discriminant_duplicate(tcx, def);
     check_transparent(tcx, def);
-    check_unsafe_fields(tcx, def_id);
 }
 
 /// Part of enum check. Given the discriminants of an enum, errors if two or more discriminants are equal
