@@ -4,6 +4,7 @@ use std::{cmp, iter};
 
 use rustc_hashes::Hash64;
 use rustc_index::Idx;
+use rustc_index::bit_set::BitMatrix;
 use tracing::debug;
 
 use crate::{
@@ -12,6 +13,7 @@ use crate::{
     Variants, WrappingRange,
 };
 
+mod coroutine;
 mod simple;
 
 #[cfg(feature = "nightly")]
@@ -198,6 +200,34 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             unadjusted_abi_align: elt.align.abi,
             randomization_seed: elt.randomization_seed.wrapping_add(Hash64::new(count)),
         })
+    }
+
+    /// Compute the layout for a coroutine.
+    ///
+    /// This uses dedicated code instead of [`Self::layout_of_struct_or_enum`], as coroutine
+    /// fields may be shared between multiple variants (see the [`coroutine`] module for details).
+    pub fn coroutine<
+        'a,
+        F: Deref<Target = &'a LayoutData<FieldIdx, VariantIdx>> + fmt::Debug + Copy,
+        VariantIdx: Idx,
+        FieldIdx: Idx,
+        LocalIdx: Idx,
+    >(
+        &self,
+        local_layouts: &IndexSlice<LocalIdx, F>,
+        prefix_layouts: IndexVec<FieldIdx, F>,
+        variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
+        storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
+        tag_to_layout: impl Fn(Scalar) -> F,
+    ) -> LayoutCalculatorResult<FieldIdx, VariantIdx, F> {
+        coroutine::layout(
+            self,
+            local_layouts,
+            prefix_layouts,
+            variant_fields,
+            storage_conflicts,
+            tag_to_layout,
+        )
     }
 
     pub fn univariant<
