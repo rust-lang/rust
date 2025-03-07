@@ -18,44 +18,47 @@ struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
-    mutable_args: DenseBitSet<usize>,
+    read_only: DenseBitSet<usize>,
+    read_only_when_freeze: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
+        Self {
+            read_only: DenseBitSet::new_filled(arg_count),
+            read_only_when_freeze: DenseBitSet::new_filled(arg_count),
+        }
     }
 }
 
 impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
         // We're only interested in arguments.
-        if place.local == RETURN_PLACE || place.local.index() > self.mutable_args.domain_size() {
+        if place.local == RETURN_PLACE || place.local.index() > self.read_only.domain_size() {
             return;
         }
-
-        let mark_as_mutable = match context {
+        let arg_index = place.local.index() - 1;
+        if place.is_indirect() {
+            return;
+        }
+        match context {
             PlaceContext::MutatingUse(..) => {
                 // This is a mutation, so mark it as such.
-                true
+                self.read_only.remove(arg_index);
+                self.read_only_when_freeze.remove(arg_index);
             }
             PlaceContext::NonMutatingUse(NonMutatingUseContext::RawBorrow) => {
                 // Whether mutating though a `&raw const` is allowed is still undecided, so we
-                // disable any sketchy `readonly` optimizations for now. But we only need to do
-                // this if the pointer would point into the argument. IOW: for indirect places,
-                // like `&raw (*local).field`, this surely cannot mutate `local`.
-                !place.is_indirect()
+                // disable any sketchy `readonly` optimizations for now.
+                self.read_only.remove(arg_index);
+                self.read_only_when_freeze.remove(arg_index);
             }
-            PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {
-                // Not mutating, so it's fine.
-                false
+            PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow) => {
+                self.read_only.remove(arg_index);
             }
+            PlaceContext::NonMutatingUse(..) | PlaceContext::NonUse(..) => {}
         };
-
-        if mark_as_mutable {
-            self.mutable_args.insert(place.local.index() - 1);
-        }
     }
 
     fn visit_terminator(&mut self, terminator: &Terminator<'tcx>, location: Location) {
@@ -86,12 +89,13 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
                     let local = place.local;
                     if place.is_indirect()
                         || local == RETURN_PLACE
-                        || local.index() > self.mutable_args.domain_size()
+                        || local.index() > self.read_only.domain_size()
                     {
                         continue;
                     }
-
-                    self.mutable_args.insert(local.index() - 1);
+                    let arg_index = local.index() - 1;
+                    self.read_only.remove(arg_index);
+                    self.read_only_when_freeze.remove(arg_index);
                 }
             }
         };
@@ -158,8 +162,8 @@ pub(super) fn deduced_param_attrs<'tcx>(
 
     // Grab the optimized MIR. Analyze it to determine which arguments have been mutated.
     let body: &Body<'tcx> = tcx.optimized_mir(def_id);
-    let mut deduce_read_only = DeduceReadOnly::new(body.arg_count);
-    deduce_read_only.visit_body(body);
+    let mut deduce = DeduceReadOnly::new(body.arg_count);
+    deduce.visit_body(body);
 
     // Set the `readonly` attribute for every argument that we concluded is immutable and that
     // contains no UnsafeCells.
@@ -173,14 +177,14 @@ pub(super) fn deduced_param_attrs<'tcx>(
     let mut deduced_param_attrs = tcx.arena.alloc_from_iter(
         body.local_decls.iter().skip(1).take(body.arg_count).enumerate().map(
             |(arg_index, local_decl)| DeducedParamAttrs {
-                read_only: !deduce_read_only.mutable_args.contains(arg_index)
-                    // We must normalize here to reveal opaques and normalize
-                    // their generic parameters, otherwise we'll see exponential
-                    // blow-up in compile times: #113372
-                    && tcx
-                        .normalize_erasing_regions(typing_env, local_decl.ty)
-                        .is_freeze(tcx, typing_env),
-            },
+                read_only: deduce.read_only.contains(arg_index) || (
+                            deduce.read_only_when_freeze.contains(arg_index)
+                            // We must normalize here to reveal opaques and normalize
+                            // their generic parameters, otherwise we'll see exponential
+                            // blow-up in compile times: #113372
+                            && tcx.normalize_erasing_regions(typing_env, local_decl.ty).is_freeze(tcx, typing_env))
+
+            }
         ),
     );
 
