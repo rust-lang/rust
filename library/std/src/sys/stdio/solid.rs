@@ -1,10 +1,10 @@
-use super::abi;
-use super::abi::fileno;
-use crate::io::{self, BorrowedCursor};
+use crate::io;
+use crate::sys::pal::abi;
 
 pub struct Stdin;
 pub struct Stdout;
 pub struct Stderr;
+struct PanicOutput;
 
 impl Stdin {
     pub const fn new() -> Stdin {
@@ -13,16 +13,8 @@ impl Stdin {
 }
 
 impl io::Read for Stdin {
-    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        Ok(unsafe { abi::sys_read(fileno::STDIN, buf.as_mut_ptr(), buf.len()) })
-    }
-
-    fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
-        unsafe {
-            let n = abi::sys_read(fileno::STDIN, buf.as_mut().as_mut_ptr().cast(), buf.capacity());
-            buf.advance_unchecked(n);
-        }
-        Ok(())
+    fn read(&mut self, _buf: &mut [u8]) -> io::Result<usize> {
+        Ok(0)
     }
 }
 
@@ -34,8 +26,7 @@ impl Stdout {
 
 impl io::Write for Stdout {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unsafe { abi::sys_write(fileno::STDOUT, buf.as_ptr(), buf.len()) }
-
+        unsafe { abi::SOLID_LOG_write(buf.as_ptr(), buf.len()) };
         Ok(buf.len())
     }
 
@@ -52,8 +43,7 @@ impl Stderr {
 
 impl io::Write for Stderr {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        unsafe { abi::sys_write(fileno::STDERR, buf.as_ptr(), buf.len()) }
-
+        unsafe { abi::SOLID_LOG_write(buf.as_ptr(), buf.len()) };
         Ok(buf.len())
     }
 
@@ -62,12 +52,29 @@ impl io::Write for Stderr {
     }
 }
 
-pub const STDIN_BUF_SIZE: usize = crate::sys::io::DEFAULT_BUF_SIZE;
+impl PanicOutput {
+    pub const fn new() -> PanicOutput {
+        PanicOutput
+    }
+}
+
+impl io::Write for PanicOutput {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        unsafe { abi::SOLID_LOG_write(buf.as_ptr(), buf.len()) };
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+pub const STDIN_BUF_SIZE: usize = 0;
 
 pub fn is_ebadf(_err: &io::Error) -> bool {
     true
 }
 
 pub fn panic_output() -> Option<impl io::Write> {
-    Some(Stderr::new())
+    Some(PanicOutput::new())
 }

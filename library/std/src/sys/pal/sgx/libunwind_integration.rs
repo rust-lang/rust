@@ -4,6 +4,7 @@
 #![cfg(not(test))]
 
 use crate::sys::sync::RwLock;
+use crate::{slice, str};
 
 // Verify that the byte pattern libunwind uses to initialize an RwLock is
 // equivalent to the value of RwLock::new(). If the value changes,
@@ -43,4 +44,15 @@ pub unsafe extern "C" fn __rust_rwlock_unlock(p: *mut RwLock) -> i32 {
     }
     unsafe { (*p).write_unlock() };
     return 0;
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn __rust_print_err(m: *mut u8, s: i32) {
+    if s < 0 {
+        return;
+    }
+    let buf = unsafe { slice::from_raw_parts(m as *const u8, s as _) };
+    if let Ok(s) = str::from_utf8(&buf[..buf.iter().position(|&b| b == 0).unwrap_or(buf.len())]) {
+        eprint!("{s}");
+    }
 }
