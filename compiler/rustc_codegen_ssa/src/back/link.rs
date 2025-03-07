@@ -172,6 +172,16 @@ pub fn link_binary(
                 }
                 tempfiles_for_stdout_output.push(out_filename);
             }
+        } else {
+            for print in &sess.opts.prints {
+                if print.kind == PrintKind::LinkArgs || print.kind == PrintKind::NativeStaticLibs {
+                    sess.dcx().warn(format!(
+                        "skipping link step due to conflict: cannot output linkage information without emitting executable"
+                    ));
+                    sess.dcx()
+                        .note(format!("consider emitting executable to print linkage information"));
+                }
+            }
         }
     }
 
