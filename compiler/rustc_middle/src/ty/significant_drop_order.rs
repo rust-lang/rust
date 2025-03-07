@@ -23,9 +23,11 @@ fn true_significant_drop_ty<'tcx>(
 
             match key.disambiguated_data.data {
                 rustc_hir::definitions::DefPathData::CrateRoot => {
-                    name_rev.push(tcx.crate_name(did.krate))
+                    name_rev.push(tcx.crate_name(did.krate));
                 }
-                rustc_hir::definitions::DefPathData::TypeNs(symbol) => name_rev.push(symbol),
+                rustc_hir::definitions::DefPathData::TypeNs(symbol) => {
+                    name_rev.push(symbol.unwrap());
+                }
                 _ => return None,
             }
             if let Some(parent) = key.parent {

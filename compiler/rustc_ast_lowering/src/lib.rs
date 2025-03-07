@@ -494,7 +494,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         parent: LocalDefId,
         node_id: ast::NodeId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
@@ -774,7 +774,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let _def_id = self.create_def(
                     self.current_hir_id_owner.def_id,
                     param,
-                    kw::UnderscoreLifetime,
+                    Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
                     ident.span,
                 );
@@ -2089,8 +2089,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id =
-                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
+            let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {
