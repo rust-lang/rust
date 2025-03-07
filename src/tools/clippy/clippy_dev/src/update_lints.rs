@@ -2,6 +2,7 @@ use crate::utils::{
     ErrAction, File, FileUpdater, RustSearcher, Token, UpdateMode, UpdateStatus, expect_action, update_text_region_fn,
 };
 use itertools::Itertools;
+use rustc_lexer::{LiteralKind, TokenKind, tokenize};
 use std::collections::HashSet;
 use std::fmt::Write;
 use std::ops::Range;
@@ -342,7 +343,7 @@ fn parse_str_lit(s: &str) -> String {
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    rustc_literal_escaper::unescape_unicode(s, mode, &mut |_, ch| {
+    rustc_literal_escaper::unescape_str(s, |range, ch| {
         if let Ok(ch) = ch {
             res.push(ch);
         }
