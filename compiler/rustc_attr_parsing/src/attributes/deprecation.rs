@@ -46,7 +46,7 @@ fn get<S: Stage>(
 }
 
 impl<S: Stage> SingleAttributeParser<S> for DeprecationParser {
-    const PATH: &'static [rustc_span::Symbol] = &[sym::deprecated];
+    const PATH: &[rustc_span::Symbol] = &[sym::deprecated];
     const ATTRIBUTE_ORDER: AttributeOrder = AttributeOrder::KeepFirst;
     const ON_DUPLICATE: OnDuplicate<S> = OnDuplicate::Error;
 
