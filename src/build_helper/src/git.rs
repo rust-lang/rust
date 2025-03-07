@@ -123,16 +123,37 @@ pub fn get_closest_merge_commit(
     config: &GitConfig<'_>,
     target_paths: &[PathBuf],
 ) -> Result<String, String> {
-    let mut git = Command::new("git");
+    // The need of `--first-parent` is inconsistent. It's sometimes required, sometimes not.
+    // See https://github.com/rust-lang/rust/issues/101907#issuecomment-2677860377 for more
+    // context.
+    //
+    // FIXME: This is so hacky, is there a more sane way to fix this problem?
+    let result = match get_closest_merge_commit_impl(git_dir, config, target_paths, false) {
+        // If no commit is found without `--first-parent` flag, fallback to using it.
+        Ok(commit) if commit.is_empty() => {
+            get_closest_merge_commit_impl(git_dir, config, target_paths, true)
+        }
+        result => result,
+    };
 
-    if let Some(git_dir) = git_dir {
-        git.current_dir(git_dir);
-    }
+    return result;
 
-    let channel = include_str!("../../ci/channel");
+    fn get_closest_merge_commit_impl(
+        git_dir: Option<&Path>,
+        config: &GitConfig<'_>,
+        target_paths: &[PathBuf],
+        follow_first_parent_only: bool,
+    ) -> Result<String, String> {
+        let mut git = Command::new("git");
 
-    let merge_base = {
-        if CiEnv::is_ci() &&
+        if let Some(git_dir) = git_dir {
+            git.current_dir(git_dir);
+        }
+
+        let channel = include_str!("../../ci/channel");
+
+        let merge_base = {
+            if CiEnv::is_ci() &&
             // FIXME: When running on rust-lang managed CI and it's not a nightly build,
             // `git_upstream_merge_base` fails with an error message similar to this:
             // ```
@@ -141,28 +162,29 @@ pub fn get_closest_merge_commit(
             // ```
             // Investigate and resolve this issue instead of skipping it like this.
             (channel == "nightly" || !CiEnv::is_rust_lang_managed_ci_job())
-        {
-            git_upstream_merge_base(config, git_dir).unwrap()
-        } else {
-            // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
-            // outdated very quickly.
-            "HEAD".to_string()
+            {
+                git_upstream_merge_base(config, git_dir).unwrap()
+            } else {
+                // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
+                // outdated very quickly.
+                "HEAD".to_string()
+            }
+        };
+
+        git.args(["rev-list", &format!("--author={}", config.git_merge_commit_email), "-n1"]);
+
+        if follow_first_parent_only {
+            git.arg("--first-parent");
         }
-    };
 
-    git.args([
-        "rev-list",
-        &format!("--author={}", config.git_merge_commit_email),
-        "-n1",
-        "--first-parent",
-        &merge_base,
-    ]);
+        git.arg(merge_base);
 
-    if !target_paths.is_empty() {
-        git.arg("--").args(target_paths);
+        if !target_paths.is_empty() {
+            git.arg("--").args(target_paths);
+        }
+
+        Ok(output_result(&mut git)?.trim().to_owned())
     }
-
-    Ok(output_result(&mut git)?.trim().to_owned())
 }
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
