@@ -3,13 +3,14 @@
 
 use libc::{c_char, c_uint};
 
+use super::MetadataKindId;
 use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
 #[link(name = "llvm-wrapper", kind = "static")]
 unsafe extern "C" {
     // Enzyme
-    pub(crate) fn LLVMRustHasMetadata(I: &Value, KindID: c_uint) -> bool;
+    pub(crate) safe fn LLVMRustHasMetadata(I: &Value, KindID: MetadataKindId) -> bool;
     pub(crate) fn LLVMRustEraseInstUntilInclusive(BB: &BasicBlock, I: &Value);
     pub(crate) fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
     pub(crate) fn LLVMRustDIGetInstMetadata(I: &Value) -> Option<&Metadata>;
