@@ -118,16 +118,16 @@ impl<R: Read + ?Sized> BufReader<R> {
     /// #![feature(bufreader_peek)]
     /// use std::io::{Read, BufReader};
     ///
-    /// let mut bytes = &b"oh, hello"[..];
+    /// let mut bytes = &b"oh, hello there"[..];
     /// let mut rdr = BufReader::with_capacity(6, &mut bytes);
     /// assert_eq!(rdr.peek(2).unwrap(), b"oh");
     /// let mut buf = [0; 4];
     /// rdr.read(&mut buf[..]).unwrap();
     /// assert_eq!(&buf, b"oh, ");
-    /// assert_eq!(rdr.peek(2).unwrap(), b"he");
+    /// assert_eq!(rdr.peek(5).unwrap(), b"hello");
     /// let mut s = String::new();
     /// rdr.read_to_string(&mut s).unwrap();
-    /// assert_eq!(&s, "hello");
+    /// assert_eq!(&s, "hello there");
     /// assert_eq!(rdr.peek(1).unwrap().len(), 0);
     /// ```
     #[unstable(feature = "bufreader_peek", issue = "128405")]
