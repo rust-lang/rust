@@ -550,13 +550,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 Int(I32) => "llvm.sadd.with.overflow.i32",
                 Int(I64) => "llvm.sadd.with.overflow.i64",
                 Int(I128) => "llvm.sadd.with.overflow.i128",
-
-                Uint(U8) => "llvm.uadd.with.overflow.i8",
-                Uint(U16) => "llvm.uadd.with.overflow.i16",
-                Uint(U32) => "llvm.uadd.with.overflow.i32",
-                Uint(U64) => "llvm.uadd.with.overflow.i64",
-                Uint(U128) => "llvm.uadd.with.overflow.i128",
-
+                Uint(_) => {
+                    // Emit add and icmp instead of llvm.sadd.with.overflow.
+                    // LLVM will attempt to reform llvm.sadd.with.overflow
+                    // in the backend if profitable.
+                    let sum = self.add(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, sum, lhs);
+                    return (sum, cmp);
+                }
                 _ => unreachable!(),
             },
             OverflowOp::Sub => match new_kind {
