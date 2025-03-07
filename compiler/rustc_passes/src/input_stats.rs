@@ -255,9 +255,9 @@ impl<'v> hir_visit::Visitor<'v> for StatCollector<'v> {
         hir_visit::walk_body(self, b);
     }
 
-    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, n: HirId) {
+    fn visit_mod(&mut self, m: &'v hir::Mod<'v>, _s: Span, _n: HirId) {
         self.record("Mod", None, m);
-        hir_visit::walk_mod(self, m, n)
+        hir_visit::walk_mod(self, m)
     }
 
     fn visit_foreign_item(&mut self, i: &'v hir::ForeignItem<'v>) {

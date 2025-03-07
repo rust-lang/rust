@@ -251,7 +251,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // If it's a "mod foo {}", we want to look to its documentation page.
             self.extract_info_from_hir_id(id);
         }
-        intravisit::walk_mod(self, m, id);
+        intravisit::walk_mod(self, m);
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
