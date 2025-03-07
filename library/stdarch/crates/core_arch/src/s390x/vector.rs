@@ -251,6 +251,38 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vstrczbs"] fn vstrczbs(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char, d: u32) -> PackedTuple<vector_bool_char, i32>;
     #[link_name = "llvm.s390.vstrczhs"] fn vstrczhs(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short, d: u32) -> PackedTuple<vector_bool_short, i32>;
     #[link_name = "llvm.s390.vstrczfs"] fn vstrczfs(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int, d: u32) -> PackedTuple<vector_bool_int, i32>;
+
+    #[link_name = "llvm.s390.vfeeb"] fn vfeeb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.s390.vfeeh"] fn vfeeh(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.s390.vfeef"] fn vfeef(a: i32x4, b: i32x4) -> i32x4;
+
+    #[link_name = "llvm.s390.vfeezb"] fn vfeezb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.s390.vfeezh"] fn vfeezh(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.s390.vfeezf"] fn vfeezf(a: i32x4, b: i32x4) -> i32x4;
+
+    #[link_name = "llvm.s390.vfeebs"] fn vfeebs(a: i8x16, b: i8x16) -> PackedTuple<i8x16, i32>;
+    #[link_name = "llvm.s390.vfeehs"] fn vfeehs(a: i16x8, b: i16x8) -> PackedTuple<i16x8, i32>;
+    #[link_name = "llvm.s390.vfeefs"] fn vfeefs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
+
+    #[link_name = "llvm.s390.vfeezbs"] fn vfeezbs(a: i8x16, b: i8x16) -> PackedTuple<i8x16, i32>;
+    #[link_name = "llvm.s390.vfeezhs"] fn vfeezhs(a: i16x8, b: i16x8) -> PackedTuple<i16x8, i32>;
+    #[link_name = "llvm.s390.vfeezfs"] fn vfeezfs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
+
+    #[link_name = "llvm.s390.vfeneb"] fn vfeneb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.s390.vfeneh"] fn vfeneh(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.s390.vfenef"] fn vfenef(a: i32x4, b: i32x4) -> i32x4;
+
+    #[link_name = "llvm.s390.vfenezb"] fn vfenezb(a: i8x16, b: i8x16) -> i8x16;
+    #[link_name = "llvm.s390.vfenezh"] fn vfenezh(a: i16x8, b: i16x8) -> i16x8;
+    #[link_name = "llvm.s390.vfenezf"] fn vfenezf(a: i32x4, b: i32x4) -> i32x4;
+
+    #[link_name = "llvm.s390.vfenebs"] fn vfenebs(a: i8x16, b: i8x16) -> PackedTuple<i8x16, i32>;
+    #[link_name = "llvm.s390.vfenehs"] fn vfenehs(a: i16x8, b: i16x8) -> PackedTuple<i16x8, i32>;
+    #[link_name = "llvm.s390.vfenefs"] fn vfenefs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
+
+    #[link_name = "llvm.s390.vfenezbs"] fn vfenezbs(a: i8x16, b: i8x16) -> PackedTuple<i8x16, i32>;
+    #[link_name = "llvm.s390.vfenezhs"] fn vfenezhs(a: i16x8, b: i16x8) -> PackedTuple<i16x8, i32>;
+    #[link_name = "llvm.s390.vfenezfs"] fn vfenezfs(a: i32x4, b: i32x4) -> PackedTuple<i32x4, i32>;
 }
 
 impl_from! { i8x16, u8x16,  i16x8, u16x8, i32x4, u32x4, i64x2, u64x2, f32x4, f64x2 }
@@ -3437,6 +3469,107 @@ mod sealed {
         vector_unsigned_long_long
         vector_double
     }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorEqualityIdx: Sized {
+        type Result;
+
+        unsafe fn vec_cmpeq_idx(self, other: Self) -> Self::Result;
+        unsafe fn vec_cmpne_idx(self, other: Self) -> Self::Result;
+
+        unsafe fn vec_cmpeq_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+        unsafe fn vec_cmpne_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+
+        unsafe fn vec_cmpeq_or_0_idx(self, other: Self) -> Self::Result;
+        unsafe fn vec_cmpne_or_0_idx(self, other: Self) -> Self::Result;
+
+        unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+        unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+    }
+
+    macro_rules! impl_compare_equality_idx {
+        ($($ty:ident $ret:ident
+                $cmpeq:ident $cmpne:ident
+                $cmpeq_or_0:ident $cmpne_or_0:ident
+                $cmpeq_cc:ident $cmpne_cc:ident
+                $cmpeq_or_0_cc:ident $cmpne_or_0_cc:ident
+        )*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorEqualityIdx for $ty {
+                    type Result = $ret;
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpeq_idx(self, other: Self) -> Self::Result {
+                        transmute($cmpeq(transmute(self), transmute(other)))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpne_idx(self, other: Self) -> Self::Result {
+                        transmute($cmpne(transmute(self), transmute(other)))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpeq_or_0_idx(self, other: Self) -> Self::Result {
+                        transmute($cmpeq_or_0(transmute(self), transmute(other)))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpne_or_0_idx(self, other: Self) -> Self::Result {
+                        transmute($cmpne_or_0(transmute(self), transmute(other)))
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpeq_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $cmpeq_cc(transmute(self), transmute(other));
+                        *cc = y;
+                        transmute(x)
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpne_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $cmpne_cc(transmute(self), transmute(other));
+                        *cc = y;
+                        transmute(x)
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $cmpeq_or_0_cc(transmute(self), transmute(other));
+                        *cc = y;
+                        transmute(x)
+                    }
+
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                        let PackedTuple { x, y } = $cmpne_or_0_cc(transmute(self), transmute(other));
+                        *cc = y;
+                        transmute(x)
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_compare_equality_idx! {
+        vector_signed_char vector_signed_char               vfeeb vfeneb vfeezb vfenezb vfeebs vfenebs vfeezbs vfenezbs
+        vector_bool_char vector_unsigned_char               vfeeb vfeneb vfeezb vfenezb vfeebs vfenebs vfeezbs vfenezbs
+        vector_unsigned_char vector_unsigned_char           vfeeb vfeneb vfeezb vfenezb vfeebs vfenebs vfeezbs vfenezbs
+        vector_signed_short vector_signed_short             vfeeh vfeneh vfeezh vfenezh vfeehs vfenehs vfeezhs vfenezhs
+        vector_bool_short  vector_unsigned_short            vfeeh vfeneh vfeezh vfenezh vfeehs vfenehs vfeezhs vfenezhs
+        vector_unsigned_short vector_unsigned_short         vfeeh vfeneh vfeezh vfenezh vfeehs vfenehs vfeezhs vfenezhs
+        vector_signed_int vector_signed_int                 vfeef vfenef vfeezf vfenezf vfeefs vfenefs vfeezfs vfenezfs
+        vector_bool_int  vector_unsigned_int                vfeef vfenef vfeezf vfenezf vfeefs vfenefs vfeezfs vfenezfs
+        vector_unsigned_int vector_unsigned_int             vfeef vfenef vfeezf vfenezf vfeefs vfenefs vfeezfs vfenezfs
+    }
 }
 
 /// Load Count to Block Boundary
@@ -5028,6 +5161,79 @@ pub unsafe fn vec_cmplt<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Res
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_cmple<T: sealed::VectorComparePredicate>(a: T, b: T) -> T::Result {
     a.vec_cmple(b)
+}
+
+/// Vector Compare Equal Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpeq_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T::Result {
+    a.vec_cmpeq_idx(b)
+}
+/// Vector Compare Not Equal Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpne_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T::Result {
+    a.vec_cmpne_idx(b)
+}
+/// Vector Compare Equal Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpeq_idx_cc<T: sealed::VectorEqualityIdx>(
+    a: T,
+    b: T,
+    cc: *mut i32,
+) -> T::Result {
+    a.vec_cmpeq_idx_cc(b, cc)
+}
+/// Vector Compare Not Equal Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpne_idx_cc<T: sealed::VectorEqualityIdx>(
+    a: T,
+    b: T,
+    cc: *mut i32,
+) -> T::Result {
+    a.vec_cmpne_idx_cc(b, cc)
+}
+/// Vector Compare Equal or Zero Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpeq_or_0_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T::Result {
+    a.vec_cmpeq_or_0_idx(b)
+}
+/// Vector Compare Not Equal or Zero Index
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpne_or_0_idx<T: sealed::VectorEqualityIdx>(a: T, b: T) -> T::Result {
+    a.vec_cmpne_or_0_idx(b)
+}
+/// Vector Compare Equal or Zero Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpeq_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
+    a: T,
+    b: T,
+    cc: *mut i32,
+) -> T::Result {
+    a.vec_cmpeq_or_0_idx_cc(b, cc)
+}
+/// Vector Compare Not Equal or Zero Index with Condition Code
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_cmpne_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
+    a: T,
+    b: T,
+    cc: *mut i32,
+) -> T::Result {
+    a.vec_cmpne_or_0_idx_cc(b, cc)
 }
 
 #[cfg(test)]
