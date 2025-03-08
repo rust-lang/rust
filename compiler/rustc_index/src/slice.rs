@@ -118,7 +118,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     /// Panics if `a == b`.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
-        self.raw.get_disjoint_mut([a.index(), b.index()]).unwrap()
+        self.raw.get_disjoint_mut([a.index(), b.index()]).unwrap().into()
     }
 
     /// Returns mutable references to three distinct elements.
@@ -126,7 +126,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     /// Panics if the elements are not distinct.
     #[inline]
     pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
-        self.raw.get_disjoint_mut([a.index(), b.index(), c.index()]).unwrap()
+        self.raw.get_disjoint_mut([a.index(), b.index(), c.index()]).unwrap().into()
     }
 
     #[inline]
