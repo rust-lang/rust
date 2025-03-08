@@ -1090,7 +1090,13 @@ mod tests {
     fn configs_are_tested() {
         let mut names: HashSet<String> = crate::get_configuration_metadata()
             .into_iter()
-            .map(|meta| meta.name.replace('_', "-"))
+            .filter_map(|meta| {
+                if meta.deprecation_reason.is_none() {
+                    Some(meta.name.replace('_', "-"))
+                } else {
+                    None
+                }
+            })
             .collect();
 
         let toml_files = WalkDir::new("../tests")
