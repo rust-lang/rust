@@ -121,10 +121,18 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-                builder.ensure(compile::Rustc::new(self.compiler, target));
+                // If compiler was forced, its artifacts should be prepared earlier.
+                if !self.compiler.is_forced_compiler() {
+                    builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+                    builder.ensure(compile::Rustc::new(self.compiler, target));
+                }
             }
-            Mode::ToolStd => builder.ensure(compile::Std::new(self.compiler, target)),
+            Mode::ToolStd => {
+                // If compiler was forced, its artifacts should be prepared earlier.
+                if !self.compiler.is_forced_compiler() {
+                    builder.ensure(compile::Std::new(self.compiler, target))
+                }
+            }
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
