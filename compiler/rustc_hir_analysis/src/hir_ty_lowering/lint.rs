@@ -78,13 +78,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if self_ty.span.edition().at_least_rust_2021() {
-            let msg = "expected a type, found a trait";
-            let label = "you can add the `dyn` keyword if you want a trait object";
-            let mut diag =
-                rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
+            let mut diag = rustc_errors::struct_span_code_err!(
+                self.dcx(),
+                self_ty.span,
+                E0782,
+                "{}",
+                "expected a type, found a trait"
+            );
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
-                && !self.maybe_suggest_dyn_trait(self_ty, label, sugg, &mut diag)
+                && !self.maybe_suggest_dyn_trait(self_ty, sugg, &mut diag)
             {
                 self.maybe_suggest_add_generic_impl_trait(self_ty, &mut diag);
             }
@@ -131,8 +134,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         diag: &mut Diag<'_>,
     ) -> bool {
         let tcx = self.tcx();
-        let msg = "you might be missing a type parameter";
-        let mut sugg = vec![];
 
         let parent_hir_id = tcx.parent_hir_id(self_ty.hir_id);
         let parent_item = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
@@ -160,13 +161,27 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             _ => return false,
         };
 
-        // FIXME: `T` may already be taken.
-        sugg.push((
-            generics.where_clause_span,
-            format!("<T: {}>", self.tcx().sess.source_map().span_to_snippet(self_ty.span).unwrap()),
-        ));
-        sugg.push((self_ty.span, "T".to_string()));
-        diag.multipart_suggestion_verbose(msg, sugg, Applicability::MachineApplicable);
+        let Ok(rendered_ty) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
+            return false;
+        };
+
+        let param = "TUV"
+            .chars()
+            .map(|c| c.to_string())
+            .chain((0..).map(|i| format!("P{i}")))
+            .find(|s| !generics.params.iter().any(|param| param.name.ident().as_str() == s))
+            .expect("we definitely can find at least one param name to generate");
+        let mut sugg = vec![(self_ty.span, param.to_string())];
+        if let Some(insertion_span) = generics.span_for_param_suggestion() {
+            sugg.push((insertion_span, format!(", {param}: {}", rendered_ty)));
+        } else {
+            sugg.push((generics.where_clause_span, format!("<{param}: {}>", rendered_ty)));
+        }
+        diag.multipart_suggestion_verbose(
+            "you might be missing a type parameter",
+            sugg,
+            Applicability::MachineApplicable,
+        );
         true
     }
     /// Make sure that we are in the condition to suggest the blanket implementation.
@@ -227,7 +242,6 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     fn maybe_suggest_dyn_trait(
         &self,
         self_ty: &hir::Ty<'_>,
-        label: &str,
         sugg: Vec<(Span, String)>,
         diag: &mut Diag<'_>,
     ) -> bool {
@@ -270,7 +284,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
         // FIXME: Only emit this suggestion if the trait is dyn-compatible.
         diag.multipart_suggestion_verbose(
-            label.to_string(),
+            "you can add the `dyn` keyword if you want a trait object",
             sugg,
             Applicability::MachineApplicable,
         );

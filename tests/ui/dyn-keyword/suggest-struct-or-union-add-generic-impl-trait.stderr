@@ -47,6 +47,18 @@ LL ~     B(T),
    |
 
 error[E0782]: expected a type, found a trait
+  --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:35:8
+   |
+LL |     f: Trait,
+   |        ^^^^^
+   |
+help: you might be missing a type parameter
+   |
+LL ~ struct HasGenerics<T, U: Trait> {
+LL ~     f: U,
+   |
+
+error[E0782]: expected a type, found a trait
   --> $DIR/suggest-struct-or-union-add-generic-impl-trait.rs:31:5
    |
 LL |     Trait:, {}
@@ -57,6 +69,6 @@ help: you can add the `dyn` keyword if you want a trait object
 LL |     dyn Trait:, {}
    |     +++
 
-error: aborting due to 5 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0782`.
