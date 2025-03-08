@@ -3163,3 +3163,11 @@ pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unnecessary_refs_lint)]
+pub(crate) struct UnnecessaryRefs {
+    #[suggestion(code = "{replace}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub replace: String,
+}

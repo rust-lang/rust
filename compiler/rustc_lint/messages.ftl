@@ -894,6 +894,9 @@ lint_unnameable_test_items = cannot test inner items
 lint_unnecessary_qualification = unnecessary qualification
     .suggestion = remove the unnecessary path segments
 
+lint_unnecessary_refs_lint = creating unecessary reference is discouraged
+    .suggestion = consider using `&raw const` for a safer and more explicit raw pointer
+
 lint_unpredictable_fn_pointer_comparisons = function pointer comparisons do not produce meaningful results since their addresses are not guaranteed to be unique
     .note_duplicated_fn = the address of the same function can vary between different codegen units
     .note_deduplicated_fn = furthermore, different functions could have the same address after being merged together
