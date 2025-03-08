@@ -1,0 +1,55 @@
+error: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:12:14
+   |
+LL |     unsafe { &(*x).0 as *const i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/lint-unnecessary-refs.rs:3:9
+   |
+LL | #![deny(unnecessary_refs)]
+   |         ^^^^^^^^^^^^^^^^
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &(*x).0 as *const i32 }
+LL +     unsafe { &raw const (*x).0 }
+   |
+
+error: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:17:14
+   |
+LL |     unsafe { &(*x).b as *const u8 }
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &(*x).b as *const u8 }
+LL +     unsafe { &raw const (*x).b }
+   |
+
+error: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:22:14
+   |
+LL |     unsafe { &mut (*x).0 as *mut i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &mut (*x).0 as *mut i32 }
+LL +     unsafe { &raw mut (*x).0 }
+   |
+
+error: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:27:14
+   |
+LL |     unsafe { &mut (*x).a as *mut i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &mut (*x).a as *mut i32 }
+LL +     unsafe { &raw mut (*x).a }
+   |
+
+error: aborting due to 4 previous errors
+
