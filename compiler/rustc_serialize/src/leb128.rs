@@ -155,3 +155,6 @@ impl_read_signed_leb128!(read_i32_leb128, i32);
 impl_read_signed_leb128!(read_i64_leb128, i64);
 impl_read_signed_leb128!(read_i128_leb128, i128);
 impl_read_signed_leb128!(read_isize_leb128, isize);
+
+#[cfg(test)]
+mod tests;

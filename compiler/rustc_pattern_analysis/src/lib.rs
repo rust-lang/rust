@@ -20,6 +20,9 @@ pub mod pat_column;
 pub mod rustc;
 pub mod usefulness;
 
+#[cfg(test)]
+mod tests;
+
 #[cfg(feature = "rustc")]
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 

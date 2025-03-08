@@ -1,6 +1,6 @@
-use rustc_serialize::Decoder;
-use rustc_serialize::leb128::*;
-use rustc_serialize::opaque::{MAGIC_END_BYTES, MemDecoder};
+use super::*;
+use crate::Decoder;
+use crate::opaque::{MAGIC_END_BYTES, MemDecoder};
 
 macro_rules! impl_test_unsigned_leb128 {
     ($test_name:ident, $write_fn_name:ident, $read_fn_name:ident, $int_ty:ident) => {

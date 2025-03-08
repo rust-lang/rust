@@ -9,17 +9,12 @@
 //! [dependencies]
 //! rustc_ast = { path = "../rust/compiler/rustc_ast" }
 //! rustc_log = { path = "../rust/compiler/rustc_log" }
-//! rustc_span = { path = "../rust/compiler/rustc_span" }
 //! ```
 //!
 //! ```
 //! fn main() {
 //!     rustc_log::init_logger(rustc_log::LoggerConfig::from_env("LOG")).unwrap();
-//!
-//!     let edition = rustc_span::edition::Edition::Edition2021;
-//!     rustc_span::create_session_globals_then(edition, None, || {
-//!         /* ... */
-//!     });
+//!     /* ... */
 //! }
 //! ```
 //!
