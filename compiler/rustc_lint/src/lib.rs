@@ -78,6 +78,7 @@ mod static_mut_refs;
 mod traits;
 mod types;
 mod unit_bindings;
+mod unnecessary_refs;
 mod unqualified_local_imports;
 mod unused;
 
@@ -119,6 +120,7 @@ use static_mut_refs::*;
 use traits::*;
 use types::*;
 use unit_bindings::*;
+use unnecessary_refs::*;
 use unqualified_local_imports::*;
 use unused::*;
 
@@ -244,6 +246,7 @@ late_lint_methods!(
             IfLetRescope: IfLetRescope::default(),
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
+            UnecessaryRefs: UnecessaryRefs,
         ]
     ]
 );
