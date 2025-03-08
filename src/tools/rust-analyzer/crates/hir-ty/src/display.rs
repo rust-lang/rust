@@ -2303,77 +2303,82 @@ impl HirDisplayWithTypesMap for Path {
             if let Some(generic_args) = segment.args_and_bindings {
                 // We should be in type context, so format as `Foo<Bar>` instead of `Foo::<Bar>`.
                 // Do we actually format expressions?
-                if generic_args.desugared_from_fn {
-                    // First argument will be a tuple, which already includes the parentheses.
-                    // If the tuple only contains 1 item, write it manually to avoid the trailing `,`.
-                    let tuple = match generic_args.args[0] {
-                        hir_def::path::GenericArg::Type(ty) => match &types_map[ty] {
-                            TypeRef::Tuple(it) => Some(it),
+                match generic_args.parenthesized {
+                    hir_def::path::GenericArgsParentheses::ReturnTypeNotation => {
+                        write!(f, "(..)")?;
+                    }
+                    hir_def::path::GenericArgsParentheses::ParenSugar => {
+                        // First argument will be a tuple, which already includes the parentheses.
+                        // If the tuple only contains 1 item, write it manually to avoid the trailing `,`.
+                        let tuple = match generic_args.args[0] {
+                            hir_def::path::GenericArg::Type(ty) => match &types_map[ty] {
+                                TypeRef::Tuple(it) => Some(it),
+                                _ => None,
+                            },
                             _ => None,
-                        },
-                        _ => None,
-                    };
-                    if let Some(v) = tuple {
-                        if v.len() == 1 {
-                            write!(f, "(")?;
-                            v[0].hir_fmt(f, types_map)?;
-                            write!(f, ")")?;
-                        } else {
-                            generic_args.args[0].hir_fmt(f, types_map)?;
+                        };
+                        if let Some(v) = tuple {
+                            if v.len() == 1 {
+                                write!(f, "(")?;
+                                v[0].hir_fmt(f, types_map)?;
+                                write!(f, ")")?;
+                            } else {
+                                generic_args.args[0].hir_fmt(f, types_map)?;
+                            }
+                        }
+                        if let Some(ret) = generic_args.bindings[0].type_ref {
+                            if !matches!(&types_map[ret], TypeRef::Tuple(v) if v.is_empty()) {
+                                write!(f, " -> ")?;
+                                ret.hir_fmt(f, types_map)?;
+                            }
                         }
                     }
-                    if let Some(ret) = generic_args.bindings[0].type_ref {
-                        if !matches!(&types_map[ret], TypeRef::Tuple(v) if v.is_empty()) {
-                            write!(f, " -> ")?;
-                            ret.hir_fmt(f, types_map)?;
+                    hir_def::path::GenericArgsParentheses::No => {
+                        let mut first = true;
+                        // Skip the `Self` bound if exists. It's handled outside the loop.
+                        for arg in &generic_args.args[generic_args.has_self_type as usize..] {
+                            if first {
+                                first = false;
+                                write!(f, "<")?;
+                            } else {
+                                write!(f, ", ")?;
+                            }
+                            arg.hir_fmt(f, types_map)?;
                         }
-                    }
-                    return Ok(());
-                }
+                        for binding in generic_args.bindings.iter() {
+                            if first {
+                                first = false;
+                                write!(f, "<")?;
+                            } else {
+                                write!(f, ", ")?;
+                            }
+                            write!(f, "{}", binding.name.display(f.db.upcast(), f.edition()))?;
+                            match &binding.type_ref {
+                                Some(ty) => {
+                                    write!(f, " = ")?;
+                                    ty.hir_fmt(f, types_map)?
+                                }
+                                None => {
+                                    write!(f, ": ")?;
+                                    f.write_joined(
+                                        binding.bounds.iter().map(TypesMapAdapter::wrap(types_map)),
+                                        " + ",
+                                    )?;
+                                }
+                            }
+                        }
 
-                let mut first = true;
-                // Skip the `Self` bound if exists. It's handled outside the loop.
-                for arg in &generic_args.args[generic_args.has_self_type as usize..] {
-                    if first {
-                        first = false;
-                        write!(f, "<")?;
-                    } else {
-                        write!(f, ", ")?;
-                    }
-                    arg.hir_fmt(f, types_map)?;
-                }
-                for binding in generic_args.bindings.iter() {
-                    if first {
-                        first = false;
-                        write!(f, "<")?;
-                    } else {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}", binding.name.display(f.db.upcast(), f.edition()))?;
-                    match &binding.type_ref {
-                        Some(ty) => {
-                            write!(f, " = ")?;
-                            ty.hir_fmt(f, types_map)?
+                        // There may be no generic arguments to print, in case of a trait having only a
+                        // single `Self` bound which is converted to `<Ty as Trait>::Assoc`.
+                        if !first {
+                            write!(f, ">")?;
                         }
-                        None => {
-                            write!(f, ": ")?;
-                            f.write_joined(
-                                binding.bounds.iter().map(TypesMapAdapter::wrap(types_map)),
-                                " + ",
-                            )?;
+
+                        // Current position: `<Ty as Trait<Args>|`
+                        if generic_args.has_self_type {
+                            write!(f, ">")?;
                         }
                     }
-                }
-
-                // There may be no generic arguments to print, in case of a trait having only a
-                // single `Self` bound which is converted to `<Ty as Trait>::Assoc`.
-                if !first {
-                    write!(f, ">")?;
-                }
-
-                // Current position: `<Ty as Trait<Args>|`
-                if generic_args.has_self_type {
-                    write!(f, ">")?;
                 }
             }
         }

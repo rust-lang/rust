@@ -79,6 +79,19 @@ thin_vec_with_header_struct! {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum GenericArgsParentheses {
+    No,
+    /// Bounds of the form `Type::method(..): Send` or `impl Trait<method(..): Send>`,
+    /// aka. Return Type Notation or RTN.
+    ReturnTypeNotation,
+    /// `Fn`-family parenthesized traits, e.g. `impl Fn(u32) -> String`.
+    ///
+    /// This is desugared into one generic argument containing a tuple of all arguments,
+    /// and an associated type binding for `Output` for the return type.
+    ParenSugar,
+}
+
 /// Generic arguments to a path segment (e.g. the `i32` in `Option<i32>`). This
 /// also includes bindings of associated types, like in `Iterator<Item = Foo>`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -92,9 +105,8 @@ pub struct GenericArgs {
     pub has_self_type: bool,
     /// Associated type bindings like in `Iterator<Item = T>`.
     pub bindings: Box<[AssociatedTypeBinding]>,
-    /// Whether these generic args were desugared from `Trait(Arg) -> Output`
-    /// parenthesis notation typically used for the `Fn` traits.
-    pub desugared_from_fn: bool,
+    /// Whether these generic args were written with parentheses and how.
+    pub parenthesized: GenericArgsParentheses,
 }
 
 /// An associated type binding like in `Iterator<Item = T>`.
@@ -326,7 +338,16 @@ impl GenericArgs {
             args: Box::default(),
             has_self_type: false,
             bindings: Box::default(),
-            desugared_from_fn: false,
+            parenthesized: GenericArgsParentheses::No,
+        }
+    }
+
+    pub(crate) fn return_type_notation() -> GenericArgs {
+        GenericArgs {
+            args: Box::default(),
+            has_self_type: false,
+            bindings: Box::default(),
+            parenthesized: GenericArgsParentheses::ReturnTypeNotation,
         }
     }
 }

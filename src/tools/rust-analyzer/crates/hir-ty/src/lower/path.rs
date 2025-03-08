@@ -8,7 +8,7 @@ use hir_def::{
     data::TraitFlags,
     expr_store::HygieneId,
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
-    path::{GenericArg, GenericArgs, Path, PathSegment, PathSegments},
+    path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
     type_ref::{TypeBound, TypeRef, TypesMap},
     GenericDefId, GenericParamId, ItemContainerId, Lookup, TraitId,
@@ -138,12 +138,15 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
 
     fn prohibit_parenthesized_generic_args(&mut self) -> bool {
         if let Some(generic_args) = self.current_or_prev_segment.args_and_bindings {
-            if generic_args.desugared_from_fn {
-                let segment = self.current_segment_u32();
-                self.on_diagnostic(
-                    PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
-                );
-                return true;
+            match generic_args.parenthesized {
+                GenericArgsParentheses::No => {}
+                GenericArgsParentheses::ReturnTypeNotation | GenericArgsParentheses::ParenSugar => {
+                    let segment = self.current_segment_u32();
+                    self.on_diagnostic(
+                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
+                    );
+                    return true;
+                }
             }
         }
         false
