@@ -97,6 +97,7 @@
     - [wasm32-wasip1](platform-support/wasm32-wasip1.md)
     - [wasm32-wasip1-threads](platform-support/wasm32-wasip1-threads.md)
     - [wasm32-wasip2](platform-support/wasm32-wasip2.md)
+    - [wasm32-wali-linux-musl](platform-support/wasm32-wali-linux.md)
     - [wasm32-unknown-emscripten](platform-support/wasm32-unknown-emscripten.md)
     - [wasm32-unknown-unknown](platform-support/wasm32-unknown-unknown.md)
     - [wasm32v1-none](platform-support/wasm32v1-none.md)
