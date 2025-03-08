@@ -486,18 +486,21 @@ impl Stdio {
 }
 
 impl From<AnonPipe> for Stdio {
+    /// Wrap `AnonPipe`s inner in the `Fd` variant.
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Fd(pipe.into_inner())
     }
 }
 
 impl From<File> for Stdio {
+    /// Wrap `File`s inner in the `Fd` variant.
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())
     }
 }
 
 impl From<io::Stdout> for Stdio {
+    /// Make a `StaticFd` from a raw borrow of `libc::STDOUT_FILENO`.
     fn from(_: io::Stdout) -> Stdio {
         // This ought really to be is Stdio::StaticFd(input_argument.as_fd()).
         // But AsFd::as_fd takes its argument by reference, and yields
@@ -514,6 +517,7 @@ impl From<io::Stdout> for Stdio {
 }
 
 impl From<io::Stderr> for Stdio {
+    /// Make a `StaticFd` from a raw borrow of `libc::STDERR_FILENO`.
     fn from(_: io::Stderr) -> Stdio {
         Stdio::StaticFd(unsafe { BorrowedFd::borrow_raw(libc::STDERR_FILENO) })
     }
@@ -635,6 +639,7 @@ impl ExitCode {
 }
 
 impl From<u8> for ExitCode {
+    /// Take code by wrapping it in `ExitCode`.
     fn from(code: u8) -> Self {
         Self(code)
     }

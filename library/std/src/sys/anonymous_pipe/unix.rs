@@ -26,6 +26,7 @@ impl AsRawFd for PipeReader {
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeReader> for OwnedFd {
+    /// Get the inner of `PipeReader` as a `FileDesc`.
     fn from(pipe: PipeReader) -> Self {
         FileDesc::into_inner(pipe.0)
     }
@@ -44,6 +45,7 @@ impl IntoRawFd for PipeReader {
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeReader> for Stdio {
+    /// Create a `Stdio` from `PipeReader` as an `OwnedFd`.
     fn from(pipe: PipeReader) -> Self {
         Self::from(OwnedFd::from(pipe))
     }
@@ -63,6 +65,7 @@ impl AsRawFd for PipeWriter {
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeWriter> for OwnedFd {
+    /// Get the inner of `PipeWriter` as `FileDesc`.
     fn from(pipe: PipeWriter) -> Self {
         FileDesc::into_inner(pipe.0)
     }
@@ -81,6 +84,7 @@ impl IntoRawFd for PipeWriter {
 }
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<PipeWriter> for Stdio {
+    /// Create a `Stdio` from a `OwnedFd` of `PipeWriter`.
     fn from(pipe: PipeWriter) -> Self {
         Self::from(OwnedFd::from(pipe))
     }
@@ -88,6 +92,7 @@ impl From<PipeWriter> for Stdio {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<OwnedFd> for PipeReader {
+    /// Create a `PipeReader` from `OwnedFd` inner.
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FileDesc::from_inner(owned_fd))
     }
@@ -95,6 +100,7 @@ impl From<OwnedFd> for PipeReader {
 
 #[unstable(feature = "anonymous_pipe", issue = "127154")]
 impl From<OwnedFd> for PipeWriter {
+    /// Create a `PipeWriter` from `OwnedFd` inner.
     fn from(owned_fd: OwnedFd) -> Self {
         Self(FileDesc::from_inner(owned_fd))
     }
