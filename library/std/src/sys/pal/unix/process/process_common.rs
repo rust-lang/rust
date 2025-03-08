@@ -90,6 +90,7 @@ pub struct Command {
 
     program_kind: ProgramKind,
     cwd: Option<CString>,
+    chroot: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
     saw_nul: bool,
@@ -184,6 +185,7 @@ impl Command {
             program_kind,
             env: Default::default(),
             cwd: None,
+            chroot: None,
             uid: None,
             gid: None,
             saw_nul,
@@ -208,6 +210,7 @@ impl Command {
             program_kind,
             env: Default::default(),
             cwd: None,
+            chroot: None,
             uid: None,
             gid: None,
             saw_nul,
@@ -255,6 +258,12 @@ impl Command {
     }
     pub fn pgroup(&mut self, pgroup: pid_t) {
         self.pgroup = Some(pgroup);
+    }
+    pub fn chroot(&mut self, dir: &Path) {
+        self.chroot = Some(os2c(dir.as_os_str(), &mut self.saw_nul));
+        if self.cwd.is_none() {
+            self.cwd(&OsStr::new("/"));
+        }
     }
 
     #[cfg(target_os = "linux")]
@@ -327,6 +336,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_pgroup(&self) -> Option<pid_t> {
         self.pgroup
+    }
+    #[allow(dead_code)]
+    pub fn get_chroot(&self) -> Option<&CStr> {
+        self.chroot.as_deref()
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
