@@ -16,15 +16,21 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Make sure that we have enough commits to find the parent merge commit.
+          # Since all merges should be through merge commits, fetching two commits
+          # should be enough to get the parent bors merge commit.
+          fetch-depth: 2
       - name: Perform analysis and send PR
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Get closest bors merge commit
           PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+          echo "Parent: ${PARENT_COMMIT}"
 
           # Find PR for the current commit
           HEAD_PR=`gh pr list --search "${{ github.sha }}" --state merged --json number --jq '.[0].number'`
-
-          echo "Parent: ${PARENT_COMMIT}"
           echo "HEAD: ${{ github.sha }} (#${HEAD_PR})"
 
           cd src/ci/citool
