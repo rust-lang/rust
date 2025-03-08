@@ -27,7 +27,8 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-use rustc_attr_parsing::AttributeKind;
+pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -51,7 +52,7 @@ pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -1757,7 +1758,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets all attributes.
     ///
-    /// To see if an item has a specific attribute, you should use [`rustc_attr_parsing::find_attr!`] so you can use matching.
+    /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
     pub fn get_all_attrs(
         self,
         did: impl Into<DefId>,
