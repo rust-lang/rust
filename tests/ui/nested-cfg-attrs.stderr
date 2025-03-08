@@ -3,6 +3,17 @@ error[E0425]: cannot find function `f` in this scope
    |
 LL | fn main() { f() }
    |             ^ not found in this scope
+   |
+note: found an item that was configured out
+  --> $DIR/nested-cfg-attrs.rs:2:4
+   |
+LL | fn f() {}
+   |    ^
+note: the item is gated here
+  --> $DIR/nested-cfg-attrs.rs:1:35
+   |
+LL | #[cfg_attr(all(), cfg_attr(all(), cfg(FALSE)))]
+   |                                   ^^^^^^^^^^
 
 error: aborting due to 1 previous error
 
