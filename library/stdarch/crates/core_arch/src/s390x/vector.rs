@@ -2890,6 +2890,65 @@ mod sealed {
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorCompare {
+        unsafe fn vec_all_lt(self, other: Self) -> i32;
+        unsafe fn vec_all_le(self, other: Self) -> i32;
+        unsafe fn vec_all_gt(self, other: Self) -> i32;
+        unsafe fn vec_all_ge(self, other: Self) -> i32;
+    }
+
+    // NOTE: this implementation is currently non-optimal, but it does work for floats even with
+    // only `vector` enabled.
+    //
+    // - https://github.com/llvm/llvm-project/issues/129434
+    // - https://github.com/llvm/llvm-project/issues/130424
+    macro_rules! impl_vec_compare {
+        ($($ty:ident)*) => {
+            $(
+                #[unstable(feature = "stdarch_s390x", issue = "135681")]
+                impl VectorCompare for $ty {
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_all_lt(self, other: Self) -> i32 {
+                        simd_reduce_all(simd_lt::<_, t_b!($ty)>(self, other)) as i32
+                    }
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_all_le(self, other: Self) -> i32 {
+                        simd_reduce_all(simd_le::<_, t_b!($ty)>(self, other)) as i32
+                    }
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_all_gt(self, other: Self) -> i32 {
+                        simd_reduce_all(simd_gt::<_, t_b!($ty)>(self, other)) as i32
+                    }
+                    #[inline]
+                    #[target_feature(enable = "vector")]
+                    unsafe fn vec_all_ge(self, other: Self) -> i32 {
+                        simd_reduce_all(simd_ge::<_, t_b!($ty)>(self, other)) as i32
+                    }
+                }
+            )*
+        }
+    }
+
+    impl_vec_compare! {
+        vector_signed_char
+        vector_unsigned_char
+
+        vector_signed_short
+        vector_unsigned_short
+
+        vector_signed_int
+        vector_unsigned_int
+        vector_float
+
+        vector_signed_long_long
+        vector_unsigned_long_long
+        vector_double
+    }
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorTestMask {
         type Mask;
         unsafe fn vec_test_mask(self, other: Self::Mask) -> i32;
@@ -5262,6 +5321,166 @@ pub unsafe fn vec_cmpne_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
     cc: *mut i32,
 ) -> T::Result {
     a.vec_cmpne_or_0_idx_cc(b, cc)
+}
+
+/// All Elements Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_eq<T: sealed::VectorEquality>(a: T, b: T) -> i32 {
+    simd_reduce_all(vec_cmpeq(a, b)) as i32 as i32
+}
+
+/// All Elements Not Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_ne<T: sealed::VectorEquality>(a: T, b: T) -> i32 {
+    simd_reduce_all(vec_cmpne(a, b)) as i32
+}
+
+/// Any Element Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_eq<T: sealed::VectorEquality>(a: T, b: T) -> i32 {
+    simd_reduce_any(vec_cmpeq(a, b)) as i32
+}
+
+/// Any Element Not Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_ne<T: sealed::VectorEquality>(a: T, b: T) -> i32 {
+    simd_reduce_any(vec_cmpne(a, b)) as i32
+}
+
+/// All Elements Less Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_lt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    a.vec_all_lt(b)
+}
+
+/// All Elements Less Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_le<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    a.vec_all_le(b)
+}
+
+/// All Elements Greater Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_gt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    a.vec_all_gt(b)
+}
+
+/// All Elements Greater Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_ge<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    a.vec_all_ge(b)
+}
+
+/// All Elements Not Less Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_nlt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_all_ge(a, b)
+}
+
+/// All Elements Not Less Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_nle<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_all_gt(a, b)
+}
+
+/// All Elements Not Greater Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_ngt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_all_le(a, b)
+}
+
+/// All Elements Not Greater Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_nge<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_all_lt(a, b)
+}
+
+/// Any Elements Less Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_lt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    !vec_all_ge(a, b)
+}
+
+/// Any Elements Less Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_le<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    !vec_all_gt(a, b)
+}
+
+/// Any Elements Greater Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_gt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    !vec_all_le(a, b)
+}
+
+/// Any Elements Greater Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_ge<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    !vec_all_lt(a, b)
+}
+
+/// Any Elements Not Less Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_nlt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_any_ge(a, b)
+}
+
+/// Any Elements Not Less Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_nle<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_any_gt(a, b)
+}
+
+/// Any Elements Not Greater Than
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_ngt<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_any_le(a, b)
+}
+
+/// Any Elements Not Greater Than or Equal
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_nge<T: sealed::VectorCompare>(a: T, b: T) -> i32 {
+    vec_any_lt(a, b)
 }
 
 #[cfg(test)]
