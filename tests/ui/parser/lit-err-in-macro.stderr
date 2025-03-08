@@ -1,5 +1,5 @@
 error: suffixes on string literals are invalid
-  --> $DIR/lit-err-in-macro.rs:7:4
+  --> $DIR/lit-err-in-macro.rs:8:4
    |
 LL | f!("Foo"__);
    |    ^^^^^^^ invalid suffix `__`
@@ -13,6 +13,8 @@ LL |         extern $abi fn f() {}
 LL | f!("Foo"__);
    | ----------- in this macro invocation
    |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
+   = note: for more information, see issue #134986 <https://github.com/rust-lang/rust/issues/134986>
    = note: `#[warn(missing_abi)]` on by default
    = note: this warning originates in the macro `f` (in Nightly builds, run with -Z macro-backtrace for more info)
 
