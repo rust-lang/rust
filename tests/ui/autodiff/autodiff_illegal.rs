@@ -86,6 +86,10 @@ fn fn_exists() {}
 // We colide with an already existing function
 #[autodiff(fn_exists, Reverse, Active)]
 pub fn f10(x: f64) {
+<<<<<<< HEAD
+=======
+//~^^ ERROR the name `fn_exists` is defined multiple times [E0428]
+>>>>>>> 465e6968091de8a29af3d5315c8517b264c7df64
     //~^^ ERROR the name `fn_exists` is defined multiple times [E0428]
     unimplemented!()
 }
