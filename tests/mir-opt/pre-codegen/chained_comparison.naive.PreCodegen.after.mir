@@ -91,7 +91,11 @@ fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
 
     bb8: {
         _0 = const false;
-        goto -> bb10;
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_8);
+        StorageDead(_5);
+        return;
     }
 
     bb9: {
@@ -104,10 +108,6 @@ fn naive(_1: &Blueprint, _2: &Blueprint) -> bool {
         _0 = Eq(move _15, move _16);
         StorageDead(_16);
         StorageDead(_15);
-        goto -> bb10;
-    }
-
-    bb10: {
         StorageDead(_14);
         StorageDead(_11);
         StorageDead(_8);

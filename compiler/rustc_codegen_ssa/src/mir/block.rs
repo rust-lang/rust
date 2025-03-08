@@ -462,7 +462,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         }
     }
 
-    fn codegen_return_terminator(&mut self, bx: &mut Bx) {
+    pub(super) fn codegen_return_terminator(&mut self, bx: &mut Bx) {
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
@@ -1343,7 +1343,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::TerminatorKind::Return => {
-                self.codegen_return_terminator(bx);
+                match self.return_block {
+                    CachedLlbb::Skip => self.codegen_return_terminator(bx),
+                    CachedLlbb::Some(target) => bx.br(target),
+                    CachedLlbb::None => {
+                        let return_llbb = bx.append_sibling_block("return");
+                        self.return_block = CachedLlbb::Some(return_llbb);
+                        bx.br(return_llbb);
+                    }
+                }
                 MergingSucc::False
             }
 

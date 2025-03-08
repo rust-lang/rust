@@ -3,8 +3,8 @@
 
 // CHECK-LABEL: @write_u8_variant_a
 // CHECK-NEXT: {{.*}}:
-// CHECK-NEXT: icmp ugt
 // CHECK-NEXT: getelementptr
+// CHECK-NEXT: icmp ugt
 // CHECK-NEXT: select i1 {{.+}} null
 // CHECK-NEXT: insertvalue
 // CHECK-NEXT: insertvalue
