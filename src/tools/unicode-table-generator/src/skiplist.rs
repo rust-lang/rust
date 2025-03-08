@@ -68,10 +68,7 @@ impl RawEmitter {
             assert!(inserted);
         }
 
-        writeln!(
-            &mut self.file,
-            "use super::ShortOffsetRunHeader;\n"
-        ).unwrap();
+        writeln!(&mut self.file, "use super::ShortOffsetRunHeader;\n").unwrap();
         writeln!(
             &mut self.file,
             "static SHORT_OFFSET_RUNS: [ShortOffsetRunHeader; {}] = [{}];",
@@ -111,46 +108,22 @@ impl RawEmitter {
         } else {
             writeln!(&mut self.file, "pub fn lookup(c: char) -> bool {{").unwrap();
         }
-        writeln!(
-            &mut self.file,
-            "    const {{",
-        )
-        .unwrap();
+        writeln!(&mut self.file, "    const {{").unwrap();
         writeln!(
             &mut self.file,
             "        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));",
         )
         .unwrap();
-        writeln!(
-            &mut self.file,
-            "        let mut i = 0;",
-        )
-        .unwrap();
-        writeln!(
-            &mut self.file,
-            "        while i < SHORT_OFFSET_RUNS.len() {{",
-        )
-        .unwrap();
+        writeln!(&mut self.file, "        let mut i = 0;").unwrap();
+        writeln!(&mut self.file, "        while i < SHORT_OFFSET_RUNS.len() {{").unwrap();
         writeln!(
             &mut self.file,
             "            assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());",
         )
         .unwrap();
-        writeln!(
-            &mut self.file,
-            "            i += 1;",
-        )
-        .unwrap();
-        writeln!(
-            &mut self.file,
-            "        }}",
-        )
-        .unwrap();
-        writeln!(
-            &mut self.file,
-            "    }}",
-        )
-        .unwrap();
+        writeln!(&mut self.file, "            i += 1;").unwrap();
+        writeln!(&mut self.file, "        }}").unwrap();
+        writeln!(&mut self.file, "    }}").unwrap();
         writeln!(
             &mut self.file,
             "    // SAFETY: We just ensured the last element of `SHORT_OFFSET_RUNS` is greater than `std::char::MAX`",
