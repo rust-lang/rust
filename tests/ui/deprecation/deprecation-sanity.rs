@@ -16,10 +16,10 @@ mod bogus_attribute_types_1 {
     #[deprecated(since(b), note = "a")] //~ ERROR malformed `deprecated` attribute input [E0539]
     fn f6() { }
 
-    #[deprecated(note = b"test")] //~ ERROR literal in `deprecated` value must be a string
+    #[deprecated(note = b"test")] //~ ERROR malformed `deprecated` attribute input [E0539]
     fn f7() { }
 
-    #[deprecated("test")] //~ ERROR item in `deprecated` must be a key/value pair
+    #[deprecated("test")] //~ ERROR malformed `deprecated` attribute input [E0565]
     fn f8() { }
 }
 
