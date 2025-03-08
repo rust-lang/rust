@@ -9,7 +9,6 @@ pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
     /// Whether memory is initialized or not is tracked byte-for-byte.
     fn const_undef(&self, t: Self::Type) -> Self::Value;
-    fn is_undef(&self, v: Self::Value) -> bool;
     /// Generate a fake value. Poison always affects the entire value, even if just a single byte is
     /// poison. This can only be used in codepaths that are already UB, i.e., UB-free Rust code
     /// (including code that e.g. copies uninit memory with `MaybeUninit`) can never encounter a
