@@ -208,20 +208,32 @@ use crate::ops::Index;
 /// # Usage in `const` and `static`
 ///
 /// As explained above, `HashMap` is randomly seeded: each `HashMap` instance uses a different seed,
-/// which means that `HashMap::new` cannot be used in const context. To construct a `HashMap` in the
-/// initializer of a `const` or `static` item, you will have to use a different hasher that does not
-/// involve a random seed, as demonstrated in the following example. **A `HashMap` constructed this
-/// way is not resistant against HashDoS!**
+/// which means that `HashMap::new` normally cannot be used in a `const` or `static` initializer.
 ///
+/// However, if you need to use a `HashMap` in a `const` or `static` initializer while retaining
+/// random seed generation, you can wrap the `HashMap` in [`LazyLock`].
+///
+/// Alternatively, you can construct a `HashMap` in a `const` or `static` initializer using a different
+/// hasher that does not rely on a random seed. **Be aware that a `HashMap` created this way is not
+/// resistant to HashDoS attacks!**
+///
+/// [`LazyLock`]: crate::sync::LazyLock
 /// ```rust
 /// use std::collections::HashMap;
 /// use std::hash::{BuildHasherDefault, DefaultHasher};
-/// use std::sync::Mutex;
+/// use std::sync::{LazyLock, Mutex};
 ///
-/// const EMPTY_MAP: HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>> =
+/// // HashMaps with a fixed, non-random hasher
+/// const NONRANDOM_EMPTY_MAP: HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>> =
 ///     HashMap::with_hasher(BuildHasherDefault::new());
-/// static MAP: Mutex<HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>>> =
+/// static NONRANDOM_MAP: Mutex<HashMap<String, Vec<i32>, BuildHasherDefault<DefaultHasher>>> =
 ///     Mutex::new(HashMap::with_hasher(BuildHasherDefault::new()));
+///
+/// // HashMaps using LazyLock to retain random seeding
+/// const RANDOM_EMPTY_MAP: LazyLock<HashMap<String, Vec<i32>>> =
+///     LazyLock::new(HashMap::new);
+/// static RANDOM_MAP: LazyLock<Mutex<HashMap<String, Vec<i32>>>> =
+///     LazyLock::new(|| Mutex::new(HashMap::new()));
 /// ```
 
 #[cfg_attr(not(test), rustc_diagnostic_item = "HashMap")]
