@@ -240,6 +240,7 @@ enum Value<'tcx> {
         from: Ty<'tcx>,
         to: Ty<'tcx>,
     },
+    WrapUnsafeBinder(VnIndex, Ty<'tcx>),
 }
 
 struct VnState<'body, 'tcx> {
@@ -580,36 +581,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     let res = self.ecx.float_to_float_or_int(&value, to).discard_err()?;
                     res.into()
                 }
-                CastKind::Transmute => {
-                    let value = self.evaluated[value].as_ref()?;
-                    let to = self.ecx.layout_of(to).ok()?;
-                    // `offset` for immediates generally only supports projections that match the
-                    // type of the immediate. However, as a HACK, we exploit that it can also do
-                    // limited transmutes: it only works between types with the same layout, and
-                    // cannot transmute pointers to integers.
-                    if value.as_mplace_or_imm().is_right() {
-                        let can_transmute = match (value.layout.backend_repr, to.backend_repr) {
-                            (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => {
-                                s1.size(&self.ecx) == s2.size(&self.ecx)
-                                    && !matches!(s1.primitive(), Primitive::Pointer(..))
-                            }
-                            (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
-                                a1.size(&self.ecx) == a2.size(&self.ecx) &&
-                                b1.size(&self.ecx) == b2.size(&self.ecx) &&
-                                // The alignment of the second component determines its offset, so that also needs to match.
-                                b1.align(&self.ecx) == b2.align(&self.ecx) &&
-                                // None of the inputs may be a pointer.
-                                !matches!(a1.primitive(), Primitive::Pointer(..))
-                                    && !matches!(b1.primitive(), Primitive::Pointer(..))
-                            }
-                            _ => false,
-                        };
-                        if !can_transmute {
-                            return None;
-                        }
-                    }
-                    value.offset(Size::ZERO, to, &self.ecx).discard_err()?
-                }
+                CastKind::Transmute => self.transmute(value, to)?,
                 CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) => {
                     let src = self.evaluated[value].as_ref()?;
                     let to = self.ecx.layout_of(to).ok()?;
@@ -635,8 +607,36 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 }
                 _ => return None,
             },
+            WrapUnsafeBinder(value, ty) => self.transmute(value, ty)?,
         };
         Some(op)
+    }
+
+    fn transmute(&mut self, value: VnIndex, to: Ty<'tcx>) -> Option<OpTy<'tcx>> {
+        let value = self.evaluated[value].as_ref()?;
+        let to = self.ecx.layout_of(to).ok()?;
+        if value.as_mplace_or_imm().is_right() {
+            let can_transmute = match (value.layout.backend_repr, to.backend_repr) {
+                (BackendRepr::Scalar(s1), BackendRepr::Scalar(s2)) => {
+                    s1.size(&self.ecx) == s2.size(&self.ecx)
+                        && !matches!(s1.primitive(), Primitive::Pointer(..))
+                }
+                (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
+                    a1.size(&self.ecx) == a2.size(&self.ecx) &&
+                    b1.size(&self.ecx) == b2.size(&self.ecx) &&
+                    // The alignment of the second component determines its offset, so that also needs to match.
+                    b1.align(&self.ecx) == b2.align(&self.ecx) &&
+                    // None of the inputs may be a pointer.
+                    !matches!(a1.primitive(), Primitive::Pointer(..))
+                        && !matches!(b1.primitive(), Primitive::Pointer(..))
+                }
+                _ => false,
+            };
+            if !can_transmute {
+                return None;
+            }
+        }
+        Some(value.offset(Size::ZERO, to, &self.ecx).discard_err()?)
     }
 
     fn project(
@@ -872,8 +872,9 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
-            Rvalue::WrapUnsafeBinder(ref mut op, _) => {
-                return self.simplify_operand(op, location);
+            Rvalue::WrapUnsafeBinder(ref mut op, ty) => {
+                let value = self.simplify_operand(op, location)?;
+                Value::WrapUnsafeBinder(value, ty)
             }
 
             // Operations.
