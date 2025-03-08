@@ -3409,7 +3409,7 @@ fn add_lld_args(
         // FIXME: emit an FCW if linking fails due its absence, and then remove this link-arg in the
         // future.
         if sess.target.llvm_target == "x86_64-unknown-linux-gnu" {
-            cmd.link_arg("-znostart-stop-gc");
+            // cmd.link_arg("-znostart-stop-gc");
         }
     }
 

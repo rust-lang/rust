@@ -59,6 +59,8 @@ if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch 
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
     HAS_METRICS=1
+else
+  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
