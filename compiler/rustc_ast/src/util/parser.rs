@@ -1,6 +1,6 @@
 use rustc_span::kw;
 
-use crate::ast::{self, BinOpKind, RangeLimits};
+use crate::ast::{self, AssignOpKind, BinOpKind, RangeLimits};
 use crate::token::{self, Token};
 
 /// Associative operator.
@@ -9,7 +9,7 @@ pub enum AssocOp {
     /// A binary op.
     Binary(BinOpKind),
     /// `?=` where ? is one of the assignable BinOps
-    AssignOp(BinOpKind),
+    AssignOp(AssignOpKind),
     /// `=`
     Assign,
     /// `as`
@@ -44,16 +44,16 @@ impl AssocOp {
             token::Or => Some(Binary(BinOpKind::BitOr)),
             token::Shl => Some(Binary(BinOpKind::Shl)),
             token::Shr => Some(Binary(BinOpKind::Shr)),
-            token::PlusEq => Some(AssignOp(BinOpKind::Add)),
-            token::MinusEq => Some(AssignOp(BinOpKind::Sub)),
-            token::StarEq => Some(AssignOp(BinOpKind::Mul)),
-            token::SlashEq => Some(AssignOp(BinOpKind::Div)),
-            token::PercentEq => Some(AssignOp(BinOpKind::Rem)),
-            token::CaretEq => Some(AssignOp(BinOpKind::BitXor)),
-            token::AndEq => Some(AssignOp(BinOpKind::BitAnd)),
-            token::OrEq => Some(AssignOp(BinOpKind::BitOr)),
-            token::ShlEq => Some(AssignOp(BinOpKind::Shl)),
-            token::ShrEq => Some(AssignOp(BinOpKind::Shr)),
+            token::PlusEq => Some(AssignOp(AssignOpKind::AddAssign)),
+            token::MinusEq => Some(AssignOp(AssignOpKind::SubAssign)),
+            token::StarEq => Some(AssignOp(AssignOpKind::MulAssign)),
+            token::SlashEq => Some(AssignOp(AssignOpKind::DivAssign)),
+            token::PercentEq => Some(AssignOp(AssignOpKind::RemAssign)),
+            token::CaretEq => Some(AssignOp(AssignOpKind::BitXorAssign)),
+            token::AndEq => Some(AssignOp(AssignOpKind::BitAndAssign)),
+            token::OrEq => Some(AssignOp(AssignOpKind::BitOrAssign)),
+            token::ShlEq => Some(AssignOp(AssignOpKind::ShlAssign)),
+            token::ShrEq => Some(AssignOp(AssignOpKind::ShrAssign)),
             token::Lt => Some(Binary(BinOpKind::Lt)),
             token::Le => Some(Binary(BinOpKind::Le)),
             token::Ge => Some(Binary(BinOpKind::Ge)),
