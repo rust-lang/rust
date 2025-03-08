@@ -73,7 +73,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
                 };
 
                 let Some(reason) = l.lit().and_then(|i| i.kind.str()) else {
-                    cx.expected_string_literal(l.span());
+                    cx.expected_string_literal(l.span(), l.lit());
                     return None;
                 };
 
@@ -81,7 +81,7 @@ impl<S: Stage> SingleAttributeParser<S> for RustcForceInlineParser {
             }
             ArgParser::NameValue(v) => {
                 let Some(reason) = v.value_as_str() else {
-                    cx.expected_string_literal(v.value_span);
+                    cx.expected_string_literal(v.value_span, Some(v.value_as_lit()));
                     return None;
                 };
 

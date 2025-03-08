@@ -8,13 +8,10 @@ error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:7:5
    |
 LL |     #[deprecated(since = "a", note)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^----^^
+   |                               |
+   |                               expected this to be of the form `note = "..."`
    |
-note: expected this to be of the form `note = "..."`
-  --> $DIR/deprecation-sanity.rs:7:31
-   |
-LL |     #[deprecated(since = "a", note)]
-   |                               ^^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[deprecated(since = "a", note)]
@@ -31,13 +28,10 @@ error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:10:5
    |
 LL |     #[deprecated(since, note = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^-----^^^^^^^^^^^^^^
+   |                  |
+   |                  expected this to be of the form `since = "..."`
    |
-note: expected this to be of the form `since = "..."`
-  --> $DIR/deprecation-sanity.rs:10:18
-   |
-LL |     #[deprecated(since, note = "a")]
-   |                  ^^^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[deprecated(since, note = "a")]
@@ -54,13 +48,10 @@ error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:13:5
    |
 LL |     #[deprecated(since = "a", note(b))]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^-------^^
+   |                               |
+   |                               expected this to be of the form `note = "..."`
    |
-note: expected this to be of the form `note = "..."`
-  --> $DIR/deprecation-sanity.rs:13:31
-   |
-LL |     #[deprecated(since = "a", note(b))]
-   |                               ^^^^^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[deprecated(since = "a", note(b))]
@@ -77,13 +68,10 @@ error[E0539]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:16:5
    |
 LL |     #[deprecated(since(b), note = "a")]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^--------^^^^^^^^^^^^^^
+   |                  |
+   |                  expected this to be of the form `since = "..."`
    |
-note: expected this to be of the form `since = "..."`
-  --> $DIR/deprecation-sanity.rs:16:18
-   |
-LL |     #[deprecated(since(b), note = "a")]
-   |                  ^^^^^^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[deprecated(since(b), note = "a")]
@@ -96,19 +84,35 @@ LL -     #[deprecated(since(b), note = "a")]
 LL +     #[deprecated]
    |
 
-error[E0565]: literal in `deprecated` value must be a string
-  --> $DIR/deprecation-sanity.rs:19:25
+error[E0539]: malformed `deprecated` attribute input
+  --> $DIR/deprecation-sanity.rs:19:5
    |
 LL |     #[deprecated(note = b"test")]
-   |                         -^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^-^^^^^^^^
    |                         |
    |                         help: consider removing the prefix
+   |
+   = note: expected a normal string literal, not a byte string literal
 
-error[E0565]: item in `deprecated` must be a key/value pair
-  --> $DIR/deprecation-sanity.rs:22:18
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/deprecation-sanity.rs:22:5
    |
 LL |     #[deprecated("test")]
-   |                  ^^^^^^
+   |     ^^^^^^^^^^^^^------^^
+   |                  |
+   |                  didn't expect a literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL -     #[deprecated("test")]
+LL +     #[deprecated = "reason"]
+   |
+LL -     #[deprecated("test")]
+LL +     #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+   |
+LL -     #[deprecated("test")]
+LL +     #[deprecated]
+   |
 
 error: multiple `deprecated` attributes
   --> $DIR/deprecation-sanity.rs:27:1
@@ -126,13 +130,10 @@ error[E0538]: malformed `deprecated` attribute input
   --> $DIR/deprecation-sanity.rs:30:1
    |
 LL | #[deprecated(since = "a", since = "b", note = "c")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^
+   |                           |
+   |                           found `since` used as a key more than once
    |
-note: found `since` used as a key more than once
-  --> $DIR/deprecation-sanity.rs:30:27
-   |
-LL | #[deprecated(since = "a", since = "b", note = "c")]
-   |                           ^^^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL - #[deprecated(since = "a", since = "b", note = "c")]

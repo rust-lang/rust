@@ -16,8 +16,6 @@ pub(crate) enum UnsupportedLiteralReason {
     Generic,
     CfgString,
     CfgBoolean,
-    DeprecatedString,
-    DeprecatedKvPair,
 }
 
 #[derive(Diagnostic)]
@@ -190,6 +188,7 @@ pub(crate) struct InvalidReprHintNoValue {
 }
 
 /// Error code: E0565
+// FIXME(jdonszelmann): slowly phased out
 pub(crate) struct UnsupportedLiteral {
     pub span: Span,
     pub reason: UnsupportedLiteralReason,
@@ -211,12 +210,6 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
                 }
                 UnsupportedLiteralReason::CfgBoolean => {
                     fluent::attr_parsing_unsupported_literal_cfg_boolean
-                }
-                UnsupportedLiteralReason::DeprecatedString => {
-                    fluent::attr_parsing_unsupported_literal_deprecated_string
-                }
-                UnsupportedLiteralReason::DeprecatedKvPair => {
-                    fluent::attr_parsing_unsupported_literal_deprecated_kv_pair
                 }
             },
         );
@@ -473,9 +466,10 @@ pub(crate) struct UnrecognizedReprHint {
 }
 
 pub(crate) enum AttributeParseErrorReason {
-    ExpectedStringLiteral,
+    ExpectedStringLiteral { byte_string: Option<Span> },
     ExpectedSingleArgument,
     ExpectedList,
+    UnexpectedLiteral,
     ExpectedNameValue(Option<Symbol>),
     DuplicateKey(Symbol),
     ExpectedSpecificArgument { possibilities: Vec<&'static str>, strings: bool },
@@ -497,27 +491,44 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
         diag.span(self.attr_span);
         diag.code(E0539);
         match self.reason {
-            AttributeParseErrorReason::ExpectedStringLiteral => {
-                diag.span_note(self.span, "expected a string literal here");
+            AttributeParseErrorReason::ExpectedStringLiteral { byte_string } => {
+                if let Some(start_point_span) = byte_string {
+                    diag.span_suggestion(
+                        start_point_span,
+                        fluent::attr_parsing_unsupported_literal_suggestion,
+                        "",
+                        Applicability::MaybeIncorrect,
+                    );
+                    diag.note("expected a normal string literal, not a byte string literal");
+
+                    return diag;
+                } else {
+                    diag.span_label(self.span, "expected a string literal here");
+                }
             }
             AttributeParseErrorReason::ExpectedSingleArgument => {
-                diag.span_note(self.span, "expected a single argument here");
+                diag.span_label(self.span, "expected a single argument here");
+                diag.code(E0805);
             }
             AttributeParseErrorReason::ExpectedList => {
-                diag.span_note(self.span, "expected this to be a list");
+                diag.span_label(self.span, "expected this to be a list");
             }
             AttributeParseErrorReason::DuplicateKey(key) => {
-                diag.span_note(self.span, format!("found `{key}` used as a key more than once"));
+                diag.span_label(self.span, format!("found `{key}` used as a key more than once"));
                 diag.code(E0538);
             }
+            AttributeParseErrorReason::UnexpectedLiteral => {
+                diag.span_label(self.span, format!("didn't expect a literal here"));
+                diag.code(E0565);
+            }
             AttributeParseErrorReason::ExpectedNameValue(None) => {
-                diag.span_note(
+                diag.span_label(
                     self.span,
                     format!("expected this to be of the form `{name} = \"...\"`"),
                 );
             }
             AttributeParseErrorReason::ExpectedNameValue(Some(name)) => {
-                diag.span_note(
+                diag.span_label(
                     self.span,
                     format!("expected this to be of the form `{name} = \"...\"`"),
                 );
@@ -527,13 +538,13 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                 match possibilities.as_slice() {
                     &[] => {}
                     &[x] => {
-                        diag.span_note(
+                        diag.span_label(
                             self.span,
                             format!("the only valid argument here is {quote}{x}{quote}"),
                         );
                     }
                     [first, second] => {
-                        diag.span_note(self.span, format!("valid arguments are {quote}{first}{quote} or {quote}{second}{quote}"));
+                        diag.span_label(self.span, format!("valid arguments are {quote}{first}{quote} or {quote}{second}{quote}"));
                     }
                     [first @ .., second_to_last, last] => {
                         let mut res = String::new();
@@ -544,7 +555,7 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for AttributeParseError {
                             "{quote}{second_to_last}{quote} or {quote}{last}{quote}"
                         ));
 
-                        diag.span_note(self.span, format!("valid arguments are {res}"));
+                        diag.span_label(self.span, format!("valid arguments are {res}"));
                     }
                 }
             }

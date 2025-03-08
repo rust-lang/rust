@@ -1,26 +1,11 @@
-error: malformed `repr` attribute input
-  --> $DIR/issue-43988.rs:24:5
-   |
-LL |     #[repr]
-   |     ^^^^^^^ help: must be of the form: `#[repr(C)]`
-
-error: malformed `repr` attribute input
-  --> $DIR/issue-43988.rs:34:14
-   |
-LL |     let _z = #[repr] 1;
-   |              ^^^^^^^ help: must be of the form: `#[repr(C)]`
-
 error[E0539]: malformed `inline` attribute input
   --> $DIR/issue-43988.rs:10:5
    |
 LL |     #[inline(XYZ)]
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^---^^
+   |              |
+   |              valid arguments are `always` or `never`
    |
-note: valid arguments are `always` or `never`
-  --> $DIR/issue-43988.rs:10:14
-   |
-LL |     #[inline(XYZ)]
-   |              ^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(XYZ)]
@@ -46,17 +31,23 @@ LL |     #[repr(something_not_real)]
    |
    = help: valid reprs are `Rust` (default), `C`, `align`, `packed`, `transparent`, `simd`, `i8`, `u8`, `i16`, `u16`, `i32`, `u32`, `i64`, `u64`, `i128`, `u128`, `isize`, `usize`
 
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/issue-43988.rs:24:5
+   |
+LL |     #[repr]
+   |     ^^^^^^^
+   |     |
+   |     expected this to be a list
+   |     help: must be of the form: `#[repr(C)]`
+
 error[E0539]: malformed `inline` attribute input
   --> $DIR/issue-43988.rs:30:5
    |
 LL |     #[inline(ABC)]
-   |     ^^^^^^^^^^^^^^
+   |     ^^^^^^^^^---^^
+   |              |
+   |              valid arguments are `always` or `never`
    |
-note: valid arguments are `always` or `never`
-  --> $DIR/issue-43988.rs:30:14
-   |
-LL |     #[inline(ABC)]
-   |              ^^^
 help: try changing it to one of the following valid forms of the attribute
    |
 LL -     #[inline(ABC)]
@@ -65,6 +56,15 @@ LL +     #[inline(always|never)]
 LL -     #[inline(ABC)]
 LL +     #[inline]
    |
+
+error[E0539]: malformed `repr` attribute input
+  --> $DIR/issue-43988.rs:34:14
+   |
+LL |     let _z = #[repr] 1;
+   |              ^^^^^^^
+   |              |
+   |              expected this to be a list
+   |              help: must be of the form: `#[repr(C)]`
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/issue-43988.rs:5:5

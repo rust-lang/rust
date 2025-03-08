@@ -5,8 +5,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::LazyLock;
 
 use private::Sealed;
-use rustc_ast as ast;
-use rustc_ast::NodeId;
+use rustc_ast::{self as ast, MetaItemLit, NodeId};
 use rustc_attr_data_structures::AttributeKind;
 use rustc_attr_data_structures::lints::{AttributeLint, AttributeLintKind};
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
@@ -200,13 +199,25 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
         self.emit_err(UnknownMetaItem { span, item: found, expected: options })
     }
 
-    pub(crate) fn expected_string_literal(&self, span: Span) -> ErrorGuaranteed {
+    /// error that a string literal was expected.
+    /// You can optionally give the literal you did find (which you found not to be a string literal)
+    /// which can make better errors. For example, if the literal was a byte string it will suggest
+    /// removing the `b` prefix.
+    pub(crate) fn expected_string_literal(
+        &self,
+        span: Span,
+        actual_literal: Option<&MetaItemLit>,
+    ) -> ErrorGuaranteed {
         self.emit_err(AttributeParseError {
             span,
             attr_span: self.attr_span,
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
-            reason: AttributeParseErrorReason::ExpectedStringLiteral,
+            reason: AttributeParseErrorReason::ExpectedStringLiteral {
+                byte_string: actual_literal.and_then(|i| {
+                    i.kind.is_bytestr().then(|| self.sess().source_map().start_point(i.span))
+                }),
+            },
         })
     }
 
@@ -240,6 +251,18 @@ impl<'f, 'sess: 'f, S: Stage> AcceptContext<'f, 'sess, S> {
             template: self.template.clone(),
             attribute: self.attr_path.clone(),
             reason: AttributeParseErrorReason::DuplicateKey(key),
+        })
+    }
+
+    /// an error that should be emitted when a [`MetaItemOrLitParser`](crate::parser::MetaItemOrLitParser)
+    /// was expected *not* to be a literal, but instead a meta item.
+    pub(crate) fn unexpected_literal(&self, span: Span) -> ErrorGuaranteed {
+        self.emit_err(AttributeParseError {
+            span,
+            attr_span: self.attr_span,
+            template: self.template.clone(),
+            attribute: self.attr_path.clone(),
+            reason: AttributeParseErrorReason::UnexpectedLiteral,
         })
     }
 

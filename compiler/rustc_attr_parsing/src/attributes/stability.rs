@@ -369,7 +369,9 @@ pub(crate) fn parse_unstability<S: Stage>(
             Some(sym::implied_by) => {
                 insert_value_into_option_or_error(cx, &param, &mut implied_by, word.unwrap())?
             }
-            Some(sym::old_name) => insert_value_into_option_or_error(cx, &param, &mut old_name)?,
+            Some(sym::old_name) => {
+                insert_value_into_option_or_error(cx, &param, &mut old_name, word.unwrap())?
+            }
             _ => {
                 cx.emit_err(session_diagnostics::UnknownMetaItem {
                     span: param.span(),
