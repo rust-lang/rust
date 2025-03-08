@@ -87,6 +87,7 @@ pub mod target_policy;
 pub mod target_specific_tests;
 pub mod tests_placement;
 pub mod tests_revision_unpaired_stdout_stderr;
+pub mod triagebot;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unknown_revision;

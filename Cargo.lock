@@ -5271,6 +5271,7 @@ dependencies = [
  "serde",
  "similar",
  "termcolor",
+ "toml 0.7.8",
  "walkdir",
 ]
 
