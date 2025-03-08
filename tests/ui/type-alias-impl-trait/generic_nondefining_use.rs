@@ -12,20 +12,20 @@ type OneConst<const X: usize> = impl Debug;
 
 // Not defining uses, because they doesn't define *all* possible generics.
 
+#[define_opaques(OneTy)]
 fn concrete_ty() -> OneTy<u32> {
-    //~^ ERROR: non-defining opaque type use in defining scope
     5u32
     //~^ ERROR: expected generic type parameter, found `u32`
 }
 
+#[define_opaques(OneLifetime)]
 fn concrete_lifetime() -> OneLifetime<'static> {
-    //~^ ERROR: non-defining opaque type use in defining scope
     6u32
     //~^ ERROR: expected generic lifetime parameter, found `'static`
 }
 
+#[define_opaques(OneConst)]
 fn concrete_const() -> OneConst<{ 123 }> {
-    //~^ ERROR: non-defining opaque type use in defining scope
     7u32
     //~^ ERROR: expected generic constant parameter, found `123`
 }

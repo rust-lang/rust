@@ -1,5 +1,5 @@
 warning: opaque type `impl Trait<Assoc = Sendable>` does not satisfy its associated type bounds
-  --> $DIR/nested-return-type3-tait.rs:19:24
+  --> $DIR/nested-return-type3-tait.rs:20:24
    |
 LL |     type Assoc: Duh;
    |                 --- this associated type bound is unsatisfied for `Sendable`

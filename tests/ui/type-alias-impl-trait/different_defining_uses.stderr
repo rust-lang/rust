@@ -1,11 +1,11 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/different_defining_uses.rs:13:5
+  --> $DIR/different_defining_uses.rs:15:5
    |
 LL |     42i32
    |     ^^^^^ expected `&'static str`, got `i32`
    |
 note: previous use here
-  --> $DIR/different_defining_uses.rs:9:5
+  --> $DIR/different_defining_uses.rs:10:5
    |
 LL |     ""
    |     ^^

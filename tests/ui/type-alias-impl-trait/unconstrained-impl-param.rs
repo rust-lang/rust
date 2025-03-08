@@ -3,6 +3,7 @@
 use std::fmt::Display;
 
 type Opaque<X> = impl Sized + 'static;
+#[define_opaques(Opaque)]
 fn define<X>() -> Opaque<X> {}
 
 trait Trait {
