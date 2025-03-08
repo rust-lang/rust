@@ -241,14 +241,17 @@ impl<T> Trait<T> for X {
                     }
                     (ty::Param(p), _) | (_, ty::Param(p)) => {
                         let generics = tcx.generics_of(body_owner_def_id);
-                        let p_span = tcx.def_span(generics.type_param(p, tcx).def_id);
-                        let expected = match (values.expected.kind(), values.found.kind()) {
-                            (ty::Param(_), _) => "expected ",
-                            (_, ty::Param(_)) => "found ",
-                            _ => "",
-                        };
-                        if !sp.contains(p_span) {
-                            diag.span_label(p_span, format!("{expected}this type parameter"));
+                        let type_param = generics.try_type_param(p, tcx);
+                        if let Some(type_param) = type_param {
+                            let p_span = tcx.def_span(type_param.def_id);
+                            let expected = match (values.expected.kind(), values.found.kind()) {
+                                (ty::Param(_), _) => "expected ",
+                                (_, ty::Param(_)) => "found ",
+                                _ => "",
+                            };
+                            if !sp.contains(p_span) {
+                                diag.span_label(p_span, format!("{expected}this type parameter"));
+                            }
                         }
                     }
                     (ty::Alias(ty::Projection | ty::Inherent, proj_ty), _)
