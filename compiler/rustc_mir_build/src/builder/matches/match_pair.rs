@@ -273,12 +273,12 @@ impl<'tcx> MatchPairTree<'tcx> {
 
                 let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index
-                        || !v
-                            .inhabited_predicate(cx.tcx, adt_def)
-                            .instantiate(cx.tcx, args)
-                            .apply_ignore_module(cx.tcx, cx.infcx.typing_env(cx.param_env))
-                }) && (adt_def.did().is_local()
-                    || !adt_def.is_variant_list_non_exhaustive());
+                        || !v.inhabited_predicate(cx.tcx, adt_def).instantiate(cx.tcx, args).apply(
+                            cx.tcx,
+                            cx.infcx.typing_env(cx.param_env),
+                            cx.def_id.into(),
+                        )
+                }) && !adt_def.variant_list_has_applicable_non_exhaustive();
                 if irrefutable { None } else { Some(TestCase::Variant { adt_def, variant_index }) }
             }
 
