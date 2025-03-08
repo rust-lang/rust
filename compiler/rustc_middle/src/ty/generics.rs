@@ -219,11 +219,19 @@ impl<'tcx> Generics {
 
     /// Returns the `GenericParamDef` with the given index.
     pub fn param_at(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx GenericParamDef {
+        self.try_param_at(param_index, tcx).expect("bug: invalid parameter index")
+    }
+
+    pub fn try_param_at(
+        &'tcx self,
+        param_index: usize,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&'tcx GenericParamDef> {
         if let Some(index) = param_index.checked_sub(self.parent_count) {
-            &self.own_params[index]
+            self.own_params.get(index)
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
-                .param_at(param_index, tcx)
+                .try_param_at(param_index, tcx)
         }
     }
 
@@ -258,6 +266,16 @@ impl<'tcx> Generics {
             GenericParamDefKind::Type { .. } => param,
             _ => bug!("expected type parameter, but found another generic parameter: {param:#?}"),
         }
+    }
+
+    pub fn try_type_param(
+        &'tcx self,
+        param: ParamTy,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<&'tcx GenericParamDef> {
+        self.try_param_at(param.index as usize, tcx).and_then(|param| {
+            if matches!(param.kind, GenericParamDefKind::Type { .. }) { Some(param) } else { None }
+        })
     }
 
     /// Returns the `GenericParamDef` associated with this `ParamConst`.

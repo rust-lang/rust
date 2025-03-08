@@ -1,0 +1,20 @@
+error: `Self` is forbidden as the type of a const generic parameter
+  --> $DIR/generic-param-issue-137865.rs:5:25
+   |
+LL |     type Assoc<const N: Self>;
+   |                         ^^^^
+   |
+   = note: the only supported types are integers, `bool`, and `char`
+
+error[E0308]: mismatched types
+  --> $DIR/generic-param-issue-137865.rs:6:29
+   |
+LL |     fn foo() -> Self::Assoc<3>;
+   |                             ^ expected type parameter `Self`, found integer
+   |
+   = note: expected type parameter `Self`
+                        found type `{integer}`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.
