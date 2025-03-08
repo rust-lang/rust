@@ -465,7 +465,7 @@ error: ABIs are not compatible
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: NoAlias | NoCapture | NonNull | NoUndef,
+                           regular: NoAlias | NonNull | NoUndef,
                            arg_ext: None,
                            pointee_size: Size(32 bytes),
                            pointee_align: Some(
@@ -540,7 +540,7 @@ error: ABIs are not compatible
                    },
                    mode: Indirect {
                        attrs: ArgAttributes {
-                           regular: NoAlias | NoCapture | NonNull | NoUndef,
+                           regular: NoAlias | NonNull | NoUndef,
                            arg_ext: None,
                            pointee_size: Size(128 bytes),
                            pointee_align: Some(
