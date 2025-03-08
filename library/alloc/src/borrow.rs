@@ -212,6 +212,10 @@ impl<B: ?Sized + ToOwned> Clone for Cow<'_, B> {
 impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// Returns true if the data is borrowed, i.e. if `to_mut` would require additional work.
     ///
+    /// Note: this is an associated function, which means that you have to call
+    /// it as `Cow::is_borrowed(&c)` instead of `c.is_borrowed()`. This is so
+    /// that there is no conflict with a method on the inner type.
+    ///
     /// # Examples
     ///
     /// ```
@@ -219,20 +223,24 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// use std::borrow::Cow;
     ///
     /// let cow = Cow::Borrowed("moo");
-    /// assert!(cow.is_borrowed());
+    /// assert!(Cow::is_borrowed(&cow));
     ///
     /// let bull: Cow<'_, str> = Cow::Owned("...moo?".to_string());
-    /// assert!(!bull.is_borrowed());
+    /// assert!(!Cow::is_borrowed(&bull));
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
-    pub const fn is_borrowed(&self) -> bool {
-        match *self {
+    pub const fn is_borrowed(c: &Self) -> bool {
+        match *c {
             Borrowed(_) => true,
             Owned(_) => false,
         }
     }
 
     /// Returns true if the data is owned, i.e. if `to_mut` would be a no-op.
+    ///
+    /// Note: this is an associated function, which means that you have to call
+    /// it as `Cow::is_owned(&c)` instead of `c.is_owned()`. This is so that
+    /// there is no conflict with a method on the inner type.
     ///
     /// # Examples
     ///
@@ -241,14 +249,14 @@ impl<B: ?Sized + ToOwned> Cow<'_, B> {
     /// use std::borrow::Cow;
     ///
     /// let cow: Cow<'_, str> = Cow::Owned("moo".to_string());
-    /// assert!(cow.is_owned());
+    /// assert!(Cow::is_owned(&cow));
     ///
     /// let bull = Cow::Borrowed("...moo?");
-    /// assert!(!bull.is_owned());
+    /// assert!(!Cow::is_owned(&bull));
     /// ```
     #[unstable(feature = "cow_is_borrowed", issue = "65143")]
-    pub const fn is_owned(&self) -> bool {
-        !self.is_borrowed()
+    pub const fn is_owned(c: &Self) -> bool {
+        !Cow::is_borrowed(c)
     }
 
     /// Acquires a mutable reference to the owned form of the data.
