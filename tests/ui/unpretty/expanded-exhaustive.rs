@@ -12,7 +12,6 @@
 #![feature(dyn_star)]
 #![feature(explicit_tail_calls)]
 #![feature(gen_blocks)]
-#![feature(let_chains)]
 #![feature(more_qualified_paths)]
 #![feature(never_patterns)]
 #![feature(never_type)]

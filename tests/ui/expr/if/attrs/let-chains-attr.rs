@@ -1,6 +1,5 @@
 //@ check-pass
-
-#![feature(let_chains)]
+//@ edition:2024
 
 #[cfg(FALSE)]
 fn foo() {
