@@ -19,8 +19,6 @@
 #[path = "../unsupported/args.rs"]
 pub mod args;
 pub mod env;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
 #[path = "../unsupported/os.rs"]
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
