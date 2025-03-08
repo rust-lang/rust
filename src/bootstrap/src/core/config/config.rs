@@ -2300,6 +2300,7 @@ impl Config {
         } else {
             set(&mut config.lld_enabled, lld_enabled);
         }
+        eprintln!("LLD ENABLED: {}", config.lld_enabled);
 
         if matches!(config.lld_mode, LldMode::SelfContained)
             && !config.lld_enabled
