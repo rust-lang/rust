@@ -30,6 +30,7 @@ use crate::{mem, panic, sys};
 // - the standard error output
 // - some dedicated platform specific output
 // - nothing (so this macro is a no-op)
+#[cfg_attr(not(test), clippy::format_args)]
 macro_rules! rtprintpanic {
     ($($t:tt)*) => {
         #[cfg(not(feature = "panic_immediate_abort"))]
@@ -43,6 +44,7 @@ macro_rules! rtprintpanic {
     }
 }
 
+#[cfg_attr(not(test), clippy::format_args)]
 macro_rules! rtabort {
     ($($t:tt)*) => {
         {
