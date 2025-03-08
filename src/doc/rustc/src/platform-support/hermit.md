@@ -31,7 +31,7 @@ Hermit binaries have the ELF format.
 
 ## Building the target
 
-You can build Rust with support for the targets by adding it to the `target` list in `config.toml`.
+You can build Rust with support for the targets by adding it to the `target` list in `bootstrap.toml`.
 To run the Hermit build scripts, you also have to enable your host target.
 The build scripts rely on `llvm-tools` and binaries are linked using `rust-lld`, so those have to be enabled as well.
 

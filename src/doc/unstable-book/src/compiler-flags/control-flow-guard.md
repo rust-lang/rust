@@ -56,4 +56,4 @@ $Env:RUSTFLAGS = "-Z control-flow-guard"
 cargo +nightly build -Z build-std --target x86_64-pc-windows-msvc
 ```
 
-Alternatively, if you are building the standard library from source, you can set `control-flow-guard = true` in the config.toml file.
+Alternatively, if you are building the standard library from source, you can set `control-flow-guard = true` in the bootstrap.toml file.
