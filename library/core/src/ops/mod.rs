@@ -168,9 +168,10 @@ pub use self::control_flow::ControlFlow;
 pub use self::coroutine::{Coroutine, CoroutineState};
 #[unstable(feature = "deref_pure_trait", issue = "87121")]
 pub use self::deref::DerefPure;
+#[cfg(bootstrap)]
 #[unstable(feature = "legacy_receiver_trait", issue = "none")]
 pub use self::deref::LegacyReceiver;
-#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+#[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 pub use self::deref::Receiver;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::deref::{Deref, DerefMut};

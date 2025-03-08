@@ -1,7 +1,6 @@
 //@ check-pass
 
 #![feature(derive_coerce_pointee)]
-#![feature(arbitrary_self_types)]
 
 use std::marker::CoercePointee;
 use std::ops::Receiver;

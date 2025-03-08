@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 pub struct A;
 
 // The receiver of the potentially shadowed method

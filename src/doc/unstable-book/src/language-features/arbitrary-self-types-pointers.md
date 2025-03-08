@@ -6,8 +6,7 @@ The tracking issue for this feature is: [#44874]
 
 ------------------------
 
-This extends the [arbitrary self types] feature to allow methods to
-receive `self` by pointer. For example:
+This allow methods to receive `self` by pointer. For example:
 
 ```rust
 #![feature(arbitrary_self_types_pointers)]
@@ -27,7 +26,7 @@ fn main() {
 
 In general this is not advised: it's thought to be better practice to wrap
 raw pointers in a newtype wrapper which implements the `core::ops::Receiver`
-trait, then you need "only" the `arbitrary_self_types` feature. For example:
+trait. For example:
 
 ```rust
 #![feature(arbitrary_self_types)]
@@ -53,5 +52,3 @@ fn main() {
     a_wrapper.m();
 }
 ```
-
-[arbitrary self types]: arbitrary-self-types.md

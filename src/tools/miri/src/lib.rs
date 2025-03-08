@@ -15,7 +15,7 @@
 #![feature(pointer_is_aligned_to)]
 #![feature(unqualified_local_imports)]
 #![feature(derive_coerce_pointee)]
-#![feature(arbitrary_self_types)]
+#![cfg_attr(bootstrap,feature(legacy_receiver_trait))]
 // Configure clippy and other lints
 #![allow(
     clippy::collapsible_else_if,

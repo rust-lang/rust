@@ -9,7 +9,7 @@
 //@ compile-flags: -Cno-prepopulate-passes -Zsanitizer=kcfi -Copt-level=0
 
 #![crate_type = "lib"]
-#![feature(arbitrary_self_types, no_core, lang_items)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
 extern crate minicore;

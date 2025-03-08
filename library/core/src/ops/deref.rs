@@ -303,9 +303,7 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 
 /// Indicates that a struct can be used as a method receiver.
 /// That is, a type can use this type as a type of `self`, like this:
-/// ```compile_fail
-/// # // This is currently compile_fail because the compiler-side parts
-/// # // of arbitrary_self_types are not implemented
+/// ```ignore (trying to figure out bootstrap stuff, will be reinstated)
 /// use std::ops::Receiver;
 ///
 /// struct SmartPointer<T>(T);
@@ -365,16 +363,16 @@ unsafe impl<T: ?Sized> DerefPure for &mut T {}
 /// }
 /// ```
 #[lang = "receiver"]
-#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+#[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 pub trait Receiver {
     /// The target type on which the method may be called.
     #[rustc_diagnostic_item = "receiver_target"]
     #[lang = "receiver_target"]
-    #[unstable(feature = "arbitrary_self_types", issue = "44874")]
+    #[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
     type Target: ?Sized;
 }
 
-#[unstable(feature = "arbitrary_self_types", issue = "44874")]
+#[stable(feature = "arbitrary_self_types", since = "CURRENT_RUSTC_VERSION")]
 impl<P: ?Sized, T: ?Sized> Receiver for P
 where
     P: Deref<Target = T>,
@@ -390,15 +388,18 @@ where
 /// facility based around the current "arbitrary self types" unstable feature.
 /// That new facility will use the replacement trait above called `Receiver`
 /// which is why this is now named `LegacyReceiver`.
-#[lang = "legacy_receiver"]
-#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+#[cfg(bootstrap)]
+#[cfg_attr(bootstrap, lang = "legacy_receiver")]
+#[cfg_attr(bootstrap, unstable(feature = "legacy_receiver_trait", issue = "none"))]
 #[doc(hidden)]
 pub trait LegacyReceiver {
     // Empty.
 }
 
-#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+#[cfg(bootstrap)]
+#[cfg_attr(bootstrap, unstable(feature = "legacy_receiver_trait", issue = "none"))]
 impl<T: ?Sized> LegacyReceiver for &T {}
 
-#[unstable(feature = "legacy_receiver_trait", issue = "none")]
+#[cfg(bootstrap)]
+#[cfg_attr(bootstrap, unstable(feature = "legacy_receiver_trait", issue = "none"))]
 impl<T: ?Sized> LegacyReceiver for &mut T {}

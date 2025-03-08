@@ -2,7 +2,6 @@
 // fields that weren't ZSTs. I don't believe this was possible to abuse, but
 // it's at least nice to give users better errors.
 
-#![feature(arbitrary_self_types)]
 #![feature(unsize)]
 #![feature(dispatch_from_dyn)]
 

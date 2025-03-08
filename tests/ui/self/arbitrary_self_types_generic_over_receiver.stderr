@@ -1,5 +1,5 @@
 error[E0801]: invalid generic `self` parameter type: `impl Receiver<Target = Self>`
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:7:16
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:5:16
    |
 LL |     fn a(self: impl Receiver<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL |     fn a(self: impl Receiver<Target=Self>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0801]: invalid generic `self` parameter type: `impl Deref<Target = Self>`
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:11:16
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:9:16
    |
 LL |     fn b(self: impl Deref<Target=Self>) -> u32 {
    |                ^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,14 +17,14 @@ LL |     fn b(self: impl Deref<Target=Self>) -> u32 {
    = help: use a concrete type such as `self`, `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`, or `self: Pin<P>` (where P is one of the previous types except `Self`)
 
 error[E0277]: the trait bound `Foo: std::ops::Receiver` is not satisfied
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:19:9
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:17:9
    |
 LL |     foo.a();
    |         ^ the trait `std::ops::Receiver` is not implemented for `Foo`
    |
    = note: required for `Foo` to implement `std::ops::Receiver`
 note: required by a bound in `Foo::a`
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:7:21
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:5:21
    |
 LL |     fn a(self: impl Receiver<Target=Self>) -> u32 {
    |                     ^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::a`
@@ -36,13 +36,13 @@ LL |     &mut foo.a();
    |     ++++
 
 error[E0277]: the trait bound `Foo: Deref` is not satisfied
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:21:9
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:19:9
    |
 LL |     foo.b();
    |         ^ the trait `Deref` is not implemented for `Foo`
    |
 note: required by a bound in `Foo::b`
-  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:11:21
+  --> $DIR/arbitrary_self_types_generic_over_receiver.rs:9:21
    |
 LL |     fn b(self: impl Deref<Target=Self>) -> u32 {
    |                     ^^^^^^^^^^^^^^^^^^ required by this bound in `Foo::b`

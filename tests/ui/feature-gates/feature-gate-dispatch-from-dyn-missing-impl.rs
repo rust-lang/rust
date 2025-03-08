@@ -1,6 +1,6 @@
 // Check that a self parameter type requires a DispatchFromDyn impl to be dyn-compatible.
 
-#![feature(arbitrary_self_types, unsize, coerce_unsized)]
+#![feature(unsize, coerce_unsized)]
 
 use std::{
     marker::Unsize,

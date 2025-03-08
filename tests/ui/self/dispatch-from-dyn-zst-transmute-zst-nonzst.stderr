@@ -1,5 +1,5 @@
 error[E0375]: implementing `DispatchFromDyn` does not allow multiple fields to be coerced
-  --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:17:1
+  --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:16:1
    |
 LL | / impl<T, U> DispatchFromDyn<Dispatchable<U, i32>> for Dispatchable<T, ()>
 LL | |
@@ -9,7 +9,7 @@ LL | |     U: ?Sized,
    | |______________^
    |
 note: the trait `DispatchFromDyn` may only be implemented when a single field is being coerced
-  --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:13:5
+  --> $DIR/dispatch-from-dyn-zst-transmute-zst-nonzst.rs:12:5
    |
 LL |     _ptr: Box<T>,
    |     ^^^^^^^^^^^^

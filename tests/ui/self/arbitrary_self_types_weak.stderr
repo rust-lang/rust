@@ -1,5 +1,5 @@
 error[E0307]: invalid `self` parameter type: `std::rc::Weak<A>`
-  --> $DIR/arbitrary_self_types_weak.rs:6:16
+  --> $DIR/arbitrary_self_types_weak.rs:4:16
    |
 LL |     fn m(self: std::rc::Weak<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^
@@ -9,7 +9,7 @@ LL |     fn m(self: std::rc::Weak<Self>) {}
    = note: `Weak` does not implement `Receiver` because it has methods that may shadow the referent; consider wrapping your `Weak` in a newtype wrapper for which you implement `Receiver`
 
 error[E0307]: invalid `self` parameter type: `std::sync::Weak<A>`
-  --> $DIR/arbitrary_self_types_weak.rs:8:16
+  --> $DIR/arbitrary_self_types_weak.rs:6:16
    |
 LL |     fn n(self: std::sync::Weak<Self>) {}
    |                ^^^^^^^^^^^^^^^^^^^^^

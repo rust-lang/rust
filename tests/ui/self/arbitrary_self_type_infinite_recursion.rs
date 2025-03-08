@@ -1,5 +1,3 @@
-#![feature(arbitrary_self_types)]
-
 struct MySmartPtr<T>(T);
 
 impl<T> core::ops::Receiver for MySmartPtr<T> {

@@ -2,8 +2,6 @@
 // because it satisfies `&dyn Bar: DispatchFromDyn<&dyn Bar>`, but is not a valid receiver
 // in wfcheck.
 
-#![feature(arbitrary_self_types)]
-
 use std::ops::Deref;
 
 trait Foo: Deref<Target = dyn Bar> {

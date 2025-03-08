@@ -10,7 +10,7 @@
 // It also validates that functions can be called through function pointers
 // through traits.
 
-#![feature(no_core, lang_items, intrinsics, unboxed_closures, arbitrary_self_types)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures)]
 #![crate_type = "lib"]
 #![no_core]
 

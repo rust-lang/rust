@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:26:9
+  --> $DIR/ref-self.rs:25:9
    |
 LL |     fn ref_self(&self, f: &u32) -> &u32 {
    |                 -         - let's call the lifetime of this reference `'1`
@@ -14,7 +14,7 @@ LL |     fn ref_self<'a>(&self, f: &'a u32) -> &'a u32 {
    |                ++++            ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:33:9
+  --> $DIR/ref-self.rs:32:9
    |
 LL |     fn ref_Self(self: &Self, f: &u32) -> &u32 {
    |                       -         - let's call the lifetime of this reference `'1`
@@ -29,7 +29,7 @@ LL |     fn ref_Self<'a>(self: &Self, f: &'a u32) -> &'a u32 {
    |                ++++                  ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:38:9
+  --> $DIR/ref-self.rs:37:9
    |
 LL |     fn box_ref_Self(self: Box<&Self>, f: &u32) -> &u32 {
    |                               -          - let's call the lifetime of this reference `'1`
@@ -44,7 +44,7 @@ LL |     fn box_ref_Self<'a>(self: Box<&Self>, f: &'a u32) -> &'a u32 {
    |                    ++++                       ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:43:9
+  --> $DIR/ref-self.rs:42:9
    |
 LL |     fn pin_ref_Self(self: Pin<&Self>, f: &u32) -> &u32 {
    |                               -          - let's call the lifetime of this reference `'1`
@@ -59,7 +59,7 @@ LL |     fn pin_ref_Self<'a>(self: Pin<&Self>, f: &'a u32) -> &'a u32 {
    |                    ++++                       ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:48:9
+  --> $DIR/ref-self.rs:47:9
    |
 LL |     fn box_box_ref_Self(self: Box<Box<&Self>>, f: &u32) -> &u32 {
    |                                       -           - let's call the lifetime of this reference `'1`
@@ -74,7 +74,7 @@ LL |     fn box_box_ref_Self<'a>(self: Box<Box<&Self>>, f: &'a u32) -> &'a u32 {
    |                        ++++                            ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:53:9
+  --> $DIR/ref-self.rs:52:9
    |
 LL |     fn box_pin_ref_Self(self: Box<Pin<&Self>>, f: &u32) -> &u32 {
    |                                       -           - let's call the lifetime of this reference `'1`
@@ -89,7 +89,7 @@ LL |     fn box_pin_ref_Self<'a>(self: Box<Pin<&Self>>, f: &'a u32) -> &'a u32 {
    |                        ++++                            ++          ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:58:9
+  --> $DIR/ref-self.rs:57:9
    |
 LL |     fn wrap_ref_Self_Self(self: Wrap<&Self, Self>, f: &u8) -> &u8 {
    |                                      -                - let's call the lifetime of this reference `'1`
@@ -104,7 +104,7 @@ LL |     fn wrap_ref_Self_Self<'a>(self: Wrap<&Self, Self>, f: &'a u8) -> &'a u8
    |                          ++++                              ++         ++
 
 error: lifetime may not live long enough
-  --> $DIR/ref-self.rs:63:9
+  --> $DIR/ref-self.rs:62:9
    |
 LL |     fn ref_box_Self(self: &Box<Self>, f: &u32) -> &u32 {
    |                           -              - let's call the lifetime of this reference `'1`
