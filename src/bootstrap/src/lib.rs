@@ -96,7 +96,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
 pub struct Compiler {
     stage: u32,
     host: TargetSelection,
-    /// Indicates whether `compiler_for` was used to force a specific compiler stage.
+    /// Indicates whether the compiler was forced to use a specific stage.
     /// This field is ignored in `Hash` and `PartialEq` implementations as only the `stage`
     /// and `host` fields are relevant for those.
     forced_compiler: bool,
@@ -1998,7 +1998,7 @@ impl Compiler {
         self.stage == 0 && self.host == build.build
     }
 
-    /// Indicates whether `compiler_for` was used to force a specific compiler stage.
+    /// Indicates whether the compiler was forced to use a specific stage.
     pub fn is_forced_compiler(&self) -> bool {
         self.forced_compiler
     }
