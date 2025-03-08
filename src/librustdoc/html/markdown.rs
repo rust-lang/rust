@@ -1568,7 +1568,7 @@ fn markdown_summary_with_limit(
 
     let mut buf = HtmlWithLimit::new(length_limit);
     let mut stopped_early = false;
-    p.try_for_each(|event| {
+    let _ = p.try_for_each(|event| {
         match &event {
             Event::Text(text) => {
                 let r =
