@@ -1991,12 +1991,12 @@ impl Step for Assemble {
             }
         }
 
-        let maybe_install_llvm_bitcode_linker = || {
+        let maybe_install_llvm_bitcode_linker = |compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
                 let llvm_bitcode_linker =
                     builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                        compiler: target_compiler,
+                        compiler,
                         target: target_compiler.host,
                         extra_features: vec![],
                     });
@@ -2020,7 +2020,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage=target_compiler.stage));
             }
 
-            maybe_install_llvm_bitcode_linker();
+            let mut precompiled_compiler = target_compiler;
+            precompiled_compiler.forced_compiler(true);
+            maybe_install_llvm_bitcode_linker(precompiled_compiler);
 
             return target_compiler;
         }
@@ -2203,7 +2205,7 @@ impl Step for Assemble {
             );
         }
 
-        maybe_install_llvm_bitcode_linker();
+        maybe_install_llvm_bitcode_linker(target_compiler);
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

@@ -319,18 +319,20 @@ pub(crate) fn get_tool_rustc_compiler(
     builder: &Builder<'_>,
     target_compiler: Compiler,
 ) -> Compiler {
-    if builder.download_rustc() && target_compiler.stage == 1 {
-        // We already have the stage 1 compiler, we don't need to cut the stage.
-        builder.compiler(target_compiler.stage, builder.config.build)
-    } else if target_compiler.is_forced_compiler() {
-        target_compiler
-    } else {
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
-        // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
-        // compiler it's paired with, so it must be built with the previous stage compiler.
-        builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.build)
+    if target_compiler.is_forced_compiler() {
+        return target_compiler;
     }
+
+    if builder.download_rustc() && target_compiler.stage > 0 {
+        // We already have the stage N compiler, we don't need to cut the stage.
+        return builder.compiler(target_compiler.stage, builder.config.build);
+    }
+
+    // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+    // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
+    // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
+    // compiler it's paired with, so it must be built with the previous stage compiler.
+    builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.build)
 }
 
 /// Links a built tool binary with the given `name` from the build directory to the
