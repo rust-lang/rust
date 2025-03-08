@@ -458,7 +458,6 @@ define_tables! {
     // `DefPathTable` up front, since we may only ever use a few
     // definitions from any given crate.
     def_keys: Table<DefIndex, LazyValue<DefKey>>,
-    proc_macro_quoted_spans: Table<usize, LazyValue<Span>>,
     variant_data: Table<DefIndex, LazyValue<VariantData>>,
     assoc_container: Table<DefIndex, ty::AssocItemContainer>,
     macro_definition: Table<DefIndex, LazyValue<ast::DelimArgs>>,
