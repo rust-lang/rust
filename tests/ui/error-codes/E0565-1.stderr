@@ -1,8 +1,22 @@
-error[E0565]: item in `deprecated` must be a key/value pair
-  --> $DIR/E0565-1.rs:2:14
+error[E0565]: malformed `deprecated` attribute input
+  --> $DIR/E0565-1.rs:2:1
    |
 LL | #[deprecated("since")]
-   |              ^^^^^^^
+   | ^^^^^^^^^^^^^-------^^
+   |              |
+   |              didn't expect a literal here
+   |
+help: try changing it to one of the following valid forms of the attribute
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated = "reason"]
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated(/*opt*/ since = "version", /*opt*/ note = "reason")]
+   |
+LL - #[deprecated("since")]
+LL + #[deprecated]
+   |
 
 error: aborting due to 1 previous error
 

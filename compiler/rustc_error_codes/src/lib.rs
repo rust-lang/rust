@@ -326,6 +326,7 @@ E0536: 0536,
 E0537: 0537,
 E0538: 0538,
 E0539: 0539,
+E0540: 0540,
 E0541: 0541,
 E0542: 0542,
 E0543: 0543,
@@ -664,7 +665,6 @@ E0804: 0804,
 //  E0489, // type/lifetime parameter not in scope here
 //  E0490, // removed: unreachable
 //  E0526, // shuffle indices are not constant
-//  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check
 //  E0553, // multiple rustc_const_unstable attributes
 //  E0555, // replaced with a generic attribute input check
