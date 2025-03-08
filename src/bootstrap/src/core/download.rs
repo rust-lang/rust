@@ -826,6 +826,34 @@ download-rustc = false
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
     }
+
+    pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
+        let cache_prefix = format!("gcc-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+
+        let gcc_cache = cache_dst.join(cache_prefix);
+        if !gcc_cache.exists() {
+            t!(fs::create_dir_all(&gcc_cache));
+        }
+        let base = &self.stage0_metadata.config.artifacts_server;
+        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let tarball = gcc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "ERROR: failed to download gcc from ci
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-gcc`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-gcc` in your config.toml:
+
+    [gcc]
+    download-ci-gcc = false
+    ";
+            self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
+        }
+        self.unpack(&tarball, root_dir, "gcc");
+    }
 }
 
 fn path_is_dylib(path: &Path) -> bool {
