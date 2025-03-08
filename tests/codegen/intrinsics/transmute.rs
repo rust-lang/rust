@@ -10,6 +10,7 @@
 use std::intrinsics::mir::*;
 use std::intrinsics::{transmute, transmute_unchecked};
 use std::mem::MaybeUninit;
+use std::num::NonZero;
 
 // FIXME(LLVM18REMOVED): `trunc nuw` doesn't exist in LLVM 18, so once we no
 // longer support it the optional flag checks can be changed to required.
@@ -469,4 +470,28 @@ pub unsafe fn check_from_overalign(x: HighAlignScalar) -> u64 {
     // CHECK: %[[VAL:.+]] = load i64, ptr %x, align 8
     // CHECK: ret i64 %[[VAL]]
     transmute(x)
+}
+
+#[repr(transparent)]
+struct Level1(std::num::NonZero<u32>);
+#[repr(transparent)]
+struct Level2(Level1);
+#[repr(transparent)]
+struct Level3(Level2);
+
+// CHECK-LABEL: @repeatedly_transparent_transmute
+// CHECK-SAME: (i32{{.+}}%[[ARG:[^)]+]])
+#[no_mangle]
+#[custom_mir(dialect = "runtime", phase = "optimized")]
+pub unsafe fn repeatedly_transparent_transmute(x: NonZero<u32>) -> Level3 {
+    // CHECK: start
+    // CHECK-NEXT: ret i32 %[[ARG]]
+    mir! {
+        {
+            let A = CastTransmute::<NonZero<u32>, Level1>(x);
+            let B = CastTransmute::<Level1, Level2>(A);
+            RET = CastTransmute::<Level2, Level3>(B);
+            Return()
+        }
+    }
 }
