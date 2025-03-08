@@ -58,6 +58,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             }
         }
 
+        let ast_bounds: Vec<_> =
+            hir_bounds.iter().map(|&trait_ref| hir::GenericBound::Trait(trait_ref)).collect();
+
+        self.add_implicit_traits_with_filter(
+            &mut user_written_bounds,
+            dummy_self,
+            &ast_bounds,
+            None,
+            span,
+            |tr| tr != hir::LangItem::Sized,
+        );
+
         let (elaborated_trait_bounds, elaborated_projection_bounds) =
             traits::expand_trait_aliases(tcx, user_written_bounds.iter().copied());
         let (regular_traits, mut auto_traits): (Vec<_>, Vec<_>) = elaborated_trait_bounds
