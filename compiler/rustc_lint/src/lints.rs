@@ -3163,3 +3163,20 @@ pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_unnecessary_refs)]
+pub(crate) struct UnnecessaryRefs<'a> {
+    #[subdiagnostic]
+    pub suggestion: UnnecessaryRefsSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+pub(crate) struct UnnecessaryRefsSuggestion<'a> {
+    #[suggestion_part(code = "&raw {mutbl} ")]
+    pub left: Span,
+    #[suggestion_part(code = "")]
+    pub right: Span,
+    pub mutbl: &'a str,
+}
