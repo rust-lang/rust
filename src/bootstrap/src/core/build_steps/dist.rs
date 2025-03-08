@@ -232,7 +232,6 @@ fn make_win_dist(
         "libpthread.a",
         //Windows import libs
         //This should contain only the set of libraries necessary to link the standard library.
-        "libadvapi32.a",
         "libbcrypt.a",
         "libcomctl32.a",
         "libcomdlg32.a",
