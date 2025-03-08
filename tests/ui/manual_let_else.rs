@@ -480,3 +480,37 @@ fn issue12337() {
         //~^ manual_let_else
     };
 }
+
+mod issue13768 {
+    enum Foo {
+        Str(String),
+        None,
+    }
+
+    fn foo(value: Foo) {
+        let signature = match value {
+            //~^ manual_let_else
+            Foo::Str(ref val) => val,
+            _ => {
+                println!("No signature found");
+                return;
+            },
+        };
+    }
+
+    enum Bar {
+        Str { inner: String },
+        None,
+    }
+
+    fn bar(mut value: Bar) {
+        let signature = match value {
+            //~^ manual_let_else
+            Bar::Str { ref mut inner } => inner,
+            _ => {
+                println!("No signature found");
+                return;
+            },
+        };
+    }
+}
