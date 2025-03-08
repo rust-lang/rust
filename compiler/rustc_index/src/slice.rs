@@ -1,6 +1,6 @@
 use std::fmt;
 use std::marker::PhantomData;
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, RangeBounds};
 use std::slice::{self, SliceIndex};
 
 use crate::{Idx, IndexVec, IntoSliceIdx};
@@ -95,6 +95,17 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn swap(&mut self, a: I, b: I) {
         self.raw.swap(a.index(), b.index())
+    }
+
+    #[inline]
+    pub fn copy_within(
+        &mut self,
+        src: impl IntoSliceIdx<I, [T], Output: RangeBounds<usize>>,
+        dest: I,
+    ) where
+        T: Copy,
+    {
+        self.raw.copy_within(src.into_slice_idx(), dest.index());
     }
 
     #[inline]
