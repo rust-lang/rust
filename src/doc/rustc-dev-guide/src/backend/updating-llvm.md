@@ -175,11 +175,12 @@ so let's go through each in detail.
    and then you can send a PR to `rust-lang/rust`. You'll change at least
    `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
-   <!-- date-check: Sep 2024 -->
+   <!-- date-check: mar 2025 -->
    > For prior art, here are some previous LLVM updates:
    > - [LLVM 17](https://github.com/rust-lang/rust/pull/115959)
    > - [LLVM 18](https://github.com/rust-lang/rust/pull/120055)
    > - [LLVM 19](https://github.com/rust-lang/rust/pull/127513)
+   > - [LLVM 20](https://github.com/rust-lang/rust/pull/135763)
 
    Note that sometimes it's easiest to land [`llvm-wrapper`] compatibility as a PR
    before actually updating `src/llvm-project`.
