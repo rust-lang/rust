@@ -12,7 +12,6 @@ use crate::traits;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FutureCompatOverlapErrorKind {
-    OrderDepTraitObjects,
     LeakCheck,
 }
 
@@ -151,12 +150,6 @@ impl<'tcx> Children {
                 {
                     match overlap_kind {
                         ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                        ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects => {
-                            *last_lint_mut = Some(FutureCompatOverlapError {
-                                error: create_overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::OrderDepTraitObjects,
-                            });
-                        }
                     }
 
                     return Ok((false, false));
