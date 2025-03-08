@@ -712,7 +712,12 @@ fn fn_abi_adjust_for_abi<'tcx>(
                 // we can't deduce any parameters for, so make sure the argument index is in
                 // bounds.
                 if let Some(deduced_param_attrs) = deduced_param_attrs.get(arg_idx) {
-                    if deduced_param_attrs.read_only {
+                    if deduced_param_attrs.read_only
+                        && (!deduced_param_attrs.requires_freeze
+                            || arg.layout.ty.is_freeze(tcx, cx.typing_env))
+                        && (!deduced_param_attrs.requires_nop_drop
+                            || !arg.layout.ty.needs_drop(tcx, cx.typing_env))
+                    {
                         attrs.regular.insert(ArgAttribute::ReadOnly);
                         debug!("added deduced read-only attribute");
                     }
