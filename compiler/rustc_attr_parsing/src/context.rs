@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::ops::Deref;
 use std::sync::LazyLock;
 
-use rustc_ast::{self as ast, DelimArgs};
+use rustc_ast::{self as ast, AttrStyle, DelimArgs};
 use rustc_attr_data_structures::AttributeKind;
 use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::Features;
@@ -14,6 +14,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
+use crate::attributes::crate_name::CratenameParser;
 use crate::attributes::deprecation::DeprecationParser;
 use crate::attributes::repr::ReprParser;
 use crate::attributes::stability::{
@@ -76,6 +77,7 @@ attribute_groups!(
 
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
+        Single<CratenameParser>,
         Single<DeprecationParser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
@@ -89,6 +91,7 @@ pub(crate) struct AcceptContext<'a> {
     pub(crate) group_cx: &'a FinalizeContext<'a>,
     /// The span of the attribute currently being parsed
     pub(crate) attr_span: Span,
+    pub(crate) attr_style: AttrStyle,
 }
 
 impl<'a> AcceptContext<'a> {
@@ -269,6 +272,7 @@ impl<'sess> AttributeParser<'sess> {
                             let cx = AcceptContext {
                                 group_cx: &group_cx,
                                 attr_span: lower_span(attr.span),
+                                attr_style: attr.style,
                             };
 
                             f(&cx, &args)
