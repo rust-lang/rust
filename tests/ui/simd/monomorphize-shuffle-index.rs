@@ -21,6 +21,9 @@ unsafe fn simd_shuffle_const_generic<T, U, const I: &'static [u32]>(a: T, b: T) 
 #[derive(Copy, Clone)]
 #[repr(simd)]
 struct Simd<T, const N: usize>([T; N]);
+impl<T, const N: usize> Simd<T, N> {
+    const fn to_array(self) -> [T; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 trait Shuffle<const N: usize> {
     const I: Simd<u32, N>;
@@ -57,9 +60,9 @@ fn main() {
     let b = Simd::<u8, 4>([4, 5, 6, 7]);
     unsafe {
         let x: Simd<u8, 4> = I1.shuffle(a, b);
-        assert_eq!(x.0, [0, 2, 4, 6]);
+        assert_eq!(x.to_array(), [0, 2, 4, 6]);
 
         let y: Simd<u8, 2> = I2.shuffle(a, b);
-        assert_eq!(y.0, [1, 5]);
+        assert_eq!(y.to_array(), [1, 5]);
     }
 }

@@ -8,22 +8,46 @@ use std::intrinsics::simd::{simd_extract, simd_insert, simd_shuffle};
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 struct i32x2([i32; 2]);
+impl ToArray for i32x2 {
+    type T = [i32; 2];
+    fn to_array(self) -> [i32; 2] { unsafe { std::mem::transmute(self) } }
+}
+
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 struct i32x4([i32; 4]);
+impl ToArray for i32x4 {
+    type T = [i32; 4];
+    fn to_array(self) -> [i32; 4] { unsafe { std::mem::transmute(self) } }
+}
+
 #[repr(simd)]
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 struct i32x8([i32; 8]);
+impl ToArray for i32x8 {
+    type T = [i32; 8];
+    fn to_array(self) -> [i32; 8] { unsafe { std::mem::transmute(self) } }
+}
+
+impl ToArray for i32 {
+    type T = [i32; 1];
+    fn to_array(self) -> [i32; 1] { [self] }
+}
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
 
+trait ToArray {
+    type T: Copy;
+    fn to_array(self) -> Self::T;
+}
+
 macro_rules! all_eq {
     ($a: expr, $b: expr) => {{
-        let a = $a;
-        let b = $b;
+        let [b, a] = [$b, $a];
+        let [b, a] = [b.to_array(), a.to_array()];
         // type inference works better with the concrete type on the
         // left, but humans work better with the expected on the
         // right.

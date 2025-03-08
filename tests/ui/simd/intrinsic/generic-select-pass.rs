@@ -9,24 +9,47 @@
 use std::intrinsics::simd::{simd_select, simd_select_bitmask};
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct i32x4(pub [i32; 4]);
+impl i32x4 {
+    fn to_array(self) -> [i32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct u32x4(pub [u32; 4]);
+impl u32x4 {
+    fn to_array(self) -> [u32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct u32x8([u32; 8]);
+impl u32x8 {
+    fn to_array(self) -> [u32; 8] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct f32x4(pub [f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct b8x4(pub [i8; 4]);
+impl b8x4 {
+    fn to_array(self) -> [i8; 4] { unsafe { std::mem::transmute(self) } }
+}
+
+macro_rules! all_eq {
+    ($a: expr, $b: expr) => {{
+        let a = $a;
+        let b = $b;
+        assert_eq!(a.to_array(), b.to_array());
+    }};
+}
 
 fn main() {
     let m0 = b8x4([!0, !0, !0, !0]);
@@ -41,23 +64,23 @@ fn main() {
 
         let r: i32x4 = simd_select(m0, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: i32x4 = simd_select(m1, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: i32x4 = simd_select(m2, a, b);
         let e = i32x4([1, -2, -7, 8]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: i32x4 = simd_select(m3, a, b);
         let e = i32x4([5, 6, 3, 4]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: i32x4 = simd_select(m4, a, b);
         let e = i32x4([1, 6, 3, 8]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 
     unsafe {
@@ -66,23 +89,23 @@ fn main() {
 
         let r: u32x4 = simd_select(m0, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select(m1, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select(m2, a, b);
         let e = u32x4([1, 2, 7, 8]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select(m3, a, b);
         let e = u32x4([5, 6, 3, 4]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select(m4, a, b);
         let e = u32x4([1, 6, 3, 8]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 
     unsafe {
@@ -91,23 +114,23 @@ fn main() {
 
         let r: f32x4 = simd_select(m0, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: f32x4 = simd_select(m1, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: f32x4 = simd_select(m2, a, b);
         let e = f32x4([1., 2., 7., 8.]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: f32x4 = simd_select(m3, a, b);
         let e = f32x4([5., 6., 3., 4.]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: f32x4 = simd_select(m4, a, b);
         let e = f32x4([1., 6., 3., 8.]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 
     unsafe {
@@ -118,23 +141,23 @@ fn main() {
 
         let r: b8x4 = simd_select(m0, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: b8x4 = simd_select(m1, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: b8x4 = simd_select(m2, a, b);
         let e = b8x4([t, f, f, t]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: b8x4 = simd_select(m3, a, b);
         let e = b8x4([f, f, t, f]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: b8x4 = simd_select(m4, a, b);
         let e = b8x4([t, f, t, t]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 
     unsafe {
@@ -143,23 +166,23 @@ fn main() {
 
         let r: u32x8 = simd_select_bitmask(0u8, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x8 = simd_select_bitmask(0xffu8, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x8 = simd_select_bitmask(0b01010101u8, a, b);
         let e = u32x8([0, 9, 2, 11, 4, 13, 6, 15]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x8 = simd_select_bitmask(0b10101010u8, a, b);
         let e = u32x8([8, 1, 10, 3, 12, 5, 14, 7]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x8 = simd_select_bitmask(0b11110000u8, a, b);
         let e = u32x8([8, 9, 10, 11, 4, 5, 6, 7]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 
     unsafe {
@@ -168,22 +191,22 @@ fn main() {
 
         let r: u32x4 = simd_select_bitmask(0u8, a, b);
         let e = b;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select_bitmask(0xfu8, a, b);
         let e = a;
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select_bitmask(0b0101u8, a, b);
         let e = u32x4([0, 5, 2, 7]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select_bitmask(0b1010u8, a, b);
         let e = u32x4([4, 1, 6, 3]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
 
         let r: u32x4 = simd_select_bitmask(0b1100u8, a, b);
         let e = u32x4([4, 5, 2, 3]);
-        assert_eq!(r, e);
+        all_eq!(r, e);
     }
 }

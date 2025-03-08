@@ -7,10 +7,21 @@
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct f32x4(pub [f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 use std::intrinsics::simd::*;
+
+macro_rules! all_eq {
+    ($a: expr, $b: expr) => {{
+        let a = $a;
+        let b = $b;
+        assert_eq!(a.to_array(), b.to_array());
+    }};
+}
 
 fn main() {
     let x = f32x4([1.0, 2.0, 3.0, 4.0]);
@@ -28,22 +39,22 @@ fn main() {
     unsafe {
         let min0 = simd_fmin(x, y);
         let min1 = simd_fmin(y, x);
-        assert_eq!(min0, min1);
+        all_eq!(min0, min1);
         let e = f32x4([1.0, 1.0, 3.0, 3.0]);
-        assert_eq!(min0, e);
+        all_eq!(min0, e);
         let minn = simd_fmin(x, n);
-        assert_eq!(minn, x);
+        all_eq!(minn, x);
         let minn = simd_fmin(y, n);
-        assert_eq!(minn, y);
+        all_eq!(minn, y);
 
         let max0 = simd_fmax(x, y);
         let max1 = simd_fmax(y, x);
-        assert_eq!(max0, max1);
+        all_eq!(max0, max1);
         let e = f32x4([2.0, 2.0, 4.0, 4.0]);
-        assert_eq!(max0, e);
+        all_eq!(max0, e);
         let maxn = simd_fmax(x, n);
-        assert_eq!(maxn, x);
+        all_eq!(maxn, x);
         let maxn = simd_fmax(y, n);
-        assert_eq!(maxn, y);
+        all_eq!(maxn, y);
     }
 }

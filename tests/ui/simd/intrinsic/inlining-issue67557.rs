@@ -8,8 +8,11 @@
 use std::intrinsics::simd::simd_shuffle;
 
 #[repr(simd)]
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone)]
 struct Simd2([u8; 2]);
+impl Simd2 {
+    fn to_array(self) -> [u8; 2] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
 struct SimdShuffleIdx<const LEN: usize>([u32; LEN]);
@@ -27,12 +30,12 @@ fn main() {
 
 #[inline(never)]
 fn assert_10_11(x: Simd2) {
-    assert_eq!(x, Simd2([10, 11]));
+    assert_eq!(x.to_array(), Simd2([10, 11]).to_array());
 }
 
 #[inline(never)]
 fn assert_10_13(x: Simd2) {
-    assert_eq!(x, Simd2([10, 13]));
+    assert_eq!(x.to_array(), Simd2([10, 13]).to_array());
 }
 
 #[inline(always)]
