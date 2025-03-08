@@ -202,6 +202,9 @@ impl fmt::Debug for VarsOs {
 /// Returns [`VarError::NotUnicode`] if the variable's value is not valid
 /// Unicode. If this is not desired, consider using [`var_os`].
 ///
+/// Use [`env!`] or [`option_env!`] instead if you want to check environment
+/// variables at compile time.
+///
 /// # Examples
 ///
 /// ```
