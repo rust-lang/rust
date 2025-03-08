@@ -190,7 +190,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         },
         implied_target_features: |tcx, feature: Symbol| {
             let feature = feature.as_str();
-            UnordSet::from(tcx.sess.target.implied_target_features(std::iter::once(feature)))
+            UnordSet::from(tcx.sess.target.implied_target_features(feature))
                 .into_sorted_stable_ord()
                 .into_iter()
                 .map(|s| Symbol::intern(s))
