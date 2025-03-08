@@ -7,6 +7,7 @@
 // dependency or a private one.
 
 #![deny(exported_private_dependencies)]
+#![allow(hidden_glob_reexports)]
 
 // This crate is a private dependency
 // FIXME: This should trigger.
@@ -77,15 +78,13 @@ pub type Alias = OtherType;
 
 pub struct PublicWithPrivateImpl;
 
-// FIXME: This should trigger.
-// See https://github.com/rust-lang/rust/issues/71043
 impl OtherTrait for PublicWithPrivateImpl {}
+//~^ ERROR trait `OtherTrait` from private dependency 'priv_dep' in public interface
 
 pub trait PubTraitOnPrivate {}
 
-// FIXME: This should trigger.
-// See https://github.com/rust-lang/rust/issues/71043
 impl PubTraitOnPrivate for OtherType {}
+//~^ ERROR type `OtherType` from private dependency 'priv_dep' in public interface
 
 pub struct AllowedPrivType {
     #[allow(exported_private_dependencies)]
@@ -103,5 +102,7 @@ pub use pm::pm_attr;
 
 // FIXME: This should trigger.
 pub use priv_dep::E::V1;
+// FIXME: This should trigger.
+pub use priv_dep::*;
 
 fn main() {}
