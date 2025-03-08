@@ -84,6 +84,7 @@ declare_lint_pass! {
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
         REDUNDANT_LIFETIMES,
+        REDUNDANT_TRANSMUTATION,
         REFINING_IMPL_TRAIT_INTERNAL,
         REFINING_IMPL_TRAIT_REACHABLE,
         RENAMED_AND_REMOVED_LINTS,
@@ -4978,6 +4979,29 @@ declare_lint! {
     pub PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
     Warn,
     "detects pointer to integer transmutes in const functions and associated constants",
+}
+
+declare_lint! {
+    /// The `redundant_transmutation` lint detects transmutations that have safer alternatives.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// fn bytes_at_home(x: [u8; 4]) -> u32 {
+    ///   unsafe { std::mem::transmute(x) }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// People dont realize that safer methods such as
+    /// [`u32::to_ne_bytes`](https://doc.rust-lang.org/std/primitive.u32.html#method.to_ne_bytes) exist,
+    /// so this lint exists to lint on cases where people write transmutes that dont need to be there.
+    pub REDUNDANT_TRANSMUTATION,
+    Warn,
+    "detects transmutes that are shadowed by std methods"
 }
 
 declare_lint! {

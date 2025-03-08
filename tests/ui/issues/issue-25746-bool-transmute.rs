@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(redundant_transmutation)]
 use std::mem::transmute;
 
 fn main() {

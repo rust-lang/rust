@@ -1,3 +1,4 @@
+#![allow(redundant_transmutation)]
 use std::mem;
 
 fn main() {
