@@ -9,7 +9,7 @@ autobenches = false
 # If you update this, be sure to update it in a bunch of other places too!
 # As of 2024, it was src/tools/opt-dist, the core-no-fp-fmt-parse test and
 # the version of the prelude imported in core/lib.rs.
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = false

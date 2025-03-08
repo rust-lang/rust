@@ -3,7 +3,7 @@ cargo-features = ["public-dependency"]
 [package]
 name = "test"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 getopts = { version = "0.2.21", features = ['rustc-dep-of-std'] }
