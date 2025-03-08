@@ -1,0 +1,75 @@
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:12:14
+   |
+LL |     unsafe { &(*x).0 as *const i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unnecessary_refs)]` on by default
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &(*x).0 as *const i32 }
+LL +     unsafe { &raw const (*x).0 }
+   |
+
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:17:14
+   |
+LL |     unsafe { &(*x).b as *const u8 }
+   |              ^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &(*x).b as *const u8 }
+LL +     unsafe { &raw const (*x).b }
+   |
+
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:22:14
+   |
+LL |     unsafe { &mut (*x).0 as *mut i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &mut (*x).0 as *mut i32 }
+LL +     unsafe { &raw mut (*x).0 }
+   |
+
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:27:14
+   |
+LL |     unsafe { &mut (*x).a as *mut i32 }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL -     unsafe { &mut (*x).a as *mut i32 }
+LL +     unsafe { &raw mut (*x).a }
+   |
+
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:33:13
+   |
+LL |     let a = &a as *const i32;
+   |             ^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     let a = &a as *const i32;
+LL +     let a = &raw const a;
+   |
+
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/lint-unnecessary-refs.rs:37:13
+   |
+LL |     let b = &mut b as *mut i32;
+   |             ^^^^^^^^^^^^^^^^^^
+   |
+help: consider using `&raw mut` for a safer and more explicit raw pointer
+   |
+LL -     let b = &mut b as *mut i32;
+LL +     let b = &raw mut b;
+   |
+
+warning: 6 warnings emitted
+
