@@ -3457,6 +3457,8 @@ pub fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> DefIdMap<Symbol> {
 
     // Put the symbol from all the unique namespace+symbol pairs into `map`.
     let mut map: DefIdMap<Symbol> = Default::default();
+    // Precatious is taken below in the loop so we can allow this lint here.
+    #[allow(rustc::potential_query_instability)]
     for ((_, symbol), opt_def_id) in unique_symbols_rev.drain() {
         use std::collections::hash_map::Entry::{Occupied, Vacant};
 
