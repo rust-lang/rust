@@ -612,7 +612,8 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::InlineConst
-        | DefKind::Static { .. } => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::Static { .. }
+        | DefKind::GlobalAsm => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
