@@ -121,10 +121,6 @@ attr_parsing_unsupported_literal_cfg_boolean =
     literal in `cfg` predicate value must be a boolean
 attr_parsing_unsupported_literal_cfg_string =
     literal in `cfg` predicate value must be a string
-attr_parsing_unsupported_literal_deprecated_kv_pair =
-    item in `deprecated` must be a key/value pair
-attr_parsing_unsupported_literal_deprecated_string =
-    literal in `deprecated` value must be a string
 attr_parsing_unsupported_literal_generic =
     unsupported literal
 attr_parsing_unsupported_literal_suggestion =

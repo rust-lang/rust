@@ -728,13 +728,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     }
                 }
             }
-            // FIXME(#80564): We permit struct fields, match arms and macro defs to have an
-            // `#[naked]` attribute with just a lint, because we previously
-            // erroneously allowed it and some crates used it accidentally, to be compatible
-            // with crates depending on them, we can't throw an error here.
-            Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "naked")
-            }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
                     attr_span: attr.span(),

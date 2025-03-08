@@ -1,19 +1,17 @@
 error[E0539]: malformed `inline` attribute input
-  --> $DIR/E0534.rs:1:1
+  --> $DIR/E0539.rs:1:1
    |
-LL | #[inline()]
-   | ^^^^^^^^^^^
+LL | #[inline(unknown)]
+   | ^^^^^^^^^-------^^
+   |          |
+   |          valid arguments are `always` or `never`
    |
-note: expected a single argument here
-  --> $DIR/E0534.rs:1:9
-   |
-LL | #[inline()]
-   |         ^^
 help: try changing it to one of the following valid forms of the attribute
    |
-LL | #[inline(always|never)]
-   |          ++++++++++++
-LL - #[inline()]
+LL - #[inline(unknown)]
+LL + #[inline(always|never)]
+   |
+LL - #[inline(unknown)]
 LL + #[inline]
    |
 

@@ -34,6 +34,7 @@ impl<S: Stage> CombineAttributeParser<S> for ReprParser {
         let mut reprs = Vec::new();
 
         let Some(list) = args.list() else {
+            cx.expected_list(cx.attr_span);
             return reprs;
         };
 
