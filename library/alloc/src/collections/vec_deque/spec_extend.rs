@@ -3,6 +3,7 @@ use core::slice;
 
 use super::VecDeque;
 use crate::alloc::Allocator;
+#[cfg(not(test))]
 use crate::vec;
 
 // Specialization trait used for VecDeque::extend
@@ -78,6 +79,7 @@ where
     }
 }
 
+#[cfg(not(test))]
 impl<T, A: Allocator> SpecExtend<T, vec::IntoIter<T>> for VecDeque<T, A> {
     #[track_caller]
     fn spec_extend(&mut self, mut iterator: vec::IntoIter<T>) {

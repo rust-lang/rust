@@ -235,7 +235,7 @@ macro_rules! acquire {
 ///
 /// [rc_examples]: crate::rc#examples
 #[doc(search_unbox)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Arc")]
+#[rustc_diagnostic_item = "Arc"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct Arc<
@@ -312,7 +312,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "arc_weak", since = "1.4.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "ArcWeak")]
+#[rustc_diagnostic_item = "ArcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
