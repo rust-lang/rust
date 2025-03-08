@@ -17,7 +17,7 @@ where
     let src_exp_bias = F::EXP_BIAS;
 
     let src_min_normal = F::IMPLICIT_BIT;
-    let src_significand_mask = F::SIG_MASK;
+    let src_sig_mask = F::SIG_MASK;
     let src_infinity = F::EXP_MASK;
     let src_sign_mask = F::SIGN_MASK;
     let src_abs_mask = src_sign_mask - src_one;
@@ -40,7 +40,7 @@ where
     let dst_qnan = R::Int::ONE << (R::SIG_BITS - 1);
     let dst_nan_code = dst_qnan - dst_one;
 
-    let sign_bits_delta = F::SIG_BITS - R::SIG_BITS;
+    let sig_bits_delta = F::SIG_BITS - R::SIG_BITS;
     // Break a into a sign and representation of the absolute value.
     let a_abs = a.to_bits() & src_abs_mask;
     let sign = a.to_bits() & src_sign_mask;
@@ -50,7 +50,7 @@ where
         // The exponent of a is within the range of normal numbers in the
         // destination format.  We can convert by simply right-shifting with
         // rounding and adjusting the exponent.
-        abs_result = (a_abs >> sign_bits_delta).cast();
+        abs_result = (a_abs >> sig_bits_delta).cast();
         // Cast before shifting to prevent overflow.
         let bias_diff: R::Int = src_exp_bias.wrapping_sub(dst_exp_bias).cast();
         let tmp = bias_diff << R::SIG_BITS;
@@ -85,7 +85,7 @@ where
         let a_exp: u32 = (a_abs >> F::SIG_BITS).cast();
         let shift = src_exp_bias - dst_exp_bias - a_exp + 1;
 
-        let significand = (a.to_bits() & src_significand_mask) | src_min_normal;
+        let significand = (a.to_bits() & src_sig_mask) | src_min_normal;
 
         // Right shift by the denormalization amount with sticky.
         if shift > F::SIG_BITS {
