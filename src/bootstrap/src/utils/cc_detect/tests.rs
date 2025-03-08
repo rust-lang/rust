@@ -9,20 +9,24 @@ use crate::{Build, Config, Flags};
 fn test_cc2ar_env_specific() {
     let triple = "x86_64-unknown-linux-gnu";
     let key = "AR_x86_64_unknown_linux_gnu";
-    env::set_var(key, "custom-ar");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::set_var(key, "custom-ar") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
     let result = cc2ar(cc, target, default_ar);
-    env::remove_var(key);
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var(key) };
     assert_eq!(result, Some(PathBuf::from("custom-ar")));
 }
 
 #[test]
 fn test_cc2ar_musl() {
     let triple = "x86_64-unknown-linux-musl";
-    env::remove_var("AR_x86_64_unknown_linux_musl");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_x86_64_unknown_linux_musl") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -33,8 +37,10 @@ fn test_cc2ar_musl() {
 #[test]
 fn test_cc2ar_openbsd() {
     let triple = "x86_64-unknown-openbsd";
-    env::remove_var("AR_x86_64_unknown_openbsd");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_x86_64_unknown_openbsd") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/cc");
     let default_ar = PathBuf::from("default-ar");
@@ -45,8 +51,10 @@ fn test_cc2ar_openbsd() {
 #[test]
 fn test_cc2ar_vxworks() {
     let triple = "armv7-wrs-vxworks";
-    env::remove_var("AR_armv7_wrs_vxworks");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_armv7_wrs_vxworks") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -57,8 +65,10 @@ fn test_cc2ar_vxworks() {
 #[test]
 fn test_cc2ar_nto_i586() {
     let triple = "i586-unknown-nto-something";
-    env::remove_var("AR_i586_unknown_nto_something");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_i586_unknown_nto_something") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -69,8 +79,10 @@ fn test_cc2ar_nto_i586() {
 #[test]
 fn test_cc2ar_nto_aarch64() {
     let triple = "aarch64-unknown-nto-something";
-    env::remove_var("AR_aarch64_unknown_nto_something");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_aarch64_unknown_nto_something") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -81,8 +93,10 @@ fn test_cc2ar_nto_aarch64() {
 #[test]
 fn test_cc2ar_nto_x86_64() {
     let triple = "x86_64-unknown-nto-something";
-    env::remove_var("AR_x86_64_unknown_nto_something");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_x86_64_unknown_nto_something") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -94,8 +108,10 @@ fn test_cc2ar_nto_x86_64() {
 #[should_panic(expected = "Unknown architecture, cannot determine archiver for Neutrino QNX")]
 fn test_cc2ar_nto_unknown() {
     let triple = "powerpc-unknown-nto-something";
-    env::remove_var("AR_powerpc_unknown_nto_something");
-    env::remove_var("AR");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR_powerpc_unknown_nto_something") };
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::remove_var("AR") };
     let target = TargetSelection::from_user(triple);
     let cc = Path::new("/usr/bin/clang");
     let default_ar = PathBuf::from("default-ar");
@@ -177,7 +193,8 @@ fn test_default_compiler_wasi() {
     let build = Build::new(Config { ..Config::parse(Flags::parse(&["check".to_owned()])) });
     let target = TargetSelection::from_user("wasm32-wasi");
     let wasi_sdk = PathBuf::from("/wasi-sdk");
-    env::set_var("WASI_SDK_PATH", &wasi_sdk);
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe { env::set_var("WASI_SDK_PATH", &wasi_sdk) };
     let mut cfg = cc::Build::new();
     if let Some(result) = default_compiler(&mut cfg, Language::C, target.clone(), &build) {
         let expected = {
@@ -190,7 +207,10 @@ fn test_default_compiler_wasi() {
             "default_compiler should return a compiler path for wasi target when WASI_SDK_PATH is set"
         );
     }
-    env::remove_var("WASI_SDK_PATH");
+    // SAFETY: bootstrap tests run on a single thread
+    unsafe {
+        env::remove_var("WASI_SDK_PATH");
+    }
 }
 
 #[test]
