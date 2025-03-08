@@ -10,6 +10,9 @@ fn new_dec(e: i64, m: u64) -> Decimal {
 fn missing_pieces() {
     let permutations = &[".e", "1e", "e4", "e", ".12e", "321.e", "32.12e+", "12.32e-"];
     for &s in permutations {
+        #[cfg(target_has_reliable_f16)]
+        assert_eq!(dec2flt::<f16>(s), Err(pfe_invalid()));
+        assert_eq!(dec2flt::<f32>(s), Err(pfe_invalid()));
         assert_eq!(dec2flt::<f64>(s), Err(pfe_invalid()));
     }
 }
@@ -17,15 +20,31 @@ fn missing_pieces() {
 #[test]
 fn invalid_chars() {
     let invalid = "r,?<j";
-    let error = Err(pfe_invalid());
     let valid_strings = &["123", "666.", ".1", "5e1", "7e-3", "0.0e+1"];
+
     for c in invalid.chars() {
         for s in valid_strings {
             for i in 0..s.len() {
                 let mut input = String::new();
                 input.push_str(s);
                 input.insert(i, c);
-                assert!(dec2flt::<f64>(&input) == error, "did not reject invalid {:?}", input);
+
+                #[cfg(target_has_reliable_f16)]
+                assert_eq!(
+                    dec2flt::<f16>(&input),
+                    Err(pfe_invalid()),
+                    "f16 did not reject invalid {input:?}",
+                );
+                assert_eq!(
+                    dec2flt::<f32>(&input),
+                    Err(pfe_invalid()),
+                    "f32 did not reject invalid {input:?}",
+                );
+                assert_eq!(
+                    dec2flt::<f64>(&input),
+                    Err(pfe_invalid()),
+                    "f64 did not reject invalid {input:?}",
+                );
             }
         }
     }
