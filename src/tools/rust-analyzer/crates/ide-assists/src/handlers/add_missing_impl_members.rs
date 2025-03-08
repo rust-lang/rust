@@ -2363,4 +2363,33 @@ impl other_file_2::Trait for MyStruct {
 }"#,
         );
     }
+
+    #[test]
+    fn unsafeness_observed() {
+        check_assist(
+            add_missing_impl_members,
+            r#"
+unsafe trait UnsafeTrait {
+    unsafe fn unsafe_fn();
+}
+
+struct A {}
+
+impl Uns$0afeTrait for A {}
+            "#,
+            r#"
+unsafe trait UnsafeTrait {
+    unsafe fn unsafe_fn();
+}
+
+struct A {}
+
+unsafe impl UnsafeTrait for A {
+    unsafe fn unsafe_fn() {
+        ${0:todo!()}
+    }
+}
+            "#,
+        );
+    }
 }
