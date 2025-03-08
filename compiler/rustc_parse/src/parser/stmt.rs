@@ -5,7 +5,7 @@ use std::ops::Bound;
 use ast::Label;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, TokenKind};
+use rustc_ast::token::{self, Delimiter, InvisibleOrigin, MetaVarKind, TokenKind};
 use rustc_ast::util::classify::{self, TrailingBrace};
 use rustc_ast::{
     AttrStyle, AttrVec, Block, BlockCheckMode, DUMMY_NODE_ID, Expr, ExprKind, HasAttrs, Local,
@@ -33,8 +33,8 @@ impl<'a> Parser<'a> {
     /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
     /// whether or not we have attributes.
     // Public for rustfmt usage.
-    pub(super) fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
-        Ok(self.parse_stmt_without_recovery(false, force_collect).unwrap_or_else(|e| {
+    pub fn parse_stmt(&mut self, force_collect: ForceCollect) -> PResult<'a, Option<Stmt>> {
+        Ok(self.parse_stmt_without_recovery(false, force_collect, false).unwrap_or_else(|e| {
             e.emit();
             self.recover_stmt_(SemiColonMode::Break, BlockMode::Ignore);
             None
@@ -42,23 +42,27 @@ impl<'a> Parser<'a> {
     }
 
     /// If `force_collect` is [`ForceCollect::Yes`], forces collection of tokens regardless of
-    /// whether or not we have attributes.
-    // Public for `cfg_eval` macro expansion.
+    /// whether or not we have attributes. If `force_full_expr` is true, parses the stmt without
+    /// using `Restriction::STMT_EXPR`. Public for `cfg_eval` macro expansion.
     pub fn parse_stmt_without_recovery(
         &mut self,
         capture_semi: bool,
         force_collect: ForceCollect,
+        force_full_expr: bool,
     ) -> PResult<'a, Option<Stmt>> {
         let pre_attr_pos = self.collect_pos();
         let attrs = self.parse_outer_attributes()?;
         let lo = self.token.span;
 
-        maybe_whole!(self, NtStmt, |stmt| {
+        if let Some(stmt) = self.eat_metavar_seq(MetaVarKind::Stmt, |this| {
+            this.parse_stmt_without_recovery(false, ForceCollect::Yes, false)
+        }) {
+            let mut stmt = stmt.expect("an actual statement");
             stmt.visit_attrs(|stmt_attrs| {
                 attrs.prepend_to_nt_inner(stmt_attrs);
             });
-            Some(stmt.into_inner())
-        });
+            return Ok(Some(stmt));
+        }
 
         if self.token.is_keyword(kw::Mut) && self.is_keyword_ahead(1, &[kw::Let]) {
             self.bump();
@@ -147,12 +151,14 @@ impl<'a> Parser<'a> {
         } else if self.token != token::CloseDelim(Delimiter::Brace) {
             // Remainder are line-expr stmts. This is similar to the `parse_stmt_path_start` case
             // above.
+            let restrictions =
+                if force_full_expr { Restrictions::empty() } else { Restrictions::STMT_EXPR };
             let e = self.collect_tokens(
                 Some(pre_attr_pos),
                 AttrWrapper::empty(),
                 force_collect,
                 |this, _empty_attrs| {
-                    let (expr, _) = this.parse_expr_res(Restrictions::STMT_EXPR, attrs)?;
+                    let (expr, _) = this.parse_expr_res(restrictions, attrs)?;
                     Ok((expr, Trailing::No, UsePreAttrPos::Yes))
                 },
             )?;
@@ -229,11 +235,15 @@ impl<'a> Parser<'a> {
         let mac = P(MacCall { path, args });
 
         let kind = if (style == MacStmtStyle::Braces
-            && self.token != token::Dot
-            && self.token != token::Question)
-            || self.token == token::Semi
-            || self.token == token::Eof
-        {
+            && !matches!(self.token.kind, token::Dot | token::Question))
+            || matches!(
+                self.token.kind,
+                token::Semi
+                    | token::Eof
+                    | token::CloseDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                        MetaVarKind::Stmt
+                    )))
+            ) {
             StmtKind::MacCall(P(MacCallStmt { mac, style, attrs, tokens: None }))
         } else {
             // Since none of the above applied, this is an expression statement macro.
@@ -501,7 +511,7 @@ impl<'a> Parser<'a> {
         //      bar;
         //
         // which is valid in other languages, but not Rust.
-        match self.parse_stmt_without_recovery(false, ForceCollect::No) {
+        match self.parse_stmt_without_recovery(false, ForceCollect::No, false) {
             // If the next token is an open brace, e.g., we have:
             //
             //     if expr other_expr {
@@ -810,10 +820,24 @@ impl<'a> Parser<'a> {
         &mut self,
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, Option<Stmt>> {
-        // Skip looking for a trailing semicolon when we have an interpolated statement.
-        maybe_whole!(self, NtStmt, |stmt| Some(stmt.into_inner()));
+        // Skip looking for a trailing semicolon when we have a metavar seq.
+        if let Some(stmt) = self.eat_metavar_seq(MetaVarKind::Stmt, |this| {
+            // Why pass `true` for `force_full_expr`? Statement expressions are less expressive
+            // than "full" expressions, due to the `STMT_EXPR` restriction, and sometimes need
+            // parentheses. E.g. the "full" expression `match paren_around_match {} | true` when
+            // used in statement context must be written `(match paren_around_match {} | true)`.
+            // However, if the expression we are parsing in this statement context was pasted by a
+            // declarative macro, it may have come from a "full" expression context, and lack
+            // these parentheses. So we lift the `STMT_EXPR` restriction to ensure the statement
+            // will reparse successfully.
+            this.parse_stmt_without_recovery(false, ForceCollect::No, true)
+        }) {
+            let stmt = stmt.expect("an actual statement");
+            return Ok(Some(stmt));
+        }
 
-        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No)? else {
+        let Some(mut stmt) = self.parse_stmt_without_recovery(true, ForceCollect::No, false)?
+        else {
             return Ok(None);
         };
 

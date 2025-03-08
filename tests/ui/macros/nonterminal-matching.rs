@@ -16,7 +16,7 @@ macro complex_nonterminal($nt_item: item) {
         struct S;
     }
 
-    n!(a $nt_item b); //~ ERROR no rules expected item `enum E {}`
+    n!(a $nt_item b); //~ ERROR no rules expected `item` metavariable
 }
 
 simple_nonterminal!(a, 'a, (x, y, z)); // OK
@@ -32,7 +32,7 @@ macro_rules! foo {
     (expr $x:expr) => { bar!(expr $x); }; //~ ERROR: no rules expected expression `3`
     (literal $x:literal) => { bar!(literal $x); }; //~ ERROR: no rules expected literal `4`
     (path $x:path) => { bar!(path $x); }; //~ ERROR: no rules expected `path` metavariable
-    (stmt $x:stmt) => { bar!(stmt $x); }; //~ ERROR: no rules expected statement `let abc = 0`
+    (stmt $x:stmt) => { bar!(stmt $x); }; //~ ERROR: no rules expected `stmt` metavariable
 }
 
 macro_rules! bar {

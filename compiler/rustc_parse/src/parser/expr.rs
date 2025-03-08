@@ -1364,7 +1364,6 @@ impl<'a> Parser<'a> {
                     self.bump();
                     return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
                 }
-                _ => {}
             };
         } else if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
             this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
@@ -3064,7 +3063,7 @@ impl<'a> Parser<'a> {
             }
 
             self.restore_snapshot(pre_pat_snapshot);
-            match self.parse_stmt_without_recovery(true, ForceCollect::No) {
+            match self.parse_stmt_without_recovery(true, ForceCollect::No, false) {
                 // Consume statements for as long as possible.
                 Ok(Some(stmt)) => {
                     stmts.push(stmt);
