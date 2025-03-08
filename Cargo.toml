@@ -63,6 +63,20 @@ exclude = [
   "src/tools/x",
 ]
 
+# These lints are applied to many crates in the workspace. In practice, this is
+# all crates under `compiler/`.
+#
+# NOTE: rustc-specific lints (e.g. `rustc::internal`) aren't supported by
+# Cargo. (Support for them is possibly blocked by #44690 (attributes for
+# tools).) Those lints are instead specified for `compiler/` crates in
+# `src/bootstrap/src/core/builder/cargo.rs`.
+[workspace.lints.rust]
+# FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all of the
+# individual lints are satisfied.
+keyword_idents_2024 = "warn"
+unreachable_pub = "warn"
+unsafe_op_in_unsafe_fn = "warn"
+
 [profile.release.package.rustc-rayon-core]
 # The rustc fork of Rayon has deadlock detection code which intermittently
 # causes overflows in the CI (see https://github.com/rust-lang/rust/issues/90227)

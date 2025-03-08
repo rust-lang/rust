@@ -6,3 +6,6 @@ edition = "2024"
 [dependencies]
 scoped-tls = "1.0"
 serde = { version = "1.0.125", features = [ "derive" ] }
+
+[lints]
+workspace = true

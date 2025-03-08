@@ -54,3 +54,6 @@ memmap2 = "0.2.1"
 
 [target.'cfg(not(target_has_atomic = "64"))'.dependencies]
 portable-atomic = "1.5.1"
+
+[lints]
+workspace = true

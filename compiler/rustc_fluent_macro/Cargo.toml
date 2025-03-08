@@ -16,3 +16,6 @@ quote = "1"
 syn = { version = "2", features = ["full"] }
 unic-langid = { version = "0.9.0", features = ["macros"] }
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

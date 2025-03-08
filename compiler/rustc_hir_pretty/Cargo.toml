@@ -12,3 +12,6 @@ rustc_attr_parsing = { path = "../rustc_attr_parsing" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_span = { path = "../rustc_span" }
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

@@ -7,7 +7,7 @@ use crate::stable_hasher::{HashStable, StableHasher};
 
 /// A tag type used in [`TaggedRef`] tests.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Tag2 {
+enum Tag2 {
     B00 = 0b00,
     B01 = 0b01,
     B10 = 0b10,

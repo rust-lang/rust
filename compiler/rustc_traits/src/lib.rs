@@ -2,7 +2,6 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod codegen;

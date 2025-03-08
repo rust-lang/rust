@@ -3,10 +3,6 @@ name = "rustc_builtin_macros"
 version = "0.0.0"
 edition = "2024"
 
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(llvm_enzyme)'] }
-
 [lib]
 doctest = false
 
@@ -34,3 +30,6 @@ smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

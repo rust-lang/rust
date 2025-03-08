@@ -31,3 +31,6 @@ nightly = [
 ]
 randomize = ["dep:rand", "dep:rand_xoshiro", "nightly"]
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

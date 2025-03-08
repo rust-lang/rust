@@ -13,7 +13,6 @@
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro as pm;

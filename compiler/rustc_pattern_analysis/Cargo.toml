@@ -43,3 +43,6 @@ rustc = [
     "smallvec/may_dangle",
     "rustc_index/nightly",
 ]
+
+[lints]
+workspace = true
