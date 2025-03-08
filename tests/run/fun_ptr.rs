@@ -5,18 +5,11 @@
 //   stdout: 1
 
 #![feature(no_core, start)]
-
 #![no_std]
 #![no_core]
 
 extern crate mini_core;
-
-mod libc {
-    #[link(name = "c")]
-    extern "C" {
-        pub fn printf(format: *const i8, ...) -> i32;
-    }
-}
+use mini_core::*;
 
 fn i16_as_i8(a: i16) -> i8 {
     a as i8
