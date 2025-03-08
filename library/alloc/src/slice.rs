@@ -81,6 +81,11 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+// Using a module here allows having the no_global_oom_handling
+// in only one place
+#[cfg(not(no_global_oom_handling))]
+mod byte_slice_make_case;
+
 // HACK(japaric): With cfg(test) `impl [T]` is not available, these three
 // functions are actually methods that are in `impl [T]` but not in
 // `core::slice::SliceExt` - we need to supply these functions for the
