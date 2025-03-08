@@ -180,7 +180,7 @@ LL | fn more_fun(items: impl Club<'static, i32>) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
 
 error: this argument is passed by value, but not consumed in the function body
-  --> tests/ui/needless_pass_by_value.rs:187:24
+  --> tests/ui/needless_pass_by_value.rs:194:24
    |
 LL | fn option_inner_ref(x: Option<String>) {
    |                        ^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<&String>`
