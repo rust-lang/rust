@@ -13,7 +13,6 @@ struct Foo2 {
     //~^ ERROR expected a type, found a trait
 }
 
-
 enum Enum1 {
     A(Trait),
     //~^ ERROR expected a type, found a trait
@@ -26,5 +25,10 @@ enum Enum2 {
     //~^ ERROR expected a type, found a trait
 }
 
+// Regression test for <https://github.com/rust-lang/rust/issues/138229>.
+pub struct InWhereClause
+where
+    Trait:, {}
+//~^ ERROR expected a type, found a trait
 
 fn main() {}
