@@ -16,6 +16,11 @@ jobs:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Make sure that we have enough commits to find the parent merge commit.
+          # Since all merges should be through merge commits, fetching two commits
+          # should be enough to get the parent bors merge commit.
+          fetch-depth: 2
       - name: Perform analysis and send PR
         env:
           GH_TOKEN: ${{ github.token }}
