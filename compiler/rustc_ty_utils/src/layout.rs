@@ -206,9 +206,7 @@ fn layout_of_uncached<'tcx>(
             let mut layout = LayoutData::clone(&layout.0);
             match *pat {
                 ty::PatternKind::Range { start, end } => {
-                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
-                        &mut layout.backend_repr
-                    {
+                    if let BackendRepr::Scalar(scalar) = &mut layout.backend_repr {
                         scalar.valid_range_mut().start = extract_const_value(cx, ty, start)?
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
@@ -217,6 +215,34 @@ fn layout_of_uncached<'tcx>(
                             .try_to_bits(tcx, cx.typing_env)
                             .ok_or_else(|| error(cx, LayoutError::Unknown(ty)))?;
 
+                        // FIXME(pattern_types): create implied bounds from pattern types in signatures
+                        // that require that the range end is >= the range start so that we can't hit
+                        // this error anymore without first having hit a trait solver error.
+                        // Very fuzzy on the details here, but pattern types are an internal impl detail,
+                        // so we can just go with this for now
+                        if scalar.is_signed() {
+                            let range = scalar.valid_range_mut();
+                            let start = layout.size.sign_extend(range.start);
+                            let end = layout.size.sign_extend(range.end);
+                            if end < start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {start}..={end}"
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                        } else {
+                            let range = scalar.valid_range_mut();
+                            if range.end < range.start {
+                                let guar = tcx.dcx().err(format!(
+                                    "pattern type ranges cannot wrap: {}..={}",
+                                    range.start, range.end
+                                ));
+
+                                return Err(error(cx, LayoutError::ReferencesError(guar)));
+                            }
+                        };
+
                         let niche = Niche {
                             offset: Size::ZERO,
                             value: scalar.primitive(),
@@ -224,13 +250,30 @@ fn layout_of_uncached<'tcx>(
                         };
 
                         layout.largest_niche = Some(niche);
-
-                        tcx.mk_layout(layout)
                     } else {
                         bug!("pattern type with range but not scalar layout: {ty:?}, {layout:?}")
                     }
                 }
+                ty::PatternKind::NotNull => {
+                    if let BackendRepr::Scalar(scalar) | BackendRepr::ScalarPair(scalar, _) =
+                        &mut layout.backend_repr
+                    {
+                        scalar.valid_range_mut().start = 1;
+                        let niche = Niche {
+                            offset: Size::ZERO,
+                            value: scalar.primitive(),
+                            valid_range: scalar.valid_range(cx),
+                        };
+
+                        layout.largest_niche = Some(niche);
+                    } else {
+                        bug!(
+                            "pattern type with `!null` pattern but not scalar/pair layout: {ty:?}, {layout:?}"
+                        )
+                    }
+                }
             }
+            tcx.mk_layout(layout)
         }
 
         // Basic scalars.

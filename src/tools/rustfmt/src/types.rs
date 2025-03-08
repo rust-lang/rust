@@ -1093,7 +1093,7 @@ impl Rewrite for ast::TyPat {
             ast::TyPatKind::Range(ref lhs, ref rhs, ref end_kind) => {
                 rewrite_range_pat(context, shape, lhs, rhs, end_kind, self.span)
             }
-            ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
+            ast::TyPatKind::NotNull | ast::TyPatKind::Err(_) => Err(RewriteError::Unknown),
         }
     }
 }

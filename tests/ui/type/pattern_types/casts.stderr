@@ -1,0 +1,9 @@
+error[E0606]: casting `(u32) is 1..` as `u64` is invalid
+  --> $DIR/casts.rs:15:13
+   |
+LL |     let z = x as u64;
+   |             ^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0606`.

@@ -69,7 +69,7 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             }
             ty::Pat(_, pat) => match **pat {
                 ty::PatternKind::Range { .. } => ConstValue::from_target_usize(0u64, &tcx),
-                // Future pattern kinds may have more variants
+                ty::PatternKind::NotNull => ConstValue::from_target_usize(0_u64, &tcx),
             },
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool

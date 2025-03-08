@@ -51,6 +51,7 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 
                 write!(f, "..={end}")
             }
+            PatternKind::NotNull => write!(f, "!null"),
         }
     }
 }
@@ -59,4 +60,5 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
     Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
+    NotNull,
 }

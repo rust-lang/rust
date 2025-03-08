@@ -2712,6 +2712,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                         let pat = tcx.mk_pat(ty::PatternKind::Range { start, end });
                         Ty::new_pat(tcx, ty, pat)
                     }
+                    hir::TyPatKind::NotNull => {
+                        Ty::new_pat(tcx, ty, tcx.mk_pat(ty::PatternKind::NotNull))
+                    }
                     hir::TyPatKind::Err(e) => Ty::new_error(tcx, e),
                 };
                 self.record_ty(pat.hir_id, ty, pat.span);

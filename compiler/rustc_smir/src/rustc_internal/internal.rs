@@ -92,6 +92,7 @@ impl RustcInternal for Pattern {
                 start: start.as_ref().unwrap().internal(tables, tcx),
                 end: end.as_ref().unwrap().internal(tables, tcx),
             },
+            Pattern::NotNull => rustc_ty::PatternKind::NotNull,
         })
     }
 }

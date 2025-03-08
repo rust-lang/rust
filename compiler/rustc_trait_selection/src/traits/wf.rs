@@ -741,6 +741,7 @@ impl<'a, 'tcx> TypeVisitor<TyCtxt<'tcx>> for WfPredicates<'a, 'tcx> {
                         check(start);
                         check(end);
                     }
+                    ty::PatternKind::NotNull => {}
                 }
             }
 
