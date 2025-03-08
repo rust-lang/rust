@@ -25,6 +25,7 @@
 
 mod handlers {
     pub(crate) mod await_outside_of_async;
+    pub(crate) mod bad_rtn;
     pub(crate) mod break_outside_of_loop;
     pub(crate) mod expected_function;
     pub(crate) mod generic_args_prohibited;
@@ -493,6 +494,7 @@ pub fn semantic_diagnostics(
             AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => {
                 handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
             }
+            AnyDiagnostic::BadRtn(d) => handlers::bad_rtn::bad_rtn(&ctx, &d),
         };
         res.push(d)
     }

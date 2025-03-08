@@ -607,8 +607,14 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     ) -> Substitution {
         let prohibit_parens = match def {
             GenericDefId::TraitId(trait_) => {
-                let trait_data = self.ctx.db.trait_data(trait_);
-                !trait_data.flags.contains(TraitFlags::RUSTC_PAREN_SUGAR)
+                // RTN is prohibited anyways if we got here.
+                let is_rtn =
+                    self.current_or_prev_segment.args_and_bindings.is_some_and(|generics| {
+                        generics.parenthesized == GenericArgsParentheses::ReturnTypeNotation
+                    });
+                let is_fn_trait =
+                    !self.ctx.db.trait_data(trait_).flags.contains(TraitFlags::RUSTC_PAREN_SUGAR);
+                is_rtn || is_fn_trait
             }
             _ => true,
         };

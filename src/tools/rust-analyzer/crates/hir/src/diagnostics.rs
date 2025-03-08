@@ -113,6 +113,7 @@ diagnostics![
     UnusedVariable,
     GenericArgsProhibited,
     ParenthesizedGenericArgsWithoutFnTrait,
+    BadRtn,
 ];
 
 #[derive(Debug)]
@@ -420,6 +421,11 @@ pub struct ParenthesizedGenericArgsWithoutFnTrait {
     pub args: InFile<AstPtr<ast::ParenthesizedArgList>>,
 }
 
+#[derive(Debug)]
+pub struct BadRtn {
+    pub rtn: InFile<AstPtr<ast::ReturnTypeSyntax>>,
+}
+
 impl AnyDiagnostic {
     pub(crate) fn body_validation_diagnostic(
         db: &dyn HirDatabase,
@@ -712,6 +718,12 @@ impl AnyDiagnostic {
         Some(match *diag {
             PathLoweringDiagnostic::GenericArgsProhibited { segment, reason } => {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+
+                if let Some(rtn) = segment.return_type_syntax() {
+                    // RTN errors are emitted as `GenericArgsProhibited` or `ParenthesizedGenericArgsWithoutFnTrait`.
+                    return Some(BadRtn { rtn: path.with_value(AstPtr::new(&rtn)) }.into());
+                }
+
                 let args = if let Some(generics) = segment.generic_arg_list() {
                     AstPtr::new(&generics).wrap_left()
                 } else {
@@ -722,6 +734,12 @@ impl AnyDiagnostic {
             }
             PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment } => {
                 let segment = hir_segment_to_ast_segment(&path.value, segment)?;
+
+                if let Some(rtn) = segment.return_type_syntax() {
+                    // RTN errors are emitted as `GenericArgsProhibited` or `ParenthesizedGenericArgsWithoutFnTrait`.
+                    return Some(BadRtn { rtn: path.with_value(AstPtr::new(&rtn)) }.into());
+                }
+
                 let args = AstPtr::new(&segment.parenthesized_arg_list()?);
                 let args = path.with_value(args);
                 ParenthesizedGenericArgsWithoutFnTrait { args }.into()
