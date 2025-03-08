@@ -1335,9 +1335,8 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
 
     // SAFETY: We have allocated enough memory for a full FILE_RENAME_INFO struct and a filename.
     unsafe {
-        (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
-            Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
-        });
+        (&raw mut (*file_rename_info).Anonymous)
+            .write(c::FILE_RENAME_INFO_0 { ReplaceIfExists: true });
 
         (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
         (&raw mut (*file_rename_info).FileNameLength).write(new_len_without_nul_in_bytes);
@@ -1350,31 +1349,44 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let result = unsafe {
         cvt(c::SetFileInformationByHandle(
             handle.as_raw_handle(),
-            c::FileRenameInfoEx,
+            c::FileRenameInfo,
             (&raw const *file_rename_info).cast::<c_void>(),
             struct_size,
         ))
     };
 
-    if let Err(err) = result {
-        if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) {
-            // FileRenameInfoEx and FILE_RENAME_FLAG_POSIX_SEMANTICS were added in Windows 10 1607; retry with FileRenameInfo.
-            file_rename_info.Anonymous.ReplaceIfExists = true;
+    match result {
+        Ok(_) => Ok(()),
+        Err(err) if err.raw_os_error() == Some(c::ERROR_ACCESS_DENIED as _) => {
+            // If a process already has an open file handle to the target file, we need POSIX rename semantics to succeed
+            // (open file handles still refer to the old file, but the path will refer to the new file).
+            // As this is only supported starting with Windows 10 1607 and does not work out of the box on some versions
+            // of Windows Server, we only try this if the initial rename failed.
+            file_rename_info.Anonymous.Flags =
+                c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS;
 
-            cvt(unsafe {
+            let result = cvt(unsafe {
                 c::SetFileInformationByHandle(
                     handle.as_raw_handle(),
-                    c::FileRenameInfo,
+                    c::FileRenameInfoEx,
                     (&raw const *file_rename_info).cast::<c_void>(),
                     struct_size,
                 )
-            })?;
-        } else {
-            return Err(err);
-        }
-    }
+            });
 
-    Ok(())
+            match result {
+                Ok(_) => Ok(()),
+                Err(err) if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) => {
+                    // FileRenameInfoEx was only tried because the initial rename failed with ERROR_ACCESS_DENIED.
+                    // If FileRenameInfoEx isn't supported, return the original error as ERROR_INVALID_PARAMETER
+                    // doesn't convey useful error information.
+                    Err(io::Error::from_raw_os_error(c::ERROR_ACCESS_DENIED as _))
+                }
+                Err(err) => Err(err),
+            }
+        }
+        Err(err) => Err(err),
+    }
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
