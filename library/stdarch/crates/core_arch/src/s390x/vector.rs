@@ -209,6 +209,14 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vmloh"] fn vmloh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vmlof"] fn vmlof(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
 
+    #[link_name = "llvm.s390.vmhb"] fn vmhb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vmhh"] fn vmhh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmhf"] fn vmhf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.s390.vmlhb"] fn vmlhb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vmlhh"] fn vmlhh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmlhf"] fn vmlhf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
+
     #[link_name = "llvm.s390.vgfmb"] fn vgfmb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vgfmh"] fn vgfmh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vgfmf"] fn vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
@@ -2650,6 +2658,27 @@ mod sealed {
     impl_mul!([VectorMulo vec_mulo] vec_vmlof (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_long_long );
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMulh<Result> {
+        unsafe fn vec_mulh(self, b: Self) -> Result;
+    }
+
+    test_impl! { vec_vmhb(a: vector_signed_char, b: vector_signed_char) -> vector_signed_char [ vmhb, vmhb ] }
+    test_impl! { vec_vmhh(a: vector_signed_short, b: vector_signed_short) -> vector_signed_short [ vmhh, vmhh ] }
+    test_impl! { vec_vmhf(a: vector_signed_int, b: vector_signed_int) -> vector_signed_int [ vmhf, vmhf ] }
+
+    test_impl! { vec_vmlhb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_char [ vmlhb, vmlhb ] }
+    test_impl! { vec_vmlhh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short [ vmlhh, vmlhh ] }
+    test_impl! { vec_vmlhf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int [ vmlhf, vmlhf ] }
+
+    impl_mul!([VectorMulh vec_mulh] vec_vmhb (vector_signed_char, vector_signed_char) -> vector_signed_char);
+    impl_mul!([VectorMulh vec_mulh] vec_vmhh (vector_signed_short, vector_signed_short) -> vector_signed_short);
+    impl_mul!([VectorMulh vec_mulh] vec_vmhf (vector_signed_int, vector_signed_int) -> vector_signed_int);
+
+    impl_mul!([VectorMulh vec_mulh] vec_vmlhb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char);
+    impl_mul!([VectorMulh vec_mulh] vec_vmlhh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short);
+    impl_mul!([VectorMulh vec_mulh] vec_vmlhf (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int);
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorGfmsum<Result> {
         unsafe fn vec_gfmsum(self, b: Self) -> Result;
     }
@@ -4765,6 +4794,14 @@ pub unsafe fn vec_mulo<T: sealed::VectorMulo<U>, U>(a: T, b: T) -> U {
     a.vec_mulo(b)
 }
 
+/// Vector Multiply High
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mulh<T: sealed::VectorMulh<U>, U>(a: T, b: T) -> U {
+    a.vec_mulh(b)
+}
+
 /// Vector Galois Field Multiply Sum
 #[inline]
 #[target_feature(enable = "vector")]
@@ -6441,6 +6478,18 @@ mod tests {
         [0, i16::MIN, 0, -2, 0, 2, 0, 1],
         [0, i16::MIN, 0, 4, 0, i16::MAX, 0, 2],
         [0x4000_0000, -8, 0xFFFE, 2]
+    }
+
+    test_vec_2! { test_vec_mulh_u, vec_mulh, u32x4, u32x4 -> u32x4,
+        [u32::MAX, 2, 2, 1],
+        [u32::MAX, 4, u32::MAX, 2],
+        [u32::MAX - 1, 0, 1, 0]
+    }
+
+    test_vec_2! { test_vec_mulh_i, vec_mulh, i32x4, i32x4 -> i32x4,
+        [i32::MIN, -2, 2, 1],
+        [i32::MIN, 4, i32::MAX, 2],
+        [0x4000_0000, -1, 0, 0]
     }
 
     test_vec_2! { test_vec_gfmsum_1, vec_gfmsum, u16x8, u16x8 -> u32x4,
