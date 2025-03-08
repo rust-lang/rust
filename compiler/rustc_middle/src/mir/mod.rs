@@ -332,13 +332,13 @@ pub struct Body<'tcx> {
     ///
     /// ```rust
     /// fn test<T>() {
-    ///     let _ = [0; std::mem::size_of::<*mut T>()];
+    ///     let _ = [0; size_of::<*mut T>()];
     /// }
     /// ```
     ///
     /// **WARNING**: Do not change this flags after the MIR was originally created, even if an optimization
     /// removed the last mention of all generic params. We do not want to rely on optimizations and
-    /// potentially allow things like `[u8; std::mem::size_of::<T>() * 0]` due to this.
+    /// potentially allow things like `[u8; size_of::<T>() * 0]` due to this.
     pub is_polymorphic: bool,
 
     /// The phase at which this MIR should be "injected" into the compilation process.

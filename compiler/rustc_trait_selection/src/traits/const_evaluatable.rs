@@ -2,7 +2,7 @@
 //!
 //! For concrete constants, this is fairly simple as we can just try and evaluate it.
 //!
-//! When dealing with polymorphic constants, for example `std::mem::size_of::<T>() - 1`,
+//! When dealing with polymorphic constants, for example `size_of::<T>() - 1`,
 //! this is not as easy.
 //!
 //! In this case we try to build an abstract representation of this constant using

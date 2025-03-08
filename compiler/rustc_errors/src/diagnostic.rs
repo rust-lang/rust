@@ -490,7 +490,7 @@ pub struct Diag<'a, G: EmissionGuarantee = ErrorGuaranteed> {
 // would be bad.
 impl<G> !Clone for Diag<'_, G> {}
 
-rustc_data_structures::static_assert_size!(Diag<'_, ()>, 3 * std::mem::size_of::<usize>());
+rustc_data_structures::static_assert_size!(Diag<'_, ()>, 3 * size_of::<usize>());
 
 impl<G: EmissionGuarantee> Deref for Diag<'_, G> {
     type Target = DiagInner;
