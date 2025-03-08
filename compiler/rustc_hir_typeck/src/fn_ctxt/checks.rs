@@ -124,7 +124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut deferred_repeat_expr_checks = self.deferred_repeat_expr_checks.borrow_mut();
         debug!("FnCtxt::check_repeat_exprs: {} deferred checks", deferred_repeat_expr_checks.len());
         for (element, element_ty, count) in deferred_repeat_expr_checks.drain(..) {
-            // We want to emit an error if the const is not structurally resolveable as otherwise
+            // We want to emit an error if the const is not structurally resolvable as otherwise
             // we can find up conservatively proving `Copy` which may infer the repeat expr count
             // to something that never required `Copy` in the first place.
             let count =
@@ -2398,7 +2398,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
 
                 if !mismatched_params.is_empty() {
-                    // For each mismatched paramter, create a two-way link to each matched parameter
+                    // For each mismatched parameter, create a two-way link to each matched parameter
                     // of the same type.
                     let mut dependants = IndexVec::<ExpectedIdx, _>::from_fn_n(
                         |_| SmallVec::<[u32; 4]>::new(),
@@ -2441,7 +2441,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             spans.push_span_label(param.param.span(), "");
                         }
                     }
-                    // Highligh each parameter being depended on for a generic type.
+                    // Highlight each parameter being depended on for a generic type.
                     for ((&(_, param), deps), &(_, expected_ty)) in
                         params_with_generics.iter().zip(&dependants).zip(formal_and_expected_inputs)
                     {
