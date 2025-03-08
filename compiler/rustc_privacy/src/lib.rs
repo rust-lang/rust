@@ -493,7 +493,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
     ) {
         // Non-opaque macros cannot make other items more accessible than they already are.
         let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
 
         if attr::find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
             .unwrap_or(Transparency::fallback(md.macro_rules))
@@ -573,7 +573,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // have normal hygiene, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
-                let item = self.tcx.hir().expect_item(def_id);
+                let item = self.tcx.hir_expect_item(def_id);
                 if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }, _) = item.kind {
                     if vis.is_accessible_from(module, self.tcx) {
                         self.update(def_id, macro_ev, Level::Reachable);
@@ -597,7 +597,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
-                let item = self.tcx.hir().expect_item(def_id);
+                let item = self.tcx.hir_expect_item(def_id);
                 if let hir::ItemKind::Struct(ref struct_def, _)
                 | hir::ItemKind::Union(ref struct_def, _) = item.kind
                 {

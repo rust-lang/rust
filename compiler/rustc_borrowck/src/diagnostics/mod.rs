@@ -505,7 +505,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     let var_id =
                         self.infcx.tcx.closure_captures(def_id)[field.index()].get_root_variable();
 
-                    Some(self.infcx.tcx.hir().name(var_id).to_string())
+                    Some(self.infcx.tcx.hir_name(var_id).to_string())
                 }
                 _ => {
                     // Might need a revision when the fields in trait RFC is implemented
@@ -1124,7 +1124,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
             def_id, target_place, places
         );
         let hir_id = self.infcx.tcx.local_def_id_to_hir_id(def_id);
-        let expr = &self.infcx.tcx.hir().expect_expr(hir_id).kind;
+        let expr = &self.infcx.tcx.hir_expect_expr(hir_id).kind;
         debug!("closure_span: hir_id={:?} expr={:?}", hir_id, expr);
         if let &hir::ExprKind::Closure(&hir::Closure { kind, fn_decl_span, .. }) = expr {
             for (captured_place, place) in

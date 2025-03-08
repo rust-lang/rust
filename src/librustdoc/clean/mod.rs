@@ -112,7 +112,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.inlined_foreigns.iter().flat_map(|((_, renamed), (res, local_import_id))| {
         let Some(def_id) = res.opt_def_id() else { return Vec::new() };
         let name = renamed.unwrap_or_else(|| cx.tcx.item_name(def_id));
-        let import = cx.tcx.hir().expect_item(*local_import_id);
+        let import = cx.tcx.hir_expect_item(*local_import_id);
         match import.kind {
             hir::ItemKind::Use(path, kind) => {
                 let hir::UsePath { segments, span, .. } = *path;
@@ -125,7 +125,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            let name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+            let name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
             clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
         } else {
             // skip everything else
@@ -986,7 +986,7 @@ fn clean_proc_macro<'tcx>(
     kind: MacroKind,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     if kind == MacroKind::Derive
         && let Some(derive_name) =
             hir_attr_lists(attrs, sym::proc_macro_derive).find_map(|mi| mi.ident())
@@ -1019,7 +1019,7 @@ fn clean_fn_or_proc_macro<'tcx>(
     name: &mut Symbol,
     cx: &mut DocContext<'tcx>,
 ) -> ItemKind {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     let macro_kind = attrs.iter().find_map(|a| {
         if a.has_name(sym::proc_macro) {
             Some(MacroKind::Bang)
@@ -1756,7 +1756,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     let alias = if !cx.cache.effective_visibilities.is_exported(cx.tcx, def_id.to_def_id())
         && !cx.current_type_aliases.contains_key(&def_id.to_def_id())
     {
-        &cx.tcx.hir().expect_item(def_id).kind
+        &cx.tcx.hir_expect_item(def_id).kind
     } else {
         return None;
     };
@@ -2762,7 +2762,7 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir().name(item.hir_id()));
+    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
             ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
@@ -2937,7 +2937,7 @@ fn clean_extern_crate<'tcx>(
     let cnum = cx.tcx.extern_mod_stmt_cnum(krate.owner_id.def_id).unwrap_or(LOCAL_CRATE);
     // this is the ID of the crate itself
     let crate_def_id = cnum.as_def_id();
-    let attrs = cx.tcx.hir().attrs(krate.hir_id());
+    let attrs = cx.tcx.hir_attrs(krate.hir_id());
     let ty_vis = cx.tcx.visibility(krate.owner_id);
     let please_inline = ty_vis.is_public()
         && attrs.iter().any(|a| {
@@ -3006,7 +3006,7 @@ fn clean_use_statement_inner<'tcx>(
     }
 
     let visibility = cx.tcx.visibility(import.owner_id);
-    let attrs = cx.tcx.hir().attrs(import.hir_id());
+    let attrs = cx.tcx.hir_attrs(import.hir_id());
     let inline_attr = hir_attr_lists(attrs, sym::doc).get_word_attr(sym::inline);
     let pub_underscore = visibility.is_public() && name == kw::Underscore;
     let current_mod = cx.tcx.parent_module_from_def_id(import.owner_id.def_id);

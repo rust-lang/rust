@@ -74,7 +74,7 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
         // We only show this warning for public exported methods.
         && cx.effective_visibilities.is_exported(fn_def)
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.
-        && !cx.tcx.hir().attrs(owner_id.into()).iter().any(|attr| attr.has_name(sym::must_use))
+        && !cx.tcx.hir_attrs(owner_id.into()).iter().any(|attr| attr.has_name(sym::must_use))
         && cx.tcx.visibility(fn_def.to_def_id()).is_public()
         && let ret_ty = return_ty(cx, owner_id)
         && let self_arg = nth_arg(cx, owner_id, 0)

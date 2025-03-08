@@ -793,7 +793,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let attrs = cx.tcx.hir().attrs(hir_id);
+    let attrs = cx.tcx.hir_attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
 

@@ -465,7 +465,7 @@ impl Attributes {
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         if is_relevant_item(cx, item) {
             inline_always::check(cx, item.span, item.ident.name, attrs);
         }
@@ -474,13 +474,13 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
 }

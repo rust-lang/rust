@@ -31,7 +31,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
     }
 
     // If the user wants no main function at all, then stop here.
-    if attr::contains_name(tcx.hir().attrs(CRATE_HIR_ID), sym::no_main) {
+    if attr::contains_name(tcx.hir_attrs(CRATE_HIR_ID), sym::no_main) {
         return None;
     }
 
@@ -45,7 +45,7 @@ fn entry_fn(tcx: TyCtxt<'_>, (): ()) -> Option<(DefId, EntryFnType)> {
 }
 
 fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Option<Span> {
-    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
+    let attrs = ctxt.tcx.hir_attrs(id.hir_id());
     attr::find_by_name(attrs, sym).map(|attr| attr.span())
 }
 
@@ -61,7 +61,7 @@ fn check_and_search_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
 
     let at_root = ctxt.tcx.opt_local_parent(id.owner_id.def_id) == Some(CRATE_DEF_ID);
 
-    let attrs = ctxt.tcx.hir().attrs(id.hir_id());
+    let attrs = ctxt.tcx.hir_attrs(id.hir_id());
     let entry_point_type = rustc_ast::entry::entry_point_type(
         attrs,
         at_root,
