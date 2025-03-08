@@ -1,5 +1,5 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/generator_capture_fail.rs:11:13
+  --> $DIR/generator_capture_fail.rs:9:13
    |
 LL |       let i = {
    |           - borrow later stored here
