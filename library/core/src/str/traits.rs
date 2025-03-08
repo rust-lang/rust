@@ -752,6 +752,21 @@ unsafe impl SliceIndex<str> for ops::RangeToInclusive<usize> {
 /// parse an `i32` with `FromStr`, but not a `&i32`. You can parse a struct that
 /// contains an `i32`, but not one that contains an `&i32`.
 ///
+/// # Input format
+///
+/// The input format expected by a type's `FromStr` implementation depends on the type. Check the
+/// type's documentation for the input formats it knows how to parse. Note that the input format of
+/// a type's `FromStr` implementation might not necessarily accept the output format of its
+/// `Display` implementation; thus, calling `.parse()` on the output from `Display` is usually a
+/// mistake, unless the type has provided and documented additional guarantees about its `Display`
+/// and `FromStr` implementations.
+///
+/// If a type happens to have a lossless `Display` implementation whose output is meant to be
+/// conveniently machine-parseable and not just meant for human consumption, then the type may wish
+/// to accept the same format in `FromStr`, and document that usage. Having both `Display` and
+/// `FromStr` implementations where the result of `Display` cannot be parsed with `FromStr` may
+/// surprise users. (However, the result of such parsing may not have the same value as the input.)
+///
 /// # Examples
 ///
 /// Basic implementation of `FromStr` on an example `Point` type:
