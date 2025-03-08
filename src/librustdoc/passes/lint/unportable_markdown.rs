@@ -117,29 +117,33 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item, hir_id: HirId, dox: &
                 .map(|span| (span, true))
                 .unwrap_or_else(|| (item.attr_span(tcx), false));
 
-        tcx.node_span_lint(crate::lint::UNPORTABLE_MARKDOWN, hir_id, ref_span, |lint| {
-            lint.primary_message("unportable markdown");
-            if precise {
+        if precise {
+            tcx.node_span_lint(crate::lint::BROKEN_FOOTNOTE, hir_id, ref_span, |lint| {
+                lint.primary_message("no footnote definition matching this footnote");
                 lint.span_suggestion(
                     ref_span.shrink_to_lo(),
                     "if it should not be a footnote, escape it",
                     "\\",
                     Applicability::MaybeIncorrect,
                 );
-            }
-            if dox.as_bytes().get(span.end) == Some(&b'[') {
-                lint.help("confusing footnote reference and link");
-                if precise {
-                    lint.span_suggestion(
-                        ref_span.shrink_to_hi(),
-                        "if the footnote is intended, add a space",
-                        " ",
-                        Applicability::MaybeIncorrect,
-                    );
-                } else {
-                    lint.help("there should be a space between the link and the footnote");
+            });
+        } else {
+            tcx.node_span_lint(crate::lint::UNPORTABLE_MARKDOWN, hir_id, ref_span, |lint| {
+                lint.primary_message("unportable markdown");
+                if dox.as_bytes().get(span.end) == Some(&b'[') {
+                    lint.help("confusing footnote reference and link");
+                    if precise {
+                        lint.span_suggestion(
+                            ref_span.shrink_to_hi(),
+                            "if the footnote is intended, add a space",
+                            " ",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else {
+                        lint.help("there should be a space between the link and the footnote");
+                    }
                 }
-            }
-        });
+            });
+        }
     }
 }
