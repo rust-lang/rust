@@ -238,6 +238,7 @@ macro_rules! check_exact_one {
 //     ftp://ftp.ee.lbl.gov/testbase-report.ps.Z
 //  or https://www.icir.org/vern/papers/testbase-report.pdf
 
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
 pub fn f16_shortest_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
@@ -285,6 +286,7 @@ where
     check_shortest!(f(minf16) => b"6", -7);
 }
 
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
 pub fn f16_exact_sanity_test<F>(mut f: F)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>], i16) -> (&'a [u8], i16),

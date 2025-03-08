@@ -174,6 +174,7 @@ fn shortest_random_equivalence_test() {
 
 #[test]
 #[ignore] // it is too expensive
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
 fn shortest_f16_exhaustive_equivalence_test() {
     // see the f32 version
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
