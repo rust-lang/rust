@@ -3,6 +3,12 @@ error[E0207]: the type parameter `T` is not constrained by the impl trait, self 
    |
 LL | impl<T: ?Sized> Mirror for () {
    |      ^ unconstrained type parameter
+   |
+help: either remove the type parameter T, or make use of it, for example
+   |
+LL - impl<T: ?Sized> Mirror for () {
+LL + impl Mirror for () {
+   |
 
 error: aborting due to 1 previous error
 
