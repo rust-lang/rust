@@ -1,20 +1,17 @@
-use std::num::NonZero;
 use std::ops::Bound;
 use std::{cmp, fmt};
 
 use rustc_abi::{
-    AddressSpace, Align, BackendRepr, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData,
-    PointeeInfo, PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
+    AddressSpace, Align, ExternAbi, FieldIdx, FieldsShape, HasDataLayout, LayoutData, PointeeInfo,
+    PointerKind, Primitive, ReprOptions, Scalar, Size, TagEncoding, TargetDataLayout,
     TyAbiInterface, VariantIdx, Variants,
 };
 use rustc_error_messages::DiagMessage;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
-use rustc_hashes::Hash64;
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
-use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
@@ -185,12 +182,7 @@ pub const WIDE_PTR_ADDR: usize = 0;
 /// - For a slice, this is the length.
 pub const WIDE_PTR_EXTRA: usize = 1;
 
-/// The maximum supported number of lanes in a SIMD vector.
-///
-/// This value is selected based on backend support:
-/// * LLVM does not appear to have a vector width limit.
-/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
-pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
+pub const MAX_SIMD_LANES: u64 = rustc_abi::MAX_SIMD_LANES;
 
 /// Used in `check_validity_requirement` to indicate the kind of initialization
 /// that is checked to be valid
@@ -762,11 +754,9 @@ where
         variant_index: VariantIdx,
     ) -> TyAndLayout<'tcx> {
         let layout = match this.variants {
-            Variants::Single { index }
-                // If all variants but one are uninhabited, the variant layout is the enum layout.
-                if index == variant_index =>
-            {
-                this.layout
+            // If all variants but one are uninhabited, the variant layout is the enum layout.
+            Variants::Single { index } if index == variant_index => {
+                return this;
             }
 
             Variants::Single { .. } | Variants::Empty => {
@@ -783,29 +773,18 @@ where
                 }
 
                 let fields = match this.ty.kind() {
-                    ty::Adt(def, _) if def.variants().is_empty() =>
-                        bug!("for_variant called on zero-variant enum {}", this.ty),
+                    ty::Adt(def, _) if def.variants().is_empty() => {
+                        bug!("for_variant called on zero-variant enum {}", this.ty)
+                    }
                     ty::Adt(def, _) => def.variant(variant_index).fields.len(),
                     _ => bug!("`ty_and_layout_for_variant` on unexpected type {}", this.ty),
                 };
-                tcx.mk_layout(LayoutData {
-                    variants: Variants::Single { index: variant_index },
-                    fields: match NonZero::new(fields) {
-                        Some(fields) => FieldsShape::Union(fields),
-                        None => FieldsShape::Arbitrary { offsets: IndexVec::new(), memory_index: IndexVec::new() },
-                    },
-                    backend_repr: BackendRepr::Memory { sized: true },
-                    largest_niche: None,
-                    uninhabited: true,
-                    align: tcx.data_layout.i8_align,
-                    size: Size::ZERO,
-                    max_repr_align: None,
-                    unadjusted_abi_align: tcx.data_layout.i8_align.abi,
-                    randomization_seed: Hash64::ZERO,
-                })
+                tcx.mk_layout(LayoutData::uninhabited_variant(cx, variant_index, fields))
             }
 
-            Variants::Multiple { ref variants, .. } => cx.tcx().mk_layout(variants[variant_index].clone()),
+            Variants::Multiple { ref variants, .. } => {
+                cx.tcx().mk_layout(variants[variant_index].clone())
+            }
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });

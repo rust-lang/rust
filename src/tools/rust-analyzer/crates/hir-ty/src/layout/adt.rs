@@ -16,15 +16,11 @@ use triomphe::Arc;
 use crate::{
     db::HirDatabase,
     lang_items::is_unsafe_cell,
-    layout::{field_ty, Layout, LayoutError, RustcEnumVariantIdx},
+    layout::{field_ty, Layout, LayoutError},
     Substitution, TraitEnvironment,
 };
 
 use super::LayoutCx;
-
-pub(crate) fn struct_variant_idx() -> RustcEnumVariantIdx {
-    RustcEnumVariantIdx(0)
-}
 
 pub fn layout_of_adt_query(
     db: &dyn HirDatabase,

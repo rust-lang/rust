@@ -3,6 +3,9 @@ error[E0733]: recursion in an async fn requires boxing
    |
 LL |     async fn second(self) {
    |     ^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL |         self.first().await.second().await;
+   |         --------------------------------- recursive call here
    |
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
 
