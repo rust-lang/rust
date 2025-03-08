@@ -3,7 +3,7 @@ use std::num::IntErrorKind;
 use rustc_ast as ast;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuarantee, Level};
-use rustc_macros::{Diagnostic, Subdiagnostic};
+use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
 use crate::fluent_generated as fluent;
@@ -449,6 +449,17 @@ pub(crate) struct UnusedMultiple {
     #[note]
     pub other: Span,
     pub name: Symbol,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(attr_parsing_unused_duplicate)]
+pub(crate) struct UnusedDuplicate {
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note]
+    pub other: Span,
+    #[warning]
+    pub warning: bool,
 }
 
 #[derive(Diagnostic)]
