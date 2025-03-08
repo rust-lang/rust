@@ -48,6 +48,7 @@ pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
     ":!src/rustdoc-json-types",
     ":!tests",
     ":!triagebot.toml",
+    ":!src/bootstrap", // lol, lmao
 ];
 
 macro_rules! check_ci_llvm {
