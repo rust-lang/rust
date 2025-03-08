@@ -224,7 +224,7 @@ pub mod alphabetic {
     ];
     pub fn lookup(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
@@ -299,7 +299,7 @@ pub mod case_ignorable {
     ];
     pub fn lookup(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
@@ -345,7 +345,7 @@ pub mod cased {
     ];
     pub fn lookup(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
@@ -370,7 +370,7 @@ pub mod cc {
     ];
     pub fn lookup(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
@@ -443,7 +443,7 @@ pub mod grapheme_extend {
     #[inline(never)]
     fn lookup_slow(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());
@@ -605,7 +605,7 @@ pub mod n {
     ];
     pub fn lookup(c: char) -> bool {
         const {
-            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));
+            assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);
             let mut i = 0;
             while i < SHORT_OFFSET_RUNS.len() {
                 assert!(SHORT_OFFSET_RUNS[i].start_index() < OFFSETS.len());

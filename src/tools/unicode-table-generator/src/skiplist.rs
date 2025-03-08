@@ -111,7 +111,7 @@ impl RawEmitter {
         writeln!(&mut self.file, "    const {{").unwrap();
         writeln!(
             &mut self.file,
-            "        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > (char::MAX as u32));",
+            "        assert!(SHORT_OFFSET_RUNS.last().unwrap().0 > char::MAX as u32);",
         )
         .unwrap();
         writeln!(&mut self.file, "        let mut i = 0;").unwrap();
