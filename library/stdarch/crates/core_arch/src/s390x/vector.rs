@@ -2862,7 +2862,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFpTestDataClass {
         type Result;
-        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result;
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self) -> (Self::Result, i32);
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -2871,10 +2871,9 @@ mod sealed {
 
         #[inline]
         #[target_feature(enable = "vector")]
-        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result {
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self) -> (Self::Result, i32) {
             let PackedTuple { x, y } = vftcisb(self, CLASS);
-            unsafe { ptr.write(y) };
-            x
+            (x, y)
         }
     }
 
@@ -2884,10 +2883,9 @@ mod sealed {
 
         #[inline]
         #[target_feature(enable = "vector")]
-        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self, ptr: *mut i32) -> Self::Result {
+        unsafe fn vec_fp_test_data_class<const CLASS: u32>(self) -> (Self::Result, i32) {
             let PackedTuple { x, y } = vftcidb(self, CLASS);
-            unsafe { ptr.write(y) };
-            x
+            (x, y)
         }
     }
 
@@ -4800,7 +4798,37 @@ pub unsafe fn vec_fp_test_data_class<T: sealed::VectorFpTestDataClass, const CLA
     a: T,
     c: *mut i32,
 ) -> T::Result {
-    a.vec_fp_test_data_class::<CLASS>(c)
+    let (x, y) = a.vec_fp_test_data_class::<CLASS>();
+    c.write(y);
+    x
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_nan<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
+    i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 == 0)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_all_numeric<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
+    i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 == 3)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_nan<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
+    i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 != 3)
+}
+
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_any_numeric<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
+    i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 != 0)
 }
 
 /// Vector Test under Mask
@@ -6254,6 +6282,58 @@ mod tests {
             let d = vec_fp_test_data_class::<_, __VEC_CLASS_FP_NORMAL>(v3, &mut cc);
             assert_eq!(cc, 0);
             assert_eq!(d.as_array(), &[!0, !0]);
+        }
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_fp_any_all_nan_numeric() {
+        unsafe {
+            assert_eq!(
+                vec_all_nan(vector_double([f64::NAN, f64::NAN])),
+                i32::from(true)
+            );
+            assert_eq!(
+                vec_all_nan(vector_double([f64::NAN, 1.0])),
+                i32::from(false)
+            );
+            assert_eq!(vec_all_nan(vector_double([0.0, 1.0])), i32::from(false));
+
+            assert_eq!(
+                vec_any_nan(vector_double([f64::NAN, f64::NAN])),
+                i32::from(true)
+            );
+            assert_eq!(vec_any_nan(vector_double([f64::NAN, 1.0])), i32::from(true));
+            assert_eq!(vec_any_nan(vector_double([0.0, 1.0])), i32::from(false));
+
+            assert_eq!(
+                vec_all_numeric(vector_double([f64::NAN, f64::NAN])),
+                i32::from(false)
+            );
+            assert_eq!(
+                vec_all_numeric(vector_double([f64::NAN, 1.0])),
+                i32::from(false)
+            );
+            assert_eq!(vec_all_numeric(vector_double([0.0, 1.0])), i32::from(true));
+
+            assert_eq!(
+                vec_any_numeric(vector_double([f64::NAN, f64::NAN])),
+                i32::from(false)
+            );
+            assert_eq!(
+                vec_any_numeric(vector_double([f64::NAN, 1.0])),
+                i32::from(true)
+            );
+            assert_eq!(vec_any_numeric(vector_double([0.0, 1.0])), i32::from(true));
+
+            // "numeric" means "not NaN". infinities are numeric
+            assert_eq!(
+                vec_all_numeric(vector_double([f64::INFINITY, f64::NEG_INFINITY])),
+                i32::from(true)
+            );
+            assert_eq!(
+                vec_any_numeric(vector_double([f64::INFINITY, f64::NEG_INFINITY])),
+                i32::from(true)
+            );
         }
     }
 
