@@ -3998,24 +3998,24 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
 /// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
-/// exist operations X and Y, both operating on some atomic object 'M' such
+/// exist operations X and Y, both operating on some atomic object 'm' such
 /// that A is sequenced before X, Y is sequenced before B and Y observes
-/// the change to M. This provides a happens-before dependence between A and B.
+/// the change to m. This provides a happens-before dependence between A and B.
 ///
 /// ```text
 ///     Thread 1                                          Thread 2
 ///
 /// fence(Release);      A --------------
-/// x.store(3, Relaxed); X ---------    |
+/// m.store(3, Relaxed); X ---------    |
 ///                                |    |
 ///                                |    |
-///                                -------------> Y  if x.load(Relaxed) == 3 {
+///                                -------------> Y  if m.load(Relaxed) == 3 {
 ///                                     |-------> B      fence(Acquire);
 ///                                                      ...
 ///                                                  }
 /// ```
 ///
-/// Note that in the example above, it is crucial that the accesses to `x` are atomic. Fences cannot
+/// Note that in the example above, it is crucial that the accesses to `m` are atomic. Fences cannot
 /// be used to establish synchronization among non-atomic accesses in different threads. However,
 /// thanks to the happens-before relationship between A and B, any non-atomic accesses that
 /// happen-before A are now also properly synchronized with any non-atomic accesses that
