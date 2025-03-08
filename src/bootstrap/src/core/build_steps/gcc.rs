@@ -125,6 +125,7 @@ impl Step for Gcc {
         t!(stamp.remove());
         let _time = helpers::timeit(builder);
         t!(fs::create_dir_all(&out_dir));
+        t!(fs::create_dir_all(&install_dir));
 
         let libgccjit_path = libgccjit_built_path(&install_dir);
         if builder.config.dry_run() {
@@ -185,8 +186,16 @@ impl Step for Gcc {
         }
         configure_cmd.run(builder);
 
-        command("make").current_dir(&out_dir).arg(format!("-j{}", builder.jobs())).run(builder);
-        command("make").current_dir(&out_dir).arg("install").run(builder);
+        command("make")
+            .current_dir(&out_dir)
+            .arg("--silent")
+            .arg(format!("-j{}", builder.jobs()))
+            .run_capture_stdout(builder);
+        command("make")
+            .current_dir(&out_dir)
+            .arg("--silent")
+            .arg("install")
+            .run_capture_stdout(builder);
 
         let lib_alias = install_dir.join("lib/libgccjit.so.0");
         if !lib_alias.exists() {
