@@ -164,7 +164,7 @@ fn intervals2dur(intervals: u64) -> Duration {
 
 mod perf_counter {
     use super::NANOS_PER_SEC;
-    use crate::sync::atomic::{AtomicU64, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicU64, Ordering};
     use crate::sys::{c, cvt};
     use crate::sys_common::mul_div_u64;
     use crate::time::Duration;
@@ -199,7 +199,7 @@ mod perf_counter {
         // uninitialized. Storing this as a single `AtomicU64` allows us to use
         // `Relaxed` operations, as we are only interested in the effects on a
         // single memory location.
-        static FREQUENCY: AtomicU64 = AtomicU64::new(0);
+        static FREQUENCY: Atomic<u64> = AtomicU64::new(0);
 
         let cached = FREQUENCY.load(Ordering::Relaxed);
         // If a previous thread has filled in this global state, use that.
