@@ -2,13 +2,10 @@ error[E0538]: malformed `stable` attribute input
   --> $DIR/stability-attribute-sanity-2.rs:7:1
    |
 LL | #[stable(feature = "a", feature = "b", since = "1.0.0")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[stable(feature = "name", since = "version")]`
-   |
-note: found `feature` used as a key more than once
-  --> $DIR/stability-attribute-sanity-2.rs:7:25
-   |
-LL | #[stable(feature = "a", feature = "b", since = "1.0.0")]
-   |                         ^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^-------^^^^^^^^^^^^^^^^^^^^^^^^^
+   | |                       |
+   | |                       found `feature` used as a key more than once
+   | help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
 error[E0541]: unknown meta item 'sinse'
   --> $DIR/stability-attribute-sanity-2.rs:10:25
