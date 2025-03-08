@@ -131,6 +131,8 @@ define_valid_range_type! {
     pub struct NonZeroI32Inner(i32 as u32 in 1..=0xffff_ffff);
     pub struct NonZeroI64Inner(i64 as u64 in 1..=0xffffffff_ffffffff);
     pub struct NonZeroI128Inner(i128 as u128 in 1..=0xffffffffffffffff_ffffffffffffffff);
+
+    pub struct NonZeroCharInner(char as u32 in 1..=0x10ffff);
 }
 
 #[cfg(target_pointer_width = "16")]
