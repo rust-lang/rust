@@ -1500,6 +1500,7 @@ impl<'a> Builder<'a> {
                 let mut out = String::new();
                 out += &format!("\n\nCycle in build detected when adding {step:?}\n");
                 for el in stack.iter().rev() {
+                    let el = el as &dyn Any;
                     out += &format!("\t{el:?}\n");
                 }
                 panic!("{}", out);
