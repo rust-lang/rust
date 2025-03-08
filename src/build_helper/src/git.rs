@@ -150,11 +150,13 @@ pub fn get_closest_merge_commit(
         }
     };
 
+    // Now that rust-lang/rust is the only repo using bors, we can search the entire
+    // history for a bors commit, not just "first parents". This is crucial to make
+    // this logic work when the user has currently checked out a subtree sync branch
     git.args([
         "rev-list",
         &format!("--author={}", config.git_merge_commit_email),
         "-n1",
-        "--first-parent",
         &merge_base,
     ]);
 
