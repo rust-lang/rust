@@ -112,6 +112,34 @@ are revalidated again in [`Checker::revalidate_conditional_constness`].
 [`wfcheck::check_impl`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/wfcheck/fn.check_impl.html
 [`Checker::revalidate_conditional_constness`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_const_eval/check_consts/check/struct.Checker.html#method.revalidate_conditional_constness
 
+## `explicit_implied_const_bounds` on associated types and traits
+
+Bounds on associated types, opaque types, and supertraits such as
+```rust
+trait Foo: ~const PartialEq {
+    type X: ~const PartialEq;
+}
+
+fn foo() -> impl ~const PartialEq {
+    // ^ unimplemented syntax
+}
+```
+
+Have their bounds represented differently. Unlike `const_conditions` which need
+to be proved for callers, and can be assumed inside the definition (e.g. trait
+bounds on functions), these bounds need to be proved at definition (at the impl,
+or when returning the opaque) but can be assumed for callers. The non-const
+equivalent of these bounds are called [`explicit_item_bounds`].
+
+These bounds are checked in [`compare_impl_item::check_type_bounds`] for HIR
+typeck, [`evaluate_host_effect_from_item_bounds`] in the old solver and
+[`consider_additional_alias_assumptions`] in the new solver.
+
+[`explicit_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.explicit_item_bounds
+[`compare_impl_item::check_type_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.check_type_bounds.html
+[`evaluate_host_effect_from_item_bounds`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_trait_selection/traits/effects/fn.evaluate_host_effect_from_item_bounds.html
+[`consider_additional_alias_assumptions`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_next_trait_solver/solve/assembly/trait.GoalKind.html#tymethod.consider_additional_alias_assumptions
+
 ## Proving `HostEffectPredicate`s
 
 `HostEffectPredicate`s are implemented both in the [old solver] and the [new
@@ -120,7 +148,8 @@ these conditions are met:
 
 * The predicate can be assumed from caller bounds;
 * The type has a `const` `impl` for the trait, *and* that const conditions on
-the impl holds; or
+the impl holds, *and* that the `explicit_implied_const_bounds` on the trait
+holds; or
 * The type has a built-in implementation for the trait in const contexts. For
 example, `Fn` may be implemented by function items if their const conditions
 are satisfied, or `Destruct` is implemented in const contexts if the type can
