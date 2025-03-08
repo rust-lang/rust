@@ -112,6 +112,9 @@ pub fn link_binary(
             let crate_name = format!("{}", codegen_results.crate_info.local_crate_name);
             let out_filename =
                 output.file_for_writing(outputs, OutputType::Exe, Some(crate_name.as_str()));
+            let (linker, linker_flavor) = linker_and_flavor(sess);
+            let self_contained_components = self_contained_components(sess, crate_type, &linker);
+            let apple_sdk_root = get_opt_apple_sdk_root(sess, linker_flavor);
             match crate_type {
                 CrateType::Rlib => {
                     let _timer = sess.timer("link_rlib");
@@ -122,6 +125,8 @@ pub fn link_binary(
                         &codegen_results,
                         RlibFlavor::Normal,
                         &path,
+                        self_contained_components,
+                        apple_sdk_root.as_deref(),
                     )
                     .build(&out_filename);
                 }
@@ -132,6 +137,8 @@ pub fn link_binary(
                         &codegen_results,
                         &out_filename,
                         &path,
+                        self_contained_components,
+                        apple_sdk_root.as_deref(),
                     );
                 }
                 _ => {
@@ -142,6 +149,8 @@ pub fn link_binary(
                         &out_filename,
                         &codegen_results,
                         path.as_ref(),
+                        self_contained_components,
+                        apple_sdk_root.as_deref(),
                     );
                 }
             }
@@ -288,6 +297,8 @@ fn link_rlib<'a>(
     codegen_results: &CodegenResults,
     flavor: RlibFlavor,
     tmpdir: &MaybeTempDir,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) -> Box<dyn ArchiveBuilder + 'a> {
     let mut ab = archive_builder_builder.new_archive_builder(sess);
 
@@ -362,14 +373,26 @@ fn link_rlib<'a>(
         if flavor == RlibFlavor::Normal
             && let Some(filename) = lib.filename
         {
-            let path = find_native_static_library(filename.as_str(), true, sess);
+            let path = find_native_static_library(
+                filename.as_str(),
+                true,
+                sess,
+                self_contained_components,
+                apple_sdk_root,
+            );
             let src = read(path)
                 .unwrap_or_else(|e| sess.dcx().emit_fatal(errors::ReadFileError { message: e }));
             let (data, _) = create_wrapper_file(sess, ".bundled_lib".to_string(), &src);
             let wrapper_file = emit_wrapper_file(sess, &data, tmpdir, filename.as_str());
             packed_bundled_libs.push(wrapper_file);
         } else {
-            let path = find_native_static_library(lib.name.as_str(), lib.verbatim, sess);
+            let path = find_native_static_library(
+                lib.name.as_str(),
+                lib.verbatim,
+                sess,
+                self_contained_components,
+                apple_sdk_root,
+            );
             ab.add_archive(&path, Box::new(|_| false)).unwrap_or_else(|error| {
                 sess.dcx().emit_fatal(errors::AddNativeLibrary { library_path: path, error })
             });
@@ -449,6 +472,8 @@ fn link_staticlib(
     codegen_results: &CodegenResults,
     out_filename: &Path,
     tempdir: &MaybeTempDir,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     info!("preparing staticlib to {:?}", out_filename);
     let mut ab = link_rlib(
@@ -457,6 +482,8 @@ fn link_staticlib(
         codegen_results,
         RlibFlavor::StaticlibBase,
         tempdir,
+        self_contained_components,
+        apple_sdk_root,
     );
     let mut all_native_libs = vec![];
 
@@ -669,10 +696,11 @@ fn link_natively(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     tmpdir: &Path,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     info!("preparing {:?} to {:?}", crate_type, out_filename);
     let (linker_path, flavor) = linker_and_flavor(sess);
-    let self_contained_components = self_contained_components(sess, crate_type);
 
     // On AIX, we ship all libraries as .a big_af archive
     // the expected format is lib<name>.a(libname.so) for the actual
@@ -693,6 +721,7 @@ fn link_natively(
         temp_filename,
         codegen_results,
         self_contained_components,
+        apple_sdk_root,
     );
 
     linker::disable_localization(&mut cmd);
@@ -1221,6 +1250,8 @@ fn add_sanitizer_libraries(
     flavor: LinkerFlavor,
     crate_type: CrateType,
     linker: &mut dyn Linker,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     if sess.target.is_like_android {
         // Sanitizer runtime libraries are provided dynamically on Android
@@ -1250,28 +1281,77 @@ fn add_sanitizer_libraries(
 
     let sanitizer = sess.opts.unstable_opts.sanitizer;
     if sanitizer.contains(SanitizerSet::ADDRESS) {
-        link_sanitizer_runtime(sess, flavor, linker, "asan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "asan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::DATAFLOW) {
-        link_sanitizer_runtime(sess, flavor, linker, "dfsan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "dfsan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::LEAK)
         && !sanitizer.contains(SanitizerSet::ADDRESS)
         && !sanitizer.contains(SanitizerSet::HWADDRESS)
     {
-        link_sanitizer_runtime(sess, flavor, linker, "lsan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "lsan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::MEMORY) {
-        link_sanitizer_runtime(sess, flavor, linker, "msan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "msan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::THREAD) {
-        link_sanitizer_runtime(sess, flavor, linker, "tsan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "tsan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::HWADDRESS) {
-        link_sanitizer_runtime(sess, flavor, linker, "hwasan");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "hwasan",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
     if sanitizer.contains(SanitizerSet::SAFESTACK) {
-        link_sanitizer_runtime(sess, flavor, linker, "safestack");
+        link_sanitizer_runtime(
+            sess,
+            flavor,
+            linker,
+            "safestack",
+            self_contained_components,
+            apple_sdk_root,
+        );
     }
 }
 
@@ -1280,6 +1360,8 @@ fn link_sanitizer_runtime(
     flavor: LinkerFlavor,
     linker: &mut dyn Linker,
     name: &str,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     fn find_sanitizer_runtime(sess: &Session, filename: &str) -> PathBuf {
         let path = sess.target_tlib_path.dir.join(filename);
@@ -1306,7 +1388,13 @@ fn link_sanitizer_runtime(
         let path = find_sanitizer_runtime(sess, &filename);
         let rpath = path.to_str().expect("non-utf8 component in path");
         linker.link_args(&["-rpath", rpath]);
-        linker.link_dylib_by_name(&filename, false, true);
+        linker.link_dylib_by_name(
+            &filename,
+            false,
+            true,
+            self_contained_components,
+            apple_sdk_root,
+        );
     } else if sess.target.is_like_msvc && flavor == LinkerFlavor::Msvc(Lld::No) && name == "asan" {
         // MSVC provides the `/INFERASANLIBS` argument to automatically find the
         // compatible ASAN library.
@@ -1781,8 +1869,7 @@ fn link_output_kind(sess: &Session, crate_type: CrateType) -> LinkOutputKind {
 }
 
 // Returns true if linker is located within sysroot
-fn detect_self_contained_mingw(sess: &Session) -> bool {
-    let (linker, _) = linker_and_flavor(sess);
+fn detect_self_contained_mingw(sess: &Session, linker: &Path) -> bool {
     // Assume `-C linker=rust-lld` as self-contained mode
     if linker == Path::new("rust-lld") {
         return true;
@@ -1790,7 +1877,7 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
     let linker_with_extension = if cfg!(windows) && linker.extension().is_none() {
         linker.with_extension("exe")
     } else {
-        linker
+        linker.to_path_buf()
     };
     for dir in env::split_paths(&env::var_os("PATH").unwrap_or_default()) {
         let full_path = dir.join(&linker_with_extension);
@@ -1805,7 +1892,11 @@ fn detect_self_contained_mingw(sess: &Session) -> bool {
 /// Various toolchain components used during linking are used from rustc distribution
 /// instead of being found somewhere on the host system.
 /// We only provide such support for a very limited number of targets.
-fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfContainedComponents {
+fn self_contained_components(
+    sess: &Session,
+    crate_type: CrateType,
+    linker: &Path,
+) -> LinkSelfContainedComponents {
     // Turn the backwards compatible bool values for `self_contained` into fully inferred
     // `LinkSelfContainedComponents`.
     let self_contained =
@@ -1834,7 +1925,7 @@ fn self_contained_components(sess: &Session, crate_type: CrateType) -> LinkSelfC
                 LinkSelfContainedDefault::InferredForMingw => {
                     sess.host == sess.target
                         && sess.target.vendor != "uwp"
-                        && detect_self_contained_mingw(sess)
+                        && detect_self_contained_mingw(sess, linker)
                 }
             }
         };
@@ -2209,6 +2300,7 @@ fn linker_with_args(
     out_filename: &Path,
     codegen_results: &CodegenResults,
     self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) -> Command {
     let self_contained_crt_objects = self_contained_components.is_crt_objects_enabled();
     let cmd = &mut *super::linker::get_linker(
@@ -2252,7 +2344,14 @@ fn linker_with_args(
     );
 
     // Sanitizer libraries.
-    add_sanitizer_libraries(sess, flavor, crate_type, cmd);
+    add_sanitizer_libraries(
+        sess,
+        flavor,
+        crate_type,
+        cmd,
+        self_contained_components,
+        apple_sdk_root,
+    );
 
     // Object code from the current crate.
     // Take careful note of the ordering of the arguments we pass to the linker
@@ -2303,6 +2402,8 @@ fn linker_with_args(
         codegen_results,
         tmpdir,
         link_output_kind,
+        self_contained_components,
+        apple_sdk_root,
     );
 
     // Upstream rust crates and their non-dynamic native libraries.
@@ -2314,6 +2415,8 @@ fn linker_with_args(
         crate_type,
         tmpdir,
         link_output_kind,
+        self_contained_components,
+        apple_sdk_root,
     );
 
     // Dynamic native libraries from upstream crates.
@@ -2324,6 +2427,8 @@ fn linker_with_args(
         codegen_results,
         tmpdir,
         link_output_kind,
+        self_contained_components,
+        apple_sdk_root,
     );
 
     // Raw-dylibs from all crates.
@@ -2357,7 +2462,13 @@ fn linker_with_args(
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(
+                &link_path,
+                true,
+                false,
+                self_contained_components,
+                apple_sdk_root,
+            );
         }
     }
     // As with add_upstream_native_libraries, we need to add the upstream raw-dylib symbols in case
@@ -2404,7 +2515,13 @@ fn linker_with_args(
             &raw_dylib_dir,
         ) {
             // Always use verbatim linkage, see comments in create_raw_dylib_elf_stub_shared_objects.
-            cmd.link_dylib_by_name(&link_path, true, false);
+            cmd.link_dylib_by_name(
+                &link_path,
+                true,
+                false,
+                self_contained_components,
+                apple_sdk_root,
+            );
         }
     }
 
@@ -2426,6 +2543,7 @@ fn linker_with_args(
         sess,
         link_output_kind,
         self_contained_components,
+        apple_sdk_root,
         flavor,
         crate_type,
         codegen_results,
@@ -2459,6 +2577,7 @@ fn add_order_independent_options(
     sess: &Session,
     link_output_kind: LinkOutputKind,
     self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
     flavor: LinkerFlavor,
     crate_type: CrateType,
     codegen_results: &CodegenResults,
@@ -2469,8 +2588,9 @@ fn add_order_independent_options(
     add_lld_args(cmd, sess, flavor, self_contained_components);
 
     add_apple_link_args(cmd, sess, flavor);
-
-    let apple_sdk_root = add_apple_sdk(cmd, sess, flavor);
+    if let Some(apple_sdk_root) = apple_sdk_root {
+        add_apple_sdk(cmd, flavor, apple_sdk_root);
+    }
 
     add_link_script(cmd, sess, tmpdir, crate_type);
 
@@ -2639,6 +2759,8 @@ fn add_native_libs_from_crate(
     link_static: bool,
     link_dynamic: bool,
     link_output_kind: LinkOutputKind,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     if !sess.opts.unstable_opts.link_native_libraries {
         // If `-Zlink-native-libraries=false` is set, then the assumption is that an
@@ -2687,13 +2809,25 @@ fn add_native_libs_from_crate(
                             cmd.link_staticlib_by_path(&path, whole_archive);
                         }
                     } else {
-                        cmd.link_staticlib_by_name(name, verbatim, whole_archive);
+                        cmd.link_staticlib_by_name(
+                            name,
+                            verbatim,
+                            whole_archive,
+                            self_contained_components,
+                            apple_sdk_root,
+                        );
                     }
                 }
             }
             NativeLibKind::Dylib { as_needed } => {
                 if link_dynamic {
-                    cmd.link_dylib_by_name(name, verbatim, as_needed.unwrap_or(true))
+                    cmd.link_dylib_by_name(
+                        name,
+                        verbatim,
+                        as_needed.unwrap_or(true),
+                        self_contained_components,
+                        apple_sdk_root,
+                    )
                 }
             }
             NativeLibKind::Unspecified => {
@@ -2701,10 +2835,22 @@ fn add_native_libs_from_crate(
                 // link kind is unspecified.
                 if !link_output_kind.can_link_dylib() && !sess.target.crt_static_allows_dylibs {
                     if link_static {
-                        cmd.link_staticlib_by_name(name, verbatim, false);
+                        cmd.link_staticlib_by_name(
+                            name,
+                            verbatim,
+                            false,
+                            self_contained_components,
+                            apple_sdk_root,
+                        );
                     }
                 } else if link_dynamic {
-                    cmd.link_dylib_by_name(name, verbatim, true);
+                    cmd.link_dylib_by_name(
+                        name,
+                        verbatim,
+                        true,
+                        self_contained_components,
+                        apple_sdk_root,
+                    );
                 }
             }
             NativeLibKind::Framework { as_needed } => {
@@ -2736,6 +2882,8 @@ fn add_local_native_libraries(
     codegen_results: &CodegenResults,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     // All static and dynamic native library dependencies are linked to the local crate.
     let link_static = true;
@@ -2751,6 +2899,8 @@ fn add_local_native_libraries(
         link_static,
         link_dynamic,
         link_output_kind,
+        self_contained_components,
+        apple_sdk_root,
     );
 }
 
@@ -2762,6 +2912,8 @@ fn add_upstream_rust_crates(
     crate_type: CrateType,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     // All of the heavy lifting has previously been accomplished by the
     // dependency_format module of the compiler. This is just crawling the
@@ -2846,6 +2998,8 @@ fn add_upstream_rust_crates(
             link_static,
             link_dynamic,
             link_output_kind,
+            self_contained_components,
+            apple_sdk_root,
         );
     }
 }
@@ -2857,6 +3011,8 @@ fn add_upstream_native_libraries(
     codegen_results: &CodegenResults,
     tmpdir: &Path,
     link_output_kind: LinkOutputKind,
+    self_contained_components: LinkSelfContainedComponents,
+    apple_sdk_root: Option<&Path>,
 ) {
     for &cnum in &codegen_results.crate_info.used_crates {
         // Static libraries are not linked here, they are linked in `add_upstream_rust_crates`.
@@ -2884,6 +3040,8 @@ fn add_upstream_native_libraries(
             link_static,
             link_dynamic,
             link_output_kind,
+            self_contained_components,
+            apple_sdk_root,
         );
     }
 }
@@ -3201,7 +3359,27 @@ fn add_apple_link_args(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavo
     }
 }
 
-fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
+fn add_apple_sdk(cmd: &mut dyn Linker, flavor: LinkerFlavor, apple_sdk_root: &Path) {
+    match flavor {
+        LinkerFlavor::Darwin(Cc::Yes, _) => {
+            // Use `-isysroot` instead of `--sysroot`, as only the former
+            // makes Clang treat it as a platform SDK.
+            //
+            // This is admittedly a bit strange, as on most targets
+            // `-isysroot` only applies to include header files, but on Apple
+            // targets this also applies to libraries and frameworks.
+            cmd.cc_arg("-isysroot");
+            cmd.cc_arg(apple_sdk_root);
+        }
+        LinkerFlavor::Darwin(Cc::No, _) => {
+            cmd.link_arg("-syslibroot");
+            cmd.link_arg(apple_sdk_root);
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn get_opt_apple_sdk_root(sess: &Session, flavor: LinkerFlavor) -> Option<PathBuf> {
     let arch = &sess.target.arch;
     let os = &sess.target.os;
     let llvm_target = &sess.target.llvm_target;
@@ -3240,31 +3418,14 @@ fn add_apple_sdk(cmd: &mut dyn Linker, sess: &Session, flavor: LinkerFlavor) -> 
             return None;
         }
     };
-    let sdk_root = match get_apple_sdk_root(sdk_name) {
-        Ok(s) => s,
+
+    match get_apple_sdk_root(sdk_name) {
+        Ok(sdk_root) => Some(sdk_root.into()),
         Err(e) => {
             sess.dcx().emit_err(e);
-            return None;
+            None
         }
-    };
-
-    match flavor {
-        LinkerFlavor::Darwin(Cc::Yes, _) => {
-            // Use `-isysroot` instead of `--sysroot`, as only the former
-            // makes Clang treat it as a platform SDK.
-            //
-            // This is admittedly a bit strange, as on most targets
-            // `-isysroot` only applies to include header files, but on Apple
-            // targets this also applies to libraries and frameworks.
-            cmd.cc_args(&["-isysroot", &sdk_root]);
-        }
-        LinkerFlavor::Darwin(Cc::No, _) => {
-            cmd.link_args(&["-syslibroot", &sdk_root]);
-        }
-        _ => unreachable!(),
     }
-
-    Some(sdk_root.into())
 }
 
 fn get_apple_sdk_root(sdk_name: &str) -> Result<String, errors::AppleSdkRootError<'_>> {
