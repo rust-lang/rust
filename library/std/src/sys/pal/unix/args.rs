@@ -100,6 +100,7 @@ impl DoubleEndedIterator for Args {
     target_os = "dragonfly",
     target_os = "netbsd",
     target_os = "openbsd",
+    target_os = "cygwin",
     target_os = "solaris",
     target_os = "illumos",
     target_os = "emscripten",
