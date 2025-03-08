@@ -2609,7 +2609,7 @@ impl Step for Crate {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.crate_or_deps("sysroot").crate_or_deps("coretests")
+        run.crate_or_deps("sysroot").crate_or_deps("coretests").crate_or_deps("alloctests")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -2724,11 +2724,15 @@ impl Step for Crate {
         };
 
         let mut crates = self.crates.clone();
-        // The core crate can't directly be tested. We could silently
-        // ignore it, but adding it's own test crate is less confusing
-        // for users. We still keep core itself for doctests.
+        // The core and alloc crates can't directly be tested. We
+        // could silently ignore them, but adding their own test
+        // crates is less confusing for users. We still keep core and
+        // alloc themself for doctests
         if crates.iter().any(|crate_| crate_ == "core") {
             crates.push("coretests".to_owned());
+        }
+        if crates.iter().any(|crate_| crate_ == "alloc") {
+            crates.push("alloctests".to_owned());
         }
 
         run_cargo_test(cargo, &[], &crates, &*crate_description(&self.crates), target, builder);

@@ -1,10 +1,10 @@
 use super::api::{self, WinError, set_file_information_by_handle};
 use super::{IoResult, to_u16s};
-use crate::alloc::{alloc, handle_alloc_error};
+use crate::alloc::{Layout, alloc, dealloc};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
 use crate::io::{self, BorrowedCursor, Error, IoSlice, IoSliceMut, SeekFrom};
-use crate::mem::{self, MaybeUninit};
+use crate::mem::{self, MaybeUninit, offset_of};
 use crate::os::windows::io::{AsHandle, BorrowedHandle};
 use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
@@ -1241,139 +1241,72 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     let old = maybe_verbatim(old)?;
     let new = maybe_verbatim(new)?;
 
-    let new_len_without_nul_in_bytes = (new.len() - 1).try_into().unwrap();
+    if unsafe { c::MoveFileExW(old.as_ptr(), new.as_ptr(), c::MOVEFILE_REPLACE_EXISTING) } == 0 {
+        let err = api::get_last_error();
+        // if `MoveFileExW` fails with ERROR_ACCESS_DENIED then try to move
+        // the file while ignoring the readonly attribute.
+        // This is accomplished by calling `SetFileInformationByHandle` with `FileRenameInfoEx`.
+        if err == WinError::ACCESS_DENIED {
+            let mut opts = OpenOptions::new();
+            opts.access_mode(c::DELETE);
+            opts.custom_flags(c::FILE_FLAG_OPEN_REPARSE_POINT | c::FILE_FLAG_BACKUP_SEMANTICS);
+            let Ok(f) = File::open_native(&old, &opts) else { return Err(err).io_result() };
 
-    // The last field of FILE_RENAME_INFO, the file name, is unsized,
-    // and FILE_RENAME_INFO has two padding bytes.
-    // Therefore we need to make sure to not allocate less than
-    // size_of::<c::FILE_RENAME_INFO>() bytes, which would be the case with
-    // 0 or 1 character paths + a null byte.
-    let struct_size = size_of::<c::FILE_RENAME_INFO>()
-        .max(mem::offset_of!(c::FILE_RENAME_INFO, FileName) + new.len() * size_of::<u16>());
+            // Calculate the layout of the `FILE_RENAME_INFO` we pass to `SetFileInformation`
+            // This is a dynamically sized struct so we need to get the position of the last field to calculate the actual size.
+            let Ok(new_len_without_nul_in_bytes): Result<u32, _> = ((new.len() - 1) * 2).try_into()
+            else {
+                return Err(err).io_result();
+            };
+            let offset: u32 = offset_of!(c::FILE_RENAME_INFO, FileName).try_into().unwrap();
+            let struct_size = offset + new_len_without_nul_in_bytes + 2;
+            let layout =
+                Layout::from_size_align(struct_size as usize, align_of::<c::FILE_RENAME_INFO>())
+                    .unwrap();
 
-    let struct_size: u32 = struct_size.try_into().unwrap();
+            // SAFETY: We allocate enough memory for a full FILE_RENAME_INFO struct and a filename.
+            let file_rename_info;
+            unsafe {
+                file_rename_info = alloc(layout).cast::<c::FILE_RENAME_INFO>();
+                if file_rename_info.is_null() {
+                    return Err(io::ErrorKind::OutOfMemory.into());
+                }
 
-    let create_file = |extra_access, extra_flags| {
-        let handle = unsafe {
-            HandleOrInvalid::from_raw_handle(c::CreateFileW(
-                old.as_ptr(),
-                c::SYNCHRONIZE | c::DELETE | extra_access,
-                c::FILE_SHARE_READ | c::FILE_SHARE_WRITE | c::FILE_SHARE_DELETE,
-                ptr::null(),
-                c::OPEN_EXISTING,
-                c::FILE_ATTRIBUTE_NORMAL | c::FILE_FLAG_BACKUP_SEMANTICS | extra_flags,
-                ptr::null_mut(),
-            ))
-        };
+                (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
+                    Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS
+                        | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
+                });
 
-        OwnedHandle::try_from(handle).map_err(|_| io::Error::last_os_error())
-    };
+                (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
+                // Don't include the NULL in the size
+                (&raw mut (*file_rename_info).FileNameLength).write(new_len_without_nul_in_bytes);
 
-    // The following code replicates `MoveFileEx`'s behavior as reverse-engineered from its disassembly.
-    // If `old` refers to a mount point, we move it instead of the target.
-    let handle = match create_file(c::FILE_READ_ATTRIBUTES, c::FILE_FLAG_OPEN_REPARSE_POINT) {
-        Ok(handle) => {
-            let mut file_attribute_tag_info: MaybeUninit<c::FILE_ATTRIBUTE_TAG_INFO> =
-                MaybeUninit::uninit();
+                new.as_ptr().copy_to_nonoverlapping(
+                    (&raw mut (*file_rename_info).FileName).cast::<u16>(),
+                    new.len(),
+                );
+            }
 
             let result = unsafe {
-                cvt(c::GetFileInformationByHandleEx(
-                    handle.as_raw_handle(),
-                    c::FileAttributeTagInfo,
-                    file_attribute_tag_info.as_mut_ptr().cast(),
-                    size_of::<c::FILE_ATTRIBUTE_TAG_INFO>().try_into().unwrap(),
-                ))
-            };
-
-            if let Err(err) = result {
-                if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _)
-                    || err.raw_os_error() == Some(c::ERROR_INVALID_FUNCTION as _)
-                {
-                    // `GetFileInformationByHandleEx` documents that not all underlying drivers support all file information classes.
-                    // Since we know we passed the correct arguments, this means the underlying driver didn't understand our request;
-                    // `MoveFileEx` proceeds by reopening the file without inhibiting reparse point behavior.
-                    None
-                } else {
-                    Some(Err(err))
-                }
-            } else {
-                // SAFETY: The struct has been initialized by GetFileInformationByHandleEx
-                let file_attribute_tag_info = unsafe { file_attribute_tag_info.assume_init() };
-                let file_type = FileType::new(
-                    file_attribute_tag_info.FileAttributes,
-                    file_attribute_tag_info.ReparseTag,
-                );
-
-                if file_type.is_symlink() {
-                    // The file is a mount point, junction point or symlink so
-                    // don't reopen the file so that the link gets renamed.
-                    Some(Ok(handle))
-                } else {
-                    // Otherwise reopen the file without inhibiting reparse point behavior.
-                    None
-                }
-            }
-        }
-        // The underlying driver may not support `FILE_FLAG_OPEN_REPARSE_POINT`: Retry without it.
-        Err(err) if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) => None,
-        Err(err) => Some(Err(err)),
-    }
-    .unwrap_or_else(|| create_file(0, 0))?;
-
-    let layout =
-        core::alloc::Layout::from_size_align(struct_size as _, align_of::<c::FILE_RENAME_INFO>())
-            .unwrap();
-
-    let file_rename_info = unsafe { alloc(layout) } as *mut c::FILE_RENAME_INFO;
-
-    if file_rename_info.is_null() {
-        handle_alloc_error(layout);
-    }
-
-    // SAFETY: file_rename_info is a non-null pointer pointing to memory allocated by the global allocator.
-    let mut file_rename_info = unsafe { Box::from_raw(file_rename_info) };
-
-    // SAFETY: We have allocated enough memory for a full FILE_RENAME_INFO struct and a filename.
-    unsafe {
-        (&raw mut (*file_rename_info).Anonymous).write(c::FILE_RENAME_INFO_0 {
-            Flags: c::FILE_RENAME_FLAG_REPLACE_IF_EXISTS | c::FILE_RENAME_FLAG_POSIX_SEMANTICS,
-        });
-
-        (&raw mut (*file_rename_info).RootDirectory).write(ptr::null_mut());
-        (&raw mut (*file_rename_info).FileNameLength).write(new_len_without_nul_in_bytes);
-
-        new.as_ptr()
-            .copy_to_nonoverlapping((&raw mut (*file_rename_info).FileName) as *mut u16, new.len());
-    }
-
-    // We don't use `set_file_information_by_handle` here as `FILE_RENAME_INFO` is used for both `FileRenameInfo` and `FileRenameInfoEx`.
-    let result = unsafe {
-        cvt(c::SetFileInformationByHandle(
-            handle.as_raw_handle(),
-            c::FileRenameInfoEx,
-            (&raw const *file_rename_info).cast::<c_void>(),
-            struct_size,
-        ))
-    };
-
-    if let Err(err) = result {
-        if err.raw_os_error() == Some(c::ERROR_INVALID_PARAMETER as _) {
-            // FileRenameInfoEx and FILE_RENAME_FLAG_POSIX_SEMANTICS were added in Windows 10 1607; retry with FileRenameInfo.
-            file_rename_info.Anonymous.ReplaceIfExists = true;
-
-            cvt(unsafe {
                 c::SetFileInformationByHandle(
-                    handle.as_raw_handle(),
-                    c::FileRenameInfo,
-                    (&raw const *file_rename_info).cast::<c_void>(),
+                    f.as_raw_handle(),
+                    c::FileRenameInfoEx,
+                    file_rename_info.cast::<c_void>(),
                     struct_size,
                 )
-            })?;
+            };
+            unsafe { dealloc(file_rename_info.cast::<u8>(), layout) };
+            if result == 0 {
+                if api::get_last_error() == WinError::DIR_NOT_EMPTY {
+                    return Err(WinError::DIR_NOT_EMPTY).io_result();
+                } else {
+                    return Err(err).io_result();
+                }
+            }
         } else {
-            return Err(err);
+            return Err(err).io_result();
         }
     }
-
     Ok(())
 }
 
