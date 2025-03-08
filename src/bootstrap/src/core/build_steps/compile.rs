@@ -992,6 +992,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        // dummy change
         let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             compiler: run
