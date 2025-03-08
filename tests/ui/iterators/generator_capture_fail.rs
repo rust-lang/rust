@@ -1,6 +1,4 @@
-#![feature(iter_macro)]
-// FIXME(iter_macro): make `yield` within it legal
-#![feature(coroutines)]
+#![feature(iter_macro, yield_expr)]
 
 use std::iter::iter;
 
