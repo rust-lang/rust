@@ -217,6 +217,38 @@ unsafe extern "unadjusted" {
     #[link_name = "llvm.s390.vmlhh"] fn vmlhh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vmlhf"] fn vmlhf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_int;
 
+    #[link_name = "llvm.s390.vmaeb"] fn vmaeb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmaeh"] fn vmaeh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.s390.vmaef"] fn vmaef(a: vector_signed_int, b: vector_signed_int, c: vector_signed_long_long) -> vector_signed_long_long;
+
+    #[link_name = "llvm.s390.vmaleb"] fn vmaleb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmaleh"] fn vmaleh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vmalef"] fn vmalef(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vmaob"] fn vmaob(a: vector_signed_char, b: vector_signed_char, c: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmaoh"] fn vmaoh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_int) -> vector_signed_int;
+    #[link_name = "llvm.s390.vmaof"] fn vmaof(a: vector_signed_int, b: vector_signed_int, c: vector_signed_long_long) -> vector_signed_long_long;
+
+    #[link_name = "llvm.s390.vmalob"] fn vmalob(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmaloh"] fn vmaloh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int;
+    #[link_name = "llvm.s390.vmalof"] fn vmalof(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long;
+
+    #[link_name = "llvm.s390.vmahb"] fn vmahb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vmahh"] fn vmahh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmahf"] fn vmahf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.s390.vmalhb"] fn vmalhb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vmalhh"] fn vmalhh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmalhf"] fn vmalhf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
+
+    #[link_name = "llvm.s390.vmalb"] fn vmalb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char) -> vector_signed_char;
+    #[link_name = "llvm.s390.vmalh"] fn vmalh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short;
+    #[link_name = "llvm.s390.vmalf"] fn vmalf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int) -> vector_signed_int;
+
+    #[link_name = "llvm.s390.vmallb"] fn vmallb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char;
+    #[link_name = "llvm.s390.vmallh"] fn vmallh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short;
+    #[link_name = "llvm.s390.vmallf"] fn vmallf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int;
+
     #[link_name = "llvm.s390.vgfmb"] fn vgfmb(a: vector_unsigned_char, b: vector_unsigned_char) -> vector_unsigned_short;
     #[link_name = "llvm.s390.vgfmh"] fn vgfmh(a: vector_unsigned_short, b: vector_unsigned_short) -> vector_unsigned_int;
     #[link_name = "llvm.s390.vgfmf"] fn vgfmf(a: vector_unsigned_int, b: vector_unsigned_int) -> vector_unsigned_long_long;
@@ -2594,6 +2626,17 @@ mod sealed {
                 }
             }
         };
+        ([$Trait:ident $m:ident] $fun:ident ($a:ty, $b:ty, $c:ty) -> $r:ty) => {
+            #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            impl $Trait for $a {
+                type Result = $r;
+                #[inline]
+                #[target_feature(enable = "vector")]
+                unsafe fn $m(self, b: $b, c: $c) -> $r {
+                    $fun(self, b, c)
+                }
+            }
+        };
     }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -2677,6 +2720,100 @@ mod sealed {
     impl_mul!([VectorMulh vec_mulh] vec_vmlhb (vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char);
     impl_mul!([VectorMulh vec_mulh] vec_vmlhh (vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short);
     impl_mul!([VectorMulh vec_mulh] vec_vmlhf (vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int);
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMeadd {
+        type Result;
+        unsafe fn vec_meadd(self, b: Self, c: Self::Result) -> Self::Result;
+    }
+
+    test_impl! { vec_vmaeb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_short) -> vector_signed_short [ vmaeb, vmaeb ] }
+    test_impl! { vec_vmaeh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_int) -> vector_signed_int[ vmaeh, vmaeh ] }
+    test_impl! { vec_vmaef(a: vector_signed_int, b: vector_signed_int, c: vector_signed_long_long) -> vector_signed_long_long [ vmaef, vmaef ] }
+
+    test_impl! { vec_vmaleb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short [ vmaleb, vmaleb ] }
+    test_impl! { vec_vmaleh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int[ vmaleh, vmaleh ] }
+    test_impl! { vec_vmalef(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long [ vmalef, vmalef ] }
+
+    impl_mul!([VectorMeadd vec_meadd] vec_vmaeb (vector_signed_char, vector_signed_char, vector_signed_short) -> vector_signed_short );
+    impl_mul!([VectorMeadd vec_meadd] vec_vmaeh (vector_signed_short, vector_signed_short, vector_signed_int) -> vector_signed_int);
+    impl_mul!([VectorMeadd vec_meadd] vec_vmaef (vector_signed_int, vector_signed_int, vector_signed_long_long) -> vector_signed_long_long );
+
+    impl_mul!([VectorMeadd vec_meadd] vec_vmaleb (vector_unsigned_char, vector_unsigned_char, vector_unsigned_short) -> vector_unsigned_short );
+    impl_mul!([VectorMeadd vec_meadd] vec_vmaleh (vector_unsigned_short, vector_unsigned_short, vector_unsigned_int) -> vector_unsigned_int);
+    impl_mul!([VectorMeadd vec_meadd] vec_vmalef (vector_unsigned_int, vector_unsigned_int, vector_unsigned_long_long) -> vector_unsigned_long_long );
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMoadd {
+        type Result;
+        unsafe fn vec_moadd(self, b: Self, c: Self::Result) -> Self::Result;
+    }
+
+    test_impl! { vec_vmaob(a: vector_signed_char, b: vector_signed_char, c: vector_signed_short) -> vector_signed_short [ vmaob, vmaob ] }
+    test_impl! { vec_vmaoh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_int) -> vector_signed_int[ vmaoh, vmaoh ] }
+    test_impl! { vec_vmaof(a: vector_signed_int, b: vector_signed_int, c: vector_signed_long_long) -> vector_signed_long_long [ vmaof, vmaof ] }
+
+    test_impl! { vec_vmalob(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_short) -> vector_unsigned_short [ vmalob, vmalob ] }
+    test_impl! { vec_vmaloh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_int) -> vector_unsigned_int[ vmaloh, vmaloh ] }
+    test_impl! { vec_vmalof(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_long_long) -> vector_unsigned_long_long [ vmalof, vmalof ] }
+
+    impl_mul!([VectorMoadd vec_moadd] vec_vmaob (vector_signed_char, vector_signed_char, vector_signed_short) -> vector_signed_short );
+    impl_mul!([VectorMoadd vec_moadd] vec_vmaoh (vector_signed_short, vector_signed_short, vector_signed_int) -> vector_signed_int);
+    impl_mul!([VectorMoadd vec_moadd] vec_vmaof (vector_signed_int, vector_signed_int, vector_signed_long_long) -> vector_signed_long_long );
+
+    impl_mul!([VectorMoadd vec_moadd] vec_vmalob (vector_unsigned_char, vector_unsigned_char, vector_unsigned_short) -> vector_unsigned_short );
+    impl_mul!([VectorMoadd vec_moadd] vec_vmaloh (vector_unsigned_short, vector_unsigned_short, vector_unsigned_int) -> vector_unsigned_int);
+    impl_mul!([VectorMoadd vec_moadd] vec_vmalof (vector_unsigned_int, vector_unsigned_int, vector_unsigned_long_long) -> vector_unsigned_long_long );
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMhadd {
+        type Result;
+        unsafe fn vec_mhadd(self, b: Self, c: Self::Result) -> Self::Result;
+    }
+
+    test_impl! { vec_vmahb(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char) -> vector_signed_char [ vmahb, vmahb ] }
+    test_impl! { vec_vmahh(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short[ vmahh, vmahh ] }
+    test_impl! { vec_vmahf(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int) -> vector_signed_int [ vmahf, vmahf ] }
+
+    test_impl! { vec_vmalhb(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char [ vmalhb, vmalhb ] }
+    test_impl! { vec_vmalhh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short[ vmalhh, vmalhh ] }
+    test_impl! { vec_vmalhf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int [ vmalhf, vmalhf ] }
+
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmahb (vector_signed_char, vector_signed_char, vector_signed_char) -> vector_signed_char );
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmahh (vector_signed_short, vector_signed_short, vector_signed_short) -> vector_signed_short);
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmahf (vector_signed_int, vector_signed_int, vector_signed_int) -> vector_signed_int );
+
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmalhb (vector_unsigned_char, vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char );
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmalhh (vector_unsigned_short, vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short);
+    impl_mul!([VectorMhadd vec_mhadd] vec_vmalhf (vector_unsigned_int, vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int );
+
+    #[unstable(feature = "stdarch_s390x", issue = "135681")]
+    pub trait VectorMladd {
+        type Result;
+        unsafe fn vec_mladd(self, b: Self, c: Self::Result) -> Self::Result;
+    }
+
+    #[inline]
+    #[target_feature(enable = "vector")]
+    unsafe fn simd_mladd<T>(a: T, b: T, c: T) -> T {
+        simd_add(simd_mul(a, b), c)
+    }
+
+    test_impl! { vec_vmal_ib(a: vector_signed_char, b: vector_signed_char, c: vector_signed_char) -> vector_signed_char [simd_mladd, vmalb ] }
+    test_impl! { vec_vmal_ih(a: vector_signed_short, b: vector_signed_short, c: vector_signed_short) -> vector_signed_short[simd_mladd, vmalh ] }
+    test_impl! { vec_vmal_if(a: vector_signed_int, b: vector_signed_int, c: vector_signed_int) -> vector_signed_int [simd_mladd, vmalf ] }
+
+    test_impl! { vec_vmal_ub(a: vector_unsigned_char, b: vector_unsigned_char, c: vector_unsigned_char) -> vector_unsigned_char [simd_mladd, vmalb ] }
+    test_impl! { vec_vmal_uh(a: vector_unsigned_short, b: vector_unsigned_short, c: vector_unsigned_short) -> vector_unsigned_short[simd_mladd, vmalh ] }
+    test_impl! { vec_vmal_uf(a: vector_unsigned_int, b: vector_unsigned_int, c: vector_unsigned_int) -> vector_unsigned_int [simd_mladd, vmalf ] }
+
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_ib (vector_signed_char, vector_signed_char, vector_signed_char) -> vector_signed_char );
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_ih (vector_signed_short, vector_signed_short, vector_signed_short) -> vector_signed_short);
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_if (vector_signed_int, vector_signed_int, vector_signed_int) -> vector_signed_int );
+
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_ub (vector_unsigned_char, vector_unsigned_char, vector_unsigned_char) -> vector_unsigned_char );
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_uh (vector_unsigned_short, vector_unsigned_short, vector_unsigned_short) -> vector_unsigned_short);
+    impl_mul!([VectorMladd vec_mladd] vec_vmal_uf (vector_unsigned_int, vector_unsigned_int, vector_unsigned_int) -> vector_unsigned_int );
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorGfmsum<Result> {
@@ -4767,6 +4904,38 @@ pub unsafe fn vec_madd<T: sealed::VectorMadd>(a: T, b: T, c: T) -> T {
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_msub<T: sealed::VectorMadd>(a: T, b: T, c: T) -> T {
     a.vec_msub(b, c)
+}
+
+/// Vector Multiply and Add Even
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_meadd<T: sealed::VectorMeadd>(a: T, b: T, c: T::Result) -> T::Result {
+    a.vec_meadd(b, c)
+}
+
+/// Vector Multiply and Add Odd
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_moadd<T: sealed::VectorMoadd>(a: T, b: T, c: T::Result) -> T::Result {
+    a.vec_moadd(b, c)
+}
+
+/// Vector Multiply and Add High
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mhadd<T: sealed::VectorMhadd>(a: T, b: T, c: T::Result) -> T::Result {
+    a.vec_mhadd(b, c)
+}
+
+/// Vector Multiply and Add Low
+#[inline]
+#[target_feature(enable = "vector-packed-decimal")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mladd<T: sealed::VectorMladd>(a: T, b: T, c: T::Result) -> T::Result {
+    a.vec_mladd(b, c)
 }
 
 /// Vector Checksum
@@ -7031,5 +7200,73 @@ mod tests {
         [1.0, f32::NAN, f32::NAN, 2.0],
         [1.0, f32::NAN, 5.0, 3.14],
         [0, !0, !0, !0]
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_meadd() {
+        let a = vector_unsigned_short([1, 0, 2, 0, 3, 0, 4, 0]);
+        let b = vector_unsigned_short([5, 0, 6, 0, 7, 0, 8, 0]);
+        let c = vector_unsigned_int([2, 2, 2, 2]);
+
+        let d = unsafe { vec_meadd(a, b, c) };
+        assert_eq!(d.as_array(), &[7, 14, 23, 34]);
+
+        let a = vector_signed_short([1, 0, 2, 0, 3, 0, 4, 0]);
+        let b = vector_signed_short([5, 0, 6, 0, 7, 0, 8, 0]);
+        let c = vector_signed_int([2, -2, 2, -2]);
+
+        let d = unsafe { vec_meadd(a, b, c) };
+        assert_eq!(d.as_array(), &[7, 10, 23, 30]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_moadd() {
+        let a = vector_unsigned_short([0, 1, 0, 2, 0, 3, 0, 4]);
+        let b = vector_unsigned_short([0, 5, 0, 6, 0, 7, 0, 8]);
+        let c = vector_unsigned_int([2, 2, 2, 2]);
+
+        let d = unsafe { vec_moadd(a, b, c) };
+        assert_eq!(d.as_array(), &[7, 14, 23, 34]);
+
+        let a = vector_signed_short([0, 1, 0, 2, 0, 3, 0, 4]);
+        let b = vector_signed_short([0, 5, 0, 6, 0, 7, 0, 8]);
+        let c = vector_signed_int([2, -2, 2, -2]);
+
+        let d = unsafe { vec_moadd(a, b, c) };
+        assert_eq!(d.as_array(), &[7, 10, 23, 30]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_mhadd() {
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([5, 6, 7, 8]);
+        let c = vector_unsigned_int([u32::MAX; 4]);
+
+        let d = unsafe { vec_mhadd(a, b, c) };
+        assert_eq!(d.as_array(), &[1, 1, 1, 1]);
+
+        let a = vector_signed_int([-1, -2, -3, -4]);
+        let b = vector_signed_int([5, 6, 7, 8]);
+        let c = vector_signed_int([i32::MIN; 4]);
+
+        let d = unsafe { vec_mhadd(a, b, c) };
+        assert_eq!(d.as_array(), &[-1, -1, -1, -1]);
+    }
+
+    #[simd_test(enable = "vector")]
+    fn test_vec_mladd() {
+        let a = vector_unsigned_int([1, 2, 3, 4]);
+        let b = vector_unsigned_int([5, 6, 7, 8]);
+        let c = vector_unsigned_int([2, 2, 2, 2]);
+
+        let d = unsafe { vec_mladd(a, b, c) };
+        assert_eq!(d.as_array(), &[7, 14, 23, 34]);
+
+        let a = vector_signed_int([-1, -2, -3, -4]);
+        let b = vector_signed_int([5, 6, 7, 8]);
+        let c = vector_signed_int([2, 2, 2, 2]);
+
+        let d = unsafe { vec_mladd(a, b, c) };
+        assert_eq!(d.as_array(), &[-3, -10, -19, -30]);
     }
 }
