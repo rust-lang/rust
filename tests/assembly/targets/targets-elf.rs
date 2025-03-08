@@ -640,6 +640,9 @@
 //@ revisions: x86_64_wrs_vxworks
 //@ [x86_64_wrs_vxworks] compile-flags: --target x86_64-wrs-vxworks
 //@ [x86_64_wrs_vxworks] needs-llvm-components: x86
+//@ revisions: x86_64_unknown_lynxos_178_elf
+//@ [x86_64_unknown_lynxos_178_elf] compile-flags: --target x86_64-unknown-lynxos_178-elf
+//@ [x86_64_unknown_lynxos_178_elf] needs-llvm-components: x86
 //@ revisions: thumbv6m_nuttx_eabi
 //@ [thumbv6m_nuttx_eabi] compile-flags: --target thumbv6m-nuttx-eabi
 //@ [thumbv6m_nuttx_eabi] needs-llvm-components: arm
