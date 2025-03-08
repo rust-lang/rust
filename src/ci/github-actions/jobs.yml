@@ -437,7 +437,7 @@ auto:
 
   - name: aarch64-apple
     env:
-      SCRIPT: ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
+      SCRIPT: BOOTSTRAP_TRACING=bootstrap=trace ./x.py --stage 2 test --host=aarch64-apple-darwin --target=aarch64-apple-darwin
       RUST_CONFIGURE_ARGS: >-
         --enable-sanitizers
         --enable-profiler
