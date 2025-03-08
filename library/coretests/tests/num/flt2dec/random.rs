@@ -79,6 +79,20 @@ where
     (npassed, nignored)
 }
 
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+pub fn f16_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
+where
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
+{
+    let mut rng = crate::test_rng();
+    let f16_range = Uniform::new(0x0001u16, 0x7c00).unwrap();
+    iterate("f16_random_equivalence_test", k, n, f, g, |_| {
+        let x = f16::from_bits(f16_range.sample(&mut rng));
+        decode_finite(x)
+    });
+}
+
 pub fn f32_random_equivalence_test<F, G>(f: F, g: G, k: usize, n: usize)
 where
     F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
@@ -103,6 +117,27 @@ where
         let x = f64::from_bits(f64_range.sample(&mut rng));
         decode_finite(x)
     });
+}
+
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+pub fn f16_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
+where
+    F: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> Option<(&'a [u8], i16)>,
+    G: for<'a> FnMut(&Decoded, &'a mut [MaybeUninit<u8>]) -> (&'a [u8], i16),
+{
+    // we have only 2^23 * (2^8 - 1) - 1 = 2,139,095,039 positive finite f16 values,
+    // so why not simply testing all of them?
+    //
+    // this is of course very stressful (and thus should be behind an `#[ignore]` attribute),
+    // but with `-C opt-level=3 -C lto` this only takes about an hour or so.
+
+    // iterate from 0x0000_0001 to 0x7f7f_ffff, i.e., all finite ranges
+    let (npassed, nignored) =
+        iterate("f16_exhaustive_equivalence_test", k, 0x7bff, f, g, |i: usize| {
+            let x = f16::from_bits(i as u16 + 1);
+            decode_finite(x)
+        });
+    assert_eq!((npassed, nignored), (2121451881, 17643158));
 }
 
 pub fn f32_exhaustive_equivalence_test<F, G>(f: F, g: G, k: usize)
@@ -133,6 +168,17 @@ fn shortest_random_equivalence_test() {
 
     f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
     f32_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
+    #[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+    f16_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, n);
+}
+
+#[test]
+#[ignore] // it is too expensive
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+fn shortest_f16_exhaustive_equivalence_test() {
+    // see the f32 version
+    use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
+    f16_exhaustive_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS);
 }
 
 #[test]
@@ -156,6 +202,23 @@ fn shortest_f64_hard_random_equivalence_test() {
 
     use core::num::flt2dec::strategy::dragon::format_shortest as fallback;
     f64_random_equivalence_test(format_shortest_opt, fallback, MAX_SIG_DIGITS, 100_000_000);
+}
+
+#[test]
+#[cfg(any(target_arch = "x86", all(target_arch = "aarch64", target_feature = "neon")))]
+fn exact_f16_random_equivalence_test() {
+    use core::num::flt2dec::strategy::dragon::format_exact as fallback;
+    // Miri is too slow
+    let n = if cfg!(miri) { 3 } else { 1_000 };
+
+    for k in 1..21 {
+        f16_random_equivalence_test(
+            |d, buf| format_exact_opt(d, buf, i16::MIN),
+            |d, buf| fallback(d, buf, i16::MIN),
+            k,
+            n,
+        );
+    }
 }
 
 #[test]
