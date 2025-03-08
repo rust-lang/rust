@@ -1,17 +1,15 @@
-use crate::{is_msvc, is_windows, uname};
+use crate::{is_msvc, is_win7, is_windows, uname};
 
 /// `EXTRACFLAGS`
 pub fn extra_c_flags() -> Vec<&'static str> {
     if is_windows() {
         if is_msvc() {
-            vec![
-                "ws2_32.lib",
-                "userenv.lib",
-                "advapi32.lib",
-                "bcrypt.lib",
-                "ntdll.lib",
-                "synchronization.lib",
-            ]
+            let mut libs =
+                vec!["ws2_32.lib", "userenv.lib", "bcrypt.lib", "ntdll.lib", "synchronization.lib"];
+            if is_win7() {
+                libs.push("advapi32.lib");
+            }
+            libs
         } else {
             vec!["-lws2_32", "-luserenv", "-lbcrypt", "-lntdll", "-lsynchronization"]
         }
