@@ -1,6 +1,6 @@
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;

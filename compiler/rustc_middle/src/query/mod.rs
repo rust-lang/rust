@@ -41,7 +41,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
