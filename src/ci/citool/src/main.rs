@@ -1,5 +1,6 @@
 mod cpu_usage;
 mod datadog;
+mod merge_report;
 mod metrics;
 mod utils;
 
@@ -13,6 +14,7 @@ use serde_yaml::Value;
 
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
+use crate::merge_report::post_merge_report;
 use crate::metrics::postprocess_metrics;
 use crate::utils::load_env_var;
 
@@ -373,6 +375,13 @@ enum Args {
         /// Path to a CSV containing the CI job CPU usage.
         cpu_usage_csv: PathBuf,
     },
+    /// Generate a report of test execution changes between two rustc commits.
+    PostMergeReport {
+        /// Parent commit to use as a base of the comparison.
+        parent: String,
+        /// Current commit that will be compared to `parent`.
+        current: String,
+    },
 }
 
 #[derive(clap::ValueEnum, Clone)]
@@ -409,6 +418,9 @@ fn main() -> anyhow::Result<()> {
         }
         Args::PostprocessMetrics { metrics_path, summary_path } => {
             postprocess_metrics(&metrics_path, &summary_path)?;
+        }
+        Args::PostMergeReport { current: commit, parent } => {
+            post_merge_report(load_db(default_jobs_file)?, parent, commit)?;
         }
     }
 

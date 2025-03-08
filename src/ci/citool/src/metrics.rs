@@ -105,17 +105,21 @@ struct TestSuiteRecord {
     failed: u64,
 }
 
+fn test_metadata_name(metadata: &TestSuiteMetadata) -> String {
+    match metadata {
+        TestSuiteMetadata::CargoPackage { crates, stage, .. } => {
+            format!("{} (stage {stage})", crates.join(", "))
+        }
+        TestSuiteMetadata::Compiletest { suite, stage, .. } => {
+            format!("{suite} (stage {stage})")
+        }
+    }
+}
+
 fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRecord> {
     let mut records: BTreeMap<String, TestSuiteRecord> = BTreeMap::new();
     for suite in suites {
-        let name = match &suite.metadata {
-            TestSuiteMetadata::CargoPackage { crates, stage, .. } => {
-                format!("{} (stage {stage})", crates.join(", "))
-            }
-            TestSuiteMetadata::Compiletest { suite, stage, .. } => {
-                format!("{suite} (stage {stage})")
-            }
-        };
+        let name = test_metadata_name(&suite.metadata);
         let record = records.entry(name).or_default();
         for test in &suite.tests {
             match test.outcome {
@@ -134,7 +138,7 @@ fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRec
     records
 }
 
-fn get_test_suites(metrics: &JsonRoot) -> Vec<&TestSuite> {
+pub fn get_test_suites(metrics: &JsonRoot) -> Vec<&TestSuite> {
     fn visit_test_suites<'a>(nodes: &'a [JsonNode], suites: &mut Vec<&'a TestSuite>) {
         for node in nodes {
             match node {
