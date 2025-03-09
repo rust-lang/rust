@@ -24,3 +24,6 @@ nightly = [
     "rustc_index/nightly",
     "rustc_type_ir/nightly",
 ]
+
+[lints]
+workspace = true
