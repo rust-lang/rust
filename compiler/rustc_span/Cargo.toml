@@ -22,3 +22,6 @@ sha2 = "0.10.1"
 tracing = "0.1"
 unicode-width = "0.2.0"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

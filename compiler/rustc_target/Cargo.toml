@@ -22,3 +22,6 @@ default-features = false
 features = ["elf", "macho"]
 version = "0.36.2"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

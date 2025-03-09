@@ -39,3 +39,6 @@ features = [
     "Win32_Security",
     "Win32_System_Threading",
 ]
+
+[lints]
+workspace = true
