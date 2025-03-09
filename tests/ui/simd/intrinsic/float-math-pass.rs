@@ -12,8 +12,11 @@
 #![allow(non_camel_case_types)]
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct f32x4(pub [f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 use std::intrinsics::simd::*;
 
@@ -25,12 +28,12 @@ macro_rules! assert_approx_eq_f32 {
 }
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => {{
-        let a = $a;
-        let b = $b;
-        assert_approx_eq_f32!(a.0[0], b.0[0]);
-        assert_approx_eq_f32!(a.0[1], b.0[1]);
-        assert_approx_eq_f32!(a.0[2], b.0[2]);
-        assert_approx_eq_f32!(a.0[3], b.0[3]);
+        let a = $a.to_array();
+        let b = $b.to_array();
+        assert_approx_eq_f32!(a[0], b[0]);
+        assert_approx_eq_f32!(a[1], b[1]);
+        assert_approx_eq_f32!(a[2], b[2]);
+        assert_approx_eq_f32!(a[3], b[3]);
     }};
 }
 
@@ -77,15 +80,15 @@ fn main() {
 
         // rounding functions
         let r = simd_floor(h);
-        assert_eq!(z, r);
+        assert_eq!(z.to_array(), r.to_array());
 
         let r = simd_ceil(h);
-        assert_eq!(x, r);
+        assert_eq!(x.to_array(), r.to_array());
 
         let r = simd_round(h);
-        assert_eq!(x, r);
+        assert_eq!(x.to_array(), r.to_array());
 
         let r = simd_trunc(h);
-        assert_eq!(z, r);
+        assert_eq!(z.to_array(), r.to_array());
     }
 }

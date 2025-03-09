@@ -5,14 +5,23 @@
 #![feature(repr_simd, core_intrinsics)]
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
+#![feature(structural_match)]
 
 use std::marker::ConstParamTy;
 
 use std::intrinsics::simd::simd_shuffle;
 
-#[derive(Copy, Clone, ConstParamTy, PartialEq, Eq)]
+#[derive(Copy, Clone, ConstParamTy)]
 #[repr(simd)]
-struct Simd<T, const N: usize>([T; N]);
+struct Simd<T: Copy, const N: usize>([T; N]);
+impl<T: Copy, const N: usize> std::marker::StructuralPartialEq for Simd<T, N> {}
+impl<T: Eq + Copy, const N: usize> Eq for Simd<T, N> {}
+impl<T: PartialEq + Copy, const N: usize> PartialEq for Simd<T, N> {
+    fn eq(&self, other: &Self) -> bool { self.to_array() == other.to_array() }
+}
+impl<T: Copy, const N: usize> Simd<T, N> {
+    fn to_array(self) -> [T; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 unsafe fn __shuffle_vector16<const IDX: Simd<u32, 16>, T, U>(x: T, y: T) -> U {
     simd_shuffle(x, y, IDX)
@@ -25,10 +34,10 @@ fn main() {
     let b = Simd::<u8, 4>([4, 5, 6, 7]);
     unsafe {
         let x: Simd<u8, 4> = simd_shuffle(a, b, I1);
-        assert_eq!(x.0, [0, 2, 4, 6]);
+        assert_eq!(x.to_array(), [0, 2, 4, 6]);
 
         let y: Simd<u8, 2> = simd_shuffle(a, b, I2);
-        assert_eq!(y.0, [1, 5]);
+        assert_eq!(y.to_array(), [1, 5]);
     }
 
     // Test that an indirection (via an unnamed constant)
