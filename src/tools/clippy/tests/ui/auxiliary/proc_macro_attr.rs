@@ -1,5 +1,4 @@
-#![feature(repr128, proc_macro_hygiene, proc_macro_quote, box_patterns)]
-#![allow(incomplete_features)]
+#![feature(proc_macro_hygiene, proc_macro_quote, box_patterns)]
 #![allow(clippy::useless_conversion, clippy::uninlined_format_args)]
 
 extern crate proc_macro;
