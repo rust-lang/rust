@@ -638,7 +638,6 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::precedence::PRECEDENCE_INFO,
     crate::precedence::PRECEDENCE_BITS_INFO,
     crate::ptr::CMP_NULL_INFO,
-    crate::ptr::INVALID_NULL_PTR_USAGE_INFO,
     crate::ptr::MUT_FROM_REF_INFO,
     crate::ptr::PTR_ARG_INFO,
     crate::ptr::PTR_EQ_INFO,
