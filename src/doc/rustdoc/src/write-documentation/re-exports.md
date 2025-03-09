@@ -74,7 +74,9 @@ pub mod public_mod {
 pub use self::public_mod::Public;
 ```
 
-If an item has `#[doc(hidden)]`, it won't be inlined (nor visible in the generated documentation):
+If an item has a reexport chain with `#[doc(hidden)]`,
+and the item has no other attributes,
+it won't be visible in the generated documentation:
 
 ```rust,ignore (inline)
 // This struct won't be visible.
