@@ -97,6 +97,15 @@ impl<M> ModuleCodegen<M> {
         }
     }
 
+    pub fn new_personality_stub(name: impl Into<String>, module: M) -> Self {
+        Self {
+            name: name.into(),
+            module_llvm: module,
+            kind: ModuleKind::PersonalityStub,
+            thin_lto_buffer: None,
+        }
+    }
+
     pub fn into_compiled_module(
         self,
         emit_obj: bool,
@@ -164,6 +173,7 @@ pub enum ModuleKind {
     Regular,
     Metadata,
     Allocator,
+    PersonalityStub,
 }
 
 bitflags::bitflags! {
@@ -232,6 +242,7 @@ pub struct CrateInfo {
 pub struct CodegenResults {
     pub modules: Vec<CompiledModule>,
     pub allocator_module: Option<CompiledModule>,
+    pub personality_stub_module: Option<CompiledModule>,
     pub metadata_module: Option<CompiledModule>,
     pub metadata: rustc_metadata::EncodedMetadata,
     pub crate_info: CrateInfo,
