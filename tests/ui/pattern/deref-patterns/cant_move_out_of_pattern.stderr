@@ -32,6 +32,40 @@ help: consider borrowing the pattern binding
 LL |         deref!(ref x) => x,
    |                +++
 
-error: aborting due to 2 previous errors
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/cant_move_out_of_pattern.rs:27:11
+   |
+LL |     match b {
+   |           ^
+LL |
+LL |         Container(x) => x,
+   |                   -
+   |                   |
+   |                   data moved here
+   |                   move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         Container(ref x) => x,
+   |                   +++
+
+error[E0507]: cannot move out of a shared reference
+  --> $DIR/cant_move_out_of_pattern.rs:35:11
+   |
+LL |     match rc {
+   |           ^^
+LL |
+LL |         Container(x) => x,
+   |                   -
+   |                   |
+   |                   data moved here
+   |                   move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         Container(ref x) => x,
+   |                   +++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0507`.
