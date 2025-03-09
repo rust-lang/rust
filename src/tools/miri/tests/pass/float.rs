@@ -6,6 +6,7 @@
 #![feature(f16)]
 #![allow(arithmetic_overflow)]
 #![allow(internal_features)]
+#![allow(redundant_transmutation)]
 
 use std::any::type_name;
 use std::cmp::min;
