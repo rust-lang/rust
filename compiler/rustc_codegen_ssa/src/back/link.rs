@@ -1046,7 +1046,18 @@ fn link_natively(
     let strip = sess.opts.cg.strip;
 
     if sess.target.is_like_osx {
-        let stripcmd = "rust-objcopy";
+        let stripcmd = if sess.host.os == "macos" && sess.target.os != "macos" {
+            // FIXME(#138212): properly fix `llvm-objcopy` upstream when stripping iOS binaries
+            // (seemingly producing stripped binaries with incorrect offsets that fail platform
+            // consistency checks). This can only be used on macOS -> iOS cross because other linux
+            // hosts may not have a (good) system strip in this location.
+            //
+            // See upstream bug report <https://github.com/llvm/llvm-project/issues/130472>.
+            "/usr/bin/strip"
+        } else {
+            "rust-objcopy"
+        };
+
         match (strip, crate_type) {
             (Strip::Debuginfo, _) => {
                 strip_with_external_utility(sess, stripcmd, out_filename, &["--strip-debug"])
