@@ -609,6 +609,14 @@ pub(crate) enum UselessPtrNullChecksDiag<'a> {
     FnRet { fn_name: Ident },
 }
 
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_null_arguments)]
+#[help(lint_doc)]
+pub(crate) struct InvalidNullArgumentsDiag {
+    #[note(lint_origin)]
+    pub null_span: Option<Span>,
+}
+
 // for_loops_over_fallibles.rs
 #[derive(LintDiagnostic)]
 #[diag(lint_for_loops_over_fallibles)]
