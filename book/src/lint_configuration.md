@@ -744,6 +744,19 @@ The named groupings of different source item kinds within modules.
 * [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
 
 
+## `module-items-ordered-within-groupings`
+Whether the items within module groups should be ordered alphabetically or not.
+
+This option can be configured to "all", "none", or a list of specific grouping names that should be checked
+(e.g. only "enums").
+
+**Default Value:** `"none"`
+
+---
+**Affected lints:**
+* [`arbitrary_source_item_ordering`](https://rust-lang.github.io/rust-clippy/master/index.html#arbitrary_source_item_ordering)
+
+
 ## `msrv`
 The minimum rust version that the project supports. Defaults to the `rust-version` field in `Cargo.toml`
 
