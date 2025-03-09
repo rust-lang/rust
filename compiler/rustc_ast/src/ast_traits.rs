@@ -6,7 +6,6 @@ use std::fmt;
 use std::marker::PhantomData;
 
 use crate::ptr::P;
-use crate::token::Nonterminal;
 use crate::tokenstream::LazyAttrTokenStream;
 use crate::{
     Arm, AssocItem, AttrItem, AttrKind, AttrVec, Attribute, Block, Crate, Expr, ExprField,
@@ -203,25 +202,6 @@ impl HasTokens for Attribute {
                 panic!("Called tokens_mut on doc comment attr {kind:?}")
             }
         })
-    }
-}
-
-impl HasTokens for Nonterminal {
-    fn tokens(&self) -> Option<&LazyAttrTokenStream> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens(),
-            Nonterminal::NtBlock(block) => block.tokens(),
-        }
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<LazyAttrTokenStream>> {
-        match self {
-            Nonterminal::NtItem(item) => item.tokens_mut(),
-            Nonterminal::NtStmt(stmt) => stmt.tokens_mut(),
-            Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => expr.tokens_mut(),
-            Nonterminal::NtBlock(block) => block.tokens_mut(),
-        }
     }
 }
 
