@@ -1825,10 +1825,19 @@ pub trait Iterator {
         Inspect::new(self, f)
     }
 
-    /// Borrows an iterator, rather than consuming it.
+    /// Creates a "by reference" adapter for this instance of `Iterator`.
     ///
-    /// This is useful to allow applying iterator adapters while still
-    /// retaining ownership of the original iterator.
+    /// Consuming method calls (direct or indirect calls to `next`)
+    /// on the "by reference" adapter will consume the original iterator,
+    /// but ownership-taking methods (those with a `self` parameter)
+    /// only take ownership of the "by reference" iterator.
+    ///
+    /// This is useful for applying ownership-taking methods
+    /// (such as `take` in the example below)
+    /// without giving up ownership of the original iterator,
+    /// so you can use the original iterator afterwards.
+    ///
+    /// Uses [impl<I: Iterator + ?Sized> Iterator for &mut I { type Item = I::Item; ...}](https://doc.rust-lang.org/nightly/std/iter/trait.Iterator.html#impl-Iterator-for-%26mut+I).
     ///
     /// # Examples
     ///
@@ -4024,6 +4033,9 @@ where
     }
 }
 
+/// Implements `Iterator` for mutable references to iterators, such as those produced by [`Iterator::by_ref`].
+///
+/// This implementation passes all method calls on to the original iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator + ?Sized> Iterator for &mut I {
     type Item = I::Item;
