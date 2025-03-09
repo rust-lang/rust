@@ -856,8 +856,13 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // such that the old value is not duplicated. Nothing is dropped and
     // nothing here can panic.
     unsafe {
-        let result = ptr::read(dest);
-        ptr::write(dest, src);
+        // Ideally we wouldn't use the intrinsics here, but going through the
+        // `ptr` methods introduces two unnecessary UbChecks, so until we can
+        // remove those for pointers that come from references, this uses the
+        // intrinsics instead so this stays very cheap in MIR (and debug).
+
+        let result = crate::intrinsics::read_via_copy(dest);
+        crate::intrinsics::write_via_move(dest, src);
         result
     }
 }
