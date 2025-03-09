@@ -17,6 +17,7 @@
 #![feature(cfg_target_thread_local)]
 #![feature(cfg_ub_checks)]
 #![feature(fmt_debug)]
+#![feature(c_char_type)]
 
 // This part makes sure that none of the well known names are
 // unexpected.
@@ -26,6 +27,8 @@
 // diagnostic prints the list of expected values.
 #[cfg(any(
     // tidy-alphabetical-start
+    c_char_type = "_UNEXPECTED_VALUE",
+    //~^ WARN unexpected `cfg` condition value
     clippy = "_UNEXPECTED_VALUE",
     //~^ WARN unexpected `cfg` condition value
     debug_assertions = "_UNEXPECTED_VALUE",

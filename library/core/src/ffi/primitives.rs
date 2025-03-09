@@ -105,28 +105,59 @@ mod c_char_definition {
         //   architecture defaults). As we only have a target for userspace apps so there are no
         //   special cases for L4Re below.
         //   https://github.com/rust-lang/rust/pull/132975#issuecomment-2484645240
-        if #[cfg(all(
-            not(windows),
-            not(target_vendor = "apple"),
-            not(target_os = "vita"),
-            any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "csky",
-                target_arch = "hexagon",
-                target_arch = "msp430",
-                target_arch = "powerpc",
-                target_arch = "powerpc64",
-                target_arch = "riscv32",
-                target_arch = "riscv64",
-                target_arch = "s390x",
-                target_arch = "xtensa",
-            )
-        ))] {
-            pub(super) type c_char = u8;
+        if #[cfg(feature = "c_char_type")] {
+            cfg_if! {
+                if #[cfg(any(c_char_type = "unsigned", all(
+                    not(c_char_type = "signed"),
+                    not(windows),
+                    not(target_vendor = "apple"),
+                    not(target_os = "vita"),
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "arm",
+                        target_arch = "csky",
+                        target_arch = "hexagon",
+                        target_arch = "msp430",
+                        target_arch = "powerpc",
+                        target_arch = "powerpc64",
+                        target_arch = "riscv32",
+                        target_arch = "riscv64",
+                        target_arch = "s390x",
+                        target_arch = "xtensa",
+                    )
+                )))] {
+                    pub(super) type c_char = u8;
+                } else {
+                    // On every other target, c_char is signed.
+                    pub(super) type c_char = i8;
+                }
+            }
         } else {
-            // On every other target, c_char is signed.
-            pub(super) type c_char = i8;
+            cfg_if! {
+                if #[cfg(all(
+                    not(windows),
+                    not(target_vendor = "apple"),
+                    not(target_os = "vita"),
+                    any(
+                        target_arch = "aarch64",
+                        target_arch = "arm",
+                        target_arch = "csky",
+                        target_arch = "hexagon",
+                        target_arch = "msp430",
+                        target_arch = "powerpc",
+                        target_arch = "powerpc64",
+                        target_arch = "riscv32",
+                        target_arch = "riscv64",
+                        target_arch = "s390x",
+                        target_arch = "xtensa",
+                    )
+                ))] {
+                    pub(super) type c_char = u8;
+                } else {
+                    // On every other target, c_char is signed.
+                    pub(super) type c_char = i8;
+                }
+            }
         }
     }
 }
