@@ -22,7 +22,9 @@ use rustc_fs_util::{fix_windows_verbatim_for_gcc, try_canonicalize};
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_macros::LintDiagnostic;
 use rustc_metadata::fs::{METADATA_FILENAME, copy_to_stdout, emit_wrapper_file};
-use rustc_metadata::{find_native_static_library, walk_native_lib_search_dirs};
+use rustc_metadata::{
+    NativeLibSearchFallback, find_native_static_library, walk_native_lib_search_dirs,
+};
 use rustc_middle::bug;
 use rustc_middle::lint::lint_level;
 use rustc_middle::middle::debugger_visualizer::DebuggerVisualizerFile;
@@ -2129,19 +2131,15 @@ fn add_library_search_dirs(
         return;
     }
 
-    walk_native_lib_search_dirs(
-        sess,
-        self_contained_components,
-        apple_sdk_root,
-        |dir, is_framework| {
-            if is_framework {
-                cmd.framework_path(dir);
-            } else {
-                cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
-            }
-            ControlFlow::<()>::Continue(())
-        },
-    );
+    let fallback = Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root });
+    walk_native_lib_search_dirs(sess, fallback, |dir, is_framework| {
+        if is_framework {
+            cmd.framework_path(dir);
+        } else {
+            cmd.include_path(&fix_windows_verbatim_for_gcc(dir));
+        }
+        ControlFlow::<()>::Continue(())
+    });
 }
 
 /// Add options making relocation sections in the produced ELF files read-only

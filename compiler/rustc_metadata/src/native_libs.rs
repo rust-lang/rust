@@ -21,10 +21,17 @@ use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
 
 use crate::{errors, fluent_generated};
 
+/// The fallback directories are passed to linker, but not used when rustc does the search,
+/// because in the latter case the set of fallback directories cannot always be determined
+/// consistently at the moment.
+pub struct NativeLibSearchFallback<'a> {
+    pub self_contained_components: LinkSelfContainedComponents,
+    pub apple_sdk_root: Option<&'a Path>,
+}
+
 pub fn walk_native_lib_search_dirs<R>(
     sess: &Session,
-    self_contained_components: LinkSelfContainedComponents,
-    apple_sdk_root: Option<&Path>,
+    fallback: Option<NativeLibSearchFallback<'_>>,
     mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
 ) -> ControlFlow<R> {
     // Library search paths explicitly supplied by user (`-L` on the command line).
@@ -37,6 +44,11 @@ pub fn walk_native_lib_search_dirs<R>(
             f(&search_path.dir, true)?;
         }
     }
+
+    let Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root }) = fallback
+    else {
+        return ControlFlow::Continue(());
+    };
 
     // The toolchain ships some native library components and self-contained linking was enabled.
     // Add the self-contained library directory to search paths.
@@ -93,23 +105,17 @@ pub fn try_find_native_static_library(
         if os == unix { vec![os] } else { vec![os, unix] }
     };
 
-    // FIXME: Account for self-contained linking settings and Apple SDK.
-    walk_native_lib_search_dirs(
-        sess,
-        LinkSelfContainedComponents::empty(),
-        None,
-        |dir, is_framework| {
-            if !is_framework {
-                for (prefix, suffix) in &formats {
-                    let test = dir.join(format!("{prefix}{name}{suffix}"));
-                    if test.exists() {
-                        return ControlFlow::Break(test);
-                    }
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
                 }
             }
-            ControlFlow::Continue(())
-        },
-    )
+        }
+        ControlFlow::Continue(())
+    })
     .break_value()
 }
 
@@ -132,22 +138,17 @@ pub fn try_find_native_dynamic_library(
         vec![os, meson, mingw]
     };
 
-    walk_native_lib_search_dirs(
-        sess,
-        LinkSelfContainedComponents::empty(),
-        None,
-        |dir, is_framework| {
-            if !is_framework {
-                for (prefix, suffix) in &formats {
-                    let test = dir.join(format!("{prefix}{name}{suffix}"));
-                    if test.exists() {
-                        return ControlFlow::Break(test);
-                    }
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
                 }
             }
-            ControlFlow::Continue(())
-        },
-    )
+        }
+        ControlFlow::Continue(())
+    })
     .break_value()
 }
 
