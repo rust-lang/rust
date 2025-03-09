@@ -610,7 +610,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             Err(ErrorGuaranteed { .. }) => {
                 // We don't run dropck on HIR, and dropck looks inside fields of
                 // types, so there's no guarantee that it succeeds. We also
-                // can't rely on the the `ErrorGuaranteed` from `fully_perform` here
+                // can't rely on the `ErrorGuaranteed` from `fully_perform` here
                 // because it comes from delay_span_bug.
                 //
                 // Do this inside of a probe because we don't particularly care (or want)

@@ -3,7 +3,7 @@
 //
 // It should work, but due to interactions between how #[cfg]s are
 // expanded, the lint machinery and the check-cfg impl, we
-// miss the #[allow], althrough we probably shoudln't.
+// miss the #[allow], althrough we probably shouldn't.
 //
 // cf. https://github.com/rust-lang/rust/issues/124735
 //
