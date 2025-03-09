@@ -29,7 +29,7 @@ struct LintJson {
 }
 
 impl LintJson {
-    /// Returns a tuple of name and file_line for sorting and comparison.
+    /// Returns a tuple of name and `file_line` for sorting and comparison.
     fn key(&self) -> impl Ord + '_ {
         (self.name.as_str(), self.file_line.as_str())
     }
