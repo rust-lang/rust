@@ -1,6 +1,6 @@
 use super::UnsafeCell;
 use crate::hint::unreachable_unchecked;
-use crate::ops::Deref;
+use crate::ops::{Deref, DerefMut};
 use crate::{fmt, mem};
 
 enum State<T, F> {
@@ -281,6 +281,14 @@ impl<T, F: FnOnce() -> T> Deref for LazyCell<T, F> {
     #[inline]
     fn deref(&self) -> &T {
         LazyCell::force(self)
+    }
+}
+
+#[stable(feature = "lazy_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+impl<T, F: FnOnce() -> T> DerefMut for LazyCell<T, F> {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut T {
+        LazyCell::force_mut(self)
     }
 }
 
