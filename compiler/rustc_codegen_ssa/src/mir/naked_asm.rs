@@ -125,7 +125,8 @@ fn prefix_and_suffix<'tcx>(
     // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
     // if no alignment is specified, an alignment of 4 bytes is used.
     let min_function_alignment = tcx.sess.opts.unstable_opts.min_function_alignment;
-    let align = Ord::max(min_function_alignment, attrs.alignment).map(|a| a.bytes()).unwrap_or(4);
+    let align_bytes =
+        Ord::max(min_function_alignment, attrs.alignment).map(|a| a.bytes()).unwrap_or(4);
 
     // In particular, `.arm` can also be written `.code 32` and `.thumb` as `.code 16`.
     let (arch_prefix, arch_suffix) = if is_arm {
@@ -157,11 +158,15 @@ fn prefix_and_suffix<'tcx>(
             }
             Linkage::LinkOnceAny | Linkage::LinkOnceODR | Linkage::WeakAny | Linkage::WeakODR => {
                 match asm_binary_format {
-                    BinaryFormat::Elf
-                    | BinaryFormat::Coff
-                    | BinaryFormat::Wasm
-                    | BinaryFormat::Xcoff => {
+                    BinaryFormat::Elf | BinaryFormat::Coff | BinaryFormat::Wasm => {
                         writeln!(w, ".weak {asm_name}")?;
+                    }
+                    BinaryFormat::Xcoff => {
+                        // FIXME: there is currently no way of defining a weak symbol in inline assembly
+                        // for AIX. See https://github.com/llvm/llvm-project/issues/130269
+                        emit_fatal(
+                            "cannot create weak symbols from inline assembly for this target",
+                        )
                     }
                     BinaryFormat::MachO => {
                         writeln!(w, ".globl {asm_name}")?;
@@ -189,7 +194,7 @@ fn prefix_and_suffix<'tcx>(
     let mut begin = String::new();
     let mut end = String::new();
     match asm_binary_format {
-        BinaryFormat::Elf | BinaryFormat::Xcoff => {
+        BinaryFormat::Elf => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
 
             let progbits = match is_arm {
@@ -203,7 +208,7 @@ fn prefix_and_suffix<'tcx>(
             };
 
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".hidden {asm_name}").unwrap();
@@ -224,7 +229,7 @@ fn prefix_and_suffix<'tcx>(
         BinaryFormat::MachO => {
             let section = link_section.unwrap_or("__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".private_extern {asm_name}").unwrap();
@@ -240,7 +245,7 @@ fn prefix_and_suffix<'tcx>(
         BinaryFormat::Coff => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
@@ -278,6 +283,33 @@ fn prefix_and_suffix<'tcx>(
             writeln!(end).unwrap();
             // .size is ignored for function symbols, so we can skip it
             writeln!(end, "end_function").unwrap();
+        }
+        BinaryFormat::Xcoff => {
+            // the LLVM XCOFFAsmParser is extremely incomplete and does not implement many of the
+            // documented directives.
+            //
+            // - https://github.com/llvm/llvm-project/blob/1b25c0c4da968fe78921ce77736e5baef4db75e3/llvm/lib/MC/MCParser/XCOFFAsmParser.cpp
+            // - https://www.ibm.com/docs/en/ssw_aix_71/assembler/assembler_pdf.pdf
+            //
+            // Consequently, we try our best here but cannot do as good a job as for other binary
+            // formats.
+
+            // FIXME: start a section. `.csect` is not currently implemented in LLVM
+
+            // fun fact: according to the assembler documentation, .align takes an exponent,
+            // but LLVM only accepts powers of 2 (but does emit the exponent)
+            // so when we hand `.align 32` to LLVM, the assembly output will contain `.align 5`
+            writeln!(begin, ".align {}", align_bytes).unwrap();
+
+            write_linkage(&mut begin).unwrap();
+            if let Visibility::Hidden = item_data.visibility {
+                // FIXME apparently `.globl {asm_name}, hidden` is valid
+                // but due to limitations with `.weak` (see above) we can't really use that in general yet
+            }
+            writeln!(begin, "{asm_name}:").unwrap();
+
+            writeln!(end).unwrap();
+            // FIXME: end the section?
         }
     }
 
