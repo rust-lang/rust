@@ -60,6 +60,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use teeos::fill_bytes;
+    } else if #[cfg(target_os = "trusty")] {
+        mod trusty;
+        pub use trusty::fill_bytes;
     } else if #[cfg(target_os = "uefi")] {
         mod uefi;
         pub use uefi::fill_bytes;
