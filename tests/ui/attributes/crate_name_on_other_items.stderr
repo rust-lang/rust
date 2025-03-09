@@ -1,0 +1,15 @@
+error[E0539]: expected a quoted string literal
+  --> $DIR/crate_name_on_other_items.rs:3:1
+   |
+LL | #[crate_name = concat!("Cloneb")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0539]: malformed `crate_name` attribute: expected to be of the form `#[crate_name = ...]`
+  --> $DIR/crate_name_on_other_items.rs:10:1
+   |
+LL | #[crate_name]
+   | ^^^^^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0539`.

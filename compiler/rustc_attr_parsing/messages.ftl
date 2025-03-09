@@ -87,6 +87,8 @@ attr_parsing_multiple_item =
 attr_parsing_multiple_stability_levels =
     multiple stability levels
 
+attr_parsing_name_value = malformed `{$name}` attribute: expected to be of the form `#[{$name} = ...]`
+
 attr_parsing_non_ident_feature =
     'feature' is not an identifier
 
