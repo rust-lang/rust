@@ -749,3 +749,18 @@ fn unwobbly_wtf8_plus_utf8_is_utf8() {
     string.push_str("some utf-8");
     assert!(string.is_known_utf8);
 }
+
+#[test]
+fn display_wtf8() {
+    let string = Wtf8Buf::from_wide(&[b'b' as _, 0xD800, b'd' as _]);
+    assert!(!string.is_known_utf8);
+    assert_eq!(format!("a{:^10}e", string), "a   b�d    e");
+    assert_eq!(format!("a{:^10}e", string.as_slice()), "a   b�d    e");
+
+    let mut string = Wtf8Buf::from_str("bcd");
+    assert!(string.is_known_utf8);
+    assert_eq!(format!("a{:^10}e", string), "a   bcd    e");
+    assert_eq!(format!("a{:^10}e", string.as_slice()), "a   bcd    e");
+    string.is_known_utf8 = false;
+    assert_eq!(format!("a{:^10}e", string), "a   bcd    e");
+}
