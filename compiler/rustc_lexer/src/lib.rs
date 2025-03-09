@@ -276,6 +276,62 @@ pub fn strip_shebang(input: &str) -> Option<usize> {
     None
 }
 
+/// Frontmatter is a special attribute type reserved for use by external tools
+///
+/// This must be called after [`strip_shebang`]
+pub fn strip_frontmatter(input: &str) -> Option<usize> {
+    // Whitespace may precede a frontmatter but must end with a newline
+    let mut rest = input;
+    while !rest.is_empty() {
+        let without_spaces = rest.trim_start_matches(|c| is_whitespace(c) && c != '\n');
+        let without_nl = without_spaces.trim_start_matches('\n');
+        if without_nl.len() == rest.len() {
+            // nothing trimmed
+            break;
+        } else if without_nl.len() == without_spaces.len() {
+            // either not a frontmatter or invalid opening
+            return None;
+        }
+        rest = without_nl;
+    }
+
+    // Opens with a line that starts with 3+ `-` followed by an optional identifier
+    const FENCE_CHAR: char = '-';
+    let fence_end =
+        rest.char_indices().find_map(|(i, c)| (c != FENCE_CHAR).then_some(i)).unwrap_or(rest.len());
+    if fence_end < 3 {
+        // either not a frontmatter or invalid frontmatter opening
+        return None;
+    }
+    let (fence_pattern, rest) = rest.split_at(fence_end);
+    let (info, rest) = rest.split_once("\n").unwrap_or((rest, ""));
+    let info = info.trim_matches(is_whitespace);
+    if !info.is_empty() && !is_ident(info) {
+        // invalid infostring
+        return None;
+    }
+
+    // Ends with a line that starts with a matching number of `-` only followed by whitespace
+    let rest = if let Some(rest) = rest.strip_prefix(fence_pattern) {
+        rest
+    } else {
+        let nl_fence_pattern = format!("\n{fence_pattern}");
+        let Some(frontmatter_nl) = rest.find(&nl_fence_pattern) else {
+            // frontmatter close is required
+            return None;
+        };
+        &rest[frontmatter_nl + nl_fence_pattern.len()..]
+    };
+
+    let (line, rest) = rest.split_once("\n").unwrap_or((rest, ""));
+    let line = line.trim_matches(is_whitespace);
+    if !line.is_empty() {
+        // invalid close, even if there are extra `-`s
+        return None;
+    }
+    Some(input.len() - rest.len())
+}
+
 /// Validates a raw string literal. Used for getting more information about a
 /// problem with a `RawStr`/`RawByteStr` with a `None` field.
 #[inline]
