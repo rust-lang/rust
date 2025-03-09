@@ -231,8 +231,6 @@
 // cdb-command: dx c_style_i128_d
 // cdb-check: c_style_i128_d   : D [Type: enum2$<msvc_pretty_enums::CStyleI128>]
 #![feature(rustc_attrs)]
-#![feature(repr128)]
-#![feature(arbitrary_enum_discriminant)]
 
 use std::num::NonZero;
 
