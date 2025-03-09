@@ -112,6 +112,7 @@ pub enum ItemKind {
     Static,
     Const,
     Ctor(CtorKind),
+    GlobalAsm,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug, Hash, Serialize)]
