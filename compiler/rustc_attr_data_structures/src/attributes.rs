@@ -38,7 +38,8 @@ pub enum InstructionSetAttr {
     ArmT32,
 }
 
-#[derive(Clone, Encodable, Decodable, Debug, PartialEq, Eq, HashStable_Generic, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default, PrintAttribute)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
 pub enum OptimizeAttr {
     /// No `#[optimize(..)]` attribute
     #[default]
@@ -191,6 +192,7 @@ pub enum AttributeKind {
     },
     Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
+    Optimize(OptimizeAttr, Span),
     Repr(ThinVec<(ReprAttr, Span)>),
     RustcForceInline(Span, Option<Symbol>),
     Stability {

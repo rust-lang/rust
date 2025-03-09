@@ -38,13 +38,16 @@ LL | #[optimize(banana)]
    = help: add `#![feature(optimize_attribute)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0722]: invalid argument
-  --> $DIR/feature-gate-optimize_attribute.rs:12:12
+error[E0539]: malformed `optimize` attribute input
+  --> $DIR/feature-gate-optimize_attribute.rs:12:1
    |
 LL | #[optimize(banana)]
-   |            ^^^^^^
+   | ^^^^^^^^^^^------^^
+   | |          |
+   | |          valid arguments are `size`, `speed` or `none`
+   | help: must be of the form: `#[optimize(size|speed|none)]`
 
 error: aborting due to 5 previous errors
 
-Some errors have detailed explanations: E0658, E0722.
-For more information about an error, try `rustc --explain E0658`.
+Some errors have detailed explanations: E0539, E0658.
+For more information about an error, try `rustc --explain E0539`.

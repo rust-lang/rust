@@ -685,6 +685,7 @@ E0804: 0804,
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
 //  E0721, // `await` keyword
+//  E0722, // replaced with a generic attribute input check
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
 //  E0744, // merged into E0728
