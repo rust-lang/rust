@@ -153,9 +153,13 @@ resolve_extern_crate_self_requires_renaming =
     `extern crate self;` requires renaming
     .suggestion = rename the `self` crate to be able to import it
 
+resolve_forward_declared_generic_in_const_param_ty =
+    const parameter types cannot reference parameters before they are declared
+    .label = const parameter type cannot reference `{$param}` before it is declared
+
 resolve_forward_declared_generic_param =
-    generic parameters with a default cannot use forward declared identifiers
-    .label = defaulted generic parameters cannot be forward declared
+    generic parameter defaults cannot reference parameters before they are declared
+    .label = cannot reference `{$param}` before it is declared
 
 resolve_found_an_item_configured_out =
     found an item that was configured out
@@ -377,9 +381,11 @@ resolve_self_imports_only_allowed_within_multipart_suggestion =
 resolve_self_imports_only_allowed_within_suggestion =
     consider importing the module directly
 
+resolve_self_in_const_generic_ty =
+    cannot use `Self` in const parameter type
+
 resolve_self_in_generic_param_default =
     generic parameters cannot use `Self` in their defaults
-    .label = `Self` in generic parameter default
 
 resolve_similarly_named_defined_here =
     similarly named {$candidate_descr} `{$candidate}` defined here
