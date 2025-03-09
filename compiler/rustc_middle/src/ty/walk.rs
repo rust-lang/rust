@@ -141,6 +141,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                         stack.push(end.into());
                         stack.push(start.into());
                     }
+                    ty::PatternKind::NotNull => {}
                 }
                 stack.push(ty.into());
             }

@@ -584,7 +584,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                                 bug!("Unsupported cast of {operand:?} to {cast:?}");
                             })
                     }
-                    mir::CastKind::Transmute => {
+                    mir::CastKind::StripPat | mir::CastKind::Transmute => {
                         self.codegen_transmute_operand(bx, operand, cast).unwrap_or_else(|| {
                             bug!("Unsupported transmute-as-operand of {operand:?} to {cast:?}");
                         })

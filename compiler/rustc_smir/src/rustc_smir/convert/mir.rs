@@ -312,7 +312,8 @@ impl<'tcx> Stable<'tcx> for mir::CastKind {
             IntToFloat => stable_mir::mir::CastKind::IntToFloat,
             PtrToPtr => stable_mir::mir::CastKind::PtrToPtr,
             FnPtrToPtr => stable_mir::mir::CastKind::FnPtrToPtr,
-            Transmute => stable_mir::mir::CastKind::Transmute,
+            // FIXME(pattern_types): this is a correct (but lossy) representation change
+            StripPat | Transmute => stable_mir::mir::CastKind::Transmute,
         }
     }
 }

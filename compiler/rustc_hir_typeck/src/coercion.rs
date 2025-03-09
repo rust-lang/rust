@@ -56,7 +56,7 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, GenericArgsRef, Pattern, Ty, TyCtxt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -257,6 +257,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // It cannot convert closures that require unsafe.
                 self.coerce_closure_to_fn(a, closure_def_id_a, args_a, b)
             }
+            ty::Pat(base, pat) => self.coerce_from_pat_ty(base, pat, b),
             _ => {
                 // Otherwise, just use unification rules.
                 self.unify_and(a, b, identity)
@@ -989,6 +990,24 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 )
             }
             _ => self.unify_and(a, b, identity),
+        }
+    }
+
+    fn coerce_from_pat_ty(
+        &self,
+        base: Ty<'tcx>,
+        pat: Pattern<'tcx>,
+        b: Ty<'tcx>,
+    ) -> CoerceResult<'tcx> {
+        match *b.kind() {
+            // FIXME(pattern_types): allow coercion to less restrictive patterns
+            ty::Pat(b_base, b_pat) if b_pat == pat => self.unify_and(base, b_base, identity),
+            // Coercing to anything but a pattern type only works by dismissing the pattern
+            _ => {
+                let mut coerce = self.unify_and(base, b, identity)?;
+                coerce.value.0.insert(0, Adjustment { kind: Adjust::StripPattern, target: base });
+                Ok(coerce)
+            }
         }
     }
 

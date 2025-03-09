@@ -234,6 +234,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 debug!(?kind);
                 kind
             }
+            Adjust::StripPattern => ExprKind::Cast { source: self.thir.exprs.push(expr) },
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }

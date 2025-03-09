@@ -284,7 +284,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // FIXME(const_trait_impl): We could enforce these; they correspond to
                     // `&mut T: DerefMut` tho, so it's kinda moot.
                 }
-                Adjust::Borrow(_) => {
+                Adjust::StripPattern | Adjust::Borrow(_) => {
                     // No effects to enforce here.
                 }
             }
@@ -324,17 +324,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     (
-                        &mut [
+                        [
                             Adjustment { kind: Adjust::Deref(_), .. },
                             Adjustment { kind: Adjust::Borrow(AutoBorrow::Ref(..)), .. },
                         ],
-                        &[
+                        [
                             Adjustment { kind: Adjust::Deref(_), .. },
                             .., // Any following adjustments are allowed.
                         ],
                     ) => {
                         // A reborrow has no effect before a dereference, so we can safely replace adjustments.
                         *entry.get_mut() = adj;
+                    }
+
+                    (
+                        [Adjustment { kind: Adjust::StripPattern, .. }],
+                        [Adjustment { kind: Adjust::Borrow(_), .. }, ..],
+                    ) => {
+                        entry.get_mut().extend(adj);
                     }
 
                     _ => {

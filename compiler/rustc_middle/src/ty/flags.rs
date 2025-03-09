@@ -224,6 +224,7 @@ impl FlagComputation {
                         self.add_const(start);
                         self.add_const(end);
                     }
+                    ty::PatternKind::NotNull => {}
                 }
             }
 

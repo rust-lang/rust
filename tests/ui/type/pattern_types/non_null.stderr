@@ -1,0 +1,161 @@
+error: layout_of((*const T) is !null) = Layout {
+           size: Size(8 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(8 bytes),
+               pref: Align(8 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           fields: Primitive,
+           largest_niche: Some(
+               Niche {
+                   offset: Size(0 bytes),
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: 1..=18446744073709551615,
+               },
+           ),
+           uninhabited: false,
+           variants: Single {
+               index: 0,
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: 17179869191,
+       }
+  --> $DIR/non_null.rs:8:1
+   |
+LL | type NonNull<T> = pattern_type!(*const T is !null);
+   | ^^^^^^^^^^^^^^^
+
+error: layout_of(Option<(*const ()) is !null>) = Layout {
+           size: Size(8 bytes),
+           align: AbiAndPrefAlign {
+               abi: Align(8 bytes),
+               pref: Align(8 bytes),
+           },
+           abi: Scalar(
+               Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+           ),
+           fields: Arbitrary {
+               offsets: [
+                   Size(0 bytes),
+               ],
+               memory_index: [
+                   0,
+               ],
+           },
+           largest_niche: None,
+           uninhabited: false,
+           variants: Multiple {
+               tag: Initialized {
+                   value: Pointer(
+                       AddressSpace(
+                           0,
+                       ),
+                   ),
+                   valid_range: (..=0) | (1..),
+               },
+               tag_encoding: Niche {
+                   untagged_variant: 1,
+                   niche_variants: 0..=0,
+                   niche_start: 0,
+               },
+               tag_field: 0,
+               variants: [
+                   Layout {
+                       size: Size(0 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(1 bytes),
+                           pref: Align(8 bytes),
+                       },
+                       abi: Memory {
+                           sized: true,
+                       },
+                       fields: Arbitrary {
+                           offsets: [],
+                           memory_index: [],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: 16085532902410458961,
+                   },
+                   Layout {
+                       size: Size(8 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(8 bytes),
+                           pref: Align(8 bytes),
+                       },
+                       abi: Scalar(
+                           Initialized {
+                               value: Pointer(
+                                   AddressSpace(
+                                       0,
+                                   ),
+                               ),
+                               valid_range: 1..=18446744073709551615,
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(0 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       largest_niche: Some(
+                           Niche {
+                               offset: Size(0 bytes),
+                               value: Pointer(
+                                   AddressSpace(
+                                       0,
+                                   ),
+                               ),
+                               valid_range: 1..=18446744073709551615,
+                           },
+                       ),
+                       uninhabited: false,
+                       variants: Single {
+                           index: 1,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(8 bytes),
+                       randomization_seed: 16085532919590328152,
+                   },
+               ],
+           },
+           max_repr_align: None,
+           unadjusted_abi_align: Align(8 bytes),
+           randomization_seed: 11363110576992142842,
+       }
+  --> $DIR/non_null.rs:11:1
+   |
+LL | type Test = Option<NonNull<()>>;
+   | ^^^^^^^^^
+
+error: aborting due to 2 previous errors
+
