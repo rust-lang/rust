@@ -1,5 +1,4 @@
 use std::assert_matches::assert_matches;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -9,7 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{QueryInvocationId, SelfProfilerRef};
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
@@ -619,7 +618,7 @@ impl<D: Deps> DepGraphData<D> {
         if let Some(prev_index) = self.previous.node_to_index_opt(dep_node) {
             self.current.prev_index_to_index.lock()[prev_index]
         } else {
-            self.current.new_node_to_index.lock_shard_by_value(dep_node).get(dep_node).copied()
+            self.current.new_node_to_index.get(dep_node)
         }
     }
 
@@ -1048,7 +1047,7 @@ rustc_index::newtype_index! {
 /// first, and `data` second.
 pub(super) struct CurrentDepGraph<D: Deps> {
     encoder: GraphEncoder<D>,
-    new_node_to_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
+    new_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
 
     /// This is used to verify that fingerprints do not change between the creation of a node
@@ -1117,12 +1116,9 @@ impl<D: Deps> CurrentDepGraph<D> {
                 profiler,
                 previous,
             ),
-            new_node_to_index: Sharded::new(|| {
-                FxHashMap::with_capacity_and_hasher(
-                    new_node_count_estimate / sharded::shards(),
-                    Default::default(),
-                )
-            }),
+            new_node_to_index: ShardedHashMap::with_capacity(
+                new_node_count_estimate / sharded::shards(),
+            ),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
             anon_id_seed,
             #[cfg(debug_assertions)]
@@ -1152,14 +1148,9 @@ impl<D: Deps> CurrentDepGraph<D> {
         edges: EdgesVec,
         current_fingerprint: Fingerprint,
     ) -> DepNodeIndex {
-        let dep_node_index = match self.new_node_to_index.lock_shard_by_value(&key).entry(key) {
-            Entry::Occupied(entry) => *entry.get(),
-            Entry::Vacant(entry) => {
-                let dep_node_index = self.encoder.send(key, current_fingerprint, edges);
-                entry.insert(dep_node_index);
-                dep_node_index
-            }
-        };
+        let dep_node_index = self
+            .new_node_to_index
+            .get_or_insert_with(key, || self.encoder.send(key, current_fingerprint, edges));
 
         #[cfg(debug_assertions)]
         self.record_edge(dep_node_index, key, current_fingerprint);
@@ -1257,7 +1248,7 @@ impl<D: Deps> CurrentDepGraph<D> {
     ) {
         let node = &prev_graph.index_to_node(prev_index);
         debug_assert!(
-            !self.new_node_to_index.lock_shard_by_value(node).contains_key(node),
+            !self.new_node_to_index.get(node).is_some(),
             "node from previous graph present in new node collection"
         );
     }
@@ -1382,7 +1373,7 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
     if dep_node.is_none() {
         // Try to find it among the new nodes
         for shard in data.current.new_node_to_index.lock_shards() {
-            if let Some((node, _)) = shard.iter().find(|(_, index)| **index == dep_node_index) {
+            if let Some((node, _)) = shard.iter().find(|(_, index)| *index == dep_node_index) {
                 dep_node = Some(*node);
                 break;
             }

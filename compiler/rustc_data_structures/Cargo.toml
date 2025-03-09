@@ -29,6 +29,11 @@ thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end
 
+[dependencies.hashbrown]
+version = "0.15.2"
+default-features = false
+features = ["nightly"] # for may_dangle
+
 [dependencies.parking_lot]
 version = "0.12"
 
