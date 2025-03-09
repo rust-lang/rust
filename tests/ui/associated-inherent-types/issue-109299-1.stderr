@@ -29,7 +29,7 @@ error: unconstrained opaque type
 LL | type X = impl for<T> Fn() -> Lexer<T>::Cursor;
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `X` must be used in combination with a concrete type within the same module
+   = note: `X` must be used in combination with a concrete type within the same crate
 
 error: aborting due to 3 previous errors
 

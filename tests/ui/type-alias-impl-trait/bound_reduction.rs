@@ -10,6 +10,7 @@ type Foo<V> = impl std::fmt::Debug;
 
 trait Trait<U> {}
 
+#[define_opaques(Foo)]
 fn foo_desugared<T: Trait<[u32; {
     #[no_mangle]
     static FOO: usize = 42;

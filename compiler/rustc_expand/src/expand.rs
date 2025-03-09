@@ -780,8 +780,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             }
                         }
                         Err(err) => {
-                            let guar = err.emit();
-                            fragment_kind.dummy(span, guar)
+                            let _guar = err.emit();
+                            fragment_kind.expect_from_annotatables(iter::once(item))
                         }
                     }
                 }

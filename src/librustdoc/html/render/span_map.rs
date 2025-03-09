@@ -272,7 +272,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         match item.kind {
-            ItemKind::Static(_, _, _)
+            ItemKind::Static(..)
             | ItemKind::Const(_, _, _)
             | ItemKind::Fn { .. }
             | ItemKind::Macro(_, _)

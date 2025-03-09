@@ -24,7 +24,6 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::{SourceMap, Spanned};
 use rustc_span::symbol::IdentPrinter;
 use rustc_span::{BytePos, CharPos, DUMMY_SP, FileName, Ident, Pos, Span, Symbol, kw, sym};
-use thin_vec::ThinVec;
 
 use crate::pp::Breaks::{Consistent, Inconsistent};
 use crate::pp::{self, Breaks};
@@ -1978,15 +1977,7 @@ impl<'a> State<'a> {
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);
-        let generics = ast::Generics {
-            params: ThinVec::new(),
-            where_clause: ast::WhereClause {
-                has_where_token: false,
-                predicates: ThinVec::new(),
-                span: DUMMY_SP,
-            },
-            span: DUMMY_SP,
-        };
+        let generics = ast::Generics::default();
         let header = ast::FnHeader { safety, ext, ..ast::FnHeader::default() };
         self.print_fn(decl, header, name, &generics);
         self.end();

@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/param_mismatch4.rs:12:12
+  --> $DIR/param_mismatch4.rs:13:12
    |
 LL | type Opq<'a> = impl Sized;
    |          -- this generic parameter must be used with a generic lifetime parameter

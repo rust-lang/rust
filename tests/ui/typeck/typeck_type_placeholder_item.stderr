@@ -29,7 +29,7 @@ LL | struct BadStruct2<_, T>(_, T);
    |                   ^ expected identifier, found reserved identifier
 
 error: associated constant in `impl` without body
-  --> $DIR/typeck_type_placeholder_item.rs:206:5
+  --> $DIR/typeck_type_placeholder_item.rs:207:5
    |
 LL |     const C: _;
    |     ^^^^^^^^^^-
@@ -578,13 +578,13 @@ LL | type Y = impl Trait<_>;
    |                     ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:206:14
+  --> $DIR/typeck_type_placeholder_item.rs:207:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:194:14
+  --> $DIR/typeck_type_placeholder_item.rs:195:14
    |
 LL |     const D: _ = 42;
    |              ^ not allowed in type signatures
@@ -596,13 +596,13 @@ LL +     const D: i32 = 42;
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:209:14
+  --> $DIR/typeck_type_placeholder_item.rs:210:14
    |
 LL |     const D: _ = 42;
    |              ^ not allowed in type signatures
 
 error[E0046]: not all trait items implemented, missing: `F`
-  --> $DIR/typeck_type_placeholder_item.rs:200:1
+  --> $DIR/typeck_type_placeholder_item.rs:201:1
    |
 LL |     type F: std::ops::Fn(_);
    |     ----------------------- `F` from trait
@@ -611,7 +611,7 @@ LL | impl Qux for Struct {
    | ^^^^^^^^^^^^^^^^^^^ missing `F` in implementation
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/typeck_type_placeholder_item.rs:217:31
+  --> $DIR/typeck_type_placeholder_item.rs:218:31
    |
 LL | fn value() -> Option<&'static _> {
    |               ----------------^-
@@ -620,7 +620,7 @@ LL | fn value() -> Option<&'static _> {
    |               help: replace with the correct return type: `Option<&'static u8>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:222:17
+  --> $DIR/typeck_type_placeholder_item.rs:223:17
    |
 LL | const _: Option<_> = map(value);
    |                 ^ not allowed in type signatures
@@ -632,7 +632,7 @@ LL + const _: Option<u8> = map(value);
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
-  --> $DIR/typeck_type_placeholder_item.rs:226:31
+  --> $DIR/typeck_type_placeholder_item.rs:227:31
    |
 LL | fn evens_squared(n: usize) -> _ {
    |                               ^
@@ -641,13 +641,13 @@ LL | fn evens_squared(n: usize) -> _ {
    |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
-  --> $DIR/typeck_type_placeholder_item.rs:231:10
+  --> $DIR/typeck_type_placeholder_item.rs:232:10
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:231:29}>, {closure@typeck_type_placeholder_item.rs:231:49}>` cannot be named
-  --> $DIR/typeck_type_placeholder_item.rs:231:14
+note: however, the inferred type `Map<Filter<Range<i32>, {closure@typeck_type_placeholder_item.rs:232:29}>, {closure@typeck_type_placeholder_item.rs:232:49}>` cannot be named
+  --> $DIR/typeck_type_placeholder_item.rs:232:14
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -695,53 +695,53 @@ LL +         fn fn_test10<T>(&self, _x : T) { }
    |
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:202:14
+  --> $DIR/typeck_type_placeholder_item.rs:203:14
    |
 LL |     type A = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:204:14
+  --> $DIR/typeck_type_placeholder_item.rs:205:14
    |
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:190:14
+  --> $DIR/typeck_type_placeholder_item.rs:191:14
    |
 LL |     type B = _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated constants
-  --> $DIR/typeck_type_placeholder_item.rs:192:14
+  --> $DIR/typeck_type_placeholder_item.rs:193:14
    |
 LL |     const C: _;
    |              ^ not allowed in type signatures
 
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for associated types
-  --> $DIR/typeck_type_placeholder_item.rs:197:26
+  --> $DIR/typeck_type_placeholder_item.rs:198:26
    |
 LL |     type F: std::ops::Fn(_);
    |                          ^ not allowed in type signatures
 
 error[E0015]: cannot call non-const function `map::<u8>` in constants
-  --> $DIR/typeck_type_placeholder_item.rs:222:22
+  --> $DIR/typeck_type_placeholder_item.rs:223:22
    |
 LL | const _: Option<_> = map(value);
    |                      ^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:231:29: 231:32}>` in constants
-  --> $DIR/typeck_type_placeholder_item.rs:231:22
+error[E0015]: cannot call non-const method `<std::ops::Range<i32> as Iterator>::filter::<{closure@$DIR/typeck_type_placeholder_item.rs:232:29: 232:32}>` in constants
+  --> $DIR/typeck_type_placeholder_item.rs:232:22
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                      ^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: calls in constants are limited to constant functions, tuple structs and tuple variants
 
-error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:231:29: 231:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:231:49: 231:52}>` in constants
-  --> $DIR/typeck_type_placeholder_item.rs:231:45
+error[E0015]: cannot call non-const method `<Filter<std::ops::Range<i32>, {closure@$DIR/typeck_type_placeholder_item.rs:232:29: 232:32}> as Iterator>::map::<i32, {closure@$DIR/typeck_type_placeholder_item.rs:232:49: 232:52}>` in constants
+  --> $DIR/typeck_type_placeholder_item.rs:232:45
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |                                             ^^^^^^^^^^^^^^
