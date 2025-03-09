@@ -74,14 +74,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     // Merge attributes into the inner expression.
                     if !e.attrs.is_empty() {
                         let old_attrs = self.attrs.get(&ex.hir_id.local_id).copied().unwrap_or(&[]);
-                        self.attrs.insert(
-                            ex.hir_id.local_id,
-                            &*self.arena.alloc_from_iter(
-                                self.lower_attrs_vec(&e.attrs, e.span)
-                                    .into_iter()
-                                    .chain(old_attrs.iter().cloned()),
-                            ),
-                        );
+                        let new_attrs = self
+                            .lower_attrs_vec(&e.attrs, e.span, ex.hir_id)
+                            .into_iter()
+                            .chain(old_attrs.iter().cloned());
+                        self.attrs
+                            .insert(ex.hir_id.local_id, &*self.arena.alloc_from_iter(new_attrs));
                     }
                     return ex;
                 }
@@ -2025,7 +2023,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let ret_expr = self.checked_return(Some(from_residual_expr));
                 self.arena.alloc(self.expr(try_span, ret_expr))
             };
-            self.lower_attrs(ret_expr.hir_id, &attrs, ret_expr.span);
+            self.lower_attrs(ret_expr.hir_id, &attrs, span);
 
             let break_pat = self.pat_cf_break(try_span, residual_local);
             self.arm(break_pat, ret_expr)
