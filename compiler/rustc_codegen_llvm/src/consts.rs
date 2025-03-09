@@ -16,7 +16,6 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::{bug, span_bug};
-use rustc_session::config::Lto;
 use tracing::{debug, instrument, trace};
 
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -344,11 +343,11 @@ impl<'ll> CodegenCx<'ll, '_> {
                 // Local definitions can never be imported, so we must not apply
                 // the DLLImport annotation.
                 && !dso_local
-                // ThinLTO can't handle this workaround in all cases, so we don't
-                // emit the attrs. Instead we make them unnecessary by disallowing
-                // dynamic linking when linker plugin based LTO is enabled.
-                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled()
-                && self.tcx.sess.lto() != Lto::Thin;
+                // Linker plugin ThinLTO doesn't create the self-dllimport Rust uses for rlibs
+                // as the code generation happens out of process. Instead we assume static linkage
+                // and disallow dynamic linking when linker plugin based LTO is enabled.
+                // Regular in-process ThinLTO doesn't need this workaround.
+                && !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
