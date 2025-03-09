@@ -209,20 +209,6 @@ pub(crate) struct OutOfRangeInteger {
 }
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_expected_one_argument, code = E0722)]
-pub(crate) struct ExpectedOneArgumentOptimize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(codegen_ssa_invalid_argument, code = E0722)]
-pub(crate) struct InvalidArgumentOptimize {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
