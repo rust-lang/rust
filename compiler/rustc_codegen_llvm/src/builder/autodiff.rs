@@ -5,6 +5,7 @@ use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_errors::{DiagCtxt, FatalError};
 use tracing::{debug, trace};
+use rustc_middle::bug;
 
 use crate::back::write::llvm_err;
 use crate::builder::SBuilder;
@@ -56,28 +57,22 @@ impl FunctionArgs {
     }
 }
 
-impl<'ll> From<(&'ll llvm::Context, &'ll Value)> for FunctionArgs {
-    fn from(wrapper: (&'ll llvm::Context, &'ll Value)) -> Self {
-        let (llcx, fnc) = wrapper;
+impl<'ll> From<(&'ll SimpleCx<'_>, &'ll Value)> for FunctionArgs {
+    fn from(wrapper: (&'ll SimpleCx<'_>, &'ll Value)) -> Self {
+        let (cx, fnc) = wrapper;
         let num_args = unsafe { llvm::LLVMCountParams(fnc) as usize };
         let input_args = vec![false; num_args];
 
-        let fn_ty = unsafe { llvm::LLVMGlobalGetValueType(fnc) };
-        let ret_ty = unsafe { llvm::LLVMGetReturnType(fn_ty) };
-        let void_ty = unsafe { llvm::LLVMVoidTypeInContext(llcx) };
+        let fn_ty = cx.get_type_of_global(fnc);
+        let ret_ty = cx.get_return_type(fn_ty);
+        let void_ty = unsafe { llvm::LLVMVoidTypeInContext(cx.llcx) };
         let return_arg = ret_ty != void_ty;
-
 
         let has_sret = if num_args == 0 {
             false
         } else {
             unsafe { llvm::LLVMRustHasAttributeAtIndex(fnc, 0, llvm::AttributeKind::StructRet) }
         };
-        if has_sret {
-            dbg!("has sret");
-        } else {
-            dbg!("no sret");
-        }
 
         FunctionArgs { input_args, return_arg, has_sret }
     }
@@ -89,6 +84,128 @@ impl<'ll> From<(&'ll llvm::Context, &'ll Value)> for FunctionArgs {
 //        assert!(self.fully_used());
 //    }
 //}
+
+// When we call the `__enzyme_autodiff` or `__enzyme_fwddiff` function, we need to pass all the
+// original inputs, as well as metadata and the additional shadow arguments.
+// This function matches the arguments from the outer function to the inner enzyme call.
+//
+// This function also considers that Rust level arguments not always match the llvm-ir level
+// arguments. A slice, `&[f32]`, for example, is represented as a pointer and a length on
+// llvm-ir level. The number of activities matches the number of Rust level arguments, so we
+// need to match those.
+// FIXME(ZuseZ4): This logic is a bit more complicated than it should be, can we simplify it
+// using iterators and peek()?
+fn match_args_from_caller_to_enzyme<'ll>(cx: &SimpleCx<'ll>, width: u32, args: &mut Vec<&'ll llvm::Value>, fa: &FunctionArgs
+                                    ,inputs: &[DiffActivity], outer_args: &[&'ll llvm::Value]) {
+        debug!("matching autodiff arguments");
+        let mut outer_pos: usize = 0;
+
+        if fa.has_sret() {
+            // Then the first outer arg is the sret pointer. Enzyme doesn't know about sret, so the
+            // inner function will still return something. We increase our outer_pos by one,
+            // and once we're done with all other args we will take the return of the inner call and
+            // update the sret pointer with it
+            outer_pos = 1;
+        }
+
+        let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
+        let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
+        let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
+        let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
+        let mut activity_pos = 0;
+        while activity_pos < inputs.len() {
+            let diff_activity = inputs[activity_pos as usize];
+            // Duplicated arguments received a shadow argument, into which enzyme will write the
+            // gradient.
+            let (activity, duplicated): (&Metadata, bool) = match diff_activity {
+                DiffActivity::None => panic!("not a valid input activity"),
+                DiffActivity::Const => (enzyme_const, false),
+                DiffActivity::Active => (enzyme_out, false),
+                DiffActivity::ActiveOnly => (enzyme_out, false),
+                DiffActivity::Dual => (enzyme_dup, true),
+                DiffActivity::DualOnly => (enzyme_dupnoneed, true),
+                DiffActivity::Duplicated => (enzyme_dup, true),
+                DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
+                DiffActivity::FakeActivitySize => (enzyme_const, false),
+            };
+            let outer_arg = outer_args[outer_pos];
+            args.push(cx.get_metadata_value(activity));
+            args.push(outer_arg);
+            if duplicated {
+                // We know that duplicated args by construction have a following argument,
+                // so this can not be out of bounds.
+                let next_outer_arg = outer_args[outer_pos + 1];
+                let next_outer_ty = cx.val_ty(next_outer_arg);
+                // FIXME(ZuseZ4): We should add support for Vec here too, but it's less urgent since
+                // vectors behind references (&Vec<T>) are already supported. Users can not pass a
+                // Vec by value for reverse mode, so this would only help forward mode autodiff.
+                let slice = {
+                    if activity_pos + 1 >= inputs.len() {
+                        // If there is no arg following our ptr, it also can't be a slice,
+                        // since that would lead to a ptr, int pair.
+                        false
+                    } else {
+                        let next_activity = inputs[activity_pos + 1];
+                        // We analyze the MIR types and add this dummy activity if we visit a slice.
+                        next_activity == DiffActivity::FakeActivitySize
+                    }
+                };
+                if slice {
+                    // A duplicated slice will have the following two outer_fn arguments:
+                    // (..., ptr1, int1, ptr2, int2, ...). We add the following llvm-ir to our __enzyme call:
+                    // (..., metadata! enzyme_dup, ptr, ptr, int1, ...).
+                    // FIXME(ZuseZ4): We will upstream a safety check later which asserts that
+                    // int2 >= int1, which means the shadow vector is large enough to store the gradient.
+                    assert!(unsafe {llvm::LLVMRustGetTypeKind(next_outer_ty)} == llvm::TypeKind::Integer);
+
+                    for _ in 0..width {
+                        let next_outer_arg2 = outer_args[outer_pos + 2];
+                        let next_outer_ty2 = cx.val_ty(next_outer_arg2);
+                        assert!(unsafe {llvm::LLVMRustGetTypeKind(next_outer_ty2)} == llvm::TypeKind::Pointer);
+                        let next_outer_arg3 = outer_args[outer_pos + 3];
+                        let next_outer_ty3 = cx.val_ty(next_outer_arg3);
+                        assert!(unsafe{ llvm::LLVMRustGetTypeKind(next_outer_ty3)} == llvm::TypeKind::Integer);
+                        args.push(next_outer_arg2);
+                    }
+
+
+                    args.push(cx.get_metadata_value(enzyme_const));
+                    args.push(next_outer_arg);
+                    outer_pos += 2 + 2 * width as usize;
+                    activity_pos += 2;
+                } else {
+                    // A duplicated pointer will have the following two outer_fn arguments:
+                    // (..., ptr, ptr, ...). We add the following llvm-ir to our __enzyme call:
+                    // (..., metadata! enzyme_dup, ptr, ptr, ...).
+                    if matches!(
+                        diff_activity,
+                        DiffActivity::Duplicated | DiffActivity::DuplicatedOnly
+                    ) {
+                        assert!(
+                            unsafe {llvm::LLVMRustGetTypeKind(next_outer_ty)} == llvm::TypeKind::Pointer
+                        );
+                    }
+                    // In the case of Dual we don't have assumptions, e.g. f32 would be valid.
+                    args.push(next_outer_arg);
+                    outer_pos += 2;
+                    activity_pos += 1;
+
+                    // Now, if width > 1, we need to account for that
+                    for _ in 1..width {
+                        let next_outer_arg = outer_args[outer_pos];
+                        args.push(next_outer_arg);
+                        outer_pos += 1;
+                    }
+
+                }
+            } else {
+                // We do not differentiate with resprect to this argument.
+                // We already added the metadata and argument above, so just increase the counters.
+                outer_pos += 1;
+                activity_pos += 1;
+            }
+        }
+}
 
 /// When differentiating `fn_to_diff`, take a `outer_fn` and generate another
 /// function with expected naming and calling conventions[^1] which will be
@@ -110,7 +227,7 @@ fn generate_enzyme_call<'ll>(
     let inputs = attrs.input_activity;
     let output = attrs.ret_activity;
 
-    let fa = FunctionArgs::from((cx.llcx, outer_fn));
+    let fa = FunctionArgs::from((cx, outer_fn));
 
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
@@ -162,12 +279,60 @@ fn generate_enzyme_call<'ll>(
         // On LLVM-IR, we can luckily declare __enzyme_ functions without specifying the input
         // arguments. We do however need to declare them with their correct return type.
         // We already figured the correct return type out in our frontend, when generating the outer_fn,
-        // so we can now just go ahead and use that. FIXME(ZuseZ4): This doesn't handle sret yet.
-        let fn_ty = llvm::LLVMGlobalGetValueType(outer_fn);
-        let ret_ty = llvm::LLVMGetReturnType(fn_ty);
+        // so we can now just go ahead and use that. This is not always trivial, e.g. because sret.
+        // Beyond sret, this article describes our challenges nicely:
+        // <https://yorickpeterse.com/articles/the-mess-that-is-handling-structure-arguments-and-returns-in-llvm/>
+        // I.e. (i32, f32) will get merged into i64, but we don't handle that yet.
+        let fn_ty = cx.get_type_of_global(outer_fn);
+        let mut ret_ty = cx.get_return_type(fn_ty);
+
+        if fa.has_sret {
+            // Now we don't just forward the return type, so we have to figure it out based on the
+            // primal return type, in combination with the autodiff settings.
+            let fn_ty = cx.get_type_of_global(fn_to_diff);
+            let inner_ret_ty = cx.get_return_type(fn_ty);
+
+            let void_ty = llvm::LLVMVoidTypeInContext(cx.llcx);
+            if inner_ret_ty == void_ty {
+                dbg!(&fn_to_diff);
+                // This indicates that even the inner function has an sret.
+                // Right now I only look for an sret in the outer function.
+                // This *probably* needs some extra handling, but I never ran
+                // into such a case. So I'll wait for user reports to have a test case.
+                bug!("sret in inner function");
+            }
+
+            if attrs.width == 1 {
+                todo!("Handle sret for scalar ad");
+            } else {
+                // First we check if we also have to deal with the primal return.
+                if attrs.mode.is_fwd() {
+                    match attrs.ret_activity {
+                        DiffActivity::Dual => {
+                            let arr_ty = llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64 + 1);
+                            ret_ty = arr_ty;
+                        },
+                        DiffActivity::DualOnly => {
+                            let arr_ty = llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64);
+                            ret_ty = arr_ty;
+                        },
+                        DiffActivity::Const => {
+                            todo!("Not sure, do we need to do something here?");
+                        },
+                        _ => {
+                            bug!("unreachable");
+                        }
+                    }
+                } else if attrs.mode.is_rev() {
+                    todo!("Handle sret for reverse mode");
+                } else {
+                    bug!("unreachable");
+                }
+
+            }
+        }
 
         dbg!(&outer_fn);
-        dbg!(&fn_ty);
 
         // LLVM can figure out the input types on it's own, so we take a shortcut here.
         let enzyme_ty = llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True);
@@ -201,19 +366,15 @@ fn generate_enzyme_call<'ll>(
         let mut args = Vec::with_capacity(num_args as usize + 1);
         args.push(fn_to_diff);
 
-        let enzyme_const = cx.create_metadata("enzyme_const".to_string()).unwrap();
-        let enzyme_out = cx.create_metadata("enzyme_out".to_string()).unwrap();
-        let enzyme_dup = cx.create_metadata("enzyme_dup".to_string()).unwrap();
-        let enzyme_dupnoneed = cx.create_metadata("enzyme_dupnoneed".to_string()).unwrap();
-        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
-        let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
 
         // FIXME(ZuseZ4): Find out, how enzyme_primal_ret and enzyme_width are combinable.
         if attrs.width > 1 {
+            let enzyme_width = cx.create_metadata("enzyme_width".to_string()).unwrap();
             args.push(cx.get_metadata_value(enzyme_width));
             args.push(cx.get_const_i64(attrs.width as u64));
         }
 
+        let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
         match output {
             DiffActivity::Dual => {
                 args.push(cx.get_metadata_value(enzyme_primal_ret));
@@ -224,117 +385,8 @@ fn generate_enzyme_call<'ll>(
             _ => {}
         }
 
-        debug!("matching autodiff arguments");
-        // We now handle the issue that Rust level arguments not always match the llvm-ir level
-        // arguments. A slice, `&[f32]`, for example, is represented as a pointer and a length on
-        // llvm-ir level. The number of activities matches the number of Rust level arguments, so we
-        // need to match those.
-        // FIXME(ZuseZ4): This logic is a bit more complicated than it should be, can we simplify it
-        // using iterators and peek()?
-        let mut outer_pos: usize = 0;
-        let mut activity_pos = 0;
-
-        if fa.has_sret() {
-            // Then the first outer arg is the sret pointer. Enzyme doesn't know about sret, so the
-            // inner function will still return something. We increase our outer_pos by one,
-            // and once we're done with all other args we will take the return of the inner call and
-            // update the sret pointer with it
-            outer_pos = 1;
-        }
-
         let outer_args: Vec<&llvm::Value> = get_params(outer_fn);
-        while activity_pos < inputs.len() {
-            let diff_activity = inputs[activity_pos as usize];
-            // Duplicated arguments received a shadow argument, into which enzyme will write the
-            // gradient.
-            let (activity, duplicated): (&Metadata, bool) = match diff_activity {
-                DiffActivity::None => panic!("not a valid input activity"),
-                DiffActivity::Const => (enzyme_const, false),
-                DiffActivity::Active => (enzyme_out, false),
-                DiffActivity::ActiveOnly => (enzyme_out, false),
-                DiffActivity::Dual => (enzyme_dup, true),
-                DiffActivity::DualOnly => (enzyme_dupnoneed, true),
-                DiffActivity::Duplicated => (enzyme_dup, true),
-                DiffActivity::DuplicatedOnly => (enzyme_dupnoneed, true),
-                DiffActivity::FakeActivitySize => (enzyme_const, false),
-            };
-            let outer_arg = outer_args[outer_pos];
-            args.push(cx.get_metadata_value(activity));
-            args.push(outer_arg);
-            if duplicated {
-                // We know that duplicated args by construction have a following argument,
-                // so this can not be out of bounds.
-                let next_outer_arg = outer_args[outer_pos + 1];
-                let next_outer_ty = cx.val_ty(next_outer_arg);
-                // FIXME(ZuseZ4): We should add support for Vec here too, but it's less urgent since
-                // vectors behind references (&Vec<T>) are already supported. Users can not pass a
-                // Vec by value for reverse mode, so this would only help forward mode autodiff.
-                let slice = {
-                    if activity_pos + 1 >= inputs.len() {
-                        // If there is no arg following our ptr, it also can't be a slice,
-                        // since that would lead to a ptr, int pair.
-                        false
-                    } else {
-                        let next_activity = inputs[activity_pos + 1];
-                        // We analyze the MIR types and add this dummy activity if we visit a slice.
-                        next_activity == DiffActivity::FakeActivitySize
-                    }
-                };
-                if slice {
-                    // A duplicated slice will have the following two outer_fn arguments:
-                    // (..., ptr1, int1, ptr2, int2, ...). We add the following llvm-ir to our __enzyme call:
-                    // (..., metadata! enzyme_dup, ptr, ptr, int1, ...).
-                    // FIXME(ZuseZ4): We will upstream a safety check later which asserts that
-                    // int2 >= int1, which means the shadow vector is large enough to store the gradient.
-                    assert!(llvm::LLVMRustGetTypeKind(next_outer_ty) == llvm::TypeKind::Integer);
-
-                    for _ in 0..attrs.width {
-                        let next_outer_arg2 = outer_args[outer_pos + 2];
-                        let next_outer_ty2 = cx.val_ty(next_outer_arg2);
-                        assert!(llvm::LLVMRustGetTypeKind(next_outer_ty2) == llvm::TypeKind::Pointer);
-                        let next_outer_arg3 = outer_args[outer_pos + 3];
-                        let next_outer_ty3 = cx.val_ty(next_outer_arg3);
-                        assert!(llvm::LLVMRustGetTypeKind(next_outer_ty3) == llvm::TypeKind::Integer);
-                        args.push(next_outer_arg2);
-                    }
-
-
-                    args.push(cx.get_metadata_value(enzyme_const));
-                    args.push(next_outer_arg);
-                    outer_pos += 2 + 2 * attrs.width as usize;
-                    activity_pos += 2;
-                } else {
-                    // A duplicated pointer will have the following two outer_fn arguments:
-                    // (..., ptr, ptr, ...). We add the following llvm-ir to our __enzyme call:
-                    // (..., metadata! enzyme_dup, ptr, ptr, ...).
-                    if matches!(
-                        diff_activity,
-                        DiffActivity::Duplicated | DiffActivity::DuplicatedOnly
-                    ) {
-                        assert!(
-                            llvm::LLVMRustGetTypeKind(next_outer_ty) == llvm::TypeKind::Pointer
-                        );
-                    }
-                    // In the case of Dual we don't have assumptions, e.g. f32 would be valid.
-                    args.push(next_outer_arg);
-                    outer_pos += 2;
-                    activity_pos += 1;
-
-                    // Now, if width > 1, we need to account for that
-                    for _ in 1..attrs.width {
-                        let next_outer_arg = outer_args[outer_pos];
-                        args.push(next_outer_arg);
-                        outer_pos += 1;
-                    }
-
-                }
-            } else {
-                // We do not differentiate with resprect to this argument.
-                // We already added the metadata and argument above, so just increase the counters.
-                outer_pos += 1;
-                activity_pos += 1;
-            }
-        }
+        match_args_from_caller_to_enzyme(cx, attrs.width, &mut args, &fa, &inputs, &outer_args);
 
         let call = builder.call(enzyme_ty, ad_fn, &args, None);
 
@@ -360,11 +412,28 @@ fn generate_enzyme_call<'ll>(
         // Now that we copied the metadata, get rid of dummy code.
         llvm::LLVMRustEraseInstUntilInclusive(entry, last_inst);
 
-        if cx.val_ty(call) == cx.type_void() {
+        if cx.val_ty(call) == cx.type_void() || fa.has_sret() {
+            if fa.has_sret() {
+                // This is what we have in our outer_fn (shortened):
+                // define void @_foo(ptr <..> sret([32 x i8]) initializes((0, 32)) %0, <...>) {
+                //   %7 = call [4 x double] (...) @__enzyme_fwddiff_foo(ptr @square, metadata !"enzyme_width", i64 4, <...>)
+                //   <We want to add the following two lines>
+                //   store [4 x double] %7, ptr %0, align 8
+                //   ret void
+                // }
+
+                // now store the result of the enzyme call into the sret pointer.
+                let sret_ptr = outer_args[0];
+                let call_ty = cx.val_ty(call);
+                assert!(llvm::LLVMRustIsArrayTy(call_ty));
+                llvm::LLVMBuildStore(&builder.llbuilder, call, sret_ptr);
+            }
             builder.ret_void();
         } else {
             builder.ret(call);
         }
+
+        dbg!(&outer_fn);
 
         // Let's crash in case that we messed something up above and generated invalid IR.
         llvm::LLVMRustVerifyFunction(

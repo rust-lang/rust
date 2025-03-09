@@ -893,7 +893,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         }
     };
 
-    dbg!(&width_meta);
     let w = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = width_meta {
         p1.segments.first().unwrap().ident
     } else {

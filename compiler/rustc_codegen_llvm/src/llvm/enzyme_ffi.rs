@@ -17,6 +17,10 @@ unsafe extern "C" {
     pub(crate) fn LLVMRustGetTerminator<'a>(B: &BasicBlock) -> &'a Value;
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
     pub(crate) fn LLVMRustHasAttributeAtIndex(V: &Value, i: c_uint, Kind: AttributeKind) -> bool;
+
+    pub(crate) fn LLVMRustIsFunctionTy(Ty: &Type) -> bool;
+    pub(crate) fn LLVMRustIsArrayTy(Ty: &Type) -> bool;
+    pub(crate) fn LLVMRustGetArrayNumElements(Ty: &Type) -> u64;
 }
 
 unsafe extern "C" {

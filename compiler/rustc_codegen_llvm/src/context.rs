@@ -629,6 +629,13 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
     }
 }
 impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        assert!(unsafe { llvm::LLVMRustIsFunctionTy(ty) });
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+    pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
+        unsafe { llvm::LLVMGlobalGetValueType(val) }
+    }
     pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }

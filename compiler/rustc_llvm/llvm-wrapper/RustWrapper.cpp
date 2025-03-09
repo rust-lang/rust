@@ -637,6 +637,17 @@ static InlineAsm::AsmDialect fromRust(LLVMRustAsmDialect Dialect) {
     report_fatal_error("bad AsmDialect.");
   }
 }
+extern "C" bool LLVMRustIsFunctionTy(LLVMTypeRef Ty) {
+  return unwrap(Ty)->isFunctionTy();
+}
+
+extern "C" bool LLVMRustIsArrayTy(LLVMTypeRef Ty) {
+  return unwrap(Ty)->isArrayTy();
+}
+
+extern "C" uint64_t LLVMRustGetArrayNumElements(LLVMTypeRef Ty) {
+  return unwrap(Ty)->getArrayNumElements();
+}
 
 extern "C" LLVMValueRef
 LLVMRustInlineAsm(LLVMTypeRef Ty, char *AsmString, size_t AsmStringLen,
