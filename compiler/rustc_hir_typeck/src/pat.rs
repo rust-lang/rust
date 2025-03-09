@@ -16,7 +16,7 @@ use rustc_hir::{
 };
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
@@ -161,17 +161,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 /// Mode for adjusting the expected type and binding mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AdjustMode {
+enum AdjustMode<'tcx> {
     /// Peel off all immediate reference types. If the `deref_patterns` feature is enabled, this
     /// also peels smart pointer ADTs.
-    Peel { kind: PeelKind },
+    Peel { kind: PeelKind<'tcx> },
     /// Pass on the input binding mode and expected type.
     Pass,
 }
 
 /// Restrictions on what types to peel when adjusting the expected type and binding mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum PeelKind {
+enum PeelKind<'tcx> {
     /// Only peel reference types. This is used for explicit `deref!(_)` patterns, which dereference
     /// any number of `&`/`&mut` references, plus a single smart pointer.
     ExplicitDerefPat,
@@ -179,8 +179,16 @@ enum PeelKind {
     /// ADTs. In order to peel only as much as necessary for the pattern to match, the `until_adt`
     /// field contains the ADT def that the pattern is a constructor for, if applicable, so that we
     /// don't peel it. See [`ResolvedPat`] for more information.
-    // TODO: add `ResolvedPat` and `until_adt`.
-    Implicit,
+    Implicit { until_adt: Option<AdtDef<'tcx>> },
+}
+
+impl<'tcx> AdjustMode<'tcx> {
+    const fn peel_until_adt(opt_adt_def: Option<AdtDef<'tcx>>) -> AdjustMode<'tcx> {
+        AdjustMode::Peel { kind: PeelKind::Implicit { until_adt: opt_adt_def } }
+    }
+    const fn peel_all() -> AdjustMode<'tcx> {
+        AdjustMode::peel_until_adt(None)
+    }
 }
 
 /// `ref mut` bindings (explicit or match-ergonomics) are not allowed behind an `&` reference.
@@ -282,7 +290,7 @@ enum ResolvedPatKind<'tcx> {
 }
 
 impl<'tcx> ResolvedPat<'tcx> {
-    fn adjust_mode(&self) -> AdjustMode {
+    fn adjust_mode(&self) -> AdjustMode<'tcx> {
         if let ResolvedPatKind::Path { res, .. } = self.kind
             && matches!(res, Res::Def(DefKind::Const | DefKind::AssocConst, _))
         {
@@ -294,7 +302,7 @@ impl<'tcx> ResolvedPat<'tcx> {
             // The remaining possible resolutions for path, struct, and tuple struct patterns are
             // ADT constructors. As such, we may peel references freely, but we must not peel the
             // ADT itself from the scrutinee if it's a smart pointer.
-            AdjustMode::Peel { kind: PeelKind::Implicit }
+            AdjustMode::peel_until_adt(self.ty.ty_adt_def())
         }
     }
 }
@@ -452,7 +460,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         opt_path_res: Option<Result<ResolvedPat<'tcx>, ErrorGuaranteed>>,
-        adjust_mode: AdjustMode,
+        adjust_mode: AdjustMode<'tcx>,
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
@@ -521,14 +529,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
             // examples in `tests/ui/pattern/deref_patterns/`.
             _ if self.tcx.features().deref_patterns()
-                && let AdjustMode::Peel { kind: PeelKind::Implicit } = adjust_mode
+                && let AdjustMode::Peel { kind: PeelKind::Implicit { until_adt } } = adjust_mode
                 && pat.default_binding_modes
                 // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
                 // FIXME(deref_patterns): we'll get better diagnostics for users trying to
                 // implicitly deref generics if we allow them here, but primitives, tuples, and
                 // inference vars definitely should be stopped. Figure out what makes most sense.
-                // TODO: stop peeling if the pattern is a constructor for the scrutinee type
-                && expected.is_adt()
+                && let ty::Adt(scrutinee_adt, _) = *expected.kind()
+                // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
+                // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
+                && until_adt != Some(scrutinee_adt)
                 // At this point, the pattern isn't able to match `expected` without peeling. Check
                 // that it implements `Deref` before assuming it's a smart pointer, to get a normal
                 // type error instead of a missing impl error if not. This only checks for `Deref`,
@@ -633,26 +643,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         pat: &'tcx Pat<'tcx>,
         opt_path_res: Option<Result<ResolvedPat<'tcx>, ErrorGuaranteed>>,
-    ) -> AdjustMode {
+    ) -> AdjustMode<'tcx> {
         match &pat.kind {
             // Type checking these product-like types successfully always require
             // that the expected type be of those types and not reference types.
-            PatKind::Struct(..)
-            | PatKind::TupleStruct(..)
-            | PatKind::Tuple(..)
+            PatKind::Tuple(..)
             | PatKind::Range(..)
-            | PatKind::Slice(..) => AdjustMode::Peel { kind: PeelKind::Implicit },
+            | PatKind::Slice(..) => AdjustMode::peel_all(),
             // When checking an explicit deref pattern, only peel reference types.
             // FIXME(deref_patterns): If box patterns and deref patterns need to coexist, box
             // patterns may want `PeelKind::Implicit`, stopping on encountering a box.
             | PatKind::Box(_)
             | PatKind::Deref(_) => AdjustMode::Peel { kind: PeelKind::ExplicitDerefPat },
             // A never pattern behaves somewhat like a literal or unit variant.
-            PatKind::Never => AdjustMode::Peel { kind: PeelKind::Implicit },
+            PatKind::Never => AdjustMode::peel_all(),
             // For patterns with paths, how we peel the scrutinee depends on the path's resolution.
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => {
+            PatKind::Struct(..)
+            | PatKind::TupleStruct(..)
+            | PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => {
                 // If there was an error resolving the path, default to peeling everything.
-                opt_path_res.unwrap().map_or(AdjustMode::Peel { kind: PeelKind::Implicit }, |pr| pr.adjust_mode())
+                opt_path_res.unwrap().map_or(AdjustMode::peel_all(), |pr| pr.adjust_mode())
             }
 
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
@@ -662,7 +672,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Call `resolve_vars_if_possible` here for inline const blocks.
             PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
-                _ => AdjustMode::Peel { kind: PeelKind::Implicit },
+                // If an inline const pattern has a library-defined pointer-like type and
+                // `deref_patterns` is enabled, don't implicitly add deref patterns for its ADT.
+                // Nothing in the library that implements `DerefPure` supports structural equality,
+                // but we don't check that until `const_to_pat` in THIR construction. By avoiding
+                // type errors here, we can get a more meaningful error there.
+                ty::Adt(adt, _) => AdjustMode::peel_until_adt(Some(*adt)),
+                _ => AdjustMode::peel_all()
             },
 
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
