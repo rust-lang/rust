@@ -20,7 +20,7 @@ error: unexpected parameter name
   --> $DIR/patchable-function-entry-attribute.rs:13:46
    |
 LL | #[patchable_function_entry(prefix_nops = 10, something = 0)]
-   |                                              ^^^^^^^^^^^^^ expected prefix_nops or entry_nops
+   |                                              ^^^^^^^^^^^^^ expected `prefix_nops` or `entry_nops`
 
 error: must specify at least one parameter
   --> $DIR/patchable-function-entry-attribute.rs:16:1
