@@ -276,63 +276,89 @@ impl FileExt for fs::File {
 }
 
 /// Unix-specific extensions to [`fs::Permissions`].
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::fs::{File, Permissions};
+/// use std::io::{ErrorKind, Result as IoResult};
+/// use std::os::unix::fs::PermissionsExt;
+///
+/// fn main() -> IoResult<()> {
+///     let name = "test_file_for_permissions";
+///
+///     // make sure file does not exist
+///     let _ = std::fs::remove_file(name);
+///     assert_eq!(
+///         File::open(name).unwrap_err().kind(),
+///         ErrorKind::NotFound,
+///         "file already exists"
+///     );
+///
+///     // full read/write/execute mode bits for owner of file
+///     // that we want to add to existing mode bits
+///     let my_mode = 0o700;
+///
+///     // create new file with specified permissions
+///     {
+///         let file = File::create(name)?;
+///         let mut permissions = file.metadata()?.permissions();
+///         eprintln!("Current permissions: {:o}", permissions.mode());
+///
+///         // make sure new permissions are not already set
+///         assert!(
+///             permissions.mode() & my_mode != my_mode,
+///             "permissions already set"
+///         );
+///
+///         // either use `set_mode` to change an existing Permissions struct
+///         permissions.set_mode(permissions.mode() | my_mode);
+///
+///         // or use `from_mode` to construct a new Permissions struct
+///         permissions = Permissions::from_mode(permissions.mode() | my_mode);
+///
+///         // write new permissions to file
+///         file.set_permissions(permissions)?;
+///     }
+///
+///     let permissions = File::open(name)?.metadata()?.permissions();
+///     eprintln!("New permissions: {:o}", permissions.mode());
+///
+///     // assert new permissions were set
+///     assert_eq!(
+///         permissions.mode() & my_mode,
+///         my_mode,
+///         "new permissions not set"
+///     );
+///     Ok(())
+/// }
+/// ```
+///
+/// ```no_run
+/// use std::fs::Permissions;
+/// use std::os::unix::fs::PermissionsExt;
+///
+/// // read/write for owner and read for others
+/// let my_mode = 0o644;
+/// let mut permissions = Permissions::from_mode(my_mode);
+/// assert_eq!(permissions.mode(), my_mode);
+///
+/// // read/write/execute for owner
+/// let other_mode = 0o700;
+/// permissions.set_mode(other_mode);
+/// assert_eq!(permissions.mode(), other_mode);
+/// ```
 #[stable(feature = "fs_ext", since = "1.1.0")]
 pub trait PermissionsExt {
-    /// Returns the underlying raw `st_mode` bits that contain the standard
-    /// Unix permissions for this file.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::fs::File;
-    /// use std::os::unix::fs::PermissionsExt;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f = File::create("foo.txt")?;
-    ///     let metadata = f.metadata()?;
-    ///     let permissions = metadata.permissions();
-    ///
-    ///     println!("permissions: {:o}", permissions.mode());
-    ///     Ok(())
-    /// }
-    /// ```
+    /// Returns the mode permission bits
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn mode(&self) -> u32;
 
-    /// Sets the underlying raw bits for this set of permissions.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// use std::fs::File;
-    /// use std::os::unix::fs::PermissionsExt;
-    ///
-    /// fn main() -> std::io::Result<()> {
-    ///     let f = File::create("foo.txt")?;
-    ///     let metadata = f.metadata()?;
-    ///     let mut permissions = metadata.permissions();
-    ///
-    ///     permissions.set_mode(0o644); // Read/write for owner and read for others.
-    ///     assert_eq!(permissions.mode(), 0o644);
-    ///     Ok(())
-    /// }
-    /// ```
+    /// Sets the mode permission bits.
     #[stable(feature = "fs_ext", since = "1.1.0")]
     fn set_mode(&mut self, mode: u32);
 
-    /// Creates a new instance of `Permissions` from the given set of Unix
-    /// permission bits.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use std::fs::Permissions;
-    /// use std::os::unix::fs::PermissionsExt;
-    ///
-    /// // Read/write for owner and read for others.
-    /// let permissions = Permissions::from_mode(0o644);
-    /// assert_eq!(permissions.mode(), 0o644);
-    /// ```
+    /// Creates a new instance from the given mode permission bits.
     #[stable(feature = "fs_ext", since = "1.1.0")]
     #[cfg_attr(not(test), rustc_diagnostic_item = "permissions_from_mode")]
     fn from_mode(mode: u32) -> Self;
