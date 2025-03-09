@@ -26,9 +26,9 @@ pub fn iter_repeat_n_next(it: &mut std::iter::RepeatN<NotCopy>) -> Option<NotCop
 
     // CHECK: [[NOT_EMPTY]]:
     // CHECK-NEXT: %[[DEC:.+]] = add i64 %[[COUNT]], -1
-    // CHECK-NEXT: store i64 %[[DEC]]
     // CHECK-NOT: br
     // CHECK: %[[VAL:.+]] = load i16
+    // CHECK-NEXT: store i64 %[[DEC]]
     // CHECK-NEXT: br label %[[EMPTY]]
 
     // CHECK: [[EMPTY]]:
