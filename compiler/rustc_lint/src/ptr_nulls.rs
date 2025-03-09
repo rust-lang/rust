@@ -1,9 +1,11 @@
 use rustc_ast::LitKind;
 use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
+use rustc_middle::ty::RawPtr;
 use rustc_session::{declare_lint, declare_lint_pass};
-use rustc_span::sym;
+use rustc_span::{Span, sym};
 
-use crate::lints::UselessPtrNullChecksDiag;
+use crate::lints::{InvalidNullArgumentsDiag, UselessPtrNullChecksDiag};
+use crate::utils::peel_casts;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -31,7 +33,30 @@ declare_lint! {
     "useless checking of non-null-typed pointer"
 }
 
-declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS]);
+declare_lint! {
+    /// The `invalid_null_arguments` lint checks for invalid usage of null pointers in arguments.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// # use std::{slice, ptr};
+    /// // Undefined behavior
+    /// # let _slice: &[u8] =
+    /// unsafe { slice::from_raw_parts(ptr::null(), 0) };
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Calling methods whos safety invariants requires non-null ptr with a null pointer
+    /// is [Undefined Behavior](https://doc.rust-lang.org/reference/behavior-considered-undefined.html)!
+    INVALID_NULL_ARGUMENTS,
+    Deny,
+    "invalid null pointer in arguments"
+}
+
+declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS, INVALID_NULL_ARGUMENTS]);
 
 /// This function checks if the expression is from a series of consecutive casts,
 /// ie. `(my_fn as *const _ as *mut _).cast_mut()` and whether the original expression is either
@@ -85,6 +110,25 @@ fn useless_check<'a, 'tcx: 'a>(
     }
 }
 
+/// Checks if the given expression is a null pointer (modulo casting)
+fn is_null_ptr<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<Span> {
+    let (expr, _) = peel_casts(cx, expr);
+
+    if let ExprKind::Call(path, []) = expr.kind
+        && let ExprKind::Path(ref qpath) = path.kind
+        && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+        && let Some(diag_item) = cx.tcx.get_diagnostic_name(def_id)
+    {
+        (diag_item == sym::ptr_null || diag_item == sym::ptr_null_mut).then_some(expr.span)
+    } else if let ExprKind::Lit(spanned) = expr.kind
+        && let LitKind::Int(v, _) = spanned.node
+    {
+        (v == 0).then_some(expr.span)
+    } else {
+        None
+    }
+}
+
 impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
@@ -100,6 +144,62 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                     && let Some(diag) = useless_check(cx, arg) =>
             {
                 cx.emit_span_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
+            }
+
+            // Catching:
+            // <path>(arg...) where `arg` is null-ptr and `path` is a fn that expect non-null-ptr
+            ExprKind::Call(path, args)
+                if let ExprKind::Path(ref qpath) = path.kind
+                    && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
+                    && let Some(diag_name) = cx.tcx.get_diagnostic_name(def_id) =>
+            {
+                // `arg` positions where null would cause U.B and whenever ZST are allowed.
+                //
+                // We should probably have a `rustc` attribute, but checking them is costly,
+                // maybe if we checked for null ptr first, it would be acceptable?
+                let (arg_indices, are_zsts_allowed): (&[_], _) = match diag_name {
+                    sym::ptr_read
+                    | sym::ptr_read_unaligned
+                    | sym::ptr_read_volatile
+                    | sym::ptr_replace
+                    | sym::ptr_write
+                    | sym::ptr_write_bytes
+                    | sym::ptr_write_unaligned
+                    | sym::ptr_write_volatile => (&[0], true),
+                    sym::slice_from_raw_parts | sym::slice_from_raw_parts_mut => (&[0], false),
+                    sym::ptr_copy
+                    | sym::ptr_copy_nonoverlapping
+                    | sym::ptr_swap
+                    | sym::ptr_swap_nonoverlapping => (&[0, 1], true),
+                    _ => return,
+                };
+
+                for &arg_idx in arg_indices {
+                    if let Some(arg) = args.get(arg_idx)
+                        && let Some(null_span) = is_null_ptr(cx, arg)
+                        && let Some(ty) = cx.typeck_results().expr_ty_opt(arg)
+                        && let RawPtr(ty, _mutbl) = ty.kind()
+                    {
+                        // If ZST are fine, don't lint on them
+                        let typing_env = cx.typing_env();
+                        if are_zsts_allowed
+                            && cx
+                                .tcx
+                                .layout_of(typing_env.as_query_input(*ty))
+                                .is_ok_and(|layout| layout.is_1zst())
+                        {
+                            break;
+                        }
+
+                        let diag = if arg.span.contains(null_span) {
+                            InvalidNullArgumentsDiag::NullPtrInline { null_span }
+                        } else {
+                            InvalidNullArgumentsDiag::NullPtrThroughBinding { null_span }
+                        };
+
+                        cx.emit_span_lint(INVALID_NULL_ARGUMENTS, expr.span, diag)
+                    }
+                }
             }
 
             // Catching:

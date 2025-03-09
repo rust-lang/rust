@@ -6,7 +6,7 @@ use crate::LateContext;
 /// Given an expression, peel all of casts (`<expr> as ...`, `<expr>.cast{,_mut,_const}()`,
 /// `ptr::from_ref(<expr>)`, ...) and init expressions.
 ///
-/// Returns the outermost expression and a boolean representing if one of the casts was
+/// Returns the innermost expression and a boolean representing if one of the casts was
 /// `UnsafeCell::raw_get(<expr>)`
 pub(crate) fn peel_casts<'tcx>(
     cx: &LateContext<'tcx>,
