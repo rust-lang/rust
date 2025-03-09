@@ -16,12 +16,13 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
     bb0: {
         StorageLive(_2);
         _2 = discriminant(_1);
-        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb4];
+        switchInt(move _2) -> [0: bb1, 1: bb2, otherwise: bb3];
     }
 
     bb1: {
         _0 = const Option::<i32>::None;
-        goto -> bb3;
+        StorageDead(_2);
+        return;
     }
 
     bb2: {
@@ -30,15 +31,11 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
         _4 = Add(copy _3, const 1_i32);
         _0 = Option::<i32>::Some(move _4);
         StorageDead(_4);
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_2);
         return;
     }
 
-    bb4: {
+    bb3: {
         unreachable;
     }
 }

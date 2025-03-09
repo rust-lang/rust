@@ -92,6 +92,12 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached terminate upon unwinding block and its reason
     terminate_block: Option<(Bx::BasicBlock, UnwindTerminateReason)>,
 
+    /// Shared return block, because LLVM would prefer only one `ret`.
+    ///
+    /// If this is `Skip`, there's only one return in the function (or none at all)
+    /// so there's no shared return, just the one in the normal BB.
+    return_block: CachedLlbb<Bx::BasicBlock>,
+
     /// A bool flag for each basic block indicating whether it is a cold block.
     /// A cold block is a block that is unlikely to be executed at runtime.
     cold_blocks: IndexVec<mir::BasicBlock, bool>,
@@ -204,6 +210,18 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             })
             .collect();
 
+    let return_block = if mir
+        .basic_blocks
+        .iter()
+        .filter(|bbd| matches!(bbd.terminator().kind, mir::TerminatorKind::Return))
+        .count()
+        > 1
+    {
+        CachedLlbb::None
+    } else {
+        CachedLlbb::Skip
+    };
+
     let mut fx = FunctionCx {
         instance,
         mir,
@@ -214,6 +232,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cached_llbbs,
         unreachable_block: None,
         terminate_block: None,
+        return_block,
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
         funclets: IndexVec::from_fn_n(|_| None, mir.basic_blocks.len()),
@@ -307,6 +326,11 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     // The solution is to do something like post-mono GVN. But for now we have this hack.
     for bb in unreached_blocks.iter() {
         fx.codegen_block_as_unreachable(bb);
+    }
+
+    if let CachedLlbb::Some(llbb) = fx.return_block {
+        let bx = &mut Bx::build(fx.cx, llbb);
+        fx.codegen_return_terminator(bx);
     }
 }
 

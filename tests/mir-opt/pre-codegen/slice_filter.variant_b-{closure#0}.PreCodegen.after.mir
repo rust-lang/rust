@@ -58,15 +58,13 @@ fn variant_b::{closure#0}(_1: &mut {closure@$DIR/slice_filter.rs:11:25: 11:41}, 
 
     bb5: {
         StorageDead(_13);
-        goto -> bb7;
+        StorageDead(_12);
+        StorageDead(_11);
+        return;
     }
 
     bb6: {
         _0 = const true;
-        goto -> bb7;
-    }
-
-    bb7: {
         StorageDead(_12);
         StorageDead(_11);
         return;

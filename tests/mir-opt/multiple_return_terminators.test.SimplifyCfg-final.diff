@@ -1,5 +1,5 @@
-- // MIR for `test` before MultipleReturnTerminators
-+ // MIR for `test` after MultipleReturnTerminators
+- // MIR for `test` before SimplifyCfg-final
++ // MIR for `test` after SimplifyCfg-final
   
   fn test(_1: bool) -> i32 {
       debug x => _1;
@@ -14,19 +14,17 @@
   
       bb1: {
           _0 = const 42_i32;
--         goto -> bb3;
-+         StorageDead(_2);
-+         return;
+          StorageDead(_2);
+          return;
       }
   
       bb2: {
           _0 = const 2015_i32;
--         goto -> bb3;
-+         StorageDead(_2);
-+         return;
-      }
-  
-      bb3: {
+-         StorageDead(_2);
+-         return;
+-     }
+- 
+-     bb3: {
           StorageDead(_2);
           return;
       }
