@@ -149,6 +149,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
         }
     }
 
+    fn is_assoc_fn(&self, sig_id: DefId) -> bool {
+        match sig_id.as_local() {
+            Some(local_sig_id) => match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
+                Some(sig) => sig.is_assoc_item,
+                None => false,
+            },
+            None => self.tcx.def_kind(sig_id) == DefKind::AssocFn,
+        }
+    }
+
     fn lower_delegation_decl(
         &mut self,
         sig_id: DefId,
@@ -324,7 +334,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let call = if self
             .get_resolution_id(delegation.id, span)
-            .and_then(|def_id| Ok(self.has_self(def_id, span)))
+            .and_then(|def_id| Ok(self.has_self(def_id, span) && self.is_assoc_fn(def_id)))
             .unwrap_or_default()
             && delegation.qself.is_none()
             && !has_generic_args
