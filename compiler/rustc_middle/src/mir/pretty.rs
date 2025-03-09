@@ -653,7 +653,7 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+        (DefKind::AnonConst | DefKind::InlineConst | DefKind::GlobalAsm, _) => {} // things like anon const, not an item
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
