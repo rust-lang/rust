@@ -139,20 +139,26 @@ error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closu
    |
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
-...
+LL |
+LL | fn ref_closure(mut x: (i32,)) {
+   |                ----- `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
    |     expects `Fn` instead of `FnMut`
 LL |         x = (1,);
    |         ^^^^^^^^ cannot assign
+   |
+   = help: consider using `std::sync::atomic::Mutex<(i32,)>` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `x.0`, as `Fn` closures cannot mutate their captured variables
   --> $DIR/mutability-errors.rs:41:9
    |
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
-...
+LL |
+LL | fn ref_closure(mut x: (i32,)) {
+   |                ----- `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
@@ -160,13 +166,17 @@ LL |     fn_ref(|| {
 LL |         x = (1,);
 LL |         x.0 = 1;
    |         ^^^^^^^ cannot assign
+   |
+   = help: consider using `std::sync::atomic::Mutex<(i32,)>` instead, which allows for multiple threads to access and modify the value
 
 error[E0596]: cannot borrow `x` as mutable, as it is a captured variable in a `Fn` closure
   --> $DIR/mutability-errors.rs:42:9
    |
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
-...
+LL |
+LL | fn ref_closure(mut x: (i32,)) {
+   |                ----- `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
@@ -174,13 +184,17 @@ LL |     fn_ref(|| {
 ...
 LL |         &mut x;
    |         ^^^^^^ cannot borrow as mutable
+   |
+   = help: consider using `std::sync::atomic::Mutex<(i32,)>` instead, which allows for multiple threads to access and modify the value
 
 error[E0596]: cannot borrow `x.0` as mutable, as `Fn` closures cannot mutate their captured variables
   --> $DIR/mutability-errors.rs:43:9
    |
 LL | fn fn_ref<F: Fn()>(f: F) -> F { f }
    |                       - change this to accept `FnMut` instead of `Fn`
-...
+LL |
+LL | fn ref_closure(mut x: (i32,)) {
+   |                ----- `x` declared here, outside the closure
 LL |     fn_ref(|| {
    |     ------ -- in this closure
    |     |
@@ -188,6 +202,8 @@ LL |     fn_ref(|| {
 ...
 LL |         &mut x.0;
    |         ^^^^^^^^ cannot borrow as mutable
+   |
+   = help: consider using `std::sync::atomic::Mutex<(i32,)>` instead, which allows for multiple threads to access and modify the value
 
 error[E0594]: cannot assign to `x`, as it is a captured variable in a `Fn` closure
   --> $DIR/mutability-errors.rs:46:9
