@@ -44,6 +44,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
+// This avoids a false positive with `unused_crate_dependencies`. `rust_index`
+// isn't used in this crate's code, but it must be named in the `Cargo.toml`
+// for the `rustc_randomized_layouts` feature.
+use rustc_index as _;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;

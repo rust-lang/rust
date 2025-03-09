@@ -1078,6 +1078,7 @@ impl Builder<'_> {
             // of the individual lints are satisfied.
             rustflags.arg("-Wkeyword_idents_2024");
             rustflags.arg("-Wunsafe_op_in_unsafe_fn");
+            rustflags.arg("-Wunused_crate_dependencies");
         }
 
         if self.config.rust_frame_pointers {
