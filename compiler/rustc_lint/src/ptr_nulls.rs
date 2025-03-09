@@ -3,7 +3,7 @@ use rustc_hir::{BinOpKind, Expr, ExprKind, TyKind};
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::sym;
 
-use crate::lints::PtrNullChecksDiag;
+use crate::lints::UselessPtrNullChecksDiag;
 use crate::{LateContext, LateLintPass, LintContext};
 
 declare_lint! {
@@ -38,10 +38,10 @@ declare_lint_pass!(PtrNullChecks => [USELESS_PTR_NULL_CHECKS]);
 /// a fn ptr, a reference, or a function call whose definition is
 /// annotated with `#![rustc_never_returns_null_ptr]`.
 /// If this situation is present, the function returns the appropriate diagnostic.
-fn incorrect_check<'a, 'tcx: 'a>(
+fn useless_check<'a, 'tcx: 'a>(
     cx: &'a LateContext<'tcx>,
     mut e: &'a Expr<'a>,
-) -> Option<PtrNullChecksDiag<'tcx>> {
+) -> Option<UselessPtrNullChecksDiag<'tcx>> {
     let mut had_at_least_one_cast = false;
     loop {
         e = e.peel_blocks();
@@ -50,14 +50,14 @@ fn incorrect_check<'a, 'tcx: 'a>(
             && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
-            return Some(PtrNullChecksDiag::FnRet { fn_name });
+            return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         } else if let ExprKind::Call(path, _args) = e.kind
             && let ExprKind::Path(ref qpath) = path.kind
             && let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id()
             && cx.tcx.has_attr(def_id, sym::rustc_never_returns_null_ptr)
             && let Some(fn_name) = cx.tcx.opt_item_ident(def_id)
         {
-            return Some(PtrNullChecksDiag::FnRet { fn_name });
+            return Some(UselessPtrNullChecksDiag::FnRet { fn_name });
         }
         e = if let ExprKind::Cast(expr, t) = e.kind
             && let TyKind::Ptr(_) = t.kind
@@ -73,9 +73,9 @@ fn incorrect_check<'a, 'tcx: 'a>(
         } else if had_at_least_one_cast {
             let orig_ty = cx.typeck_results().expr_ty(e);
             return if orig_ty.is_fn() {
-                Some(PtrNullChecksDiag::FnPtr { orig_ty, label: e.span })
+                Some(UselessPtrNullChecksDiag::FnPtr { orig_ty, label: e.span })
             } else if orig_ty.is_ref() {
-                Some(PtrNullChecksDiag::Ref { orig_ty, label: e.span })
+                Some(UselessPtrNullChecksDiag::Ref { orig_ty, label: e.span })
             } else {
                 None
             };
@@ -97,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && let Some(diag) = incorrect_check(cx, arg) =>
+                    && let Some(diag) = useless_check(cx, arg) =>
             {
                 cx.emit_span_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
             }
@@ -110,18 +110,18 @@ impl<'tcx> LateLintPass<'tcx> for PtrNullChecks {
                         cx.tcx.get_diagnostic_name(def_id),
                         Some(sym::ptr_const_is_null | sym::ptr_is_null)
                     )
-                    && let Some(diag) = incorrect_check(cx, receiver) =>
+                    && let Some(diag) = useless_check(cx, receiver) =>
             {
                 cx.emit_span_lint(USELESS_PTR_NULL_CHECKS, expr.span, diag)
             }
 
             ExprKind::Binary(op, left, right) if matches!(op.node, BinOpKind::Eq) => {
                 let to_check: &Expr<'_>;
-                let diag: PtrNullChecksDiag<'_>;
-                if let Some(ddiag) = incorrect_check(cx, left) {
+                let diag: UselessPtrNullChecksDiag<'_>;
+                if let Some(ddiag) = useless_check(cx, left) {
                     to_check = right;
                     diag = ddiag;
-                } else if let Some(ddiag) = incorrect_check(cx, right) {
+                } else if let Some(ddiag) = useless_check(cx, right) {
                     to_check = left;
                     diag = ddiag;
                 } else {
