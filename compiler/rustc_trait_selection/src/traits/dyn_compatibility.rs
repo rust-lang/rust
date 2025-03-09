@@ -579,8 +579,8 @@ fn receiver_is_dispatchable<'tcx>(
     let unsized_receiver_ty =
         receiver_for_self_ty(tcx, receiver_ty, unsized_self_ty, method.def_id);
 
-    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` added to caller bounds
-    // `U: ?Sized` is already implied here
+    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
+    // its supertraits) added to caller bounds. `U: ?Sized` is already implied here.
     let param_env = {
         let param_env = tcx.param_env(method.def_id);
 
@@ -598,8 +598,10 @@ fn receiver_is_dispatchable<'tcx>(
             ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
-        let caller_bounds =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
+        let caller_bounds = param_env
+            .caller_bounds()
+            .iter()
+            .chain(elaborate(tcx, [unsize_predicate, trait_predicate]));
 
         ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
     };
