@@ -46,7 +46,7 @@ impl<T: ?Sized> *const T {
             if const #[rustc_allow_const_fn_unstable(const_raw_ptr_comparison)] {
                 match (ptr).guaranteed_eq(null_mut()) {
                     Some(res) => res,
-                    // To remain maximally convervative, we stop execution when we don't
+                    // To remain maximally conservative, we stop execution when we don't
                     // know whether the pointer is null or not.
                     // We can *not* return `false` here, that would be unsound in `NonNull::new`!
                     None => panic!("null-ness of this pointer cannot be determined in const context"),
