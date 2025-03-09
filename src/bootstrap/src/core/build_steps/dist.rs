@@ -230,8 +230,10 @@ fn make_win_dist(
         "libiconv.a",
         "libmoldname.a",
         "libpthread.a",
-        //Windows import libs
-        //This should contain only the set of libraries necessary to link the standard library.
+        // Windows import libs
+        // This *should* contain only the set of libraries necessary to link the standard library,
+        // however we've had problems with people accidentally depending on extra libs being here,
+        // so we can't easily remove entries.
         "libadvapi32.a",
         "libbcrypt.a",
         "libcomctl32.a",
