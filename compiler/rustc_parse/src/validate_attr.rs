@@ -290,6 +290,7 @@ fn emit_malformed_attribute(
             | sym::rustc_confusables
             | sym::repr
             | sym::deprecated
+            | sym::optimize
     ) {
         return;
     }
