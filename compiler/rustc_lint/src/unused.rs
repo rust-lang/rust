@@ -843,6 +843,10 @@ trait UnusedDelimLint {
                 && !snip.ends_with(' ')
             {
                 " "
+            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+                && snip.ends_with(|c: char| c.is_alphanumeric())
+            {
+                " "
             } else {
                 ""
             };
@@ -850,6 +854,10 @@ trait UnusedDelimLint {
             let hi_replace = if keep_space.1
                 && let Ok(snip) = sm.span_to_next_source(hi)
                 && !snip.starts_with(' ')
+            {
+                " "
+            } else if let Ok(snip) = sm.span_to_prev_source(value_span)
+                && snip.starts_with(|c: char| c.is_alphanumeric())
             {
                 " "
             } else {
