@@ -1,7 +1,7 @@
 use std::borrow::Borrow;
 use std::collections::hash_map::RawEntryMut;
 use std::hash::{Hash, Hasher};
-use std::{iter, mem};
+use std::iter;
 
 use either::Either;
 
@@ -221,7 +221,7 @@ pub fn make_hash<K: Hash + ?Sized>(val: &K) -> u64 {
 /// consistently for each `Sharded` instance.
 #[inline]
 fn get_shard_hash(hash: u64) -> usize {
-    let hash_len = mem::size_of::<usize>();
+    let hash_len = size_of::<usize>();
     // Ignore the top 7 bits as hashbrown uses these and get the next SHARD_BITS highest bits.
     // hashbrown also uses the lowest bits, so we can't use those
     (hash >> (hash_len * 8 - 7 - SHARD_BITS)) as usize

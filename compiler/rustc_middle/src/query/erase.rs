@@ -27,7 +27,7 @@ pub type Erase<T: EraseType> = Erased<impl Copy>;
 pub fn erase<T: EraseType>(src: T) -> Erase<T> {
     // Ensure the sizes match
     const {
-        if std::mem::size_of::<T>() != std::mem::size_of::<T::Result>() {
+        if size_of::<T>() != size_of::<T::Result>() {
             panic!("size of T must match erased type T::Result")
         }
     };
