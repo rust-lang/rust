@@ -2294,18 +2294,14 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         {
             let anon_const_type = tcx.type_of(param_def_id).instantiate(tcx, args);
 
-            // We must error if the instantiated type has any inference variables as we will
-            // use this type to feed the `type_of` and query results must not contain inference
-            // variables otherwise we will ICE.
-            //
+            // FIXME(generic_const_parameter_types): Ideally we remove these errors below when
+            // we have the ability to intermix typeck of anon const const args with the parent
+            // bodies typeck.
+
             // We also error if the type contains any regions as effectively any region will wind
             // up as a region variable in mir borrowck. It would also be somewhat concerning if
             // hir typeck was using equality but mir borrowck wound up using subtyping as that could
             // result in a non-infer in hir typeck but a region variable in borrowck.
-            //
-            // FIXME(generic_const_parameter_types): Ideally we remove these errors one day when
-            // we have the ability to intermix typeck of anon const const args with the parent
-            // bodies typeck.
             if tcx.features().generic_const_parameter_types()
                 && (anon_const_type.has_free_regions() || anon_const_type.has_erased_regions())
             {
@@ -2316,10 +2312,23 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
                 return ty::Const::new_error(tcx, e);
             }
+            // We must error if the instantiated type has any inference variables as we will
+            // use this type to feed the `type_of` and query results must not contain inference
+            // variables otherwise we will ICE.
             if anon_const_type.has_non_region_infer() {
                 let e = tcx.dcx().span_err(
                     const_arg.span(),
                     "anonymous constants with inferred types are not yet supported",
+                );
+                tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
+                return ty::Const::new_error(tcx, e);
+            }
+            // We error when the type contains unsubstituted generics since we do not currently
+            // give the anon const any of the generics from the parent.
+            if anon_const_type.has_non_region_param() {
+                let e = tcx.dcx().span_err(
+                    const_arg.span(),
+                    "anonymous constants referencing generics are not yet supported",
                 );
                 tcx.feed_anon_const_type(anon.def_id, ty::EarlyBinder::bind(Ty::new_error(tcx, e)));
                 return ty::Const::new_error(tcx, e);
