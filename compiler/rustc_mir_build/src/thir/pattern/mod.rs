@@ -519,7 +519,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
         };
 
-        if let Some(user_ty) = self.user_args_applied_to_ty_of_hir_id(hir_id) {
+        if !matches!(kind, PatKind::Error(_))
+            && let Some(user_ty) = self.user_args_applied_to_ty_of_hir_id(hir_id)
+        {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
