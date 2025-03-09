@@ -1,7 +1,7 @@
 //! Pattern analysis sometimes wants to print patterns as part of a user-visible
 //! diagnostic.
 //!
-//! Historically it did so by creating a synthetic [`thir::Pat`](rustc_middle::thir::Pat)
+//! Historically it did so by creating a synthetic [`thir::Pat`]
 //! and printing that, but doing so was making it hard to modify the THIR pattern
 //! representation for other purposes.
 //!
@@ -12,8 +12,8 @@
 use std::fmt;
 
 use rustc_abi::{FieldIdx, VariantIdx};
-use rustc_middle::bug;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::{bug, thir};
 use rustc_span::sym;
 
 #[derive(Clone, Debug)]
@@ -44,12 +44,33 @@ pub(crate) enum EnumInfo<'tcx> {
     NotEnum,
 }
 
+fn erase_path_if_local<'tcx>(
+    tcx: TyCtxt<'_>,
+    adt_def: AdtDef<'tcx>,
+    scrut: &thir::Expr<'tcx>,
+) -> bool {
+    let enum_parent_def_id = tcx.parent(adt_def.did());
+    let scrut_parent_def_id = if let thir::ExprKind::Scope { region_scope: _, lint_level, value: _ } =
+        scrut.kind
+        && let thir::LintLevel::Explicit(hir_id) = lint_level
+    {
+        Some(hir_id.owner.to_def_id())
+    } else {
+        None
+    };
+    if scrut_parent_def_id == Some(enum_parent_def_id) {
+        return true;
+    }
+    false
+}
+
 pub(crate) fn write_struct_like<'tcx>(
     f: &mut impl fmt::Write,
     tcx: TyCtxt<'_>,
     ty: Ty<'tcx>,
     enum_info: &EnumInfo<'tcx>,
     subpatterns: &[FieldPat],
+    scrut: Option<&thir::Expr<'tcx>>,
 ) -> fmt::Result {
     let variant_and_name = match *enum_info {
         EnumInfo::Enum { adt_def, variant_index } => {
@@ -60,7 +81,18 @@ pub(crate) fn write_struct_like<'tcx>(
             {
                 variant.name.to_string()
             } else {
-                format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                let enum_and_variant = if let Some(scrut) = scrut
+                    && erase_path_if_local(tcx, adt_def, scrut)
+                {
+                    ty::print::with_forced_trimmed_paths!(format!(
+                        "{}::{}",
+                        tcx.def_path_str(adt_def.did()),
+                        variant.name
+                    ))
+                } else {
+                    format!("{}::{}", tcx.def_path_str(adt_def.did()), variant.name)
+                };
+                enum_and_variant
             };
             Some((variant, name))
         }
