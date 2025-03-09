@@ -122,8 +122,7 @@ for more details.
 These directives are used to ignore the test in some situations, which
 means the test won't be compiled or run.
 
-* `ignore-X` where `X` is a target detail or stage will ignore the test
-  accordingly (see below)
+* `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
 * `ignore-test` always ignores the test. This can be used to temporarily disable
