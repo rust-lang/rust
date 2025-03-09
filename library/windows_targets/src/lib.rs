@@ -34,7 +34,7 @@ pub macro link {
 }
 
 #[cfg(not(feature = "windows_raw_dylib"))]
-#[link(name = "advapi32")]
+#[cfg_attr(target_vendor = "win7", link(name = "advapi32"))]
 #[link(name = "ntdll")]
 #[link(name = "userenv")]
 #[link(name = "ws2_32")]

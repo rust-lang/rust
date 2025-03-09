@@ -1,5 +1,5 @@
-use super::api::{self, WinError, set_file_information_by_handle};
-use super::{IoResult, to_u16s};
+#![allow(nonstandard_style)]
+
 use crate::alloc::{Layout, alloc, dealloc};
 use crate::borrow::Cow;
 use crate::ffi::{OsStr, OsString, c_void};
@@ -10,6 +10,8 @@ use crate::os::windows::prelude::*;
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::handle::Handle;
+use crate::sys::pal::api::{self, WinError, set_file_information_by_handle};
+use crate::sys::pal::{IoResult, fill_utf16_buf, to_u16s, truncate_utf16_at_nul};
 use crate::sys::path::maybe_verbatim;
 use crate::sys::time::SystemTime;
 use crate::sys::{Align8, c, cvt};
@@ -167,7 +169,7 @@ impl DirEntry {
     }
 
     pub fn file_name(&self) -> OsString {
-        let filename = super::truncate_utf16_at_nul(&self.data.cFileName);
+        let filename = truncate_utf16_at_nul(&self.data.cFileName);
         OsString::from_wide(filename)
     }
 
@@ -695,7 +697,7 @@ impl File {
                 // Turn `\??\` into `\\?\` (a verbatim path).
                 subst[1] = b'\\' as u16;
                 // Attempt to convert to a more user-friendly path.
-                let user = super::args::from_wide_to_user_path(
+                let user = crate::sys::args::from_wide_to_user_path(
                     subst.iter().copied().chain([0]).collect(),
                 )?;
                 Ok(PathBuf::from(OsString::from_wide(user.strip_suffix(&[0]).unwrap_or(&user))))
@@ -1492,7 +1494,7 @@ pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
 }
 
 fn get_path(f: &File) -> io::Result<PathBuf> {
-    super::fill_utf16_buf(
+    fill_utf16_buf(
         |buf, sz| unsafe {
             c::GetFinalPathNameByHandleW(f.handle.as_raw_handle(), buf, sz, c::VOLUME_NAME_DOS)
         },
