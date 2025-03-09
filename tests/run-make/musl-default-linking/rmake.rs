@@ -45,8 +45,21 @@ fn main() {
 
         let target_spec: serde_json::Value =
             serde_json::from_str(&target_spec_json).expect("failed to parse target-spec-json");
-        let default = &target_spec["crt-static-default"];
 
+        let target_families = &target_spec["target-family"];
+        // WebAssembly doesn't support dynamic linking yet; all musl targets
+        // need to be statically linked.
+        if target_families
+            .as_array()
+            .expect("target-family wasn't an array")
+            .iter()
+            .filter_map(|x| x.as_str())
+            .any(|family| family == "wasm")
+        {
+            continue;
+        }
+
+        let default = &target_spec["crt-static-default"];
         // If the value is `null`, then the default to dynamically link from
         // musl_base was not overridden.
         if default.is_null() {
