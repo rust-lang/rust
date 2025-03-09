@@ -13,6 +13,7 @@
 //!    --resource-suffix flag and are emitted when --emit-type is empty (default)
 //!    or contains "invocation-specific".
 
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::ffi::OsString;
 use std::fs::File;
@@ -69,8 +70,13 @@ pub(crate) fn write_shared(
     write_search_desc(cx, krate, &desc)?; // does not need to be merged
 
     let crate_name = krate.name(cx.tcx());
-    let crate_name = crate_name.as_str(); // rand
-    let crate_name_json = OrderedJson::serialize(crate_name).unwrap(); // "rand"
+    let crate_name = crate_name.as_str(); // e.g. rand
+    let crate_name_json = OrderedJson::serialize(AllCratesEntry {
+        heading: Cow::Borrowed(&opt.crate_list_heading),
+        crate_name: Cow::Borrowed(crate_name),
+    })
+    .unwrap(); // e.g. {"c":"rand","h":""}
+
     let external_crates = hack_get_external_crate_names(&cx.dst, &cx.shared.resource_suffix)?;
     let info = CrateInfo {
         version: CrateInfoVersion::V1,
@@ -387,6 +393,19 @@ impl AllCratesPart {
     }
 }
 
+/// Type of a serialized entry in the [`AllCratesPart`] JSON.
+#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+struct AllCratesEntry<'a> {
+    #[serde(rename = "c")]
+    crate_name: Cow<'a, str>,
+
+    /// If non-absent and non-empty, is the name of a section heading in the crate sidebar.
+    #[serde(rename = "h")]
+    #[serde(default)]
+    #[serde(skip_serializing_if = "str::is_empty")]
+    heading: Cow<'a, str>,
+}
+
 /// Reads `crates.js`, which seems like the best
 /// place to obtain the list of externally documented crates if the index
 /// page was disabled when documenting the deps.
@@ -408,8 +427,12 @@ fn hack_get_external_crate_names(
     let Some(content) = regex.find(&content) else {
         return Err(Error::new("could not find crates list in crates.js", path));
     };
-    let content: Vec<String> = try_err!(serde_json::from_str(content.as_str()), &path);
-    Ok(content)
+    let crate_names: Vec<String> =
+        try_err!(serde_json::from_str::<Vec<AllCratesEntry<'static>>>(content.as_str()), &path)
+            .into_iter()
+            .map(|entry| entry.crate_name.into_owned())
+            .collect();
+    Ok(crate_names)
 }
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
