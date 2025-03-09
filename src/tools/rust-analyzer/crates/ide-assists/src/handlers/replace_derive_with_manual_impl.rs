@@ -5,7 +5,7 @@ use syntax::{
     SyntaxKind::WHITESPACE,
     T,
     ast::{self, AstNode, HasName, make},
-    ted,
+    ted::{self, Position},
 };
 
 use crate::{
@@ -222,6 +222,10 @@ fn impl_def_from_trait(
 
     let first_assoc_item =
         add_trait_assoc_items_to_impl(sema, &trait_items, trait_, &impl_def, &target_scope);
+
+    if trait_.is_unsafe(sema.db) {
+        ted::insert(Position::first_child_of(impl_def.syntax()), make::token(T![unsafe]));
+    }
 
     // Generate a default `impl` function body for the derived trait.
     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
