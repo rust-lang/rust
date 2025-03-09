@@ -60,6 +60,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `d32`
 `deflate-conversion`
 `dit`
+`div32`
 `doloop`
 `dotprod`
 `dpb`
@@ -133,8 +134,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `jsconv`
 `kl`
 `lahfsahf`
+`lam-bh`
+`lamcas`
 `lasx`
 `lbt`
+`ld-seq-sa`
 `leoncasa`
 `lor`
 `lse`
@@ -190,6 +194,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `reserve-x18`
 `rtm`
 `sb`
+`scq`
 `sha`
 `sha2`
 `sha3`
