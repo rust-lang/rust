@@ -32,7 +32,7 @@ pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
 ///
 /// [Rust By Example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
 /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-#[unstable(feature = "naked_functions", issue = "90957")]
+#[stable(feature = "naked_functions", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_builtin_macro]
 pub macro naked_asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */

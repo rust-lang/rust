@@ -195,6 +195,7 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     ungated!(no_mangle, Normal, template!(Word), WarnFollowing, @only_local: true),
     ungated!(used, Normal, template!(Word, List: "compiler|linker"), WarnFollowing, @only_local: true),
     ungated!(link_ordinal, Normal, template!(List: "ordinal"), ErrorPreceding),
+    ungated!(naked, Normal, template!(Word), WarnFollowing, @only_local: true),
 
     // Limits:
     ungated!(recursion_limit, CrateLevel, template!(NameValueStr: "N"), FutureWarnFollowing),
@@ -252,12 +253,6 @@ pub const INERT_ATTRIBUTES: &[BuiltinAttribute] = &[
     // ==========================================================================
     // Unstable attributes:
     // ==========================================================================
-
-    // Linking:
-    gated!(
-        naked, Normal, template!(Word), WarnFollowing, @only_local: true,
-        naked_functions, experimental!(naked)
-    ),
 
     // Testing:
     gated!(
