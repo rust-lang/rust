@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::str::FromStr;
 use std::{fmt, iter};
 
@@ -894,6 +895,37 @@ impl FromStr for Conv {
             }
             _ => Err(format!("'{s}' is not a valid value for entry function call convention.")),
         }
+    }
+}
+
+impl Display for Conv {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Conv::C => "C",
+            Conv::Rust => "Rust",
+            Conv::Cold => "Cold",
+            Conv::PreserveMost => "PreserveMost",
+            Conv::PreserveAll => "PreserveAll",
+            Conv::ArmAapcs => "ArmAapcs",
+            Conv::CCmseNonSecureCall => "CCmseNonSecureCall",
+            Conv::CCmseNonSecureEntry => "CCmseNonSecureEntry",
+            Conv::Msp430Intr => "Msp430Intr",
+            Conv::PtxKernel => "PtxKernel",
+            Conv::GpuKernel => "GpuKernel",
+            Conv::X86Fastcall => "X86Fastcall",
+            Conv::X86Intr => "X86Intr",
+            Conv::X86Stdcall => "X86Stdcall",
+            Conv::X86ThisCall => "X86ThisCall",
+            Conv::X86VectorCall => "X86VectorCall",
+            Conv::X86_64SysV => "X86_64SysV",
+            Conv::X86_64Win64 => "X86_64Win64",
+            Conv::AvrInterrupt => "AvrInterrupt",
+            Conv::AvrNonBlockingInterrupt => "AvrNonBlockingInterrupt",
+            Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => "RiscvInterrupt(machine)",
+            Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => {
+                "RiscvInterrupt(supervisor)"
+            }
+        })
     }
 }
 
