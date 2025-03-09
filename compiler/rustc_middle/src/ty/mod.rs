@@ -224,6 +224,7 @@ pub struct DelegationFnSig {
     pub has_self: bool,
     pub c_variadic: bool,
     pub target_feature: bool,
+    pub is_assoc_item: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
