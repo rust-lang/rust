@@ -1768,7 +1768,7 @@ fn rewrite_ty<R: Rewrite>(
     let (before_where_predicates, after_where_predicates) = generics
         .where_clause
         .predicates
-        .split_at(where_clauses.split);
+        .split_at(where_clauses.before_count);
     result.push_str(&format!("{}type ", format_visibility(context, vis)));
     let ident_str = rewrite_ident(context, ident);
 

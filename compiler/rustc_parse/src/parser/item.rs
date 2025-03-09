@@ -1024,7 +1024,12 @@ impl<'a> Parser<'a> {
                 has_where_token: after_where_clause.has_where_token,
                 span: after_where_clause.span,
             },
-            split: before_where_clause.predicates.len(),
+            before_count: before_where_clause.predicates.len(),
+            before_with_attr_count: before_where_clause
+                .predicates
+                .iter()
+                .filter(|p| !p.attrs.is_empty())
+                .count(),
         };
         let mut predicates = before_where_clause.predicates;
         predicates.extend(after_where_clause.predicates);
