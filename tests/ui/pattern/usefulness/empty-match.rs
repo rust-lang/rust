@@ -19,6 +19,12 @@ fn nonempty<const N: usize>(arrayN_of_empty: [!; N]) {
         };
     }
 
+    macro_rules! indirect {
+        ($e:expr) => {
+            match_guarded_arm!($e)
+        };
+    }
+
     struct NonEmptyStruct1;
     struct NonEmptyStruct2(bool);
     union NonEmptyUnion1 {
@@ -71,6 +77,8 @@ fn nonempty<const N: usize>(arrayN_of_empty: [!; N]) {
     match_guarded_arm!(NonEmptyEnum5::V1); //~ ERROR `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
     match_guarded_arm!(array0_of_empty); //~ ERROR `[]` not covered
     match_guarded_arm!(arrayN_of_empty); //~ ERROR `[]` not covered
+
+    indirect!(arrayN_of_empty); //~ ERROR `[]` not covered
 }
 
 fn main() {}
