@@ -36,6 +36,7 @@ pub enum Alignment {
 #[doc(hidden)]
 #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
 impl From<rt::Alignment> for Option<Alignment> {
+    /// Wrap the `rt::Alignment` in `Some` and `Unknown` gets converted to `None`.
     fn from(value: rt::Alignment) -> Self {
         match value {
             rt::Alignment::Left => Some(Alignment::Left),
