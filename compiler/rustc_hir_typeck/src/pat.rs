@@ -344,6 +344,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty = self.check_pat_inner(pat, opt_path_res, adjust_mode, expected, pat_info);
         self.write_ty(pat.hir_id, ty);
 
+        // If we implicitly inserted overloaded dereferences before matching, check the pattern to
+        // see if the dereferenced types need `DerefMut` bounds.
+        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
+            && derefed_tys.iter().any(|adjust| adjust.kind == PatAdjust::OverloadedDeref)
+        {
+            self.register_deref_mut_bounds_if_needed(
+                pat.span,
+                pat,
+                derefed_tys.iter().filter_map(|adjust| match adjust.kind {
+                    PatAdjust::OverloadedDeref => Some(adjust.source),
+                    PatAdjust::BuiltinDeref => None,
+                }),
+            );
+        }
+
         // (note_1): In most of the cases where (note_1) is referenced
         // (literals and constants being the exception), we relate types
         // using strict equality, even though subtyping would be sufficient.
@@ -483,7 +498,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // requirement that `expected: DerefPure`.
                 let inner_ty = self.deref_pat_target(pat.span, expected);
                 // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
-                // `ref mut` bindings. TODO: implement that, then reference here.
+                // `ref mut` bindings. See `Self::register_deref_mut_bounds_if_needed`.
 
                 // Preserve the smart pointer type for THIR lowering and upvar analysis.
                 self.typeck_results
@@ -2315,20 +2330,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Ty<'tcx> {
         let target_ty = self.deref_pat_target(span, expected);
         self.check_pat(inner, target_ty, pat_info);
-
-        // Check if the pattern has any `ref mut` bindings, which would require
-        // `DerefMut` to be emitted in MIR building instead of just `Deref`.
-        // We do this *after* checking the inner pattern, since we want to make
-        // sure to apply any match-ergonomics adjustments.
-        // TODO: move this to a separate definition to share it with implicit deref pats
-        if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
-            self.register_bound(
-                expected,
-                self.tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
-                self.misc(span),
-            );
-        }
-
+        self.register_deref_mut_bounds_if_needed(span, inner, [expected]);
         expected
     }
 
@@ -2348,6 +2350,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         let target_ty = self.normalize(span, target_ty);
         self.try_structurally_resolve_type(span, target_ty)
+    }
+
+    /// Check if the interior of a deref pattern (either explicit or implicit) has any `ref mut`
+    /// bindings, which would require `DerefMut` to be emitted in MIR building instead of just
+    /// `Deref`. We do this *after* checking the inner pattern, since we want to make sure to
+    /// account for `ref mut` binding modes inherited from implicitly dereferencing `&mut` refs.
+    fn register_deref_mut_bounds_if_needed(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        derefed_tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) {
+        if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
+            for mutably_derefed_ty in derefed_tys {
+                self.register_bound(
+                    mutably_derefed_ty,
+                    self.tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                    self.misc(span),
+                );
+            }
+        }
     }
 
     // Precondition: Pat is Ref(inner)

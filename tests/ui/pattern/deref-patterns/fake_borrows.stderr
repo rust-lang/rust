@@ -7,6 +7,15 @@ LL |         deref!(true) => {}
 LL |         _ if { *b = true; false } => {}
    |                ^^^^^^^^^ cannot assign
 
-error: aborting due to 1 previous error
+error[E0510]: cannot assign `*b` in match guard
+  --> $DIR/fake_borrows.rs:16:16
+   |
+LL |     match b {
+   |           - value is immutable in match guard
+LL |         true => {}
+LL |         _ if { *b = true; false } => {}
+   |                ^^^^^^^^^ cannot assign
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0510`.
