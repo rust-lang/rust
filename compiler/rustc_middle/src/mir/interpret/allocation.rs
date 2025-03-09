@@ -15,7 +15,9 @@ use provenance_map::*;
 use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
+use rustc_macros::HashStable;
+use rustc_serialize::{Decodable, Encodable};
+use rustc_type_ir::{TyDecoder, TyEncoder};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
@@ -77,7 +79,7 @@ impl AllocBytes for Box<[u8]> {
 /// module provides higher-level access.
 // Note: for performance reasons when interning, some of the `Allocation` fields can be partially
 // hashed. (see the `Hash` impl below for more details), so the impl is not derived.
-#[derive(Clone, Eq, PartialEq, TyEncodable, TyDecodable)]
+#[derive(Clone, Eq, PartialEq)]
 #[derive(HashStable)]
 pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box<[u8]>> {
     /// The actual bytes of the allocation.
@@ -99,6 +101,117 @@ pub struct Allocation<Prov: Provenance = CtfeProvenance, Extra = (), Bytes = Box
     pub mutability: Mutability,
     /// Extra state for the machine.
     pub extra: Extra,
+}
+
+/// Helper struct that packs an alignment, mutability, and "all bytes are zero" flag together.
+///
+/// Alignment values always have 2 free high bits, and we check for this in our [`Encodable`] impl.
+struct AllocFlags {
+    align: Align,
+    mutability: Mutability,
+    all_zero: bool,
+}
+
+impl<E: TyEncoder> Encodable<E> for AllocFlags {
+    fn encode(&self, encoder: &mut E) {
+        // Make sure Align::MAX can be stored with the high 2 bits unset.
+        const {
+            let max_supported_align_repr = u8::MAX >> 2;
+            let max_supported_align = 1 << max_supported_align_repr;
+            assert!(Align::MAX.bytes() <= max_supported_align)
+        }
+
+        let mut flags = self.align.bytes().trailing_zeros() as u8;
+        flags |= match self.mutability {
+            Mutability::Not => 0,
+            Mutability::Mut => 1 << 6,
+        };
+        flags |= (self.all_zero as u8) << 7;
+        flags.encode(encoder);
+    }
+}
+
+impl<D: TyDecoder> Decodable<D> for AllocFlags {
+    fn decode(decoder: &mut D) -> Self {
+        let flags: u8 = Decodable::decode(decoder);
+        let align = flags & 0b0011_1111;
+        let mutability = flags & 0b0100_0000;
+        let all_zero = flags & 0b1000_0000;
+
+        let align = Align::from_bytes(1 << align).unwrap();
+        let mutability = match mutability {
+            0 => Mutability::Not,
+            _ => Mutability::Mut,
+        };
+        let all_zero = all_zero > 0;
+
+        AllocFlags { align, mutability, all_zero }
+    }
+}
+
+/// Efficiently detect whether a slice of `u8` is all zero.
+///
+/// This is used in encoding of [`Allocation`] to special-case all-zero allocations. It is only
+/// optimized a little, because for many allocations the encoding of the actual bytes does not
+/// dominate runtime.
+#[inline]
+fn all_zero(buf: &[u8]) -> bool {
+    // In the empty case we wouldn't encode any contents even without this system where we
+    // special-case allocations whose contents are all 0. We can return anything in the empty case.
+    if buf.is_empty() {
+        return true;
+    }
+    // Just fast-rejecting based on the first element significantly reduces the amount that we end
+    // up walking the whole array.
+    if buf[0] != 0 {
+        return false;
+    }
+
+    // This strategy of combining all slice elements with & or | is unbeatable for the large
+    // all-zero case because it is so well-understood by autovectorization.
+    buf.iter().fold(true, |acc, b| acc & (*b == 0))
+}
+
+/// Custom encoder for [`Allocation`] to more efficiently represent the case where all bytes are 0.
+impl<Prov: Provenance, Extra, Bytes, E: TyEncoder> Encodable<E> for Allocation<Prov, Extra, Bytes>
+where
+    Bytes: AllocBytes,
+    ProvenanceMap<Prov>: Encodable<E>,
+    Extra: Encodable<E>,
+{
+    fn encode(&self, encoder: &mut E) {
+        let all_zero = all_zero(&self.bytes);
+        AllocFlags { align: self.align, mutability: self.mutability, all_zero }.encode(encoder);
+
+        encoder.emit_usize(self.bytes.len());
+        if !all_zero {
+            encoder.emit_raw_bytes(&self.bytes);
+        }
+        self.provenance.encode(encoder);
+        self.init_mask.encode(encoder);
+        self.extra.encode(encoder);
+    }
+}
+
+impl<Prov: Provenance, Extra, Bytes, D: TyDecoder> Decodable<D> for Allocation<Prov, Extra, Bytes>
+where
+    Bytes: AllocBytes,
+    ProvenanceMap<Prov>: Decodable<D>,
+    Extra: Decodable<D>,
+{
+    fn decode(decoder: &mut D) -> Self {
+        let AllocFlags { align, mutability, all_zero } = Decodable::decode(decoder);
+
+        let len = decoder.read_usize();
+        let bytes = if all_zero { vec![0u8; len] } else { decoder.read_raw_bytes(len).to_vec() };
+        let bytes = Bytes::from_bytes(bytes, align);
+
+        let provenance = Decodable::decode(decoder);
+        let init_mask = Decodable::decode(decoder);
+        let extra = Decodable::decode(decoder);
+
+        Self { bytes, provenance, init_mask, align, mutability, extra }
+    }
 }
 
 /// This is the maximum size we will hash at a time, when interning an `Allocation` and its
