@@ -643,7 +643,7 @@ impl From<Box<[u8]>> for Box<ByteStr> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl From<Box<ByteStr>> for Box<[u8]> {
-    /// Create a `Box<ByteStr>` from `Box<[u8]>`s raw.
+    /// Convert the inner bytes of `Box<[u8]>` to `ByteStr`.
     #[inline]
     fn from(s: Box<ByteStr>) -> Box<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -707,10 +707,10 @@ impl_partial_eq_ord_cow!(&'a ByteStr, Cow<'a, [u8]>);
 impl<'a> TryFrom<&'a ByteStr> for String {
     type Error = core::str::Utf8Error;
 
-    /// Convert `ByteStr`s bytes to a utf-8 `String`.
+    /// Convert `ByteStr`s bytes to a UTF-8 `String`.
     ///
     /// # Errors
-    /// If `ByteStr` is not valid utf-8
+    /// If `ByteStr` is not valid UTF-8
     #[inline]
     fn try_from(s: &'a ByteStr) -> Result<Self, Self::Error> {
         Ok(core::str::from_utf8(&s.0)?.into())
