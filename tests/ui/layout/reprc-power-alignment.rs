@@ -148,5 +148,29 @@ pub struct I {
     d: f32,
     e: f64,
 }
-
+#[repr(C)]
+pub struct J {
+    a: u8,
+    b: I,
+}
+// The lint also ignores diagnosing #[repr(align(n))].
+#[repr(C, align(8))]
+pub struct K {
+    a: u8,
+    b: u8,
+    c: f64,
+    d: f32,
+    e: f64,
+}
+#[repr(C)]
+pub struct L {
+    a: u8,
+    b: K,
+}
+#[repr(C, align(8))]
+pub struct M {
+    a: u8,
+    b: K,
+    c: L,
+}
 fn main() { }
