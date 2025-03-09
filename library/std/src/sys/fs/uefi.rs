@@ -1,6 +1,6 @@
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::hash::{Hash, Hasher};
+use crate::hash::Hash;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
@@ -27,7 +27,9 @@ pub struct FileTimes {}
 // Bool indicates if file is readonly
 pub struct FilePermissions(bool);
 
-pub struct FileType(!);
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+// Bool indicates if directory
+pub struct FileType(bool);
 
 #[derive(Debug)]
 pub struct DirBuilder {}
@@ -95,39 +97,17 @@ impl FileType {
     }
 
     pub fn is_file(&self) -> bool {
-        self.0
+        !self.is_dir()
     }
 
+    // Symlinks are not supported in UEFI
     pub fn is_symlink(&self) -> bool {
-        self.0
+        false
     }
-}
 
-impl Clone for FileType {
-    fn clone(&self) -> FileType {
-        self.0
-    }
-}
-
-impl Copy for FileType {}
-
-impl PartialEq for FileType {
-    fn eq(&self, _other: &FileType) -> bool {
-        self.0
-    }
-}
-
-impl Eq for FileType {}
-
-impl Hash for FileType {
-    fn hash<H: Hasher>(&self, _h: &mut H) {
-        self.0
-    }
-}
-
-impl fmt::Debug for FileType {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    #[expect(dead_code)]
+    const fn from_attr(attr: u64) -> Self {
+        Self(attr & r_efi::protocols::file::DIRECTORY != 0)
     }
 }
 
