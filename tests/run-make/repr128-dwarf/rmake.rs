@@ -87,14 +87,15 @@ fn main() {
         while let Some((_, entry)) = cursor.next_dfs().unwrap() {
             match entry.tag() {
                 gimli::constants::DW_TAG_variant if !is_old_llvm => {
-                    let value = match entry
-                        .attr(gimli::constants::DW_AT_discr_value)
-                        .unwrap()
-                        .unwrap()
-                        .value()
-                    {
+                    let Some(value) = entry.attr(gimli::constants::DW_AT_discr_value).unwrap()
+                    else {
+                        // `std` enums might have variants without `DW_AT_discr_value`.
+                        continue;
+                    };
+                    let value = match value.value() {
                         AttributeValue::Block(value) => value.to_slice().unwrap().to_vec(),
-                        value => panic!("unexpected DW_AT_discr_value of {value:?}"),
+                        // `std` has non-repr128 enums which don't use `AttributeValue::Block`.
+                        value => continue,
                     };
                     // The `DW_TAG_member` that is a child of `DW_TAG_variant` will contain the
                     // variant's name.
