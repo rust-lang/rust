@@ -1,10 +1,12 @@
 #![feature(rustc_attrs)]
 
 extern //~ WARN missing_abi
+       //~^ WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
     "C"suffix //~ ERROR suffixes on string literals are invalid
     fn foo() {}
 
 extern //~ WARN missing_abi
+       //~^ WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
     "C"suffix //~ ERROR suffixes on string literals are invalid
 {}
 

@@ -1,29 +1,29 @@
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:4:5
+  --> $DIR/bad-lit-suffixes.rs:5:5
    |
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:8:5
+  --> $DIR/bad-lit-suffixes.rs:10:5
    |
 LL |     "C"suffix
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:30:17
+  --> $DIR/bad-lit-suffixes.rs:32:17
    |
 LL | #[rustc_dummy = "string"suffix]
    |                 ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:34:14
+  --> $DIR/bad-lit-suffixes.rs:36:14
    |
 LL | #[must_use = "string"suffix]
    |              ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: malformed `must_use` attribute input
-  --> $DIR/bad-lit-suffixes.rs:34:1
+  --> $DIR/bad-lit-suffixes.rs:36:1
    |
 LL | #[must_use = "string"suffix]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -38,13 +38,13 @@ LL + #[must_use]
    |
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:39:15
+  --> $DIR/bad-lit-suffixes.rs:41:15
    |
 LL | #[link(name = "string"suffix)]
    |               ^^^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:43:41
+  --> $DIR/bad-lit-suffixes.rs:45:41
    |
 LL | #[rustc_layout_scalar_valid_range_start(0suffix)]
    |                                         ^^^^^^^ invalid suffix `suffix`
@@ -57,52 +57,57 @@ warning: extern declarations without an explicit ABI are deprecated
 LL | extern
    | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
    |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
+   = note: for more information, see issue #134986 <https://github.com/rust-lang/rust/issues/134986>
    = note: `#[warn(missing_abi)]` on by default
 
 warning: extern declarations without an explicit ABI are deprecated
-  --> $DIR/bad-lit-suffixes.rs:7:1
+  --> $DIR/bad-lit-suffixes.rs:8:1
    |
 LL | extern
    | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
+   = note: for more information, see issue #134986 <https://github.com/rust-lang/rust/issues/134986>
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:12:5
+  --> $DIR/bad-lit-suffixes.rs:14:5
    |
 LL |     ""suffix;
    |     ^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on byte string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:13:5
+  --> $DIR/bad-lit-suffixes.rs:15:5
    |
 LL |     b""suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:14:5
+  --> $DIR/bad-lit-suffixes.rs:16:5
    |
 LL |     r#""#suffix;
    |     ^^^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on byte string literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:15:5
+  --> $DIR/bad-lit-suffixes.rs:17:5
    |
 LL |     br#""#suffix;
    |     ^^^^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on char literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:16:5
+  --> $DIR/bad-lit-suffixes.rs:18:5
    |
 LL |     'a'suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
 
 error: suffixes on byte literals are invalid
-  --> $DIR/bad-lit-suffixes.rs:17:5
+  --> $DIR/bad-lit-suffixes.rs:19:5
    |
 LL |     b'a'suffix;
    |     ^^^^^^^^^^ invalid suffix `suffix`
 
 error: invalid width `1024` for integer literal
-  --> $DIR/bad-lit-suffixes.rs:19:5
+  --> $DIR/bad-lit-suffixes.rs:21:5
    |
 LL |     1234u1024;
    |     ^^^^^^^^^
@@ -110,7 +115,7 @@ LL |     1234u1024;
    = help: valid widths are 8, 16, 32, 64 and 128
 
 error: invalid width `1024` for integer literal
-  --> $DIR/bad-lit-suffixes.rs:20:5
+  --> $DIR/bad-lit-suffixes.rs:22:5
    |
 LL |     1234i1024;
    |     ^^^^^^^^^
@@ -118,7 +123,7 @@ LL |     1234i1024;
    = help: valid widths are 8, 16, 32, 64 and 128
 
 error: invalid width `1024` for float literal
-  --> $DIR/bad-lit-suffixes.rs:21:5
+  --> $DIR/bad-lit-suffixes.rs:23:5
    |
 LL |     1234f1024;
    |     ^^^^^^^^^
@@ -126,7 +131,7 @@ LL |     1234f1024;
    = help: valid widths are 32 and 64
 
 error: invalid width `1024` for float literal
-  --> $DIR/bad-lit-suffixes.rs:22:5
+  --> $DIR/bad-lit-suffixes.rs:24:5
    |
 LL |     1234.5f1024;
    |     ^^^^^^^^^^^
@@ -134,7 +139,7 @@ LL |     1234.5f1024;
    = help: valid widths are 32 and 64
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:24:5
+  --> $DIR/bad-lit-suffixes.rs:26:5
    |
 LL |     1234suffix;
    |     ^^^^^^^^^^ invalid suffix `suffix`
@@ -142,7 +147,7 @@ LL |     1234suffix;
    = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 error: invalid suffix `suffix` for number literal
-  --> $DIR/bad-lit-suffixes.rs:25:5
+  --> $DIR/bad-lit-suffixes.rs:27:5
    |
 LL |     0b101suffix;
    |     ^^^^^^^^^^^ invalid suffix `suffix`
@@ -150,7 +155,7 @@ LL |     0b101suffix;
    = help: the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
 
 error: invalid suffix `suffix` for float literal
-  --> $DIR/bad-lit-suffixes.rs:26:5
+  --> $DIR/bad-lit-suffixes.rs:28:5
    |
 LL |     1.0suffix;
    |     ^^^^^^^^^ invalid suffix `suffix`
@@ -158,7 +163,7 @@ LL |     1.0suffix;
    = help: valid suffixes are `f32` and `f64`
 
 error: invalid suffix `suffix` for float literal
-  --> $DIR/bad-lit-suffixes.rs:27:5
+  --> $DIR/bad-lit-suffixes.rs:29:5
    |
 LL |     1.0e10suffix;
    |     ^^^^^^^^^^^^ invalid suffix `suffix`

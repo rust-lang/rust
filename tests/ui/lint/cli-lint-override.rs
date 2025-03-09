@@ -8,10 +8,12 @@
 //@[force_warn_deny] compile-flags: --force-warn missing_abi --allow missing_abi
 //@[force_warn_deny] check-pass
 
-
 extern fn foo() {}
 //[warn_deny]~^ ERROR extern declarations without an explicit ABI are deprecated
-//[forbid_warn]~^^ ERROR extern declarations without an explicit ABI are deprecated
-//[force_warn_deny]~^^^ WARN extern declarations without an explicit ABI are deprecated
+//[warn_deny]~^^ WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
+//[forbid_warn]~^^^ ERROR extern declarations without an explicit ABI are deprecated
+//[forbid_warn]~^^^^ WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
+//[force_warn_deny]~^^^^^ WARN extern declarations without an explicit ABI are deprecated
+//[force_warn_deny]~^^^^^^ WARN this is accepted in the current edition (Rust 2015) but is a hard error in Rust future!
 
 fn main() {}

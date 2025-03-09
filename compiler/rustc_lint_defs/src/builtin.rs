@@ -3507,9 +3507,15 @@ declare_lint! {
     /// easily makes code review easier.
     ///
     /// [Other ABIs]: https://doc.rust-lang.org/reference/items/external-blocks.html#abi
+    /// [issue #134986]: https://github.com/rust-lang/rust/issues/134986
+    /// [`cargo fix`]: https://doc.rust-lang.org/cargo/commands/cargo-fix.html
     pub MISSING_ABI,
     Warn,
-    "No declared ABI for extern declaration"
+    "No declared ABI for extern declaration",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::EditionError(Edition::EditionFuture),
+        reference: "issue #134986 <https://github.com/rust-lang/rust/issues/134986>",
+    };
 }
 
 declare_lint! {

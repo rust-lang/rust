@@ -28,6 +28,8 @@ warning: extern declarations without an explicit ABI are deprecated
 LL | extern {
    | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
    |
+   = warning: this is accepted in the current edition (Rust 2018) but is a hard error in Rust future!
+   = note: for more information, see issue #134986 <https://github.com/rust-lang/rust/issues/134986>
    = note: `#[warn(missing_abi)]` on by default
 
 error: aborting due to 4 previous errors; 1 warning emitted
