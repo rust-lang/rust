@@ -107,12 +107,12 @@ impl<'k> StatCollector<'k> {
 
         let node = self.nodes.entry(label1).or_insert(Node::new());
         node.stats.count += 1;
-        node.stats.size = std::mem::size_of_val(val);
+        node.stats.size = size_of_val(val);
 
         if let Some(label2) = label2 {
             let subnode = node.subnodes.entry(label2).or_insert(NodeStats::new());
             subnode.count += 1;
-            subnode.size = std::mem::size_of_val(val);
+            subnode.size = size_of_val(val);
         }
     }
 
