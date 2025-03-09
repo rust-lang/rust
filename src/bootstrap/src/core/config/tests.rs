@@ -518,8 +518,7 @@ fn test_explicit_stage() {
 
 #[test]
 fn test_exclude() {
-    use std::path::MAIN_SEPARATOR;
-    let exclude_path = format!("test{}codegen", MAIN_SEPARATOR);
+    let exclude_path = "compiler";
     let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
 
     let first_excluded = config
