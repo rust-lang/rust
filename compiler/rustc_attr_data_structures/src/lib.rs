@@ -3,7 +3,6 @@
 #![doc(rust_logo)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod attributes;
@@ -149,3 +148,47 @@ print_tup!(A B C D E F G H);
 print_skip!(Span, ());
 print_disp!(Symbol, u16, bool, NonZero<u32>);
 print_debug!(UintTy, IntTy, Align, AttrStyle, CommentKind, Transparency);
+
+/// Finds attributes in sequences of attributes by pattern matching.
+///
+/// A little like `matches` but for attributes.
+///
+/// ```rust,ignore (illustrative)
+/// // finds the repr attribute
+/// if let Some(r) = find_attr!(attrs, AttributeKind::Repr(r) => r) {
+///
+/// }
+///
+/// // checks if one has matched
+/// if find_attr!(attrs, AttributeKind::Repr(_)) {
+///
+/// }
+/// ```
+///
+/// Often this requires you to first end up with a list of attributes.
+/// A common way to get those is through `tcx.get_all_attrs(did)`
+#[macro_export]
+macro_rules! find_attr {
+    ($attributes_list: expr, $pattern: pat $(if $guard: expr)?) => {{
+        $crate::find_attr!($attributes_list, $pattern $(if $guard)? => ()).is_some()
+    }};
+
+    ($attributes_list: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
+        fn check_attribute_iterator<'a>(_: &'_ impl IntoIterator<Item = &'a rustc_hir::Attribute>) {}
+        check_attribute_iterator(&$attributes_list);
+
+        let find_attribute = |iter| {
+            for i in $attributes_list {
+                match i {
+                    rustc_hir::Attribute::Parsed($pattern) $(if $guard)? => {
+                        return Some($e);
+                    }
+                    _ => {}
+                }
+            }
+
+            None
+        };
+        find_attribute($attributes_list)
+    }};
+}

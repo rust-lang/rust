@@ -41,7 +41,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -997,12 +997,6 @@ rustc_queries! {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
-    }
-
-    query self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
-        key: DefId
-    ) -> Option<ty::EarlyBinder<'tcx, ty::Ty<'tcx>>> {
-        desc { |tcx| "computing self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
     /// Maps a `DefId` of a type to a list of its inherent impls.

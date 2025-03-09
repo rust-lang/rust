@@ -5,7 +5,6 @@
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
 #![cfg_attr(feature = "nightly", feature(rustdoc_internals))]
 #![cfg_attr(feature = "nightly", feature(step_trait))]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 /*! ABI handling for rustc
@@ -204,6 +203,13 @@ impl ReprOptions {
         self.c()
     }
 }
+
+/// The maximum supported number of lanes in a SIMD vector.
+///
+/// This value is selected based on backend support:
+/// * LLVM does not appear to have a vector width limit.
+/// * Cranelift stores the base-2 log of the lane count in a 4 bit integer.
+pub const MAX_SIMD_LANES: u64 = 1 << 0xF;
 
 /// Parsed [Data layout](https://llvm.org/docs/LangRef.html#data-layout)
 /// for a target, which contains everything needed to compute layouts.
@@ -1743,48 +1749,6 @@ impl<FieldIdx: Idx, VariantIdx: Idx> LayoutData<FieldIdx, VariantIdx> {
     /// Returns `true` if this is an uninhabited type
     pub fn is_uninhabited(&self) -> bool {
         self.uninhabited
-    }
-
-    pub fn scalar<C: HasDataLayout>(cx: &C, scalar: Scalar) -> Self {
-        let largest_niche = Niche::from_scalar(cx, Size::ZERO, scalar);
-        let size = scalar.size(cx);
-        let align = scalar.align(cx);
-
-        let range = scalar.valid_range(cx);
-
-        // All primitive types for which we don't have subtype coercions should get a distinct seed,
-        // so that types wrapping them can use randomization to arrive at distinct layouts.
-        //
-        // Some type information is already lost at this point, so as an approximation we derive
-        // the seed from what remains. For example on 64-bit targets usize and u64 can no longer
-        // be distinguished.
-        let randomization_seed = size
-            .bytes()
-            .wrapping_add(
-                match scalar.primitive() {
-                    Primitive::Int(_, true) => 1,
-                    Primitive::Int(_, false) => 2,
-                    Primitive::Float(_) => 3,
-                    Primitive::Pointer(_) => 4,
-                } << 32,
-            )
-            // distinguishes references from pointers
-            .wrapping_add((range.start as u64).rotate_right(16))
-            // distinguishes char from u32 and bool from u8
-            .wrapping_add((range.end as u64).rotate_right(16));
-
-        LayoutData {
-            variants: Variants::Single { index: VariantIdx::new(0) },
-            fields: FieldsShape::Primitive,
-            backend_repr: BackendRepr::Scalar(scalar),
-            largest_niche,
-            uninhabited: false,
-            size,
-            align,
-            max_repr_align: None,
-            unadjusted_abi_align: align.abi,
-            randomization_seed: Hash64::new(randomization_seed),
-        }
     }
 }
 

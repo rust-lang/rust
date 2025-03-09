@@ -6,7 +6,6 @@
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod errors;

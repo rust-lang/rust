@@ -17,7 +17,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;
-use std::{fmt, mem, str};
+use std::{fmt, str};
 
 pub use adt::*;
 pub use assoc::*;
@@ -27,7 +27,8 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
-use rustc_attr_parsing::AttributeKind;
+pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -51,7 +52,7 @@ pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -637,12 +638,12 @@ impl<'tcx> TermKind<'tcx> {
         let (tag, ptr) = match self {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
@@ -1414,39 +1415,6 @@ pub enum ImplOverlapKind {
         /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
         marker: bool,
     },
-    /// These impls are allowed to overlap, but that raises an
-    /// issue #33140 future-compatibility warning (tracked in #56484).
-    ///
-    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
-    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
-    ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied on
-    /// that difference, doing what reduces to the following set of impls:
-    ///
-    /// ```compile_fail,(E0119)
-    /// trait Trait {}
-    /// impl Trait for dyn Send + Sync {}
-    /// impl Trait for dyn Sync + Send {}
-    /// ```
-    ///
-    /// Obviously, once we made these types be identical, that code causes a coherence
-    /// error and a fairly big headache for us. However, luckily for us, the trait
-    /// `Trait` used in this case is basically a marker trait, and therefore having
-    /// overlapping impls for it is sound.
-    ///
-    /// To handle this, we basically regard the trait as a marker trait, with an additional
-    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
-    /// it has the following restrictions:
-    ///
-    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
-    /// positive impls.
-    /// 2. The trait-ref of both impls must be equal.
-    /// 3. The trait-ref of both impls must be a trait object type consisting only of
-    /// marker traits.
-    /// 4. Neither of the impls can have any where-clauses.
-    ///
-    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    FutureCompatOrderDepTraitObjects,
 }
 
 /// Useful source information about where a desugared associated type for an
@@ -1624,7 +1592,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Returns `true` if the impls are the same polarity and the trait either
+    /// Returns `Some` if the impls are the same polarity and the trait either
     /// has no items or is annotated `#[marker]` and prevents item overrides.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn impls_are_allowed_to_overlap(
@@ -1663,18 +1631,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if is_marker_overlap {
             return Some(ImplOverlapKind::Permitted { marker: true });
-        }
-
-        if let Some(self_ty1) =
-            self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id1)
-            && let Some(self_ty2) =
-                self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id2)
-        {
-            if self_ty1 == self_ty2 {
-                return Some(ImplOverlapKind::FutureCompatOrderDepTraitObjects);
-            } else {
-                debug!("found {self_ty1:?} != {self_ty2:?}");
-            }
         }
 
         None
@@ -1757,7 +1713,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Gets all attributes.
     ///
-    /// To see if an item has a specific attribute, you should use [`rustc_attr_parsing::find_attr!`] so you can use matching.
+    /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
     pub fn get_all_attrs(
         self,
         did: impl Into<DefId>,

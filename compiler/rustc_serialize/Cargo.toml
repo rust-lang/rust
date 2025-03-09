@@ -16,3 +16,6 @@ thin-vec = "0.2.12"
 rustc_macros = { path = "../rustc_macros" }
 tempfile = "3.2"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

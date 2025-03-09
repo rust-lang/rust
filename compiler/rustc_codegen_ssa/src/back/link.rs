@@ -1177,7 +1177,7 @@ mod win {
             let mut cp: u32 = 0;
             // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
             // But the API requires us to pass the data as though it's a [u16] string.
-            let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
+            let len = size_of::<u32>() / size_of::<u16>();
             let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
             let len_written = GetLocaleInfoEx(
                 LOCALE_NAME_SYSTEM_DEFAULT,

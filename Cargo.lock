@@ -3297,6 +3297,7 @@ dependencies = [
  "rustc_hir",
  "rustc_lexer",
  "rustc_macros",
+ "rustc_middle",
  "rustc_serialize",
  "rustc_session",
  "rustc_span",
@@ -3752,7 +3753,7 @@ dependencies = [
  "rustc_abi",
  "rustc_ast",
  "rustc_ast_pretty",
- "rustc_attr_parsing",
+ "rustc_attr_data_structures",
  "rustc_hir",
  "rustc_span",
 ]
@@ -4020,7 +4021,8 @@ dependencies = [
  "rustc_apfloat",
  "rustc_arena",
  "rustc_ast",
- "rustc_attr_parsing",
+ "rustc_ast_ir",
+ "rustc_attr_data_structures",
  "rustc_data_structures",
  "rustc_error_messages",
  "rustc_errors",
@@ -5271,6 +5273,7 @@ dependencies = [
  "serde",
  "similar",
  "termcolor",
+ "toml 0.7.8",
  "walkdir",
 ]
 

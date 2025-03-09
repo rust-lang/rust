@@ -3,7 +3,6 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;
@@ -16,7 +15,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_attr_parsing::{AttributeKind, PrintAttribute};
+use rustc_attr_data_structures::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,

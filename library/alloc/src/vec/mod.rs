@@ -1254,7 +1254,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn capacity(&self) -> usize {
         self.buf.capacity()
     }
@@ -1569,7 +1569,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     #[rustc_diagnostic_item = "vec_as_slice"]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
         // `len` containing properly-initialized `T`s. Data must not be mutated for the returned
@@ -1601,7 +1601,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
     #[rustc_diagnostic_item = "vec_as_mut_slice"]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
@@ -1673,7 +1673,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]
@@ -1736,7 +1736,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]
@@ -2687,7 +2687,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         let len = self.len;
@@ -2713,7 +2713,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_diagnostic_item = "vec_is_empty"]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }

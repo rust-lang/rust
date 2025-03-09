@@ -7,3 +7,6 @@ edition = "2024"
 # tidy-alphabetical-start
 rustc-stable-hash = { version = "0.1.0" }
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

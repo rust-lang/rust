@@ -21,3 +21,6 @@ nightly = [
 ]
 rustc_randomized_layouts = []
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

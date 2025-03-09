@@ -435,7 +435,7 @@ pub enum Res<Id = hir::HirId> {
         /// mention any generic parameters to allow the following with `min_const_generics`:
         /// ```
         /// # struct Foo;
-        /// impl Foo { fn test() -> [u8; std::mem::size_of::<Self>()] { todo!() } }
+        /// impl Foo { fn test() -> [u8; size_of::<Self>()] { todo!() } }
         ///
         /// struct Bar([u8; baz::<Self>()]);
         /// const fn baz<T>() -> usize { 10 }
@@ -445,7 +445,7 @@ pub enum Res<Id = hir::HirId> {
         /// compat lint:
         /// ```
         /// fn foo<T>() {
-        ///     let _bar = [1_u8; std::mem::size_of::<*mut T>()];
+        ///     let _bar = [1_u8; size_of::<*mut T>()];
         /// }
         /// ```
         // FIXME(generic_const_exprs): Remove this bodge once that feature is stable.
