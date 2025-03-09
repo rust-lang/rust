@@ -1,0 +1,63 @@
+warning: cannot use constants which depend on trivially-false where clauses
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:25:28
+   |
+LL |     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
+
+warning: cannot use constants which depend on trivially-false where clauses
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:25:28
+   |
+LL |     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error[E0277]: the trait bound `for<'a> (): Unimplemented<'a>` is not satisfied
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:38:43
+   |
+LL |     let _a: Foo<1> = Foo::<{ <u8 as Trait<()>>::ASSOC }>;
+   |                                           ^^ the trait `for<'a> Unimplemented<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:5:1
+   |
+LL | pub trait Unimplemented<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required by a bound in `Trait::ASSOC`
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:9:16
+   |
+LL |     for<'a> T: Unimplemented<'a>,
+   |                ^^^^^^^^^^^^^^^^^ required by this bound in `Trait::ASSOC`
+LL | {
+LL |     const ASSOC: usize;
+   |           ----- required by a bound in this associated constant
+
+error[E0277]: the trait bound `for<'a> (): Unimplemented<'a>` is not satisfied
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:38:31
+   |
+LL |     let _a: Foo<1> = Foo::<{ <u8 as Trait<()>>::ASSOC }>;
+   |                               ^^ the trait `for<'a> Unimplemented<'a>` is not implemented for `()`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:5:1
+   |
+LL | pub trait Unimplemented<'a> {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+note: required for `u8` to implement `Trait<()>`
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:14:9
+   |
+LL | impl<T> Trait<T> for u8
+   |         ^^^^^^^^     ^^
+LL | where
+LL |     for<'a> T: Unimplemented<'a>,
+   |                ----------------- unsatisfied trait bound introduced here
+
+error: aborting due to 2 previous errors; 2 warnings emitted
+
+For more information about this error, try `rustc --explain E0277`.

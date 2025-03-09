@@ -687,7 +687,8 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 }
                                 e @ Err(
                                     EvaluateConstErr::EvaluationFailure(_)
-                                    | EvaluateConstErr::InvalidConstParamTy(_),
+                                    | EvaluateConstErr::InvalidConstParamTy(_)
+                                    | EvaluateConstErr::ImpossibleClauses,
                                 ) => e,
                             }
                         } else {
@@ -715,6 +716,10 @@ impl<'a, 'tcx> ObligationProcessor for FulfillProcessor<'a, 'tcx> {
                                 }
                             }
                         }
+                        (Err(EvaluateConstErr::ImpossibleClauses), _)
+                        | (_, Err(EvaluateConstErr::ImpossibleClauses)) => unreachable!(
+                            "under gce constants shouldnt be wf checked before evaluating"
+                        ),
                         (Err(EvaluateConstErr::InvalidConstParamTy(e)), _)
                         | (_, Err(EvaluateConstErr::InvalidConstParamTy(e))) => {
                             ProcessResult::Error(FulfillmentErrorCode::Select(

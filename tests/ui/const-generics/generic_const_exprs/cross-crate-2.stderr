@@ -1,0 +1,22 @@
+error[E0391]: cycle detected when computing revealed normalized predicates of `cross_crate_2::Foo::<N>::{constant#0}`
+  --> $DIR/auxiliary/cross-crate-2.rs:8:10
+   |
+LL |     [u8; N.div_ceil(8)]: Sized,
+   |          ^^^^^^^^^^^^^
+   |
+note: ...which requires computing normalized predicates of `cross_crate_2::Foo::<N>::{constant#0}`...
+  --> $DIR/auxiliary/cross-crate-2.rs:8:10
+   |
+LL |     [u8; N.div_ceil(8)]: Sized,
+   |          ^^^^^^^^^^^^^
+   = note: ...which again requires computing revealed normalized predicates of `cross_crate_2::Foo::<N>::{constant#0}`, completing the cycle
+note: cycle used when type-checking `main`
+  --> $DIR/cross-crate-2.rs:7:1
+   |
+LL | fn main() {
+   | ^^^^^^^^^
+   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0391`.

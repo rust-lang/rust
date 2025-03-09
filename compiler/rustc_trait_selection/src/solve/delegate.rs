@@ -85,7 +85,9 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             Ok(ct) => Some(ct),
             Err(EvaluateConstErr::EvaluationFailure(e)) => Some(ty::Const::new_error(self.tcx, e)),
             Err(
-                EvaluateConstErr::InvalidConstParamTy(_) | EvaluateConstErr::HasGenericsOrInfers,
+                EvaluateConstErr::ImpossibleClauses
+                | EvaluateConstErr::InvalidConstParamTy(_)
+                | EvaluateConstErr::HasGenericsOrInfers,
             ) => None,
         }
     }
