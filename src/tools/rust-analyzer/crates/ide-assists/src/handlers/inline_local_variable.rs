@@ -57,12 +57,14 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
             }
             let usage_node =
                 name_ref.syntax().ancestors().find(|it| ast::PathExpr::can_cast(it.kind()));
-            let usage_parent_option = usage_node.and_then(|it| it.parent());
+            let usage_parent_option = usage_node.as_ref().and_then(|it| it.parent());
             let usage_parent = match usage_parent_option {
                 Some(u) => u,
                 None => return Some((name_ref, false)),
             };
-            Some((name_ref, initializer_expr.needs_parens_in(&usage_parent)))
+            let should_wrap = initializer_expr
+                .needs_parens_in_place_of(&usage_parent, usage_node.as_ref().unwrap());
+            Some((name_ref, should_wrap))
         })
         .collect::<Option<Vec<_>>>()?;
 
@@ -940,6 +942,54 @@ fn main() {
             r#"
 fn main() {
     let _ = (|| 2)();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn test_wrap_in_parens() {
+        check_assist(
+            inline_local_variable,
+            r#"
+fn main() {
+    let $0a = 123 < 456;
+    let b = !a;
+}
+"#,
+            r#"
+fn main() {
+    let b = !(123 < 456);
+}
+"#,
+        );
+        check_assist(
+            inline_local_variable,
+            r#"
+trait Foo {
+    fn foo(&self);
+}
+
+impl Foo for bool {
+    fn foo(&self) {}
+}
+
+fn main() {
+    let $0a = 123 < 456;
+    let b = a.foo();
+}
+"#,
+            r#"
+trait Foo {
+    fn foo(&self);
+}
+
+impl Foo for bool {
+    fn foo(&self) {}
+}
+
+fn main() {
+    let b = (123 < 456).foo();
 }
 "#,
         );

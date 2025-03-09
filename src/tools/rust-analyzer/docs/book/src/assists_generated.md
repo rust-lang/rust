@@ -306,7 +306,7 @@ fn main() {
 
 
 ### `apply_demorgan_iterator`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L154) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L156) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 `Iterator::all` and `Iterator::any`.
@@ -1070,7 +1070,7 @@ pub use foo::{Bar, Baz};
 
 
 ### `expand_record_rest_pattern`
-**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L24) 
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L26) 
 
 Fills fields by replacing rest pattern in record patterns.
 
@@ -1094,7 +1094,7 @@ fn foo(bar: Bar) {
 
 
 ### `expand_tuple_struct_rest_pattern`
-**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L80) 
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L82) 
 
 Fills fields by replacing rest pattern in tuple struct patterns.
 
