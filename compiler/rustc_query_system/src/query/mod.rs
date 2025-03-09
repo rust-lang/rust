@@ -8,7 +8,7 @@ pub use self::job::{
 };
 
 mod caches;
-pub use self::caches::{DefIdCache, DefaultCache, QueryCache, SingleCache, VecCache};
+pub use self::caches::{DefIdCache, DefaultCache, IndexCache, QueryCache, SingleCache, VecCache};
 
 mod config;
 use rustc_data_structures::sync::Lock;
