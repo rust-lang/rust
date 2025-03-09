@@ -1,5 +1,3 @@
-#![feature(precise_capturing_in_traits)]
-
 struct Invariant<'a>(&'a mut &'a mut ());
 
 trait Trait {

@@ -1,6 +1,5 @@
 //@ edition: 2024
 
-#![feature(precise_capturing_in_traits)]
 #![deny(impl_trait_redundant_captures)]
 
 fn hello<'a>() -> impl Sized + use<'a> {}
