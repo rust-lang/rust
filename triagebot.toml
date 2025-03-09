@@ -253,7 +253,6 @@ trigger_files = [
     "compiler/rustc_passes/src/check_attr.rs",
     "compiler/rustc_attr_parsing",
     "compiler/rustc_attr_data_structures",
-    "compiler/rustc_attr_validation",
 ]
 
 [autolabel."T-rustdoc-frontend"]
@@ -317,7 +316,6 @@ trigger_files = [
     "library/panic_unwind",
     "library/std",
     "library/stdarch",
-    "library/term",
     "library/test",
 ]
 exclude_labels = [
@@ -332,7 +330,7 @@ trigger_files = [
 [autolabel."O-apple"]
 trigger_files = [
     "library/std/src/os/darwin",
-    "library/std/src/sys/pal/unix/thread_parking/darwin.rs",
+    "library/std/src/sys/sync/thread_parking/darwin.rs",
     "compiler/rustc_target/src/spec/base/apple",
 ]
 
@@ -409,7 +407,8 @@ trigger_files = [
 [autolabel."O-wasm"]
 trigger_files = [
     "library/std/src/sys/pal/wasm",
-    "library/std/src/os/wasm"
+    "library/std/src/os/wasi",
+    "library/std/src/os/wasip2"
 ]
 
 [autolabel."O-windows"]
@@ -500,7 +499,6 @@ trigger_files = [
     "CONTRIBUTING.md",
     "INSTALL.md",
     "REUSE.toml",
-    ".reuse",
     ".mailmap",
     ".git-blame-ignore-revs",
     ".editorconfig"
@@ -525,7 +523,6 @@ exclude_labels = [
 
 [autolabel."WG-trait-system-refactor"]
 trigger_files = [
-    "compiler/rustc_middle/src/traits/solve",
     "compiler/rustc_next_trait_solver",
     "compiler/rustc_trait_selection/src/solve",
     "compiler/rustc_type_ir/src/solve",
@@ -795,7 +792,7 @@ cc = ["@Nadrieril"]
 message = "Some changes occurred in cfg and check-cfg configuration"
 cc = ["@Urgau"]
 
-[mentions."compiler/rustc_lint/src/context/diagnostics/check_cfg.rs"]
+[mentions."compiler/rustc_lint/src/early/diagnostics/check_cfg.rs"]
 message = "Some changes occurred in check-cfg diagnostics"
 cc = ["@Urgau"]
 
@@ -961,7 +958,7 @@ If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/util
 [mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
-[mentions."test/crashes"]
+[mentions."tests/crashes"]
 message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, please move into the corresponding `ui` subdir and add 'Fixes #<issueNr>' to the PR description to autoclose the issue upon merge."
 
 [mentions."tests/rustdoc-json"]
@@ -1074,8 +1071,6 @@ cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_parsing"]
 cc = ["@jdonszelmann"]
 [mentions."compiler/rustc_attr_data_structures"]
-cc = ["@jdonszelmann"]
-[mentions."compiler/rustc_attr_validation"]
 cc = ["@jdonszelmann"]
 
 [assign]
@@ -1265,7 +1260,6 @@ project-exploit-mitigations = [
 "/compiler/rustc_middle/src/traits" =                    ["compiler", "types"]
 "/compiler/rustc_middle/src/ty" =                        ["compiler", "types"]
 "/compiler/rustc_const_eval/src/interpret" =             ["compiler", "mir"]
-"/compiler/rustc_const_eval/src/transform" =             ["compiler", "mir-opt"]
 "/compiler/rustc_mir_build/src/builder" =                ["compiler", "mir"]
 "/compiler/rustc_mir_transform" =                        ["compiler", "mir", "mir-opt"]
 "/compiler/rustc_smir" =                                 ["project-stable-mir"]
