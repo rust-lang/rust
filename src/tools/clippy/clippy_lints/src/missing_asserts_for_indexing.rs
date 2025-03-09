@@ -10,7 +10,7 @@ use rustc_ast::{LitKind, RangeLimits};
 use rustc_data_structures::packed::Pu128;
 use rustc_data_structures::unhash::UnindexMap;
 use rustc_errors::{Applicability, Diag};
-use rustc_hir::{BinOp, Block, Body, Expr, ExprKind, UnOp};
+use rustc_hir::{BinOpKind, Block, Body, Expr, ExprKind, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
@@ -97,7 +97,7 @@ enum LengthComparison {
 ///
 /// E.g. for `v.len() > 5` this returns `Some((LengthComparison::IntLessThanLength, 5, v.len()))`
 fn len_comparison<'hir>(
-    bin_op: BinOp,
+    bin_op: BinOpKind,
     left: &'hir Expr<'hir>,
     right: &'hir Expr<'hir>,
 ) -> Option<(LengthComparison, usize, &'hir Expr<'hir>)> {
@@ -112,7 +112,7 @@ fn len_comparison<'hir>(
 
     // normalize comparison, `v.len() > 4` becomes `4 < v.len()`
     // this simplifies the logic a bit
-    let (op, left, right) = normalize_comparison(bin_op.node, left, right)?;
+    let (op, left, right) = normalize_comparison(bin_op, left, right)?;
     match (op, left.kind, right.kind) {
         (Rel::Lt, int_lit_pat!(left), _) => Some((LengthComparison::IntLessThanLength, left as usize, right)),
         (Rel::Lt, _, int_lit_pat!(right)) => Some((LengthComparison::LengthLessThanInt, right as usize, left)),
@@ -138,7 +138,7 @@ fn assert_len_expr<'hir>(
         && let ExprKind::Unary(UnOp::Not, condition) = &cond.kind
         && let ExprKind::Binary(bin_op, left, right) = &condition.kind
 
-        && let Some((cmp, asserted_len, slice_len)) = len_comparison(*bin_op, left, right)
+        && let Some((cmp, asserted_len, slice_len)) = len_comparison(bin_op.node, left, right)
         && let ExprKind::MethodCall(method, recv, [], _) = &slice_len.kind
         && cx.typeck_results().expr_ty_adjusted(recv).peel_refs().is_slice()
         && method.ident.name == sym::len
