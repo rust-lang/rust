@@ -862,7 +862,7 @@ pub trait Iterator {
     /// Note that `iter.filter(f).next()` is equivalent to `iter.find(f)`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_filter")]
+    #[rustc_diagnostic_item = "iter_filter"]
     fn filter<P>(self, predicate: P) -> Filter<Self, P>
     where
         Self: Sized,
@@ -954,7 +954,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "enumerate_method")]
+    #[rustc_diagnostic_item = "enumerate_method"]
     fn enumerate(self) -> Enumerate<Self>
     where
         Self: Sized,
@@ -1963,7 +1963,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iterator_collect_fn")]
+    #[rustc_diagnostic_item = "iterator_collect_fn"]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
         Self: Sized,
@@ -3358,7 +3358,7 @@ pub trait Iterator {
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_copied")]
+    #[rustc_diagnostic_item = "iter_copied"]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,
@@ -3406,7 +3406,7 @@ pub trait Iterator {
     /// assert_eq!(&[vec![23]], &faster[..]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_cloned")]
+    #[rustc_diagnostic_item = "iter_cloned"]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,
