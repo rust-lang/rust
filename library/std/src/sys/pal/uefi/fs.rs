@@ -6,6 +6,9 @@ use crate::path::{Path, PathBuf};
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 
+#[expect(dead_code)]
+const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
+
 pub struct File(!);
 
 pub struct FileAttr(!);
@@ -20,7 +23,9 @@ pub struct OpenOptions {}
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {}
 
-pub struct FilePermissions(!);
+#[derive(Clone, PartialEq, Eq, Debug)]
+// Bool indicates if file is readonly
+pub struct FilePermissions(bool);
 
 pub struct FileType(!);
 
@@ -64,28 +69,18 @@ impl FilePermissions {
         self.0
     }
 
-    pub fn set_readonly(&mut self, _readonly: bool) {
-        self.0
+    pub fn set_readonly(&mut self, readonly: bool) {
+        self.0 = readonly
     }
-}
 
-impl Clone for FilePermissions {
-    fn clone(&self) -> FilePermissions {
-        self.0
+    #[expect(dead_code)]
+    const fn from_attr(attr: u64) -> Self {
+        Self(attr & r_efi::protocols::file::READ_ONLY != 0)
     }
-}
 
-impl PartialEq for FilePermissions {
-    fn eq(&self, _other: &FilePermissions) -> bool {
-        self.0
-    }
-}
-
-impl Eq for FilePermissions {}
-
-impl fmt::Debug for FilePermissions {
-    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        self.0
+    #[expect(dead_code)]
+    const fn to_attr(&self) -> u64 {
+        if self.0 { r_efi::protocols::file::READ_ONLY } else { 0 }
     }
 }
 
@@ -303,8 +298,8 @@ pub fn rename(_old: &Path, _new: &Path) -> io::Result<()> {
     unsupported()
 }
 
-pub fn set_perm(_p: &Path, perm: FilePermissions) -> io::Result<()> {
-    match perm.0 {}
+pub fn set_perm(_p: &Path, _perm: FilePermissions) -> io::Result<()> {
+    unsupported()
 }
 
 pub fn rmdir(_p: &Path) -> io::Result<()> {
