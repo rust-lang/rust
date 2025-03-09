@@ -3,8 +3,8 @@
 use std::iter::once;
 use std::ops::Range;
 
+use literal_escaper::{EscapeError, Mode};
 use rustc_errors::{Applicability, DiagCtxtHandle, ErrorGuaranteed};
-use rustc_lexer::unescape::{EscapeError, Mode};
 use rustc_span::{BytePos, Span};
 use tracing::debug;
 

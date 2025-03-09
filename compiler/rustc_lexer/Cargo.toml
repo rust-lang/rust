@@ -16,6 +16,7 @@ Rust lexer used by rustc. No stability guarantees are provided.
 [dependencies]
 memchr = "2.7.4"
 unicode-xid = "0.2.0"
+literal-escaper = { path = "../../library/literal-escaper" }
 
 [dependencies.unicode-properties]
 version = "0.1.0"
