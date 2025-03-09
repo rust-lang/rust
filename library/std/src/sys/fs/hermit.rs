@@ -1,18 +1,18 @@
-use super::fd::FileDesc;
-use super::hermit_abi::{
-    self, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT, O_DIRECTORY, O_EXCL, O_RDONLY,
-    O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG, dirent64, stat as stat_struct,
-};
 use crate::ffi::{CStr, OsStr, OsString, c_char};
 use crate::io::{self, BorrowedCursor, Error, ErrorKind, IoSlice, IoSliceMut, SeekFrom};
 use crate::os::hermit::ffi::OsStringExt;
+use crate::os::hermit::hermit_abi::{
+    self, DT_DIR, DT_LNK, DT_REG, DT_UNKNOWN, O_APPEND, O_CREAT, O_DIRECTORY, O_EXCL, O_RDONLY,
+    O_RDWR, O_TRUNC, O_WRONLY, S_IFDIR, S_IFLNK, S_IFMT, S_IFREG, dirent64, stat as stat_struct,
+};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd};
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
+pub use crate::sys::fs::common::{copy, exists};
+use crate::sys::pal::fd::FileDesc;
 use crate::sys::time::SystemTime;
 use crate::sys::{cvt, unsupported};
-pub use crate::sys_common::fs::{copy, exists};
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::{fmt, mem};
 
