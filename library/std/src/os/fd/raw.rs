@@ -15,7 +15,7 @@ use crate::os::unix::io::AsFd;
 use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
-use crate::sys_common::{AsInner, IntoInner};
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fs, io};
 
 /// Raw file descriptors.
@@ -179,6 +179,43 @@ impl IntoRawFd for fs::File {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
         self.into_inner().into_inner().into_raw_fd()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsRawFd for io::PipeReader {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_inner().as_raw_fd()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl FromRawFd for io::PipeReader {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> io::PipeReader {
+        unsafe { io::PipeReader::from_inner(FromRawFd::from_raw_fd(raw_fd)) }
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl IntoRawFd for io::PipeReader {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_raw_fd()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsRawFd for io::PipeWriter {
+    fn as_raw_fd(&self) -> RawFd {
+        self.as_inner().as_raw_fd()
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl FromRawFd for io::PipeWriter {
+    unsafe fn from_raw_fd(raw_fd: RawFd) -> io::PipeWriter {
+        unsafe { io::PipeWriter::from_inner(FromRawFd::from_raw_fd(raw_fd)) }
+    }
+}
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl IntoRawFd for io::PipeWriter {
+    fn into_raw_fd(self) -> RawFd {
+        self.into_inner().into_raw_fd()
     }
 }
 
