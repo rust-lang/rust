@@ -271,12 +271,39 @@ where
     /// and will need to clearly document it in the rustc-dev-guide before
     /// stabilization.
     pub(super) fn step_kind_for_source(&self, source: GoalSource) -> PathKind {
-        match (self.current_goal_kind, source) {
-            (_, GoalSource::NormalizeGoal(step_kind)) => step_kind,
-            (CurrentGoalKind::CoinductiveTrait, GoalSource::ImplWhereBound) => {
-                PathKind::Coinductive
+        match source {
+            // We treat these goals as unknown for now. It is likely that most miscellaneous
+            // nested goals will be converted to an inductive variant in the future.
+            //
+            // Having unknown cycles is always the safer option, as changing that to either
+            // succeed or hard error is backwards compatible. If we incorrectly treat a cycle
+            // as inductive even though it should not be, it may be unsound during coherence and
+            // fixing it may cause inference breakage or introduce ambiguity.
+            GoalSource::Misc => PathKind::Unknown,
+            GoalSource::NormalizeGoal(path_kind) => path_kind,
+            GoalSource::ImplWhereBound => {
+                // We currently only consider a cycle coinductive if it steps
+                // into a where-clause of a coinductive trait.
+                //
+                // We probably want to make all traits coinductive in the future,
+                // so we treat cycles involving their where-clauses as ambiguous.
+                if let CurrentGoalKind::CoinductiveTrait = self.current_goal_kind {
+                    PathKind::Coinductive
+                } else {
+                    PathKind::Unknown
+                }
             }
-            _ => PathKind::Inductive,
+            // Relating types is always unproductive. If we were to map proof trees to
+            // corecursive functions as explained in #136824, relating types never
+            // introduces a constructor which could cause the recursion to be guarded.
+            GoalSource::TypeRelating => PathKind::Inductive,
+            // Instantiating a higher ranked goal can never cause the recursion to be
+            // guarded and is therefore unproductive.
+            GoalSource::InstantiateHigherRanked => PathKind::Inductive,
+            // These goal sources are likely unproductive and can be changed to
+            // `PathKind::Inductive`. Keeping them as unknown until we're confident
+            // about this and have an example where it is necessary.
+            GoalSource::AliasBoundConstCondition | GoalSource::AliasWellFormed => PathKind::Unknown,
         }
     }
 
@@ -606,7 +633,7 @@ where
 
             let (NestedNormalizationGoals(nested_goals), _, certainty) = self.evaluate_goal_raw(
                 GoalEvaluationKind::Nested,
-                GoalSource::Misc,
+                GoalSource::TypeRelating,
                 unconstrained_goal,
             )?;
             // Add the nested goals from normalization to our own nested goals.
@@ -683,7 +710,7 @@ where
     pub(super) fn add_normalizes_to_goal(&mut self, mut goal: Goal<I, ty::NormalizesTo<I>>) {
         goal.predicate = goal.predicate.fold_with(&mut ReplaceAliasWithInfer::new(
             self,
-            GoalSource::Misc,
+            GoalSource::TypeRelating,
             goal.param_env,
         ));
         self.inspect.add_normalizes_to_goal(self.delegate, self.max_input_universe, goal);
@@ -939,7 +966,15 @@ where
         rhs: T,
     ) -> Result<(), NoSolution> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
-        self.add_goals(GoalSource::Misc, goals);
+        if cfg!(debug_assertions) {
+            for g in goals.iter() {
+                match g.predicate.kind().skip_binder() {
+                    ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {}
+                    p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+                }
+            }
+        }
+        self.add_goals(GoalSource::TypeRelating, goals);
         Ok(())
     }
 

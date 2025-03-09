@@ -13,6 +13,7 @@
 /// behavior as long as the resulting behavior is still correct.
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -20,7 +21,7 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 use rustc_index::{Idx, IndexVec};
 #[cfg(feature = "nightly")]
-use rustc_macros::HashStable_NoContext;
+use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use tracing::debug;
 
 use crate::data_structures::HashMap;
@@ -111,21 +112,35 @@ pub trait Delegate {
 /// In the initial iteration of a cycle, we do not yet have a provisional
 /// result. In the case we return an initial provisional result depending
 /// on the kind of cycle.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
 pub enum PathKind {
-    Coinductive,
+    /// A path consisting of only inductive/unproductive steps. Their initial
+    /// provisional result is `Err(NoSolution)`. We currently treat them as
+    /// `PathKind::Unknown` during coherence until we're fully confident in
+    /// our approach.
     Inductive,
+    /// A path which is not be coinductive right now but we may want
+    /// to change of them to be so in the future. We return an ambiguous
+    /// result in this case to prevent people from relying on this.
+    Unknown,
+    /// A path with at least one coinductive step. Such cycles hold.
+    Coinductive,
 }
+
 impl PathKind {
     /// Returns the path kind when merging `self` with `rest`.
     ///
     /// Given an inductive path `self` and a coinductive path `rest`,
     /// the path `self -> rest` would be coinductive.
+    ///
+    /// This operation represents an ordering and would be equivalent
+    /// to `max(self, rest)`.
     fn extend(self, rest: PathKind) -> PathKind {
-        match self {
-            PathKind::Coinductive => PathKind::Coinductive,
-            PathKind::Inductive => rest,
+        match (self, rest) {
+            (PathKind::Coinductive, _) | (_, PathKind::Coinductive) => PathKind::Coinductive,
+            (PathKind::Unknown, _) | (_, PathKind::Unknown) => PathKind::Unknown,
+            (PathKind::Inductive, PathKind::Inductive) => PathKind::Inductive,
         }
     }
 }
@@ -158,9 +173,6 @@ impl UsageKind {
                 }
             }
         }
-    }
-    fn and_merge(&mut self, other: impl Into<Self>) {
-        *self = self.merge(other);
     }
 }
 
@@ -297,11 +309,68 @@ impl CycleHeads {
 
             let path_from_entry = match step_kind {
                 PathKind::Coinductive => AllPathsToHeadCoinductive::Yes,
-                PathKind::Inductive => path_from_entry,
+                PathKind::Unknown | PathKind::Inductive => path_from_entry,
             };
 
             self.insert(head, path_from_entry);
         }
+    }
+}
+
+bitflags::bitflags! {
+    /// Tracks how nested goals have been accessed. This is necessary to disable
+    /// global cache entries if computing them would otherwise result in a cycle or
+    /// access a provisional cache entry.
+    #[derive(Debug, Clone, Copy)]
+    pub struct PathsToNested: u8 {
+        /// The initial value when adding a goal to its own nested goals.
+        const EMPTY                      = 1 << 0;
+        const INDUCTIVE                  = 1 << 1;
+        const UNKNOWN                    = 1 << 2;
+        const COINDUCTIVE                = 1 << 3;
+    }
+}
+impl From<PathKind> for PathsToNested {
+    fn from(path: PathKind) -> PathsToNested {
+        match path {
+            PathKind::Inductive => PathsToNested::INDUCTIVE,
+            PathKind::Unknown => PathsToNested::UNKNOWN,
+            PathKind::Coinductive => PathsToNested::COINDUCTIVE,
+        }
+    }
+}
+impl PathsToNested {
+    /// The implementation of this function is kind of ugly. We check whether
+    /// there currently exist 'weaker' paths in the set, if so we upgrade these
+    /// paths to at least `path`.
+    #[must_use]
+    fn extend_with(mut self, path: PathKind) -> Self {
+        match path {
+            PathKind::Inductive => {
+                if self.intersects(PathsToNested::EMPTY) {
+                    self.remove(PathsToNested::EMPTY);
+                    self.insert(PathsToNested::INDUCTIVE);
+                }
+            }
+            PathKind::Unknown => {
+                if self.intersects(PathsToNested::EMPTY | PathsToNested::INDUCTIVE) {
+                    self.remove(PathsToNested::EMPTY | PathsToNested::INDUCTIVE);
+                    self.insert(PathsToNested::UNKNOWN);
+                }
+            }
+            PathKind::Coinductive => {
+                if self.intersects(
+                    PathsToNested::EMPTY | PathsToNested::INDUCTIVE | PathsToNested::UNKNOWN,
+                ) {
+                    self.remove(
+                        PathsToNested::EMPTY | PathsToNested::INDUCTIVE | PathsToNested::UNKNOWN,
+                    );
+                    self.insert(PathsToNested::COINDUCTIVE);
+                }
+            }
+        }
+
+        self
     }
 }
 
@@ -322,15 +391,18 @@ impl CycleHeads {
 /// results from a the cycle BAB depending on the cycle root.
 #[derive_where(Debug, Default, Clone; X: Cx)]
 struct NestedGoals<X: Cx> {
-    nested_goals: HashMap<X::Input, UsageKind>,
+    nested_goals: HashMap<X::Input, PathsToNested>,
 }
 impl<X: Cx> NestedGoals<X> {
     fn is_empty(&self) -> bool {
         self.nested_goals.is_empty()
     }
 
-    fn insert(&mut self, input: X::Input, path_from_entry: UsageKind) {
-        self.nested_goals.entry(input).or_insert(path_from_entry).and_merge(path_from_entry);
+    fn insert(&mut self, input: X::Input, paths_to_nested: PathsToNested) {
+        match self.nested_goals.entry(input) {
+            Entry::Occupied(mut entry) => *entry.get_mut() |= paths_to_nested,
+            Entry::Vacant(entry) => drop(entry.insert(paths_to_nested)),
+        }
     }
 
     /// Adds the nested goals of a nested goal, given that the path `step_kind` from this goal
@@ -341,18 +413,15 @@ impl<X: Cx> NestedGoals<X> {
     /// the same as for the child.
     fn extend_from_child(&mut self, step_kind: PathKind, nested_goals: &NestedGoals<X>) {
         #[allow(rustc::potential_query_instability)]
-        for (input, path_from_entry) in nested_goals.iter() {
-            let path_from_entry = match step_kind {
-                PathKind::Coinductive => UsageKind::Single(PathKind::Coinductive),
-                PathKind::Inductive => path_from_entry,
-            };
-            self.insert(input, path_from_entry);
+        for (input, paths_to_nested) in nested_goals.iter() {
+            let paths_to_nested = paths_to_nested.extend_with(step_kind);
+            self.insert(input, paths_to_nested);
         }
     }
 
     #[cfg_attr(feature = "nightly", rustc_lint_query_instability)]
     #[allow(rustc::potential_query_instability)]
-    fn iter(&self) -> impl Iterator<Item = (X::Input, UsageKind)> {
+    fn iter(&self) -> impl Iterator<Item = (X::Input, PathsToNested)> + '_ {
         self.nested_goals.iter().map(|(i, p)| (*i, *p))
     }
 
@@ -490,7 +559,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             // goals as this change may cause them to now depend on additional
             // goals, resulting in new cycles. See the dev-guide for examples.
             if parent_depends_on_cycle {
-                parent.nested_goals.insert(parent.input, UsageKind::Single(PathKind::Inductive))
+                parent.nested_goals.insert(parent.input, PathsToNested::EMPTY);
             }
         }
     }
@@ -666,7 +735,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             //
             // We must therefore not use the global cache entry for `B` in that case.
             // See tests/ui/traits/next-solver/cycles/hidden-by-overflow.rs
-            last.nested_goals.insert(last.input, UsageKind::Single(PathKind::Inductive));
+            last.nested_goals.insert(last.input, PathsToNested::EMPTY);
         }
 
         debug!("encountered stack overflow");
@@ -749,16 +818,11 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
                 // We now care about the path from the next highest cycle head to the
                 // provisional cache entry.
-                match path_from_head {
-                    PathKind::Coinductive => {}
-                    PathKind::Inductive => {
-                        *path_from_head = Self::cycle_path_kind(
-                            &self.stack,
-                            stack_entry.step_kind_from_parent,
-                            head,
-                        )
-                    }
-                }
+                *path_from_head = path_from_head.extend(Self::cycle_path_kind(
+                    &self.stack,
+                    stack_entry.step_kind_from_parent,
+                    head,
+                ));
                 // Mutate the result of the provisional cache entry in case we did
                 // not reach a fixpoint.
                 *result = mutate_result(input, *result);
@@ -858,7 +922,7 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
             for &ProvisionalCacheEntry {
                 encountered_overflow,
                 ref heads,
-                path_from_head,
+                path_from_head: head_to_provisional,
                 result: _,
             } in entries.iter()
             {
@@ -870,24 +934,19 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
 
                 // A provisional cache entry only applies if the path from its highest head
                 // matches the path when encountering the goal.
+                //
+                // We check if any of the paths taken while computing the global goal
+                // would end up with an applicable provisional cache entry.
                 let head = heads.highest_cycle_head();
-                let full_path = match Self::cycle_path_kind(stack, step_kind_from_parent, head) {
-                    PathKind::Coinductive => UsageKind::Single(PathKind::Coinductive),
-                    PathKind::Inductive => path_from_global_entry,
-                };
-
-                match (full_path, path_from_head) {
-                    (UsageKind::Mixed, _)
-                    | (UsageKind::Single(PathKind::Coinductive), PathKind::Coinductive)
-                    | (UsageKind::Single(PathKind::Inductive), PathKind::Inductive) => {
-                        debug!(
-                            ?full_path,
-                            ?path_from_head,
-                            "cache entry not applicable due to matching paths"
-                        );
-                        return false;
-                    }
-                    _ => debug!(?full_path, ?path_from_head, "paths don't match"),
+                let head_to_curr = Self::cycle_path_kind(stack, step_kind_from_parent, head);
+                let full_paths = path_from_global_entry.extend_with(head_to_curr);
+                if full_paths.contains(head_to_provisional.into()) {
+                    debug!(
+                        ?full_paths,
+                        ?head_to_provisional,
+                        "cache entry not applicable due to matching paths"
+                    );
+                    return false;
                 }
             }
         }
@@ -986,8 +1045,8 @@ impl<D: Delegate<Cx = X>, X: Cx> SearchGraph<D> {
         let last = &mut self.stack[last_index];
         last.reached_depth = last.reached_depth.max(next_index);
 
-        last.nested_goals.insert(input, UsageKind::Single(step_kind_from_parent));
-        last.nested_goals.insert(last.input, UsageKind::Single(PathKind::Inductive));
+        last.nested_goals.insert(input, step_kind_from_parent.into());
+        last.nested_goals.insert(last.input, PathsToNested::EMPTY);
         if last_index != head {
             last.heads.insert(head, step_kind_from_parent);
         }
