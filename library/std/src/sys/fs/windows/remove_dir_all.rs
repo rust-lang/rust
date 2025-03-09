@@ -33,7 +33,7 @@ use core::sync::atomic::{AtomicU32, Ordering};
 
 use super::{AsRawHandle, DirBuff, File, FromRawHandle};
 use crate::sys::c;
-use crate::sys::pal::windows::api::WinError;
+use crate::sys::pal::api::WinError;
 use crate::thread;
 
 // The maximum number of times to spin when waiting for deletes to complete.

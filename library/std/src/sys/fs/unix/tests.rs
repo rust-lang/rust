@@ -1,4 +1,4 @@
-use crate::sys::pal::unix::fs::FilePermissions;
+use crate::sys::fs::FilePermissions;
 
 #[test]
 fn test_debug_permissions() {

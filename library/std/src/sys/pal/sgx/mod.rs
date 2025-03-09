@@ -12,8 +12,6 @@ pub mod abi;
 pub mod args;
 pub mod env;
 pub mod fd;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
 mod libunwind_integration;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]

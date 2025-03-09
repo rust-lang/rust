@@ -1,6 +1,3 @@
-#![forbid(unsafe_op_in_unsafe_fn)]
-
-use super::fd::WasiFd;
 use crate::ffi::{CStr, OsStr, OsString};
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::mem::{self, ManuallyDrop};
@@ -10,9 +7,10 @@ use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd
 use crate::path::{Path, PathBuf};
 use crate::sync::Arc;
 use crate::sys::common::small_c_string::run_path_with_cstr;
+use crate::sys::fd::WasiFd;
+pub use crate::sys::fs::common::exists;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
-pub use crate::sys_common::fs::exists;
 use crate::sys_common::{AsInner, FromInner, IntoInner, ignore_notfound};
 use crate::{fmt, iter, ptr};
 

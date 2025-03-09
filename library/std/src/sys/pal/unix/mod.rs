@@ -9,7 +9,6 @@ pub mod weak;
 pub mod args;
 pub mod env;
 pub mod fd;
-pub mod fs;
 pub mod futex;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub mod kernel_copy;

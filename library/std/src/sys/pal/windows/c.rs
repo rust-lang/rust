@@ -237,6 +237,17 @@ compat_fn_with_fallback! {
         STATUS_NOT_IMPLEMENTED
     }
     #[cfg(target_vendor = "uwp")]
+    pub fn NtOpenFile(
+        filehandle: *mut HANDLE,
+        desiredaccess: u32,
+        objectattributes: *const OBJECT_ATTRIBUTES,
+        iostatusblock: *mut IO_STATUS_BLOCK,
+        shareaccess: u32,
+        openoptions: u32
+    ) -> NTSTATUS {
+        STATUS_NOT_IMPLEMENTED
+    }
+    #[cfg(target_vendor = "uwp")]
     pub fn NtReadFile(
         filehandle: HANDLE,
         event: HANDLE,
