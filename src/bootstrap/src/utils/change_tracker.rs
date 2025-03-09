@@ -370,4 +370,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
     },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Info,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
 ];

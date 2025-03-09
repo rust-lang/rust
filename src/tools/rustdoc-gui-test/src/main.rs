@@ -20,7 +20,7 @@ fn get_browser_ui_test_version_inner(npm: &Path, global: bool) -> Option<String>
         Err(e) => {
             eprintln!(
                 "path to npm can be wrong, provided path: {npm:?}. Try to set npm path \
-            in config.toml in [build.npm]",
+            in bootstrap.toml in [build.npm]",
             );
             panic!("{:?}", e)
         }
