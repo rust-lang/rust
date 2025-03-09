@@ -73,7 +73,6 @@ This API is completely unstable and subject to change.
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // These are used by Clippy.

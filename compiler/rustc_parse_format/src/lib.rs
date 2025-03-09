@@ -13,7 +13,6 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub use Alignment::*;
