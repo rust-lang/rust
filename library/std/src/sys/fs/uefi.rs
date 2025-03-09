@@ -11,7 +11,11 @@ const FILE_PERMISSIONS_MASK: u64 = r_efi::protocols::file::READ_ONLY;
 
 pub struct File(!);
 
-pub struct FileAttr(!);
+#[derive(Clone)]
+pub struct FileAttr {
+    attr: u64,
+    size: u64,
+}
 
 pub struct ReadDir(!);
 
@@ -36,33 +40,27 @@ pub struct DirBuilder {}
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
-        self.0
+        self.size
     }
 
     pub fn perm(&self) -> FilePermissions {
-        self.0
+        FilePermissions::from_attr(self.attr)
     }
 
     pub fn file_type(&self) -> FileType {
-        self.0
+        FileType::from_attr(self.attr)
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        self.0
+        unsupported()
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        self.0
+        unsupported()
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        self.0
-    }
-}
-
-impl Clone for FileAttr {
-    fn clone(&self) -> FileAttr {
-        self.0
+        unsupported()
     }
 }
 
@@ -75,7 +73,6 @@ impl FilePermissions {
         self.0 = readonly
     }
 
-    #[expect(dead_code)]
     const fn from_attr(attr: u64) -> Self {
         Self(attr & r_efi::protocols::file::READ_ONLY != 0)
     }
@@ -105,7 +102,6 @@ impl FileType {
         false
     }
 
-    #[expect(dead_code)]
     const fn from_attr(attr: u64) -> Self {
         Self(attr & r_efi::protocols::file::DIRECTORY != 0)
     }
