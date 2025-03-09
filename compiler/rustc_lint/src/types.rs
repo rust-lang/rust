@@ -1193,9 +1193,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        let is_non_exhaustive =
-                            def.non_enum_variant().is_field_list_non_exhaustive();
-                        if is_non_exhaustive && !def.did().is_local() {
+                        if def.non_enum_variant().field_list_has_applicable_non_exhaustive() {
                             return FfiUnsafe {
                                 ty,
                                 reason: if def.is_struct() {
@@ -1248,14 +1246,12 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                             };
                         }
 
-                        use improper_ctypes::{
-                            check_non_exhaustive_variant, non_local_and_non_exhaustive,
-                        };
+                        use improper_ctypes::check_non_exhaustive_variant;
 
-                        let non_local_def = non_local_and_non_exhaustive(def);
+                        let non_exhaustive = def.variant_list_has_applicable_non_exhaustive();
                         // Check the contained variants.
                         let ret = def.variants().iter().try_for_each(|variant| {
-                            check_non_exhaustive_variant(non_local_def, variant)
+                            check_non_exhaustive_variant(non_exhaustive, variant)
                                 .map_break(|reason| FfiUnsafe { ty, reason, help: None })?;
 
                             match self.check_variant_for_ffi(acc, ty, def, variant, args) {
