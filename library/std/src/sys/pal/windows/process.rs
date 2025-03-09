@@ -621,6 +621,12 @@ impl From<AnonPipe> for Stdio {
     }
 }
 
+impl From<Handle> for Stdio {
+    fn from(pipe: Handle) -> Stdio {
+        Stdio::Handle(pipe)
+    }
+}
+
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Handle(file.into_inner())

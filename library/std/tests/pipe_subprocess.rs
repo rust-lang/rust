@@ -1,5 +1,3 @@
-#![feature(anonymous_pipe)]
-
 fn main() {
     #[cfg(all(not(miri), any(unix, windows), not(target_os = "emscripten")))]
     {

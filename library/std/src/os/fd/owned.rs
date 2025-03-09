@@ -7,7 +7,7 @@ use super::raw::{AsRawFd, FromRawFd, IntoRawFd, RawFd};
 use crate::marker::PhantomData;
 use crate::mem::ManuallyDrop;
 #[cfg(not(any(target_arch = "wasm32", target_env = "sgx", target_os = "hermit")))]
-use crate::sys::cvt;
+use crate::sys::{cvt, fd::FileDesc};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::{fmt, fs, io};
 
@@ -482,5 +482,47 @@ impl<'a> AsFd for io::StderrLock<'a> {
     fn as_fd(&self) -> BorrowedFd<'_> {
         // SAFETY: user code should not close stderr out from under the standard library
         unsafe { BorrowedFd::borrow_raw(2) }
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsFd for io::PipeReader {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeReader> for OwnedFd {
+    fn from(pipe: io::PipeReader) -> Self {
+        FileDesc::into_inner(pipe.0)
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl AsFd for io::PipeWriter {
+    fn as_fd(&self) -> BorrowedFd<'_> {
+        self.0.as_fd()
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeWriter> for OwnedFd {
+    fn from(pipe: io::PipeWriter) -> Self {
+        FileDesc::into_inner(pipe.0)
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedFd> for io::PipeReader {
+    fn from(owned_fd: OwnedFd) -> Self {
+        Self(FileDesc::from_inner(owned_fd))
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<OwnedFd> for io::PipeWriter {
+    fn from(owned_fd: OwnedFd) -> Self {
+        Self(FileDesc::from_inner(owned_fd))
     }
 }
