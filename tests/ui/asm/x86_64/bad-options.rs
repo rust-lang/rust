@@ -1,6 +1,6 @@
 //@ only-x86_64
 
-#![feature(asm_unwind, asm_goto)]
+#![feature(asm_unwind)]
 
 use std::arch::{asm, global_asm};
 
