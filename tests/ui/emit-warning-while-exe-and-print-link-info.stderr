@@ -1,0 +1,6 @@
+warning: skipping link step due to conflict: cannot output linkage information without emitting executable
+
+note: consider emitting executable to print linkage information
+
+warning: 1 warning emitted
+
