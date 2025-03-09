@@ -280,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for PassByRefOrValue {
                 if header.abi != ExternAbi::Rust {
                     return;
                 }
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 for a in attrs {
                     if let Some(meta_items) = a.meta_item_list() {
                         if a.has_name(sym::proc_macro_derive)

@@ -376,7 +376,7 @@ fn emit_orphan_check_error<'tcx>(
 ) -> ErrorGuaranteed {
     match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
-            let item = tcx.hir().expect_item(impl_def_id);
+            let item = tcx.hir_expect_item(impl_def_id);
             let impl_ = item.expect_impl();
             let hir_trait_ref = impl_.of_trait.as_ref().unwrap();
 

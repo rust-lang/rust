@@ -334,7 +334,7 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
                     self.cx,
                     MIXED_READ_WRITE_IN_EXPRESSION,
                     expr.span,
-                    format!("unsequenced read of `{}`", self.cx.tcx.hir().name(self.var)),
+                    format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
                     |diag| {
                         diag.span_note(
                             self.write_expr.span,

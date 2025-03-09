@@ -108,7 +108,7 @@ impl Msrv {
             let start = cx.last_node_with_lint_attrs;
             if let Some(msrv_attr) = once(start)
                 .chain(cx.tcx.hir_parent_id_iter(start))
-                .find_map(|id| parse_attrs(cx.tcx.sess, cx.tcx.hir().attrs(id)))
+                .find_map(|id| parse_attrs(cx.tcx.sess, cx.tcx.hir_attrs(id)))
             {
                 return Some(msrv_attr);
             }

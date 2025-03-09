@@ -89,11 +89,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
         match item.kind {
             ItemKind::Enum(def, _) if def.variants.len() > 1 => {
                 let iter = def.variants.iter().filter_map(|v| {
-                    (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir().attrs(v.hir_id)))
+                    (matches!(v.data, VariantData::Unit(_, _)) && is_doc_hidden(cx.tcx.hir_attrs(v.hir_id)))
                         .then_some((v.def_id, v.span))
                 });
                 if let Ok((id, span)) = iter.exactly_one()
-                    && !attr::contains_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                    && !attr::contains_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
                 {
                     self.potential_enums.push((item.owner_id.def_id, id, item.span, span));
                 }
@@ -114,7 +114,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualNonExhaustive {
                         "this seems like a manual implementation of the non-exhaustive pattern",
                         |diag| {
                             if let Some(non_exhaustive) =
-                                attr::find_by_name(cx.tcx.hir().attrs(item.hir_id()), sym::non_exhaustive)
+                                attr::find_by_name(cx.tcx.hir_attrs(item.hir_id()), sym::non_exhaustive)
                             {
                                 diag.span_note(non_exhaustive.span(), "the struct is already non-exhaustive");
                             } else {

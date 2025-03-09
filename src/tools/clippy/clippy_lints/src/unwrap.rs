@@ -318,7 +318,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
                     let is_entire_condition = unwrappable.is_entire_condition;
-                    let unwrappable_variable_name = self.cx.tcx.hir().name(unwrappable.local_id);
+                    let unwrappable_variable_name = self.cx.tcx.hir_name(unwrappable.local_id);
                     let suggested_pattern = if call_to_unwrap {
                         unwrappable.kind.success_variant_pattern()
                     } else {

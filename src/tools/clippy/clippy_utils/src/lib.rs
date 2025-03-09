@@ -2036,15 +2036,14 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir().attrs(hir_id), AttributeKind::Repr(..))
+    find_attr!(cx.tcx.hir_attrs(hir_id), AttributeKind::Repr(..))
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
-    let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if has_attr(map.attrs(enclosing_node), symbol) {
+        if has_attr(tcx.hir_attrs(enclosing_node), symbol) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
@@ -2061,7 +2060,7 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
             has_attr(
-                tcx.hir().attrs(tcx.local_def_id_to_hir_id(id.def_id)),
+                tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
                 sym::automatically_derived,
             )
         })
@@ -2344,16 +2343,14 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
-        .hir()
-        .attrs(hir::CRATE_HIR_ID)
+        .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
         .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
-        .hir()
-        .attrs(hir::CRATE_HIR_ID)
+        .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
         .any(|attr| attr.name_or_empty() == sym::no_core)
 }
@@ -2643,8 +2640,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
                         // We could also check for the type name `test::TestDescAndFn`
                         if let Res::Def(DefKind::Struct, _) = path.res {
                             let has_test_marker = tcx
-                                .hir()
-                                .attrs(item.hir_id())
+                                .hir_attrs(item.hir_id())
                                 .iter()
                                 .any(|a| a.has_name(sym::rustc_test_marker));
                             if has_test_marker {
@@ -2688,7 +2684,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir().attrs(id).iter().any(|attr| {
+    tcx.hir_attrs(id).iter().any(|attr| {
         if attr.has_name(sym::cfg)
             && let Some(items) = attr.meta_item_list()
             && let [item] = &*items
@@ -2713,12 +2709,10 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir = tcx.hir();
-
     tcx.has_attr(def_id, sym::cfg)
         || tcx
             .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
-            .flat_map(|(parent_id, _)| hir.attrs(parent_id))
+            .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
 }
 

@@ -799,7 +799,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         // Emit a different diagnostic for local variables, as they are not
                         // type definitions themselves, but rather variables *of* that type.
                         Res::Local(hir_id) => {
-                            err.arg("local_name", self.tcx.hir().name(hir_id));
+                            err.arg("local_name", self.tcx.hir_name(hir_id));
                             Some(fluent_generated::hir_typeck_invalid_local)
                         }
                         Res::Def(kind, def_id) if kind.ns() == Some(Namespace::ValueNS) => {

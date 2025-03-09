@@ -147,7 +147,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByRefMut<'tcx> {
                     // We don't check unsafe functions.
                     return;
                 }
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }

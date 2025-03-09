@@ -98,7 +98,7 @@ impl LateLintPass<'_> for MacroUseImports {
         if cx.sess().opts.edition >= Edition::Edition2018
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
-            && let attrs = cx.tcx.hir().attrs(hir_id)
+            && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
             && let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),

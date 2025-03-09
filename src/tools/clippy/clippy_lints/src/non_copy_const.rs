@@ -351,7 +351,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst<'tcx> {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx ImplItem<'_>) {
         if let ImplItemKind::Const(_, body_id) = &impl_item.kind {
             let item_def_id = cx.tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-            let item = cx.tcx.hir().expect_item(item_def_id);
+            let item = cx.tcx.hir_expect_item(item_def_id);
 
             match &item.kind {
                 ItemKind::Impl(Impl {

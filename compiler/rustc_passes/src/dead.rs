@@ -361,7 +361,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     self.tcx.hir_fn_sig_by_hir_id(self.tcx.local_def_id_to_hir_id(local_def_id))
                 && matches!(fn_sig.decl.implicit_self, hir::ImplicitSelfKind::None)
                 && let TyKind::Path(hir::QPath::Resolved(_, path)) =
-                    self.tcx.hir().expect_item(local_impl_of).expect_impl().self_ty.kind
+                    self.tcx.hir_expect_item(local_impl_of).expect_impl().self_ty.kind
                 && let Res::Def(def_kind, did) = path.res
             {
                 match def_kind {
@@ -424,7 +424,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     for impl_def_id in self.tcx.all_impls(item.owner_id.to_def_id()) {
                         if let Some(local_def_id) = impl_def_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_def_id).kind
+                                self.tcx.hir_expect_item(local_def_id).kind
                         {
                             // skip items
                             // mark dependent traits live
@@ -448,7 +448,7 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
                     for impl_id in self.tcx.all_impls(trait_id) {
                         if let Some(local_impl_id) = impl_id.as_local()
                             && let ItemKind::Impl(impl_ref) =
-                                self.tcx.hir().expect_item(local_impl_id).kind
+                                self.tcx.hir_expect_item(local_impl_id).kind
                         {
                             if !matches!(trait_item.kind, hir::TraitItemKind::Type(..))
                                 && !ty_ref_to_pub_struct(self.tcx, impl_ref.self_ty)
