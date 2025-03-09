@@ -310,6 +310,17 @@ than building it.
             .entry(*target)
             .or_insert_with(|| Target::from_triple(&target.triple));
 
+        // compiler-rt c fallbacks for wasm cannot be built with gcc
+        if target.contains("wasm") // bare metal targets without wasi sdk
+            && (build.config.optimized_compiler_builtins(*target)
+                || build.config.rust_std_features.contains("compiler-builtins-c"))
+        {
+            let is_clang = is_clang_compiler(build.cc(*target), build);
+            if !is_clang {
+                panic!("only clang supports building c code for wasm targets");
+            }
+        }
+
         if (target.contains("-none-") || target.contains("nvptx"))
             && build.no_std(*target) == Some(false)
         {
@@ -371,4 +382,17 @@ $ pacman -R cmake && pacman -S mingw-w64-x86_64-cmake
     if let Some(ref s) = build.config.ccache {
         cmd_finder.must_have(s);
     }
+}
+
+/// checks if the compiler at `path` is clang by looking at defined macros
+fn is_clang_compiler(path: PathBuf, build: &Build) -> bool {
+    let cc_output = command(&path)
+        .arg("-E") // preprocess only
+        .arg("-dM") // dump defines
+        .arg("-x")
+        .arg("c")
+        .arg("/dev/null")
+        .run_capture_stdout(build)
+        .stdout();
+    cc_output.contains("#define __clang__ 1")
 }
