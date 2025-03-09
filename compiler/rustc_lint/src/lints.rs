@@ -6,7 +6,8 @@ use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
+    EmissionGuarantee, ExpectedLifetimeParameter, IndicateAnonymousLifetime, LintDiagnostic,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
@@ -2726,6 +2727,26 @@ impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
             ),
         };
     }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_hidden_lifetime_parameters)] // deliberately the same translation
+pub(crate) struct ElidedLifetimesInPathsTied {
+    #[subdiagnostic]
+    pub expected: Vec<ExpectedLifetimeParameter>,
+
+    #[subdiagnostic]
+    pub suggestions: Vec<IndicateAnonymousLifetime>,
+
+    #[subdiagnostic]
+    pub elided_lifetime_source: Option<ElidedLifetimesInPathsTiedSource>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(lint_hidden_lifetime_parameters_tied_source)]
+pub(crate) struct ElidedLifetimesInPathsTiedSource {
+    #[primary_span]
+    pub span: Span,
 }
 
 #[derive(LintDiagnostic)]
