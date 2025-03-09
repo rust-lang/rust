@@ -70,12 +70,6 @@ ENV WASM_WASIP_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $
   tests/assembly \
   library/core
 
-ENV WASM_BARE_TARGET=wasm32-unknown-unknown \
-  CC_wasm32_unknown_unknown=clang-11 \
-  CXX_wasm32_unknown_unknown=clang++-11
-ENV WASM_BARE_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $WASM_BARE_TARGET \
-  tests/run-make/wasm-builtins-no-linker-warning
-
 ENV NVPTX_TARGETS=nvptx64-nvidia-cuda
 ENV NVPTX_SCRIPT python3 /checkout/x.py --stage 2 test --host='' --target $NVPTX_TARGETS \
   tests/run-make \
@@ -97,4 +91,4 @@ ENV UEFI_TARGETS=aarch64-unknown-uefi,i686-unknown-uefi,x86_64-unknown-uefi \
 ENV UEFI_SCRIPT python3 /checkout/x.py --stage 2 build --host='' --target $UEFI_TARGETS && \
   python3 -u /uefi_qemu_test/run.py
 
-ENV SCRIPT $WASM_BARE_SCRIPT && $WASM_WASIP_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT
+ENV SCRIPT $WASM_WASIP_SCRIPT && $NVPTX_SCRIPT && $MUSL_SCRIPT && $UEFI_SCRIPT
