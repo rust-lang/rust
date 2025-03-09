@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::sys_common::{FromInner, IntoInner};
 
 pub struct AnonPipe(!);
 
@@ -53,4 +54,16 @@ impl AnonPipe {
 
 pub fn read2(p1: AnonPipe, _v1: &mut Vec<u8>, _p2: AnonPipe, _v2: &mut Vec<u8>) -> io::Result<()> {
     match p1.0 {}
+}
+
+impl FromInner<!> for AnonPipe {
+    fn from_inner(inner: !) -> Self {
+        Self(inner)
+    }
+}
+
+impl IntoInner<!> for AnonPipe {
+    fn into_inner(self) -> ! {
+        self.0
+    }
 }
