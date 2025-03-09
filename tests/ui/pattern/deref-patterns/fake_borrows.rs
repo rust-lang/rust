@@ -11,4 +11,11 @@ fn main() {
         deref!(false) => {}
         _ => {},
     }
+    match b {
+        true => {}
+        _ if { *b = true; false } => {}
+        //~^ ERROR cannot assign `*b` in match guard
+        false => {}
+        _ => {},
+    }
 }

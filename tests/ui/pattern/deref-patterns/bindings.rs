@@ -51,6 +51,7 @@ fn nested_vec(vecvec: Vec<Vec<u32>>) -> u32 {
     }
 }
 
+#[cfg(explicit)]
 fn ref_mut(val: u32) -> u32 {
     let mut b = Box::new(0u32);
     match &mut b {
@@ -64,12 +65,39 @@ fn ref_mut(val: u32) -> u32 {
     *x
 }
 
+#[cfg(implicit)]
+fn ref_mut(val: u32) -> u32 {
+    let mut b = Box::new((0u32,));
+    match &mut b {
+        (_x,) if false => unreachable!(),
+        (x,) => {
+            *x = val;
+        }
+        _ => unreachable!(),
+    }
+    let (x,) = &b else { unreachable!() };
+    *x
+}
+
+#[cfg(explicit)]
 #[rustfmt::skip]
 fn or_and_guard(tuple: (u32, u32)) -> u32 {
     let mut sum = 0;
     let b = Box::new(tuple);
     match b {
         deref!((x, _) | (_, x)) if { sum += x; false } => {},
+        _ => {},
+    }
+    sum
+}
+
+#[cfg(implicit)]
+#[rustfmt::skip]
+fn or_and_guard(tuple: (u32, u32)) -> u32 {
+    let mut sum = 0;
+    let b = Box::new(tuple);
+    match b {
+        (x, _) | (_, x) if { sum += x; false } => {},
         _ => {},
     }
     sum
