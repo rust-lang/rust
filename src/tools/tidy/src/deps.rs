@@ -123,7 +123,6 @@ const EXCEPTIONS_CARGO: ExceptionList = &[
     ("arrayref", "BSD-2-Clause"),
     ("bitmaps", "MPL-2.0+"),
     ("blake3", "CC0-1.0 OR Apache-2.0 OR Apache-2.0 WITH LLVM-exception"),
-    ("bytesize", "Apache-2.0"),
     ("ciborium", "Apache-2.0"),
     ("ciborium-io", "Apache-2.0"),
     ("ciborium-ll", "Apache-2.0"),
