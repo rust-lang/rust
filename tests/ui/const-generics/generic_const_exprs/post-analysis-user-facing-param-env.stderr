@@ -25,6 +25,13 @@ LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
    |
    = note: expressions using a const parameter must map each value to a distinct output value
    = note: proving the result of expressions other than the parameter are unique is not supported
+help: either remove the type parameter NUM, or make use of it, for example
+   |
+LL - impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo
+LL + impl<'a> std::ops::Add<&'a Foo> for Foo
+   |
+LL | impl<'a, const NUM: usize> std::ops::Add<&'a Foo> for Foo<NUM>
+   |                                                          +++++
 
 error[E0284]: type annotations needed
   --> $DIR/post-analysis-user-facing-param-env.rs:11:40
