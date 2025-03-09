@@ -1151,6 +1151,24 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo{}",
                         detail: "Foo { x: i32, y: i32 }",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1183,6 +1201,24 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo()",
                         detail: "Foo(i32, i32)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1261,6 +1297,24 @@ fn main() { Foo::Fo$0 }
                             Variant,
                         ),
                         detail: "Foo",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1335,7 +1389,13 @@ fn main() { let _: m::Spam = S$0 }
                             requires_import: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            function: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
                             is_skipping_completion: false,
                         },
                         trigger_call_info: true,
@@ -1365,7 +1425,13 @@ fn main() { let _: m::Spam = S$0 }
                             requires_import: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            function: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
                             is_skipping_completion: false,
                         },
                         trigger_call_info: true,
@@ -1590,6 +1656,24 @@ use self::E::*;
                         documentation: Documentation(
                             "variant docs",
                         ),
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                     CompletionItem {
@@ -2081,8 +2165,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                lc ssss S [type+local]
                 st S S [type]
+                lc ssss S [type+local]
                 st S S [type]
                 ex ssss  [type]
                 ex S  [type]
@@ -2153,12 +2237,12 @@ fn main() {
 }
             "#,
             expect![[r#"
+                st S S []
+                st &S [type]
                 ex core::ops::Deref::deref(&t)  [type_could_unify]
                 lc m i32 [local]
                 lc t T [local]
                 lc &t [type+local]
-                st S S []
-                st &S [type]
                 st S S []
                 st &S [type]
                 st T T []
@@ -2202,12 +2286,12 @@ fn main() {
 }
             "#,
             expect![[r#"
+                st S S []
+                st &mut S [type]
                 ex core::ops::DerefMut::deref_mut(&mut t)  [type_could_unify]
                 lc m i32 [local]
                 lc t T [local]
                 lc &mut t [type+local]
-                st S S []
-                st &mut S [type]
                 st S S []
                 st &mut S [type]
                 st T T []
@@ -2306,9 +2390,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ex core::ops::Deref::deref(&bar())  [type_could_unify]
                 st S S []
                 st &S [type]
+                ex core::ops::Deref::deref(&bar())  [type_could_unify]
                 st S S []
                 st &S [type]
                 st T T []
@@ -2827,11 +2911,11 @@ fn foo() {
 }
 "#,
             expect![[r#"
+                ev Foo::B Foo::B [type_could_unify]
+                ev Foo::A(…) Foo::A(T) [type_could_unify]
                 lc foo Foo<u32> [type+local]
                 ex foo  [type]
                 ex Foo::B  [type]
-                ev Foo::A(…) Foo::A(T) [type_could_unify]
-                ev Foo::B Foo::B [type_could_unify]
                 en Foo Foo<{unknown}> [type_could_unify]
                 fn foo() fn() []
                 fn bar() fn() -> Foo<u8> []
