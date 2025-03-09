@@ -7,10 +7,21 @@ fn main() {
     match "foo".to_string() {
         deref!("foo") => {}
         //~^ ERROR: mismatched types
+        "foo" => {}
+        //~^ ERROR: mismatched types
         _ => {}
     }
     match &"foo".to_string() {
         deref!("foo") => {}
+        //~^ ERROR: mismatched types
+        "foo" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
+
+    // Make sure we don't try implicitly dereferncing any ADT.
+    match Some(0) {
+        Ok(0) => {}
         //~^ ERROR: mismatched types
         _ => {}
     }

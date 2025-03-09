@@ -162,10 +162,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 /// Mode for adjusting the expected type and binding mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum AdjustMode {
-    /// Peel off all immediate reference types.
-    Peel,
+    /// Peel off all immediate reference types. If the `deref_patterns` feature is enabled, this
+    /// also peels smart pointer ADTs.
+    Peel { kind: PeelKind },
     /// Pass on the input binding mode and expected type.
     Pass,
+}
+
+/// Restrictions on what types to peel when adjusting the expected type and binding mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PeelKind {
+    /// Only peel reference types. This is used for explicit `deref!(_)` patterns, which dereference
+    /// any number of `&`/`&mut` references, plus a single smart pointer.
+    ExplicitDerefPat,
+    /// Implicitly peel any number of references, and if `deref_patterns` is enabled, smart pointer
+    /// ADTs. In order to peel only as much as necessary for the pattern to match, the `until_adt`
+    /// field contains the ADT def that the pattern is a constructor for, if applicable, so that we
+    /// don't peel it. See [`ResolvedPat`] for more information.
+    // TODO: add `ResolvedPat` and `until_adt`.
+    Implicit,
 }
 
 /// `ref mut` bindings (explicit or match-ergonomics) are not allowed behind an `&` reference.
@@ -390,7 +405,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         // Resolve type if needed.
-        let expected = if let AdjustMode::Peel = adjust_mode
+        let expected = if let AdjustMode::Peel { .. } = adjust_mode
             && pat.default_binding_modes
         {
             self.try_structurally_resolve_type(pat.span, expected)
@@ -403,7 +418,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match pat.kind {
             // Peel off a `&` or `&mut` from the scrutinee type. See the examples in
             // `tests/ui/rfcs/rfc-2005-default-binding-mode`.
-            _ if let AdjustMode::Peel = adjust_mode
+            _ if let AdjustMode::Peel { .. } = adjust_mode
                 && pat.default_binding_modes
                 && let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() =>
             {
@@ -442,6 +457,45 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let new_pat_info = PatInfo { binding_mode, max_ref_mutbl, ..old_pat_info };
                 // Recurse with the new expected type.
                 self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, new_pat_info)
+            }
+            // If `deref_patterns` is enabled, peel a smart pointer from the scrutinee type. See the
+            // examples in `tests/ui/pattern/deref_patterns/`.
+            _ if self.tcx.features().deref_patterns()
+                && let AdjustMode::Peel { kind: PeelKind::Implicit } = adjust_mode
+                && pat.default_binding_modes
+                // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
+                // FIXME(deref_patterns): we'll get better diagnostics for users trying to
+                // implicitly deref generics if we allow them here, but primitives, tuples, and
+                // inference vars definitely should be stopped. Figure out what makes most sense.
+                // TODO: stop peeling if the pattern is a constructor for the scrutinee type
+                && expected.is_adt()
+                // At this point, the pattern isn't able to match `expected` without peeling. Check
+                // that it implements `Deref` before assuming it's a smart pointer, to get a normal
+                // type error instead of a missing impl error if not. This only checks for `Deref`,
+                // not `DerefPure`: we require that too, but we want a trait error if it's missing.
+                && let Some(deref_trait) = self.tcx.lang_items().deref_trait()
+                && self
+                    .type_implements_trait(deref_trait, [expected], self.param_env)
+                    .may_apply() =>
+            {
+                debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
+                // The scrutinee is a smart pointer; implicitly dereference it. This adds a
+                // requirement that `expected: DerefPure`.
+                let inner_ty = self.deref_pat_target(pat.span, expected);
+                // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
+                // `ref mut` bindings. TODO: implement that, then reference here.
+
+                // Preserve the smart pointer type for THIR lowering and upvar analysis.
+                self.typeck_results
+                    .borrow_mut()
+                    .pat_adjustments_mut()
+                    .entry(pat.hir_id)
+                    .or_default()
+                    .push(PatAdjustment { kind: PatAdjust::OverloadedDeref, source: expected });
+
+                // Recurse, using the old pat info to keep `current_depth` to its old value.
+                // Peeling smart pointers does not update the default binding mode.
+                self.check_pat_inner(pat, opt_path_res, adjust_mode, inner_ty, old_pat_info)
             }
             PatKind::Missing | PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
@@ -505,12 +559,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Struct(..)
             | PatKind::TupleStruct(..)
             | PatKind::Tuple(..)
-            | PatKind::Box(_)
-            | PatKind::Deref(_)
             | PatKind::Range(..)
-            | PatKind::Slice(..) => AdjustMode::Peel,
+            | PatKind::Slice(..) => AdjustMode::Peel { kind: PeelKind::Implicit },
+            // When checking an explicit deref pattern, only peel reference types.
+            // FIXME(deref_patterns): If box patterns and deref patterns need to coexist, box
+            // patterns may want `PeelKind::Implicit`, stopping on encountering a box.
+            | PatKind::Box(_)
+            | PatKind::Deref(_) => AdjustMode::Peel { kind: PeelKind::ExplicitDerefPat },
             // A never pattern behaves somewhat like a literal or unit variant.
-            PatKind::Never => AdjustMode::Peel,
+            PatKind::Never => AdjustMode::Peel { kind: PeelKind::Implicit },
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => match opt_path_res.unwrap() {
                 // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
                 // Peeling the reference types too early will cause type checking failures.
@@ -520,7 +577,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // could successfully compile. The former being `Self` requires a unit struct.
                 // In either case, and unlike constants, the pattern itself cannot be
                 // a reference type wherefore peeling doesn't give up any expressiveness.
-                _ => AdjustMode::Peel,
+                _ => AdjustMode::Peel { kind: PeelKind::Implicit },
             },
 
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
@@ -530,7 +587,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Call `resolve_vars_if_possible` here for inline const blocks.
             PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
-                _ => AdjustMode::Peel,
+                _ => AdjustMode::Peel { kind: PeelKind::Implicit },
             },
 
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
@@ -2256,36 +2313,41 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx;
-        // Register a `DerefPure` bound, which is required by all `deref!()` pats.
-        self.register_bound(
-            expected,
-            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
-            self.misc(span),
-        );
-        // <expected as Deref>::Target
-        let ty = Ty::new_projection(
-            tcx,
-            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
-            [expected],
-        );
-        let ty = self.normalize(span, ty);
-        let ty = self.try_structurally_resolve_type(span, ty);
-        self.check_pat(inner, ty, pat_info);
+        let target_ty = self.deref_pat_target(span, expected);
+        self.check_pat(inner, target_ty, pat_info);
 
         // Check if the pattern has any `ref mut` bindings, which would require
         // `DerefMut` to be emitted in MIR building instead of just `Deref`.
         // We do this *after* checking the inner pattern, since we want to make
         // sure to apply any match-ergonomics adjustments.
+        // TODO: move this to a separate definition to share it with implicit deref pats
         if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
             self.register_bound(
                 expected,
-                tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                self.tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
                 self.misc(span),
             );
         }
 
         expected
+    }
+
+    fn deref_pat_target(&self, span: Span, source_ty: Ty<'tcx>) -> Ty<'tcx> {
+        // Register a `DerefPure` bound, which is required by all `deref!()` pats.
+        let tcx = self.tcx;
+        self.register_bound(
+            source_ty,
+            tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
+            self.misc(span),
+        );
+        // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
+        let target_ty = Ty::new_projection(
+            tcx,
+            tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
+            [source_ty],
+        );
+        let target_ty = self.normalize(span, target_ty);
+        self.try_structurally_resolve_type(span, target_ty)
     }
 
     // Precondition: Pat is Ref(inner)
