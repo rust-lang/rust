@@ -434,6 +434,7 @@ impl Command {
         target_os = "nto",
         target_vendor = "apple",
     ))]
+    #[cfg_attr(target_os = "linux", no_sanitize(cfi))]
     fn posix_spawn(
         &mut self,
         stdio: &ChildPipes,
