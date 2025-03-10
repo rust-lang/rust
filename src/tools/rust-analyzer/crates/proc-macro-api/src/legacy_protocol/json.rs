@@ -1,6 +1,7 @@
 //! Protocol functions for json.
 use std::io::{self, BufRead, Write};
 
+/// Reads a JSON message from the input stream.
 pub fn read_json<'a>(
     inp: &mut impl BufRead,
     buf: &'a mut String,
@@ -26,6 +27,7 @@ pub fn read_json<'a>(
     }
 }
 
+/// Writes a JSON message to the output stream.
 pub fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
     tracing::debug!("> {}", msg);
     out.write_all(msg.as_bytes())?;

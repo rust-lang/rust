@@ -24,9 +24,12 @@ use crate::{
     process::ProcMacroServerProcess,
 };
 
+/// Represents different kinds of procedural macros that can be expanded by the external server.
 #[derive(Copy, Clone, Eq, PartialEq, Debug, serde_derive::Serialize, serde_derive::Deserialize)]
 pub enum ProcMacroKind {
+    /// A macro that derives implementations for a struct or enum.
     CustomDerive,
+    /// An attribute-like procedural macro.
     Attr,
     // This used to be called FuncLike, so that's what the server expects currently.
     #[serde(alias = "Bang")]
@@ -46,11 +49,13 @@ pub struct ProcMacroClient {
     path: AbsPathBuf,
 }
 
+/// Represents a dynamically loaded library containing procedural macros.
 pub struct MacroDylib {
     path: AbsPathBuf,
 }
 
 impl MacroDylib {
+    /// Creates a new MacroDylib instance with the given path.
     pub fn new(path: AbsPathBuf) -> MacroDylib {
         MacroDylib { path }
     }
@@ -78,6 +83,7 @@ impl PartialEq for ProcMacro {
     }
 }
 
+/// Represents errors encountered when communicating with the proc-macro server.
 #[derive(Clone, Debug)]
 pub struct ServerError {
     pub message: String,
@@ -106,6 +112,7 @@ impl ProcMacroClient {
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })
     }
 
+    /// Returns the absolute path to the proc-macro server.
     pub fn server_path(&self) -> &AbsPath {
         &self.path
     }
@@ -130,20 +137,25 @@ impl ProcMacroClient {
         }
     }
 
+    /// Checks if the proc-macro server has exited.
     pub fn exited(&self) -> Option<&ServerError> {
         self.process.exited()
     }
 }
 
 impl ProcMacro {
+    /// Returns the name of the procedural macro.
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Returns the type of procedural macro.
     pub fn kind(&self) -> ProcMacroKind {
         self.kind
     }
 
+    /// Expands the procedural macro by sending an expansion request to the server.
+    /// This includes span information and environmental context.
     pub fn expand(
         &self,
         subtree: tt::SubtreeView<'_, Span>,
