@@ -22,8 +22,6 @@ pub mod os;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-#[path = "../wasi/stdio.rs"]
-pub mod stdio;
 #[path = "../wasi/thread.rs"]
 pub mod thread;
 #[path = "../wasi/time.rs"]

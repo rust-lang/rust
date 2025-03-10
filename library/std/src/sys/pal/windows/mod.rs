@@ -23,7 +23,6 @@ pub mod handle;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod time;
 cfg_if::cfg_if! {

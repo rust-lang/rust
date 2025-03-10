@@ -5,7 +5,6 @@ pub mod env;
 pub mod os;
 pub mod pipe;
 pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod time;
 

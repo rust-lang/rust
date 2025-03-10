@@ -1,10 +1,10 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 
-use super::fd::WasiFd;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::mem::ManuallyDrop;
 use crate::os::raw;
 use crate::os::wasi::io::{AsRawFd, FromRawFd};
+use crate::sys::pal::fd::WasiFd;
 
 pub struct Stdin;
 pub struct Stdout;
