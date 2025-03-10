@@ -46,13 +46,20 @@ impl GitHubContext {
         }
     }
 
-    /// Tries to parse patterns of CI jobs that should be executed in the form of
+    /// Tries to parse patterns of CI jobs that should be executed
+    /// from the commit message of the passed GitHub context
+    ///
+    /// They can be specified in the form of
     /// try-job: <job-pattern>
-    /// from the commit message of the passed GitHub context.
+    /// or
+    /// try-job: `<job-pattern>`
+    /// (to avoid GitHub rendering the glob patterns as Markdown)
     fn get_try_job_patterns(&self) -> Vec<String> {
         if let Some(ref msg) = self.commit_message {
             msg.lines()
                 .filter_map(|line| line.trim().strip_prefix("try-job: "))
+                // Strip backticks if present
+                .map(|l| l.trim_matches('`'))
                 .map(|l| l.trim().to_string())
                 .collect()
         } else {
