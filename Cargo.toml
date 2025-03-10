@@ -24,7 +24,6 @@ members = [
   "src/tools/remote-test-server",
   "src/tools/rust-installer",
   "src/tools/rustdoc",
-  "src/tools/rls",
   "src/tools/rustfmt",
   "src/tools/miri",
   "src/tools/miri/cargo-miri",
