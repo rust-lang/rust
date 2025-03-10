@@ -586,6 +586,8 @@ mod llvm_enzyme {
     //
     // Error handling: If the user provides an invalid configuration (incorrect numbers, types, or
     // both), we emit an error and return the original signature. This allows us to continue parsing.
+    // FIXME(Sa4dUs): make individual activities' span available so errors
+    // can point to only the activity instead of the entire attribute
     fn gen_enzyme_decl(
         ecx: &ExtCtxt<'_>,
         sig: &ast::FnSig,
