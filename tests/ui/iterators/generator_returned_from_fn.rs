@@ -3,12 +3,12 @@
 use std::iter::iter;
 
 fn plain() -> impl Fn() -> impl Iterator<Item = u32> {
-    iter! {
+    iter! { || {
         yield 0;
         for x in 5..10 {
             yield x * 2;
         }
-    }
+    } }
 }
 
 fn arg() -> impl Fn(u32) -> impl Iterator<Item = u32> {

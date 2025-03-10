@@ -1,15 +1,17 @@
 error[E0597]: `s` does not live long enough
-  --> $DIR/generator_capture_fail.rs:9:13
+  --> $DIR/generator_capture_fail.rs:8:17
    |
 LL |       let i = {
    |           - borrow later stored here
-...
-LL | /             yield s.len();
+LL |           let s = String::new();
+LL |           iter! { || {
+   |  _________________^
+LL | |             yield s.len();
 LL | |             for x in 5..10 {
 LL | |                 yield x * 2;
 LL | |             }
-   | |_____________^ borrowed value does not live long enough
-LL |           }
+LL | |         } }
+   | |_________^ borrowed value does not live long enough
 LL |       };
    |       - `s` dropped here while still borrowed
 

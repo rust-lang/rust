@@ -5,12 +5,12 @@ use std::iter::iter;
 fn main() {
     let i = {
         let s = String::new();
-        iter! {
-            yield s.len(); //~ ERROR `s` does not live long enough
+        iter! { || { //~ ERROR `s` does not live long enough
+            yield s.len();
             for x in 5..10 {
                 yield x * 2;
             }
-        }
+        } }
     };
     let mut i = i();
     assert_eq!(i.next(), Some(0));
