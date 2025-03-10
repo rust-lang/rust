@@ -7,7 +7,7 @@ repository = "https://github.com/rust-lang/rust-analyzer/tree/master/lib/la-aren
 documentation = "https://docs.rs/la-arena"
 categories = ["data-structures", "memory-management", "rust-patterns"]
 edition = "2021"
-rust-version = "1.56"
+rust-version = "1.85"
 
 [lints]
 workspace = true
