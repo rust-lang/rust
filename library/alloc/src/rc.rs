@@ -1331,7 +1331,7 @@ impl<T: ?Sized> Rc<T> {
     /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
     /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-    /// allocated by `alloc`.
+    /// allocated by the global allocator.
     ///
     /// [from_raw_in]: Rc::from_raw_in
     ///
@@ -1678,7 +1678,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
     /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
-    /// allocated by the global allocator. This method can be used to release the final `Rc` and
+    /// allocated by `alloc`. This method can be used to release the final `Rc` and
     /// backing storage, but **should not** be called after the final `Rc` has been released.
     ///
     /// [from_raw_in]: Rc::from_raw_in

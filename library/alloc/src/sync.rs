@@ -1816,7 +1816,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
     /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-    /// allocated by the global allocator.
+    /// allocated by `alloc`.
     ///
     /// [from_raw_in]: Arc::from_raw_in
     ///
@@ -1863,7 +1863,7 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
     /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
-    /// allocated by the global allocator. This method can be used to release the final
+    /// allocated by `alloc`. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
     ///
