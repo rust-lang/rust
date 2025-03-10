@@ -192,7 +192,7 @@ There are a few options for running tests:
 * `config.toml` has the `rust.verbose-tests` option. If `false`, each test will
   print a single dot (the default). If `true`, the name of every test will be
   printed. This is equivalent to the `--quiet` option in the [Rust test
-  harness](https://doc.rust-lang.org/rustc/tests/)
+  harness](https://doc.rust-lang.org/rustc/tests/).
 * The environment variable `RUST_TEST_THREADS` can be set to the number of
   concurrent threads to use for testing.
 
