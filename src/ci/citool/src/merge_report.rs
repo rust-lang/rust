@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use anyhow::Context;
 use build_helper::metrics::{JsonRoot, TestOutcome};
 
-use crate::JobDatabase;
+use crate::jobs::JobDatabase;
 use crate::metrics::get_test_suites;
 
 type Sha = String;
