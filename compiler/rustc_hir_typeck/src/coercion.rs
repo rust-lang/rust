@@ -607,6 +607,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
         // so we only bail if there (likely) is another way to convert the types.
         if !self.infcx.predicate_may_hold(&root_obligation) {
+            // FIXME:
+            if true {
+                return Err(TypeError::Mismatch);
+            }
+
             self.probe(|_| {
                 let ocx = ObligationCtxt::new(&self.infcx);
 
