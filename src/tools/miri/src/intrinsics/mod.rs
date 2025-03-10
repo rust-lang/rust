@@ -8,7 +8,7 @@ use std::ops::Neg;
 use rand::Rng;
 use rustc_abi::Size;
 use rustc_apfloat::ieee::{Double, IeeeFloat, Semantics, Single};
-use rustc_apfloat::{self, Category, Float, Round};
+use rustc_apfloat::{self, Float, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_span::{Symbol, sym};
@@ -18,6 +18,63 @@ use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
 use self::simd::EvalContextExt as _;
 use crate::math::{IeeeExt, apply_random_float_error_ulp};
 use crate::*;
+
+macro_rules! pow_impl {
+    ($this: expr, powf($f1: expr, $f2: expr)) => {{
+        let host1 = $f1.to_host();
+        let host2 = $f2.to_host();
+
+        let fixed_res = match (host1, host2) {
+            // 1^y = 1 for any y even a NaN.
+            (one @ 1.0, _) => Some(one),
+
+            // (-1)^(±INF) = 1
+            (-1.0, exp) if exp.is_infinite() => Some(1.0),
+
+            // x^(±0) = 1 for any x, even a NaN
+            (_, 0.0) => Some(1.0),
+
+            _ => None,
+        };
+        fixed_res.map_or_else(|| {
+            // Using host floats (but it's fine, this operation does not have guaranteed precision).
+            let res = host1.powf(host2).to_soft();
+            // Apply a relative error of 4ULP to introduce some non-determinism
+            // simulating imprecise implementations and optimizations.
+            apply_random_float_error_ulp(
+                $this, res, 2, // log2(4)
+            )
+        }, ToSoft::to_soft)
+    }};
+    ($this: expr, powi($f: expr, $i: expr)) => {{
+        let host = $f.to_host();
+        let exp = $i;
+
+        let fixed_res = match (host, exp) {
+            // ±0^x = ±0 with x an odd integer.
+            (zero @ 0.0, x) if x % 2 != 0 => Some(zero), // preserve sign of zero.
+
+            // ±0^x = +0 with x an even integer.
+            (0.0, x) if x % 2 == 0 => Some(0.0),
+
+            // x^0 = 1:
+            // Standard specifies we can only fix to 1 if x is is not a Signaling NaN.
+            // TODO: How to do this in normal rust?
+            (_, 0) /* if !f.is_signaling() */ => Some(1.0),
+
+            _ => None,
+        };
+        fixed_res.map_or_else(|| {
+            // Using host floats (but it's fine, this operation does not have guaranteed precision).
+            let res = host.powi(exp).to_soft();
+            // Apply a relative error of 4ULP to introduce some non-determinism
+            // simulating imprecise implementations and optimizations.
+            apply_random_float_error_ulp(
+                $this, res, 2, // log2(4)
+            )
+        }, ToSoft::to_soft)
+    }};
+}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -385,28 +442,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
 
-                let fixed_res = match (f1.category(), f2.category()) {
-                    // 1^y = 1 for any y, even a NaN.
-                    (Category::Normal, _) if f1 == 1.0f32.to_soft() => Some(1.0f32.to_soft()),
-
-                    // (-1)^(±INF) = 1
-                    (Category::Normal, Category::Infinity) if f1 == (-1.0f32).to_soft() =>
-                        Some(1.0f32.to_soft()),
-
-                    // x^(±0) = 1 for any x, even a NaN
-                    (_, Category::Zero) => Some(1.0f32.to_soft()),
-
-                    _ => None,
-                };
-                let res = fixed_res.unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f1.to_host().powf(f2.to_host()).to_soft();
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
-                });
+                let res = pow_impl!(this, powf(f1, f2));
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -415,30 +451,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
 
-                let fixed_res = match (f1.category(), f2.category()) {
-                    // 1^y = 1 for any y even a NaN.
-                    (Category::Normal, _) if f1 == 1.0f64.to_soft() => Some(1.0f64.to_soft()),
-
-                    // (-1)^(±INF) = 1
-                    (Category::Normal, Category::Infinity) if f1 == (-1.0f64).to_soft() =>
-                        Some(1.0f64.to_soft()),
-
-                    // x^(±0) = 1 for any x, even a NaN
-                    (_, Category::Zero) => Some(1.0f64.to_soft()),
-
-                    // TODO: pow has a lot of "edge" cases which mostly result in ±0 or ±INF
-                    // do we have to catch them all?
-                    _ => None,
-                };
-                let res = fixed_res.unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f1.to_host().powf(f2.to_host()).to_soft();
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
-                });
+                let res = pow_impl!(this, powf(f1, f2));
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -448,27 +461,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let fixed_res = match (f.category(), i) {
-                    // Standard specifies we can only fix to 1 if input is is not a Signaling NaN.
-                    (_, 0) if !f.is_signaling() => Some(1.0f32.to_soft()),
-
-                    // TODO: Isn't this done by the implementation? And ULP error on 0.0 doesn't have an effect
-                    (Category::Zero, x) if x % 2 == 0 => Some(0.0f32.to_soft()),
-
-                    // ±0^x = ±0 with x an odd integer.
-                    (Category::Zero, x) if x % 2 != 0 => Some(f), // preserve sign of zero.
-                    _ => None,
-                };
-                let res = fixed_res.unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
-                });
+                let res = pow_impl!(this, powi(f, i));
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -477,28 +470,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let fixed_res = match (f.category(), i) {
-                    // Standard specifies we can only fix to 1 if input is is not a Signaling NaN.
-                    (_, 0) if !f.is_signaling() => Some(1.0f64.to_soft()),
-
-                    // ±0^x = 0 with x an even integer.
-                    // TODO: Isn't this done by the implementation itself?
-                    (Category::Zero, x) if x % 2 == 0 => Some(0.0f64.to_soft()),
-
-                    // ±0^x = ±0 with x an odd integer.
-                    (Category::Zero, x) if x % 2 != 0 => Some(f), // preserve sign of zero.
-                    _ => None,
-                };
-                let res = fixed_res.unwrap_or_else(|| {
-                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
-                    let res = f.to_host().powi(i).to_soft();
-
-                    // Apply a relative error of 4ULP to introduce some non-determinism
-                    // simulating imprecise implementations and optimizations.
-                    apply_random_float_error_ulp(
-                        this, res, 2, // log2(4)
-                    )
-                });
+                let res = pow_impl!(this, powi(f, i));
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
