@@ -734,7 +734,10 @@ fn walk_mac<T: MutVisitor>(vis: &mut T, mac: &mut MacCall) {
 }
 
 fn walk_macro_def<T: MutVisitor>(vis: &mut T, macro_def: &mut MacroDef) {
-    let MacroDef { body, macro_rules: _ } = macro_def;
+    let MacroDef { body, macro_rules: _, eii_macro_for } = macro_def;
+    if let Some(path) = eii_macro_for {
+        vis.visit_path(path);
+    }
     visit_delim_args(vis, body);
 }
 

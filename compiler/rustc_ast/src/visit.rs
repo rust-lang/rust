@@ -47,7 +47,6 @@ pub enum BoundKind {
     /// Trait bounds in trait object type.
     /// E.g., `dyn Bound1 + Bound2 + Bound3`.
     TraitObject,
-
     /// Super traits of a trait.
     /// E.g., `trait A: B`
     SuperTraits,
@@ -479,7 +478,10 @@ impl WalkItemKind for ItemKind {
             ItemKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
             ItemKind::MacroDef(ident, ts) => {
                 try_visit!(visitor.visit_ident(ident));
-                try_visit!(visitor.visit_mac_def(ts, id))
+                try_visit!(visitor.visit_mac_def(ts, id));
+                if let Some(i) = &ts.eii_macro_for {
+                    try_visit!(visitor.visit_path(i, id));
+                }
             }
             ItemKind::Delegation(box Delegation {
                 id,

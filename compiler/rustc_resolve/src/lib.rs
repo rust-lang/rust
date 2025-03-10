@@ -71,7 +71,7 @@ use rustc_query_system::ich::StableHashingContext;
 use rustc_session::lint::builtin::PRIVATE_MACRO_USE;
 use rustc_session::lint::{BuiltinLintDiag, LintBuffer};
 use rustc_span::hygiene::{ExpnId, LocalExpnId, MacroKind, SyntaxContext, Transparency};
-use rustc_span::{DUMMY_SP, EiiId, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -1225,9 +1225,6 @@ pub struct Resolver<'ra, 'tcx> {
     current_crate_outer_attr_insert_span: Span,
 
     mods_with_parse_errors: FxHashSet<DefId>,
-
-    /// Map of defids for all items marked with #[eii(<eii id>)].
-    eii: FxHashMap<EiiId, LocalDefId>,
 }
 
 /// This provides memory for the rest of the crate. The `'ra` lifetime that is
@@ -1583,7 +1580,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             impl_binding_keys: Default::default(),
             current_crate_outer_attr_insert_span,
             mods_with_parse_errors: Default::default(),
-            eii: Default::default(),
         };
 
         let root_parent_scope = ParentScope::module(graph_root, &resolver);
@@ -1698,7 +1694,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetime_elision_allowed: self.lifetime_elision_allowed,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,
-            eii: self.eii,
         };
         ResolverOutputs { global_ctxt, ast_lowering }
     }

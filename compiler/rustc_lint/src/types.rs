@@ -1750,7 +1750,7 @@ impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
             | hir::ItemKind::GlobalAsm { .. }
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Mod(..)
-            | hir::ItemKind::Macro(..)
+            | hir::ItemKind::Macro { .. }
             | hir::ItemKind::Use(..)
             | hir::ItemKind::ExternCrate(..) => {}
         }

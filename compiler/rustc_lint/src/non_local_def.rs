@@ -240,7 +240,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     },
                 )
             }
-            ItemKind::Macro(_, _macro, MacroKind::Bang)
+            ItemKind::Macro { kind: MacroKind::Bang, .. }
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
                 cx.emit_span_lint(

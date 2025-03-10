@@ -1783,4 +1783,12 @@ pub(crate) mod builtin {
     pub macro deref($pat:pat) {
         builtin # deref($pat)
     }
+
+    /// Impl detail of EII
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "eii_internals", issue = "none")]
+    #[rustc_builtin_macro]
+    pub macro eii_macro_for($item:item) {
+        /* compiler built-in */
+    }
 }

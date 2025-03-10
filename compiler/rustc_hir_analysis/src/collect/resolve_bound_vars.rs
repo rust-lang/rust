@@ -626,7 +626,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
             hir::ItemKind::ExternCrate(..)
             | hir::ItemKind::Use(..)
-            | hir::ItemKind::Macro(..)
+            | hir::ItemKind::Macro { .. }
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Static(..)

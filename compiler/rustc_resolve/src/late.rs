@@ -2835,6 +2835,10 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     let def_id = self.r.local_def_id(item.id);
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
+
+                if let Some(ref path) = macro_def.eii_macro_for {
+                    self.smart_resolve_path(item.id, &None, path, PathSource::Expr(None));
+                }
             }
 
             ItemKind::ForeignMod(_) | ItemKind::GlobalAsm(_) => {

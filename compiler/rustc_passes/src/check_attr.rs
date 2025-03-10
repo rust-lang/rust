@@ -299,7 +299,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::lang
                             | sym::needs_allocator
                             | sym::default_lib_allocator
-                            | sym::custom_mir,
+                            | sym::custom_mir
+                            | sym::eii_macro_for, // TODO: remove
                             ..
                         ] => {}
                         [name, ..] => {
@@ -2368,7 +2369,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
+            let (_, macro_definition, _, _eii_macro_for) =
+                self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {
@@ -2694,9 +2696,9 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(_, macro_def, _) = item.kind {
+        if let ItemKind::Macro { name: _, ast_macro_def, kind: _, eii_macro_for: _ } = item.kind {
             let def_id = item.owner_id.to_def_id();
-            if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
+            if ast_macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
             }
         }

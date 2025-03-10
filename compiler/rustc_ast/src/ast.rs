@@ -1951,6 +1951,8 @@ pub struct MacroDef {
     pub body: P<DelimArgs>,
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
+
+    pub eii_macro_for: Option<Path>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, Copy, Hash, Eq, PartialEq)]

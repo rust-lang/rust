@@ -566,8 +566,8 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
                 item.owner_id.def_id,
             ));
         }
-        ItemKind::Macro(ident, _def, _kind) => {
-            try_visit!(visitor.visit_ident(ident));
+        ItemKind::Macro(name, _def, _kind) => {
+            try_visit!(visitor.visit_ident(name));
         }
         ItemKind::Mod(ident, ref module) => {
             try_visit!(visitor.visit_ident(ident));

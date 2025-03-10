@@ -22,6 +22,7 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
 };
+use crate::GenericArgsMode;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -462,7 +463,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 hir::ItemKind::TraitAlias(ident, generics, bounds)
             }
-            ItemKind::MacroDef(ident, MacroDef { body, macro_rules }) => {
+            ItemKind::MacroDef(ident, MacroDef { body, macro_rules, eii_macro_for }) => {
                 let ident = self.lower_ident(*ident);
                 let body = P(self.lower_delim_args(body));
                 let def_id = self.local_def_id(id);
@@ -473,8 +474,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         def_kind.descr(def_id.to_def_id())
                     );
                 };
-                let macro_def = self.arena.alloc(ast::MacroDef { body, macro_rules: *macro_rules });
-                hir::ItemKind::Macro(ident, macro_def, macro_kind)
+
+                let ast_macro_def = self.arena.alloc(ast::MacroDef {
+                    body,
+                    macro_rules: *macro_rules,
+                    eii_macro_for: None,
+                });
+
+                hir::ItemKind::Macro {
+                    name: ident,
+                    ast_macro_def,
+                    kind: macro_kind,
+                    eii_macro_for: eii_macro_for.as_ref().map(|path| {
+                        let lowered = self.lower_qpath(
+                            id,
+                            &None,
+                            path,
+                            ParamMode::Explicit,
+                            crate::AllowReturnTypeNotation::No,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
+                            None,
+                        );
+
+                        let QPath::Resolved(None, path) = lowered else {
+                            panic!("{lowered:?}");
+                        };
+
+                        path.res.def_id()
+                    }),
+                }
             }
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id, false);
