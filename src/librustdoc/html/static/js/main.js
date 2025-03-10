@@ -585,7 +585,6 @@ function preLoadCss(cssUrl) {
     document.addEventListener("keydown", handleShortcut);
 
     function addSidebarItems() {
-        // @ts-expect-error
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
