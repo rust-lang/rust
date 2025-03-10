@@ -21,9 +21,6 @@ extern crate rustc_pattern_analysis;
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
 
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_hashes as rustc_hashes;
-
 mod builder;
 mod chalk_db;
 mod chalk_ext;
