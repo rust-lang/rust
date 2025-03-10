@@ -522,13 +522,10 @@ function preLoadCss(cssUrl) {
      * @param {KeyboardEvent} ev
      */
     function handleEscape(ev) {
-        // @ts-expect-error
-        searchState.clearInputTimeout();
-        // @ts-expect-error
-        searchState.hideResults();
+        window.searchState.clearInputTimeout();
+        window.searchState.hideResults();
         ev.preventDefault();
-        // @ts-expect-error
-        searchState.defocus();
+        window.searchState.defocus();
         window.hideAllModals(true); // true = reset focus for tooltips
     }
 
@@ -563,8 +560,7 @@ function preLoadCss(cssUrl) {
             case "S":
             case "/":
                 ev.preventDefault();
-                // @ts-expect-error
-                searchState.focus();
+                window.searchState.focus();
                 break;
 
             case "+":
@@ -1699,8 +1695,7 @@ function preLoadCss(cssUrl) {
     addSidebarCrates();
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
-    // @ts-expect-error
-    searchState.setup();
+    window.searchState.setup();
 }());
 
 // Hide, show, and resize the sidebar
