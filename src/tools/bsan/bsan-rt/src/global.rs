@@ -9,11 +9,20 @@ use crate::TEST_ALLOC;
 pub struct GlobalContext {
     allocator: BsanAllocator,
     next_alloc_id: AtomicUsize,
+
+    // pointer to l1 table
+    shadow_heap: ShadowMap<crate::Provenance>,
 }
 
 impl GlobalContext {
     fn new(allocator: BsanAllocator) -> Self {
+
+        //
         Self { allocator, next_alloc_id: AtomicUsize::new(1) }
+
+        // TODO: Before returning, make sure to create and init a shadowheap object, including the L1 table using MMMAP
+        // TODO: Follow line 189 on the softboundsCETS.cpp to implement it, with the same flags and asserts
+
     }
 }
 

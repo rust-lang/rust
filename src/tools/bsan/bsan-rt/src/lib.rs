@@ -23,9 +23,32 @@ pub use bsan_alloc::TEST_ALLOC;
 
 mod shadow;
 
+type AllocID = usize;
+type BorrowTag = usize;
+
+#
+pub struct Provenance {
+    lock_address : *mut c_void,
+    alloc_id : AllocID,
+    borrow_tag: BorrowTag,
+}
+
+impl 
+
 #[no_mangle]
 unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {
     init_global_ctx(alloc);
+}
+
+#[no_mangle]
+extern "C" fn bsan_load_prov(ptr: *mut c_void) -> Provenance { // TODO implement null function (cannot use options)
+    // TODO: get the global context, and then through their call a shadow heap method/function
+    return Provenance {}
+}
+
+#[no_mangle]
+extern "C" fn bsan_store_prov(provenance : *const Provenance) {
+    // TODO: store the provenance in the shadow heap, and then through a call to the shadow heap store it
 }
 
 #[no_mangle]

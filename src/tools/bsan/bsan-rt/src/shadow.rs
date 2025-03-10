@@ -63,10 +63,12 @@ pub trait Provenance: Copy + Sized {}
 
 #[repr(C)]
 pub struct L2<T: Provenance> {
-    bytes: [T; L2_LEN],
+    bytes: *mut [T; L2_LEN], // TODO: Make sure you transmute the c_void pointer
 }
 
 impl<T: Provenance> L2<T> {
+
+    fn new(allocator: BsanAllocator)
     #[inline(always)]
     unsafe fn lookup_mut(&mut self, index: usize) -> &mut T {
         self.bytes.get_unchecked_mut(index)
@@ -79,12 +81,21 @@ impl<T: Provenance> L2<T> {
 
 #[repr(C)]
 pub struct L1<T: Provenance> {
-    entries: [*mut L2<T>; L1_LEN],
+    entries: *mut [*mut L2<T>; L1_LEN], // 
 }
 
 impl<T: Provenance> L1<T> {
-    fn new() -> Self {
-        Self { entries: [core::ptr::null_mut(); L1_LEN] }
+    fn new(allocator: BsanAllocator) -> Self {
+        
+        let l1_void = allocator.MMap(size(core::ptr::null_mut() * L1_LEN));
+        
+
+        // TODO: make sure to call mmap through BsanAllocator, and allocate a chunk of memory of size core::ptr::null_mut() * L1_LEN]
+        // TODO: Make sure to transmute the c_void pointers given through the BsanAllocator.
+        // TODO: Panic if mmap fails
+        // TODO: Last step: set every byte in that range to 0, because mmap does not reset things to 0
+
+        Self { entries: mem:transmute() }
     }
 
     #[inline(always)]
