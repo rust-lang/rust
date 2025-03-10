@@ -6,7 +6,7 @@ use crate::num::NonZero;
 use crate::ops::Range;
 use crate::{ascii, fmt};
 
-const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
+const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_escape_seq().unwrap();
 
 #[inline]
 const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8>) {
@@ -217,12 +217,12 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
 
     /// # Safety
     ///
-    /// The caller must ensure that `self` contains an escape sequence.
+    /// `self` must contain an escape sequence.
     #[inline]
-    unsafe fn as_ascii(&self) -> &[ascii::Char] {
-        // SAFETY: `self.data.escape_seq` contains an escape sequence, as is guaranteed
-        // by the caller, and `self.alive` is guaranteed to be a valid range for
-        // indexing `self.data`.
+    unsafe fn as_escape_seq(&self) -> &[ascii::Char] {
+        // SAFETY: `self.data.escape_seq` contains an escape sequence, as is 
+        // guaranteed by the caller, and in that case `self.alive` is guaranteed 
+        // to be a valid range for indexing it.
         unsafe {
             self.data
                 .escape_seq
@@ -232,9 +232,9 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
 
     /// # Safety
     ///
-    /// The caller must ensure that `self` contains a literal `char`.
+    /// `self` must contain a literal `char`.
     #[inline]
-    unsafe fn as_char(&self) -> char {
+    unsafe fn as_literal(&self) -> char {
         // SAFETY: `self.data.literal` contains a literal `char`,
         // as is guaranteed by the caller.
         unsafe { self.data.literal }
@@ -295,7 +295,7 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
 
         if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
-            return Some(unsafe { self.as_char() });
+            return Some(unsafe { self.as_literal() });
         }
 
         // SAFETY: We just checked that `self` contains an escape sequence, and
@@ -307,7 +307,7 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
 impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // SAFETY: The `AlwaysEscaped` marker guarantees that `self` contains an escape sequence.
-        f.write_str(unsafe { self.as_ascii().as_str() })
+        f.write_str(unsafe { self.as_escape_seq().as_str() })
     }
 }
 
@@ -315,10 +315,10 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
-            f.write_char(unsafe { self.as_char() })
+            f.write_char(unsafe { self.as_literal() })
         } else {
             // SAFETY: We just checked that `self` contains an escape sequence.
-            f.write_str(unsafe { self.as_ascii().as_str() })
+            f.write_str(unsafe { self.as_escape_seq().as_str() })
         }
     }
 }
@@ -327,7 +327,7 @@ impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("EscapeIterInner")
             // SAFETY: The `AlwaysEscaped` marker guarantees that `self` contains an escape sequence.
-            .field(unsafe { &self.as_ascii() })
+            .field(unsafe { &self.as_escape_seq() })
             .finish()
     }
 }
@@ -337,10 +337,10 @@ impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
         let mut d = f.debug_tuple("EscapeIterInner");
         if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
-            d.field(unsafe { &self.as_char() });
+            d.field(unsafe { &self.as_literal() });
         } else {
             // SAFETY: We just checked that `self` contains an escape sequence.
-            d.field(unsafe { &self.as_ascii() });
+            d.field(unsafe { &self.as_escape_seq() });
         }
         d.finish()
     }
