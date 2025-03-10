@@ -20,6 +20,3 @@ rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

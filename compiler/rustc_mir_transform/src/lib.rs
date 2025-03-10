@@ -12,6 +12,7 @@
 #![feature(never_type)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use hir::ConstContext;

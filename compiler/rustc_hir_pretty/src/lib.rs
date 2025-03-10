@@ -3,6 +3,7 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;

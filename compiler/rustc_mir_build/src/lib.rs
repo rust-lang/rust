@@ -8,6 +8,7 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // The `builder` module used to be named `build`, but that was causing GitHub's

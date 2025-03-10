@@ -10,6 +10,7 @@
 #![feature(iter_is_partitioned)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod ast_validation;
