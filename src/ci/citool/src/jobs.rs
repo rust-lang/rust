@@ -1,7 +1,7 @@
-use crate::{GitHubContext, utils};
-use serde_yaml::Value;
+#[cfg(test)]
+mod tests;
+
 use std::collections::BTreeMap;
-use std::path::Path;
 
 use serde_yaml::Value;
 
@@ -65,13 +65,19 @@ pub struct JobDatabase {
 }
 
 impl JobDatabase {
-    fn find_auto_job_by_name(&self, name: &str) -> Option<Job> {
-        self.auto_jobs.iter().find(|j| j.name == name).cloned()
+    /// Find `auto` jobs that correspond to the passed `pattern`.
+    /// Patterns are matched using the glob syntax.
+    /// For example `dist-*` matches all jobs starting with `dist-`.
+    fn find_auto_jobs_by_pattern(&self, pattern: &str) -> Vec<Job> {
+        self.auto_jobs
+            .iter()
+            .filter(|j| glob_match::glob_match(pattern, &j.name))
+            .cloned()
+            .collect()
     }
 }
 
-pub fn load_job_db(path: &Path) -> anyhow::Result<JobDatabase> {
-    let db = utils::read_to_string(path)?;
+pub fn load_job_db(db: &str) -> anyhow::Result<JobDatabase> {
     let mut db: Value = serde_yaml::from_str(&db)?;
 
     // We need to expand merge keys (<<), because serde_yaml can't deal with them
@@ -114,7 +120,7 @@ pub enum RunType {
     /// Workflows that run after a push to a PR branch
     PullRequest,
     /// Try run started with @bors try
-    TryJob { custom_jobs: Option<Vec<String>> },
+    TryJob { job_patterns: Option<Vec<String>> },
     /// Merge attempt workflow
     AutoJob,
 }
@@ -130,28 +136,29 @@ fn calculate_jobs(
 ) -> anyhow::Result<Vec<GithubActionsJob>> {
     let (jobs, prefix, base_env) = match run_type {
         RunType::PullRequest => (db.pr_jobs.clone(), "PR", &db.envs.pr_env),
-        RunType::TryJob { custom_jobs } => {
-            let jobs = if let Some(custom_jobs) = custom_jobs {
-                if custom_jobs.len() > MAX_TRY_JOBS_COUNT {
-                    return Err(anyhow::anyhow!(
-                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs",
-                        custom_jobs.len()
-                    ));
-                }
-
-                let mut jobs = vec![];
-                let mut unknown_jobs = vec![];
-                for custom_job in custom_jobs {
-                    if let Some(job) = db.find_auto_job_by_name(custom_job) {
-                        jobs.push(job);
+        RunType::TryJob { job_patterns } => {
+            let jobs = if let Some(patterns) = job_patterns {
+                let mut jobs: Vec<Job> = vec![];
+                let mut unknown_patterns = vec![];
+                for pattern in patterns {
+                    let matched_jobs = db.find_auto_jobs_by_pattern(pattern);
+                    if matched_jobs.is_empty() {
+                        unknown_patterns.push(pattern.clone());
                     } else {
-                        unknown_jobs.push(custom_job.clone());
+                        jobs.extend(matched_jobs);
                     }
                 }
-                if !unknown_jobs.is_empty() {
+                if !unknown_patterns.is_empty() {
                     return Err(anyhow::anyhow!(
-                        "Custom job(s) `{}` not found in auto jobs",
-                        unknown_jobs.join(", ")
+                        "Patterns `{}` did not match any auto jobs",
+                        unknown_patterns.join(", ")
+                    ));
+                }
+                if jobs.len() > MAX_TRY_JOBS_COUNT {
+                    return Err(anyhow::anyhow!(
+                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs expanded from {} pattern(s)",
+                        jobs.len(),
+                        patterns.len()
                     ));
                 }
                 jobs

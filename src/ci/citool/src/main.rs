@@ -35,21 +35,21 @@ impl GitHubContext {
     fn get_run_type(&self) -> Option<RunType> {
         match (self.event_name.as_str(), self.branch_ref.as_str()) {
             ("pull_request", _) => Some(RunType::PullRequest),
-            ("push", "refs/heads/try-perf") => Some(RunType::TryJob { custom_jobs: None }),
+            ("push", "refs/heads/try-perf") => Some(RunType::TryJob { job_patterns: None }),
             ("push", "refs/heads/try" | "refs/heads/automation/bors/try") => {
-                let custom_jobs = self.get_custom_jobs();
-                let custom_jobs = if !custom_jobs.is_empty() { Some(custom_jobs) } else { None };
-                Some(RunType::TryJob { custom_jobs })
+                let patterns = self.get_try_job_patterns();
+                let patterns = if !patterns.is_empty() { Some(patterns) } else { None };
+                Some(RunType::TryJob { job_patterns: patterns })
             }
             ("push", "refs/heads/auto") => Some(RunType::AutoJob),
             _ => None,
         }
     }
 
-    /// Tries to parse names of specific CI jobs that should be executed in the form of
-    /// try-job: <job-name>
+    /// Tries to parse patterns of CI jobs that should be executed in the form of
+    /// try-job: <job-pattern>
     /// from the commit message of the passed GitHub context.
-    fn get_custom_jobs(&self) -> Vec<String> {
+    fn get_try_job_patterns(&self) -> Vec<String> {
         if let Some(ref msg) = self.commit_message {
             msg.lines()
                 .filter_map(|line| line.trim().strip_prefix("try-job: "))
@@ -180,7 +180,10 @@ pub enum JobType {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     let default_jobs_file = Path::new(JOBS_YML_PATH);
-    let load_db = |jobs_path| jobs::load_job_db(jobs_path).context("Cannot load jobs.yml");
+    let load_db = |jobs_path| {
+        let db = utils::read_to_string(jobs_path)?;
+        Ok::<_, anyhow::Error>(jobs::load_job_db(&db).context("Cannot load jobs.yml")?)
+    };
 
     match args {
         Args::CalculateJobMatrix { jobs_file } => {
