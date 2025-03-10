@@ -286,7 +286,7 @@ mod llvm_enzyme {
         let orig_annotatable: Annotatable = match item {
             Annotatable::Item(ref mut iitem) => {
                 if !iitem.attrs.iter().any(|a| a.id == attr.id) {
-                    iitem.attrs.push(attr.clone());
+                    iitem.attrs.push(attr);
                 }
                 if !iitem.attrs.iter().any(|a| a.id == inline_never.id) {
                     iitem.attrs.push(inline_never.clone());
@@ -295,7 +295,7 @@ mod llvm_enzyme {
             }
             Annotatable::AssocItem(ref mut assoc_item, i @ Impl) => {
                 if !assoc_item.attrs.iter().any(|a| a.id == attr.id) {
-                    assoc_item.attrs.push(attr.clone());
+                    assoc_item.attrs.push(attr);
                 }
                 if !assoc_item.attrs.iter().any(|a| a.id == inline_never.id) {
                     assoc_item.attrs.push(inline_never.clone());
@@ -322,7 +322,7 @@ mod llvm_enzyme {
         let d_annotatable = if is_impl {
             let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
             let d_fn = P(ast::AssocItem {
-                attrs: thin_vec![d_attr.clone(), inline_never],
+                attrs: thin_vec![d_attr, inline_never],
                 id: ast::DUMMY_NODE_ID,
                 span,
                 vis,
@@ -332,12 +332,8 @@ mod llvm_enzyme {
             });
             Annotatable::AssocItem(d_fn, Impl)
         } else {
-            let mut d_fn = ecx.item(
-                span,
-                d_ident,
-                thin_vec![d_attr.clone(), inline_never],
-                ItemKind::Fn(asdf),
-            );
+            let mut d_fn =
+                ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
             d_fn.vis = vis;
             Annotatable::Item(d_fn)
         };
@@ -446,7 +442,7 @@ mod llvm_enzyme {
 
         if primal_ret && n_active == 0 && x.mode.is_rev() {
             // We only have the primal ret.
-            body.stmts.push(ecx.stmt_expr(black_box_primal_call.clone()));
+            body.stmts.push(ecx.stmt_expr(black_box_primal_call));
             return body;
         }
 
@@ -471,7 +467,7 @@ mod llvm_enzyme {
         if primal_ret {
             // We have both primal ret and active floats.
             // primal ret is first, by construction.
-            exprs.push(primal_call.clone());
+            exprs.push(primal_call);
         }
 
         // Now construct default placeholder for each active float.
@@ -538,16 +534,11 @@ mod llvm_enzyme {
                 return body;
             }
             [arg] => {
-                ret = ecx.expr_call(
-                    new_decl_span,
-                    blackbox_call_expr.clone(),
-                    thin_vec![arg.clone()],
-                );
+                ret = ecx.expr_call(new_decl_span, blackbox_call_expr, thin_vec![arg.clone()]);
             }
             args => {
                 let ret_tuple: P<ast::Expr> = ecx.expr_tuple(span, args.into());
-                ret =
-                    ecx.expr_call(new_decl_span, blackbox_call_expr.clone(), thin_vec![ret_tuple]);
+                ret = ecx.expr_call(new_decl_span, blackbox_call_expr, thin_vec![ret_tuple]);
             }
         }
         assert!(has_ret(&d_sig.decl.output));
@@ -567,7 +558,7 @@ mod llvm_enzyme {
             let args: ThinVec<_> =
                 idents[1..].iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();
             let self_expr = ecx.expr_self(span);
-            ecx.expr_method_call(span, self_expr, primal, args.clone())
+            ecx.expr_method_call(span, self_expr, primal, args)
         } else {
             let args: ThinVec<_> =
                 idents.iter().map(|arg| ecx.expr_path(ecx.path_ident(span, *arg))).collect();

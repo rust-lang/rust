@@ -484,7 +484,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
 
   if (ArgsCstrBuff != nullptr) {
 #if LLVM_VERSION_GE(20, 0)
-    int buffer_offset = 0;
+    size_t buffer_offset = 0;
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
     auto Arg0 = std::string(ArgsCstrBuff);
     buffer_offset = Arg0.size() + 1;
@@ -502,7 +502,7 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     Options.MCOptions.Argv0 = Arg0;
     Options.MCOptions.CommandlineArgs = CommandlineArgs;
 #else
-    int buffer_offset = 0;
+    size_t buffer_offset = 0;
     assert(ArgsCstrBuff[ArgsCstrBuffLen - 1] == '\0');
 
     const size_t arg0_len = std::strlen(ArgsCstrBuff);
@@ -511,13 +511,13 @@ extern "C" LLVMTargetMachineRef LLVMRustCreateTargetMachine(
     arg0[arg0_len] = '\0';
     buffer_offset += arg0_len + 1;
 
-    const int num_cmd_arg_strings = std::count(
+    const size_t num_cmd_arg_strings = std::count(
         &ArgsCstrBuff[buffer_offset], &ArgsCstrBuff[ArgsCstrBuffLen], '\0');
 
     std::string *cmd_arg_strings = new std::string[num_cmd_arg_strings];
-    for (int i = 0; i < num_cmd_arg_strings; ++i) {
+    for (size_t i = 0; i < num_cmd_arg_strings; ++i) {
       assert(buffer_offset < ArgsCstrBuffLen);
-      const int len = std::strlen(ArgsCstrBuff + buffer_offset);
+      const size_t len = std::strlen(ArgsCstrBuff + buffer_offset);
       cmd_arg_strings[i] = std::string(&ArgsCstrBuff[buffer_offset], len);
       buffer_offset += len + 1;
     }

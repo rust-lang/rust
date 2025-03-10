@@ -49,7 +49,6 @@ impl<F: Float> Generator<F> for Fuzz<F>
 where
     Standard: Distribution<<F as Float>::Int>,
 {
-    const NAME: &'static str = "fuzz";
     const SHORT_NAME: &'static str = "fuzz";
 
     type WriteCtx = F;

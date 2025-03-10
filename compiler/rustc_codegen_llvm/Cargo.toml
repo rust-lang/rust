@@ -43,3 +43,6 @@ serde_json = "1"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

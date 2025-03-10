@@ -3,7 +3,6 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;
@@ -16,7 +15,7 @@ use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_attr_parsing::{AttributeKind, PrintAttribute};
+use rustc_attr_data_structures::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
@@ -1470,6 +1469,10 @@ impl<'a> State<'a> {
             hir::ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.print_expr_method_call(segment, receiver, args);
             }
+            hir::ExprKind::Use(expr, _) => {
+                self.print_expr(expr);
+                self.word(".use");
+            }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
             }
@@ -1869,17 +1872,10 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.kind {
-            TyPatKind::Range(begin, end, end_kind) => {
-                if let Some(expr) = begin {
-                    self.print_const_arg(expr);
-                }
-                match end_kind {
-                    RangeEnd::Included => self.word("..."),
-                    RangeEnd::Excluded => self.word(".."),
-                }
-                if let Some(expr) = end {
-                    self.print_const_arg(expr);
-                }
+            TyPatKind::Range(begin, end) => {
+                self.print_const_arg(begin);
+                self.word("..=");
+                self.print_const_arg(end);
             }
             TyPatKind::Err(_) => {
                 self.popen();
@@ -2227,6 +2223,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
             hir::CaptureBy::Value { .. } => self.word_space("move"),
+            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
         }
     }
@@ -2386,6 +2383,7 @@ impl<'a> State<'a> {
     }
 
     fn print_where_predicate(&mut self, predicate: &hir::WherePredicate<'_>) {
+        self.print_attrs_as_outer(self.attrs(predicate.hir_id));
         match *predicate.kind {
             hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params,

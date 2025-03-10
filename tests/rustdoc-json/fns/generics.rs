@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ set wham_id = "$.index[*][?(@.name=='Wham')].id"
 pub trait Wham {}
 

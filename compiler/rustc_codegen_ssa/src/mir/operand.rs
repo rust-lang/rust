@@ -203,30 +203,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let alloc_align = alloc.inner().align;
         assert!(alloc_align >= layout.align.abi);
 
-        // Returns `None` when the value is partially undefined or any byte of it has provenance.
-        // Otherwise returns the value or (if the entire value is undef) returns an undef.
         let read_scalar = |start, size, s: abi::Scalar, ty| {
-            let range = alloc_range(start, size);
             match alloc.0.read_scalar(
                 bx,
-                range,
+                alloc_range(start, size),
                 /*read_provenance*/ matches!(s.primitive(), abi::Primitive::Pointer(_)),
             ) {
-                Ok(val) => Some(bx.scalar_to_backend(val, s, ty)),
-                Err(_) => {
-                    // We may have failed due to partial provenance or unexpected provenance,
-                    // continue down the normal code path if so.
-                    if alloc.0.provenance().range_empty(range, &bx.tcx())
-                        // Since `read_scalar` failed, but there were no relocations involved, the
-                        // bytes must be partially or fully uninitialized. Thus we can now unwrap the
-                        // information about the range of uninit bytes and check if it's the full range.
-                        && alloc.0.init_mask().is_range_initialized(range).unwrap_err() == range
-                    {
-                        Some(bx.const_undef(ty))
-                    } else {
-                        None
-                    }
-                }
+                Ok(val) => bx.scalar_to_backend(val, s, ty),
+                Err(_) => bx.const_poison(ty),
             }
         };
 
@@ -237,14 +221,16 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         // check that walks over the type of `mplace` to make sure it is truly correct to treat this
         // like a `Scalar` (or `ScalarPair`).
         match layout.backend_repr {
-            BackendRepr::Scalar(s) => {
+            BackendRepr::Scalar(s @ abi::Scalar::Initialized { .. }) => {
                 let size = s.size(bx);
                 assert_eq!(size, layout.size, "abi::Scalar size does not match layout size");
-                if let Some(val) = read_scalar(offset, size, s, bx.immediate_backend_type(layout)) {
-                    return OperandRef { val: OperandValue::Immediate(val), layout };
-                }
+                let val = read_scalar(offset, size, s, bx.immediate_backend_type(layout));
+                OperandRef { val: OperandValue::Immediate(val), layout }
             }
-            BackendRepr::ScalarPair(a, b) => {
+            BackendRepr::ScalarPair(
+                a @ abi::Scalar::Initialized { .. },
+                b @ abi::Scalar::Initialized { .. },
+            ) => {
                 let (a_size, b_size) = (a.size(bx), b.size(bx));
                 let b_offset = (offset + a_size).align_to(b.align(bx).abi);
                 assert!(b_offset.bytes() > 0);
@@ -260,21 +246,20 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     b,
                     bx.scalar_pair_element_backend_type(layout, 1, true),
                 );
-                if let (Some(a_val), Some(b_val)) = (a_val, b_val) {
-                    return OperandRef { val: OperandValue::Pair(a_val, b_val), layout };
-                }
+                OperandRef { val: OperandValue::Pair(a_val, b_val), layout }
             }
-            _ if layout.is_zst() => return OperandRef::zero_sized(layout),
-            _ => {}
-        }
-        // Neither a scalar nor scalar pair. Load from a place
-        // FIXME: should we cache `const_data_from_alloc` to avoid repeating this for the
-        // same `ConstAllocation`?
-        let init = bx.const_data_from_alloc(alloc);
-        let base_addr = bx.static_addr_of(init, alloc_align, None);
+            _ if layout.is_zst() => OperandRef::zero_sized(layout),
+            _ => {
+                // Neither a scalar nor scalar pair. Load from a place
+                // FIXME: should we cache `const_data_from_alloc` to avoid repeating this for the
+                // same `ConstAllocation`?
+                let init = bx.const_data_from_alloc(alloc);
+                let base_addr = bx.static_addr_of(init, alloc_align, None);
 
-        let llval = bx.const_ptr_byte_offset(base_addr, offset);
-        bx.load_operand(PlaceRef::new_sized(llval, layout))
+                let llval = bx.const_ptr_byte_offset(base_addr, offset);
+                bx.load_operand(PlaceRef::new_sized(llval, layout))
+            }
+        }
     }
 
     /// Asserts that this operand refers to a scalar and returns

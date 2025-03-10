@@ -53,6 +53,7 @@ no_llvm_build
 /target
 /library/target
 /src/bootstrap/target
+/src/ci/citool/target
 /src/tools/x/target
 # Created by `x vendor`
 /vendor

@@ -200,6 +200,14 @@ impl BuildMetrics {
             }
         };
         invocations.push(JsonInvocation {
+            // The command-line invocation with which bootstrap was invoked.
+            // Skip the first argument, as it is a potentially long absolute
+            // path that is not interesting.
+            cmdline: std::env::args_os()
+                .skip(1)
+                .map(|arg| arg.to_string_lossy().to_string())
+                .collect::<Vec<_>>()
+                .join(" "),
             start_time: state
                 .invocation_start
                 .duration_since(SystemTime::UNIX_EPOCH)

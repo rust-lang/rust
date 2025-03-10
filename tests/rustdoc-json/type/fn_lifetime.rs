@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ has "$.index[*][?(@.name=='GenericFn')].inner.type_alias"
 
 //@ ismany "$.index[*][?(@.name=='GenericFn')].inner.type_alias.generics.params[*].name" \"\'a\"

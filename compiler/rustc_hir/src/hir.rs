@@ -1600,7 +1600,7 @@ pub struct PatField<'hir> {
     pub span: Span,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Debug, HashStable_Generic, Hash, Eq, Encodable, Decodable)]
 pub enum RangeEnd {
     Included,
     Excluded,
@@ -1668,7 +1668,7 @@ pub enum PatExprKind<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TyPatKind<'hir> {
     /// A range pattern (e.g., `1..=2` or `1..2`).
-    Range(Option<&'hir ConstArg<'hir>>, Option<&'hir ConstArg<'hir>>, RangeEnd),
+    Range(&'hir ConstArg<'hir>, &'hir ConstArg<'hir>),
 
     /// A placeholder for a pattern that wasn't well formed in some way.
     Err(ErrorGuaranteed),
@@ -2166,6 +2166,7 @@ impl Expr<'_> {
             | ExprKind::Tup(_)
             | ExprKind::Type(..)
             | ExprKind::UnsafeBinderCast(..)
+            | ExprKind::Use(..)
             | ExprKind::Err(_) => ExprPrecedence::Unambiguous,
 
             ExprKind::DropTemps(expr, ..) => expr.precedence(),
@@ -2212,6 +2213,7 @@ impl Expr<'_> {
             ExprKind::Path(QPath::TypeRelative(..))
             | ExprKind::Call(..)
             | ExprKind::MethodCall(..)
+            | ExprKind::Use(..)
             | ExprKind::Struct(..)
             | ExprKind::Tup(..)
             | ExprKind::If(..)
@@ -2285,7 +2287,9 @@ impl Expr<'_> {
 
     pub fn can_have_side_effects(&self) -> bool {
         match self.peel_drop_temps().kind {
-            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) => false,
+            ExprKind::Path(_) | ExprKind::Lit(_) | ExprKind::OffsetOf(..) | ExprKind::Use(..) => {
+                false
+            }
             ExprKind::Type(base, _)
             | ExprKind::Unary(_, base)
             | ExprKind::Field(base, _)
@@ -2547,6 +2551,8 @@ pub enum ExprKind<'hir> {
     ///
     /// [`type_dependent_def_id`]: ../../rustc_middle/ty/struct.TypeckResults.html#method.type_dependent_def_id
     MethodCall(&'hir PathSegment<'hir>, &'hir Expr<'hir>, &'hir [Expr<'hir>], Span),
+    /// An use expression (e.g., `var.use`).
+    Use(&'hir Expr<'hir>, Span),
     /// A tuple (e.g., `(a, b, c, d)`).
     Tup(&'hir [Expr<'hir>]),
     /// A binary operation (e.g., `a + b`, `a * b`).

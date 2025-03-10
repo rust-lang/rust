@@ -31,6 +31,7 @@ mod sparc64;
 mod wasm;
 mod x86;
 mod x86_64;
+mod x86_win32;
 mod x86_win64;
 mod xtensa;
 
@@ -649,7 +650,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 };
                 let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
                 let opts = x86::X86Options { flavor, regparm, reg_struct_return };
-                x86::compute_abi_info(cx, self, opts);
+                if spec.is_like_msvc {
+                    x86_win32::compute_abi_info(cx, self, opts);
+                } else {
+                    x86::compute_abi_info(cx, self, opts);
+                }
             }
             "x86_64" => match abi {
                 ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),

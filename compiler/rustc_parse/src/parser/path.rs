@@ -305,10 +305,7 @@ impl<'a> Parser<'a> {
         let is_args_start = |token: &Token| {
             matches!(
                 token.kind,
-                token::Lt
-                    | token::BinOp(token::Shl)
-                    | token::OpenDelim(Delimiter::Parenthesis)
-                    | token::LArrow
+                token::Lt | token::Shl | token::OpenDelim(Delimiter::Parenthesis) | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {

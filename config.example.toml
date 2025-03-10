@@ -189,6 +189,17 @@
 # The default stage to use for the `bench` subcommand
 #bench-stage = 2
 
+# A descriptive string to be appended to version output (e.g., `rustc --version`),
+# which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
+# supplementary build information, like distro-specific package versions.
+#
+# The Rust compiler will differentiate between versions of itself, including
+# based on this string, which means that if you wish to be compatible with
+# upstream Rust you need to set this to "". However, note that if you set this to "" but
+# are not actually compatible -- for example if you've backported patches that change
+# behavior -- this may lead to miscompilations or other bugs.
+#description = ""
+
 # Build triple for the pre-compiled snapshot compiler. If `rustc` is set, this must match its host
 # triple (see `rustc --version --verbose`; cross-compiling the rust build system itself is NOT
 # supported). If `rustc` is unset, this must be a platform with pre-compiled host tools
@@ -614,17 +625,6 @@
 #
 # If using tarball sources, default value is "auto-detect", otherwise, it's "dev".
 #channel = if "is a tarball source" { "auto-detect" } else { "dev" }
-
-# A descriptive string to be appended to `rustc --version` output, which is
-# also used in places like debuginfo `DW_AT_producer`. This may be useful for
-# supplementary build information, like distro-specific package versions.
-#
-# The Rust compiler will differentiate between versions of itself, including
-# based on this string, which means that if you wish to be compatible with
-# upstream Rust you need to set this to "". However, note that if you are not
-# actually compatible -- for example if you've backported patches that change
-# behavior -- this may lead to miscompilations or other bugs.
-#description = ""
 
 # The root location of the musl installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note

@@ -1,7 +1,9 @@
 use std::marker::PhantomData;
+#[cfg(not(feature = "nightly"))]
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
 use std::rc::Rc;
-use std::{fmt, iter, mem, slice};
+use std::{fmt, iter, slice};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
@@ -14,7 +16,7 @@ use crate::{Idx, IndexVec};
 mod tests;
 
 type Word = u64;
-const WORD_BYTES: usize = mem::size_of::<Word>();
+const WORD_BYTES: usize = size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
 // The choice of chunk size has some trade-offs.

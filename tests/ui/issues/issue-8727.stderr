@@ -1,5 +1,5 @@
 warning: function cannot return without recursing
-  --> $DIR/issue-8727.rs:8:1
+  --> $DIR/issue-8727.rs:6:1
    |
 LL | fn generic<T>() {
    | ^^^^^^^^^^^^^^^ cannot return without recursing
@@ -10,17 +10,17 @@ LL |     generic::<Option<T>>();
    = note: `#[warn(unconditional_recursion)]` on by default
 
 error: reached the recursion limit while instantiating `generic::<Option<Option<Option<Option<Option<...>>>>>>`
-  --> $DIR/issue-8727.rs:9:5
+  --> $DIR/issue-8727.rs:7:5
    |
 LL |     generic::<Option<T>>();
    |     ^^^^^^^^^^^^^^^^^^^^^^
    |
 note: `generic` defined here
-  --> $DIR/issue-8727.rs:8:1
+  --> $DIR/issue-8727.rs:6:1
    |
 LL | fn generic<T>() {
    | ^^^^^^^^^^^^^^^
-   = note: the full type name has been written to '$TEST_BUILD_DIR/$FILE.long-type.txt'
+   = note: the full type name has been written to '$TEST_BUILD_DIR/issue-8727.long-type.txt'
 
 error: aborting due to 1 previous error; 1 warning emitted
 

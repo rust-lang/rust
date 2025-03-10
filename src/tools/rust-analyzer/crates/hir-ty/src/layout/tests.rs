@@ -342,7 +342,7 @@ fn simd_types() {
     check_size_and_align(
         r#"
             #[repr(simd)]
-            struct SimdType(i64, i64);
+            struct SimdType([i64; 2]);
             struct Goal(SimdType);
         "#,
         "",

@@ -10,3 +10,6 @@ rustc_span = { path = "../rustc_span" }
 serde = { version = "1.0.125", features = [ "derive" ] }
 serde_json = "1.0.59"
 # tidy-alphabetical-end
+
+[lints]
+workspace = true

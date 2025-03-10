@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ is "$.index[*][?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_unsafe" false
 //@ is "$.index[*][?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_const" false
 //@ is "$.index[*][?(@.name=='FnPointer')].inner.type_alias.type.function_pointer.header.is_async" false

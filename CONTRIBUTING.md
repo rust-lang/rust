@@ -18,7 +18,7 @@ For submodules, changes need to be made against the repository corresponding the
 submodule, and not the main `rust-lang/rust` repository.
 
 For subtrees, prefer sending a PR against the subtree's repository if it does
-not need to be made against the main `rust-lang/rust` repostory (e.g. a
+not need to be made against the main `rust-lang/rust` repository (e.g. a
 rustc-dev-guide change that does not accompany a compiler change).
 
 ## About the [rustc-dev-guide]

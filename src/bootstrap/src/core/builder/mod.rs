@@ -50,7 +50,7 @@ pub struct Builder<'a> {
 
     /// A stack of [`Step`]s to run before we can run this builder. The output
     /// of steps is cached in [`Self::cache`].
-    stack: RefCell<Vec<Box<dyn Any>>>,
+    stack: RefCell<Vec<Box<dyn AnyDebug>>>,
 
     /// The total amount of time we spent running [`Step`]s in [`Self::stack`].
     time_spent_on_dependencies: Cell<Duration>,
@@ -67,6 +67,21 @@ impl Deref for Builder<'_> {
     fn deref(&self) -> &Self::Target {
         self.build
     }
+}
+
+/// This trait is similar to `Any`, except that it also exposes the underlying
+/// type's [`Debug`] implementation.
+///
+/// (Trying to debug-print `dyn Any` results in the unhelpful `"Any { .. }"`.)
+trait AnyDebug: Any + Debug {}
+impl<T: Any + Debug> AnyDebug for T {}
+impl dyn AnyDebug {
+    /// Equivalent to `<dyn Any>::downcast_ref`.
+    fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref()
+    }
+
+    // Feel free to add other `dyn Any` methods as necessary.
 }
 
 pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
@@ -890,6 +905,7 @@ impl<'a> Builder<'a> {
                 gcc::Gcc,
                 llvm::Sanitizers,
                 tool::Rustfmt,
+                tool::Cargofmt,
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
@@ -1072,6 +1088,7 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
+                dist::Gcc
             ),
             Kind::Install => describe!(
                 install::Docs,
@@ -1100,6 +1117,7 @@ impl<'a> Builder<'a> {
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
                 run::FeaturesStatusDump,
+                run::CyclicStep,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1234,7 +1252,7 @@ impl<'a> Builder<'a> {
         ),
     )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+        self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1272,7 +1290,7 @@ impl<'a> Builder<'a> {
         target: TargetSelection,
     ) -> Compiler {
         #![allow(clippy::let_and_return)]
-        let resolved_compiler = if self.build.force_use_stage2(stage) {
+        let mut resolved_compiler = if self.build.force_use_stage2(stage) {
             trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
@@ -1282,6 +1300,11 @@ impl<'a> Builder<'a> {
             trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
         };
+
+        if stage != resolved_compiler.stage {
+            resolved_compiler.forced_compiler(true);
+        }
+
         trace!(target: "COMPILER_FOR", ?resolved_compiler);
         resolved_compiler
     }

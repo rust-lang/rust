@@ -78,6 +78,7 @@ struct IsNeverPattern;
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum AnonConstKind {
     EnumDiscriminant,
+    FieldDefaultValue,
     InlineConst,
     ConstArg(IsRepeatExpr),
 }
@@ -623,7 +624,7 @@ pub(crate) struct UnnecessaryQualification<'ra> {
     pub removal_span: Span,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct DiagMetadata<'ast> {
     /// The current trait's associated items' ident, used for diagnostic suggestions.
     current_trait_assoc_items: Option<&'ast [P<AssocItem>]>,
@@ -1202,7 +1203,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
                 if let TyKind::Path(None, ref path) = ty.kind
                     // We cannot disambiguate multi-segment paths right now as that requires type
                     // checking.
-                    && path.is_potential_trivial_const_arg()
+                    && path.is_potential_trivial_const_arg(false)
                 {
                     let mut check_ns = |ns| {
                         self.maybe_resolve_ident_in_lexical_scope(path.segments[0].ident, ns)
@@ -1406,7 +1407,7 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         visit_opt!(self, visit_ident, ident);
         try_visit!(self.visit_ty(ty));
         if let Some(v) = &default {
-            self.resolve_anon_const(v, AnonConstKind::ConstArg(IsRepeatExpr::No));
+            self.resolve_anon_const(v, AnonConstKind::FieldDefaultValue);
         }
     }
 }
@@ -2994,7 +2995,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
     }
 
     // HACK(min_const_generics, generic_const_exprs): We
-    // want to keep allowing `[0; std::mem::size_of::<*mut T>()]`
+    // want to keep allowing `[0; size_of::<*mut T>()]`
     // with a future compat lint for now. We do this by adding an
     // additional special case for repeat expressions.
     //
@@ -3146,6 +3147,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(trait_ref.ref_id, trait_ref.path.span),
                 RecordPartialRes::Yes,
+                None,
             );
             self.diag_metadata.currently_processing_impl_trait = None;
             if let Some(def_id) = res.expect_full_res().opt_def_id() {
@@ -4072,6 +4074,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             source,
             Finalize::new(id, path.span),
             RecordPartialRes::Yes,
+            None,
         );
     }
 
@@ -4083,14 +4086,21 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         source: PathSource<'ast>,
         finalize: Finalize,
         record_partial_res: RecordPartialRes,
+        parent_qself: Option<&QSelf>,
     ) -> PartialRes {
         let ns = source.namespace();
 
         let Finalize { node_id, path_span, .. } = finalize;
         let report_errors = |this: &mut Self, res: Option<Res>| {
             if this.should_report_errs() {
-                let (err, candidates) =
-                    this.smart_resolve_report_errors(path, None, path_span, source, res);
+                let (err, candidates) = this.smart_resolve_report_errors(
+                    path,
+                    None,
+                    path_span,
+                    source,
+                    res,
+                    parent_qself,
+                );
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
@@ -4159,6 +4169,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     path_span,
                     PathSource::Type,
                     None,
+                    parent_qself,
                 );
 
                 // There are two different error messages user might receive at
@@ -4436,6 +4447,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::Trait(AliasPossibility::No),
                 Finalize::new(finalize.node_id, qself.path_span),
                 RecordPartialRes::No,
+                Some(&qself),
             );
 
             if trait_res.expect_full_res() == Res::Err {
@@ -4460,6 +4472,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 PathSource::TraitItem(ns),
                 Finalize::with_root_span(finalize.node_id, finalize.path_span, qself.path_span),
                 RecordPartialRes::No,
+                Some(&qself),
             );
 
             // The remaining segments (the `C` in our example) will
@@ -4630,11 +4643,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             constant, anon_const_kind
         );
 
-        self.resolve_anon_const_manual(
-            constant.value.is_potential_trivial_const_arg(),
-            anon_const_kind,
-            |this| this.resolve_expr(&constant.value, None),
-        )
+        let is_trivial_const_arg = constant
+            .value
+            .is_potential_trivial_const_arg(self.r.tcx.features().min_generic_const_args());
+        self.resolve_anon_const_manual(is_trivial_const_arg, anon_const_kind, |this| {
+            this.resolve_expr(&constant.value, None)
+        })
     }
 
     /// There are a few places that we need to resolve an anon const but we did not parse an
@@ -4658,6 +4672,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             AnonConstKind::EnumDiscriminant => {
                 ConstantHasGenerics::No(NoConstantGenericsReason::IsEnumDiscriminant)
             }
+            AnonConstKind::FieldDefaultValue => ConstantHasGenerics::Yes,
             AnonConstKind::InlineConst => ConstantHasGenerics::Yes,
             AnonConstKind::ConstArg(_) => {
                 if self.r.tcx.features().generic_const_exprs() || is_trivial_const_arg {
@@ -4794,8 +4809,11 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     // Constant arguments need to be treated as AnonConst since
                     // that is how they will be later lowered to HIR.
                     if const_args.contains(&idx) {
+                        let is_trivial_const_arg = argument.is_potential_trivial_const_arg(
+                            self.r.tcx.features().min_generic_const_args(),
+                        );
                         self.resolve_anon_const_manual(
-                            argument.is_potential_trivial_const_arg(),
+                            is_trivial_const_arg,
                             AnonConstKind::ConstArg(IsRepeatExpr::No),
                             |this| this.resolve_expr(argument, None),
                         );

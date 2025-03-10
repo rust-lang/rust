@@ -368,7 +368,7 @@ pub(crate) unsafe fn map_memory<T>(
     let mut a0 = Syscall::MapMemory as usize;
     let mut a1 = phys.map(|p| p.as_ptr() as usize).unwrap_or_default();
     let mut a2 = virt.map(|p| p.as_ptr() as usize).unwrap_or_default();
-    let a3 = count * core::mem::size_of::<T>();
+    let a3 = count * size_of::<T>();
     let a4 = flags.bits();
     let a5 = 0;
     let a6 = 0;
@@ -392,7 +392,7 @@ pub(crate) unsafe fn map_memory<T>(
 
     if result == SyscallResult::MemoryRange as usize {
         let start = core::ptr::with_exposed_provenance_mut::<T>(a1);
-        let len = a2 / core::mem::size_of::<T>();
+        let len = a2 / size_of::<T>();
         let end = unsafe { start.add(len) };
         Ok(unsafe { core::slice::from_raw_parts_mut(start, len) })
     } else if result == SyscallResult::Error as usize {
@@ -409,7 +409,7 @@ pub(crate) unsafe fn map_memory<T>(
 pub(crate) unsafe fn unmap_memory<T>(range: *mut [T]) -> Result<(), Error> {
     let mut a0 = Syscall::UnmapMemory as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len() * core::mem::size_of::<T>();
+    let a2 = range.len() * size_of::<T>();
     let a3 = 0;
     let a4 = 0;
     let a5 = 0;
@@ -455,7 +455,7 @@ pub(crate) unsafe fn update_memory_flags<T>(
 ) -> Result<(), Error> {
     let mut a0 = Syscall::UpdateMemoryFlags as usize;
     let mut a1 = range.as_mut_ptr() as usize;
-    let a2 = range.len() * core::mem::size_of::<T>();
+    let a2 = range.len() * size_of::<T>();
     let a3 = new_flags.bits();
     let a4 = 0; // Process ID is currently None
     let a5 = 0;

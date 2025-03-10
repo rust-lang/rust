@@ -12,12 +12,6 @@ LL |           Blah::iter(self, iterator).await
    |
    = note: a recursive `async fn` call must introduce indirection such as `Box::pin` to avoid an infinitely sized future
 
-note: the above error was encountered while instantiating `fn Wrap::<()>::ice`
-  --> $DIR/post-mono-layout-cycle-2.rs:54:9
-   |
-LL |         t.ice();
-   |         ^^^^^^^
-
 error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0733`.

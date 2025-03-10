@@ -40,6 +40,16 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
         let mut new_blocks = Vec::new();
 
         let cur_len = body.basic_blocks.len();
+        let mut new_block = |source_info: SourceInfo, is_cleanup: bool, target: BasicBlock| {
+            let block = BasicBlockData {
+                statements: vec![],
+                is_cleanup,
+                terminator: Some(Terminator { source_info, kind: TerminatorKind::Goto { target } }),
+            };
+            let idx = cur_len + new_blocks.len();
+            new_blocks.push(block);
+            BasicBlock::new(idx)
+        };
 
         for block in body.basic_blocks_mut() {
             match block.terminator {
@@ -47,25 +57,34 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
                     kind: TerminatorKind::Call { target: Some(ref mut destination), unwind, .. },
                     source_info,
                 }) if pred_count[*destination] > 1
-                    && (matches!(
-                        unwind,
-                        UnwindAction::Cleanup(_) | UnwindAction::Terminate(_)
-                    ) || self == &AllCallEdges) =>
+                    && (generates_invoke(unwind) || self == &AllCallEdges) =>
                 {
                     // It's a critical edge, break it
-                    let call_guard = BasicBlockData {
-                        statements: vec![],
-                        is_cleanup: block.is_cleanup,
-                        terminator: Some(Terminator {
-                            source_info,
-                            kind: TerminatorKind::Goto { target: *destination },
-                        }),
-                    };
-
-                    // Get the index it will be when inserted into the MIR
-                    let idx = cur_len + new_blocks.len();
-                    new_blocks.push(call_guard);
-                    *destination = BasicBlock::new(idx);
+                    *destination = new_block(source_info, block.is_cleanup, *destination);
+                }
+                Some(Terminator {
+                    kind:
+                        TerminatorKind::InlineAsm {
+                            asm_macro: InlineAsmMacro::Asm,
+                            ref mut targets,
+                            ref operands,
+                            unwind,
+                            ..
+                        },
+                    source_info,
+                }) if self == &CriticalCallEdges => {
+                    let has_outputs = operands.iter().any(|op| {
+                        matches!(op, InlineAsmOperand::InOut { .. } | InlineAsmOperand::Out { .. })
+                    });
+                    let has_labels =
+                        operands.iter().any(|op| matches!(op, InlineAsmOperand::Label { .. }));
+                    if has_outputs && (has_labels || generates_invoke(unwind)) {
+                        for target in targets.iter_mut() {
+                            if pred_count[*target] > 1 {
+                                *target = new_block(source_info, block.is_cleanup, *target);
+                            }
+                        }
+                    }
                 }
                 _ => {}
             }
@@ -78,5 +97,13 @@ impl<'tcx> crate::MirPass<'tcx> for AddCallGuards {
 
     fn is_required(&self) -> bool {
         true
+    }
+}
+
+/// Returns true if this unwind action is code generated as an invoke as opposed to a call.
+fn generates_invoke(unwind: UnwindAction) -> bool {
+    match unwind {
+        UnwindAction::Continue | UnwindAction::Unreachable => false,
+        UnwindAction::Cleanup(_) | UnwindAction::Terminate(_) => true,
     }
 }

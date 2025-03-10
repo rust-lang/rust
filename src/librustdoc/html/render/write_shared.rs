@@ -153,7 +153,7 @@ fn write_rendered_cross_crate_info(
     include_sources: bool,
 ) -> Result<(), Error> {
     let m = &opt.should_merge;
-    if opt.emit.is_empty() || opt.emit.contains(&EmitType::InvocationSpecific) {
+    if opt.should_emit_crate() {
         if include_sources {
             write_rendered_cci::<SourcesPart, _>(SourcesPart::blank, dst, crates, m)?;
         }

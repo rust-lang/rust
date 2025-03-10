@@ -1,6 +1,6 @@
 //! Check that pattern types have their validity checked
 
-#![feature(pattern_types)]
+#![feature(pattern_types, const_trait_impl, pattern_type_range_trait)]
 #![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;

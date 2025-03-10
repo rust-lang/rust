@@ -27,7 +27,7 @@ pub type Erase<T: EraseType> = Erased<impl Copy>;
 pub fn erase<T: EraseType>(src: T) -> Erase<T> {
     // Ensure the sizes match
     const {
-        if std::mem::size_of::<T>() != std::mem::size_of::<T::Result>() {
+        if size_of::<T>() != size_of::<T::Result>() {
             panic!("size of T must match erased type T::Result")
         }
     };
@@ -231,9 +231,9 @@ trivial! {
     bool,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_ast::expand::allocator::AllocatorKind>,
-    Option<rustc_attr_parsing::ConstStability>,
-    Option<rustc_attr_parsing::DefaultBodyStability>,
-    Option<rustc_attr_parsing::Stability>,
+    Option<rustc_attr_data_structures::ConstStability>,
+    Option<rustc_attr_data_structures::DefaultBodyStability>,
+    Option<rustc_attr_data_structures::Stability>,
     Option<rustc_data_structures::svh::Svh>,
     Option<rustc_hir::def::DefKind>,
     Option<rustc_hir::CoroutineKind>,
@@ -256,10 +256,10 @@ trivial! {
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     rustc_abi::ReprOptions,
     rustc_ast::expand::allocator::AllocatorKind,
-    rustc_attr_parsing::ConstStability,
-    rustc_attr_parsing::DefaultBodyStability,
-    rustc_attr_parsing::Deprecation,
-    rustc_attr_parsing::Stability,
+    rustc_attr_data_structures::ConstStability,
+    rustc_attr_data_structures::DefaultBodyStability,
+    rustc_attr_data_structures::Deprecation,
+    rustc_attr_data_structures::Stability,
     rustc_data_structures::svh::Svh,
     rustc_errors::ErrorGuaranteed,
     rustc_hir::Constness,

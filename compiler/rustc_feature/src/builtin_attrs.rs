@@ -576,6 +576,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
     ),
 
+    // Probably temporary component of min_generic_const_args.
+    // `#[type_const] const ASSOC: usize;`
+    gated!(
+        type_const, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================

@@ -833,7 +833,8 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    let WherePredicate { kind, id: _, span: _ } = predicate;
+    let WherePredicate { attrs, kind, id: _, span: _, is_placeholder: _ } = predicate;
+    walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_where_predicate_kind(kind)
 }
 
@@ -1210,6 +1211,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         }
         ExprKind::Gen(_capt, body, _kind, _decl_span) => try_visit!(visitor.visit_block(body)),
         ExprKind::Await(expr, _span) => try_visit!(visitor.visit_expr(expr)),
+        ExprKind::Use(expr, _span) => try_visit!(visitor.visit_expr(expr)),
         ExprKind::Assign(lhs, rhs, _span) => {
             try_visit!(visitor.visit_expr(lhs));
             try_visit!(visitor.visit_expr(rhs));

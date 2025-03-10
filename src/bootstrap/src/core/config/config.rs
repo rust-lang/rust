@@ -894,6 +894,7 @@ define_config! {
     #[derive(Default)]
     struct Build {
         build: Option<String> = "build",
+        description: Option<String> = "description",
         host: Option<Vec<String>> = "host",
         target: Option<Vec<String>> = "target",
         build_dir: Option<String> = "build-dir",
@@ -1176,6 +1177,7 @@ define_config! {
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
+        // FIXME: Remove this field at Q2 2025, it has been replaced by build.description
         description: Option<String> = "description",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
@@ -1583,6 +1585,7 @@ impl Config {
         config.change_id = toml.change_id.inner;
 
         let Build {
+            mut description,
             build,
             host,
             target,
@@ -1831,7 +1834,7 @@ impl Config {
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
-                description,
+                description: rust_description,
                 musl_root,
                 rpath,
                 verbose_tests,
@@ -1924,7 +1927,12 @@ impl Config {
             set(&mut config.jemalloc, jemalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
             set(&mut config.backtrace, backtrace);
-            config.description = description;
+            if rust_description.is_some() {
+                eprintln!(
+                    "Warning: rust.description is deprecated. Use build.description instead."
+                );
+            }
+            description = description.or(rust_description);
             set(&mut config.rust_dist_src, dist_src);
             set(&mut config.verbose_tests, verbose_tests);
             // in the case "false" is set explicitly, do not overwrite the command line args
@@ -1990,6 +1998,7 @@ impl Config {
         }
 
         config.reproducible_artifacts = flags.reproducible_artifact;
+        config.description = description;
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in config.toml,

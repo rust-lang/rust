@@ -292,7 +292,7 @@ v(
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v(
     "release-description",
-    "rust.description",
+    "build.description",
     "optional descriptive string for version output",
 )
 v("dist-compression-formats", None, "List of compression formats to use")

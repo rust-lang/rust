@@ -372,7 +372,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
-                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                    if libc::sched_getaffinity(0, size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
 
@@ -412,7 +412,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         libc::CPU_LEVEL_WHICH,
                         libc::CPU_WHICH_PID,
                         -1,
-                        mem::size_of::<libc::cpuset_t>(),
+                        size_of::<libc::cpuset_t>(),
                         &mut set,
                     ) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
@@ -447,7 +447,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
 
             let mut cpus: libc::c_uint = 0;
-            let mut cpus_size = crate::mem::size_of_val(&cpus);
+            let mut cpus_size = size_of_val(&cpus);
 
             unsafe {
                 cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
