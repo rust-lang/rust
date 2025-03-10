@@ -179,7 +179,7 @@ impl Process {
                 self.handle.raw(),
                 ZX_INFO_PROCESS,
                 (&raw mut proc_info) as *mut libc::c_void,
-                mem::size_of::<zx_info_process_t>(),
+                size_of::<zx_info_process_t>(),
                 &mut actual,
                 &mut avail,
             ))?;
@@ -216,7 +216,7 @@ impl Process {
                 self.handle.raw(),
                 ZX_INFO_PROCESS,
                 (&raw mut proc_info) as *mut libc::c_void,
-                mem::size_of::<zx_info_process_t>(),
+                size_of::<zx_info_process_t>(),
                 &mut actual,
                 &mut avail,
             ))?;

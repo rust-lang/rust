@@ -18,7 +18,6 @@
 #![feature(rustdoc_internals)]
 #![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;

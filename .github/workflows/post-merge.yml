@@ -1,0 +1,36 @@
+# Workflow that runs after a merge to master, analyses changes in test executions
+# and posts the result to the merged PR.
+
+name: Post merge analysis
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  analysis:
+    runs-on: ubuntu-24.04
+    if: github.repository == 'rust-lang/rust'
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Perform analysis and send PR
+        run: |
+          # Get closest bors merge commit
+          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+
+          # Find PR for the current commit
+          HEAD_PR=`gh pr list --search "${{ github.sha }}" --state merged --json number --jq '.[0].number'`
+
+          echo "Parent: ${PARENT_COMMIT}"
+          echo "HEAD: ${{ github.sha }} (#${HEAD_PR})"
+
+          cd src/ci/citool
+
+          echo "Post-merge analysis result" > output.log
+          cargo run --release post-merge-analysis ${PARENT_COMMIT} ${{ github.sha }} >> output.log
+          cat output.log
+
+          gh pr comment ${HEAD_PR} -F output.log

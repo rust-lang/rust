@@ -271,8 +271,9 @@ pub enum DefPathData {
     Use,
     /// A global asm item.
     GlobalAsm,
-    /// Something in the type namespace.
-    TypeNs(Symbol),
+    /// Something in the type namespace. Will be empty for RPITIT associated
+    /// types, which are given a synthetic name later, if necessary.
+    TypeNs(Option<Symbol>),
     /// Something in the value namespace.
     ValueNs(Symbol),
     /// Something in the macro namespace.
@@ -410,8 +411,9 @@ impl DefPathData {
     pub fn get_opt_name(&self) -> Option<Symbol> {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => None,
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
+            TypeNs(name) => name,
+
+            ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
             Impl | ForeignMod | CrateRoot | Use | GlobalAsm | Closure | Ctor | AnonConst
             | OpaqueTy => None,
@@ -421,12 +423,14 @@ impl DefPathData {
     pub fn name(&self) -> DefPathDataName {
         use self::DefPathData::*;
         match *self {
-            TypeNs(name) if name == kw::Empty => {
-                DefPathDataName::Anon { namespace: sym::synthetic }
+            TypeNs(name) => {
+                if let Some(name) = name {
+                    DefPathDataName::Named(name)
+                } else {
+                    DefPathDataName::Anon { namespace: sym::synthetic }
+                }
             }
-            TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => {
-                DefPathDataName::Named(name)
-            }
+            ValueNs(name) | MacroNs(name) | LifetimeNs(name) => DefPathDataName::Named(name),
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },

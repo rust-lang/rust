@@ -226,31 +226,27 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
 /// // Some primitives
-/// assert_eq!(4, mem::size_of::<i32>());
-/// assert_eq!(8, mem::size_of::<f64>());
-/// assert_eq!(0, mem::size_of::<()>());
+/// assert_eq!(4, size_of::<i32>());
+/// assert_eq!(8, size_of::<f64>());
+/// assert_eq!(0, size_of::<()>());
 ///
 /// // Some arrays
-/// assert_eq!(8, mem::size_of::<[i32; 2]>());
-/// assert_eq!(12, mem::size_of::<[i32; 3]>());
-/// assert_eq!(0, mem::size_of::<[i32; 0]>());
+/// assert_eq!(8, size_of::<[i32; 2]>());
+/// assert_eq!(12, size_of::<[i32; 3]>());
+/// assert_eq!(0, size_of::<[i32; 0]>());
 ///
 ///
 /// // Pointer size equality
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<*const i32>());
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Box<i32>>());
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Option<&i32>>());
-/// assert_eq!(mem::size_of::<Box<i32>>(), mem::size_of::<Option<Box<i32>>>());
+/// assert_eq!(size_of::<&i32>(), size_of::<*const i32>());
+/// assert_eq!(size_of::<&i32>(), size_of::<Box<i32>>());
+/// assert_eq!(size_of::<&i32>(), size_of::<Option<&i32>>());
+/// assert_eq!(size_of::<Box<i32>>(), size_of::<Option<Box<i32>>>());
 /// ```
 ///
 /// Using `#[repr(C)]`.
 ///
 /// ```
-/// use std::mem;
-///
 /// #[repr(C)]
 /// struct FieldStruct {
 ///     first: u8,
@@ -265,13 +261,13 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// // The size of the third field is 1, so add 1 to the size. Size is 5.
 /// // Finally, the alignment of the struct is 2 (because the largest alignment amongst its
 /// // fields is 2), so add 1 to the size for padding. Size is 6.
-/// assert_eq!(6, mem::size_of::<FieldStruct>());
+/// assert_eq!(6, size_of::<FieldStruct>());
 ///
 /// #[repr(C)]
 /// struct TupleStruct(u8, u16, u8);
 ///
 /// // Tuple structs follow the same rules.
-/// assert_eq!(6, mem::size_of::<TupleStruct>());
+/// assert_eq!(6, size_of::<TupleStruct>());
 ///
 /// // Note that reordering the fields can lower the size. We can remove both padding bytes
 /// // by putting `third` before `second`.
@@ -282,7 +278,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///     second: u16
 /// }
 ///
-/// assert_eq!(4, mem::size_of::<FieldStructOptimized>());
+/// assert_eq!(4, size_of::<FieldStructOptimized>());
 ///
 /// // Union size is the size of the largest field.
 /// #[repr(C)]
@@ -291,7 +287,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///     larger: u16
 /// }
 ///
-/// assert_eq!(2, mem::size_of::<ExampleUnion>());
+/// assert_eq!(2, size_of::<ExampleUnion>());
 /// ```
 ///
 /// [alignment]: align_of
@@ -320,13 +316,11 @@ pub const fn size_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::size_of_val(&5i32));
+/// assert_eq!(4, size_of_val(&5i32));
 ///
 /// let x: [u8; 13] = [0; 13];
 /// let y: &[u8] = &x;
-/// assert_eq!(13, mem::size_of_val(y));
+/// assert_eq!(13, size_of_val(y));
 /// ```
 ///
 /// [`size_of::<T>()`]: size_of
@@ -381,7 +375,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
-/// assert_eq!(4, mem::size_of_val(&5i32));
+/// assert_eq!(4, size_of_val(&5i32));
 ///
 /// let x: [u8; 13] = [0; 13];
 /// let y: &[u8] = &x;
@@ -454,9 +448,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::align_of::<i32>());
+/// assert_eq!(4, align_of::<i32>());
 /// ```
 #[inline(always)]
 #[must_use]
@@ -477,9 +469,7 @@ pub const fn align_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::align_of_val(&5i32));
+/// assert_eq!(4, align_of_val(&5i32));
 /// ```
 #[inline]
 #[must_use]

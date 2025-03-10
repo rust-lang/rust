@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 #[repr(u32)]
 pub enum Foo {
     //@ is "$.index[*][?(@.name=='Basic')].inner.variant.discriminant.value" '"0"'

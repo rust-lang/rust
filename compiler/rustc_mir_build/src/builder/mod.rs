@@ -37,7 +37,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
         .map(|captured_place| {
             let name = captured_place.to_symbol();
             match captured_place.info.capture_kind {
-                ty::UpvarCapture::ByValue => name,
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => name,
                 ty::UpvarCapture::ByRef(..) => Symbol::intern(&format!("_ref__{name}")),
             }
         })
@@ -612,7 +612,8 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::InlineConst
-        | DefKind::Static { .. } => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::Static { .. }
+        | DefKind::GlobalAsm => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
@@ -871,7 +872,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut projs = closure_env_projs.clone();
                 projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
                 match capture {
-                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     ty::UpvarCapture::ByRef(..) => {
                         projs.push(ProjectionElem::Deref);
                     }

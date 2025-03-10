@@ -16,7 +16,7 @@ fn align() {
             if *j <= 8 {
                 assert_eq!(align_size(i, *j), i);
             } else {
-                assert!(align_size(i, *j) > i + std::mem::size_of::<*mut ()>());
+                assert!(align_size(i, *j) > i + size_of::<*mut ()>());
             }
         }
     }

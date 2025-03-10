@@ -277,7 +277,6 @@
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;

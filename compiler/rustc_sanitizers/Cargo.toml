@@ -15,3 +15,6 @@ rustc_middle = { path = "../rustc_middle" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
+
+[lints]
+workspace = true

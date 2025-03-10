@@ -14,6 +14,7 @@ use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
@@ -256,6 +257,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::coroutine, ..] => {
                             self.check_coroutine(attr, target);
+                        }
+                        [sym::type_const, ..] => {
+                            self.check_type_const(hir_id,attr, target);
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent(attr.span(), span, attrs),
@@ -919,7 +923,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl => Some(target.name()),
+            | Target::Impl
+            | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -1993,7 +1998,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
                     if item.is_some() {
                         match target {
-                            Target::Struct | Target::Union | Target::Enum => {}
+                            Target::Struct | Target::Union | Target::Enum => continue,
                             Target::Fn | Target::Method(_) => {
                                 feature_err(
                                     &self.tcx.sess,
@@ -2518,6 +2523,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn check_type_const(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+        let tcx = self.tcx;
+        if target == Target::AssocConst
+            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
+            && self.tcx.def_kind(parent) == DefKind::Trait
+        {
+            return;
+        } else {
+            self.dcx()
+                .struct_span_err(
+                    attr.span(),
+                    "`#[type_const]` must only be applied to trait associated constants",
+                )
+                .emit();
+        }
+    }
+
     fn check_linkage(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Fn
@@ -2612,6 +2634,32 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_item(item);
         self.check_attributes(item.hir_id(), item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
+    }
+
+    fn visit_where_predicate(&mut self, where_predicate: &'tcx hir::WherePredicate<'tcx>) {
+        // FIXME(where_clause_attrs): Currently, as the following check shows,
+        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
+        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
+        // in where clauses. After that, only `self.check_attributes` should be enough.
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        let spans = self
+            .tcx
+            .hir()
+            .attrs(where_predicate.hir_id)
+            .iter()
+            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
+            .map(|attr| attr.span())
+            .collect::<Vec<_>>();
+        if !spans.is_empty() {
+            self.tcx.dcx().emit_err(errors::UnsupportedAttributesInWhere { span: spans.into() });
+        }
+        self.check_attributes(
+            where_predicate.hir_id,
+            where_predicate.span,
+            Target::WherePredicate,
+            None,
+        );
+        intravisit::walk_where_predicate(self, where_predicate)
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {

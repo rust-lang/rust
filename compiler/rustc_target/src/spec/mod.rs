@@ -43,7 +43,7 @@ use std::str::FromStr;
 use std::{fmt, io};
 
 use rustc_abi::{Endian, ExternAbi, Integer, Size, TargetDataLayout, TargetDataLayoutErrors};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_fs_util::try_canonicalize;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -1915,7 +1915,6 @@ supported_targets! {
     ("i686-pc-windows-msvc", i686_pc_windows_msvc),
     ("i686-uwp-windows-msvc", i686_uwp_windows_msvc),
     ("i686-win7-windows-msvc", i686_win7_windows_msvc),
-    ("i586-pc-windows-msvc", i586_pc_windows_msvc),
     ("thumbv7a-pc-windows-msvc", thumbv7a_pc_windows_msvc),
     ("thumbv7a-uwp-windows-msvc", thumbv7a_uwp_windows_msvc),
 
@@ -3503,7 +3502,15 @@ impl Target {
                     return load_file(&p);
                 }
 
-                Err(format!("Could not find specification for target {target_tuple:?}"))
+                // Leave in a specialized error message for the removed target.
+                // FIXME: If you see this and it's been a few months after this has been released,
+                // you can probably remove it.
+                if target_tuple == "i586-pc-windows-msvc" {
+                    Err("the `i586-pc-windows-msvc` target has been removed. Use the `i686-pc-windows-msvc` target instead.\n\
+                        Windows 10 (the minimum required OS version) requires a CPU baseline of at least i686 so you can safely switch".into())
+                } else {
+                    Err(format!("Could not find specification for target {target_tuple:?}"))
+                }
             }
             TargetTuple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
@@ -3534,6 +3541,59 @@ impl Target {
             },
             s => s.clone(),
         }
+    }
+
+    pub fn object_architecture(
+        &self,
+        unstable_target_features: &FxIndexSet<Symbol>,
+    ) -> Option<(object::Architecture, Option<object::SubArchitecture>)> {
+        use object::Architecture;
+        Some(match self.arch.as_ref() {
+            "arm" => (Architecture::Arm, None),
+            "aarch64" => (
+                if self.pointer_width == 32 {
+                    Architecture::Aarch64_Ilp32
+                } else {
+                    Architecture::Aarch64
+                },
+                None,
+            ),
+            "x86" => (Architecture::I386, None),
+            "s390x" => (Architecture::S390x, None),
+            "mips" | "mips32r6" => (Architecture::Mips, None),
+            "mips64" | "mips64r6" => (Architecture::Mips64, None),
+            "x86_64" => (
+                if self.pointer_width == 32 {
+                    Architecture::X86_64_X32
+                } else {
+                    Architecture::X86_64
+                },
+                None,
+            ),
+            "powerpc" => (Architecture::PowerPc, None),
+            "powerpc64" => (Architecture::PowerPc64, None),
+            "riscv32" => (Architecture::Riscv32, None),
+            "riscv64" => (Architecture::Riscv64, None),
+            "sparc" => {
+                if unstable_target_features.contains(&sym::v8plus) {
+                    // Target uses V8+, aka EM_SPARC32PLUS, aka 64-bit V9 but in 32-bit mode
+                    (Architecture::Sparc32Plus, None)
+                } else {
+                    // Target uses V7 or V8, aka EM_SPARC
+                    (Architecture::Sparc, None)
+                }
+            }
+            "sparc64" => (Architecture::Sparc64, None),
+            "avr" => (Architecture::Avr, None),
+            "msp430" => (Architecture::Msp430, None),
+            "hexagon" => (Architecture::Hexagon, None),
+            "bpf" => (Architecture::Bpf, None),
+            "loongarch64" => (Architecture::LoongArch64, None),
+            "csky" => (Architecture::Csky, None),
+            "arm64ec" => (Architecture::Aarch64, Some(object::SubArchitecture::Arm64EC)),
+            // Unsupported architecture.
+            _ => return None,
+        })
     }
 }
 

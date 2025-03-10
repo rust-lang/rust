@@ -239,8 +239,8 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
-            if self.prev_token == token::BinOp(token::Plus)
-                && self.token == token::BinOp(token::Plus)
+            if self.prev_token == token::Plus
+                && self.token == token::Plus
                 && self.prev_token.span.between(self.token.span).is_empty()
             {
                 let op_span = self.prev_token.span.to(self.token.span);
@@ -250,8 +250,8 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if self.prev_token == token::BinOp(token::Minus)
-                && self.token == token::BinOp(token::Minus)
+            if self.prev_token == token::Minus
+                && self.token == token::Minus
                 && self.prev_token.span.between(self.token.span).is_empty()
                 && !self.look_ahead(1, |tok| tok.can_begin_expr())
             {
@@ -505,23 +505,23 @@ impl<'a> Parser<'a> {
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
             // `!expr`
-            token::Not => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
+            token::Bang => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
             // `~expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
             // `-expr`
-            token::BinOp(token::Minus) => {
+            token::Minus => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Neg))
             }
             // `*expr`
-            token::BinOp(token::Star) => {
+            token::Star => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Deref))
             }
             // `&expr` and `&&expr`
-            token::BinOp(token::And) | token::AndAnd => {
+            token::And | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_expr_borrow(lo))
             }
             // `+lit`
-            token::BinOp(token::Plus) if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
+            token::Plus if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
                 let mut err = errors::LeadingPlusNotSupported {
                     span: lo,
                     remove_plus: None,
@@ -541,9 +541,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_prefix(attrs)
             }
             // Recover from `++x`:
-            token::BinOp(token::Plus)
-                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
-            {
+            token::Plus if this.look_ahead(1, |t| *t == token::Plus) => {
                 let starts_stmt = this.prev_token == token::Semi
                     || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
@@ -567,7 +565,11 @@ impl<'a> Parser<'a> {
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_prefix(attrs)?;
+        let expr = if self.token.is_range_separator() {
+            self.parse_expr_prefix_range(attrs)
+        } else {
+            self.parse_expr_prefix(attrs)
+        }?;
         let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
@@ -723,14 +725,12 @@ impl<'a> Parser<'a> {
                                     suggestion,
                                 })
                             }
-                            token::BinOp(token::Shl) => {
-                                self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
-                                    shift: self.token.span,
-                                    r#type: path,
-                                    args: args_span,
-                                    suggestion,
-                                })
-                            }
+                            token::Shl => self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
+                                shift: self.token.span,
+                                r#type: path,
+                                args: args_span,
+                                suggestion,
+                            }),
                             _ => {
                                 // We can end up here even without `<` being the next token, for
                                 // example because `parse_ty_no_plus` returns `Err` on keywords,
@@ -778,6 +778,7 @@ impl<'a> Parser<'a> {
                     ExprKind::MethodCall(_) => "a method call",
                     ExprKind::Call(_, _) => "a function call",
                     ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Use(_, _) => "`.use`",
                     ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
                     ExprKind::Err(_) => return Ok(with_postfix),
                     _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
@@ -1296,6 +1297,12 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
+        if self.eat_keyword(exp!(Use)) {
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_span);
+            return Ok(self.mk_use_expr(self_arg, lo));
+        }
+
         // Post-fix match
         if self.eat_keyword(exp!(Match)) {
             let match_span = self.prev_token.span;
@@ -1397,6 +1404,7 @@ impl<'a> Parser<'a> {
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
+                || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
                 || this.check_const_closure()
             {
@@ -1574,7 +1582,7 @@ impl<'a> Parser<'a> {
         };
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (span, kind) = if self.eat(exp!(Not)) {
+        let (span, kind) = if self.eat(exp!(Bang)) {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
@@ -2388,7 +2396,7 @@ impl<'a> Parser<'a> {
         Ok(closure)
     }
 
-    /// Parses an optional `move` prefix to a closure-like construct.
+    /// Parses an optional `move` or `use` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(exp!(Move)) {
             let move_kw_span = self.prev_token.span;
@@ -2400,6 +2408,16 @@ impl<'a> Parser<'a> {
                     .create_err(errors::AsyncMoveOrderIncorrect { span: move_async_span }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
+            }
+        } else if self.eat_keyword(exp!(Use)) {
+            let use_kw_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
+            // Check for `use async` and recover
+            if self.check_keyword(exp!(Async)) {
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                Err(self.dcx().create_err(errors::AsyncUseOrderIncorrect { span: use_async_span }))
+            } else {
+                Ok(CaptureBy::Use { use_kw: use_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -2595,7 +2613,7 @@ impl<'a> Parser<'a> {
                 missing_let: None,
                 comparison: None,
             };
-            if self.prev_token == token::BinOp(token::Or) {
+            if self.prev_token == token::Or {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
             } else {
@@ -3415,7 +3433,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move, kw::Use])
                     && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })
@@ -3818,6 +3836,13 @@ impl<'a> Parser<'a> {
         await_expr
     }
 
+    fn mk_use_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
+        let span = lo.to(self.prev_token.span);
+        let use_expr = self.mk_expr(span, ExprKind::Use(self_arg, self.prev_token.span));
+        self.recover_from_use();
+        use_expr
+    }
+
     pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
@@ -3966,6 +3991,7 @@ impl MutVisitor for CondChecker<'_> {
             }
             ExprKind::Unary(_, _)
             | ExprKind::Await(_, _)
+            | ExprKind::Use(_, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Range(_, _, _)
             | ExprKind::Try(_)

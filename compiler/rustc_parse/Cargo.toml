@@ -26,3 +26,5 @@ unicode-width = "0.2.0"
 [dev-dependencies]
 termcolor = "1.2"
 
+[lints]
+workspace = true

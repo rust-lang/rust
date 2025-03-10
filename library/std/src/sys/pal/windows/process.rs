@@ -24,7 +24,7 @@ use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
 use crate::sys_common::IntoInner;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
-use crate::{cmp, env, fmt, mem, ptr};
+use crate::{cmp, env, fmt, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
 // Command
@@ -355,7 +355,7 @@ impl Command {
         let mut si_ex;
 
         if let Some(proc_thread_attribute_list) = proc_thread_attribute_list {
-            si.cb = mem::size_of::<c::STARTUPINFOEXW>() as u32;
+            si.cb = size_of::<c::STARTUPINFOEXW>() as u32;
             flags |= c::EXTENDED_STARTUPINFO_PRESENT;
 
             si_ex = c::STARTUPINFOEXW {
@@ -367,7 +367,7 @@ impl Command {
             };
             si_ptr = (&raw mut si_ex) as _;
         } else {
-            si.cb = mem::size_of::<c::STARTUPINFOW>() as u32;
+            si.cb = size_of::<c::STARTUPINFOW>() as u32;
             si_ptr = (&raw mut si) as _;
         }
 
@@ -599,7 +599,7 @@ impl Stdio {
             // permissions as well as the ability to be inherited to child
             // processes (as this is about to be inherited).
             Stdio::Null => {
-                let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+                let size = size_of::<c::SECURITY_ATTRIBUTES>();
                 let mut sa = c::SECURITY_ATTRIBUTES {
                     nLength: size as u32,
                     lpSecurityDescriptor: ptr::null_mut(),

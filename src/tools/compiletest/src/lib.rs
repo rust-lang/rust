@@ -21,7 +21,7 @@ pub mod util;
 
 use core::panic;
 use std::collections::HashSet;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
@@ -54,6 +54,12 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "run-lib-path", "path to target shared libraries", "PATH")
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
         .optopt("", "cargo-path", "path to cargo to use for compiling", "PATH")
+        .optopt(
+            "",
+            "stage0-rustc-path",
+            "path to rustc to use for compiling run-make recipes",
+            "PATH",
+        )
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "coverage-dump-path", "path to coverage-dump to use in tests", "PATH")
         .reqopt("", "python", "path to python to use for doc tests", "PATH")
@@ -268,12 +274,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
                 let path = Path::new(f);
                 let mut iter = path.iter().skip(1);
 
-                // We skip the test folder and check if the user passed `rmake.rs` or `Makefile`.
-                if iter
-                    .next()
-                    .is_some_and(|s| s == OsStr::new("rmake.rs") || s == OsStr::new("Makefile"))
-                    && iter.next().is_none()
-                {
+                // We skip the test folder and check if the user passed `rmake.rs`.
+                if iter.next().is_some_and(|s| s == "rmake.rs") && iter.next().is_none() {
                     path.parent().unwrap().to_str().unwrap().to_string()
                 } else {
                     f.to_string()
@@ -320,6 +322,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         run_lib_path: make_absolute(opt_path(matches, "run-lib-path")),
         rustc_path: opt_path(matches, "rustc-path"),
         cargo_path: matches.opt_str("cargo-path").map(PathBuf::from),
+        stage0_rustc_path: matches.opt_str("stage0-rustc-path").map(PathBuf::from),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         coverage_dump_path: matches.opt_str("coverage-dump-path").map(PathBuf::from),
         python: matches.opt_str("python").unwrap(),
@@ -776,16 +779,9 @@ fn collect_tests_from_dir(
         return Ok(());
     }
 
-    // For run-make tests, a "test file" is actually a directory that contains
-    // an `rmake.rs` or `Makefile`"
+    // For run-make tests, a "test file" is actually a directory that contains an `rmake.rs`.
     if cx.config.mode == Mode::RunMake {
-        if dir.join("Makefile").exists() && dir.join("rmake.rs").exists() {
-            return Err(io::Error::other(
-                "run-make tests cannot have both `Makefile` and `rmake.rs`",
-            ));
-        }
-
-        if dir.join("Makefile").exists() || dir.join("rmake.rs").exists() {
+        if dir.join("rmake.rs").exists() {
             let paths = TestPaths {
                 file: dir.to_path_buf(),
                 relative_dir: relative_dir_path.parent().unwrap().to_path_buf(),
@@ -854,24 +850,14 @@ pub fn is_test(file_name: &OsString) -> bool {
     !invalid_prefixes.iter().any(|p| file_name.starts_with(p))
 }
 
-/// For a single test file, creates one or more test structures (one per revision)
-/// that can be handed over to libtest to run, possibly in parallel.
+/// For a single test file, creates one or more test structures (one per revision) that can be
+/// handed over to libtest to run, possibly in parallel.
 fn make_test(cx: &TestCollectorCx, collector: &mut TestCollector, testpaths: &TestPaths) {
-    // For run-make tests, each "test file" is actually a _directory_ containing
-    // an `rmake.rs` or `Makefile`. But for the purposes of directive parsing,
-    // we want to look at that recipe file, not the directory itself.
+    // For run-make tests, each "test file" is actually a _directory_ containing an `rmake.rs`. But
+    // for the purposes of directive parsing, we want to look at that recipe file, not the directory
+    // itself.
     let test_path = if cx.config.mode == Mode::RunMake {
-        if testpaths.file.join("rmake.rs").exists() && testpaths.file.join("Makefile").exists() {
-            panic!("run-make tests cannot have both `rmake.rs` and `Makefile`");
-        }
-
-        if testpaths.file.join("rmake.rs").exists() {
-            // Parse directives in rmake.rs.
-            testpaths.file.join("rmake.rs")
-        } else {
-            // Parse directives in the Makefile.
-            testpaths.file.join("Makefile")
-        }
+        testpaths.file.join("rmake.rs")
     } else {
         PathBuf::from(&testpaths.file)
     };

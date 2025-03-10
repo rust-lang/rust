@@ -1299,12 +1299,11 @@ impl Default for TaskDeps {
             #[cfg(debug_assertions)]
             node: None,
             reads: EdgesVec::new(),
-            read_set: FxHashSet::default(),
+            read_set: FxHashSet::with_capacity_and_hasher(128, Default::default()),
             phantom_data: PhantomData,
         }
     }
 }
-
 // A data structure that stores Option<DepNodeColor> values as a contiguous
 // array, using one u32 per entry.
 struct DepNodeColorMap {

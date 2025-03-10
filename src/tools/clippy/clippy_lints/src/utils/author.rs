@@ -426,6 +426,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Tup({elements})");
                 self.slice(elements, |e| self.expr(e));
             },
+            ExprKind::Use(expr, _) => {
+                bind!(self, expr);
+                kind!("Use({expr})");
+                self.expr(expr);
+            },
             ExprKind::Binary(op, left, right) => {
                 bind!(self, op, left, right);
                 kind!("Binary({op}, {left}, {right})");
@@ -488,6 +493,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             }) => {
                 let capture_clause = match capture_clause {
                     CaptureBy::Value { .. } => "Value { .. }",
+                    CaptureBy::Use { .. } => "Use { .. }",
                     CaptureBy::Ref => "Ref",
                 };
 

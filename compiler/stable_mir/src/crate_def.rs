@@ -10,18 +10,10 @@ use crate::{Crate, Symbol, with};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct DefId(pub(crate) usize);
 
-/// A trait for retrieving information about a particular definition.
-///
-/// Implementors must provide the implementation of `def_id` which will be used to retrieve
-/// information about a crate's definition.
-pub trait CrateDef {
-    /// Retrieve the unique identifier for the current definition.
-    fn def_id(&self) -> DefId;
-
-    /// Return the fully qualified name of the current definition.
-    fn name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, false))
+impl DefId {
+    /// Return fully qualified name of this definition
+    pub fn name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, false))
     }
 
     /// Return a trimmed name of this definition.
@@ -34,9 +26,31 @@ pub trait CrateDef {
     ///
     /// For example, this function may shorten `std::vec::Vec` to just `Vec`,
     /// as long as there is no other `Vec` importable anywhere.
+    pub fn trimmed_name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, true))
+    }
+}
+
+/// A trait for retrieving information about a particular definition.
+///
+/// Implementors must provide the implementation of `def_id` which will be used to retrieve
+/// information about a crate's definition.
+pub trait CrateDef {
+    /// Retrieve the unique identifier for the current definition.
+    fn def_id(&self) -> DefId;
+
+    /// Return the fully qualified name of the current definition.
+    ///
+    /// See [`DefId::name`] for more details
+    fn name(&self) -> Symbol {
+        self.def_id().name()
+    }
+
+    /// Return a trimmed name of this definition.
+    ///
+    /// See [`DefId::trimmed_name`] for more details
     fn trimmed_name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, true))
+        self.def_id().trimmed_name()
     }
 
     /// Return information about the crate where this definition is declared.

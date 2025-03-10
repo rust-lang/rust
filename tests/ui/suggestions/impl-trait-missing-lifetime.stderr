@@ -22,7 +22,7 @@ LL + fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<()> { x.next() }
    |
 
 error[E0106]: missing lifetime specifier
-  --> $DIR/impl-trait-missing-lifetime.rs:17:60
+  --> $DIR/impl-trait-missing-lifetime.rs:16:60
    |
 LL | async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
    |                                                            ^^ expected named lifetime parameter
@@ -44,20 +44,6 @@ LL - async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next(
 LL + async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<()> { x.next() }
    |
 
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime.rs:17:69
-   |
-LL | async fn i(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   | -----------------------------------------------------------------   ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-   | |
-   | return type `impl Future<Output = Option<&'static ()>>` contains a lifetime `'1`
-
-error: lifetime may not live long enough
-  --> $DIR/impl-trait-missing-lifetime.rs:9:63
-   |
-LL | fn g(mut x: impl Iterator<Item = &'_ ()>) -> Option<&'_ ()> { x.next() }
-   |      ----- has type `x`                                       ^^^^^^^^ returning this value requires that `'1` must outlive `'static`
-
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0106`.

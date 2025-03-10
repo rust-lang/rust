@@ -1,6 +1,7 @@
 //! List of the unstable feature gates.
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, Symbol, sym};
@@ -473,6 +474,8 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
+    /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
+    (incomplete, ergonomic_clones, "CURRENT_RUSTC_VERSION", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
@@ -601,6 +604,8 @@ declare_features! (
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
+    /// Allows the use of raw-dylibs on ELF platforms
+    (incomplete, raw_dylib_elf, "CURRENT_RUSTC_VERSION", Some(135694)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -657,16 +662,17 @@ declare_features! (
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
-    /// Allows unsized tuple coercion.
-    (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
+    /// Allows use of attributes in `where` clauses.
+    (unstable, where_clause_attrs, "CURRENT_RUSTC_VERSION", Some(115590)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
     (unstable, x86_amx_intrinsics, "1.81.0", Some(126622)),
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
+    (unstable, yield_expr, "CURRENT_RUSTC_VERSION", Some(43122)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -683,11 +689,13 @@ impl Features {
     ) -> Result<(), Box<dyn std::error::Error>> {
         #[derive(serde::Serialize)]
         struct LibFeature {
+            timestamp: u128,
             symbol: String,
         }
 
         #[derive(serde::Serialize)]
         struct LangFeature {
+            timestamp: u128,
             symbol: String,
             since: Option<String>,
         }
@@ -701,10 +709,20 @@ impl Features {
         let metrics_file = std::fs::File::create(metrics_path)?;
         let metrics_file = std::io::BufWriter::new(metrics_file);
 
+        let now = || {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should always be greater than the unix epoch")
+                .as_nanos()
+        };
+
         let lib_features = self
             .enabled_lib_features
             .iter()
-            .map(|EnabledLibFeature { gate_name, .. }| LibFeature { symbol: gate_name.to_string() })
+            .map(|EnabledLibFeature { gate_name, .. }| LibFeature {
+                symbol: gate_name.to_string(),
+                timestamp: now(),
+            })
             .collect();
 
         let lang_features = self
@@ -713,6 +731,7 @@ impl Features {
             .map(|EnabledLangFeature { gate_name, stable_since, .. }| LangFeature {
                 symbol: gate_name.to_string(),
                 since: stable_since.map(|since| since.to_string()),
+                timestamp: now(),
             })
             .collect();
 

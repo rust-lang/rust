@@ -913,7 +913,7 @@ fn default_emitter(
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
@@ -930,7 +930,6 @@ fn default_emitter(
                     .fluent_bundle(bundle)
                     .sm(source_map)
                     .short_message(short)
-                    .teach(sopts.unstable_opts.teach)
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
@@ -1430,7 +1429,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)

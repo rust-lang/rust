@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 pub trait Display {}
 
 pub trait LendingIterator {

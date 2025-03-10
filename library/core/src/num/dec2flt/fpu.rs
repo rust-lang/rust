@@ -22,7 +22,6 @@ pub(super) use fpu_precision::set_precision;
 #[cfg(all(target_arch = "x86", not(target_feature = "sse2")))]
 mod fpu_precision {
     use core::arch::asm;
-    use core::mem::size_of;
 
     /// A structure used to preserve the original value of the FPU control word, so that it can be
     /// restored when the structure is dropped.

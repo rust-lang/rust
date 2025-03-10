@@ -222,7 +222,7 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
@@ -470,7 +470,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             // Find the provenance.
             let (offset, _prov) = self
                 .provenance
-                .range_get_ptrs(range, cx)
+                .range_ptrs_get(range, cx)
                 .first()
                 .copied()
                 .expect("there must be provenance somewhere here");

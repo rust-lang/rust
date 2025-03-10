@@ -7,4 +7,5 @@
 
 struct A;
 struct B;
-const S: A = B;
+
+pub const S: A = B;

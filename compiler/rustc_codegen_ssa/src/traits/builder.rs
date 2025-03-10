@@ -40,7 +40,7 @@ pub trait BuilderMethods<'a, 'tcx>:
     + CoverageInfoBuilderMethods<'tcx>
     + DebugInfoBuilderMethods
     + ArgAbiBuilderMethods<'tcx>
-    + AbiBuilderMethods<'tcx>
+    + AbiBuilderMethods
     + IntrinsicCallBuilderMethods<'tcx>
     + AsmBuilderMethods<'tcx>
     + StaticBuilderMethods

@@ -94,7 +94,7 @@ impl SocketAddr {
     {
         unsafe {
             let mut addr: libc::sockaddr_un = mem::zeroed();
-            let mut len = mem::size_of::<libc::sockaddr_un>() as libc::socklen_t;
+            let mut len = size_of::<libc::sockaddr_un>() as libc::socklen_t;
             cvt(f((&raw mut addr) as *mut _, &mut len))?;
             SocketAddr::from_parts(addr, len)
         }

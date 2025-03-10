@@ -305,7 +305,7 @@ impl Parse for Newtype {
     }
 }
 
-pub fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub(crate) fn newtype(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as Newtype);
     input.0.into()
 }

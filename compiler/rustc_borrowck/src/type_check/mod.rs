@@ -328,9 +328,8 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        debug!(?constant, ?location, "visit_const_operand");
-
         self.super_const_operand(constant, location);
         let ty = constant.const_.ty();
 
@@ -339,14 +338,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
             self.typeck.constraints.liveness_constraints.add_location(live_region_vid, location);
         });
 
-        // HACK(compiler-errors): Constants that are gathered into Body.required_consts
-        // have their locations erased...
-        let locations = if location != Location::START {
-            location.to_locations()
-        } else {
-            Locations::All(constant.span)
-        };
-
+        let locations = location.to_locations();
         if let Some(annotation_index) = constant.user_ty {
             if let Err(terr) = self.typeck.relate_type_and_user_type(
                 constant.const_.ty(),
@@ -491,9 +483,28 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_body(&mut self, body: &Body<'tcx>) {
-        // The types of local_decls are checked above which is called in super_body.
-        self.super_body(body);
+        // We intentionally do not recurse into `body.required_consts` or
+        // `body.mentioned_items` here as the MIR at this phase should still
+        // refer to all items and we don't want to check them multiple times.
+
+        for (local, local_decl) in body.local_decls.iter_enumerated() {
+            self.visit_local_decl(local, local_decl);
+        }
+
+        for (block, block_data) in body.basic_blocks.iter_enumerated() {
+            let mut location = Location { block, statement_index: 0 };
+            for stmt in &block_data.statements {
+                if !stmt.source_info.span.is_dummy() {
+                    self.last_span = stmt.source_info.span;
+                }
+                self.visit_statement(stmt, location);
+                location.statement_index += 1;
+            }
+
+            self.visit_terminator(block_data.terminator(), location);
+        }
     }
 }
 
@@ -2120,8 +2131,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 //
                                 // Note that other checks (such as denying `dyn Send` -> `dyn
                                 // Debug`) are in `rustc_hir_typeck`.
-                                if let ty::Dynamic(src_tty, _src_lt, _) = *src_tail.kind()
-                                    && let ty::Dynamic(dst_tty, dst_lt, _) = *dst_tail.kind()
+                                if let ty::Dynamic(src_tty, _src_lt, ty::Dyn) = *src_tail.kind()
+                                    && let ty::Dynamic(dst_tty, dst_lt, ty::Dyn) = *dst_tail.kind()
                                     && src_tty.principal().is_some()
                                     && dst_tty.principal().is_some()
                                 {
@@ -2582,7 +2593,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 ConstraintCategory::Boring, // same as above.
                 self.constraints,
             )
-            .apply_closure_requirements(closure_requirements, def_id.to_def_id(), args);
+            .apply_closure_requirements(closure_requirements, def_id, args);
         }
 
         // Now equate closure args to regions inherited from `typeck_root_def_id`. Fixes #98589.

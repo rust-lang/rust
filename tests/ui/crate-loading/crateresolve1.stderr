@@ -4,9 +4,9 @@ error[E0464]: multiple candidates for `rlib` dependency `crateresolve1` found
 LL | extern crate crateresolve1;
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: candidate #1: $TEST_BUILD_DIR/crate-loading/crateresolve1/auxiliary/libcrateresolve1-1.somelib
-   = note: candidate #2: $TEST_BUILD_DIR/crate-loading/crateresolve1/auxiliary/libcrateresolve1-2.somelib
-   = note: candidate #3: $TEST_BUILD_DIR/crate-loading/crateresolve1/auxiliary/libcrateresolve1-3.somelib
+   = note: candidate #1: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-1.somelib
+   = note: candidate #2: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-2.somelib
+   = note: candidate #3: $TEST_BUILD_DIR/auxiliary/libcrateresolve1-3.somelib
 
 error: aborting due to 1 previous error
 

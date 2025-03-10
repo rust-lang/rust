@@ -1,9 +1,9 @@
 use std::fmt::Debug;
 use std::hash::Hash;
+use std::sync::OnceLock;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sharded::{self, Sharded};
-use rustc_data_structures::sync::OnceLock;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
