@@ -582,10 +582,12 @@ Select which editor you would like to set up [default: None]: ";
             EditorKind::Emacs => &[
                 "51068d4747a13732440d1a8b8f432603badb1864fa431d83d0fd4f8fa57039e0",
                 "d29af4d949bbe2371eac928a3c31cf9496b1701aa1c45f11cd6c759865ad5c45",
+                "b5dd299b93dca3ceeb9b335f929293cb3d4bf4977866fbe7ceeac2a8a9f99088",
             ],
             EditorKind::Helix => &[
                 "2d3069b8cf1b977e5d4023965eb6199597755e6c96c185ed5f2854f98b83d233",
                 "6736d61409fbebba0933afd2e4c44ff2f97c1cb36cf0299a7f4a7819b8775040",
+                "f252dcc30ca85a193a699581e5e929d5bd6c19d40d7a7ade5e257a9517a124a5",
             ],
             EditorKind::Vim | EditorKind::VsCode => &[
                 "ea67e259dedf60d4429b6c349a564ffcd1563cf41c920a856d1f5b16b4701ac8",
@@ -598,10 +600,12 @@ Select which editor you would like to set up [default: None]: ";
                 "811fb3b063c739d261fd8590dd30242e117908f5a095d594fa04585daa18ec4d",
                 "4eecb58a2168b252077369da446c30ed0e658301efe69691979d1ef0443928f4",
                 "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
+                "e53e9129ca5ee5dcbd6ec8b68c2d87376474eb154992deba3c6d9ab1703e0717",
             ],
-            EditorKind::Zed => {
-                &["bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c"]
-            }
+            EditorKind::Zed => &[
+                "bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c",
+                "a5380cf5dd9328731aecc5dfb240d16dac46ed272126b9728006151ef42f5909",
+            ],
         }
     }
 
