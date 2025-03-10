@@ -134,15 +134,17 @@ There are several use-cases for try builds:
   the [dist-x86_64-linux] CI job.
 - Run a specific CI job (e.g. Windows tests) on a PR, to quickly test if it
   passes the test suite executed by that job. You can select which CI jobs will
-  be executed in the try build by adding up to 10 lines containing `try-job:
-  <name of job>` to the PR description. All such specified jobs will be executed
+  be executed in the try build by adding lines containing `try-job:
+  <job patter>` to the PR description. All such specified jobs will be executed
   in the try build once the `@bors try` command is used on the PR. If no try
   jobs are specified in this way, the jobs defined in the `try` section of
-  [`jobs.yml`] will be executed by default.
+  [`jobs.yml`] will be executed by default. Each pattern can either be an exact
+  name of a job or a glob pattern that matches multiple jobs, for example
+  `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build.
 
 > **Using `try-job` PR description directives**
 >
-> 1. Identify which set of try-jobs (max 10) you would like to exercise. You can
+> 1. Identify which set of try-jobs you would like to exercise. You can
 >    find the name of the CI jobs in [`jobs.yml`].
 >
 > 2. Amend PR description to include (usually at the end of the PR description)
@@ -153,9 +155,10 @@ There are several use-cases for try builds:
 >
 >    try-job: x86_64-msvc
 >    try-job: test-various
+>    try-job: *-alt
 >    ```
 >
->    Each `try-job` directive must be on its own line.
+>    Each `try-job` pattern must be on its own line.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
