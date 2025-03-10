@@ -797,16 +797,14 @@ function preLoadCss(cssUrl) {
      *
      * - After processing all of the impls, it sorts the sidebar items by name.
      *
-     * @param {{[cratename: string]: Array<Array<string|0>>}} imp
+     * @param {rustdoc.TypeImpls} imp
      */
-    // @ts-expect-error
     window.register_type_impls = imp => {
         // @ts-expect-error
         if (!imp || !imp[window.currentCrate]) {
             return;
         }
-        // @ts-expect-error
-        window.pending_type_impls = null;
+        window.pending_type_impls = undefined;
         const idMap = new Map();
 
         let implementations = document.getElementById("implementations-list");
@@ -992,9 +990,7 @@ function preLoadCss(cssUrl) {
             list.replaceChildren(...newChildren);
         }
     };
-    // @ts-expect-error
     if (window.pending_type_impls) {
-        // @ts-expect-error
         window.register_type_impls(window.pending_type_impls);
     }
 

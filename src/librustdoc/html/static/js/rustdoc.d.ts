@@ -48,11 +48,13 @@ declare global {
          * register trait implementors, called by code generated in
          * `write_shared.rs`
          */
-        register_implementors?: function(Implementors): void,
+        register_implementors?: function(rustdoc.Implementors): void,
         /**
          * fallback in case `register_implementors` isn't defined yet.
          */
-        pending_implementors?: Implementors,
+        pending_implementors?: rustdoc.Implementors,
+        register_type_impls?: function(rustdoc.TypeImpls): void,
+        pending_type_impls?: rustdoc.TypeImpls,
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
@@ -431,5 +433,9 @@ declare namespace rustdoc {
      */
     type Implementors = {
         [key: string]: Array<[string, number, Array<string>]>
+    }
+
+    type TypeImpls = {
+        [cratename: string]: Array<Array<string|0>>
     }
 }
