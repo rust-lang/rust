@@ -274,7 +274,7 @@ trigger_files = [
 [autolabel."A-rustdoc-search"]
 trigger_files = [
     "src/librustdoc/html/static/js/search.js",
-    "tests/rustdoc-js",
+    "tests/rustdoc-js/",
     "tests/rustdoc-js-std",
 ]
 
