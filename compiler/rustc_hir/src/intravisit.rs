@@ -363,7 +363,7 @@ pub trait Visitor<'v>: Sized {
     /// See the doc comments on [`Ty`] for an explanation of what it means for a type to be
     /// ambiguous.
     ///
-    /// The [`Visitor::visit_infer`] method should be overriden in order to handle infer vars.
+    /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_ty(&mut self, t: &'v Ty<'v, AmbigArg>) -> Self::Result {
         walk_ty(self, t)
     }
@@ -374,7 +374,7 @@ pub trait Visitor<'v>: Sized {
     /// See the doc comments on [`ConstArg`] for an explanation of what it means for a const to be
     /// ambiguous.
     ///
-    /// The [`Visitor::visit_infer`] method should be overriden in order to handle infer vars.
+    /// The [`Visitor::visit_infer`] method should be overridden in order to handle infer vars.
     fn visit_const_arg(&mut self, c: &'v ConstArg<'v, AmbigArg>) -> Self::Result {
         walk_ambig_const_arg(self, c)
     }
