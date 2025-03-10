@@ -1,6 +1,11 @@
 //@aux-build:proc_macros.rs
 
-#![allow(clippy::return_self_not_must_use, clippy::useless_vec)]
+#![allow(
+    dangerous_implicit_autorefs,
+    clippy::explicit_auto_deref,
+    clippy::return_self_not_must_use,
+    clippy::useless_vec
+)]
 #![warn(clippy::deref_addrof)]
 
 extern crate proc_macros;
@@ -70,5 +75,52 @@ impl S {
     pub fn f_mut(mut self) -> Self {
         inline!($(@expr self))
         //~^ deref_addrof
+    }
+}
+
+fn issue14386() {
+    use std::mem::ManuallyDrop;
+
+    #[derive(Copy, Clone)]
+    struct Data {
+        num: u64,
+    }
+
+    #[derive(Clone, Copy)]
+    struct M {
+        md: ManuallyDrop<[u8; 4]>,
+    }
+
+    union DataWithPadding<'lt> {
+        data: ManuallyDrop<Data>,
+        prim: ManuallyDrop<u64>,
+        padding: [u8; size_of::<Data>()],
+        tup: (ManuallyDrop<Data>, ()),
+        indirect: M,
+        indirect_arr: [M; 2],
+        indirect_ref: &'lt mut M,
+    }
+
+    let mut a = DataWithPadding {
+        padding: [0; size_of::<DataWithPadding>()],
+    };
+    unsafe {
+        a.padding = [1; size_of::<DataWithPadding>()];
+        //~^ deref_addrof
+        a.tup.1 = ();
+        //~^ deref_addrof
+        *a.prim = 0;
+        //~^ deref_addrof
+
+        (*&mut a.data).num = 42;
+        (*&mut a.tup).0.num = 42;
+        (*&mut a.indirect.md)[3] = 1;
+        (*&mut a.indirect_arr[1].md)[3] = 1;
+        (*&mut a.indirect_ref.md)[3] = 1;
+
+        // Check that raw pointers are properly considered as well
+        *a.prim = 0;
+        //~^ deref_addrof
+        (*&raw mut a.data).num = 42;
     }
 }

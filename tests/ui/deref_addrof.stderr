@@ -1,5 +1,5 @@
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:23:13
+  --> tests/ui/deref_addrof.rs:28:13
    |
 LL |     let b = *&a;
    |             ^^^ help: try: `a`
@@ -8,55 +8,55 @@ LL |     let b = *&a;
    = help: to override `-D warnings` add `#[allow(clippy::deref_addrof)]`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:26:13
+  --> tests/ui/deref_addrof.rs:31:13
    |
 LL |     let b = *&get_number();
    |             ^^^^^^^^^^^^^^ help: try: `get_number()`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:32:13
+  --> tests/ui/deref_addrof.rs:37:13
    |
 LL |     let b = *&bytes[1..2][0];
    |             ^^^^^^^^^^^^^^^^ help: try: `bytes[1..2][0]`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:37:13
+  --> tests/ui/deref_addrof.rs:42:13
    |
 LL |     let b = *&(a);
    |             ^^^^^ help: try: `(a)`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:40:13
+  --> tests/ui/deref_addrof.rs:45:13
    |
 LL |     let b = *(&a);
    |             ^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:44:13
+  --> tests/ui/deref_addrof.rs:49:13
    |
 LL |     let b = *((&a));
    |             ^^^^^^^ help: try: `a`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:47:13
+  --> tests/ui/deref_addrof.rs:52:13
    |
 LL |     let b = *&&a;
    |             ^^^^ help: try: `&a`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:50:14
+  --> tests/ui/deref_addrof.rs:55:14
    |
 LL |     let b = **&aref;
    |              ^^^^^^ help: try: `aref`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:55:19
+  --> tests/ui/deref_addrof.rs:60:19
    |
 LL |     let _repeat = *&[0; 64];
    |                   ^^^^^^^^^ help: try: `[0; 64]`
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:66:17
+  --> tests/ui/deref_addrof.rs:71:17
    |
 LL |         inline!(*& $(@expr self))
    |                 ^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
@@ -64,12 +64,36 @@ LL |         inline!(*& $(@expr self))
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: immediately dereferencing a reference
-  --> tests/ui/deref_addrof.rs:71:17
+  --> tests/ui/deref_addrof.rs:76:17
    |
 LL |         inline!(*&mut $(@expr self))
    |                 ^^^^^^^^^^^^^^^^^^^ help: try: `$(@expr self)`
    |
    = note: this error originates in the macro `__inline_mac_impl` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 11 previous errors
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:108:9
+   |
+LL |         (*&mut a.padding) = [1; size_of::<DataWithPadding>()];
+   |         ^^^^^^^^^^^^^^^^^ help: try: `a.padding`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:110:9
+   |
+LL |         (*&mut a.tup).1 = ();
+   |         ^^^^^^^^^^^^^ help: try: `a.tup`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:112:10
+   |
+LL |         **&mut a.prim = 0;
+   |          ^^^^^^^^^^^^ help: try: `a.prim`
+
+error: immediately dereferencing a reference
+  --> tests/ui/deref_addrof.rs:122:10
+   |
+LL |         **&raw mut a.prim = 0;
+   |          ^^^^^^^^^^^^^^^^ help: try: `a.prim`
+
+error: aborting due to 15 previous errors
 

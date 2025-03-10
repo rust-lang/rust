@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
+use clippy_utils::ty::adjust_derefs_manually_drop;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, Mutability, UnOp};
+use rustc_hir::{Expr, ExprKind, Mutability, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
@@ -44,6 +45,7 @@ impl LateLintPass<'_> for DerefAddrOf {
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
+            && !is_manually_drop_through_union(cx, addrof_target)
             && deref_target.span.eq_ctxt(e.span)
             && !addrof_target.span.from_expansion()
         {
@@ -101,4 +103,32 @@ impl LateLintPass<'_> for DerefAddrOf {
             }
         }
     }
+}
+
+/// Check if `expr` is part of an access to a `ManuallyDrop` entity reached through a union
+fn is_manually_drop_through_union(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if is_reached_through_union(cx, expr) {
+        let typeck = cx.typeck_results();
+        for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
+            if let Node::Expr(expr) = node {
+                if adjust_derefs_manually_drop(typeck.expr_adjustments(expr), typeck.expr_ty(expr)) {
+                    return true;
+                }
+            } else {
+                break;
+            }
+        }
+    }
+    false
+}
+
+/// Checks whether `expr` denotes an object reached through a union
+fn is_reached_through_union(cx: &LateContext<'_>, mut expr: &Expr<'_>) -> bool {
+    while let ExprKind::Field(parent, _) | ExprKind::Index(parent, _, _) = expr.kind {
+        if cx.typeck_results().expr_ty_adjusted(parent).is_union() {
+            return true;
+        }
+        expr = parent;
+    }
+    false
 }
