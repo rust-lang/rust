@@ -60,7 +60,8 @@ fn main() {
 }
 
 fn find_lld_version_in_logs(stderr: String) -> bool {
-    let lld_version_re =
-        Regex::new(r"^warning: linker std(out|err): LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
+    // Strip the `-Wlinker-messages` wrappers prefixing the linker output.
+    let stderr = Regex::new(r"warning: linker std(out|err):").unwrap().replace_all(&stderr, "");
+    let lld_version_re = Regex::new(r"^LLD [0-9]+\.[0-9]+\.[0-9]+").unwrap();
     stderr.lines().any(|line| lld_version_re.is_match(line.trim()))
 }
