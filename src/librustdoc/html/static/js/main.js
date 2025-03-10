@@ -322,7 +322,6 @@ function preLoadCss(cssUrl) {
                 search = window.searchState.outputElement();
             }
             switchDisplayedElement(search);
-            // @ts-expect-error
             window.searchState.mouseMovedAfterSearch = false;
             document.title = window.searchState.title;
         },
