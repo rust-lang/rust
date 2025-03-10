@@ -5,7 +5,7 @@ use std::ops::{Add, Div, Mul, Rem, Sub};
 
 /// Verify that floats are within a tolerance of each other, 1.0e-4 by default so we do not break test in Miri.
 macro_rules! assert_approx_eq {
-    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-4) }};
+    ($a:expr, $b:expr) => {{ assert_approx_eq!($a, $b, 1.0e-6) }};
     ($a:expr, $b:expr, $lim:expr) => {{
         let (a, b) = (&$a, &$b);
         let diff = (*a - *b).abs();

@@ -443,7 +443,11 @@ fn test_powi() {
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
     assert_approx_eq!(1.0f32.powi(1), 1.0);
-    assert_approx_eq!((-3.1f32).powi(2), 9.61);
+    assert_approx_eq!(
+        (-3.1f32).powi(2),
+        9.61,
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_approx_eq!(5.9f32.powi(-2), 0.028727);
     assert_eq!(8.3f32.powi(0), 1.0);
     assert!(nan.powi(2).is_nan());
@@ -457,9 +461,17 @@ fn test_powf() {
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
     assert_eq!(1.0f32.powf(1.0), 1.0);
-    assert_approx_eq!(3.4f32.powf(4.5), 246.408218);
+    assert_approx_eq!(
+        3.4f32.powf(4.5),
+        246.408218,
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_approx_eq!(2.7f32.powf(-3.2), 0.041652);
-    assert_approx_eq!((-3.1f32).powf(2.0), 9.61);
+    assert_approx_eq!(
+        (-3.1f32).powf(2.0),
+        9.61,
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_approx_eq!(5.9f32.powf(-2.0), 0.028727);
     assert_eq!(8.3f32.powf(0.0), 1.0);
     assert!(nan.powf(2.0).is_nan());
@@ -482,7 +494,11 @@ fn test_sqrt_domain() {
 fn test_exp() {
     assert_eq!(1.0, 0.0f32.exp());
     assert_approx_eq!(2.718282, 1.0f32.exp());
-    assert_approx_eq!(148.413162, 5.0f32.exp());
+    assert_approx_eq!(
+        148.413162,
+        5.0f32.exp(),
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
 
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
@@ -494,7 +510,11 @@ fn test_exp() {
 
 #[test]
 fn test_exp2() {
-    assert_approx_eq!(32.0, 5.0f32.exp2());
+    assert_approx_eq!(
+        32.0,
+        5.0f32.exp2(),
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_eq!(1.0, 0.0f32.exp2());
 
     let inf: f32 = f32::INFINITY;
@@ -517,7 +537,11 @@ fn test_ln() {
     assert!((-2.3f32).ln().is_nan());
     assert_eq!((-0.0f32).ln(), neg_inf);
     assert_eq!(0.0f32.ln(), neg_inf);
-    assert_approx_eq!(4.0f32.ln(), 1.386294);
+    assert_approx_eq!(
+        4.0f32.ln(),
+        1.386294,
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
 }
 
 #[test]
@@ -543,7 +567,10 @@ fn test_log2() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_approx_eq!(10.0f32.log2(), 3.321928);
+    assert_approx_eq!(
+        10.0f32.log2(),
+        3.321928 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_approx_eq!(2.3f32.log2(), 1.201634);
     assert_approx_eq!(1.0f32.exp().log2(), 1.442695);
     assert!(nan.log2().is_nan());
@@ -639,7 +666,11 @@ fn test_acosh() {
     assert_approx_eq!(3.0f32.acosh(), 1.76274717403908605046521864995958461f32);
 
     // test for low accuracy from issue 104548
-    assert_approx_eq!(60.0f32, 60.0f32.cosh().acosh());
+    assert_approx_eq!(
+        60.0f32,
+        60.0f32.cosh().acosh(),
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
 }
 
 #[test]
@@ -718,7 +749,11 @@ fn test_real_consts() {
     let ln_10: f32 = consts::LN_10;
 
     assert_approx_eq!(frac_pi_2, pi / 2f32);
-    assert_approx_eq!(frac_pi_3, pi / 3f32);
+    assert_approx_eq!(
+        frac_pi_3,
+        pi / 3f32,
+        1e-4 /* Miri float-non-det: Make tests pass for now */
+    );
     assert_approx_eq!(frac_pi_4, pi / 4f32);
     assert_approx_eq!(frac_pi_6, pi / 6f32);
     assert_approx_eq!(frac_pi_8, pi / 8f32);
