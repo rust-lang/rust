@@ -44,6 +44,7 @@ mod define_opaque;
 mod derive;
 mod deriving;
 mod edition_panic;
+mod eii;
 mod env;
 mod errors;
 mod format;
@@ -122,6 +123,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,
+        eii_macro_for: eii::eii_macro_for,
     }
 
     register_derive! {

@@ -676,7 +676,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
         // These don't define types.
         hir::ItemKind::ExternCrate(..)
         | hir::ItemKind::Use(..)
-        | hir::ItemKind::Macro(..)
+        | hir::ItemKind::Macro { .. }
         | hir::ItemKind::Mod(..)
         | hir::ItemKind::GlobalAsm { .. } => {}
         hir::ItemKind::ForeignMod { items, .. } => {
