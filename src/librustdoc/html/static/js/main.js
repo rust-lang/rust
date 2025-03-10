@@ -322,7 +322,6 @@ function preLoadCss(cssUrl) {
                 search = window.searchState.outputElement();
             }
             switchDisplayedElement(search);
-            window.searchState.mouseMovedAfterSearch = false;
             document.title = window.searchState.title;
         },
         removeQueryParameters: () => {
@@ -499,17 +498,22 @@ function preLoadCss(cssUrl) {
         handleHashes(ev);
     }
 
-    // @ts-expect-error
+    /**
+     * @param {HTMLElement|null} elem
+     */
     function openParentDetails(elem) {
         while (elem) {
             if (elem.tagName === "DETAILS") {
+                // @ts-expect-error
                 elem.open = true;
             }
-            elem = elem.parentNode;
+            elem = elem.parentElement;
         }
     }
 
-    // @ts-expect-error
+    /**
+     * @param {string} id
+     */
     function expandSection(id) {
         openParentDetails(document.getElementById(id));
     }
