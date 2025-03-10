@@ -15,6 +15,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
     PatExprKind, PatKind, expr_needs_parens,
 };
+use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt};
@@ -552,17 +553,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 debug!("scrutinee ty {expected:?} is a smart pointer, inserting overloaded deref");
                 // The scrutinee is a smart pointer; implicitly dereference it. This adds a
                 // requirement that `expected: DerefPure`.
-                let inner_ty = self.deref_pat_target(pat.span, expected);
+                let mut inner_ty = self.deref_pat_target(pat.span, expected);
                 // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
                 // `ref mut` bindings. See `Self::register_deref_mut_bounds_if_needed`.
 
-                // Preserve the smart pointer type for THIR lowering and upvar analysis.
-                self.typeck_results
-                    .borrow_mut()
-                    .pat_adjustments_mut()
-                    .entry(pat.hir_id)
-                    .or_default()
-                    .push(PatAdjustment { kind: PatAdjust::OverloadedDeref, source: expected });
+                let mut typeck_results = self.typeck_results.borrow_mut();
+                let mut pat_adjustments_table = typeck_results.pat_adjustments_mut();
+                let pat_adjustments = pat_adjustments_table.entry(pat.hir_id).or_default();
+                // We may reach the recursion limit if a user matches on a type `T` satisfying
+                // `T: Deref<Target = T>`; error gracefully in this case.
+                // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
+                // this check out of this branch. Alternatively, this loop could be implemented with
+                // autoderef and this check removed. For now though, don't break code compiling on
+                // stable with lots of `&`s and a low recursion limit, if anyone's done that.
+                if self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
+                    // Preserve the smart pointer type for THIR lowering and closure upvar analysis.
+                    pat_adjustments
+                        .push(PatAdjustment { kind: PatAdjust::OverloadedDeref, source: expected });
+                } else {
+                    let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
+                    inner_ty = Ty::new_error(self.tcx, guar);
+                }
+                drop(typeck_results);
 
                 // Recurse, using the old pat info to keep `current_depth` to its old value.
                 // Peeling smart pointers does not update the default binding mode.
