@@ -133,7 +133,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
             return;
         }
 
-        // At least one of the fields with a default value have been overriden in
+        // At least one of the fields with a default value have been overridden in
         // the `Default` implementation. We suggest removing it and relying on `..`
         // instead.
         let any_default_field_given =
