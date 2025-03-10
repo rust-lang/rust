@@ -327,7 +327,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 ///
 /// #[derive(PartialEq)]
 /// struct MyDst<T: ?Sized> {
-///     flag: bool,
+///     label: String,
 ///     contents: T,
 /// }
 ///
@@ -343,24 +343,26 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 ///             (&raw const self.contents).byte_offset_from_unsigned(self)
 ///         };
 ///
-///         // Clone each field of `self` into `dest`.
-///         //
-///         // Since `flag` is `Sized`, we could also clone it as
-///         //    dest.add(offset_of!(Self, flag)).cast::<bool>().write(self.flag.clone());
-///         // Since it is `Copy` (and therefore does not have a destructor), we could even write
-///         //    *dest.add(offset_of!(Self, flag)) = self.flag;
-///         // but that must not be used for types with destructors, since it would read the place
-///         // in order to drop the old value. We have chosen to do neither of those, to demonstrate
-///         // the most general pattern.
-///         //
-///         // SAFETY: The caller must provide a `dest` such that these offsets are valid
+///         // Clone the *sized* fields of `self` (just one, in this example).
+///         // (By cloning this first and storing it temporarily in a local variable, we avoid
+///         // leaking it in case of any panic, using the ordinary automatic cleanup of local
+///         // variables. Such a leak would be sound, but undesirable.)
+///         let label = self.label.clone();
+///
+///         // SAFETY: The caller must provide a `dest` such that these field offsets are valid
 ///         // to write to.
 ///         unsafe {
-///             self.flag.clone_to_uninit(dest.add(offset_of!(Self, flag)));
+///             // Clone the unsized field directly from `self` to `dest`.
 ///             self.contents.clone_to_uninit(dest.add(offset_of_contents));
-///         }
 ///
-///         // All fields of the struct have been initialized, therefore the struct is initialized,
+///             // Now write all the sized fields.
+///             //
+///             // Note that we only do this once all of the clone() and clone_to_uninit() calls
+///             // have completed, and therefore we know that there are no more possible panics;
+///             // this ensures no memory leaks in case of panic.
+///             dest.add(offset_of!(Self, label)).cast::<String>().write(label);
+///         }
+///         // All fields of the struct have been initialized; therefore, the struct is initialized,
 ///         // and we have satisfied our `unsafe impl CloneToUninit` obligations.
 ///     }
 /// }
@@ -368,7 +370,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 /// fn main() {
 ///     // Construct MyDst<[u8; 4]>, then coerce to MyDst<[u8]>.
 ///     let first: Rc<MyDst<[u8]>> = Rc::new(MyDst {
-///         flag: true,
+///         label: String::from("hello"),
 ///         contents: [1, 2, 3, 4],
 ///     });
 ///
@@ -380,7 +382,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 ///
 ///     assert_eq!(first.contents, [1, 2, 3, 4]);
 ///     assert_eq!(second.contents, [10, 20, 30, 40]);
-///     assert_eq!(second.flag, true);
+///     assert_eq!(second.label, "hello");
 /// }
 /// ```
 ///
