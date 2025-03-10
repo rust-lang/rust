@@ -40,8 +40,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidate: SelectionCandidate<'tcx>,
     ) -> Result<Selection<'tcx>, SelectionError<'tcx>> {
         let mut impl_src = match candidate {
-            SizedCandidate => {
-                let data = self.confirm_builtin_candidate(obligation, true);
+            SizedCandidate { has_nested } => {
+                let data = self.confirm_builtin_candidate(obligation, has_nested);
                 ImplSource::Builtin(BuiltinImplSource::Misc, data)
             }
 

@@ -95,8 +95,11 @@ pub type EvaluationCache<'tcx, ENV> = Cache<(ENV, ty::PolyTraitPredicate<'tcx>),
 /// parameter environment.
 #[derive(PartialEq, Eq, Debug, Clone, TypeVisitable)]
 pub enum SelectionCandidate<'tcx> {
-    /// UwU
-    SizedCandidate,
+    /// A built-in implementation for the `Sized` trait. This is preferred
+    /// over all other candidates.
+    SizedCandidate {
+        has_nested: bool,
+    },
 
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.

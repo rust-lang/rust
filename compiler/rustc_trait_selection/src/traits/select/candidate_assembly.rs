@@ -1062,8 +1062,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) {
         match self.sized_conditions(obligation) {
-            BuiltinImplConditions::Where(_) => {
-                candidates.vec.push(SizedCandidate);
+            BuiltinImplConditions::Where(nested) => {
+                candidates
+                    .vec
+                    .push(SizedCandidate { has_nested: !nested.skip_binder().is_empty() });
             }
             BuiltinImplConditions::None => {}
             BuiltinImplConditions::Ambiguous => {
