@@ -2,10 +2,10 @@ use hir::db::ExpandDatabase;
 use hir::{HirFileIdExt, UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
-use syntax::{ast, SyntaxNode};
-use syntax::{match_ast, AstNode};
+use syntax::{AstNode, match_ast};
+use syntax::{SyntaxNode, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: missing-unsafe
 //

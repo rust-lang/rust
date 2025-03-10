@@ -4,11 +4,11 @@ use std::{
     thread,
 };
 
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 use crate::{
-    stdio::{make_io_threads, IoThreads},
     Message,
+    stdio::{IoThreads, make_io_threads},
 };
 
 pub(crate) fn socket_transport(

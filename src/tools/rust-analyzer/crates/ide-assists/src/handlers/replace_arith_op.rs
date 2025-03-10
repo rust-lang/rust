@@ -1,7 +1,7 @@
 use ide_db::assists::{AssistId, AssistKind, GroupLabel};
 use syntax::{
-    ast::{self, ArithOp, BinaryOp},
     AstNode, TextRange,
+    ast::{self, ArithOp, BinaryOp},
 };
 
 use crate::assist_context::{AssistContext, Assists};

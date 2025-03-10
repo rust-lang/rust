@@ -2,21 +2,21 @@
 
 use std::iter;
 
-use hir::{db::DefDatabase, DefMap, InFile, ModuleSource};
+use hir::{DefMap, InFile, ModuleSource, db::DefDatabase};
 use ide_db::base_db::RootQueryDb;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
+    FileId, FileRange, LineIndexDatabase,
     base_db::{SourceDatabase, Upcast},
     source_change::SourceChange,
-    FileId, FileRange, LineIndexDatabase,
 };
 use paths::Utf8Component;
 use syntax::{
-    ast::{self, edit::IndentLevel, HasModuleItem, HasName},
     AstNode, TextRange,
+    ast::{self, HasModuleItem, HasName, edit::IndentLevel},
 };
 
-use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, Severity, fix};
 
 // Diagnostic: unlinked-file
 //
@@ -37,7 +37,9 @@ pub(crate) fn unlinked_file(
         "This file is not included anywhere in the module tree, so rust-analyzer can't offer IDE services."
     };
 
-    let message = format!("{message}\n\nIf you're intentionally working on unowned files, you can silence this warning by adding \"unlinked-file\" to rust-analyzer.diagnostics.disabled in your settings.");
+    let message = format!(
+        "{message}\n\nIf you're intentionally working on unowned files, you can silence this warning by adding \"unlinked-file\" to rust-analyzer.diagnostics.disabled in your settings."
+    );
 
     let mut unused = true;
 

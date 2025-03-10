@@ -1,14 +1,14 @@
 //! Transcriber takes a template, like `fn $ident() {}`, a set of bindings like
 //! `$ident => foo`, interpolates variables in the template, to get `fn foo() {}`
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use span::{Edition, Span};
-use tt::{iter::TtElement, Delimiter, TopSubtreeBuilder};
+use tt::{Delimiter, TopSubtreeBuilder, iter::TtElement};
 
 use crate::{
+    ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
     expander::{Binding, Bindings, Fragment},
     parser::{ConcatMetaVarExprElem, MetaVarKind, Op, RepeatKind, Separator},
-    ExpandError, ExpandErrorKind, ExpandResult, MetaTemplate,
 };
 
 impl<'t> Bindings<'t> {
@@ -331,7 +331,10 @@ fn expand_subtree(
                                 }
                                 _ => {
                                     if err.is_none() {
-                                        err = Some(ExpandError::binding_error(var.span, "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`"))
+                                        err = Some(ExpandError::binding_error(
+                                            var.span,
+                                            "metavariables of `${concat(..)}` must be of type `ident`, `literal` or `tt`",
+                                        ))
                                     }
                                     continue;
                                 }

@@ -356,17 +356,17 @@ impl Connection {
             Ok(msg) => {
                 return Err(ProtocolError::new(format!(
                     "unexpected message during shutdown: {msg:?}"
-                )))
+                )));
             }
             Err(RecvTimeoutError::Timeout) => {
                 return Err(ProtocolError::new(
                     "timed out waiting for exit notification".to_owned(),
-                ))
+                ));
             }
             Err(RecvTimeoutError::Disconnected) => {
                 return Err(ProtocolError::new(
                     "channel disconnected waiting for exit notification".to_owned(),
-                ))
+                ));
             }
         }
         Ok(true)

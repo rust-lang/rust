@@ -1,11 +1,11 @@
 //! Completes identifiers in format string literals.
 
 use hir::{ModuleDef, ScopeDef};
-use ide_db::{syntax_helpers::format_string::is_format_string, SymbolKind};
+use ide_db::{SymbolKind, syntax_helpers::format_string::is_format_string};
 use itertools::Itertools;
-use syntax::{ast, AstToken, TextRange, TextSize, ToSmolStr};
+use syntax::{AstToken, TextRange, TextSize, ToSmolStr, ast};
 
-use crate::{context::CompletionContext, CompletionItem, CompletionItemKind, Completions};
+use crate::{CompletionItem, CompletionItemKind, Completions, context::CompletionContext};
 
 /// Complete identifiers in format strings.
 pub(crate) fn format_string(

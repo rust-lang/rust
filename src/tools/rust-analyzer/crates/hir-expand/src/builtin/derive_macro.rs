@@ -1,7 +1,7 @@
 //! Builtin derives.
 
 use intern::sym;
-use itertools::{izip, Itertools};
+use itertools::{Itertools, izip};
 use parser::SyntaxKind;
 use rustc_hash::FxHashSet;
 use span::{Edition, MacroCallId, Span, SyntaxContext};
@@ -10,17 +10,18 @@ use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
 
 use crate::{
+    ExpandError, ExpandResult,
     builtin::quote::{dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::span_with_def_site_ctxt,
     name::{self, AsName, Name},
     span_map::ExpansionSpanMap,
-    tt, ExpandError, ExpandResult,
+    tt,
 };
 use syntax::{
     ast::{
-        self, edit_in_place::GenericParamsOwnerEdit, make, AstNode, FieldList, HasAttrs,
-        HasGenericArgs, HasGenericParams, HasModuleItem, HasName, HasTypeBounds,
+        self, AstNode, FieldList, HasAttrs, HasGenericArgs, HasGenericParams, HasModuleItem,
+        HasName, HasTypeBounds, edit_in_place::GenericParamsOwnerEdit, make,
     },
     ted,
 };
@@ -464,7 +465,7 @@ fn expand_simple_derive(
             return ExpandResult::new(
                 tt::TopSubtree::empty(tt::DelimSpan { open: invoc_span, close: invoc_span }),
                 e,
-            )
+            );
         }
     };
     ExpandResult::ok(expand_simple_derive_with_parsed(
@@ -1072,7 +1073,7 @@ fn coerce_pointee_expand(
                         "exactly one generic type parameter must be marked \
                                 as `#[pointee]` to derive `CoercePointee` traits",
                     ),
-                )
+                );
             }
             (Some(_), Some(_)) => {
                 return ExpandResult::new(
@@ -1082,7 +1083,7 @@ fn coerce_pointee_expand(
                         "only one type parameter can be marked as `#[pointee]` \
                                 when deriving `CoercePointee` traits",
                     ),
-                )
+                );
             }
         }
     };
@@ -1120,7 +1121,9 @@ fn coerce_pointee_expand(
                 tt::TopSubtree::empty(tt::DelimSpan::from_single(span)),
                 ExpandError::other(
                     span,
-                    format!("`derive(CoercePointee)` requires `{pointee_param_name}` to be marked `?Sized`"),
+                    format!(
+                        "`derive(CoercePointee)` requires `{pointee_param_name}` to be marked `?Sized`"
+                    ),
                 ),
             );
         }
@@ -1335,7 +1338,7 @@ fn coerce_pointee_expand(
     let info = match parse_adt_from_syntax(&adt, &span_map, span) {
         Ok(it) => it,
         Err(err) => {
-            return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err)
+            return ExpandResult::new(tt::TopSubtree::empty(tt::DelimSpan::from_single(span)), err);
         }
     };
 

@@ -1,20 +1,22 @@
 use either::Either;
 use hir::{
+    AssocItem, HirDisplay, HirFileIdExt, ImportPathConfig, InFile, Type,
     db::{ExpandDatabase, HirDatabase},
-    sym, AssocItem, HirDisplay, HirFileIdExt, ImportPathConfig, InFile, Type,
+    sym,
 };
 use ide_db::{
-    assists::Assist, famous_defs::FamousDefs, imports::import_assets::item_for_path_search,
-    source_change::SourceChange, syntax_helpers::tree_diff::diff, text_edit::TextEdit,
-    use_trivial_constructor::use_trivial_constructor, FxHashMap,
+    FxHashMap, assists::Assist, famous_defs::FamousDefs,
+    imports::import_assets::item_for_path_search, source_change::SourceChange,
+    syntax_helpers::tree_diff::diff, text_edit::TextEdit,
+    use_trivial_constructor::use_trivial_constructor,
 };
 use stdx::format_to;
 use syntax::{
-    ast::{self, make},
     AstNode, Edition, SyntaxNode, SyntaxNodePtr, ToSmolStr,
+    ast::{self, make},
 };
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: missing-fields
 //
@@ -140,11 +142,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         )
                     })();
 
-                    if expr.is_some() {
-                        expr
-                    } else {
-                        Some(generate_fill_expr(ty))
-                    }
+                    if expr.is_some() { expr } else { Some(generate_fill_expr(ty)) }
                 };
                 let field = make::record_expr_field(
                     make::name_ref(&f.name(ctx.sema.db).display_no_db(ctx.edition).to_smolstr()),

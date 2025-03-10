@@ -11,19 +11,19 @@
 //! `ReachedFixedPoint` signals about this.
 
 use either::Either;
-use hir_expand::{name::Name, Lookup};
+use hir_expand::{Lookup, name::Name};
 use span::Edition;
 use triomphe::Arc;
 
 use crate::{
+    AdtId, LocalModuleId, ModuleDefId,
     db::DefDatabase,
-    item_scope::{ImportOrExternCrate, BUILTIN_SCOPE},
+    item_scope::{BUILTIN_SCOPE, ImportOrExternCrate},
     item_tree::FieldsShape,
-    nameres::{sub_namespace_match, BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs},
+    nameres::{BlockInfo, BuiltinShadowMode, DefMap, LocalDefMap, MacroSubNs, sub_namespace_match},
     path::{ModPath, PathKind},
     per_ns::PerNs,
     visibility::{RawVisibility, Visibility},
-    AdtId, LocalModuleId, ModuleDefId,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -356,7 +356,7 @@ impl DefMap {
             PathKind::Abs => match self.resolve_path_abs(local_def_map, &mut segments, path) {
                 Either::Left(it) => it,
                 Either::Right(reached_fixed_point) => {
-                    return ResolvePathResult::empty(reached_fixed_point)
+                    return ResolvePathResult::empty(reached_fixed_point);
                 }
             },
         };
@@ -402,11 +402,11 @@ impl DefMap {
             PathKind::Abs => match self.resolve_path_abs(local_def_map, &mut segments, path) {
                 Either::Left(it) => it,
                 Either::Right(reached_fixed_point) => {
-                    return ResolvePathResult::empty(reached_fixed_point)
+                    return ResolvePathResult::empty(reached_fixed_point);
                 }
             },
             PathKind::DollarCrate(_) | PathKind::Crate | PathKind::Super(_) => {
-                return ResolvePathResult::empty(ReachedFixedPoint::Yes)
+                return ResolvePathResult::empty(ReachedFixedPoint::Yes);
             }
         };
 

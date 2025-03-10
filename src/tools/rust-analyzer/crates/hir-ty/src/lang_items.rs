@@ -1,6 +1,6 @@
 //! Functions to detect special lang items
 
-use hir_def::{data::adt::StructFlags, lang_item::LangItem, AdtId};
+use hir_def::{AdtId, data::adt::StructFlags, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 

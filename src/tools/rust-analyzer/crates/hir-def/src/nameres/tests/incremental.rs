@@ -7,7 +7,7 @@ use span::Edition;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
-use crate::{db::DefDatabase, nameres::tests::TestDB, AdtId, ModuleDefId};
+use crate::{AdtId, ModuleDefId, db::DefDatabase, nameres::tests::TestDB};
 
 fn check_def_map_is_not_recomputed(ra_fixture_initial: &str, ra_fixture_change: &str) {
     let (mut db, pos) = TestDB::with_position(ra_fixture_initial);

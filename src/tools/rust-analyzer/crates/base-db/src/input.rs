@@ -10,15 +10,15 @@ use std::hash::BuildHasherDefault;
 use std::{fmt, mem, ops};
 
 use cfg::{CfgOptions, HashableCfgOptions};
-use dashmap::mapref::entry::Entry;
 use dashmap::DashMap;
+use dashmap::mapref::entry::Entry;
 use intern::Symbol;
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use salsa::{Durability, Setter};
 use span::{Edition, EditionedFileId};
 use triomphe::Arc;
-use vfs::{file_set::FileSet, AbsPathBuf, AnchoredPath, FileId, VfsPath};
+use vfs::{AbsPathBuf, AnchoredPath, FileId, VfsPath, file_set::FileSet};
 
 use crate::{CrateWorkspaceData, RootQueryDb};
 
@@ -110,11 +110,7 @@ impl CrateName {
     /// Dashes are not allowed in the crate names,
     /// hence the input string is returned as `Err` for those cases.
     pub fn new(name: &str) -> Result<CrateName, &str> {
-        if name.contains('-') {
-            Err(name)
-        } else {
-            Ok(Self(Symbol::intern(name)))
-        }
+        if name.contains('-') { Err(name) } else { Ok(Self(Symbol::intern(name))) }
     }
 
     /// Creates a crate name, unconditionally replacing the dashes with underscores.
@@ -922,15 +918,21 @@ mod tests {
             None,
             empty_ws_data(),
         );
-        assert!(graph
-            .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
-            .is_ok());
-        assert!(graph
-            .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate3").unwrap(), crate3,))
-            .is_ok());
-        assert!(graph
-            .add_dep(crate3, DependencyBuilder::new(CrateName::new("crate1").unwrap(), crate1,))
-            .is_err());
+        assert!(
+            graph
+                .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
+                .is_ok()
+        );
+        assert!(
+            graph
+                .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate3").unwrap(), crate3,))
+                .is_ok()
+        );
+        assert!(
+            graph
+                .add_dep(crate3, DependencyBuilder::new(CrateName::new("crate1").unwrap(), crate1,))
+                .is_err()
+        );
     }
 
     #[test]
@@ -962,12 +964,16 @@ mod tests {
             None,
             empty_ws_data(),
         );
-        assert!(graph
-            .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
-            .is_ok());
-        assert!(graph
-            .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
-            .is_err());
+        assert!(
+            graph
+                .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
+                .is_ok()
+        );
+        assert!(
+            graph
+                .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
+                .is_err()
+        );
     }
 
     #[test]
@@ -1012,12 +1018,16 @@ mod tests {
             None,
             empty_ws_data(),
         );
-        assert!(graph
-            .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
-            .is_ok());
-        assert!(graph
-            .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate3").unwrap(), crate3,))
-            .is_ok());
+        assert!(
+            graph
+                .add_dep(crate1, DependencyBuilder::new(CrateName::new("crate2").unwrap(), crate2,))
+                .is_ok()
+        );
+        assert!(
+            graph
+                .add_dep(crate2, DependencyBuilder::new(CrateName::new("crate3").unwrap(), crate3,))
+                .is_ok()
+        );
     }
 
     #[test]
@@ -1049,15 +1059,17 @@ mod tests {
             None,
             empty_ws_data(),
         );
-        assert!(graph
-            .add_dep(
-                crate1,
-                DependencyBuilder::new(
-                    CrateName::normalize_dashes("crate-name-with-dashes"),
-                    crate2,
+        assert!(
+            graph
+                .add_dep(
+                    crate1,
+                    DependencyBuilder::new(
+                        CrateName::normalize_dashes("crate-name-with-dashes"),
+                        crate2,
+                    )
                 )
-            )
-            .is_ok());
+                .is_ok()
+        );
         assert_eq!(
             graph.arena[crate1].basic.dependencies,
             vec![

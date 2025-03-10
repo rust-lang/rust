@@ -3,24 +3,25 @@
 use std::iter::repeat_with;
 
 use hir_def::{
+    HasModule,
     expr_store::Body,
     hir::{Binding, BindingAnnotation, BindingId, Expr, ExprId, Literal, Pat, PatId},
     path::Path,
-    HasModule,
 };
 use hir_expand::name::Name;
 use stdx::TupleExt;
 
 use crate::{
+    DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar, Substitution, Ty,
+    TyBuilder, TyExt, TyKind,
     consteval::{self, try_const_usize, usize_const},
     infer::{
-        coerce::CoerceNever, expr::ExprIsRead, BindingMode, Expectation, InferenceContext,
-        TypeMismatch,
+        BindingMode, Expectation, InferenceContext, TypeMismatch, coerce::CoerceNever,
+        expr::ExprIsRead,
     },
     lower::lower_to_chalk_mutability,
     primitive::UintTy,
-    static_lifetime, DeclContext, DeclOrigin, InferenceDiagnostic, Interner, Mutability, Scalar,
-    Substitution, Ty, TyBuilder, TyExt, TyKind,
+    static_lifetime,
 };
 
 impl InferenceContext<'_> {

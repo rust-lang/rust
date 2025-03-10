@@ -30,7 +30,7 @@ mod proc_macros;
 mod server_impl;
 
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     env,
     ffi::OsString,
     fs,

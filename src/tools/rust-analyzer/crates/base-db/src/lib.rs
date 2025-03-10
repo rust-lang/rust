@@ -14,15 +14,15 @@ pub use crate::{
         SourceRoot, SourceRootId, TargetLayoutLoadResult, UniqueCrateData,
     },
 };
-use dashmap::{mapref::entry::Entry, DashMap};
+use dashmap::{DashMap, mapref::entry::Entry};
 pub use query_group::{self};
 use rustc_hash::{FxHashSet, FxHasher};
 pub use salsa::{self};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
-use syntax::{ast, Parse, SyntaxError};
+use syntax::{Parse, SyntaxError, ast};
 use triomphe::Arc;
-pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
+pub use vfs::{AnchoredPath, AnchoredPathBuf, FileId, VfsPath, file_set::FileSet};
 
 #[macro_export]
 macro_rules! impl_intern_key {

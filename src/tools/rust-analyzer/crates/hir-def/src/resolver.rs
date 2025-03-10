@@ -2,36 +2,36 @@
 use std::{fmt, iter, mem};
 
 use base_db::Crate;
-use hir_expand::{name::Name, MacroDefId};
-use intern::{sym, Symbol};
+use hir_expand::{MacroDefId, name::Name};
+use intern::{Symbol, sym};
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use span::SyntaxContext;
 use triomphe::Arc;
 
 use crate::{
+    AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
+    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
+    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
+    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
+    TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
     builtin_type::BuiltinType,
     data::ExternCrateDeclData,
     db::DefDatabase,
     expr_store::{
-        scope::{ExprScopes, ScopeId},
         HygieneId,
+        scope::{ExprScopes, ScopeId},
     },
     generics::{GenericParams, TypeOrConstParamData},
     hir::{BindingId, ExprId, LabelId},
-    item_scope::{BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, BUILTIN_SCOPE},
+    item_scope::{BUILTIN_SCOPE, BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob},
     lang_item::LangItemTarget,
     nameres::{DefMap, LocalDefMap, MacroSubNs, ResolvePathResultPrefixInfo},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     type_ref::{LifetimeRef, TypesMap},
     visibility::{RawVisibility, Visibility},
-    AdtId, ConstId, ConstParamId, CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId,
-    ExternBlockId, ExternCrateId, FunctionId, FxIndexMap, GenericDefId, GenericParamId, HasModule,
-    ImplId, ItemContainerId, ItemTreeLoc, LifetimeParamId, LocalModuleId, Lookup, Macro2Id,
-    MacroId, MacroRulesId, ModuleDefId, ModuleId, ProcMacroId, StaticId, StructId, TraitAliasId,
-    TraitId, TypeAliasId, TypeOrConstParamId, TypeOwnerId, TypeParamId, UseId, VariantId,
 };
 
 #[derive(Debug, Clone)]
@@ -209,11 +209,7 @@ impl Resolver {
         }
 
         let remaining_idx = || {
-            if path.segments().len() == 1 {
-                None
-            } else {
-                Some(1)
-            }
+            if path.segments().len() == 1 { None } else { Some(1) }
         };
 
         for scope in self.scopes() {

@@ -7,7 +7,7 @@
 //! there is no value in lifting these out into the outline module test since they will either not
 //! show up for normal completions, or they won't show completions other than lifetimes depending
 //! on the fixture input.
-use hir::{sym, Name, ScopeDef};
+use hir::{Name, ScopeDef, sym};
 
 use crate::{
     completions::Completions,

@@ -2,16 +2,16 @@ use base_db::RootQueryDb;
 use chalk_ir::Substitution;
 use hir_def::db::DefDatabase;
 use rustc_apfloat::{
-    ieee::{Half as f16, Quad as f128},
     Float,
+    ieee::{Half as f16, Quad as f128},
 };
 use span::EditionedFileId;
 use test_fixture::WithFixture;
 use test_utils::skip_slow_tests;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, display::DisplayTarget, mir::pad16,
-    test_db::TestDB, Const, ConstScalar, Interner, MemoryMap,
+    Const, ConstScalar, Interner, MemoryMap, consteval::try_const_usize, db::HirDatabase,
+    display::DisplayTarget, mir::pad16, test_db::TestDB,
 };
 
 use super::{

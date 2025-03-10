@@ -2,12 +2,12 @@
 //! from a comment.
 
 use ide_db::{
-    base_db::{salsa::AsDynDatabase, RootQueryDb},
     EditionedFileId, FilePosition, FileRange, RootDatabase,
+    base_db::{RootQueryDb, salsa::AsDynDatabase},
 };
 use syntax::{
-    ast::{self, AstNode, AstToken},
     TextRange,
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::MatchFinder;

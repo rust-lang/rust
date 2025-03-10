@@ -1,7 +1,7 @@
 //! Code common to structs, unions, and enum variants.
 
 use crate::context::CompletionContext;
-use hir::{sym, HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind};
+use hir::{HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind, sym};
 use ide_db::SnippetCap;
 use itertools::Itertools;
 use syntax::SmolStr;

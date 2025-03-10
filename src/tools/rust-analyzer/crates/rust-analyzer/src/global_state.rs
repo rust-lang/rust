@@ -5,7 +5,7 @@
 
 use std::{ops::Not as _, time::Instant};
 
-use crossbeam_channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, unbounded};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
 use ide_db::base_db::{Crate, ProcMacroPaths, SourceDatabase};
@@ -20,7 +20,7 @@ use parking_lot::{
 use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
 use rustc_hash::{FxHashMap, FxHashSet};
-use tracing::{span, trace, Level};
+use tracing::{Level, span, trace};
 use triomphe::Arc;
 use vfs::{AbsPathBuf, AnchoredPathBuf, ChangeKind, Vfs, VfsPath};
 
@@ -454,7 +454,9 @@ impl GlobalState {
                         if let Some((kind, old_path, old_text)) = entry {
                             // SourceRoot has more than 1 RATOML files. In this case lexicographically smaller wins.
                             if old_path < vfs_path {
-                                tracing::error!("Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect.");
+                                tracing::error!(
+                                    "Two `rust-analyzer.toml` files were found inside the same crate. {vfs_path} has no effect."
+                                );
                                 // Put the old one back in.
                                 match kind {
                                     RatomlFileKind::Crate => {

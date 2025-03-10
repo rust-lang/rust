@@ -53,7 +53,7 @@ use base_db::{CrateDisplayName, CrateName};
 use cfg::CfgAtom;
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de};
 use span::Edition;
 
 use crate::{ManifestPath, TargetKind};

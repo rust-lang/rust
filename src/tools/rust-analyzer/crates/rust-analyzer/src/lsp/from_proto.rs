@@ -1,7 +1,7 @@
 //! Conversion lsp_types types to rust-analyzer specific ones.
 use anyhow::format_err;
 use ide::{Annotation, AnnotationKind, AssistKind, LineCol};
-use ide_db::{line_index::WideLineCol, FileId, FilePosition, FileRange};
+use ide_db::{FileId, FilePosition, FileRange, line_index::WideLineCol};
 use paths::Utf8PathBuf;
 use syntax::{TextRange, TextSize};
 use vfs::AbsPathBuf;

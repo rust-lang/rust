@@ -5,9 +5,9 @@
 
 // FIXME: this badly needs rename/rewrite (matklad, 2020-02-06).
 
+use crate::RootDatabase;
 use crate::documentation::{Documentation, HasDocs};
 use crate::famous_defs::FamousDefs;
-use crate::RootDatabase;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
@@ -21,8 +21,9 @@ use hir::{
 use span::Edition;
 use stdx::{format_to, impl_from};
 use syntax::{
+    SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{self, AstNode},
-    match_ast, SyntaxKind, SyntaxNode, SyntaxToken,
+    match_ast,
 };
 
 // FIXME: a more precise name would probably be `Symbol`?

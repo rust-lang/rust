@@ -1,5 +1,5 @@
-use ide_db::base_db::{BuiltCrateData, ExtraCrateData};
 use ide_db::RootDatabase;
+use ide_db::base_db::{BuiltCrateData, ExtraCrateData};
 use itertools::Itertools;
 use span::FileId;
 use stdx::format_to;

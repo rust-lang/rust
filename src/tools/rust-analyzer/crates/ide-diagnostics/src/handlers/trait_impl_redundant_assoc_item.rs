@@ -1,4 +1,4 @@
-use hir::{db::ExpandDatabase, HasSource, HirDisplay};
+use hir::{HasSource, HirDisplay, db::ExpandDatabase};
 use ide_db::text_edit::TextRange;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},

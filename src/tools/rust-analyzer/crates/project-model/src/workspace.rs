@@ -11,7 +11,7 @@ use base_db::{
     TargetLayoutLoadResult,
 };
 use cfg::{CfgAtom, CfgDiff, CfgOptions};
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use paths::{AbsPath, AbsPathBuf};
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
@@ -20,15 +20,15 @@ use tracing::instrument;
 use triomphe::Arc;
 
 use crate::{
+    CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath, Package,
+    ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
+    WorkspaceBuildScripts,
     build_dependencies::BuildScriptOutput,
     cargo_workspace::{CargoMetadataConfig, DepKind, PackageData, RustLibSource},
     env::{cargo_config_env, inject_cargo_env, inject_cargo_package_env, inject_rustc_tool_env},
     project_json::{Crate, CrateArrayIdx},
     sysroot::RustLibSrcWorkspace,
-    toolchain_info::{rustc_cfg, target_data_layout, target_tuple, version, QueryConfig},
-    CargoConfig, CargoWorkspace, CfgOverrides, InvocationStrategy, ManifestPath, Package,
-    ProjectJson, ProjectManifest, RustSourceWorkspaceConfig, Sysroot, TargetData, TargetKind,
-    WorkspaceBuildScripts,
+    toolchain_info::{QueryConfig, rustc_cfg, target_data_layout, target_tuple, version},
 };
 use tracing::{debug, error, info};
 

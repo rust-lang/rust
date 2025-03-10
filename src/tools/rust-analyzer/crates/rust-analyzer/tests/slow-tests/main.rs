@@ -18,17 +18,17 @@ mod testdir;
 use std::{collections::HashMap, path::PathBuf, time::Instant};
 
 use lsp_types::{
+    CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
+    DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
+    GotoDefinitionParams, HoverParams, InlayHint, InlayHintLabel, InlayHintParams,
+    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
         InlayHintRequest, InlayHintResolveRequest, RangeFormatting, WillRenameFiles,
         WorkspaceSymbolRequest,
     },
-    CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
-    GotoDefinitionParams, HoverParams, InlayHint, InlayHintLabel, InlayHintParams,
-    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
-    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
@@ -37,7 +37,7 @@ use stdx::format_to_acc;
 use test_utils::skip_slow_tests;
 use testdir::TestDir;
 
-use crate::support::{project, Project};
+use crate::support::{Project, project};
 
 #[test]
 fn completes_items_from_standard_library() {

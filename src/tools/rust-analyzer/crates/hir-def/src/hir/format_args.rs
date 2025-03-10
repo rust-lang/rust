@@ -7,8 +7,8 @@ use rustc_parse_format as parse;
 use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{
-    ast::{self, IsString},
     TextRange,
+    ast::{self, IsString},
 };
 
 use crate::hir::ExprId;

@@ -5,8 +5,9 @@ use ide_db::{
 };
 use stdx::to_upper_snake_case;
 use syntax::{
-    ast::{self, make, HasName},
-    ted, AstNode,
+    AstNode,
+    ast::{self, HasName, make},
+    ted,
 };
 
 use crate::{

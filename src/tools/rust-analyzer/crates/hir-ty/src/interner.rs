@@ -2,15 +2,15 @@
 //! representation of the various objects Chalk deals with (types, goals etc.).
 
 use crate::{
-    chalk_db, tls, AliasTy, CanonicalVarKind, CanonicalVarKinds, ClosureId, Const, ConstData,
-    ConstScalar, Constraint, Constraints, FnAbi, FnDefId, GenericArg, GenericArgData, Goal,
-    GoalData, Goals, InEnvironment, Lifetime, LifetimeData, OpaqueTy, OpaqueTyId, ProgramClause,
-    ProgramClauseData, ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses,
-    Substitution, Ty, TyData, TyKind, VariableKind, VariableKinds,
+    AliasTy, CanonicalVarKind, CanonicalVarKinds, ClosureId, Const, ConstData, ConstScalar,
+    Constraint, Constraints, FnAbi, FnDefId, GenericArg, GenericArgData, Goal, GoalData, Goals,
+    InEnvironment, Lifetime, LifetimeData, OpaqueTy, OpaqueTyId, ProgramClause, ProgramClauseData,
+    ProgramClauses, ProjectionTy, QuantifiedWhereClause, QuantifiedWhereClauses, Substitution, Ty,
+    TyData, TyKind, VariableKind, VariableKinds, chalk_db, tls,
 };
 use chalk_ir::{ProgramClauseImplication, SeparatorTraitRef, Variance};
 use hir_def::TypeAliasId;
-use intern::{impl_internable, Interned};
+use intern::{Interned, impl_internable};
 use smallvec::SmallVec;
 use std::fmt;
 use triomphe::Arc;

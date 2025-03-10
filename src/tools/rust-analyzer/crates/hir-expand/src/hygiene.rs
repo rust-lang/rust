@@ -147,7 +147,7 @@ pub trait SyntaxContextExt {
     fn normalize_to_macros_2_0(self, db: &dyn ExpandDatabase) -> span::SyntaxContext;
     fn parent_ctxt(self, db: &dyn ExpandDatabase) -> span::SyntaxContext;
     fn remove_mark(&mut self, db: &dyn ExpandDatabase)
-        -> (Option<span::MacroCallId>, Transparency);
+    -> (Option<span::MacroCallId>, Transparency);
     fn outer_mark(self, db: &dyn ExpandDatabase) -> (Option<span::MacroCallId>, Transparency);
     fn marks(self, db: &dyn ExpandDatabase) -> Vec<(span::MacroCallId, Transparency)>;
     fn is_opaque(self, db: &dyn ExpandDatabase) -> bool;

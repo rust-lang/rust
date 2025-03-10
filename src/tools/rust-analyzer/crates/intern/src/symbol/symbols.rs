@@ -7,8 +7,8 @@ use dashmap::{DashMap, SharedValue};
 use rustc_hash::FxHasher;
 
 use crate::{
-    symbol::{SymbolProxy, TaggedArcPtr},
     Symbol,
+    symbol::{SymbolProxy, TaggedArcPtr},
 };
 
 macro_rules! define_symbols {

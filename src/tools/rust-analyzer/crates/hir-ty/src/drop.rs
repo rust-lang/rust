@@ -1,16 +1,16 @@
 //! Utilities for computing drop info about types.
 
 use chalk_ir::cast::Cast;
+use hir_def::AdtId;
 use hir_def::data::adt::StructFlags;
 use hir_def::lang_item::LangItem;
-use hir_def::AdtId;
 use stdx::never;
 use triomphe::Arc;
 
 use crate::db::HirDatabaseData;
 use crate::{
-    db::HirDatabase, method_resolution::TyFingerprint, AliasTy, Canonical, CanonicalVarKinds,
-    InEnvironment, Interner, ProjectionTy, TraitEnvironment, Ty, TyBuilder, TyKind,
+    AliasTy, Canonical, CanonicalVarKinds, InEnvironment, Interner, ProjectionTy, TraitEnvironment,
+    Ty, TyBuilder, TyKind, db::HirDatabase, method_resolution::TyFingerprint,
 };
 use crate::{ConcreteConst, ConstScalar, ConstValue};
 
@@ -176,11 +176,7 @@ fn projection_has_drop_glue(
     let normalized = db.normalize_projection(projection, env.clone());
     match normalized.kind(Interner) {
         TyKind::Alias(AliasTy::Projection(_)) | TyKind::AssociatedType(..) => {
-            if is_copy(db, ty, env) {
-                DropGlue::None
-            } else {
-                DropGlue::DependOnParams
-            }
+            if is_copy(db, ty, env) { DropGlue::None } else { DropGlue::DependOnParams }
         }
         _ => db.has_drop_glue(normalized, env),
     }

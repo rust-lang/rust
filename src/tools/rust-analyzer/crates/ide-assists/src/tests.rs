@@ -3,10 +3,10 @@ mod generated;
 use expect_test::expect;
 use hir::{FileRange, Semantics};
 use ide_db::{
+    EditionedFileId, RootDatabase, SnippetCap,
     base_db::SourceDatabase,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
-    EditionedFileId, RootDatabase, SnippetCap,
 };
 use stdx::{format_to, trim_indent};
 use syntax::TextRange;
@@ -14,8 +14,8 @@ use test_fixture::WithFixture;
 use test_utils::{assert_eq_text, extract_offset};
 
 use crate::{
-    assists, handlers::Handler, Assist, AssistConfig, AssistContext, AssistKind,
-    AssistResolveStrategy, Assists, SingleResolve,
+    Assist, AssistConfig, AssistContext, AssistKind, AssistResolveStrategy, Assists, SingleResolve,
+    assists, handlers::Handler,
 };
 
 pub(crate) const TEST_CONFIG: AssistConfig = AssistConfig {

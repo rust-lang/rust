@@ -124,14 +124,18 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         if let Ok(path) = env::current_exe() {
             if let Some(path) = path.parent() {
                 // SAFETY: This is safe because this is single-threaded.
-                unsafe { env::set_var("_NT_SYMBOL_PATH", path); }
+                unsafe {
+                    env::set_var("_NT_SYMBOL_PATH", path);
+                }
             }
         }
     }
 
     if env::var("RUST_BACKTRACE").is_err() {
         // SAFETY: This is safe because this is single-threaded.
-        unsafe { env::set_var("RUST_BACKTRACE", "short"); }
+        unsafe {
+            env::set_var("RUST_BACKTRACE", "short");
+        }
     }
 
     let log_file = env::var("RA_LOG_FILE").ok().map(PathBuf::from).or(log_file_flag);
@@ -255,8 +259,8 @@ fn run_server() -> anyhow::Result<()> {
 
         if !error_sink.is_empty() {
             use lsp_types::{
-                notification::{Notification, ShowMessage},
                 MessageType, ShowMessageParams,
+                notification::{Notification, ShowMessage},
             };
             let not = lsp_server::Notification::new(
                 ShowMessage::METHOD.to_owned(),

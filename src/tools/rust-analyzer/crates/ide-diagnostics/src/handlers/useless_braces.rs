@@ -1,10 +1,10 @@
 use hir::InFile;
 use ide_db::text_edit::TextEdit;
-use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
+use ide_db::{EditionedFileId, FileRange, source_change::SourceChange};
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode, SyntaxNodePtr};
+use syntax::{AstNode, SyntaxNode, SyntaxNodePtr, ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode};
+use crate::{Diagnostic, DiagnosticCode, fix};
 
 // Diagnostic: unnecessary-braces
 //
@@ -56,8 +56,8 @@ pub(crate) fn useless_braces(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
         DiagnosticsConfig,
+        tests::{check_diagnostics, check_diagnostics_with_config, check_fix},
     };
 
     #[test]

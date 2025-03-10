@@ -10,7 +10,7 @@ use rustc_hash::FxHashMap;
 use span::Span;
 use triomphe::Arc;
 
-use crate::{db::ExpandDatabase, tt, ExpandError, ExpandErrorKind, ExpandResult};
+use crate::{ExpandError, ExpandErrorKind, ExpandResult, db::ExpandDatabase, tt};
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd, Ord, Debug, Hash)]
 pub enum ProcMacroKind {
@@ -298,7 +298,7 @@ impl CustomProcMacroExpander {
                                 call_site,
                                 "internal error: no proc macros for crate",
                             ),
-                        )
+                        );
                     }
                 };
                 let proc_macro = match proc_macros.get(id, call_site) {
@@ -310,7 +310,7 @@ impl CustomProcMacroExpander {
                                 close: call_site,
                             }),
                             e,
-                        )
+                        );
                     }
                 };
 

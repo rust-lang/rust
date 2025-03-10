@@ -2,8 +2,8 @@
 
 use std::cmp::Ordering;
 
-use crate::consteval::try_const_usize;
 use crate::TyKind;
+use crate::consteval::try_const_usize;
 
 use super::*;
 
@@ -164,7 +164,7 @@ impl Evaluator<'_> {
                     None => {
                         return Err(MirEvalError::InternalError(
                             "simd type with unevaluatable len param".into(),
-                        ))
+                        ));
                     }
                 };
                 let (left_len, _) = self.detect_simd_ty(&left.ty)?;
@@ -179,7 +179,7 @@ impl Evaluator<'_> {
                         None => {
                             return Err(MirEvalError::InternalError(
                                 "out of bound access in simd shuffle".into(),
-                            ))
+                            ));
                         }
                     };
                     result.extend(val);

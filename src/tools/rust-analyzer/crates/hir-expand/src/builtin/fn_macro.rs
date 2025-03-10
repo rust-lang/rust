@@ -4,26 +4,26 @@ use base_db::AnchoredPath;
 use cfg::CfgExpr;
 use either::Either;
 use intern::{
-    sym::{self},
     Symbol,
+    sym::{self},
 };
-use mbe::{expect_fragment, DelimiterKind};
+use mbe::{DelimiterKind, expect_fragment};
 use span::{Edition, EditionedFileId, FileId, Span};
 use stdx::format_to;
 use syntax::{
     format_smolstr,
-    unescape::{unescape_byte, unescape_char, unescape_unicode, Mode},
+    unescape::{Mode, unescape_byte, unescape_char, unescape_unicode},
 };
 use syntax_bridge::syntax_node_to_token_tree;
 
 use crate::{
-    builtin::quote::{dollar_crate, quote, WithDelimiter},
+    ExpandError, ExpandResult, HirFileIdExt, Lookup as _, MacroCallId,
+    builtin::quote::{WithDelimiter, dollar_crate, quote},
     db::ExpandDatabase,
     hygiene::{span_with_call_site_ctxt, span_with_def_site_ctxt},
     name,
     span_map::SpanMap,
     tt::{self, DelimSpan, TtElement, TtIter},
-    ExpandError, ExpandResult, HirFileIdExt, Lookup as _, MacroCallId,
 };
 
 macro_rules! register_builtin {
@@ -427,12 +427,15 @@ fn compile_error_expand(
     span: Span,
 ) -> ExpandResult<tt::TopSubtree> {
     let err = match &*tt.0 {
-        [_, tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
-            symbol: text,
-            span: _,
-            kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
-            suffix: _,
-        }))] => ExpandError::other(span, Box::from(unescape_str(text).as_str())),
+        [
+            _,
+            tt::TokenTree::Leaf(tt::Leaf::Literal(tt::Literal {
+                symbol: text,
+                span: _,
+                kind: tt::LitKind::Str | tt::LitKind::StrRaw(_),
+                suffix: _,
+            })),
+        ] => ExpandError::other(span, Box::from(unescape_str(text).as_str())),
         _ => ExpandError::other(span, "`compile_error!` argument must be a string"),
     };
 
@@ -736,7 +739,7 @@ fn include_expand(
             return ExpandResult::new(
                 tt::TopSubtree::empty(DelimSpan { open: span, close: span }),
                 e,
-            )
+            );
         }
     };
     let span_map = db.real_span_map(editioned_file_id);
@@ -789,7 +792,7 @@ fn include_str_expand(
             return ExpandResult::new(
                 tt::TopSubtree::empty(DelimSpan { open: span, close: span }),
                 e,
-            )
+            );
         }
     };
 
@@ -827,7 +830,7 @@ fn env_expand(
             return ExpandResult::new(
                 tt::TopSubtree::empty(DelimSpan { open: span, close: span }),
                 e,
-            )
+            );
         }
     };
 
@@ -865,7 +868,7 @@ fn option_env_expand(
             return ExpandResult::new(
                 tt::TopSubtree::empty(DelimSpan { open: call_site, close: call_site }),
                 e,
-            )
+            );
         }
     };
     let dollar_crate = dollar_crate(call_site);

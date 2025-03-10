@@ -1,11 +1,11 @@
 //! Wrappers over [`make`] constructors
 use crate::{
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
     ast::{
-        self, make, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
-        HasTypeBounds, HasVisibility,
+        self, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName, HasTypeBounds,
+        HasVisibility, make,
     },
     syntax_editor::SyntaxMappingBuilder,
-    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, SyntaxToken,
 };
 
 use super::SyntaxFactory;

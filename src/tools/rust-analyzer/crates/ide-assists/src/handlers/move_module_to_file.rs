@@ -1,13 +1,13 @@
 use std::iter;
 
 use ast::edit::IndentLevel;
-use hir::{sym, HasAttrs};
+use hir::{HasAttrs, sym};
 use ide_db::base_db::AnchoredPathBuf;
 use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, HasName},
     AstNode, SmolStr, TextRange,
+    ast::{self, HasName, edit::AstNodeEdit},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

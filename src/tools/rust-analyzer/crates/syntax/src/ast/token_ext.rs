@@ -3,13 +3,13 @@
 use std::{borrow::Cow, num::ParseIntError};
 
 use rustc_lexer::unescape::{
-    unescape_byte, unescape_char, unescape_mixed, unescape_unicode, EscapeError, MixedUnit, Mode,
+    EscapeError, MixedUnit, Mode, unescape_byte, unescape_char, unescape_mixed, unescape_unicode,
 };
 use stdx::always;
 
 use crate::{
-    ast::{self, AstToken},
     TextRange, TextSize,
+    ast::{self, AstToken},
 };
 
 impl ast::Comment {
@@ -383,11 +383,7 @@ impl ast::IntNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let (_, _, suffix) = self.split_into_parts();
-        if suffix.is_empty() {
-            None
-        } else {
-            Some(suffix)
-        }
+        if suffix.is_empty() { None } else { Some(suffix) }
     }
 
     pub fn value_string(&self) -> String {
@@ -422,11 +418,7 @@ impl ast::FloatNumber {
 
     pub fn suffix(&self) -> Option<&str> {
         let (_, suffix) = self.split_into_parts();
-        if suffix.is_empty() {
-            None
-        } else {
-            Some(suffix)
-        }
+        if suffix.is_empty() { None } else { Some(suffix) }
     }
 
     pub fn value_string(&self) -> String {
@@ -491,7 +483,7 @@ impl ast::Byte {
 mod tests {
     use rustc_apfloat::ieee::Quad as f128;
 
-    use crate::ast::{self, make, FloatNumber, IntNumber};
+    use crate::ast::{self, FloatNumber, IntNumber, make};
 
     fn check_float_suffix<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(FloatNumber { syntax: make::tokens::literal(lit) }.suffix(), expected.into());

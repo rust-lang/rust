@@ -1,10 +1,11 @@
 use arbitrary::{Arbitrary, Unstructured};
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use intern::Symbol;
-use syntax::{ast, AstNode, Edition};
+use syntax::{AstNode, Edition, ast};
 use syntax_bridge::{
-    dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
-    syntax_node_to_token_tree, DocCommentDesugarMode,
+    DocCommentDesugarMode,
+    dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
+    syntax_node_to_token_tree,
 };
 
 use crate::{CfgAtom, CfgExpr, CfgOptions, DnfExpr};

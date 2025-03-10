@@ -1,7 +1,8 @@
 use std::iter;
 
-use hir::{db, FilePosition, FileRange, HirFileId, InFile, Semantics};
+use hir::{FilePosition, FileRange, HirFileId, InFile, Semantics, db};
 use ide_db::{
+    FxHashMap, FxHashSet, RootDatabase,
     base_db::salsa::AsDynDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
@@ -10,17 +11,17 @@ use ide_db::{
         eq_label_lt, for_each_tail_expr, full_path_of_name_ref, is_closure_or_blk_with_modif,
         preorder_expr_with_ctx_checker,
     },
-    FxHashMap, FxHashSet, RootDatabase,
 };
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, HasLoopBody},
-    match_ast, AstNode,
+    AstNode,
     SyntaxKind::{self, IDENT, INT_NUMBER},
-    SyntaxToken, TextRange, WalkEvent, T,
+    SyntaxToken, T, TextRange, WalkEvent,
+    ast::{self, HasLoopBody},
+    match_ast,
 };
 
-use crate::{goto_definition, navigation_target::ToNav, NavigationTarget, TryToNav};
+use crate::{NavigationTarget, TryToNav, goto_definition, navigation_target::ToNav};
 
 #[derive(PartialEq, Eq, Hash)]
 pub struct HighlightedRange {
@@ -156,7 +157,7 @@ fn highlight_references(
         match resolution.map(Definition::from) {
             Some(def) => iter::once(def).collect(),
             None => {
-                return Some(vec![HighlightedRange { range, category: ReferenceCategory::empty() }])
+                return Some(vec![HighlightedRange { range, category: ReferenceCategory::empty() }]);
             }
         }
     } else {
@@ -278,11 +279,7 @@ fn highlight_references(
     }
 
     res.extend(usages);
-    if res.is_empty() {
-        None
-    } else {
-        Some(res.into_iter().collect())
-    }
+    if res.is_empty() { None } else { Some(res.into_iter().collect()) }
 }
 
 fn hl_exit_points(

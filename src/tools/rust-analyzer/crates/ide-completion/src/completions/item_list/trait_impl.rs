@@ -31,20 +31,21 @@
 //! }
 //! ```
 
-use hir::{db::ExpandDatabase, MacroFileId, Name};
+use hir::{MacroFileId, Name, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    documentation::HasDocs, path_transform::PathTransform,
-    syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items, SymbolKind,
+    SymbolKind, documentation::HasDocs, path_transform::PathTransform,
+    syntax_helpers::prettify_macro_expansion, traits::get_missing_assoc_items,
 };
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit, make, HasGenericArgs, HasTypeBounds},
-    format_smolstr, ted, AstNode, SmolStr, SyntaxElement, SyntaxKind, TextRange, ToSmolStr, T,
+    AstNode, SmolStr, SyntaxElement, SyntaxKind, T, TextRange, ToSmolStr,
+    ast::{self, HasGenericArgs, HasTypeBounds, edit_in_place::AttrsOwnerEdit, make},
+    format_smolstr, ted,
 };
 
 use crate::{
-    context::PathCompletionCtx, CompletionContext, CompletionItem, CompletionItemKind,
-    CompletionRelevance, Completions,
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionRelevance, Completions,
+    context::PathCompletionCtx,
 };
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

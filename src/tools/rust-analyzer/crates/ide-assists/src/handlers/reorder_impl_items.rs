@@ -2,8 +2,8 @@ use hir::{PathResolution, Semantics};
 use ide_db::{FxHashMap, RootDatabase};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, HasName},
     AstNode, SyntaxElement,
+    ast::{self, HasName},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

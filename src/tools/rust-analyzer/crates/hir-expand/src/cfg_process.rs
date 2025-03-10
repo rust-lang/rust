@@ -3,15 +3,15 @@ use std::iter::Peekable;
 
 use base_db::Crate;
 use cfg::{CfgAtom, CfgExpr};
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashSet;
 use syntax::{
-    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
     AstNode, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, T,
+    ast::{self, Attr, HasAttrs, Meta, TokenTree, VariantList},
 };
 use tracing::{debug, warn};
 
-use crate::{db::ExpandDatabase, proc_macro::ProcMacroKind, MacroCallLoc, MacroDefKind};
+use crate::{MacroCallLoc, MacroDefKind, db::ExpandDatabase, proc_macro::ProcMacroKind};
 
 fn check_cfg(db: &dyn ExpandDatabase, attr: &Attr, krate: Crate) -> Option<bool> {
     if !attr.simple_name().as_deref().map(|v| v == "cfg")? {
@@ -344,8 +344,8 @@ where
 #[cfg(test)]
 mod tests {
     use cfg::DnfExpr;
-    use expect_test::{expect, Expect};
-    use syntax::{ast::Attr, AstNode, SourceFile};
+    use expect_test::{Expect, expect};
+    use syntax::{AstNode, SourceFile, ast::Attr};
 
     use crate::cfg_process::parse_from_attr_token_tree;
 

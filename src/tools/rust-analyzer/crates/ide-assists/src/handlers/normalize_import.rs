@@ -1,9 +1,9 @@
 use ide_db::imports::merge_imports::try_normalize_import;
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: normalize_import

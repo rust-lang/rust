@@ -28,8 +28,8 @@ use base_db::SourceDatabase;
 use expect_test::Expect;
 use hir::PrefixKind;
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig},
     FilePosition, RootDatabase, SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use itertools::Itertools;
 use stdx::{format_to, trim_indent};
@@ -37,8 +37,8 @@ use test_fixture::ChangeFixture;
 use test_utils::assert_eq_text;
 
 use crate::{
-    resolve_completion_edits, CallableSnippets, CompletionConfig, CompletionFieldsToResolve,
-    CompletionItem, CompletionItemKind,
+    CallableSnippets, CompletionConfig, CompletionFieldsToResolve, CompletionItem,
+    CompletionItemKind, resolve_completion_edits,
 };
 
 /// Lots of basic item definitions

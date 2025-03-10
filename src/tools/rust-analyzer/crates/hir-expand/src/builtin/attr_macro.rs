@@ -2,7 +2,7 @@
 use intern::sym;
 use span::{MacroCallId, Span};
 
-use crate::{db::ExpandDatabase, name, tt, ExpandResult, MacroCallKind};
+use crate::{ExpandResult, MacroCallKind, db::ExpandDatabase, name, tt};
 
 use super::quote;
 
@@ -130,7 +130,7 @@ fn derive_expand(
             return ExpandResult::ok(tt::TopSubtree::empty(tt::DelimSpan {
                 open: span,
                 close: span,
-            }))
+            }));
         }
     };
     pseudo_derive_attr_expansion(tt, derives, span)

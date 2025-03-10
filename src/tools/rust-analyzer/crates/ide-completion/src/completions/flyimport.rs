@@ -5,16 +5,16 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{ast, AstNode, SyntaxNode};
+use syntax::{AstNode, SyntaxNode, ast};
 
 use crate::{
+    Completions,
     config::AutoImportExclusionType,
     context::{
         CompletionContext, DotAccess, PathCompletionCtx, PathKind, PatternContext, Qualified,
         TypeLocation,
     },
-    render::{render_resolution_with_import, render_resolution_with_import_pat, RenderContext},
-    Completions,
+    render::{RenderContext, render_resolution_with_import, render_resolution_with_import_pat},
 };
 
 // Feature: Completion With Autoimport
@@ -404,11 +404,7 @@ fn import_on_the_fly_method(
 fn import_name(ctx: &CompletionContext<'_>) -> String {
     let token_kind = ctx.token.kind();
 
-    if token_kind.is_any_identifier() {
-        ctx.token.to_string()
-    } else {
-        String::new()
-    }
+    if token_kind.is_any_identifier() { ctx.token.to_string() } else { String::new() }
 }
 
 fn import_assets_for_path(

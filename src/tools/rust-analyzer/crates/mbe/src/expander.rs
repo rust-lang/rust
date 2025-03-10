@@ -9,7 +9,7 @@ use intern::Symbol;
 use rustc_hash::FxHashMap;
 use span::{Edition, Span};
 
-use crate::{parser::MetaVarKind, ExpandError, ExpandErrorKind, ExpandResult, MatchedArmIndex};
+use crate::{ExpandError, ExpandErrorKind, ExpandResult, MatchedArmIndex, parser::MetaVarKind};
 
 pub(crate) fn expand_rules(
     rules: &[crate::Rule],

@@ -1,12 +1,12 @@
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
-    ast::{self, AstNode, BinaryOp},
     T,
+    ast::{self, AstNode, BinaryOp},
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 // Assist: merge_nested_if
 //

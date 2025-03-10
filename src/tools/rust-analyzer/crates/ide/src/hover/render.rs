@@ -3,33 +3,34 @@ use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
+    Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
+    db::ExpandDatabase,
 };
 use ide_db::{
+    RootDatabase,
     defs::Definition,
     documentation::HasDocs,
     famous_defs::FamousDefs,
     generated::lints::{CLIPPY_LINTS, DEFAULT_LINTS, FEATURES},
     syntax_helpers::prettify_macro_expansion,
-    RootDatabase,
 };
 use itertools::Itertools;
 use rustc_apfloat::{
-    ieee::{Half as f16, Quad as f128},
     Float,
+    ieee::{Half as f16, Quad as f128},
 };
 use span::Edition;
 use stdx::format_to;
-use syntax::{algo, ast, match_ast, AstNode, AstToken, Direction, SyntaxToken, T};
+use syntax::{AstNode, AstToken, Direction, SyntaxToken, T, algo, ast, match_ast};
 
 use crate::{
-    doc_links::{remove_links, rewrite_links},
-    hover::{notable_traits, walk_and_push_ty, SubstTyLen},
-    interpret::render_const_eval_error,
     HoverAction, HoverConfig, HoverResult, Markup, MemoryLayoutHoverConfig,
     MemoryLayoutHoverRenderKind,
+    doc_links::{remove_links, rewrite_links},
+    hover::{SubstTyLen, notable_traits, walk_and_push_ty},
+    interpret::render_const_eval_error,
 };
 
 pub(super) fn type_info_of(
@@ -345,11 +346,7 @@ pub(super) fn try_for_lint(attr: &ast::Attr, token: &SyntaxToken) -> Option<Hove
                 .is_some_and(|t| {
                     t.kind() == T![ident] && t.into_token().is_some_and(|t| t.text() == "clippy")
                 });
-            if is_clippy {
-                (true, CLIPPY_LINTS)
-            } else {
-                (false, DEFAULT_LINTS)
-            }
+            if is_clippy { (true, CLIPPY_LINTS) } else { (false, DEFAULT_LINTS) }
         }
         _ => return None,
     };
@@ -417,7 +414,7 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
                             "{}::{}",
                             name.display(db, edition),
                             it.name(db).display(db, edition)
-                        ))
+                        ));
                     }
                     None => Some(it.name(db)),
                 }
@@ -435,7 +432,7 @@ fn definition_owner_name(db: &RootDatabase, def: Definition, edition: Edition) -
                             "{}::{}",
                             name.display(db, edition),
                             it.name(db)?.display(db, edition)
-                        ))
+                        ));
                     }
                     None => it.name(db),
                 }

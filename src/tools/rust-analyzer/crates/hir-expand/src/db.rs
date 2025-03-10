@@ -9,25 +9,26 @@ use span::{
     AstIdMap, Edition, EditionedFileId, HirFileId, HirFileIdRepr, MacroCallId, MacroFileId, Span,
     SyntaxContext,
 };
-use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
-use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
+use syntax::{AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T, ast};
+use syntax_bridge::{DocCommentDesugarMode, syntax_node_to_token_tree};
 use triomphe::Arc;
 
 use crate::{
-    attrs::{collect_attrs, AttrId},
+    AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
+    EagerExpander, ExpandError, ExpandResult, ExpandTo, MacroCallKind, MacroCallLoc, MacroDefId,
+    MacroDefKind,
+    attrs::{AttrId, collect_attrs},
     builtin::pseudo_derive_attr_expansion,
     cfg_process,
     declarative::DeclarativeMacroExpander,
     fixup::{self, SyntaxFixupUndoInfo},
     hygiene::{
-        span_with_call_site_ctxt, span_with_def_site_ctxt, span_with_mixed_site_ctxt,
-        SyntaxContextExt as _,
+        SyntaxContextExt as _, span_with_call_site_ctxt, span_with_def_site_ctxt,
+        span_with_mixed_site_ctxt,
     },
     proc_macro::{CrateProcMacros, CustomProcMacroExpander, ProcMacros},
     span_map::{ExpansionSpanMap, RealSpanMap, SpanMap, SpanMapRef},
-    tt, AstId, BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerCallInfo,
-    EagerExpander, ExpandError, ExpandResult, ExpandTo, MacroCallKind, MacroCallLoc, MacroDefId,
-    MacroDefKind,
+    tt,
 };
 /// This is just to ensure the types of smart_macro_arg and macro_arg are the same
 type MacroArgResult = (Arc<tt::TopSubtree>, SyntaxFixupUndoInfo, Span);
@@ -397,11 +398,7 @@ fn parse_macro_expansion_error(
 ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>> {
     let e: ExpandResult<Arc<[SyntaxError]>> =
         db.parse_macro_expansion(MacroFileId { macro_call_id }).map(|it| Arc::from(it.0.errors()));
-    if e.value.is_empty() && e.err.is_none() {
-        None
-    } else {
-        Some(Arc::new(e))
-    }
+    if e.value.is_empty() && e.err.is_none() { None } else { Some(Arc::new(e)) }
 }
 
 pub(crate) fn parse_with_map(

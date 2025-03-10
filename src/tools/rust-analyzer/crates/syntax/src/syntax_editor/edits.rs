@@ -1,12 +1,12 @@
 //! Structural editing for ast using `SyntaxEditor`
 
 use crate::{
+    Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
     ast::{
-        self, edit::IndentLevel, make, syntax_factory::SyntaxFactory, AstNode, Fn, GenericParam,
-        HasGenericParams, HasName,
+        self, AstNode, Fn, GenericParam, HasGenericParams, HasName, edit::IndentLevel, make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::{Position, SyntaxEditor},
-    Direction, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, T,
 };
 
 impl SyntaxEditor {

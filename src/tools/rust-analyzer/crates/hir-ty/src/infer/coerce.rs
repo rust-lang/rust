@@ -7,7 +7,7 @@
 
 use std::iter;
 
-use chalk_ir::{cast::Cast, BoundVar, Goal, Mutability, TyKind, TyVariableKind};
+use chalk_ir::{BoundVar, Goal, Mutability, TyKind, TyVariableKind, cast::Cast};
 use hir_def::{
     hir::ExprId,
     lang_item::{LangItem, LangItemTarget},
@@ -16,6 +16,8 @@ use stdx::always;
 use triomphe::Arc;
 
 use crate::{
+    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
+    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
     autoderef::{Autoderef, AutoderefKind},
     db::HirDatabase,
     infer::{
@@ -23,8 +25,6 @@ use crate::{
         TypeError, TypeMismatch,
     },
     utils::ClosureSubst,
-    Canonical, DomainGoal, FnAbi, FnPointer, FnSig, Guidance, InEnvironment, Interner, Lifetime,
-    Solution, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt,
 };
 
 use super::unify::InferenceTable;

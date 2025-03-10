@@ -8,31 +8,32 @@ use intern::sym;
 use span::Edition;
 use tracing::debug;
 
-use chalk_ir::{cast::Caster, fold::shift::Shift, CanonicalVarKinds};
+use chalk_ir::{CanonicalVarKinds, cast::Caster, fold::shift::Shift};
 use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::Crate;
 use hir_def::{
-    data::{adt::StructFlags, TraitFlags},
-    hir::Movability,
-    lang_item::{LangItem, LangItemTarget},
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
     TypeAliasId, VariantId,
+    data::{TraitFlags, adt::StructFlags},
+    hir::Movability,
+    lang_item::{LangItem, LangItemTarget},
 };
 
 use crate::{
+    AliasEq, AliasTy, BoundVar, DebruijnIndex, FnDefId, Interner, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    WhereClause,
     db::{HirDatabase, InternedCoroutine},
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
     generics::generics,
     make_binders, make_single_type_binders,
-    mapping::{from_chalk, ToChalk, TypeAliasAsValue},
-    method_resolution::{TraitImpls, TyFingerprint, ALL_FLOAT_FPS, ALL_INT_FPS},
+    mapping::{ToChalk, TypeAliasAsValue, from_chalk},
+    method_resolution::{ALL_FLOAT_FPS, ALL_INT_FPS, TraitImpls, TyFingerprint},
     to_assoc_type_id, to_chalk_trait_id,
     traits::ChalkContext,
     utils::ClosureSubst,
-    wrap_empty_binders, AliasEq, AliasTy, BoundVar, DebruijnIndex, FnDefId, Interner, ProjectionTy,
-    ProjectionTyExt, QuantifiedWhereClause, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder,
-    TyExt, TyKind, WhereClause,
+    wrap_empty_binders,
 };
 
 pub(crate) type AssociatedTyDatum = chalk_solve::rust_ir::AssociatedTyDatum<Interner>;

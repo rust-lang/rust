@@ -6,33 +6,33 @@ use std::ops::ControlFlow;
 
 use arrayvec::ArrayVec;
 use base_db::Crate;
-use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
+use chalk_ir::{UniverseIndex, WithKind, cast::Cast};
 use hir_def::{
-    data::{adt::StructFlags, TraitFlags},
-    nameres::{assoc::ImplItems, DefMap},
     AssocItemId, BlockId, ConstId, FunctionId, HasModule, ImplId, ItemContainerId, Lookup,
     ModuleId, TraitId,
+    data::{TraitFlags, adt::StructFlags},
+    nameres::{DefMap, assoc::ImplItems},
 };
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    autoderef::{self, AutoderefKind},
-    db::HirDatabase,
-    error_lifetime, from_chalk_trait_id, from_foreign_def_id,
-    infer::{unify::InferenceTable, Adjust, Adjustment, OverloadedDeref, PointerCast},
-    lang_items::is_box,
-    primitive::{FloatTy, IntTy, UintTy},
-    to_chalk_trait_id,
-    utils::all_super_traits,
     AdtId, Canonical, CanonicalVarKinds, DebruijnIndex, DynTyExt, ForeignDefId, GenericArgData,
     Goal, Guidance, InEnvironment, Interner, Mutability, Scalar, Solution, Substitution,
     TraitEnvironment, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, TyVariableKind,
     VariableKind, WhereClause,
+    autoderef::{self, AutoderefKind},
+    db::HirDatabase,
+    error_lifetime, from_chalk_trait_id, from_foreign_def_id,
+    infer::{Adjust, Adjustment, OverloadedDeref, PointerCast, unify::InferenceTable},
+    lang_items::is_box,
+    primitive::{FloatTy, IntTy, UintTy},
+    to_chalk_trait_id,
+    utils::all_super_traits,
 };
 
 /// This is used as a key for indexing impls.
@@ -166,11 +166,7 @@ impl TraitImpls {
 
         Self::collect_def_map(db, &mut impls, &db.block_def_map(block));
 
-        if impls.is_empty() {
-            None
-        } else {
-            Some(Arc::new(Self::finish(impls)))
-        }
+        if impls.is_empty() { None } else { Some(Arc::new(Self::finish(impls))) }
     }
 
     pub(crate) fn trait_impls_in_deps_query(
@@ -698,11 +694,7 @@ pub(crate) fn lookup_impl_method_query(
     let name = &db.function_data(func).name;
     let Some((impl_fn, impl_subst)) =
         lookup_impl_assoc_item_for_trait_ref(trait_ref, db, env, name).and_then(|assoc| {
-            if let (AssocItemId::FunctionId(id), subst) = assoc {
-                Some((id, subst))
-            } else {
-                None
-            }
+            if let (AssocItemId::FunctionId(id), subst) = assoc { Some((id, subst)) } else { None }
         })
     else {
         return (func, fn_subst);

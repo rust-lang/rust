@@ -2,10 +2,10 @@
 //! expressions and patterns.
 
 use ide_db::text_edit::TextEdit;
-use ide_db::{source_change::SourceChange, EditionedFileId, FileRange};
-use syntax::{ast, match_ast, AstNode, SyntaxNode};
+use ide_db::{EditionedFileId, FileRange, source_change::SourceChange};
+use syntax::{AstNode, SyntaxNode, ast, match_ast};
 
-use crate::{fix, Diagnostic, DiagnosticCode};
+use crate::{Diagnostic, DiagnosticCode, fix};
 
 pub(crate) fn field_shorthand(
     acc: &mut Vec<Diagnostic>,

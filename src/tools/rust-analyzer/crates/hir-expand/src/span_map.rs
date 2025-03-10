@@ -2,7 +2,7 @@
 
 use span::{EditionedFileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContext};
 use stdx::TupleExt;
-use syntax::{ast, AstNode, TextRange};
+use syntax::{AstNode, TextRange, ast};
 use triomphe::Arc;
 
 pub use span::RealSpanMap;

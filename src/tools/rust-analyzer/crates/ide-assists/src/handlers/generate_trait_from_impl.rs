@@ -1,13 +1,13 @@
 use crate::assist_context::{AssistContext, Assists};
 use ide_db::assists::AssistId;
 use syntax::{
+    AstNode, SyntaxKind, T,
     ast::{
-        self,
+        self, HasGenericParams, HasName,
         edit_in_place::{HasVisibilityEdit, Indent},
-        make, HasGenericParams, HasName,
+        make,
     },
     ted::{self, Position},
-    AstNode, SyntaxKind, T,
 };
 
 // NOTES :

@@ -1,6 +1,6 @@
 use syntax::{
-    ast::{self, edit_in_place::Indent, syntax_factory::SyntaxFactory},
     AstNode,
+    ast::{self, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

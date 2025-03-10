@@ -1,12 +1,12 @@
 //! Completion of names from the current scope in type position.
 
 use hir::{HirDisplay, ScopeDef};
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::{
+    CompletionContext, Completions,
     context::{PathCompletionCtx, Qualified, TypeAscriptionTarget, TypeLocation},
     render::render_type_inference,
-    CompletionContext, Completions,
 };
 
 pub(crate) fn complete_type_path(

@@ -7,14 +7,14 @@ use std::{
 
 use either::Either;
 use hir_def::{expr_store::Body, hir::BindingId};
-use hir_expand::{name::Name, Lookup};
+use hir_expand::{Lookup, name::Name};
 use la_arena::ArenaMap;
 
 use crate::{
+    ClosureId,
     db::HirDatabase,
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     mir::{PlaceElem, ProjectionElem, StatementKind, TerminatorKind},
-    ClosureId,
 };
 
 use super::{

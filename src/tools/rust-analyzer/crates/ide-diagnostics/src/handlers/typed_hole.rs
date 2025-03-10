@@ -1,7 +1,7 @@
 use hir::{
-    db::ExpandDatabase,
-    term_search::{term_search, TermSearchConfig, TermSearchCtx},
     ClosureStyle, HirDisplay, ImportPathConfig,
+    db::ExpandDatabase,
+    term_search::{TermSearchConfig, TermSearchCtx, term_search},
 };
 use ide_db::text_edit::TextEdit;
 use ide_db::{
@@ -90,11 +90,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         })
         .collect();
 
-    if !assists.is_empty() {
-        Some(assists)
-    } else {
-        None
-    }
+    if !assists.is_empty() { Some(assists) } else { None }
 }
 
 #[cfg(test)]

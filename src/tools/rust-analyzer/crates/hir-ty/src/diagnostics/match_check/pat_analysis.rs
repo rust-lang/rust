@@ -6,21 +6,21 @@ use std::fmt;
 use hir_def::{DefWithBodyId, EnumId, EnumVariantId, HasModule, LocalFieldId, ModuleId, VariantId};
 use intern::sym;
 use rustc_pattern_analysis::{
-    constructor::{Constructor, ConstructorSet, VariantVisibility},
-    usefulness::{compute_match_usefulness, PlaceValidity, UsefulnessReport},
     Captures, IndexVec, PatCx, PrivateUninhabitedField,
+    constructor::{Constructor, ConstructorSet, VariantVisibility},
+    usefulness::{PlaceValidity, UsefulnessReport, compute_match_usefulness},
 };
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::never;
 
 use crate::{
+    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
     db::HirDatabase,
     infer::normalize,
     inhabitedness::{is_enum_variant_uninhabited_from, is_ty_uninhabited_from},
-    AdtId, Interner, Scalar, Ty, TyExt, TyKind,
 };
 
-use super::{is_box, FieldPat, Pat, PatKind};
+use super::{FieldPat, Pat, PatKind, is_box};
 
 use Constructor::*;
 

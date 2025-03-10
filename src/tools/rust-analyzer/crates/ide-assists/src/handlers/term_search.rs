@@ -6,7 +6,7 @@ use ide_db::{
 };
 
 use itertools::Itertools;
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::assist_context::{AssistContext, Assists};
 

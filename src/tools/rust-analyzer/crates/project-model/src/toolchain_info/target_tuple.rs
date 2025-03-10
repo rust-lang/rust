@@ -5,7 +5,7 @@ use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{toolchain_info::QueryConfig, utf8_stdout, ManifestPath, Sysroot};
+use crate::{ManifestPath, Sysroot, toolchain_info::QueryConfig, utf8_stdout};
 
 /// For cargo, runs `cargo -Zunstable-options config get build.target` to get the configured project target(s).
 /// For rustc, runs `rustc --print -vV` to get the host target.

@@ -6,17 +6,17 @@ use base_db::{
     Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb,
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
-use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
+use hir_expand::{InFile, db::ExpandDatabase, files::FilePosition};
 use salsa::{AsDynDatabase, Durability};
 use span::{EditionedFileId, FileId};
-use syntax::{algo, ast, AstNode};
+use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
 
 use crate::{
+    LocalModuleId, Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
     nameres::{DefMap, ModuleSource},
     src::HasSource,
-    LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
 
 #[salsa::db]

@@ -40,15 +40,15 @@ use span::{
     SyntaxContext,
 };
 use syntax::{
-    ast::{self, AstNode},
     SyntaxNode, SyntaxToken, TextRange, TextSize,
+    ast::{self, AstNode},
 };
 
 use crate::{
     attrs::AttrId,
     builtin::{
-        include_input_to_file_id, BuiltinAttrExpander, BuiltinDeriveExpander,
-        BuiltinFnLikeExpander, EagerExpander,
+        BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander,
+        include_input_to_file_id,
     },
     db::ExpandDatabase,
     mod_path::ModPath,
@@ -67,7 +67,7 @@ pub use span::{HirFileId, MacroCallId, MacroFileId};
 
 pub mod tt {
     pub use span::Span;
-    pub use tt::{token_to_literal, DelimiterKind, IdentIsRaw, LitKind, Spacing};
+    pub use tt::{DelimiterKind, IdentIsRaw, LitKind, Spacing, token_to_literal};
 
     pub type Delimiter = ::tt::Delimiter<Span>;
     pub type DelimSpan = ::tt::DelimSpan<Span>;
@@ -207,7 +207,9 @@ impl ExpandErrorKind {
                         kind: RenderedExpandError::GENERAL_KIND,
                     },
                     None => RenderedExpandError {
-                        message: format!("internal error: proc-macro map is missing error entry for crate {def_crate:?}"),
+                        message: format!(
+                            "internal error: proc-macro map is missing error entry for crate {def_crate:?}"
+                        ),
                         error: true,
                         kind: RenderedExpandError::GENERAL_KIND,
                     },
@@ -389,7 +391,7 @@ impl HirFileIdExt for HirFileId {
         loop {
             match call.file_id.repr() {
                 HirFileIdRepr::FileId(file_id) => {
-                    break Some(InRealFile { file_id, value: call.value })
+                    break Some(InRealFile { file_id, value: call.value });
                 }
                 HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
                     call = db.lookup_intern_macro_call(macro_call_id).to_node(db);

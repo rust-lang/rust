@@ -10,7 +10,7 @@ use serde_derive::{Deserialize, Serialize};
 use crate::ProcMacroKind;
 
 pub use self::flat::{
-    deserialize_span_data_index_map, serialize_span_data_index_map, FlatTree, SpanDataIndexMap,
+    FlatTree, SpanDataIndexMap, deserialize_span_data_index_map, serialize_span_data_index_map,
 };
 pub use span::TokenId;
 
@@ -158,7 +158,7 @@ type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) 
 
 #[cfg(test)]
 mod tests {
-    use intern::{sym, Symbol};
+    use intern::{Symbol, sym};
     use span::{Edition, ErasedFileAstId, Span, SpanAnchor, SyntaxContext, TextRange, TextSize};
     use tt::{
         Delimiter, DelimiterKind, Ident, Leaf, Literal, Punct, Spacing, TopSubtree,

@@ -1,7 +1,7 @@
 use base_db::{CrateGraphBuilder, ProcMacroPaths};
 use cargo_metadata::Metadata;
 use cfg::{CfgAtom, CfgDiff};
-use expect_test::{expect_file, ExpectFile};
+use expect_test::{ExpectFile, expect_file};
 use intern::sym;
 use paths::{AbsPath, AbsPathBuf, Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashMap;
@@ -10,9 +10,9 @@ use span::FileId;
 use triomphe::Arc;
 
 use crate::{
-    sysroot::RustLibSrcWorkspace, workspace::ProjectWorkspaceKind, CargoWorkspace, CfgOverrides,
-    ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace, RustSourceWorkspaceConfig,
-    Sysroot, WorkspaceBuildScripts,
+    CargoWorkspace, CfgOverrides, ManifestPath, ProjectJson, ProjectJsonData, ProjectWorkspace,
+    RustSourceWorkspaceConfig, Sysroot, WorkspaceBuildScripts, sysroot::RustLibSrcWorkspace,
+    workspace::ProjectWorkspaceKind,
 };
 
 fn load_cargo(file: &str) -> (CrateGraphBuilder, ProcMacroPaths) {

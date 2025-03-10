@@ -1,15 +1,15 @@
 use hir::{HasCrate, HasVisibility};
-use ide_db::{path_transform::PathTransform, FxHashSet};
+use ide_db::{FxHashSet, path_transform::PathTransform};
 use syntax::{
     ast::{
-        self, edit_in_place::Indent, make, AstNode, HasGenericParams, HasName, HasVisibility as _,
+        self, AstNode, HasGenericParams, HasName, HasVisibility as _, edit_in_place::Indent, make,
     },
     ted,
 };
 
 use crate::{
-    utils::{convert_param_list_to_arg_list, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists, GroupLabel,
+    utils::{convert_param_list_to_arg_list, find_struct_impl},
 };
 
 // Assist: generate_delegate_methods

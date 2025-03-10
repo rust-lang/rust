@@ -3,21 +3,21 @@
 use std::mem;
 
 use either::Either;
-use hir::{sym, HirFileId, InFile, Semantics};
+use hir::{HirFileId, InFile, Semantics, sym};
 use ide_db::{
-    active_parameter::ActiveParameter, defs::Definition, documentation::docs_with_rangemap,
-    rust_doc::is_rust_fence, SymbolKind,
+    SymbolKind, active_parameter::ActiveParameter, defs::Definition,
+    documentation::docs_with_rangemap, rust_doc::is_rust_fence,
 };
 use span::EditionedFileId;
 use syntax::{
-    ast::{self, AstNode, IsString, QuoteOffsets},
     AstToken, NodeOrToken, SyntaxNode, TextRange, TextSize,
+    ast::{self, AstNode, IsString, QuoteOffsets},
 };
 
 use crate::{
-    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
-    syntax_highlighting::{highlights::Highlights, injector::Injector, HighlightConfig},
     Analysis, HlMod, HlRange, HlTag, RootDatabase,
+    doc_links::{doc_attributes, extract_definitions_from_docs, resolve_doc_path_for_def},
+    syntax_highlighting::{HighlightConfig, highlights::Highlights, injector::Injector},
 };
 
 pub(super) fn ra_fixture(

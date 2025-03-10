@@ -5,7 +5,7 @@ use std::ops::{Bound, Range};
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
 
-use crate::server_impl::{literal_kind_to_internal, token_stream::TokenStreamBuilder, TopSubtree};
+use crate::server_impl::{TopSubtree, literal_kind_to_internal, token_stream::TokenStreamBuilder};
 mod tt {
     pub use span::TokenId;
 

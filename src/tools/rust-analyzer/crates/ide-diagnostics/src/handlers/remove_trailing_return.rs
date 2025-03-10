@@ -1,9 +1,9 @@
-use hir::{db::ExpandDatabase, diagnostics::RemoveTrailingReturn, FileRange};
+use hir::{FileRange, db::ExpandDatabase, diagnostics::RemoveTrailingReturn};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
-use crate::{adjusted_display_range, fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range, fix};
 
 // Diagnostic: remove-trailing-return
 //

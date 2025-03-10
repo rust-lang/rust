@@ -385,8 +385,8 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        ast::{self, make, syntax_factory::SyntaxFactory},
         AstNode, SyntaxKind,
+        ast::{self, make, syntax_factory::SyntaxFactory},
     };
 
     use super::*;
@@ -445,11 +445,12 @@ mod tests {
         expect.assert_eq(&edit.new_root.to_string());
 
         assert_eq!(edit.find_annotation(placeholder_snippet).len(), 2);
-        assert!(edit
-            .annotations
-            .iter()
-            .flat_map(|(_, elements)| elements)
-            .all(|element| element.ancestors().any(|it| &it == edit.new_root())))
+        assert!(
+            edit.annotations
+                .iter()
+                .flat_map(|(_, elements)| elements)
+                .all(|element| element.ancestors().any(|it| &it == edit.new_root()))
+        )
     }
 
     #[test]

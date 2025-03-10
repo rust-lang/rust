@@ -1,7 +1,8 @@
 use ide_db::famous_defs::FamousDefs;
 use syntax::{
+    AstNode,
     ast::{self, make},
-    ted, AstNode,
+    ted,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

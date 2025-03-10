@@ -3,12 +3,13 @@
 use std::{cmp, convert::Infallible, mem};
 
 use chalk_ir::{
+    BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind,
     cast::Cast,
     fold::{FallibleTypeFolder, TypeFoldable},
-    BoundVar, DebruijnIndex, FnSubst, Mutability, TyKind,
 };
 use either::Either;
 use hir_def::{
+    DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
     data::adt::VariantData,
     hir::{
         Array, AsmOperand, BinaryOp, BindingId, CaptureBy, Expr, ExprId, ExprOrPatId, Pat, PatId,
@@ -17,16 +18,18 @@ use hir_def::{
     lang_item::LangItem,
     path::Path,
     resolver::ValueNs,
-    DefWithBodyId, FieldId, HasModule, TupleFieldId, TupleId, VariantId,
 };
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::{format_to, never};
 use syntax::utils::is_raw_identifier;
 
 use crate::{
+    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
+    DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTyExt, Substitution, Ty,
+    TyExt, WhereClause,
     db::{HirDatabase, InternedClosure},
     error_lifetime, from_chalk_trait_id, from_placeholder_idx,
     generics::Generics,
@@ -36,9 +39,6 @@ use crate::{
     to_chalk_trait_id,
     traits::FnTrait,
     utils::{self, elaborate_clause_supertraits},
-    Adjust, Adjustment, AliasEq, AliasTy, Binders, BindingMode, ChalkTraitId, ClosureId, DynTy,
-    DynTyExt, FnAbi, FnPointer, FnSig, Interner, OpaqueTy, ProjectionTyExt, Substitution, Ty,
-    TyExt, WhereClause,
 };
 
 use super::{Expectation, InferenceContext};

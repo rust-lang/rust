@@ -1,8 +1,8 @@
 //! Completion of paths and keywords at item list position.
 
 use crate::{
-    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
     CompletionContext, Completions,
+    context::{ItemListKind, PathCompletionCtx, PathExprCtx, Qualified},
 };
 
 pub(crate) mod trait_impl;

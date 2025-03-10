@@ -4,18 +4,18 @@
 //! ```
 use std::iter;
 
-use ide_db::{famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap};
+use ide_db::{FxHashMap, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty};
 use itertools::Itertools;
 use span::EditionedFileId;
+use syntax::{SmolStr, format_smolstr};
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasName},
     SyntaxKind, SyntaxToken,
+    ast::{self, AstNode, HasGenericParams, HasName},
 };
-use syntax::{format_smolstr, SmolStr};
 
 use crate::{
-    inlay_hints::InlayHintCtx, InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
-    LifetimeElisionHints,
+    InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints,
+    inlay_hints::InlayHintCtx,
 };
 
 pub(super) fn fn_hints(
@@ -274,7 +274,8 @@ fn hints_(
         });
         let ctx = &*ctx;
         move || {
-            generic.by_ref()
+            generic
+                .by_ref()
                 .find(|s| ctx.lifetime_stacks.iter().flat_map(|it| it.iter()).all(|n| n != s))
                 .unwrap_or_default()
         }
@@ -406,8 +407,8 @@ fn hints_(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check, check_with_config, TEST_CONFIG},
         InlayHintsConfig, LifetimeElisionHints,
+        inlay_hints::tests::{TEST_CONFIG, check, check_with_config},
     };
 
     #[test]

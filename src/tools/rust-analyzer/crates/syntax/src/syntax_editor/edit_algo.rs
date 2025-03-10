@@ -11,8 +11,8 @@ use rustc_hash::FxHashMap;
 use stdx::format_to;
 
 use crate::{
-    syntax_editor::{mapping::MissingMapping, Change, ChangeKind, PositionRepr},
     SyntaxElement, SyntaxNode, SyntaxNodePtr,
+    syntax_editor::{Change, ChangeKind, PositionRepr, mapping::MissingMapping},
 };
 
 use super::{SyntaxEdit, SyntaxEditor};
@@ -208,18 +208,26 @@ pub(super) fn apply_edits(editor: SyntaxEditor) -> SyntaxEdit {
             }
         };
 
-        let upmap_target_node = |target: &SyntaxNode| {
-            match mappings.upmap_child(target, &input_ancestor, &output_ancestor) {
-                Ok(it) => it,
-                Err(MissingMapping(current)) => unreachable!("no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"),
-            }
+        let upmap_target_node = |target: &SyntaxNode| match mappings.upmap_child(
+            target,
+            &input_ancestor,
+            &output_ancestor,
+        ) {
+            Ok(it) => it,
+            Err(MissingMapping(current)) => unreachable!(
+                "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
+            ),
         };
 
-        let upmap_target = |target: &SyntaxElement| {
-            match mappings.upmap_child_element(target, &input_ancestor, &output_ancestor) {
-                Ok(it) => it,
-                Err(MissingMapping(current)) => unreachable!("no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"),
-            }
+        let upmap_target = |target: &SyntaxElement| match mappings.upmap_child_element(
+            target,
+            &input_ancestor,
+            &output_ancestor,
+        ) {
+            Ok(it) => it,
+            Err(MissingMapping(current)) => unreachable!(
+                "no mappings exist between {current:?} (ancestor of {input_ancestor:?}) and {output_ancestor:?}"
+            ),
         };
 
         match &mut changes[child as usize] {

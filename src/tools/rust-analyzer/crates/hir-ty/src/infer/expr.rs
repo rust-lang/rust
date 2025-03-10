@@ -5,9 +5,10 @@ use std::{
     mem,
 };
 
-use chalk_ir::{cast::Cast, fold::Shift, DebruijnIndex, Mutability, TyVariableKind};
+use chalk_ir::{DebruijnIndex, Mutability, TyVariableKind, cast::Cast, fold::Shift};
 use either::Either;
 use hir_def::{
+    BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
     hir::{
         ArithOp, Array, AsmOperand, AsmOptions, BinaryOp, ClosureKind, Expr, ExprId, ExprOrPatId,
         LabelId, Literal, Pat, PatId, Statement, UnaryOp,
@@ -15,7 +16,6 @@ use hir_def::{
     lang_item::{LangItem, LangItemTarget},
     path::{GenericArg, GenericArgs, Path},
     resolver::ValueNs,
-    BlockId, FieldId, GenericDefId, GenericParamId, ItemContainerId, Lookup, TupleFieldId, TupleId,
 };
 use hir_expand::name::Name;
 use intern::sym;
@@ -23,34 +23,34 @@ use stdx::always;
 use syntax::ast::RangeOp;
 
 use crate::{
-    autoderef::{builtin_deref, deref_by_trait, Autoderef},
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
+    DeclOrigin, FnAbi, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    autoderef::{Autoderef, builtin_deref, deref_by_trait},
     consteval,
     db::{InternedClosure, InternedCoroutine},
     error_lifetime,
-    generics::{generics, Generics},
+    generics::{Generics, generics},
     infer::{
+        BreakableKind,
         coerce::{CoerceMany, CoerceNever, CoercionCause},
         find_continuable,
         pat::contains_explicit_ref_binding,
-        BreakableKind,
     },
     lang_items::lang_items_for_bin_op,
     lower::{
-        const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability, ParamLoweringMode,
+        ParamLoweringMode, const_or_path_to_chalk, generic_arg_to_chalk, lower_to_chalk_mutability,
     },
-    mapping::{from_chalk, ToChalk},
+    mapping::{ToChalk, from_chalk},
     method_resolution::{self, VisibleFromModule},
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     traits::FnTrait,
-    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, CallableSig, DeclContext,
-    DeclOrigin, FnAbi, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar, Substitution,
-    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind,
 };
 
 use super::{
-    cast::CastCheck, coerce::auto_deref_adjust_steps, find_breakable, BreakableContext, Diverges,
-    Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch,
+    BreakableContext, Diverges, Expectation, InferenceContext, InferenceDiagnostic, TypeMismatch,
+    cast::CastCheck, coerce::auto_deref_adjust_steps, find_breakable,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -1556,11 +1556,7 @@ impl InferenceContext<'_> {
                                         target_is_read,
                                     )
                                 };
-                                if type_ref.is_some() {
-                                    decl_ty
-                                } else {
-                                    ty
-                                }
+                                if type_ref.is_some() { decl_ty } else { ty }
                             } else {
                                 decl_ty
                             };
@@ -2402,11 +2398,7 @@ impl InferenceContext<'_> {
             BinaryOp::Assignment { .. } => unreachable!("handled above"),
         };
 
-        if is_assign {
-            self.result.standard_types.unit.clone()
-        } else {
-            output_ty
-        }
+        if is_assign { self.result.standard_types.unit.clone() } else { output_ty }
     }
 
     fn is_builtin_binop(&mut self, lhs: &Ty, rhs: &Ty, op: BinaryOp) -> bool {

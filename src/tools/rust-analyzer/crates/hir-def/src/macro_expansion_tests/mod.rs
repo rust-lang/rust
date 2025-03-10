@@ -19,10 +19,10 @@ use std::{iter, ops::Range, sync};
 use base_db::RootQueryDb;
 use expect_test::Expect;
 use hir_expand::{
+    InFile, MacroCallKind, MacroFileId, MacroFileIdExt, MacroKind,
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
-    InFile, MacroCallKind, MacroFileId, MacroFileIdExt, MacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -30,21 +30,21 @@ use salsa::AsDynDatabase;
 use span::{Edition, Span};
 use stdx::{format_to, format_to_acc};
 use syntax::{
-    ast::{self, edit::IndentLevel},
     AstNode,
     SyntaxKind::{COMMENT, EOF, IDENT, LIFETIME_IDENT},
     SyntaxNode, T,
+    ast::{self, edit::IndentLevel},
 };
 use test_fixture::WithFixture;
 
 use crate::{
+    AdtId, AsMacroCall, Lookup, ModuleDefId,
     db::DefDatabase,
     nameres::{DefMap, MacroSubNs, ModuleSource},
     resolver::HasResolver,
     src::HasSource,
     test_db::TestDB,
     tt::TopSubtree,
-    AdtId, AsMacroCall, Lookup, ModuleDefId,
 };
 
 #[track_caller]

@@ -5,12 +5,12 @@ use ide_db::{
     ty_filter::TryEnum,
 };
 use syntax::{
+    AstNode, T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    AstNode, T,
 };
 
 use crate::assist_context::{AssistContext, Assists};

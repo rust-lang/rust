@@ -7,13 +7,14 @@ use hir::{DisplayTarget, HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
+    SyntaxKind, SyntaxNode, T,
     ast::{self, AstNode, HasLoopBody, HasName},
-    match_ast, SyntaxKind, SyntaxNode, T,
+    match_ast,
 };
 
 use crate::{
-    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig,
-    InlayKind,
+    InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind,
+    inlay_hints::LazyProperty,
 };
 
 pub(super) fn hints(
@@ -159,8 +160,8 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]

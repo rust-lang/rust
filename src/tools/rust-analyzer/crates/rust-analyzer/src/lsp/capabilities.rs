@@ -1,6 +1,6 @@
 //! Advertises the capabilities of the LSP Server.
 use ide::{CompletionFieldsToResolve, InlayFieldsToResolve};
-use ide_db::{line_index::WideEncoding, FxHashSet};
+use ide_db::{FxHashSet, line_index::WideEncoding};
 use lsp_types::{
     CallHierarchyServerCapability, CodeActionKind, CodeActionOptions, CodeActionProviderCapability,
     CodeLensOptions, CompletionOptions, CompletionOptionsCompletionItem, DeclarationCapability,

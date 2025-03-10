@@ -10,19 +10,19 @@ use ide::{AnalysisHost, DiagnosticCode, DiagnosticsConfig};
 use itertools::Either;
 use paths::Utf8PathBuf;
 use profile::StopWatch;
-use project_model::toolchain_info::{target_data_layout, QueryConfig};
+use project_model::toolchain_info::{QueryConfig, target_data_layout};
 use project_model::{
     CargoConfig, ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, RustLibSource,
     RustSourceWorkspaceConfig, Sysroot,
 };
 
-use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 use vfs::{AbsPathBuf, FileId};
 use walkdir::WalkDir;
 
-use crate::cli::{flags, report_metric, Result};
+use crate::cli::{Result, flags, report_metric};
 
 struct Tester {
     host: AnalysisHost,

@@ -57,19 +57,19 @@ mod variance;
 use std::hash::Hash;
 
 use chalk_ir::{
+    NoSolution,
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution,
 };
 use either::Either;
-use hir_def::{hir::ExprId, type_ref::Rawness, CallableDefId, GeneralConstId, TypeOrConstParamId};
+use hir_def::{CallableDefId, GeneralConstId, TypeOrConstParamId, hir::ExprId, type_ref::Rawness};
 use hir_expand::name::Name;
-use indexmap::{map::Entry, IndexMap};
-use intern::{sym, Symbol};
+use indexmap::{IndexMap, map::Entry};
+use intern::{Symbol, sym};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use syntax::ast::{make, ConstArg};
+use syntax::ast::{ConstArg, make};
 use traits::FnTrait;
 use triomphe::Arc;
 
@@ -86,16 +86,16 @@ pub use builder::{ParamKind, TyBuilder};
 pub use chalk_ext::*;
 pub use drop::DropGlue;
 pub use infer::{
+    Adjust, Adjustment, AutoBorrow, BindingMode, InferenceDiagnostic, InferenceResult,
+    InferenceTyDiagnosticSource, OverloadedDeref, PointerCast,
     cast::CastError,
     closure::{CaptureKind, CapturedItem},
-    could_coerce, could_unify, could_unify_deeply, Adjust, Adjustment, AutoBorrow, BindingMode,
-    InferenceDiagnostic, InferenceResult, InferenceTyDiagnosticSource, OverloadedDeref,
-    PointerCast,
+    could_coerce, could_unify, could_unify_deeply,
 };
 pub use interner::Interner;
 pub use lower::{
-    associated_type_shorthand_candidates, diagnostics::*, ImplTraitLoweringMode, ParamLoweringMode,
-    TyDefId, TyLoweringContext, ValueTyDefId,
+    ImplTraitLoweringMode, ParamLoweringMode, TyDefId, TyLoweringContext, ValueTyDefId,
+    associated_type_shorthand_candidates, diagnostics::*,
 };
 pub use mapping::{
     from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id, from_placeholder_idx,
@@ -105,13 +105,13 @@ pub use mapping::{
 pub use method_resolution::check_orphan_rules;
 pub use target_feature::TargetFeatures;
 pub use traits::TraitEnvironment;
-pub use utils::{all_super_traits, direct_super_traits, is_fn_unsafe_to_call, Unsafety};
+pub use utils::{Unsafety, all_super_traits, direct_super_traits, is_fn_unsafe_to_call};
 pub use variance::Variance;
 
 pub use chalk_ir::{
+    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
     cast::Cast,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    AdtId, BoundVar, DebruijnIndex, Mutability, Safety, Scalar, TyVariableKind,
 };
 
 pub type ForeignDefId = chalk_ir::ForeignDefId<Interner>;
@@ -645,10 +645,8 @@ pub(crate) fn fold_free_vars<T: HasInterner<Interner = Interner> + TypeFoldable<
         F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
         F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
     >(F1, F2);
-    impl<
-            F1: FnMut(BoundVar, DebruijnIndex) -> Ty,
-            F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const,
-        > TypeFolder<Interner> for FreeVarFolder<F1, F2>
+    impl<F1: FnMut(BoundVar, DebruijnIndex) -> Ty, F2: FnMut(Ty, BoundVar, DebruijnIndex) -> Const>
+        TypeFolder<Interner> for FreeVarFolder<F1, F2>
     {
         fn as_dyn(&mut self) -> &mut dyn TypeFolder<Interner> {
             self
@@ -778,8 +776,8 @@ where
     T: HasInterner<Interner = Interner> + TypeFoldable<Interner> + Clone,
 {
     use chalk_ir::{
-        fold::{FallibleTypeFolder, TypeSuperFoldable},
         Fallible,
+        fold::{FallibleTypeFolder, TypeSuperFoldable},
     };
     struct ErrorReplacer {
         vars: usize,
@@ -840,11 +838,7 @@ where
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(unknown_const(ty))
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
         }
 
         fn try_fold_free_var_const(
@@ -853,11 +847,7 @@ where
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Const> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(unknown_const(ty))
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(unknown_const(ty)) }
         }
 
         fn try_fold_inference_lifetime(
@@ -865,11 +855,7 @@ where
             _var: InferenceVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(error_lifetime())
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
         }
 
         fn try_fold_free_var_lifetime(
@@ -877,11 +863,7 @@ where
             _bound_var: BoundVar,
             _outer_binder: DebruijnIndex,
         ) -> Fallible<Lifetime> {
-            if cfg!(debug_assertions) {
-                Err(NoSolution)
-            } else {
-                Ok(error_lifetime())
-            }
+            if cfg!(debug_assertions) { Err(NoSolution) } else { Ok(error_lifetime()) }
         }
     }
     let mut error_replacer = ErrorReplacer { vars: 0 };

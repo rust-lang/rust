@@ -1,17 +1,17 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxIndexSet,
-    RootDatabase,
+    FileId, FilePosition, FileRange, FxIndexSet, RootDatabase, defs::Definition,
+    helpers::visit_file_defs,
 };
 use itertools::Itertools;
-use syntax::{ast::HasName, AstNode, TextRange};
+use syntax::{AstNode, TextRange, ast::HasName};
 
 use crate::{
+    NavigationTarget, RunnableKind,
     annotations::fn_references::find_all_methods,
     goto_implementation::goto_implementation,
     references::find_all_refs,
-    runnables::{runnables, Runnable},
-    NavigationTarget, RunnableKind,
+    runnables::{Runnable, runnables},
 };
 
 mod fn_references;
@@ -209,9 +209,9 @@ fn should_skip_runnable(kind: &RunnableKind, binary_target: bool) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
-    use crate::{fixture, Annotation, AnnotationConfig};
+    use crate::{Annotation, AnnotationConfig, fixture};
 
     use super::AnnotationLocation;
 

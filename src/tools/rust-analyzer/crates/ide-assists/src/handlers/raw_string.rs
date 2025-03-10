@@ -1,8 +1,8 @@
 use std::borrow::Cow;
 
-use syntax::{ast, ast::IsString, AstToken, TextRange, TextSize};
+use syntax::{AstToken, TextRange, TextSize, ast, ast::IsString};
 
-use crate::{utils::required_hashes, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils::required_hashes};
 
 // Assist: make_raw_string
 //

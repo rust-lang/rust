@@ -2,14 +2,14 @@
 //! comments, but should handle indent some time in the future as well.
 
 use ide_db::base_db::RootQueryDb;
-use ide_db::{base_db::salsa::AsDynDatabase, FilePosition, RootDatabase};
+use ide_db::{FilePosition, RootDatabase, base_db::salsa::AsDynDatabase};
 use span::EditionedFileId;
 use syntax::{
-    algo::find_node_at_offset,
-    ast::{self, edit::IndentLevel, AstToken},
     AstNode, SmolStr, SourceFile,
     SyntaxKind::*,
     SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset,
+    algo::find_node_at_offset,
+    ast::{self, AstToken, edit::IndentLevel},
 };
 
 use ide_db::text_edit::TextEdit;

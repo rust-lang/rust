@@ -51,12 +51,12 @@ use salsa::Durability;
 use std::{fmt, mem::ManuallyDrop};
 
 use base_db::{
-    query_group, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
-    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast,
+    CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, Files, RootQueryDb,
+    SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast, query_group,
 };
 use hir::{
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
     FilePositionWrapper, FileRangeWrapper,
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
 };
 use triomphe::Arc;
 
@@ -360,11 +360,7 @@ pub struct SnippetCap {
 
 impl SnippetCap {
     pub const fn new(allow_snippets: bool) -> Option<SnippetCap> {
-        if allow_snippets {
-            Some(SnippetCap { _private: () })
-        } else {
-            None
-        }
+        if allow_snippets { Some(SnippetCap { _private: () }) } else { None }
     }
 }
 

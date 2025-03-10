@@ -3,13 +3,13 @@
 use either::Either;
 use hir_expand::InFile;
 use la_arena::ArenaMap;
-use syntax::{ast, AstNode, AstPtr};
+use syntax::{AstNode, AstPtr, ast};
 
 use crate::{
-    db::DefDatabase,
-    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
     GenericDefId, ItemTreeLoc, LocalFieldId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
     UseId, VariantId,
+    db::DefDatabase,
+    item_tree::{AttrOwner, FieldParent, ItemTreeNode},
 };
 
 pub trait HasSource {

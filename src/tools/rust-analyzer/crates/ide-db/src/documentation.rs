@@ -1,14 +1,15 @@
 //! Documentation attribute related utilities.
 use either::Either;
 use hir::{
+    AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
     db::{DefDatabase, HirDatabase},
-    resolve_doc_path_on, sym, AttrId, AttrSourceMap, AttrsWithOwner, HasAttrs, InFile,
+    resolve_doc_path_on, sym,
 };
 use itertools::Itertools;
 use span::{TextRange, TextSize};
 use syntax::{
-    ast::{self, IsString},
     AstToken,
+    ast::{self, IsString},
 };
 
 /// Holds documentation
@@ -151,11 +152,7 @@ pub fn docs_from_attrs(attrs: &hir::Attrs) -> Option<String> {
         buf.push('\n');
     }
     buf.pop();
-    if buf.is_empty() {
-        None
-    } else {
-        Some(buf)
-    }
+    if buf.is_empty() { None } else { Some(buf) }
 }
 
 macro_rules! impl_has_docs {

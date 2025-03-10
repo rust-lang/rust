@@ -220,11 +220,7 @@ impl FamousDefs<'_, '_> {
         for segment in path {
             module = module.children(db).find_map(|child| {
                 let name = child.name(db)?;
-                if name.as_str() == segment {
-                    Some(child)
-                } else {
-                    None
-                }
+                if name.as_str() == segment { Some(child) } else { None }
             })?;
         }
         let def =

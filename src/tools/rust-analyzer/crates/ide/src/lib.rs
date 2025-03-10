@@ -61,19 +61,20 @@ use std::panic::UnwindSafe;
 
 use cfg::CfgOptions;
 use fetch_crates::CrateInfo;
-use hir::{sym, ChangeWithProcMacros};
+use hir::{ChangeWithProcMacros, sym};
 use ide_db::{
+    FxHashMap, FxIndexSet, LineIndexDatabase,
     base_db::{
-        salsa::{AsDynDatabase, Cancelled},
         CrateOrigin, CrateWorkspaceData, Env, FileSet, RootQueryDb, SourceDatabase, Upcast,
         VfsPath,
+        salsa::{AsDynDatabase, Cancelled},
     },
-    prime_caches, symbol_index, FxHashMap, FxIndexSet, LineIndexDatabase,
+    prime_caches, symbol_index,
 };
 use span::EditionedFileId;
 use syntax::SourceFile;
 use triomphe::Arc;
-use view_memory_layout::{view_memory_layout, RecursiveMemoryLayout};
+use view_memory_layout::{RecursiveMemoryLayout, view_memory_layout};
 
 use crate::navigation_target::ToNav;
 
@@ -110,8 +111,8 @@ pub use crate::{
         StaticIndex, StaticIndexedFile, TokenId, TokenStaticData, VendoredLibrariesConfig,
     },
     syntax_highlighting::{
-        tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
         HighlightConfig, HlRange,
+        tags::{Highlight, HlMod, HlMods, HlOperator, HlPunct, HlTag},
     },
     test_explorer::{TestItem, TestItemKind},
 };
@@ -125,6 +126,7 @@ pub use ide_completion::{
 };
 pub use ide_db::text_edit::{Indel, TextEdit};
 pub use ide_db::{
+    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
     base_db::{Crate, CrateGraphBuilder, FileChange, SourceRoot, SourceRootId},
     documentation::Documentation,
     label::Label,
@@ -133,7 +135,6 @@ pub use ide_db::{
     search::{ReferenceCategory, SearchScope},
     source_change::{FileSystemEdit, SnippetEdit, SourceChange},
     symbol_index::Query,
-    FileId, FilePosition, FileRange, RootDatabase, Severity, SymbolKind,
 };
 pub use ide_diagnostics::{Diagnostic, DiagnosticCode, DiagnosticsConfig, ExprFillDefaultMode};
 pub use ide_ssr::SsrError;

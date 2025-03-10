@@ -3,21 +3,21 @@
 use std::iter;
 
 use chalk_ir::{
+    AdtId, DebruijnIndex, Scalar,
     cast::{Cast, CastTo, Caster},
     fold::TypeFoldable,
     interner::HasInterner,
-    AdtId, DebruijnIndex, Scalar,
 };
 use hir_def::{
-    builtin_type::BuiltinType, DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId,
+    DefWithBodyId, GenericDefId, GenericParamId, TraitId, TypeAliasId, builtin_type::BuiltinType,
 };
 use smallvec::SmallVec;
 
 use crate::{
-    consteval::unknown_const_as_generic, db::HirDatabase, error_lifetime, generics::generics,
-    infer::unify::InferenceTable, primitive, to_assoc_type_id, to_chalk_trait_id, Binders,
-    BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy, Substitution,
-    TraitRef, Ty, TyDefId, TyExt, TyKind,
+    Binders, BoundVar, CallableSig, GenericArg, GenericArgData, Interner, ProjectionTy,
+    Substitution, TraitRef, Ty, TyDefId, TyExt, TyKind, consteval::unknown_const_as_generic,
+    db::HirDatabase, error_lifetime, generics::generics, infer::unify::InferenceTable, primitive,
+    to_assoc_type_id, to_chalk_trait_id,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

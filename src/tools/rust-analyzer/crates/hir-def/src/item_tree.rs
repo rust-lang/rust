@@ -46,24 +46,24 @@ use std::{
 use ast::{AstNode, StructKind};
 use base_db::Crate;
 use either::Either;
-use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
+use hir_expand::{ExpandTo, HirFileId, InFile, attrs::RawAttrs, name::Name};
 use intern::{Interned, Symbol};
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::never;
-use syntax::{ast, match_ast, SyntaxKind};
+use syntax::{SyntaxKind, ast, match_ast};
 use triomphe::Arc;
 
 use crate::{
+    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
     attr::Attrs,
     db::DefDatabase,
     generics::GenericParams,
     path::{GenericArgs, ImportAlias, ModPath, Path, PathKind},
     type_ref::{Mutability, TraitRef, TypeBound, TypeRefId, TypesMap, TypesSourceMap},
     visibility::{RawVisibility, VisibilityExplicitness},
-    BlockId, LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup,
 };
 
 #[derive(Copy, Clone, Eq, PartialEq)]

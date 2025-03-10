@@ -1,4 +1,4 @@
-use expect_test::{expect, Expect};
+use expect_test::{Expect, expect};
 use span::Edition;
 use syntax::ast::{self, make};
 use test_fixture::WithFixture;
@@ -6,8 +6,8 @@ use test_fixture::WithFixture;
 use crate::{
     lower::LowerCtx,
     path::{
-        lower::{hir_segment_to_ast_segment, SEGMENT_LOWERING_MAP},
         Path,
+        lower::{SEGMENT_LOWERING_MAP, hir_segment_to_ast_segment},
     },
     pretty,
     test_db::TestDB,

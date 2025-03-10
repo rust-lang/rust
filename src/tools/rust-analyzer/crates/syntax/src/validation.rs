@@ -5,14 +5,14 @@
 mod block;
 
 use rowan::Direction;
-use rustc_lexer::unescape::{self, unescape_mixed, unescape_unicode, Mode};
+use rustc_lexer::unescape::{self, Mode, unescape_mixed, unescape_unicode};
 
 use crate::{
-    algo,
-    ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
-    match_ast, AstNode, SyntaxError,
+    AstNode, SyntaxError,
     SyntaxKind::{CONST, FN, INT_NUMBER, TYPE_ALIAS},
-    SyntaxNode, SyntaxToken, TextSize, T,
+    SyntaxNode, SyntaxToken, T, TextSize, algo,
+    ast::{self, HasAttrs, HasVisibility, IsString, RangeItem},
+    match_ast,
 };
 
 pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {

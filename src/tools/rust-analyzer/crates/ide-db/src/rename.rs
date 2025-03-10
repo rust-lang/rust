@@ -30,20 +30,20 @@ use base_db::AnchoredPathBuf;
 use either::Either;
 use hir::{FieldSource, FileRange, HirFileIdExt, InFile, ModuleSource, Semantics};
 use span::{Edition, EditionedFileId, FileId, SyntaxContext};
-use stdx::{never, TupleExt};
+use stdx::{TupleExt, never};
 use syntax::{
+    AstNode, SyntaxKind, T, TextRange,
     ast::{self, HasName},
     utils::is_raw_identifier,
-    AstNode, SyntaxKind, TextRange, T,
 };
 
 use crate::{
+    RootDatabase,
     defs::Definition,
     search::{FileReference, FileReferenceNode},
     source_change::{FileSystemEdit, SourceChange},
     syntax_helpers::node_ext::expr_as_name_ref,
     traits::convert_to_def_in_trait,
-    RootDatabase,
 };
 
 pub type Result<T, E = RenameError> = std::result::Result<T, E>;

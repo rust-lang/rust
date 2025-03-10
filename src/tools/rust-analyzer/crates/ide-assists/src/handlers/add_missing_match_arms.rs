@@ -1,18 +1,18 @@
 use std::iter::{self, Peekable};
 
 use either::Either;
-use hir::{sym, Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics};
+use hir::{Adt, Crate, HasAttrs, ImportPathConfig, ModuleDef, Semantics, sym};
+use ide_db::RootDatabase;
 use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::syntax_helpers::suggest_name;
-use ide_db::RootDatabase;
 use ide_db::{famous_defs::FamousDefs, helpers::mod_path_to_ast};
 use itertools::Itertools;
 use syntax::ast::edit::IndentLevel;
 use syntax::ast::edit_in_place::Indent;
 use syntax::ast::syntax_factory::SyntaxFactory;
-use syntax::ast::{self, make, AstNode, MatchArmList, MatchExpr, Pat};
+use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
 
-use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils};
 
 // Assist: add_missing_match_arms
 //

@@ -12,11 +12,11 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
+    ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
     db::{HirDatabase, InternedClosure},
     display::DisplayTarget,
     mir::Operand,
     utils::ClosureSubst,
-    ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
 };
 
 use super::{
@@ -376,11 +376,7 @@ fn place_case(db: &dyn HirDatabase, body: &MirBody, lvalue: &Place) -> Projectio
             body.owner.module(db.upcast()).krate(),
         );
     }
-    if is_part_of {
-        ProjectionCase::DirectPart
-    } else {
-        ProjectionCase::Direct
-    }
+    if is_part_of { ProjectionCase::DirectPart } else { ProjectionCase::Direct }
 }
 
 /// Returns a map from basic blocks to the set of locals that might be ever initialized before

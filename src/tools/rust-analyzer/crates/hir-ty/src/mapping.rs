@@ -7,13 +7,13 @@ use chalk_solve::rust_ir;
 
 use hir_def::{LifetimeParamId, TraitId, TypeAliasId, TypeOrConstParamId};
 use salsa::{
-    plumbing::{AsId, FromId},
     Id,
+    plumbing::{AsId, FromId},
 };
 
 use crate::{
-    chalk_db, db::HirDatabase, AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId,
-    Interner, OpaqueTyId, PlaceholderIndex,
+    AssocTypeId, CallableDefId, ChalkTraitId, FnDefId, ForeignDefId, Interner, OpaqueTyId,
+    PlaceholderIndex, chalk_db, db::HirDatabase,
 };
 
 pub(crate) trait ToChalk {

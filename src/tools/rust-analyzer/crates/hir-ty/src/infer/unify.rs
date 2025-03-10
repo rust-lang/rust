@@ -3,13 +3,13 @@
 use std::{fmt, mem};
 
 use chalk_ir::{
-    cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
-    IntTy, TyVariableKind, UniverseIndex,
+    CanonicalVarKind, FloatTy, IntTy, TyVariableKind, UniverseIndex, cast::Cast,
+    fold::TypeFoldable, interner::HasInterner, zip::Zip,
 };
 use chalk_solve::infer::ParameterEnaVariableExt;
 use either::Either;
 use ena::unify::UnifyKey;
-use hir_def::{lang_item::LangItem, AdtId};
+use hir_def::{AdtId, lang_item::LangItem};
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_hash::FxHashMap;
@@ -18,12 +18,12 @@ use triomphe::Arc;
 
 use super::{InferOk, InferResult, InferenceContext, TypeError};
 use crate::{
+    AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue, DebruijnIndex, DomainGoal,
+    GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment, InferenceVar, Interner,
+    Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar, Solution, Substitution,
+    TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind, WhereClause,
     consteval::unknown_const, db::HirDatabase, fold_generic_args, fold_tys_and_consts,
-    to_chalk_trait_id, traits::FnTrait, AliasEq, AliasTy, BoundVar, Canonical, Const, ConstValue,
-    DebruijnIndex, DomainGoal, GenericArg, GenericArgData, Goal, GoalData, Guidance, InEnvironment,
-    InferenceVar, Interner, Lifetime, OpaqueTyId, ParamKind, ProjectionTy, ProjectionTyExt, Scalar,
-    Solution, Substitution, TraitEnvironment, TraitRef, Ty, TyBuilder, TyExt, TyKind, VariableKind,
-    WhereClause,
+    to_chalk_trait_id, traits::FnTrait,
 };
 
 impl InferenceContext<'_> {
@@ -890,11 +890,7 @@ impl<'a> InferenceTable<'a> {
             TyKind::Error => self.new_type_var(),
             TyKind::InferenceVar(..) => {
                 let ty_resolved = self.resolve_ty_shallow(&ty);
-                if ty_resolved.is_unknown() {
-                    self.new_type_var()
-                } else {
-                    ty
-                }
+                if ty_resolved.is_unknown() { self.new_type_var() } else { ty }
             }
             _ => ty,
         }

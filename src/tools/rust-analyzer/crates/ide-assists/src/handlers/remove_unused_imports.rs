@@ -3,13 +3,13 @@ use std::collections::hash_map::Entry;
 use hir::{FileRange, HirFileIdExt, InFile, InRealFile, Module, ModuleSource};
 use ide_db::text_edit::TextRange;
 use ide_db::{
+    FxHashMap, RootDatabase,
     defs::Definition,
     search::{FileReference, ReferenceCategory, SearchScope},
-    FxHashMap, RootDatabase,
 };
 use syntax::{
-    ast::{self, Rename},
     AstNode,
+    ast::{self, Rename},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

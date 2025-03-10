@@ -5,25 +5,25 @@ use crate::{
     utils::convert_param_list_to_arg_list,
 };
 use either::Either;
-use hir::{db::HirDatabase, HasVisibility};
+use hir::{HasVisibility, db::HirDatabase};
 use ide_db::{
+    FxHashMap, FxHashSet,
     assists::{AssistId, GroupLabel},
     path_transform::PathTransform,
     syntax_helpers::suggest_name,
-    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use syntax::{
+    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
     ast::{
-        self,
-        edit::{self, AstNodeEdit},
-        edit_in_place::AttrsOwnerEdit,
-        make, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
+        self, AssocItem, GenericArgList, GenericParamList, HasAttrs, HasGenericArgs,
         HasGenericParams, HasName, HasTypeBounds, HasVisibility as astHasVisibility, Path,
         WherePred,
+        edit::{self, AstNodeEdit},
+        edit_in_place::AttrsOwnerEdit,
+        make,
     },
     ted::{self, Position},
-    AstNode, Edition, NodeOrToken, SmolStr, SyntaxKind, ToSmolStr,
 };
 
 // Assist: generate_delegate_trait

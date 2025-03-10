@@ -19,9 +19,9 @@ use rowan::NodeOrToken;
 use stdx::{format_to, format_to_acc, never};
 
 use crate::{
-    ast::{self, make::quote::quote, Param},
-    utils::is_raw_identifier,
     AstNode, SourceFile, SyntaxKind, SyntaxToken,
+    ast::{self, Param, make::quote::quote},
+    utils::is_raw_identifier,
 };
 
 /// While the parent module defines basic atomic "constructors", the `ext`
@@ -131,11 +131,7 @@ pub fn name_ref(name_ref: &str) -> ast::NameRef {
     }
 }
 fn raw_ident_esc(ident: &str) -> &'static str {
-    if is_raw_identifier(ident, Edition::CURRENT) {
-        "r#"
-    } else {
-        ""
-    }
+    if is_raw_identifier(ident, Edition::CURRENT) { "r#" } else { "" }
 }
 
 pub fn lifetime(text: &str) -> ast::Lifetime {
@@ -328,7 +324,9 @@ pub fn impl_trait(
         None => String::new(),
     };
 
-    ast_from_text(&format!("{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"))
+    ast_from_text(&format!(
+        "{is_unsafe}impl{gen_params} {is_negative}{path_type}{trait_gen_args} for {ty}{type_gen_args}{where_clause}{{{body_newline}{body}}}"
+    ))
 }
 
 pub fn impl_trait_type(bounds: ast::TypeBoundList) -> ast::ImplTraitType {
@@ -1274,11 +1272,12 @@ pub mod tokens {
 
     use parser::Edition;
 
-    use crate::{ast, AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken};
+    use crate::{AstNode, Parse, SourceFile, SyntaxKind::*, SyntaxToken, ast};
 
     pub(super) static SOURCE_FILE: LazyLock<Parse<SourceFile>> = LazyLock::new(|| {
         SourceFile::parse(
-            "use crate::foo; const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, async { let _ @ [] })\n;\n\nimpl A for B where: {}", Edition::CURRENT,
+            "use crate::foo; const C: <()>::Item = ( true && true , true || true , 1 != 1, 2 == 2, 3 < 3, 4 <= 4, 5 > 5, 6 >= 6, !true, *p, &p , &mut p, async { let _ @ [] })\n;\n\nimpl A for B where: {}",
+            Edition::CURRENT,
         )
     });
 

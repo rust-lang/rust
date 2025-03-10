@@ -9,11 +9,11 @@ use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
+    ConstId, FunctionId, HasModule, LocalFieldId, LocalModuleId, ModuleId, VariantId,
     db::DefDatabase,
     nameres::DefMap,
     path::{ModPath, PathKind},
     resolver::HasResolver,
-    ConstId, FunctionId, HasModule, LocalFieldId, LocalModuleId, ModuleId, VariantId,
 };
 
 /// Visibility of an item, not yet resolved.

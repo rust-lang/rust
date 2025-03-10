@@ -2,22 +2,22 @@
 
 use either::Either;
 use hir_def::{
+    AdtId, AssocItemId, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
+    ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportId, ImportOrExternCrate, ImportOrGlob},
     per_ns::Item,
     src::{HasChildSource, HasSource},
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, AssocItemId, DefWithBodyId, ExternCrateId, HasModule, ImplId, Lookup, MacroId,
-    ModuleDefId, ModuleId, TraitId,
 };
-use hir_expand::{name::Name, HirFileId};
+use hir_expand::{HirFileId, name::Name};
 use hir_ty::{
     db::HirDatabase,
-    display::{hir_display_with_types_map, DisplayTarget, HirDisplay},
+    display::{DisplayTarget, HirDisplay, hir_display_with_types_map},
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr};
+use syntax::{AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr, ast::HasName};
 
 use crate::{Module, ModuleDef, Semantics};
 

@@ -1,12 +1,12 @@
 //! Implementation of inlay hints for generic parameters.
 use ide_db::{active_parameter::generic_def_for_node, famous_defs::FamousDefs};
 use syntax::{
-    ast::{self, AnyHasGenericArgs, HasGenericArgs, HasName},
     AstNode,
+    ast::{self, AnyHasGenericArgs, HasGenericArgs, HasName},
 };
 
 use crate::{
-    inlay_hints::GenericParameterHints, InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind,
+    InlayHint, InlayHintLabel, InlayHintsConfig, InlayKind, inlay_hints::GenericParameterHints,
 };
 
 use super::param_name::is_argument_similar_to_param_name;
@@ -145,11 +145,11 @@ fn get_string_representation(arg: &ast::GenericArg) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::{
-            tests::{check_with_config, DISABLED_CONFIG},
-            GenericParameterHints,
-        },
         InlayHintsConfig,
+        inlay_hints::{
+            GenericParameterHints,
+            tests::{DISABLED_CONFIG, check_with_config},
+        },
     };
 
     #[track_caller]

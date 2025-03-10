@@ -1,11 +1,11 @@
 //! Completes function abi strings.
 use syntax::{
-    ast::{self, IsString},
     AstNode, AstToken, SmolStr,
+    ast::{self, IsString},
 };
 
 use crate::{
-    completions::Completions, context::CompletionContext, CompletionItem, CompletionItemKind,
+    CompletionItem, CompletionItemKind, completions::Completions, context::CompletionContext,
 };
 
 // Most of these are feature gated, we should filter/add feature gate completions once we have them.

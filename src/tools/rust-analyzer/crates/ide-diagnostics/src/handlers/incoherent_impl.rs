@@ -1,7 +1,7 @@
 use hir::InFile;
 use syntax::{AstNode, TextRange};
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: incoherent-impl
 //

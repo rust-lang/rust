@@ -1,21 +1,20 @@
 use either::Either;
-use hir::{db::ExpandDatabase, CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile};
+use hir::{CallableKind, ClosureStyle, HirDisplay, HirFileIdExt, InFile, db::ExpandDatabase};
 use ide_db::{
     famous_defs::FamousDefs,
     source_change::{SourceChange, SourceChangeBuilder},
     text_edit::TextEdit,
 };
 use syntax::{
+    AstNode, AstPtr, TextSize,
     ast::{
-        self,
+        self, BlockExpr, Expr, ExprStmt, HasArgList,
         edit::{AstNodeEdit, IndentLevel},
         syntax_factory::SyntaxFactory,
-        BlockExpr, Expr, ExprStmt, HasArgList,
     },
-    AstNode, AstPtr, TextSize,
 };
 
-use crate::{adjusted_display_range, fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range, fix};
 
 // Diagnostic: type-mismatch
 //
@@ -72,11 +71,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypeMismatch) -> Option<Vec<Assi
         str_ref_to_owned(ctx, d, expr_ptr, &mut fixes);
     }
 
-    if fixes.is_empty() {
-        None
-    } else {
-        Some(fixes)
-    }
+    if fixes.is_empty() { None } else { Some(fixes) }
 }
 
 fn add_reference(

@@ -3,11 +3,12 @@
 
 use std::sync;
 
-use base_db::{impl_intern_key, Crate, Upcast};
+use base_db::{Crate, Upcast, impl_intern_key};
 use hir_def::{
-    db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, CallableDefId,
-    ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
-    LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
+    AdtId, BlockId, CallableDefId, ConstParamId, DefWithBodyId, EnumVariantId, FunctionId,
+    GeneralConstId, GenericDefId, ImplId, LifetimeParamId, LocalFieldId, StaticId, TraitId,
+    TypeAliasId, TypeOrConstParamId, VariantId, db::DefDatabase, hir::ExprId,
+    layout::TargetDataLayout,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -16,7 +17,8 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
-    chalk_db,
+    Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
+    PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId, chalk_db,
     consteval::ConstEvalError,
     drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
@@ -24,8 +26,6 @@ use crate::{
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
     method_resolution::{InherentImpls, TraitImpls, TyFingerprint},
     mir::{BorrowckResult, MirBody, MirLowerError},
-    Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
-    PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
 
 #[query_group::query_group]
@@ -262,7 +262,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
     fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
-        -> sync::Arc<chalk_db::ImplDatum>;
+    -> sync::Arc<chalk_db::ImplDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_datum_query)]
     fn fn_def_datum(&self, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;

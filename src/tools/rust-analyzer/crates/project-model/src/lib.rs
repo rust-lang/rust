@@ -48,12 +48,12 @@ mod tests;
 
 use std::{
     fmt,
-    fs::{self, read_dir, ReadDir},
+    fs::{self, ReadDir, read_dir},
     io,
     process::Command,
 };
 
-use anyhow::{bail, format_err, Context};
+use anyhow::{Context, bail, format_err};
 use paths::{AbsPath, AbsPathBuf, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 
@@ -102,7 +102,9 @@ impl ProjectManifest {
         if path.extension().unwrap_or_default() == "rs" {
             return Ok(ProjectManifest::CargoScript(path));
         }
-        bail!("project root must point to a Cargo.toml, rust-project.json or <script>.rs file: {path}");
+        bail!(
+            "project root must point to a Cargo.toml, rust-project.json or <script>.rs file: {path}"
+        );
     }
 
     pub fn discover_single(path: &AbsPath) -> anyhow::Result<ProjectManifest> {

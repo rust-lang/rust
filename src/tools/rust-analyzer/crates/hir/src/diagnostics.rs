@@ -6,22 +6,23 @@
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
 use hir_def::{
+    DefWithBodyId, SyntheticSyntax,
     expr_store::ExprOrPatPtr,
     hir::ExprOrPatId,
-    path::{hir_segment_to_ast_segment, ModPath},
+    path::{ModPath, hir_segment_to_ast_segment},
     type_ref::TypesSourceMap,
-    DefWithBodyId, SyntheticSyntax,
 };
-use hir_expand::{name::Name, HirFileId, InFile};
+use hir_expand::{HirFileId, InFile, name::Name};
 use hir_ty::{
-    db::HirDatabase,
-    diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
     CastError, InferenceDiagnostic, InferenceTyDiagnosticSource, PathLoweringDiagnostic,
     TyLoweringDiagnostic, TyLoweringDiagnosticKind,
+    db::HirDatabase,
+    diagnostics::{BodyValidationDiagnostic, UnsafetyReason},
 };
 use syntax::{
+    AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
     ast::{self, HasGenericArgs},
-    match_ast, AstNode, AstPtr, SyntaxError, SyntaxNodePtr, TextRange,
+    match_ast,
 };
 use triomphe::Arc;
 
@@ -29,8 +30,8 @@ use crate::{AssocItem, Field, Function, Local, Trait, Type};
 
 pub use hir_def::VariantId;
 pub use hir_ty::{
-    diagnostics::{CaseType, IncorrectCase},
     GenericArgsProhibitedReason,
+    diagnostics::{CaseType, IncorrectCase},
 };
 
 macro_rules! diagnostics {

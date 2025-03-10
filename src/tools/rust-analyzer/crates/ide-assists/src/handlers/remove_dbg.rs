@@ -1,7 +1,8 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, AstToken},
-    match_ast, ted, Edition, NodeOrToken, SyntaxElement, TextRange, TextSize, T,
+    Edition, NodeOrToken, SyntaxElement, T, TextRange, TextSize,
+    ast::{self, AstNode, AstToken, make},
+    match_ast, ted,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

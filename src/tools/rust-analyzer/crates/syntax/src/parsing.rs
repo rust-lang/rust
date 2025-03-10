@@ -5,7 +5,7 @@ mod reparsing;
 
 use rowan::TextRange;
 
-use crate::{syntax_node::GreenNode, SyntaxError, SyntaxTreeBuilder};
+use crate::{SyntaxError, SyntaxTreeBuilder, syntax_node::GreenNode};
 
 pub(crate) use crate::parsing::reparsing::incremental_reparse;
 

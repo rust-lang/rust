@@ -4,28 +4,29 @@ use arrayvec::ArrayVec;
 use ast::HasName;
 use cfg::{CfgAtom, CfgExpr};
 use hir::{
-    db::HirDatabase, sym, symbols::FxIndexSet, AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate,
-    HasSource, HirFileIdExt, ModPath, Name, PathKind, Semantics, Symbol,
+    AsAssocItem, AttrsWithOwner, HasAttrs, HasCrate, HasSource, HirFileIdExt, ModPath, Name,
+    PathKind, Semantics, Symbol, db::HirDatabase, sym, symbols::FxIndexSet,
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
+    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
     base_db::RootQueryDb,
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
     search::{FileReferenceNode, SearchScope},
-    FilePosition, FxHashMap, FxIndexMap, RootDatabase, SymbolKind,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
 use span::{Edition, TextSize};
 use stdx::format_to;
 use syntax::{
+    SmolStr, SyntaxNode, ToSmolStr,
     ast::{self, AstNode},
-    format_smolstr, SmolStr, SyntaxNode, ToSmolStr,
+    format_smolstr,
 };
 
-use crate::{references, FileId, NavigationTarget, ToNav, TryToNav};
+use crate::{FileId, NavigationTarget, ToNav, TryToNav, references};
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Runnable {
@@ -752,7 +753,7 @@ impl UpdateTest {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     use crate::fixture;
 

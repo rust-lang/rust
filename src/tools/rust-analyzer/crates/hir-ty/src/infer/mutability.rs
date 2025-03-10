@@ -1,7 +1,7 @@
 //! Finds if an expression is an immutable context or a mutable context, which is used in selecting
 //! between `Deref` and `DerefMut` or `Index` and `IndexMut` or similar.
 
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{Mutability, cast::Cast};
 use hir_def::{
     hir::{
         Array, AsmOperand, BinaryOp, BindingAnnotation, Expr, ExprId, Pat, PatId, Statement,
@@ -13,9 +13,9 @@ use hir_expand::name::Name;
 use intern::sym;
 
 use crate::{
-    infer::{expr::ExprIsRead, Expectation, InferenceContext},
-    lower::lower_to_chalk_mutability,
     Adjust, Adjustment, AutoBorrow, Interner, OverloadedDeref, TyBuilder, TyKind,
+    infer::{Expectation, InferenceContext, expr::ExprIsRead},
+    lower::lower_to_chalk_mutability,
 };
 
 impl InferenceContext<'_> {

@@ -10,9 +10,9 @@ use std::{cell::LazyCell, cmp::Reverse};
 use base_db::{RootQueryDb, SourceDatabase};
 use either::Either;
 use hir::{
-    sym, Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer,
-    HasSource, HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer,
-    ModuleSource, PathResolution, Semantics, Visibility,
+    Adt, AsAssocItem, DefWithBody, FileRange, FileRangeWrapper, HasAttrs, HasContainer, HasSource,
+    HirFileIdExt, InFile, InFileWrapper, InRealFile, InlineAsmOperand, ItemContainer, ModuleSource,
+    PathResolution, Semantics, Visibility, sym,
 };
 use memchr::memmem::Finder;
 use parser::SyntaxKind;
@@ -20,16 +20,16 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use salsa::Database;
 use span::EditionedFileId;
 use syntax::{
+    AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize, ToSmolStr,
     ast::{self, HasName, Rename},
-    match_ast, AstNode, AstToken, SmolStr, SyntaxElement, SyntaxNode, TextRange, TextSize,
-    ToSmolStr,
+    match_ast,
 };
 use triomphe::Arc;
 
 use crate::{
+    RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     traits::{as_trait_assoc_def, convert_to_def_in_trait},
-    RootDatabase,
 };
 
 #[derive(Debug, Default, Clone)]
@@ -1292,7 +1292,7 @@ impl<'a> FindUsages<'a> {
                         if convert_to_def_in_trait(self.sema.db, def)
                             != convert_to_def_in_trait(self.sema.db, self.def) =>
                     {
-                        return false
+                        return false;
                     }
                     (Some(_), Definition::TypeAlias(_)) => {}
                     // We looking at an assoc item of a trait definition, so reference all the

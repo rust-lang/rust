@@ -1,13 +1,13 @@
 //! Type cast logic. Basically coercion + additional casts.
 
 use chalk_ir::{Mutability, Scalar, TyVariableKind, UintTy};
-use hir_def::{hir::ExprId, AdtId};
+use hir_def::{AdtId, hir::ExprId};
 use stdx::never;
 
 use crate::{
-    infer::{coerce::CoerceNever, unify::InferenceTable},
     Adjustment, Binders, DynTy, InferenceDiagnostic, Interner, PlaceholderIndex,
     QuantifiedWhereClauses, Ty, TyExt, TyKind, TypeFlags, WhereClause,
+    infer::{coerce::CoerceNever, unify::InferenceTable},
 };
 
 #[derive(Debug)]
@@ -431,8 +431,8 @@ fn contains_dyn_trait(ty: &Ty) -> bool {
     use std::ops::ControlFlow;
 
     use chalk_ir::{
-        visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
         DebruijnIndex,
+        visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     };
 
     struct DynTraitVisitor;

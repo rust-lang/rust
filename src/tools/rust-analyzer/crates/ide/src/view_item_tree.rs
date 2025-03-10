@@ -1,4 +1,4 @@
-use hir::{db::DefDatabase, Semantics};
+use hir::{Semantics, db::DefDatabase};
 use ide_db::{FileId, RootDatabase};
 use span::EditionedFileId;
 

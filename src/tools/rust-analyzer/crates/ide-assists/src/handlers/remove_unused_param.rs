@@ -1,18 +1,18 @@
 use ide_db::{
-    base_db::salsa::AsDynDatabase, defs::Definition, search::FileReference, EditionedFileId,
+    EditionedFileId, base_db::salsa::AsDynDatabase, defs::Definition, search::FileReference,
 };
 use syntax::{
+    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, T, TextRange,
     algo::{find_node_at_range, least_common_ancestor_element},
     ast::{self, HasArgList},
     syntax_editor::Element,
-    AstNode, SourceFile, SyntaxElement, SyntaxKind, SyntaxNode, TextRange, T,
 };
 
 use SyntaxKind::WHITESPACE;
 
 use crate::{
-    assist_context::SourceChangeBuilder, utils::next_prev, AssistContext, AssistId, AssistKind,
-    Assists,
+    AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder,
+    utils::next_prev,
 };
 
 // Assist: remove_unused_param

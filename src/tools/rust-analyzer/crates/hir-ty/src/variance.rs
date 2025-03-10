@@ -14,7 +14,7 @@
 //! while installing firewall per item queries to prevent invalidation issues.
 
 use crate::db::HirDatabase;
-use crate::generics::{generics, Generics};
+use crate::generics::{Generics, generics};
 use crate::{
     AliasTy, Const, ConstScalar, DynTyExt, GenericArg, GenericArgData, Interner, Lifetime,
     LifetimeData, Ty, TyKind,
@@ -487,13 +487,13 @@ impl Context<'_> {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use hir_def::{
-        generics::GenericParamDataRef, src::HasSource, AdtId, GenericDefId, ModuleDefId,
+        AdtId, GenericDefId, ModuleDefId, generics::GenericParamDataRef, src::HasSource,
     };
     use itertools::Itertools;
     use stdx::format_to;
-    use syntax::{ast::HasName, AstNode};
+    use syntax::{AstNode, ast::HasName};
     use test_fixture::WithFixture;
 
     use hir_def::Lookup;

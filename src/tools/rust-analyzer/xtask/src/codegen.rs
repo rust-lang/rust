@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::{
     flags::{self, CodegenType},

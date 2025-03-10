@@ -5,25 +5,25 @@ use core::fmt;
 use std::{fmt::Write, ops::Index};
 
 use hir_expand::{
+    AstId, InFile,
     db::ExpandDatabase,
     name::{AsName, Name},
-    AstId, InFile,
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use la_arena::{Arena, ArenaMap, Idx};
 use span::Edition;
-use stdx::thin_vec::{thin_vec_with_header_struct, EmptyOptimizedThinVec, ThinVec};
+use stdx::thin_vec::{EmptyOptimizedThinVec, ThinVec, thin_vec_with_header_struct};
 use syntax::{
-    ast::{self, HasGenericArgs, HasName, IsString},
     AstPtr,
+    ast::{self, HasGenericArgs, HasName, IsString},
 };
 
 use crate::{
+    SyntheticSyntax,
     builtin_type::{BuiltinInt, BuiltinType, BuiltinUint},
     hir::Literal,
     lower::LowerCtx,
     path::{GenericArg, Path},
-    SyntheticSyntax,
 };
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -34,11 +34,7 @@ pub enum Mutability {
 
 impl Mutability {
     pub fn from_mutable(mutable: bool) -> Mutability {
-        if mutable {
-            Mutability::Mut
-        } else {
-            Mutability::Shared
-        }
+        if mutable { Mutability::Mut } else { Mutability::Shared }
     }
 
     pub fn as_keyword_for_ref(self) -> &'static str {
@@ -80,11 +76,7 @@ pub enum Rawness {
 
 impl Rawness {
     pub fn from_raw(is_raw: bool) -> Rawness {
-        if is_raw {
-            Rawness::RawPtr
-        } else {
-            Rawness::Ref
-        }
+        if is_raw { Rawness::RawPtr } else { Rawness::Ref }
     }
 
     pub fn is_raw(&self) -> bool {

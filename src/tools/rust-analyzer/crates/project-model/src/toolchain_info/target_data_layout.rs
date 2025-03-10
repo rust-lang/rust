@@ -4,7 +4,7 @@ use anyhow::Context;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{toolchain_info::QueryConfig, utf8_stdout, Sysroot};
+use crate::{Sysroot, toolchain_info::QueryConfig, utf8_stdout};
 
 /// Uses `rustc --print target-spec-json`.
 pub fn get(

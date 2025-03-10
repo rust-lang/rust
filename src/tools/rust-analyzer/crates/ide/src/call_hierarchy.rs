@@ -4,14 +4,14 @@ use std::iter;
 
 use hir::Semantics;
 use ide_db::{
+    FileRange, FxIndexMap, RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
     search::FileReference,
-    FileRange, FxIndexMap, RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxKind::IDENT};
+use syntax::{AstNode, SyntaxKind::IDENT, ast};
 
-use crate::{goto_definition, FilePosition, NavigationTarget, RangeInfo, TryToNav};
+use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav, goto_definition};
 
 #[derive(Debug, Clone)]
 pub struct CallItem {
@@ -165,7 +165,7 @@ impl CallLocations {
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide_db::FilePosition;
     use itertools::Itertools;
 

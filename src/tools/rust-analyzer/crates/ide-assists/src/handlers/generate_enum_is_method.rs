@@ -4,8 +4,8 @@ use syntax::ast::HasVisibility;
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
-    utils::{add_method_to_adt, find_struct_impl},
     AssistContext, AssistId, AssistKind, Assists,
+    utils::{add_method_to_adt, find_struct_impl},
 };
 
 // Assist: generate_enum_is_method

@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 use salsa::{Database as _, Durability};
 use triomphe::Arc;
 
-use crate::{symbol_index::SymbolsDatabase, ChangeWithProcMacros, RootDatabase};
+use crate::{ChangeWithProcMacros, RootDatabase, symbol_index::SymbolsDatabase};
 
 impl RootDatabase {
     pub fn request_cancellation(&mut self) {

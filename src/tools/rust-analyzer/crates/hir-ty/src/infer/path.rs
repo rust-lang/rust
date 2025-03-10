@@ -2,21 +2,22 @@
 
 use chalk_ir::cast::Cast;
 use hir_def::{
+    AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
     path::{Path, PathSegment},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    AdtId, AssocItemId, GenericDefId, ItemContainerId, Lookup,
 };
 use hir_expand::name::Name;
 use stdx::never;
 
 use crate::{
+    InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty, TyBuilder, TyExt,
+    TyKind, ValueTyDefId,
     builder::ParamKind,
     consteval, error_lifetime,
     generics::generics,
     infer::diagnostics::InferenceTyLoweringContext as TyLoweringContext,
     method_resolution::{self, VisibleFromModule},
-    to_chalk_trait_id, InferenceDiagnostic, Interner, Substitution, TraitRef, TraitRefExt, Ty,
-    TyBuilder, TyExt, TyKind, ValueTyDefId,
+    to_chalk_trait_id,
 };
 
 use super::{ExprOrPatId, InferenceContext, InferenceTyDiagnosticSource};
@@ -63,7 +64,7 @@ impl InferenceContext<'_> {
                         never!("uninferred pattern?");
                         None
                     }
-                }
+                };
             }
             ValueNs::ImplSelf(impl_id) => {
                 let generics = crate::generics::generics(self.db.upcast(), impl_id.into());
@@ -81,7 +82,7 @@ impl InferenceContext<'_> {
                 };
             }
             ValueNs::GenericParam(it) => {
-                return Some(ValuePathResolution::NonGeneric(self.db.const_param_ty(it)))
+                return Some(ValuePathResolution::NonGeneric(self.db.const_param_ty(it)));
             }
         };
 

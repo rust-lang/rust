@@ -1,16 +1,16 @@
 use std::fmt::Display;
 
 use hir::{ModPath, ModuleDef};
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::{
-    ast::{self, HasName},
     AstNode, Edition, SyntaxNode,
+    ast::{self, HasName},
 };
 
 use crate::{
+    AssistId, AssistKind,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::generate_trait_impl_text,
-    AssistId, AssistKind,
 };
 
 // Assist: generate_deref

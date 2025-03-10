@@ -1,14 +1,14 @@
-use hir::{sym, HasVisibility};
+use hir::{HasVisibility, sym};
 use ide_db::text_edit::TextRange;
 use ide_db::{
+    FxHashMap, FxHashSet,
     assists::{AssistId, AssistKind},
     defs::Definition,
     helpers::mod_path_to_ast,
     search::{FileReference, SearchScope},
-    FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
-use syntax::{ast, ted, AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr};
+use syntax::{AstNode, Edition, SmolStr, SyntaxNode, ToSmolStr, ast, ted};
 
 use crate::{
     assist_context::{AssistContext, Assists, SourceChangeBuilder},

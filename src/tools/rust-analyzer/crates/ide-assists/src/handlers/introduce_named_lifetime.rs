@@ -1,11 +1,11 @@
 use ide_db::FxHashSet;
 use syntax::{
-    ast::{self, edit_in_place::GenericParamsOwnerEdit, make, HasGenericParams},
-    ted::{self, Position},
     AstNode, TextRange,
+    ast::{self, HasGenericParams, edit_in_place::GenericParamsOwnerEdit, make},
+    ted::{self, Position},
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder};
 
 static ASSIST_NAME: &str = "introduce_named_lifetime";
 static ASSIST_LABEL: &str = "Introduce named lifetime";

@@ -1,4 +1,4 @@
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -77,11 +77,7 @@ fn existing_default_impl(
     let default_trait = FamousDefs(sema, krate).core_default_Default()?;
     let enum_type = enum_.ty(sema.db);
 
-    if enum_type.impls_trait(sema.db, default_trait, &[]) {
-        Some(())
-    } else {
-        None
-    }
+    if enum_type.impls_trait(sema.db, default_trait, &[]) { Some(()) } else { None }
 }
 
 #[cfg(test)]

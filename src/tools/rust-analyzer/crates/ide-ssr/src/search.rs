@@ -1,18 +1,17 @@
 //! Searching for matches.
 
 use crate::{
-    matching,
+    Match, MatchFinder, matching,
     resolving::{ResolvedPath, ResolvedPattern, ResolvedRule},
-    Match, MatchFinder,
 };
 use hir::FileRange;
 use ide_db::{
+    EditionedFileId, FileId, FxHashSet,
     base_db::salsa::AsDynDatabase,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
-    EditionedFileId, FileId, FxHashSet,
 };
-use syntax::{ast, AstNode, SyntaxKind, SyntaxNode};
+use syntax::{AstNode, SyntaxKind, SyntaxNode, ast};
 
 /// A cache for the results of find_usages. This is for when we have multiple patterns that have the
 /// same path. e.g. if the pattern was `foo::Bar` that can parse as a path, an expression, a type

@@ -1,12 +1,12 @@
 use hir::db::ExpandDatabase;
 use hir::{ExpandResult, InFile, MacroFileIdExt, Semantics};
 use ide_db::{
-    base_db::Crate, helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId,
-    RootDatabase,
+    FileId, RootDatabase, base_db::Crate, helpers::pick_best_token,
+    syntax_helpers::prettify_macro_expansion,
 };
 use span::{Edition, SpanMap, SyntaxContext, TextRange, TextSize};
 use stdx::format_to;
-use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
+use syntax::{AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T, ast, ted};
 
 use crate::FilePosition;
 
@@ -289,7 +289,7 @@ fn _format(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
 
     use crate::fixture;
 

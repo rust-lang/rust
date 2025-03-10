@@ -3,10 +3,12 @@ use std::collections::BTreeSet;
 use ast::make;
 use either::Either;
 use hir::{
+    FileRange, PathResolution, Semantics, TypeInfo,
     db::{ExpandDatabase, HirDatabase},
-    sym, FileRange, PathResolution, Semantics, TypeInfo,
+    sym,
 };
 use ide_db::{
+    EditionedFileId, RootDatabase,
     base_db::Crate,
     defs::Definition,
     imports::insert_use::remove_path_if_in_use_stmt,
@@ -14,19 +16,19 @@ use ide_db::{
     search::{FileReference, FileReferenceNode, SearchScope},
     source_change::SourceChangeBuilder,
     syntax_helpers::{node_ext::expr_as_name_ref, prettify_macro_expansion},
-    EditionedFileId, RootDatabase,
 };
-use itertools::{izip, Itertools};
+use itertools::{Itertools, izip};
 use syntax::{
+    AstNode, NodeOrToken, SyntaxKind,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, HasArgList, HasGenericArgs, Pat, PathExpr,
+        self, HasArgList, HasGenericArgs, Pat, PathExpr, edit::IndentLevel, edit_in_place::Indent,
     },
-    ted, AstNode, NodeOrToken, SyntaxKind,
+    ted,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: inline_into_callers

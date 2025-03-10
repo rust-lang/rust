@@ -5,20 +5,21 @@ use ide_db::{
     ty_filter::TryEnum,
 };
 use syntax::{
+    AstNode,
+    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
+    T,
     ast::{
         self,
         edit::{AstNodeEdit, IndentLevel},
         make,
     },
-    ted, AstNode,
-    SyntaxKind::{FN, FOR_EXPR, LOOP_EXPR, WHILE_EXPR, WHITESPACE},
-    T,
+    ted,
 };
 
 use crate::{
+    AssistId, AssistKind,
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression_legacy,
-    AssistId, AssistKind,
 };
 
 // Assist: convert_to_guarded_return

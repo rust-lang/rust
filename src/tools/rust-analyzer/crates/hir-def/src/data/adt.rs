@@ -11,6 +11,7 @@ use rustc_abi::{IntegerType, ReprOptions};
 use triomphe::Arc;
 
 use crate::{
+    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
     db::DefDatabase,
     hir::Expr,
     item_tree::{
@@ -20,7 +21,6 @@ use crate::{
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
     type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
-    EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
 };
 
 /// Note that we use `StructData` for unions as well!

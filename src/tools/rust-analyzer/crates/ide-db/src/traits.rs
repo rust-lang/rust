@@ -1,9 +1,9 @@
 //! Functionality for obtaining data related to traits from the DB.
 
-use crate::{defs::Definition, RootDatabase};
-use hir::{db::HirDatabase, AsAssocItem, Semantics};
+use crate::{RootDatabase, defs::Definition};
+use hir::{AsAssocItem, Semantics, db::HirDatabase};
 use rustc_hash::FxHashSet;
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 /// Given the `impl` block, attempts to find the trait this `impl` corresponds to.
 pub fn resolve_target_trait(
@@ -113,7 +113,7 @@ fn assoc_item_of_trait(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use hir::FilePosition;
     use hir::Semantics;
     use salsa::AsDynDatabase;

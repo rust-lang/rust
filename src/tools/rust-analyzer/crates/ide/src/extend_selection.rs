@@ -3,11 +3,11 @@ use std::iter::successors;
 use hir::Semantics;
 use ide_db::RootDatabase;
 use syntax::{
-    algo::{self, skip_trivia_token},
-    ast::{self, AstNode, AstToken},
     Direction, NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxToken, TextRange, TextSize, TokenAtOffset, T,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize, TokenAtOffset,
+    algo::{self, skip_trivia_token},
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::FileRange;
@@ -178,11 +178,7 @@ fn extend_tokens_from_range(
     .last()?;
 
     let range = first.text_range().cover(last.text_range());
-    if range.contains_range(original_range) && original_range != range {
-        Some(range)
-    } else {
-        None
-    }
+    if range.contains_range(original_range) && original_range != range { Some(range) } else { None }
 }
 
 /// Find the shallowest node with same range, which allows us to traverse siblings.
@@ -216,11 +212,7 @@ fn extend_single_word_in_comment_or_string(
     let to: TextSize = (cursor_position + end_idx).into();
 
     let range = TextRange::new(from, to);
-    if range.is_empty() {
-        None
-    } else {
-        Some(range + leaf.text_range().start())
-    }
+    if range.is_empty() { None } else { Some(range + leaf.text_range().start()) }
 }
 
 fn extend_ws(root: &SyntaxNode, ws: SyntaxToken, offset: TextSize) -> TextRange {

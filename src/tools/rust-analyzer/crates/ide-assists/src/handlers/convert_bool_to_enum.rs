@@ -2,23 +2,23 @@ use either::Either;
 use hir::ModuleDef;
 use ide_db::text_edit::TextRange;
 use ide_db::{
+    FxHashSet,
     assists::{AssistId, AssistKind},
     defs::Definition,
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope},
+    imports::insert_use::{ImportScope, insert_use},
     search::{FileReference, UsageSearchResult},
     source_change::SourceChangeBuilder,
-    FxHashSet,
 };
 use itertools::Itertools;
 use syntax::{
+    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
     ast::{
-        self,
+        self, HasName,
         edit::IndentLevel,
         edit_in_place::{AttrsOwnerEdit, Indent},
-        make, HasName,
+        make,
     },
-    AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 
 use crate::{

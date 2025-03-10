@@ -19,7 +19,7 @@ use span::Edition;
 use stdx::thin_vec::thin_vec_with_header_struct;
 use syntax::ast;
 
-pub use hir_expand::mod_path::{path, ModPath, PathKind};
+pub use hir_expand::mod_path::{ModPath, PathKind, path};
 
 pub use lower::hir_segment_to_ast_segment;
 

@@ -1,6 +1,6 @@
 use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
-use syntax::ast::{self, syntax_factory::SyntaxFactory, AstNode, HasGenericParams, HasName};
+use syntax::ast::{self, AstNode, HasGenericParams, HasName, syntax_factory::SyntaxFactory};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 

@@ -1,6 +1,6 @@
 use ide_db::syntax_helpers::suggest_name;
 use syntax::{
-    ast::{self, make, AstNode},
+    ast::{self, AstNode, make},
     ted,
 };
 

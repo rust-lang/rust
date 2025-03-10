@@ -7,18 +7,17 @@ use ide_db::{
     helpers::mod_path_to_ast,
     imports::import_assets::{ImportCandidate, LocatedImport},
 };
-use syntax::ast::HasGenericArgs;
 use syntax::Edition;
+use syntax::ast::HasGenericArgs;
 use syntax::{
-    ast,
-    ast::{make, HasArgList},
-    AstNode, NodeOrToken,
+    AstNode, NodeOrToken, ast,
+    ast::{HasArgList, make},
 };
 
 use crate::{
+    AssistId, AssistKind, GroupLabel,
     assist_context::{AssistContext, Assists},
     handlers::auto_import::find_importable_node,
-    AssistId, AssistKind, GroupLabel,
 };
 
 // Assist: qualify_path

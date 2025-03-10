@@ -2,14 +2,14 @@
 
 use std::ops::ControlFlow;
 
-use hir::{sym, Name, PathCandidateCallback, ScopeDef};
+use hir::{Name, PathCandidateCallback, ScopeDef, sym};
 use ide_db::FxHashSet;
 use syntax::ast;
 
 use crate::{
+    CompletionContext, Completions,
     completions::record::add_default_update,
     context::{BreakableKind, PathCompletionCtx, PathExprCtx, Qualified},
-    CompletionContext, Completions,
 };
 
 struct PathCallback<'a, F> {
@@ -79,11 +79,7 @@ pub(crate) fn complete_expr_path(
     let wants_const_token =
         ref_expr_parent.is_some() && has_raw_token && !has_const_token && !has_mut_token;
     let wants_mut_token = if ref_expr_parent.is_some() {
-        if has_raw_token {
-            !has_const_token && !has_mut_token
-        } else {
-            !has_mut_token
-        }
+        if has_raw_token { !has_const_token && !has_mut_token } else { !has_mut_token }
     } else {
         false
     };

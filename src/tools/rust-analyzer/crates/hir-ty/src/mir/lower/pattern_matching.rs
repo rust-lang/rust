@@ -1,9 +1,11 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::ExprId, AssocItemId};
+use hir_def::{AssocItemId, hir::ExprId};
 
 use crate::{
+    BindingMode,
     mir::{
+        LocalId, MutBorrowKind,
         lower::{
             BasicBlockId, BinOp, BindingId, BorrowKind, Either, Expr, FieldId, Idx, Interner,
             MemoryMap, MirLowerCtx, MirLowerError, MirSpan, Mutability, Operand, Pat, PatId, Place,
@@ -11,9 +13,7 @@ use crate::{
             Substitution, SwitchTargets, TerminatorKind, TupleFieldId, TupleId, TyBuilder, TyKind,
             ValueNs, VariantData, VariantId,
         },
-        LocalId, MutBorrowKind,
     },
-    BindingMode,
 };
 
 macro_rules! not_supported {
@@ -139,7 +139,7 @@ impl MirLowerCtx<'_> {
                     _ => {
                         return Err(MirLowerError::TypeError(
                             "non tuple type matched with tuple pattern",
-                        ))
+                        ));
                     }
                 };
                 self.pattern_match_tuple_like(
@@ -615,7 +615,7 @@ impl MirLowerCtx<'_> {
                 mode,
             )?,
             VariantId::UnionId(_) => {
-                return Err(MirLowerError::TypeError("pattern matching on union"))
+                return Err(MirLowerError::TypeError("pattern matching on union"));
             }
         })
     }
