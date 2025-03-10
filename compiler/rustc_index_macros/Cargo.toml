@@ -13,6 +13,3 @@ quote = "1"
 
 [features]
 nightly = []
-
-[lints]
-workspace = true

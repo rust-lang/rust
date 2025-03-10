@@ -252,14 +252,16 @@ impl CompletionRelevance {
     /// Provides a relevance score. Higher values are more relevant.
     ///
     /// The absolute value of the relevance score is not meaningful, for
-    /// example a value of 0 doesn't mean "not relevant", rather
+    /// example a value of BASE_SCORE doesn't mean "not relevant", rather
     /// it means "least relevant". The score value should only be used
     /// for relative ordering.
     ///
     /// See is_relevant if you need to make some judgement about score
     /// in an absolute sense.
+    const BASE_SCORE: u32 = u32::MAX / 2;
+
     pub fn score(self) -> u32 {
-        let mut score = !0 / 2;
+        let mut score = Self::BASE_SCORE;
         let CompletionRelevance {
             exact_name_match,
             type_match,
@@ -350,7 +352,7 @@ impl CompletionRelevance {
     /// some threshold such that we think it is especially likely
     /// to be relevant.
     pub fn is_relevant(&self) -> bool {
-        self.score() > 0
+        self.score() > Self::BASE_SCORE
     }
 }
 

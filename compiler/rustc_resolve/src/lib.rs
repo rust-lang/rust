@@ -20,6 +20,7 @@
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::{Cell, RefCell};

@@ -25,6 +25,3 @@ rustc = [
 # tidy-alphabetical-start
 itertools = "0.12"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

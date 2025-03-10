@@ -3,6 +3,7 @@
 #![doc(rust_logo)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod attributes;

@@ -1,10 +1,10 @@
 //! Code common to structs, unions, and enum variants.
 
 use crate::context::CompletionContext;
-use hir::{db::HirDatabase, sym, HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind};
+use hir::{sym, HasAttrs, HasCrate, HasVisibility, HirDisplay, StructKind};
 use ide_db::SnippetCap;
 use itertools::Itertools;
-use syntax::{Edition, SmolStr};
+use syntax::SmolStr;
 
 /// A rendered struct, union, or enum variant, split into fields for actual
 /// auto-completion (`literal`, using `field: ()`) and display in the
@@ -17,11 +17,10 @@ pub(crate) struct RenderedLiteral {
 /// Render a record type (or sub-type) to a `RenderedCompound`. Use `None` for
 /// the `name` argument for an anonymous type.
 pub(crate) fn render_record_lit(
-    db: &dyn HirDatabase,
+    ctx: &CompletionContext<'_>,
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     path: &str,
-    edition: Edition,
 ) -> RenderedLiteral {
     if snippet_cap.is_none() {
         return RenderedLiteral { literal: path.to_owned(), detail: path.to_owned() };
@@ -30,19 +29,19 @@ pub(crate) fn render_record_lit(
         if snippet_cap.is_some() {
             f(&format_args!(
                 "{}: ${{{}:()}}",
-                field.name(db).display(db.upcast(), edition),
+                field.name(ctx.db).display(ctx.db, ctx.edition),
                 idx + 1
             ))
         } else {
-            f(&format_args!("{}: ()", field.name(db).display(db.upcast(), edition)))
+            f(&format_args!("{}: ()", field.name(ctx.db).display(ctx.db, ctx.edition)))
         }
     });
 
     let types = fields.iter().format_with(", ", |field, f| {
         f(&format_args!(
             "{}: {}",
-            field.name(db).display(db.upcast(), edition),
-            field.ty(db).display(db, edition)
+            field.name(ctx.db).display(ctx.db, ctx.edition),
+            field.ty(ctx.db).display(ctx.db, ctx.display_target)
         ))
     });
 
@@ -55,11 +54,10 @@ pub(crate) fn render_record_lit(
 /// Render a tuple type (or sub-type) to a `RenderedCompound`. Use `None` for
 /// the `name` argument for an anonymous type.
 pub(crate) fn render_tuple_lit(
-    db: &dyn HirDatabase,
+    ctx: &CompletionContext<'_>,
     snippet_cap: Option<SnippetCap>,
     fields: &[hir::Field],
     path: &str,
-    edition: Edition,
 ) -> RenderedLiteral {
     if snippet_cap.is_none() {
         return RenderedLiteral { literal: path.to_owned(), detail: path.to_owned() };
@@ -72,7 +70,9 @@ pub(crate) fn render_tuple_lit(
         }
     });
 
-    let types = fields.iter().format_with(", ", |field, f| f(&field.ty(db).display(db, edition)));
+    let types = fields
+        .iter()
+        .format_with(", ", |field, f| f(&field.ty(ctx.db).display(ctx.db, ctx.display_target)));
 
     RenderedLiteral {
         literal: format!("{path}({completions})"),

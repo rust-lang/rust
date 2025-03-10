@@ -30,6 +30,7 @@ pub struct Sysroot {
 pub enum RustLibSrcWorkspace {
     Workspace(CargoWorkspace),
     Json(ProjectJson),
+    Stitched(stitched::Stitched),
     Empty,
 }
 
@@ -60,6 +61,7 @@ impl Sysroot {
         match &self.workspace {
             RustLibSrcWorkspace::Workspace(ws) => ws.packages().next().is_none(),
             RustLibSrcWorkspace::Json(project_json) => project_json.n_crates() == 0,
+            RustLibSrcWorkspace::Stitched(stitched) => stitched.crates.is_empty(),
             RustLibSrcWorkspace::Empty => true,
         }
     }
@@ -72,6 +74,7 @@ impl Sysroot {
         match &self.workspace {
             RustLibSrcWorkspace::Workspace(ws) => ws.packages().count(),
             RustLibSrcWorkspace::Json(project_json) => project_json.n_crates(),
+            RustLibSrcWorkspace::Stitched(stitched) => stitched.crates.len(),
             RustLibSrcWorkspace::Empty => 0,
         }
     }
@@ -197,6 +200,51 @@ impl Sysroot {
                     return Some(loaded);
                 }
             }
+            tracing::debug!("Stitching sysroot library: {src_root}");
+
+            let mut stitched = stitched::Stitched { crates: Default::default() };
+
+            for path in stitched::SYSROOT_CRATES.trim().lines() {
+                let name = path.split('/').next_back().unwrap();
+                let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
+                    .into_iter()
+                    .map(|it| src_root.join(it))
+                    .filter_map(|it| ManifestPath::try_from(it).ok())
+                    .find(|it| fs::metadata(it).is_ok());
+
+                if let Some(root) = root {
+                    stitched.crates.alloc(stitched::RustLibSrcCrateData {
+                        name: name.into(),
+                        root,
+                        deps: Vec::new(),
+                    });
+                }
+            }
+
+            if let Some(std) = stitched.by_name("std") {
+                for dep in stitched::STD_DEPS.trim().lines() {
+                    if let Some(dep) = stitched.by_name(dep) {
+                        stitched.crates[std].deps.push(dep)
+                    }
+                }
+            }
+
+            if let Some(alloc) = stitched.by_name("alloc") {
+                for dep in stitched::ALLOC_DEPS.trim().lines() {
+                    if let Some(dep) = stitched.by_name(dep) {
+                        stitched.crates[alloc].deps.push(dep)
+                    }
+                }
+            }
+
+            if let Some(proc_macro) = stitched.by_name("proc_macro") {
+                for dep in stitched::PROC_MACRO_DEPS.trim().lines() {
+                    if let Some(dep) = stitched.by_name(dep) {
+                        stitched.crates[proc_macro].deps.push(dep)
+                    }
+                }
+            }
+            return Some(RustLibSrcWorkspace::Stitched(stitched));
         } else if let RustSourceWorkspaceConfig::Json(project_json) = sysroot_source_config {
             return Some(RustLibSrcWorkspace::Json(project_json.clone()));
         }
@@ -216,6 +264,7 @@ impl Sysroot {
                         .crates()
                         .filter_map(|(_, krate)| krate.display_name.clone())
                         .any(|name| name.canonical_name().as_str() == "core"),
+                    RustLibSrcWorkspace::Stitched(stitched) => stitched.by_name("core").is_some(),
                     RustLibSrcWorkspace::Empty => true,
                 };
                 if !has_core {
@@ -390,4 +439,92 @@ fn get_rust_lib_src(sysroot_path: &AbsPath) -> Option<AbsPathBuf> {
     } else {
         None
     }
+}
+
+// FIXME: Remove this, that will bump our project MSRV to 1.82
+pub(crate) mod stitched {
+    use std::ops;
+
+    use base_db::CrateName;
+    use la_arena::{Arena, Idx};
+
+    use crate::ManifestPath;
+
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub struct Stitched {
+        pub(super) crates: Arena<RustLibSrcCrateData>,
+    }
+
+    impl ops::Index<RustLibSrcCrate> for Stitched {
+        type Output = RustLibSrcCrateData;
+        fn index(&self, index: RustLibSrcCrate) -> &RustLibSrcCrateData {
+            &self.crates[index]
+        }
+    }
+
+    impl Stitched {
+        pub(crate) fn public_deps(
+            &self,
+        ) -> impl Iterator<Item = (CrateName, RustLibSrcCrate, bool)> + '_ {
+            // core is added as a dependency before std in order to
+            // mimic rustcs dependency order
+            [("core", true), ("alloc", false), ("std", true), ("test", false)]
+                .into_iter()
+                .filter_map(move |(name, prelude)| {
+                    Some((CrateName::new(name).unwrap(), self.by_name(name)?, prelude))
+                })
+        }
+
+        pub(crate) fn proc_macro(&self) -> Option<RustLibSrcCrate> {
+            self.by_name("proc_macro")
+        }
+
+        pub(crate) fn crates(&self) -> impl ExactSizeIterator<Item = RustLibSrcCrate> + '_ {
+            self.crates.iter().map(|(id, _data)| id)
+        }
+
+        pub(super) fn by_name(&self, name: &str) -> Option<RustLibSrcCrate> {
+            let (id, _data) = self.crates.iter().find(|(_id, data)| data.name == name)?;
+            Some(id)
+        }
+    }
+
+    pub(crate) type RustLibSrcCrate = Idx<RustLibSrcCrateData>;
+
+    #[derive(Debug, Clone, Eq, PartialEq)]
+    pub(crate) struct RustLibSrcCrateData {
+        pub(crate) name: String,
+        pub(crate) root: ManifestPath,
+        pub(crate) deps: Vec<RustLibSrcCrate>,
+    }
+
+    pub(super) const SYSROOT_CRATES: &str = "
+alloc
+backtrace
+core
+panic_abort
+panic_unwind
+proc_macro
+profiler_builtins
+std
+stdarch/crates/std_detect
+test
+unwind";
+
+    pub(super) const ALLOC_DEPS: &str = "core";
+
+    pub(super) const STD_DEPS: &str = "
+alloc
+panic_unwind
+panic_abort
+core
+profiler_builtins
+unwind
+std_detect
+test";
+
+    // core is required for our builtin derives to work in the proc_macro lib currently
+    pub(super) const PROC_MACRO_DEPS: &str = "
+std
+core";
 }

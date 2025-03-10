@@ -26,6 +26,3 @@ rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_type_ir = { path = "../rustc_type_ir" }
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

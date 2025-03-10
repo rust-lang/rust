@@ -18,6 +18,3 @@ rustc_span = { path = "../rustc_span" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 tracing = "0.1"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

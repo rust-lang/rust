@@ -3,7 +3,7 @@ use std::cmp::max;
 use super::*;
 use crate::fx::FxHashMap;
 
-pub(super) struct TestGraph {
+pub struct TestGraph {
     num_nodes: usize,
     start_node: usize,
     successors: FxHashMap<usize, Vec<usize>>,
@@ -11,7 +11,7 @@ pub(super) struct TestGraph {
 }
 
 impl TestGraph {
-    pub(super) fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
+    pub fn new(start_node: usize, edges: &[(usize, usize)]) -> Self {
         let mut graph = TestGraph {
             num_nodes: start_node + 1,
             start_node,

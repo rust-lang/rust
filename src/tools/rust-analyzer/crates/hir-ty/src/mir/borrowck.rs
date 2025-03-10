@@ -13,6 +13,7 @@ use triomphe::Arc;
 
 use crate::{
     db::{HirDatabase, InternedClosure},
+    display::DisplayTarget,
     mir::Operand,
     utils::ClosureSubst,
     ClosureId, Interner, Substitution, Ty, TyExt, TypeFlags,
@@ -422,7 +423,10 @@ fn ever_initialized_map(
             let Some(terminator) = &block.terminator else {
                 never!(
                     "Terminator should be none only in construction.\nThe body:\n{}",
-                    body.pretty_print(db)
+                    body.pretty_print(
+                        db,
+                        DisplayTarget::from_crate(db, body.owner.krate(db.upcast()))
+                    )
                 );
                 return;
             };

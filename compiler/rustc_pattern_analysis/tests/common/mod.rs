@@ -5,7 +5,7 @@ use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
 use rustc_pattern_analysis::{MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
-fn init_tracing() {
+pub fn init_tracing() {
     use tracing_subscriber::Layer;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
@@ -24,7 +24,7 @@ fn init_tracing() {
 /// A simple set of types.
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(super) enum Ty {
+pub enum Ty {
     /// Booleans
     Bool,
     /// 8-bit unsigned integers
@@ -41,7 +41,7 @@ pub(super) enum Ty {
 
 /// The important logic.
 impl Ty {
-    pub(super) fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
+    pub fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
         use Constructor::*;
         match (ctor, *self) {
             (Struct, Ty::Tuple(tys)) => tys.iter().copied().collect(),
@@ -63,7 +63,7 @@ impl Ty {
         }
     }
 
-    fn ctor_set(&self) -> ConstructorSet<Cx> {
+    pub fn ctor_set(&self) -> ConstructorSet<Cx> {
         match *self {
             Ty::Bool => ConstructorSet::Bool,
             Ty::U8 => ConstructorSet::Integers {
@@ -104,7 +104,7 @@ impl Ty {
         }
     }
 
-    fn write_variant_name(
+    pub fn write_variant_name(
         &self,
         f: &mut std::fmt::Formatter<'_>,
         ctor: &Constructor<Cx>,
@@ -120,7 +120,7 @@ impl Ty {
 }
 
 /// Compute usefulness in our simple context (and set up tracing for easier debugging).
-pub(super) fn compute_match_usefulness<'p>(
+pub fn compute_match_usefulness<'p>(
     arms: &[MatchArm<'p, Cx>],
     ty: Ty,
     scrut_validity: PlaceValidity,
@@ -137,7 +137,7 @@ pub(super) fn compute_match_usefulness<'p>(
 }
 
 #[derive(Debug)]
-pub(super) struct Cx;
+pub struct Cx;
 
 /// The context for pattern analysis. Forwards anything interesting to `Ty` methods.
 impl PatCx for Cx {

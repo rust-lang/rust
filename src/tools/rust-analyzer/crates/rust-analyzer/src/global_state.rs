@@ -637,6 +637,25 @@ impl GlobalState {
             }
         });
     }
+
+    pub(crate) fn check_workspaces_msrv(&self) -> impl Iterator<Item = String> + '_ {
+        self.workspaces.iter().filter_map(|ws| {
+            if let Some(toolchain) = &ws.toolchain {
+                if *toolchain < crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION {
+                    return Some(format!(
+                        "Workspace `{}` is using an outdated toolchain version `{}` but \
+                        rust-analyzer only supports `{}` and higher.\n\
+                        Consider using the rust-analyzer rustup component for your toolchain or
+                        upgrade your toolchain to a supported version.\n\n",
+                        ws.manifest_or_root(),
+                        toolchain,
+                        crate::MINIMUM_SUPPORTED_TOOLCHAIN_VERSION,
+                    ));
+                }
+            }
+            None
+        })
+    }
 }
 
 impl Drop for GlobalState {

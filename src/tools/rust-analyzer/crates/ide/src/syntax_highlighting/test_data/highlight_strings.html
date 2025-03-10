@@ -14,12 +14,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
-.trait.unsafe       { color: #BC8383; }
-.operator.unsafe    { color: #BC8383; }
-.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
-.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -41,6 +35,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 .const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }
@@ -169,12 +164,12 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
     <span class="macro public">toho</span><span class="macro_bang">!</span><span class="parenthesis">(</span><span class="string_literal macro">"{}fmt"</span><span class="comma macro">,</span> <span class="numeric_literal macro">0</span><span class="parenthesis">)</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">i</span><span class="colon">:</span> <span class="builtin_type">u64</span> <span class="operator">=</span> <span class="numeric_literal">3</span><span class="semicolon">;</span>
     <span class="keyword">let</span> <span class="variable declaration">o</span><span class="colon">:</span> <span class="builtin_type">u64</span><span class="semicolon">;</span>
-    <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang">!</span><span class="parenthesis">(</span>
+    <span class="module crate_root default_library library">core</span><span class="operator">::</span><span class="module default_library library">arch</span><span class="operator">::</span><span class="macro default_library library unsafe">asm</span><span class="macro_bang unsafe">!</span><span class="parenthesis unsafe">(</span>
         <span class="string_literal macro">"mov {</span><span class="variable">0</span><span class="string_literal macro">}, {</span><span class="variable">1</span><span class="string_literal macro">}"</span><span class="comma macro">,</span>
         <span class="string_literal macro">"add {</span><span class="variable">0</span><span class="string_literal macro">}, 5"</span><span class="comma macro">,</span>
         <span class="keyword macro">out</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">o</span><span class="comma macro">,</span>
         <span class="keyword control macro">in</span><span class="parenthesis macro">(</span><span class="reg library macro">reg</span><span class="parenthesis macro">)</span> <span class="variable macro">i</span><span class="comma macro">,</span>
-    <span class="parenthesis">)</span><span class="semicolon">;</span>
+    <span class="parenthesis unsafe">)</span><span class="semicolon">;</span>
 
     <span class="keyword const">const</span> <span class="constant const declaration">CONSTANT</span><span class="colon">:</span> <span class="parenthesis">(</span><span class="parenthesis">)</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="colon">:</span>
     <span class="keyword">let</span> <span class="keyword">mut</span> <span class="variable declaration mutable">m</span> <span class="operator">=</span> <span class="parenthesis">(</span><span class="parenthesis">)</span><span class="semicolon">;</span>

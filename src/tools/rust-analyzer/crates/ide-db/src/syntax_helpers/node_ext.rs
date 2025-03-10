@@ -1,4 +1,6 @@
 //! Various helper functions to work with SyntaxNodes.
+use std::ops::ControlFlow;
+
 use itertools::Itertools;
 use parser::T;
 use span::Edition;
@@ -119,7 +121,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Stmt::cast(node.clone()) {
             Some(ast::Stmt::LetStmt(l)) => {
                 if let Some(pat) = l.pat() {
-                    walk_pat(&pat, cb);
+                    walk_pat(&pat, &mut |pat| {
+                        cb(pat);
+                        ControlFlow::<(), ()>::Continue(())
+                    });
                 }
                 if let Some(expr) = l.initializer() {
                     walk_patterns_in_expr(&expr, cb);
@@ -154,7 +159,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                     }
                 } else if let Some(pat) = ast::Pat::cast(node) {
                     preorder.skip_subtree();
-                    walk_pat(&pat, cb);
+                    walk_pat(&pat, &mut |pat| {
+                        cb(pat);
+                        ControlFlow::<(), ()>::Continue(())
+                    });
                 }
             }
         }
@@ -162,7 +170,10 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
 }
 
 /// Preorder walk all the pattern's sub patterns.
-pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
+pub fn walk_pat<T>(
+    pat: &ast::Pat,
+    cb: &mut dyn FnMut(ast::Pat) -> ControlFlow<T>,
+) -> ControlFlow<T> {
     let mut preorder = pat.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -173,10 +184,10 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Pat::cast(node) {
             Some(pat @ ast::Pat::ConstBlockPat(_)) => {
                 preorder.skip_subtree();
-                cb(pat);
+                cb(pat)?;
             }
             Some(pat) => {
-                cb(pat);
+                cb(pat)?;
             }
             // skip const args
             None if ast::GenericArg::can_cast(kind) => {
@@ -185,6 +196,7 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
             None => (),
         }
     }
+    ControlFlow::Continue(())
 }
 
 /// Preorder walk all the type's sub types.

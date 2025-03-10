@@ -16,6 +16,7 @@
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cmp::max;

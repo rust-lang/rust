@@ -14,8 +14,11 @@ mod tests;
 
 use std::ops::ControlFlow;
 
-use hir::{HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics};
-use ide_db::{FxHashMap, Ranker, RootDatabase, SymbolKind};
+use either::Either;
+use hir::{
+    DefWithBody, HirFileIdExt, InFile, InRealFile, MacroFileIdExt, MacroKind, Name, Semantics,
+};
+use ide_db::{FxHashMap, FxHashSet, Ranker, RootDatabase, SymbolKind};
 use span::EditionedFileId;
 use syntax::{
     ast::{self, IsString},
@@ -232,7 +235,6 @@ fn traverse(
     range_to_highlight: TextRange,
 ) {
     let is_unlinked = sema.file_to_module_def(file_id).is_none();
-    let mut bindings_shadow_count: FxHashMap<Name, u32> = FxHashMap::default();
 
     enum AttrOrDerive {
         Attr(ast::Item),
@@ -247,12 +249,21 @@ fn traverse(
         }
     }
 
+    let empty = FxHashSet::default();
+
+    // FIXME: accommodate range highlighting
     let mut tt_level = 0;
+    // FIXME: accommodate range highlighting
     let mut attr_or_derive_item = None;
 
     // FIXME: these are not perfectly accurate, we determine them by the real file's syntax tree
     // an attribute nested in a macro call will not emit `inside_attribute`
     let mut inside_attribute = false;
+
+    // FIXME: accommodate range highlighting
+    let mut body_stack: Vec<Option<DefWithBody>> = vec![];
+    let mut per_body_cache: FxHashMap<DefWithBody, (FxHashSet<_>, FxHashMap<Name, u32>)> =
+        FxHashMap::default();
 
     // Walk all nodes, keeping track of whether we are inside a macro or not.
     // If in macro, expand it first and highlight the expanded code.
@@ -282,48 +293,68 @@ fn traverse(
             Leave(NodeOrToken::Node(node)) if ast::Attr::can_cast(node.kind()) => {
                 inside_attribute = false
             }
-
             Enter(NodeOrToken::Node(node)) => {
-                if let Some(item) = ast::Item::cast(node.clone()) {
+                if let Some(item) = <Either<ast::Item, ast::Variant>>::cast(node.clone()) {
                     match item {
-                        ast::Item::Fn(_) | ast::Item::Const(_) | ast::Item::Static(_) => {
-                            bindings_shadow_count.clear()
-                        }
-                        _ => (),
-                    }
-
-                    if attr_or_derive_item.is_none() {
-                        if sema.is_attr_macro_call(InFile::new(file_id.into(), &item)) {
-                            attr_or_derive_item = Some(AttrOrDerive::Attr(item));
-                        } else {
-                            let adt = match item {
-                                ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
-                                ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
-                                ast::Item::Union(it) => Some(ast::Adt::Union(it)),
-                                _ => None,
-                            };
-                            match adt {
-                                Some(adt)
-                                    if sema
-                                        .is_derive_annotated(InFile::new(file_id.into(), &adt)) =>
-                                {
-                                    attr_or_derive_item =
-                                        Some(AttrOrDerive::Derive(ast::Item::from(adt)));
+                        Either::Left(item) => {
+                            match &item {
+                                ast::Item::Fn(it) => {
+                                    body_stack.push(sema.to_def(it).map(Into::into))
+                                }
+                                ast::Item::Const(it) => {
+                                    body_stack.push(sema.to_def(it).map(Into::into))
+                                }
+                                ast::Item::Static(it) => {
+                                    body_stack.push(sema.to_def(it).map(Into::into))
                                 }
                                 _ => (),
                             }
+
+                            if attr_or_derive_item.is_none() {
+                                if sema.is_attr_macro_call(InFile::new(file_id.into(), &item)) {
+                                    attr_or_derive_item = Some(AttrOrDerive::Attr(item));
+                                } else {
+                                    let adt = match item {
+                                        ast::Item::Enum(it) => Some(ast::Adt::Enum(it)),
+                                        ast::Item::Struct(it) => Some(ast::Adt::Struct(it)),
+                                        ast::Item::Union(it) => Some(ast::Adt::Union(it)),
+                                        _ => None,
+                                    };
+                                    match adt {
+                                        Some(adt)
+                                            if sema.is_derive_annotated(InFile::new(
+                                                file_id.into(),
+                                                &adt,
+                                            )) =>
+                                        {
+                                            attr_or_derive_item =
+                                                Some(AttrOrDerive::Derive(ast::Item::from(adt)));
+                                        }
+                                        _ => (),
+                                    }
+                                }
+                            }
                         }
+                        Either::Right(it) => body_stack.push(sema.to_def(&it).map(Into::into)),
                     }
                 }
             }
-            Leave(NodeOrToken::Node(node)) if ast::Item::can_cast(node.kind()) => {
+            Leave(NodeOrToken::Node(node))
+                if <Either<ast::Item, ast::Variant>>::can_cast(node.kind()) =>
+            {
                 match ast::Item::cast(node.clone()) {
-                    Some(item)
-                        if attr_or_derive_item.as_ref().is_some_and(|it| *it.item() == item) =>
-                    {
-                        attr_or_derive_item = None;
+                    Some(item) => {
+                        if attr_or_derive_item.as_ref().is_some_and(|it| *it.item() == item) {
+                            attr_or_derive_item = None;
+                        }
+                        if matches!(
+                            item,
+                            ast::Item::Fn(_) | ast::Item::Const(_) | ast::Item::Static(_)
+                        ) {
+                            body_stack.pop();
+                        }
                     }
-                    _ => (),
+                    None => _ = body_stack.pop(),
                 }
             }
             _ => (),
@@ -361,16 +392,22 @@ fn traverse(
                 None => false,
             };
 
-        let descended_element = if in_macro {
+        let (descended_element, current_body) = match element {
             // Attempt to descend tokens into macro-calls.
-            match element {
-                NodeOrToken::Token(token) => descend_token(sema, InRealFile::new(file_id, token)),
-                n => InFile::new(file_id.into(), n),
+            NodeOrToken::Token(token) if in_macro => {
+                let descended = descend_token(sema, InRealFile::new(file_id, token));
+                let body = match &descended.value {
+                    NodeOrToken::Node(n) => {
+                        sema.body_for(InFile::new(descended.file_id, n.syntax()))
+                    }
+                    NodeOrToken::Token(t) => {
+                        t.parent().and_then(|it| sema.body_for(InFile::new(descended.file_id, &it)))
+                    }
+                };
+                (descended, body)
             }
-        } else {
-            InFile::new(file_id.into(), element)
+            n => (InFile::new(file_id.into(), n), body_stack.last().copied().flatten()),
         };
-
         // string highlight injections
         if let (Some(original_token), Some(descended_token)) =
             (original_token, descended_element.value.as_token())
@@ -390,12 +427,24 @@ fn traverse(
         }
 
         let edition = descended_element.file_id.edition(sema.db);
+        let (unsafe_ops, bindings_shadow_count) = match current_body {
+            Some(current_body) => {
+                let (ops, bindings) = per_body_cache
+                    .entry(current_body)
+                    .or_insert_with(|| (sema.get_unsafe_ops(current_body), Default::default()));
+                (&*ops, Some(bindings))
+            }
+            None => (&empty, None),
+        };
+        let is_unsafe_node =
+            |node| unsafe_ops.contains(&InFile::new(descended_element.file_id, node));
         let element = match descended_element.value {
             NodeOrToken::Node(name_like) => {
                 let hl = highlight::name_like(
                     sema,
                     krate,
-                    &mut bindings_shadow_count,
+                    bindings_shadow_count,
+                    &is_unsafe_node,
                     config.syntactic_name_ref_highlighting,
                     name_like,
                     edition,
@@ -408,7 +457,8 @@ fn traverse(
                 hl
             }
             NodeOrToken::Token(token) => {
-                highlight::token(sema, token, edition, tt_level > 0).zip(Some(None))
+                highlight::token(sema, token, edition, &is_unsafe_node, tt_level > 0)
+                    .zip(Some(None))
             }
         };
         if let Some((mut highlight, binding_hash)) = element {
@@ -543,7 +593,7 @@ fn filter_by_config(highlight: &mut Highlight, config: HighlightConfig) -> bool 
                 *tag = HlTag::Punctuation(HlPunct::Other);
             }
         }
-        HlTag::Punctuation(_) if !config.punctuation => return false,
+        HlTag::Punctuation(_) if !config.punctuation && highlight.mods.is_empty() => return false,
         tag @ HlTag::Punctuation(_) if !config.specialize_punctuation => {
             *tag = HlTag::Punctuation(HlPunct::Other);
         }

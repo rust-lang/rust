@@ -7,6 +7,7 @@
 #![feature(proc_macro_span)]
 #![feature(rustdoc_internals)]
 #![feature(track_path)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;

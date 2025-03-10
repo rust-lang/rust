@@ -22,6 +22,3 @@ rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 thin-vec = "0.2.12"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

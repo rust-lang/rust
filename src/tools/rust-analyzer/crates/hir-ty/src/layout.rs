@@ -6,9 +6,8 @@ use base_db::ra_salsa::Cycle;
 use chalk_ir::{AdtId, FloatTy, IntTy, TyKind, UintTy};
 use hir_def::{
     layout::{
-        Float, Integer, LayoutCalculator, LayoutCalculatorError,
-        LayoutData, Primitive, ReprOptions, Scalar, StructKind, TargetDataLayout,
-        WrappingRange,
+        Float, Integer, LayoutCalculator, LayoutCalculatorError, LayoutData, Primitive,
+        ReprOptions, Scalar, StructKind, TargetDataLayout, WrappingRange,
     },
     LocalFieldId, StructId,
 };
@@ -192,43 +191,52 @@ pub fn layout_of_ty_query(
                     valid_range: WrappingRange { start: 0, end: 0x10FFFF },
                 },
             ),
-            chalk_ir::Scalar::Int(i) => Layout::scalar(dl, scalar_unit(
+            chalk_ir::Scalar::Int(i) => Layout::scalar(
                 dl,
-                Primitive::Int(
-                    match i {
-                        IntTy::Isize => dl.ptr_sized_integer(),
-                        IntTy::I8 => Integer::I8,
-                        IntTy::I16 => Integer::I16,
-                        IntTy::I32 => Integer::I32,
-                        IntTy::I64 => Integer::I64,
-                        IntTy::I128 => Integer::I128,
-                    },
-                    true,
+                scalar_unit(
+                    dl,
+                    Primitive::Int(
+                        match i {
+                            IntTy::Isize => dl.ptr_sized_integer(),
+                            IntTy::I8 => Integer::I8,
+                            IntTy::I16 => Integer::I16,
+                            IntTy::I32 => Integer::I32,
+                            IntTy::I64 => Integer::I64,
+                            IntTy::I128 => Integer::I128,
+                        },
+                        true,
+                    ),
                 ),
-            )),
-            chalk_ir::Scalar::Uint(i) => Layout::scalar(dl, scalar_unit(
+            ),
+            chalk_ir::Scalar::Uint(i) => Layout::scalar(
                 dl,
-                Primitive::Int(
-                    match i {
-                        UintTy::Usize => dl.ptr_sized_integer(),
-                        UintTy::U8 => Integer::I8,
-                        UintTy::U16 => Integer::I16,
-                        UintTy::U32 => Integer::I32,
-                        UintTy::U64 => Integer::I64,
-                        UintTy::U128 => Integer::I128,
-                    },
-                    false,
+                scalar_unit(
+                    dl,
+                    Primitive::Int(
+                        match i {
+                            UintTy::Usize => dl.ptr_sized_integer(),
+                            UintTy::U8 => Integer::I8,
+                            UintTy::U16 => Integer::I16,
+                            UintTy::U32 => Integer::I32,
+                            UintTy::U64 => Integer::I64,
+                            UintTy::U128 => Integer::I128,
+                        },
+                        false,
+                    ),
                 ),
-            )),
-            chalk_ir::Scalar::Float(f) => Layout::scalar(dl, scalar_unit(
+            ),
+            chalk_ir::Scalar::Float(f) => Layout::scalar(
                 dl,
-                Primitive::Float(match f {
-                    FloatTy::F16 => Float::F16,
-                    FloatTy::F32 => Float::F32,
-                    FloatTy::F64 => Float::F64,
-                    FloatTy::F128 => Float::F128,
-                }),
-            )),
+                scalar_unit(
+                    dl,
+                    Primitive::Float(match f {
+                        FloatTy::F16 => Float::F16,
+                        FloatTy::F32 => Float::F32,
+                        FloatTy::F64 => Float::F64,
+                        FloatTy::F128 => Float::F128,
+                    }),
+                ),
+            ),
         },
         TyKind::Tuple(len, tys) => {
             let kind = if *len == 0 { StructKind::AlwaysSized } else { StructKind::MaybeUnsized };
@@ -341,6 +349,9 @@ pub fn layout_of_ty_query(
         TyKind::Error => return Err(LayoutError::HasErrorType),
         TyKind::AssociatedType(id, subst) => {
             // Try again with `TyKind::Alias` to normalize the associated type.
+            // Usually we should not try to normalize `TyKind::AssociatedType`, but layout calculation is used
+            // in monomorphized MIR where this is okay. If outside monomorphization, this will lead to cycle,
+            // which we will recover from with an error.
             let ty = TyKind::Alias(chalk_ir::AliasTy::Projection(ProjectionTy {
                 associated_ty_id: *id,
                 substitution: subst.clone(),
