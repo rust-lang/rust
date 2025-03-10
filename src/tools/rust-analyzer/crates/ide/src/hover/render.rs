@@ -3,7 +3,7 @@ use std::{env, mem, ops::Not};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DropGlue,
+    db::ExpandDatabase, Adt, AsAssocItem, AsExternAssocItem, CaptureKind, DisplayTarget, DropGlue,
     DynCompatibilityViolation, HasCrate, HasSource, HirDisplay, Layout, LayoutError,
     MethodViolationCode, Name, Semantics, Symbol, Trait, Type, TypeInfo, VariantDef,
 };
@@ -38,12 +38,13 @@ pub(super) fn type_info_of(
     _config: &HoverConfig,
     expr_or_pat: &Either<ast::Expr, ast::Pat>,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let ty_info = match expr_or_pat {
         Either::Left(expr) => sema.type_of_expr(expr)?,
         Either::Right(pat) => sema.type_of_pat(pat)?,
     };
-    type_info(sema, _config, ty_info, edition)
+    type_info(sema, _config, ty_info, edition, display_target)
 }
 
 pub(super) fn closure_expr(
@@ -51,9 +52,10 @@ pub(super) fn closure_expr(
     config: &HoverConfig,
     c: ast::ClosureExpr,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let TypeInfo { original, .. } = sema.type_of_expr(&c.into())?;
-    closure_ty(sema, config, &TypeInfo { original, adjusted: None }, edition)
+    closure_ty(sema, config, &TypeInfo { original, adjusted: None }, edition, display_target)
 }
 
 pub(super) fn try_expr(
@@ -61,6 +63,7 @@ pub(super) fn try_expr(
     _config: &HoverConfig,
     try_expr: &ast::TryExpr,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let inner_ty = sema.type_of_expr(&try_expr.expr()?)?.original;
     let mut ancestors = try_expr.syntax().ancestors();
@@ -127,8 +130,8 @@ pub(super) fn try_expr(
         res.actions.push(actions);
     }
 
-    let inner_ty = inner_ty.display(sema.db, edition).to_string();
-    let body_ty = body_ty.display(sema.db, edition).to_string();
+    let inner_ty = inner_ty.display(sema.db, display_target).to_string();
+    let body_ty = body_ty.display(sema.db, display_target).to_string();
     let ty_len_max = inner_ty.len().max(body_ty.len());
 
     let l = "Propagated as: ".len() - " Type: ".len();
@@ -153,6 +156,7 @@ pub(super) fn deref_expr(
     _config: &HoverConfig,
     deref_expr: &ast::PrefixExpr,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let inner_ty = sema.type_of_expr(&deref_expr.expr()?)?.original;
     let TypeInfo { original, adjusted } =
@@ -170,9 +174,9 @@ pub(super) fn deref_expr(
 
     res.markup = if let Some(adjusted_ty) = adjusted {
         walk_and_push_ty(sema.db, &adjusted_ty, &mut push_new_def);
-        let original = original.display(sema.db, edition).to_string();
-        let adjusted = adjusted_ty.display(sema.db, edition).to_string();
-        let inner = inner_ty.display(sema.db, edition).to_string();
+        let original = original.display(sema.db, display_target).to_string();
+        let adjusted = adjusted_ty.display(sema.db, display_target).to_string();
+        let inner = inner_ty.display(sema.db, display_target).to_string();
         let type_len = "To type: ".len();
         let coerced_len = "Coerced to: ".len();
         let deref_len = "Dereferenced from: ".len();
@@ -190,8 +194,8 @@ pub(super) fn deref_expr(
         )
         .into()
     } else {
-        let original = original.display(sema.db, edition).to_string();
-        let inner = inner_ty.display(sema.db, edition).to_string();
+        let original = original.display(sema.db, display_target).to_string();
+        let inner = inner_ty.display(sema.db, display_target).to_string();
         let type_len = "To type: ".len();
         let deref_len = "Dereferenced from: ".len();
         let max_len = (original.len() + type_len).max(inner.len() + deref_len);
@@ -216,6 +220,7 @@ pub(super) fn underscore(
     config: &HoverConfig,
     token: &SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     if token.kind() != T![_] {
         return None;
@@ -224,8 +229,8 @@ pub(super) fn underscore(
     let _it = match_ast! {
         match parent {
             ast::InferType(it) => it,
-            ast::UnderscoreExpr(it) => return type_info_of(sema, config, &Either::Left(ast::Expr::UnderscoreExpr(it)),edition),
-            ast::WildcardPat(it) => return type_info_of(sema, config, &Either::Right(ast::Pat::WildcardPat(it)),edition),
+            ast::UnderscoreExpr(it) => return type_info_of(sema, config, &Either::Left(ast::Expr::UnderscoreExpr(it)),edition, display_target),
+            ast::WildcardPat(it) => return type_info_of(sema, config, &Either::Right(ast::Pat::WildcardPat(it)),edition, display_target),
             _ => return None,
         }
     };
@@ -259,6 +264,7 @@ pub(super) fn keyword(
     config: &HoverConfig,
     token: &SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     if !token.kind().is_keyword(edition) || !config.documentation || !config.keywords {
         return None;
@@ -267,7 +273,7 @@ pub(super) fn keyword(
     let famous_defs = FamousDefs(sema, sema.scope(&parent)?.krate());
 
     let KeywordHint { description, keyword_mod, actions } =
-        keyword_hints(sema, token, parent, edition);
+        keyword_hints(sema, token, parent, edition, display_target);
 
     let doc_owner = find_std_module(&famous_defs, &keyword_mod, edition)?;
     let docs = doc_owner.docs(sema.db)?;
@@ -288,6 +294,7 @@ pub(super) fn struct_rest_pat(
     _config: &HoverConfig,
     pattern: &ast::RecordPat,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> HoverResult {
     let missing_fields = sema.record_pattern_missing_fields(pattern);
 
@@ -309,7 +316,7 @@ pub(super) fn struct_rest_pat(
     res.markup = {
         let mut s = String::from(".., ");
         for (f, _) in &missing_fields {
-            s += f.display(sema.db, edition).to_string().as_ref();
+            s += f.display(sema.db, display_target).to_string().as_ref();
             s += ", ";
         }
         // get rid of trailing comma
@@ -479,41 +486,44 @@ pub(super) fn definition(
     subst_types: Option<&Vec<(Symbol, Type)>>,
     config: &HoverConfig,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Markup {
     let mod_path = definition_path(db, &def, edition);
     let label = match def {
-        Definition::Trait(trait_) => {
-            trait_.display_limited(db, config.max_trait_assoc_items_count, edition).to_string()
-        }
+        Definition::Trait(trait_) => trait_
+            .display_limited(db, config.max_trait_assoc_items_count, display_target)
+            .to_string(),
         Definition::Adt(adt @ (Adt::Struct(_) | Adt::Union(_))) => {
-            adt.display_limited(db, config.max_fields_count, edition).to_string()
+            adt.display_limited(db, config.max_fields_count, display_target).to_string()
         }
         Definition::Variant(variant) => {
-            variant.display_limited(db, config.max_fields_count, edition).to_string()
+            variant.display_limited(db, config.max_fields_count, display_target).to_string()
         }
         Definition::Adt(adt @ Adt::Enum(_)) => {
-            adt.display_limited(db, config.max_enum_variants_count, edition).to_string()
+            adt.display_limited(db, config.max_enum_variants_count, display_target).to_string()
         }
         Definition::SelfType(impl_def) => {
             let self_ty = &impl_def.self_ty(db);
             match self_ty.as_adt() {
-                Some(adt) => adt.display_limited(db, config.max_fields_count, edition).to_string(),
-                None => self_ty.display(db, edition).to_string(),
+                Some(adt) => {
+                    adt.display_limited(db, config.max_fields_count, display_target).to_string()
+                }
+                None => self_ty.display(db, display_target).to_string(),
             }
         }
         Definition::Macro(it) => {
-            let mut label = it.display(db, edition).to_string();
+            let mut label = it.display(db, display_target).to_string();
             if let Some(macro_arm) = macro_arm {
                 format_to!(label, " // matched arm #{}", macro_arm);
             }
             label
         }
         Definition::Function(fn_) => {
-            fn_.display_with_container_bounds(db, true, edition).to_string()
+            fn_.display_with_container_bounds(db, true, display_target).to_string()
         }
-        _ => def.label(db, edition),
+        _ => def.label(db, display_target),
     };
-    let docs = def.docs(db, famous_defs, edition);
+    let docs = def.docs(db, famous_defs, display_target);
     let value = || match def {
         Definition::Variant(it) => {
             if !it.parent_enum(db).is_data_carrying(db) {
@@ -525,7 +535,10 @@ pub(super) fn definition(
                         let res = it.value(db).map(|it| format!("{it:?}"));
                         if env::var_os("RA_DEV").is_some() {
                             let res = res.as_deref().unwrap_or("");
-                            Some(format!("{res} ({})", render_const_eval_error(db, err, edition)))
+                            Some(format!(
+                                "{res} ({})",
+                                render_const_eval_error(db, err, display_target)
+                            ))
                         } else {
                             res
                         }
@@ -541,9 +554,12 @@ pub(super) fn definition(
                 Ok(it) => match it.render_debug(db) {
                     Ok(it) => it,
                     Err(err) => {
-                        let it = it.render(db, edition);
+                        let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
-                            format!("{it}\n{}", render_const_eval_error(db, err.into(), edition))
+                            format!(
+                                "{it}\n{}",
+                                render_const_eval_error(db, err.into(), display_target)
+                            )
                         } else {
                             it
                         }
@@ -557,7 +573,7 @@ pub(super) fn definition(
                         body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
-                        format!("{body}\n{}", render_const_eval_error(db, err, edition))
+                        format!("{body}\n{}", render_const_eval_error(db, err, display_target))
                     } else {
                         body.to_string()
                     }
@@ -570,9 +586,12 @@ pub(super) fn definition(
                 Ok(it) => match it.render_debug(db) {
                     Ok(it) => it,
                     Err(err) => {
-                        let it = it.render(db, edition);
+                        let it = it.render(db, display_target);
                         if env::var_os("RA_DEV").is_some() {
-                            format!("{it}\n{}", render_const_eval_error(db, err.into(), edition))
+                            format!(
+                                "{it}\n{}",
+                                render_const_eval_error(db, err.into(), display_target)
+                            )
                         } else {
                             it
                         }
@@ -586,7 +605,7 @@ pub(super) fn definition(
                         body = prettify_macro_expansion(db, body, &span_map, it.krate(db).into());
                     }
                     if env::var_os("RA_DEV").is_some() {
-                        format!("{body}\n{}", render_const_eval_error(db, err, edition))
+                        format!("{body}\n{}", render_const_eval_error(db, err, display_target))
                     } else {
                         body.to_string()
                     }
@@ -728,7 +747,9 @@ pub(super) fn definition(
 
     let mut extra = String::new();
     if hovered_definition {
-        if let Some(notable_traits) = render_notable_trait(db, notable_traits, edition) {
+        if let Some(notable_traits) =
+            render_notable_trait(db, notable_traits, edition, display_target)
+        {
             extra.push_str("\n___\n");
             extra.push_str(&notable_traits);
         }
@@ -772,7 +793,7 @@ pub(super) fn definition(
                         .format_with(", ", |(name, ty), fmt| {
                             fmt(&format_args!(
                                 "`{name}` = `{}`",
-                                ty.display_truncated(db, limit, edition)
+                                ty.display_truncated(db, limit, display_target)
                             ))
                         })
                         .to_string()
@@ -799,7 +820,7 @@ struct DropInfo {
 pub(super) fn literal(
     sema: &Semantics<'_, RootDatabase>,
     token: SyntaxToken,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<Markup> {
     let lit = token.parent().and_then(ast::Literal::cast)?;
     let ty = if let Some(p) = lit.syntax().parent().and_then(ast::Pat::cast) {
@@ -847,7 +868,7 @@ pub(super) fn literal(
             _ => return None
         }
     };
-    let ty = ty.display(sema.db, edition);
+    let ty = ty.display(sema.db, display_target);
 
     let mut s = format!("```rust\n{ty}\n```\n___\n\n");
     match value {
@@ -879,6 +900,7 @@ fn render_notable_trait(
     db: &RootDatabase,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<String> {
     let mut desc = String::new();
     let mut needs_impl_header = true;
@@ -898,7 +920,7 @@ fn render_notable_trait(
                     f(&name.display(db, edition))?;
                     f(&" = ")?;
                     match ty {
-                        Some(ty) => f(&ty.display(db, edition)),
+                        Some(ty) => f(&ty.display(db, display_target)),
                         None => f(&"?"),
                     }
                 })
@@ -914,8 +936,9 @@ fn type_info(
     config: &HoverConfig,
     ty: TypeInfo,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
-    if let Some(res) = closure_ty(sema, config, &ty, edition) {
+    if let Some(res) = closure_ty(sema, config, &ty, edition, display_target) {
         return Some(res);
     };
     let db = sema.db;
@@ -951,7 +974,7 @@ fn type_info(
                             f(&name.display(db, edition))?;
                             f(&" = ")?;
                             match ty {
-                                Some(ty) => f(&ty.display(db, edition)),
+                                Some(ty) => f(&ty.display(db, display_target)),
                                 None => f(&"?"),
                             }
                         })
@@ -965,8 +988,8 @@ fn type_info(
             desc
         };
 
-        let original = original.display(db, edition).to_string();
-        let adjusted = adjusted_ty.display(db, edition).to_string();
+        let original = original.display(db, display_target).to_string();
+        let adjusted = adjusted_ty.display(db, display_target).to_string();
         let static_text_diff_len = "Coerced to: ".len() - "Type: ".len();
         format!(
             "```text\nType: {:>apad$}\nCoerced to: {:>opad$}\n{notable}```\n",
@@ -977,8 +1000,10 @@ fn type_info(
         )
         .into()
     } else {
-        let mut desc = format!("```rust\n{}\n```", original.display(db, edition));
-        if let Some(extra) = render_notable_trait(db, &notable_traits(db, &original), edition) {
+        let mut desc = format!("```rust\n{}\n```", original.display(db, display_target));
+        if let Some(extra) =
+            render_notable_trait(db, &notable_traits(db, &original), edition, display_target)
+        {
             desc.push_str("\n___\n");
             desc.push_str(&extra);
         };
@@ -995,6 +1020,7 @@ fn closure_ty(
     config: &HoverConfig,
     TypeInfo { original, adjusted }: &TypeInfo,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<HoverResult> {
     let c = original.as_closure()?;
     let mut captures_rendered = c.captured_items(sema.db)
@@ -1027,12 +1053,14 @@ fn closure_ty(
         walk_and_push_ty(sema.db, adjusted_ty, &mut push_new_def);
         format!(
             "\nCoerced to: {}",
-            adjusted_ty.display(sema.db, edition).with_closure_style(hir::ClosureStyle::ImplFn)
+            adjusted_ty
+                .display(sema.db, display_target)
+                .with_closure_style(hir::ClosureStyle::ImplFn)
         )
     } else {
         String::new()
     };
-    let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, edition));
+    let mut markup = format!("```rust\n{}\n```", c.display_with_impl(sema.db, display_target));
 
     if let Some(trait_) = c.fn_trait(sema.db).get_id(sema.db, original.krate(sema.db).into()) {
         push_new_def(hir::Trait::from(trait_).into())
@@ -1213,6 +1241,7 @@ fn keyword_hints(
     token: &SyntaxToken,
     parent: syntax::SyntaxNode,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> KeywordHint {
     match token.kind() {
         T![await] | T![loop] | T![match] | T![unsafe] | T![as] | T![try] | T![if] | T![else] => {
@@ -1230,7 +1259,8 @@ fn keyword_hints(
                     walk_and_push_ty(sema.db, &ty.original, &mut push_new_def);
 
                     let ty = ty.adjusted();
-                    let description = format!("{}: {}", token.text(), ty.display(sema.db, edition));
+                    let description =
+                        format!("{}: {}", token.text(), ty.display(sema.db, display_target));
 
                     KeywordHint {
                         description,

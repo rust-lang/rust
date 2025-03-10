@@ -435,6 +435,9 @@ pub fn layout_of_ty_query(
         TyKind::Error => return Err(LayoutError::HasErrorType),
         TyKind::AssociatedType(id, subst) => {
             // Try again with `TyKind::Alias` to normalize the associated type.
+            // Usually we should not try to normalize `TyKind::AssociatedType`, but layout calculation is used
+            // in monomorphized MIR where this is okay. If outside monomorphization, this will lead to cycle,
+            // which we will recover from with an error.
             let ty = TyKind::Alias(chalk_ir::AliasTy::Projection(ProjectionTy {
                 associated_ty_id: *id,
                 substitution: subst.clone(),

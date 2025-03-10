@@ -4,7 +4,9 @@
 use std::collections::BTreeSet;
 
 use either::Either;
-use hir::{AssocItem, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait};
+use hir::{
+    AssocItem, DisplayTarget, GenericParam, HirDisplay, ModuleDef, PathResolution, Semantics, Trait,
+};
 use ide_db::{
     active_parameter::{callable_for_node, generic_def_for_node},
     documentation::{Documentation, HasDocs},
@@ -82,6 +84,7 @@ pub(crate) fn signature_help(
     let token = sema.descend_into_macros_single_exact(token);
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let display_target = sema.first_crate_or_default(file_id).to_display_target(db);
 
     for node in token.parent_ancestors() {
         match_ast! {
@@ -91,49 +94,49 @@ pub(crate) fn signature_help(
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_call(&sema, arg_list, token, edition);
+                    return signature_help_for_call(&sema, arg_list, token, edition, display_target);
                 },
                 ast::GenericArgList(garg_list) => {
                     let cursor_outside = garg_list.r_angle_token().as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_generics(&sema, garg_list, token, edition);
+                    return signature_help_for_generics(&sema, garg_list, token, edition, display_target);
                 },
                 ast::RecordExpr(record) => {
                     let cursor_outside = record.record_expr_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_record_lit(&sema, record, token, edition);
+                    return signature_help_for_record_lit(&sema, record, token, edition, display_target);
                 },
                 ast::RecordPat(record) => {
                     let cursor_outside = record.record_pat_field_list().and_then(|list| list.r_curly_token()).as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_record_pat(&sema, record, token, edition);
+                    return signature_help_for_record_pat(&sema, record, token, edition, display_target);
                 },
                 ast::TupleStructPat(tuple_pat) => {
                     let cursor_outside = tuple_pat.r_paren_token().as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_tuple_struct_pat(&sema, tuple_pat, token, edition);
+                    return signature_help_for_tuple_struct_pat(&sema, tuple_pat, token, edition, display_target);
                 },
                 ast::TuplePat(tuple_pat) => {
                     let cursor_outside = tuple_pat.r_paren_token().as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_tuple_pat(&sema, tuple_pat, token, edition);
+                    return signature_help_for_tuple_pat(&sema, tuple_pat, token, display_target);
                 },
                 ast::TupleExpr(tuple_expr) => {
                     let cursor_outside = tuple_expr.r_paren_token().as_ref() == Some(&token);
                     if cursor_outside {
                         continue;
                     }
-                    return signature_help_for_tuple_expr(&sema, tuple_expr, token, edition);
+                    return signature_help_for_tuple_expr(&sema, tuple_expr, token, display_target);
                 },
                 _ => (),
             }
@@ -158,6 +161,7 @@ fn signature_help_for_call(
     arg_list: ast::ArgList,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     // Find the calling expression and its NameRef
     let mut nodes = arg_list.syntax().ancestors().skip(1);
@@ -221,7 +225,7 @@ fn signature_help_for_call(
     res.signature.push('(');
     {
         if let Some((self_param, _)) = callable.receiver_param(db) {
-            format_to!(res.signature, "{}", self_param.display(db, edition))
+            format_to!(res.signature, "{}", self_param.display(db, display_target))
         }
         let mut buf = String::new();
         for (idx, p) in callable.params().into_iter().enumerate() {
@@ -242,9 +246,9 @@ fn signature_help_for_call(
             // (see FIXME in tests::impl_trait) and falling back on any unknowns.
             match (p.ty().contains_unknown(), fn_params.as_deref()) {
                 (true, Some(fn_params)) => {
-                    format_to!(buf, "{}", fn_params[idx].ty().display(db, edition))
+                    format_to!(buf, "{}", fn_params[idx].ty().display(db, display_target))
                 }
-                _ => format_to!(buf, "{}", p.ty().display(db, edition)),
+                _ => format_to!(buf, "{}", p.ty().display(db, display_target)),
             }
             res.push_call_param(&buf);
         }
@@ -253,7 +257,7 @@ fn signature_help_for_call(
 
     let mut render = |ret_type: hir::Type| {
         if !ret_type.is_unit() {
-            format_to!(res.signature, " -> {}", ret_type.display(db, edition));
+            format_to!(res.signature, " -> {}", ret_type.display(db, display_target));
         }
     };
     match callable.kind() {
@@ -274,6 +278,7 @@ fn signature_help_for_generics(
     arg_list: ast::GenericArgList,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     let (generics_def, mut active_parameter, first_arg_is_non_lifetime, variant) =
         generic_def_for_node(sema, &arg_list, &token)?;
@@ -345,7 +350,7 @@ fn signature_help_for_generics(
         }
 
         buf.clear();
-        format_to!(buf, "{}", param.display(db, edition));
+        format_to!(buf, "{}", param.display(db, display_target));
         res.push_generic_param(&buf);
     }
     if let hir::GenericDef::Trait(tr) = generics_def {
@@ -400,6 +405,7 @@ fn signature_help_for_record_lit(
     record: ast::RecordExpr,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     signature_help_for_record_(
         sema,
@@ -412,6 +418,7 @@ fn signature_help_for_record_lit(
             .map(|(field, _, ty)| (field, ty)),
         token,
         edition,
+        display_target,
     )
 }
 
@@ -420,6 +427,7 @@ fn signature_help_for_record_pat(
     record: ast::RecordPat,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     signature_help_for_record_(
         sema,
@@ -431,6 +439,7 @@ fn signature_help_for_record_pat(
             .filter_map(|field| sema.resolve_record_pat_field(&field)),
         token,
         edition,
+        display_target,
     )
 }
 
@@ -439,6 +448,7 @@ fn signature_help_for_tuple_struct_pat(
     pat: ast::TupleStructPat,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     let path = pat.path()?;
     let path_res = sema.resolve_path(&path)?;
@@ -484,7 +494,7 @@ fn signature_help_for_tuple_struct_pat(
         token,
         pat.fields(),
         fields.into_iter().map(|it| it.ty(db)),
-        edition,
+        display_target,
     ))
 }
 
@@ -492,7 +502,7 @@ fn signature_help_for_tuple_pat(
     sema: &Semantics<'_, RootDatabase>,
     pat: ast::TuplePat,
     token: SyntaxToken,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     let db = sema.db;
     let field_pats = pat.fields();
@@ -512,7 +522,7 @@ fn signature_help_for_tuple_pat(
         token,
         field_pats,
         fields.into_iter(),
-        edition,
+        display_target,
     ))
 }
 
@@ -520,7 +530,7 @@ fn signature_help_for_tuple_expr(
     sema: &Semantics<'_, RootDatabase>,
     expr: ast::TupleExpr,
     token: SyntaxToken,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     let active_parameter = Some(
         expr.syntax()
@@ -542,7 +552,7 @@ fn signature_help_for_tuple_expr(
     let fields = expr.original.tuple_fields(db);
     let mut buf = String::new();
     for ty in fields {
-        format_to!(buf, "{}", ty.display_truncated(db, Some(20), edition));
+        format_to!(buf, "{}", ty.display_truncated(db, Some(20), display_target));
         res.push_call_param(&buf);
         buf.clear();
     }
@@ -557,6 +567,7 @@ fn signature_help_for_record_(
     fields2: impl Iterator<Item = (hir::Field, hir::Type)>,
     token: SyntaxToken,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<SignatureHelp> {
     let active_parameter = field_list_children
         .filter_map(NodeOrToken::into_token)
@@ -617,7 +628,7 @@ fn signature_help_for_record_(
             buf,
             "{}: {}",
             name.display(db, edition),
-            ty.display_truncated(db, Some(20), edition)
+            ty.display_truncated(db, Some(20), display_target)
         );
         res.push_record_field(&buf);
         buf.clear();
@@ -632,7 +643,7 @@ fn signature_help_for_record_(
             buf,
             "{}: {}",
             name.display(db, edition),
-            field.ty(db).display_truncated(db, Some(20), edition)
+            field.ty(db).display_truncated(db, Some(20), display_target)
         );
         res.push_record_field(&buf);
         buf.clear();
@@ -648,7 +659,7 @@ fn signature_help_for_tuple_pat_ish(
     token: SyntaxToken,
     mut field_pats: AstChildren<ast::Pat>,
     fields: impl ExactSizeIterator<Item = hir::Type>,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> SignatureHelp {
     let rest_pat = field_pats.find(|it| matches!(it, ast::Pat::RestPat(_)));
     let is_left_of_rest_pat =
@@ -675,7 +686,7 @@ fn signature_help_for_tuple_pat_ish(
 
     let mut buf = String::new();
     for ty in fields {
-        format_to!(buf, "{}", ty.display_truncated(db, Some(20), edition));
+        format_to!(buf, "{}", ty.display_truncated(db, Some(20), display_target));
         res.push_call_param(&buf);
         buf.clear();
     }

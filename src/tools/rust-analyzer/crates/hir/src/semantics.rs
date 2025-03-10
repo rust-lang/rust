@@ -313,6 +313,14 @@ impl<'db> SemanticsImpl<'db> {
         tree
     }
 
+    /// If not crate is found for the file, returns the last crate in topological order.
+    pub fn first_crate_or_default(&self, file: FileId) -> Crate {
+        match self.file_to_module_defs(file).next() {
+            Some(module) => module.krate(),
+            None => (*self.db.crate_graph().crates_in_topological_order().last().unwrap()).into(),
+        }
+    }
+
     pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
         Some(EditionedFileId::new(
             file,

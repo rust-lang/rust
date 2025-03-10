@@ -144,7 +144,7 @@ pub(crate) fn render_field(
         is_skipping_completion: receiver.is_some(),
         ..CompletionRelevance::default()
     });
-    item.detail(ty.display(db, ctx.completion.edition).to_string())
+    item.detail(ty.display(db, ctx.completion.display_target).to_string())
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
@@ -212,7 +212,7 @@ pub(crate) fn render_tuple_field(
         field_with_receiver(receiver.as_deref(), &field.to_string()),
         ctx.completion.edition,
     );
-    item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
+    item.detail(ty.display(ctx.db(), ctx.completion.display_target).to_string())
         .lookup_by(field.to_string());
     item.set_relevance(CompletionRelevance {
         is_skipping_completion: receiver.is_some(),
@@ -303,7 +303,8 @@ pub(crate) fn render_expr(
 
     let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
-    let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.edition).ok()?;
+    let label =
+        expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.display_target).ok()?;
 
     let source_range = match ctx.original_token.parent() {
         Some(node) => match node.ancestors().find_map(ast::Path::cast) {
@@ -318,7 +319,7 @@ pub(crate) fn render_expr(
 
     let snippet = format!(
         "{}$0",
-        expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg, ctx.edition).ok()?
+        expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg, ctx.display_target).ok()?
     );
     let edit = TextEdit::replace(source_range, snippet);
     item.snippet_edit(ctx.config.snippet_cap?, edit);
@@ -398,6 +399,8 @@ fn render_resolution_path(
     let _p = tracing::info_span!("render_resolution_path").entered();
     use hir::ModuleDef::*;
 
+    let krate = ctx.completion.display_target;
+
     match resolution {
         ScopeDef::ModuleDef(Macro(mac)) => {
             let ctx = ctx.import_to_add(import_to_add);
@@ -459,7 +462,7 @@ fn render_resolution_path(
 
     let mut set_item_relevance = |ty: Type| {
         if !ty.is_unknown() {
-            item.detail(ty.display(db, completion.edition).to_string());
+            item.detail(ty.display(db, krate).to_string());
         }
 
         item.set_relevance(CompletionRelevance {
