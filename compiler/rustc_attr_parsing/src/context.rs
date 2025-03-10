@@ -14,6 +14,7 @@ use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
 use crate::attributes::confusables::ConfusablesParser;
 use crate::attributes::deprecation::DeprecationParser;
+use crate::attributes::eii::EiiParser;
 use crate::attributes::repr::ReprParser;
 use crate::attributes::stability::{
     BodyStabilityParser, ConstStabilityIndirectParser, ConstStabilityParser, StabilityParser,
@@ -76,6 +77,7 @@ attribute_groups!(
         // tidy-alphabetical-start
         Single<ConstStabilityIndirectParser>,
         Single<DeprecationParser>,
+        Single<RustcMacroEdition2021Parser>,
         Single<TransparencyParser>,
         // tidy-alphabetical-end
     ];
@@ -209,7 +211,6 @@ impl<'sess> AttributeParser<'sess> {
         attrs: &'a [ast::Attribute],
         target_span: Span,
         omit_doc: OmitDoc,
-
         lower_span: impl Copy + Fn(Span) -> Span,
     ) -> Vec<Attribute> {
         let mut attributes = Vec::new();

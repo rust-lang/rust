@@ -1181,6 +1181,12 @@ rustc_index::newtype_index! {
     pub struct AttrId {}
 }
 
+rustc_index::newtype_index! {
+    #[orderable]
+    #[debug_format = "EiiId({})"]
+    pub struct EiiId {}
+}
+
 /// This trait is used to allow encoder specific encodings of certain types.
 /// It is similar to rustc_type_ir's TyEncoder.
 pub trait SpanEncoder: Encoder {

@@ -8,8 +8,9 @@ use rustc_expand::expand::AstFragment;
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind};
 use rustc_hir::def_id::LocalDefId;
+use rustc_middle::bug;
 use rustc_span::hygiene::LocalExpnId;
-use rustc_span::{Span, Symbol, sym};
+use rustc_span::{EiiId, Span, Symbol, sym};
 use tracing::debug;
 
 use crate::{ImplTraitContext, InvocationParent, Resolver};
@@ -137,6 +138,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                     &i.attrs,
                     i.span,
                     OmitDoc::Skip,
+                    None,
                     std::convert::identity,
                 );
 
@@ -260,6 +262,22 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
         };
 
         let def = self.create_def(fi.id, Some(ident.name), def_kind, fi.span);
+
+        if let ForeignItemKind::Fn(_) = fi.kind {
+            for attr in &fi.attrs {
+                if attr.has_name(sym::eii)
+                    && let Some([arg]) = attr.meta_item_list().as_deref()
+                    && let Some(lit) = arg.lit()
+                    && let LitKind::Int(i, _) = lit.kind
+                    && let Ok(id) = u32::try_from(i.get())
+                {
+                    let id = EiiId::from(id);
+                    if let Some(other) = self.resolver.eii.insert(id, def) {
+                        bug!("{def:?}: {id:?} used more than once (used first on {other:?})");
+                    }
+                }
+            }
+        }
 
         self.with_parent(def, |this| visit::walk_item(this, fi));
     }

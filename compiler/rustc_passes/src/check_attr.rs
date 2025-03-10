@@ -124,6 +124,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
                 ) => self.check_stability_promotable(*span, target),
+                Attribute::Parsed(AttributeKind::Eii(attr_span)) => {
+                    self.check_eii(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
                         hir_id,
@@ -470,6 +473,17 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     attr.span(),
                     errors::InlineIgnoredForExported {},
                 );
+            }
+        }
+    }
+
+    /// Checks if an `#[inline]` is applied to a function or a closure.
+    fn check_eii(&self, _hir_id: HirId, _attr_span: Span, _defn_span: Span, target: Target) {
+        match target {
+            Target::ForeignFn => {}
+            target => {
+                // TODO:
+                bug!("wrong target for EII: {target:?}");
             }
         }
     }
