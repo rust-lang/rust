@@ -710,24 +710,21 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "let",
                                             delete: 45..47,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "var_name",
                                             delete: 48..60,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 61..81,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
                                             delete: 82..108,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 Some(
                                     SnippetEdit(
@@ -845,24 +842,21 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "let",
                                             delete: 45..47,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "var_name",
                                             delete: 48..60,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 61..81,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = var_name {\n        true\n    } else {\n        false\n    }",
                                             delete: 82..108,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 Some(
                                     SnippetEdit(
@@ -914,29 +908,25 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "const",
                                             delete: 45..47,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "VAR_NAME:",
                                             delete: 48..60,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "i32",
                                             delete: 61..81,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 82..86,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = VAR_NAME {\n        true\n    } else {\n        false\n    }",
                                             delete: 87..108,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 Some(
                                     SnippetEdit(
@@ -988,29 +978,25 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "static",
                                             delete: 45..47,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "VAR_NAME:",
                                             delete: 48..60,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "i32",
                                             delete: 61..81,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "=",
                                             delete: 82..86,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "5;\n    if let 2..6 = VAR_NAME {\n        true\n    } else {\n        false\n    }",
                                             delete: 87..108,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 Some(
                                     SnippetEdit(
@@ -1062,14 +1048,13 @@ pub fn test_some_range(a: int) -> bool {
                                         Indel {
                                             insert: "fun_name()",
                                             delete: 59..60,
-                                            annotation: None,
                                         },
                                         Indel {
                                             insert: "\n\nfn fun_name() -> i32 {\n    5\n}",
                                             delete: 110..110,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 Some(
                                     SnippetEdit(

@@ -139,9 +139,9 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 33..34,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 None,
                             ),
@@ -182,9 +182,9 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 33..34,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 None,
                             ),
@@ -196,9 +196,9 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 11..12,
-                                            annotation: None,
                                         },
                                     ],
+                                    annotation: None,
                                 },
                                 None,
                             ),
