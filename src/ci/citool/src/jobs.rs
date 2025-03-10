@@ -145,7 +145,11 @@ fn calculate_jobs(
                     if matched_jobs.is_empty() {
                         unknown_patterns.push(pattern.clone());
                     } else {
-                        jobs.extend(matched_jobs);
+                        for job in matched_jobs {
+                            if !jobs.iter().any(|j| j.name == job.name) {
+                                jobs.push(job);
+                            }
+                        }
                     }
                 }
                 if !unknown_patterns.is_empty() {
