@@ -112,8 +112,8 @@ crates, you have to specify those explicitly.
 ./x test --stage 1 library/std
 ```
 
-By listing which test suites you want to run you avoid having to run tests for
-components you did not change at all.
+By listing which test suites you want to run,
+you avoid having to run tests for components you did not change at all.
 
 <div class="warning">
 Note that bors only runs the tests with the full stage 2 build; therefore, while
