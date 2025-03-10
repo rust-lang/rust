@@ -193,7 +193,7 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
     ///
     /// `data.escape_seq` must contain an escape sequence in the range given by `alive`.
     #[inline]
-    unsafe const fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
+    const unsafe fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
         // Uphold the `alive` invariant for non-printable characters.
         const { assert!(N <= 127) };
         Self { data, alive, escaping: PhantomData }
@@ -286,11 +286,12 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
     // This is the only way to create an `EscapeIterInner` with a literal `char`, which
     // means the `AlwaysEscaped` marker guarantees that `self` contains an escape sequence.
     pub(crate) const fn printable(c: char) -> Self {
-        Self::new(
-            MaybeEscapedCharacter { literal: c },
+        Self {
+            data: MaybeEscapedCharacter { literal: c },
             // Ensure `len` behaves correctly.
-            Self::CHAR_FLAG..(Self::CHAR_FLAG + 1),
-        )
+            alive: Self::CHAR_FLAG..(Self::CHAR_FLAG + 1),
+            escaping: PhantomData,
+        }
     }
 
     #[inline]
