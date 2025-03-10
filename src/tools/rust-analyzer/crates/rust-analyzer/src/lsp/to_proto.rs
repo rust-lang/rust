@@ -16,7 +16,7 @@ use ide::{
     SnippetEdit, SourceChange, StructureNodeKind, SymbolKind, TextEdit, TextRange, TextSize,
     UpdateTest,
 };
-use ide_db::{assists, rust_doc::format_docs, FxHasher};
+use ide_db::{assists, rust_doc::format_docs, source_change::ChangeAnnotationId, FxHasher};
 use itertools::Itertools;
 use paths::{Utf8Component, Utf8Prefix};
 use semver::VersionReq;
@@ -200,10 +200,10 @@ pub(crate) fn snippet_text_edit(
     line_index: &LineIndex,
     is_snippet: bool,
     indel: Indel,
+    annotation: Option<ChangeAnnotationId>,
     client_supports_annotations: bool,
 ) -> lsp_ext::SnippetTextEdit {
-    let annotation_id =
-        indel.annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
+    let annotation_id = annotation.filter(|_| client_supports_annotations).map(|it| it.to_string());
     let text_edit = text_edit(line_index, indel);
     let insert_text_format =
         if is_snippet { Some(lsp_types::InsertTextFormat::SNIPPET) } else { None };
@@ -228,10 +228,17 @@ pub(crate) fn snippet_text_edit_vec(
     text_edit: TextEdit,
     clients_support_annotations: bool,
 ) -> Vec<lsp_ext::SnippetTextEdit> {
+    let annotation = text_edit.change_annotation();
     text_edit
         .into_iter()
         .map(|indel| {
-            self::snippet_text_edit(line_index, is_snippet, indel, clients_support_annotations)
+            self::snippet_text_edit(
+                line_index,
+                is_snippet,
+                indel,
+                annotation,
+                clients_support_annotations,
+            )
         })
         .collect()
 }
@@ -1082,6 +1089,7 @@ fn merge_text_and_snippet_edits(
 ) -> Vec<SnippetTextEdit> {
     let mut edits: Vec<SnippetTextEdit> = vec![];
     let mut snippets = snippet_edit.into_edit_ranges().into_iter().peekable();
+    let annotation = edit.change_annotation();
     let text_edits = edit.into_iter();
     // offset to go from the final source location to the original source location
     let mut source_text_offset = 0i32;
@@ -1127,11 +1135,8 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel {
-                    insert: format!("${snippet_index}"),
-                    delete: snippet_range,
-                    annotation: None,
-                },
+                Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+                annotation,
                 client_supports_annotations,
             ))
         }
@@ -1190,11 +1195,8 @@ fn merge_text_and_snippet_edits(
             edits.push(snippet_text_edit(
                 line_index,
                 true,
-                Indel {
-                    insert: new_text,
-                    delete: current_indel.delete,
-                    annotation: current_indel.annotation,
-                },
+                Indel { insert: new_text, delete: current_indel.delete },
+                annotation,
                 client_supports_annotations,
             ))
         } else {
@@ -1204,6 +1206,7 @@ fn merge_text_and_snippet_edits(
                 line_index,
                 false,
                 current_indel,
+                annotation,
                 client_supports_annotations,
             ));
         }
@@ -1230,7 +1233,8 @@ fn merge_text_and_snippet_edits(
         snippet_text_edit(
             line_index,
             true,
-            Indel { insert: format!("${snippet_index}"), delete: snippet_range, annotation: None },
+            Indel { insert: format!("${snippet_index}"), delete: snippet_range },
+            annotation,
             client_supports_annotations,
         )
     }));
@@ -1251,8 +1255,17 @@ pub(crate) fn snippet_text_document_edit(
     let mut edits = if let Some(snippet_edit) = snippet_edit {
         merge_text_and_snippet_edits(&line_index, edit, snippet_edit, client_supports_annotations)
     } else {
+        let annotation = edit.change_annotation();
         edit.into_iter()
-            .map(|it| snippet_text_edit(&line_index, is_snippet, it, client_supports_annotations))
+            .map(|it| {
+                snippet_text_edit(
+                    &line_index,
+                    is_snippet,
+                    it,
+                    annotation,
+                    client_supports_annotations,
+                )
+            })
             .collect()
     };
 

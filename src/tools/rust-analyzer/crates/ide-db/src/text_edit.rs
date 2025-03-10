@@ -18,18 +18,19 @@ pub struct Indel {
     pub insert: String,
     /// Refers to offsets in the original text
     pub delete: TextRange,
-    pub annotation: Option<ChangeAnnotationId>,
 }
 
 #[derive(Default, Debug, Clone)]
 pub struct TextEdit {
     /// Invariant: disjoint and sorted by `delete`.
     indels: Vec<Indel>,
+    annotation: Option<ChangeAnnotationId>,
 }
 
 #[derive(Debug, Default, Clone)]
 pub struct TextEditBuilder {
     indels: Vec<Indel>,
+    annotation: Option<ChangeAnnotationId>,
 }
 
 impl Indel {
@@ -40,7 +41,7 @@ impl Indel {
         Indel::replace(range, String::new())
     }
     pub fn replace(range: TextRange, replace_with: String) -> Indel {
-        Indel { delete: range, insert: replace_with, annotation: None }
+        Indel { delete: range, insert: replace_with }
     }
 
     pub fn apply(&self, text: &mut String) {
@@ -142,12 +143,12 @@ impl TextEdit {
         Some(res)
     }
 
-    pub fn set_annotation(&mut self, annotation: Option<ChangeAnnotationId>) {
-        if annotation.is_some() {
-            for indel in &mut self.indels {
-                indel.annotation = annotation;
-            }
-        }
+    pub(crate) fn set_annotation(&mut self, conflict_annotation: Option<ChangeAnnotationId>) {
+        self.annotation = conflict_annotation;
+    }
+
+    pub fn change_annotation(&self) -> Option<ChangeAnnotationId> {
+        self.annotation
     }
 }
 
@@ -183,10 +184,10 @@ impl TextEditBuilder {
         self.indel(Indel::insert(offset, text));
     }
     pub fn finish(self) -> TextEdit {
-        let mut indels = self.indels;
+        let TextEditBuilder { mut indels, annotation } = self;
         assert_disjoint_or_equal(&mut indels);
         indels = coalesce_indels(indels);
-        TextEdit { indels }
+        TextEdit { indels, annotation }
     }
     pub fn invalidates_offset(&self, offset: TextSize) -> bool {
         self.indels.iter().any(|indel| indel.delete.contains_inclusive(offset))

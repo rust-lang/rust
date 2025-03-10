@@ -367,14 +367,10 @@ fn rename_reference(
         )
     }));
 
-    let mut insert_def_edit = |def| {
-        let (file_id, edit) = source_edit_from_def(sema, def, new_name, &mut source_change)?;
-        source_change.insert_source_edit(file_id, edit);
-        Ok(())
-    };
     // This needs to come after the references edits, because we change the annotation of existing edits
     // if a conflict is detected.
-    insert_def_edit(def)?;
+    let (file_id, edit) = source_edit_from_def(sema, def, new_name, &mut source_change)?;
+    source_change.insert_source_edit(file_id, edit);
     Ok(source_change)
 }
 

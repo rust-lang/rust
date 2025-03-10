@@ -509,10 +509,9 @@ mod tests {
         let found_conflicts = source_change
             .source_file_edits
             .iter()
+            .filter(|(_, (edit, _))| edit.change_annotation().is_some())
             .flat_map(|(file_id, (edit, _))| {
-                edit.into_iter()
-                    .filter(|edit| edit.annotation.is_some())
-                    .map(move |edit| (*file_id, edit.delete))
+                edit.into_iter().map(move |edit| (*file_id, edit.delete))
             })
             .sorted_unstable_by_key(|(file_id, range)| (*file_id, range.start()))
             .collect_vec();
@@ -1081,7 +1080,6 @@ mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1129,7 +1127,6 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 8..11,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1141,7 +1138,6 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 11..14,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1183,7 +1179,6 @@ mod fo$0o;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1232,7 +1227,6 @@ mod outer { mod fo$0o; }
                             Indel {
                                 insert: "bar",
                                 delete: 16..19,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1304,7 +1298,6 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 27..30,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1316,7 +1309,6 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 8..11,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1372,7 +1364,6 @@ mod quux;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1506,12 +1497,10 @@ pub fn baz() {}
                             Indel {
                                 insert: "r#fn",
                                 delete: 4..7,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "r#fn",
                                 delete: 22..25,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1576,12 +1565,10 @@ pub fn baz() {}
                             Indel {
                                 insert: "foo",
                                 delete: 4..8,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "foo",
                                 delete: 23..27,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1643,7 +1630,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1655,7 +1641,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1685,7 +1670,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1697,7 +1681,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1727,7 +1710,6 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1739,7 +1721,6 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1776,12 +1757,10 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..10,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 32..35,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1793,7 +1772,6 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..23,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1827,12 +1805,10 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..12,
-                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 34..39,
-                                annotation: None,
                             },
                         ],
                     ),
@@ -1844,7 +1820,6 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..21,
-                                annotation: None,
                             },
                         ],
                     ),
