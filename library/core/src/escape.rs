@@ -6,7 +6,7 @@ use crate::num::NonZero;
 use crate::ops::Range;
 use crate::{ascii, fmt};
 
-const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_escape_seq().unwrap();
+const HEX_DIGITS: [ascii::Char; 16] = *b"0123456789abcdef".as_ascii().unwrap();
 
 #[inline]
 const fn backslash<const N: usize>(a: ascii::Char) -> ([ascii::Char; N], Range<u8>) {
