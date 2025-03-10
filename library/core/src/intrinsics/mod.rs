@@ -1630,10 +1630,14 @@ pub fn ptr_mask<T>(_ptr: *const T, _mask: usize) -> *const T;
 /// a size of `count` * `size_of::<T>()` and an alignment of
 /// `min_align_of::<T>()`
 ///
-/// The volatile parameter is set to `true`, so it will not be optimized out
-/// unless size is equal to zero.
-///
 /// This intrinsic does not have a stable counterpart.
+/// # Safety
+///
+/// The safety requirements are consistent with [`copy_nonoverlapping`]
+/// while the read and write behaviors are volatile,
+/// which means it will not be optimized out unless size is equal to zero.
+///
+/// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(_dst: *mut T, _src: *const T, _count: usize);
@@ -1652,10 +1656,13 @@ pub unsafe fn volatile_copy_memory<T>(_dst: *mut T, _src: *const T, _count: usiz
 /// size of `count * size_of::<T>()` and an alignment of
 /// `min_align_of::<T>()`.
 ///
-/// The volatile parameter is set to `true`, so it will not be optimized out
-/// unless size is equal to zero.
-///
 /// This intrinsic does not have a stable counterpart.
+/// # Safety
+///
+/// The safety requirements are consistent with [`write_bytes`] while the write behavior is volatile,
+/// which means it will not be optimized out unless size is equal to zero.
+///
+/// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_set_memory<T>(_dst: *mut T, _val: u8, _count: usize);
@@ -3197,8 +3204,18 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// The stabilized form of this intrinsic is [`crate::mem::swap`].
 ///
 /// # Safety
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// `x` and `y` are readable and writable as `T`, and non-overlapping.
+/// * Both `x` and `y` must be [valid] for both reads and writes.
+///
+/// * Both `x` and `y` must be properly aligned.
+///
+/// * The region of memory beginning at `x` must *not* overlap with the region of memory
+///   beginning at `y`.
+///
+/// * The memory pointed by `x` and `y` must contain correct value of type `T`.
+///
+/// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
