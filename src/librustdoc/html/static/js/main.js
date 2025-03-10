@@ -538,8 +538,8 @@ function preLoadCss(cssUrl) {
             return;
         }
 
-        // @ts-expect-error
-        if (document.activeElement.tagName === "INPUT" &&
+        if (document.activeElement &&
+            document.activeElement.tagName === "INPUT" &&
             // @ts-expect-error
             document.activeElement.type !== "checkbox" &&
             // @ts-expect-error
