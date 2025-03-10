@@ -153,7 +153,7 @@ const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>
 
 #[derive(Clone, Copy)]
 union MaybeEscapedCharacter<const N: usize> {
-    pub escaped: [ascii::Char; N],
+    pub escape_seq: [ascii::Char; N],
     pub literal: char,
 }
 
@@ -197,22 +197,22 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
 
     pub(crate) const fn backslash(c: ascii::Char) -> Self {
         let (data, range) = backslash(c);
-        Self::new(MaybeEscapedCharacter { escaped: data }, range)
+        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
     }
 
     pub(crate) const fn ascii(c: u8) -> Self {
         let (data, range) = escape_ascii(c);
-        Self::new(MaybeEscapedCharacter { escaped: data }, range)
+        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
     }
 
     pub(crate) const fn unicode(c: char) -> Self {
         let (data, range) = escape_unicode(c);
-        Self::new(MaybeEscapedCharacter { escaped: data }, range)
+        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
     }
 
     #[inline]
     pub(crate) const fn empty() -> Self {
-        Self::new(MaybeEscapedCharacter { escaped: [ascii::Char::Null; N] }, 0..0)
+        Self::new(MaybeEscapedCharacter { escape_seq: [ascii::Char::Null; N] }, 0..0)
     }
 
     /// # Safety
@@ -220,12 +220,12 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
     /// The caller must ensure that `self` contains an escape sequence.
     #[inline]
     unsafe fn as_ascii(&self) -> &[ascii::Char] {
-        // SAFETY: `self.data.escaped` contains an escape sequence, as is guaranteed
+        // SAFETY: `self.data.escape_seq` contains an escape sequence, as is guaranteed
         // by the caller, and `self.alive` is guaranteed to be a valid range for
         // indexing `self.data`.
         unsafe {
             self.data
-                .escaped
+                .escape_seq
                 .get_unchecked(usize::from(self.alive.start)..usize::from(self.alive.end))
         }
     }
@@ -259,16 +259,16 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
         let i = self.alive.next()?;
 
         // SAFETY: The `AlwaysEscaped` marker guarantees that `self` contains an escape sequence,
-        // and `i` is guaranteed to be a valid index for `self.data.escaped`.
-        unsafe { Some(self.data.escaped.get_unchecked(usize::from(i)).to_u8()) }
+        // and `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
     }
 
     pub(crate) fn next_back(&mut self) -> Option<u8> {
         let i = self.alive.next_back()?;
 
         // SAFETY: We just checked that `self` contains an escape sequence, and
-        // `i` is guaranteed to be a valid index for `self.data.escaped`.
-        unsafe { Some(self.data.escaped.get_unchecked(usize::from(i)).to_u8()) }
+        // `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        unsafe { Some(self.data.escape_seq.get_unchecked(usize::from(i)).to_u8()) }
     }
 }
 
@@ -299,8 +299,8 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
         }
 
         // SAFETY: We just checked that `self` contains an escape sequence, and
-        // `i` is guaranteed to be a valid index for `self.data.escaped`.
-        Some(char::from(unsafe { self.data.escaped.get_unchecked(usize::from(i)).to_u8() }))
+        // `i` is guaranteed to be a valid index for `self.data.escape_seq`.
+        Some(char::from(unsafe { self.data.escape_seq.get_unchecked(usize::from(i)).to_u8() }))
     }
 }
 
