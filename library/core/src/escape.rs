@@ -158,18 +158,18 @@ union MaybeEscapedCharacter<const N: usize> {
 }
 
 /// Marker type to indicate that the character is always escaped,
-/// use to optimized the iterator implementation.
+/// used to optimize the iterator implementation.
 #[derive(Clone, Copy)]
 #[non_exhaustive]
 pub(crate) struct AlwaysEscaped;
 
 /// Marker type to indicate that the character may be escaped,
-/// use to optimized the iterator implementation.
+/// used to optimize the iterator implementation.
 #[derive(Clone, Copy)]
 #[non_exhaustive]
 pub(crate) struct MaybeEscaped;
 
-/// An iterator over an fixed-size array.
+/// An iterator over a fixed-size array.
 ///
 /// This is essentially equivalent to array’s `IntoIter` except that
 /// indices are stored as `u8` to reduce size of the structure.
@@ -182,7 +182,7 @@ pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
     data: MaybeEscapedCharacter<N>,
 
     // Invariant: For non-printable characters, `alive.start <= alive.end <= N`,
-    // for printable characters, `alive.end >= alive.start >= 128`.
+    // for printable characters, `128 <= alive.start <= alive.end`.
     alive: Range<u8>,
 
     escaping: PhantomData<ESCAPING>,
@@ -232,10 +232,10 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
 
     /// # Safety
     ///
-    /// The caller must ensure that `self` contains an unescaped `char`.
+    /// The caller must ensure that `self` contains a literal `char`.
     #[inline]
     unsafe fn as_char(&self) -> char {
-        // SAFETY: `self.data.unescaped` contains an unescaped `char`,
+        // SAFETY: `self.data.unescaped` contains a literal `char`,
         // as is guaranteed by the caller.
         unsafe { self.data.unescaped }
     }
@@ -258,8 +258,8 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
     pub(crate) fn next(&mut self) -> Option<u8> {
         let i = self.alive.next()?;
 
-        // SAFETY: We just checked that `self` contains an escape sequence, and
-        // `i` is guaranteed to be a valid index for `self.data.escaped`.
+        // SAFETY: The `AlwaysEscaped` marker guarantees that `self` contains an escape sequence,
+        // and `i` is guaranteed to be a valid index for `self.data.escaped`.
         unsafe { Some(self.data.escaped.get_unchecked(usize::from(i)).to_u8()) }
     }
 
@@ -275,7 +275,7 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
 impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
     const CHAR_FLAG: u8 = 0b10000000;
 
-    // This is the only way to create an `EscapeIterInner` with an unescaped `char`, which
+    // This is the only way to create an `EscapeIterInner` with a literal `char`, which
     // means the `AlwaysEscaped` marker guarantees that `self` contains an escape sequence.
     pub(crate) const fn printable(c: char) -> Self {
         Self::new(
@@ -294,7 +294,7 @@ impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
         let i = self.alive.next()?;
 
         if self.is_unescaped() {
-            // SAFETY: We just checked that `self` contains an unescaped `char`.
+            // SAFETY: We just checked that `self` contains a literal `char`.
             return Some(unsafe { self.as_char() });
         }
 
@@ -314,7 +314,7 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
 impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_unescaped() {
-            // SAFETY: We just checked that `self` contains an unescaped `char`.
+            // SAFETY: We just checked that `self` contains a literal `char`.
             f.write_char(unsafe { self.as_char() })
         } else {
             // SAFETY: We just checked that `self` contains an escape sequence.
@@ -336,7 +336,7 @@ impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_tuple("EscapeIterInner");
         if self.is_unescaped() {
-            // SAFETY: We just checked that `self` contains an unescaped `char`.
+            // SAFETY: We just checked that `self` contains a literal `char`.
             d.field(unsafe { &self.as_char() });
         } else {
             // SAFETY: We just checked that `self` contains an escape sequence.
