@@ -401,7 +401,9 @@ impl FlycheckActor {
                             package_id = package_id.as_ref().map(|it| &it.repr),
                             "diagnostic received"
                         );
-                        self.diagnostics_received = DiagnosticsReceived::Yes;
+                        if self.diagnostics_received == DiagnosticsReceived::No {
+                            self.diagnostics_received = DiagnosticsReceived::Yes;
+                        }
                         if let Some(package_id) = &package_id {
                             if self.diagnostics_cleared_for.insert(package_id.clone()) {
                                 tracing::trace!(
