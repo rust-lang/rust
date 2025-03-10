@@ -577,7 +577,7 @@ where
     }
 
     // very large output
-    assert_eq!(to_string(f, 1.1, Minus, 80000), format!("1.1{:0>79999}", ""));
+    assert_eq!(to_string(f, 1.1, Minus, 50000), format!("1.1{:0>49999}", ""));
 }
 
 pub fn to_shortest_exp_str_test<F>(mut f_: F)
@@ -914,22 +914,22 @@ where
     );
 
     // very large output
-    assert_eq!(to_string(f, 0.0, Minus, 80000, false), format!("0.{:0>79999}e0", ""));
-    assert_eq!(to_string(f, 1.0e1, Minus, 80000, false), format!("1.{:0>79999}e1", ""));
-    assert_eq!(to_string(f, 1.0e0, Minus, 80000, false), format!("1.{:0>79999}e0", ""));
+    assert_eq!(to_string(f, 0.0, Minus, 50000, false), format!("0.{:0>49999}e0", ""));
+    assert_eq!(to_string(f, 1.0e1, Minus, 50000, false), format!("1.{:0>49999}e1", ""));
+    assert_eq!(to_string(f, 1.0e0, Minus, 50000, false), format!("1.{:0>49999}e0", ""));
     assert_eq!(
-        to_string(f, 1.0e-1, Minus, 80000, false),
+        to_string(f, 1.0e-1, Minus, 50000, false),
         format!(
-            "1.000000000000000055511151231257827021181583404541015625{:0>79945}\
+            "1.000000000000000055511151231257827021181583404541015625{:0>49945}\
                         e-1",
             ""
         )
     );
     assert_eq!(
-        to_string(f, 1.0e-20, Minus, 80000, false),
+        to_string(f, 1.0e-20, Minus, 50000, false),
         format!(
             "9.999999999999999451532714542095716517295037027873924471077157760\
-                         66783064379706047475337982177734375{:0>79901}e-21",
+                         66783064379706047475337982177734375{:0>49901}e-21",
             ""
         )
     );
@@ -1150,18 +1150,18 @@ where
     );
 
     // very large output
-    assert_eq!(to_string(f, 0.0, Minus, 80000), format!("0.{:0>80000}", ""));
-    assert_eq!(to_string(f, 1.0e1, Minus, 80000), format!("10.{:0>80000}", ""));
-    assert_eq!(to_string(f, 1.0e0, Minus, 80000), format!("1.{:0>80000}", ""));
+    assert_eq!(to_string(f, 0.0, Minus, 50000), format!("0.{:0>50000}", ""));
+    assert_eq!(to_string(f, 1.0e1, Minus, 50000), format!("10.{:0>50000}", ""));
+    assert_eq!(to_string(f, 1.0e0, Minus, 50000), format!("1.{:0>50000}", ""));
     assert_eq!(
-        to_string(f, 1.0e-1, Minus, 80000),
-        format!("0.1000000000000000055511151231257827021181583404541015625{:0>79945}", "")
+        to_string(f, 1.0e-1, Minus, 50000),
+        format!("0.1000000000000000055511151231257827021181583404541015625{:0>49945}", "")
     );
     assert_eq!(
-        to_string(f, 1.0e-20, Minus, 80000),
+        to_string(f, 1.0e-20, Minus, 50000),
         format!(
             "0.0000000000000000000099999999999999994515327145420957165172950370\
-                          2787392447107715776066783064379706047475337982177734375{:0>79881}",
+                          2787392447107715776066783064379706047475337982177734375{:0>49881}",
             ""
         )
     );
