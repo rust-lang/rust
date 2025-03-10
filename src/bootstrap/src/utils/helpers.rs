@@ -286,7 +286,7 @@ pub fn output(cmd: &mut Command) -> String {
 /// to finish and then return its output. This allows the spawned process
 /// to do work without immediately blocking bootstrap.
 #[track_caller]
-pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String {
+pub fn start_process(cmd: &mut Command) -> impl FnOnce() -> String + use<> {
     let child = match cmd.stderr(Stdio::inherit()).stdout(Stdio::piped()).spawn() {
         Ok(child) => child,
         Err(e) => fail(&format!("failed to execute command: {cmd:?}\nERROR: {e}")),
