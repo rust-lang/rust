@@ -115,6 +115,7 @@ fn main() {
         check!(fluent_alphabetical, &compiler_path, bless);
         check!(fluent_period, &compiler_path);
         check!(target_policy, &root_path);
+        check!(workspace_lints, &compiler_path);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);
