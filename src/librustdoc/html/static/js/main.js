@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass, updateLocalStorage */
 /* global onEachLazy, removeClass, getVar */
 
 "use strict";
