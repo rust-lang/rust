@@ -67,6 +67,10 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
     let mut table = "| Test suite | Passed ✅ | Ignored 🚫 | Failed  ❌ |\n".to_string();
     writeln!(table, "|:------|------:|------:|------:|").unwrap();
 
+    fn compute_pct(value: f64, total: f64) -> f64 {
+        if total == 0.0 { 0.0 } else { value / total }
+    }
+
     fn write_row(
         buffer: &mut String,
         name: &str,
@@ -75,9 +79,9 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
     ) -> std::fmt::Result {
         let TestSuiteRecord { passed, ignored, failed } = record;
         let total = (record.passed + record.ignored + record.failed) as f64;
-        let passed_pct = ((*passed as f64) / total) * 100.0;
-        let ignored_pct = ((*ignored as f64) / total) * 100.0;
-        let failed_pct = ((*failed as f64) / total) * 100.0;
+        let passed_pct = compute_pct(*passed as f64, total) * 100.0;
+        let ignored_pct = compute_pct(*ignored as f64, total) * 100.0;
+        let failed_pct = compute_pct(*failed as f64, total) * 100.0;
 
         write!(buffer, "| {surround}{name}{surround} |")?;
         write!(buffer, " {surround}{passed} ({passed_pct:.0}%){surround} |")?;
