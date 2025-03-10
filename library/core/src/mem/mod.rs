@@ -1249,41 +1249,59 @@ impl<T> SizedTypeProperties for T {}
 
 /// Expands to the offset in bytes of a field from the beginning of the given type.
 ///
-/// Structs, enums, unions and tuples are supported.
+/// The type may be a `struct`, `enum`, `union`, or tuple.
 ///
-/// Nested field accesses may be used, but not array indexes.
+/// The field may be a nested field (`field1.field2`), but not an array index.
+/// The field must be visible to the call site.
+///
+/// The offset is returned as a [`usize`].
 ///
 /// If the nightly-only feature `offset_of_enum` is enabled,
-/// variants may be traversed as if they were fields.
+/// `enum` variants may be traversed as if they were fields.
 /// Variants themselves do not have an offset.
 ///
-/// Visibility is respected - all types and fields must be visible to the call site:
+/// # Offsets of, and in, dynamically sized types
 ///
-/// ```
-/// mod nested {
-///     #[repr(C)]
-///     pub struct Struct {
-///         private: u8,
-///     }
-/// }
+/// The field’s type must be [`Sized`], but it may be located in a [dynamically sized] container.
+/// If the field type is dynamically sized, then you cannot use `offset_of!` (since the field's
+/// alignment, and therefore its offset, may also be dynamic) and must take the offset from an
+/// actual pointer to the container instead.
 ///
-/// // assert_eq!(mem::offset_of!(nested::Struct, private), 0);
-/// // ^^^ error[E0616]: field `private` of struct `Struct` is private
-/// ```
-///
-/// Only [`Sized`] fields are supported, but the container may be unsized:
 /// ```
 /// # use core::mem;
+/// # use core::fmt::Debug;
 /// #[repr(C)]
-/// pub struct Struct {
+/// pub struct Struct<T: ?Sized> {
 ///     a: u8,
-///     b: [u8],
+///     b: T,
 /// }
 ///
-/// assert_eq!(mem::offset_of!(Struct, a), 0); // OK
-/// // assert_eq!(mem::offset_of!(Struct, b), 1);
-/// // ^^^ error[E0277]: doesn't have a size known at compile-time
+/// #[derive(Debug)]
+/// #[repr(C, align(4))]
+/// struct Align4(u32);
+///
+/// assert_eq!(mem::offset_of!(Struct<dyn Debug>, a), 0); // OK — Sized field
+/// assert_eq!(mem::offset_of!(Struct<Align4>, b), 4); // OK — not DST
+///
+/// // assert_eq!(mem::offset_of!(Struct<dyn Debug>, b), 1);
+/// // ^^^ error[E0277]: ... cannot be known at compilation time
+///
+/// // To obtain the offset of a !Sized field, examine a concrete value
+/// // instead of using offset_of!.
+/// let value: Struct<Align4> = Struct { a: 1, b: Align4(2) };
+/// let ref_unsized: &Struct<dyn Debug> = &value;
+/// let offset_of_b = unsafe {
+///     (&raw const ref_unsized.b).byte_offset_from_unsigned(ref_unsized)
+/// };
+/// assert_eq!(offset_of_b, 4);
 /// ```
+///
+/// If you need to obtain the offset of a field of a `!Sized` type, then, since the offset may
+/// depend on the particular value being stored (in particular, `dyn Trait` values have a
+/// dynamically-determined alignment), you must retrieve the offset from a specific reference
+/// or pointer, and so you cannot use `offset_of!` to work without one.
+///
+/// # Layout is subject to change
 ///
 /// Note that type layout is, in general, [subject to change and
 /// platform-specific](https://doc.rust-lang.org/reference/type-layout.html). If
@@ -1358,6 +1376,8 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
+///
+/// [dynamically sized]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
 #[stable(feature = "offset_of", since = "1.77.0")]
 #[allow_internal_unstable(builtin_syntax)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {
