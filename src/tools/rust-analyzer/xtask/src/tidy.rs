@@ -46,7 +46,7 @@ lsp/ext.rs was changed without touching lsp-extensions.md.
 Expected hash: {expected_hash:x}
 Actual hash:   {actual_hash:x}
 
-Please adjust docs/dev/lsp-extensions.md.
+Please adjust docs/book/src/contributing/lsp-extensions.md.
 "
         )
     }
