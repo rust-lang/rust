@@ -49,7 +49,7 @@ test suite ([`tests/ui`]):
 ./x test tests/ui
 ```
 
-This will run the `ui` test suite. Of course, the choice of test suites is
+Of course, the choice of test suites is
 somewhat arbitrary, and may not suit the task you are doing. For example, if you
 are hacking on debuginfo, you may be better off with the debuginfo test suite:
 
