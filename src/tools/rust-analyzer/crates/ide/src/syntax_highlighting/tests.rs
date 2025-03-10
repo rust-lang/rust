@@ -739,14 +739,13 @@ fn test_highlight_doc_comment() {
 //! fn test() {}
 //! ```
 
+//! Syntactic name ref highlighting testing
 //! ```rust
 //! extern crate self;
-//! extern crate std;
+//! extern crate other as otter;
 //! extern crate core;
-//! extern crate alloc;
-//! extern crate proc_macro;
-//! extern crate test;
-//! extern crate Krate;
+//! trait T { type Assoc; }
+//! fn f<Arg>() -> use<Arg> where (): T<Assoc = ()> {}
 //! ```
 mod outline_module;
 

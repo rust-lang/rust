@@ -824,6 +824,7 @@ fn highlight_name_ref_by_syntax(
                 h.into()
             }
         }
+        RECORD_EXPR_FIELD | RECORD_PAT_FIELD => HlTag::Symbol(SymbolKind::Field).into(),
         PATH_SEGMENT => {
             let name_based_fallback = || {
                 if name.text().chars().next().unwrap_or_default().is_uppercase() {
@@ -862,6 +863,8 @@ fn highlight_name_ref_by_syntax(
                 .into(),
             }
         }
+        ASSOC_TYPE_ARG => SymbolKind::TypeAlias.into(),
+        USE_BOUND_GENERIC_ARG => SymbolKind::TypeParam.into(),
         _ => default.into(),
     }
 }
