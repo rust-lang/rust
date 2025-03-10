@@ -370,4 +370,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
     },
+    ChangeInfo {
+        change_id: 126856,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
+    },
 ];
