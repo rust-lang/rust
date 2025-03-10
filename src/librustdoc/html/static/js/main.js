@@ -121,12 +121,9 @@ function getNakedUrl() {
  * doesn't have a parent node.
  *
  * @param {HTMLElement} newNode
- * @param {HTMLElement} referenceNode
+ * @param {HTMLElement & { parentNode: HTMLElement }} referenceNode
  */
 function insertAfter(newNode, referenceNode) {
-    // You're not allowed to pass an element with no parent.
-    // I dunno how to make TS's typechecker see that.
-    // @ts-expect-error
     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
