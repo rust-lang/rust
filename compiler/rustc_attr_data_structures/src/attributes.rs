@@ -8,7 +8,7 @@ use thin_vec::ThinVec;
 
 use crate::{DefaultBodyStability, PartialConstStability, PrintAttribute, RustcVersion, Stability};
 
-#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, PartialEq, Encodable, Decodable, Debug, HashStable_Generic, PrintAttribute)]
 pub enum InlineAttr {
     None,
     Hint,
@@ -189,8 +189,10 @@ pub enum AttributeKind {
         span: Span,
         comment: Symbol,
     },
+    Inline(InlineAttr, Span),
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
+    RustcForceInline(Span, Option<Symbol>),
     Stability {
         stability: Stability,
         /// Span of the `#[stable(...)]` or `#[unstable(...)]` attribute

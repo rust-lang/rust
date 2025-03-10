@@ -85,13 +85,13 @@
 
 #[macro_use]
 mod attributes;
-mod context;
+pub(crate) mod context;
 pub mod parser;
 mod session_diagnostics;
 
 pub use attributes::cfg::*;
 pub use attributes::util::{find_crate_name, is_builtin_attr, parse_version};
-pub use context::{AttributeParser, OmitDoc};
+pub use context::{AttributeParser, Early, Late, OmitDoc};
 pub use rustc_attr_data_structures::*;
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
