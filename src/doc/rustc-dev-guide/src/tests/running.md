@@ -24,8 +24,8 @@ collection.
 
 The test results are cached and previously successful tests are `ignored` during
 testing. The stdout/stderr contents as well as a timestamp file for every test
-can be found under `build/<target-triple>/test/` for the given
-`<target-triple>`. To force-rerun a test (e.g. in case the test runner fails to
+can be found under `build/<target-tuple>/test/` for the given
+`<target-tuple>`. To force-rerun a test (e.g. in case the test runner fails to
 notice a change) you can use the `--force-rerun` CLI option.
 
 > **Note on requirements of external dependencies**
