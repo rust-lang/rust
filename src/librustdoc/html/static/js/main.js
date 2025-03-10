@@ -673,7 +673,6 @@ function preLoadCss(cssUrl) {
     }
 
     // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
-    // @ts-expect-error
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
@@ -765,9 +764,7 @@ function preLoadCss(cssUrl) {
             }
         }
     };
-    // @ts-expect-error
     if (window.pending_implementors) {
-        // @ts-expect-error
         window.register_implementors(window.pending_implementors);
     }
 

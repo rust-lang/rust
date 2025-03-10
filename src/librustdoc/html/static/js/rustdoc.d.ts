@@ -44,6 +44,15 @@ declare global {
          * Set up event listeners for a scraped source example.
          */
         updateScrapedExample?: function(HTMLElement, HTMLElement),
+        /**
+         * register trait implementors, called by code generated in
+         * `write_shared.rs`
+         */
+        register_implementors?: function(Implementors): void,
+        /**
+         * fallback in case `register_implementors` isn't defined yet.
+         */
+        pending_implementors?: Implementors,
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
@@ -415,4 +424,12 @@ declare namespace rustdoc {
     };
 
     type VlqData = VlqData[] | number;
+
+    /**
+     * Maps from crate names to trait implementation data.
+     * Provied by generated `trait.impl` files.
+     */
+    type Implementors = {
+        [key: string]: Array<[string, number, Array<string>]>
+    }
 }
