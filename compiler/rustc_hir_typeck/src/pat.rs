@@ -14,6 +14,7 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
     PatExprKind, PatKind, expr_needs_parens,
 };
+use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
 use rustc_middle::ty::{self, AdtDef, Ty, TypeVisitableExt};
@@ -621,8 +622,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `tests/ui/pattern/deref-patterns/`.
         let mut pat_adjustments = vec![];
         loop {
-            // TODO: check # of iterations against tcx's recursion limit, so we don't loop until OOM
-            // if someone tries matching on a type with a cyclic `Deref` impl.
             let inner_ty = if let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
                 def_br = ByRef::Yes(match def_br {
                     // If default binding mode is by value, make it `ref` or `ref mut`
@@ -646,6 +645,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
                 && until_adt != Some(scrutinee_adt)
             {
+                // We may reach the recursion limit if a user matches on a type `T` satisfying
+                // `T: Deref<Target = T>`; error gracefully in this case.
+                // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
+                // this check out of this branch. Alternatively, this loop could be implemented with
+                // autoderef and this check removed. For now though, don't break code compiling on
+                // stable with lots of `&`s and a low recursion limit, if anyone's done that.
+                if !self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
+                    let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
+                    expected = Ty::new_error(self.tcx, guar);
+                    break;
+                }
+
                 // At this point, the pattern isn't able to match `expected` without peeling. Check
                 // that it implements `Deref` before assuming it's a smart pointer, to get a normal
                 // type error instead of a missing impl error if not. This only checks for `Deref`,
