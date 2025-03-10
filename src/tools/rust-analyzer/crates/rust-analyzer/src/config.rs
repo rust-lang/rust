@@ -41,6 +41,8 @@ use crate::{
     lsp_ext::{WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
+type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
+
 mod patch_old_style;
 
 // Conventions for configuration keys to preserve maximal extendability without breakage:
@@ -81,7 +83,7 @@ config_data! {
         cachePriming_numThreads: NumThreads = NumThreads::Physical,
 
         /// Custom completion snippets.
-        completion_snippets_custom: FxHashMap<String, SnippetDef> = Config::completion_snippets_default(),
+        completion_snippets_custom: FxIndexMap<String, SnippetDef> = Config::completion_snippets_default(),
 
 
         /// These paths (file/directories) will be ignored by rust-analyzer. They are
@@ -931,7 +933,7 @@ impl Config {
                 patch_old_style::patch_json_for_outdated_configs(&mut json);
 
                 let mut json_errors = vec![];
-                let snips = get_field_json::<FxHashMap<String, SnippetDef>>(
+                let snips = get_field_json::<FxIndexMap<String, SnippetDef>>(
                     &mut json,
                     &mut json_errors,
                     "completion_snippets_custom",
@@ -2032,21 +2034,13 @@ impl Config {
         *self.cfg_setTest(source_root)
     }
 
-    pub(crate) fn completion_snippets_default() -> FxHashMap<String, SnippetDef> {
+    pub(crate) fn completion_snippets_default() -> FxIndexMap<String, SnippetDef> {
         serde_json::from_str(
             r#"{
-            "Arc::new": {
-                "postfix": "arc",
-                "body": "Arc::new(${receiver})",
-                "requires": "std::sync::Arc",
-                "description": "Put the expression into an `Arc`",
-                "scope": "expr"
-            },
-            "Rc::new": {
-                "postfix": "rc",
-                "body": "Rc::new(${receiver})",
-                "requires": "std::rc::Rc",
-                "description": "Put the expression into an `Rc`",
+            "Ok": {
+                "postfix": "ok",
+                "body": "Ok(${receiver})",
+                "description": "Wrap the expression in a `Result::Ok`",
                 "scope": "expr"
             },
             "Box::pin": {
@@ -2056,10 +2050,17 @@ impl Config {
                 "description": "Put the expression into a pinned `Box`",
                 "scope": "expr"
             },
-            "Ok": {
-                "postfix": "ok",
-                "body": "Ok(${receiver})",
-                "description": "Wrap the expression in a `Result::Ok`",
+            "Arc::new": {
+                "postfix": "arc",
+                "body": "Arc::new(${receiver})",
+                "requires": "std::sync::Arc",
+                "description": "Put the expression into an `Arc`",
+                "scope": "expr"
+            },
+            "Some": {
+                "postfix": "some",
+                "body": "Some(${receiver})",
+                "description": "Wrap the expression in an `Option::Some`",
                 "scope": "expr"
             },
             "Err": {
@@ -2068,10 +2069,11 @@ impl Config {
                 "description": "Wrap the expression in a `Result::Err`",
                 "scope": "expr"
             },
-            "Some": {
-                "postfix": "some",
-                "body": "Some(${receiver})",
-                "description": "Wrap the expression in an `Option::Some`",
+            "Rc::new": {
+                "postfix": "rc",
+                "body": "Rc::new(${receiver})",
+                "requires": "std::rc::Rc",
+                "description": "Put the expression into an `Rc`",
                 "scope": "expr"
             }
         }"#,
@@ -3210,7 +3212,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "FxHashMap<Box<str>, Box<[Box<str>]>>" => set! {
             "type": "object",
         },
-        "FxHashMap<String, SnippetDef>" => set! {
+        "FxIndexMap<String, SnippetDef>" => set! {
             "type": "object",
         },
         "FxHashMap<String, String>" => set! {

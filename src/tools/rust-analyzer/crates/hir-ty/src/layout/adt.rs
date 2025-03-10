@@ -2,7 +2,6 @@
 
 use std::{cmp, ops::Bound};
 
-use base_db::ra_salsa::Cycle;
 use hir_def::{
     data::adt::VariantData,
     layout::{Integer, ReprOptions, TargetDataLayout},
@@ -10,6 +9,7 @@ use hir_def::{
 };
 use intern::sym;
 use rustc_index::IndexVec;
+use salsa::Cycle;
 use smallvec::SmallVec;
 use triomphe::Arc;
 
@@ -20,7 +20,7 @@ use crate::{
     Substitution, TraitEnvironment,
 };
 
-use super::LayoutCx;
+use super::{HirDatabaseData, LayoutCx};
 
 pub fn layout_of_adt_query(
     db: &dyn HirDatabase,
@@ -131,12 +131,13 @@ fn layout_scalar_valid_range(db: &dyn HirDatabase, def: AdtId) -> (Bound<u128>, 
     )
 }
 
-pub fn layout_of_adt_recover(
+pub(crate) fn layout_of_adt_recover(
     _: &dyn HirDatabase,
     _: &Cycle,
-    _: &AdtId,
-    _: &Substitution,
-    _: &Arc<TraitEnvironment>,
+    _: HirDatabaseData,
+    _: AdtId,
+    _: Substitution,
+    _: Arc<TraitEnvironment>,
 ) -> Result<Arc<Layout>, LayoutError> {
     Err(LayoutError::RecursiveTypeWithoutIndirection)
 }

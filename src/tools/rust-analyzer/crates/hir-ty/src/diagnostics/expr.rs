@@ -434,7 +434,7 @@ impl ExprValidator {
                     let last_then_expr_ty = &self.infer[last_then_expr];
                     if last_then_expr_ty.is_never() {
                         // Only look at sources if the then branch diverges and we have an else branch.
-                        let (_, source_map) = db.body_with_source_map(self.owner);
+                        let source_map = db.body_with_source_map(self.owner).1;
                         let Ok(source_ptr) = source_map.expr_syntax(id) else {
                             return;
                         };

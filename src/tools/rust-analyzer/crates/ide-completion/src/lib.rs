@@ -11,6 +11,7 @@ mod snippet;
 mod tests;
 
 use ide_db::{
+    base_db::salsa::AsDynDatabase,
     imports::insert_use::{self, ImportScope},
     syntax_helpers::tree_diff::diff,
     text_edit::TextEdit,
@@ -275,7 +276,11 @@ pub fn resolve_completion_edits(
     let _p = tracing::info_span!("resolve_completion_edits").entered();
     let sema = hir::Semantics::new(db);
 
-    let original_file = sema.parse(sema.attach_first_edition(file_id)?);
+    let editioned_file_id = sema.attach_first_edition(file_id)?;
+    let editioned_file_id =
+        ide_db::base_db::EditionedFileId::new(db.as_dyn_database(), editioned_file_id);
+
+    let original_file = sema.parse(editioned_file_id);
     let original_token =
         syntax::AstNode::syntax(&original_file).token_at_offset(offset).left_biased()?;
     let position_for_import = &original_token.parent()?;

@@ -19,6 +19,16 @@ impl Edition {
     /// The current latest stable edition, note this is usually not the right choice in code.
     pub const CURRENT_FIXME: Edition = Edition::Edition2021;
 
+    pub fn from_u32(u32: u32) -> Edition {
+        match u32 {
+            0 => Edition::Edition2015,
+            1 => Edition::Edition2018,
+            2 => Edition::Edition2021,
+            3 => Edition::Edition2024,
+            _ => panic!("invalid edition"),
+        }
+    }
+
     pub fn at_least_2024(self) -> bool {
         self >= Edition::Edition2024
     }

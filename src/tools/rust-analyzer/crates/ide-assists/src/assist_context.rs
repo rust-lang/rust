@@ -1,6 +1,7 @@
 //! See [`AssistContext`].
 
 use hir::{FileRange, Semantics};
+use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::EditionedFileId;
 use ide_db::{label::Label, FileId, RootDatabase};
 use syntax::Edition;
@@ -64,7 +65,10 @@ impl<'a> AssistContext<'a> {
         config: &'a AssistConfig,
         frange: FileRange,
     ) -> AssistContext<'a> {
-        let source_file = sema.parse(frange.file_id);
+        let editioned_file_id =
+            ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), frange.file_id);
+
+        let source_file = sema.parse(editioned_file_id);
 
         let start = frange.range.start();
         let end = frange.range.end();

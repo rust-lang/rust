@@ -3,7 +3,8 @@ use std::{iter, mem, str::FromStr, sync};
 
 use base_db::{
     CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, CrateWorkspaceData, Dependency,
-    Env, FileChange, FileSet, LangCrateOrigin, SourceRoot, SourceRootDatabase, Version, VfsPath,
+    Env, FileChange, FileSet, LangCrateOrigin, RootQueryDb, SourceDatabase, SourceRoot, Version,
+    VfsPath,
 };
 use cfg::CfgOptions;
 use hir_expand::{
@@ -28,7 +29,7 @@ use test_utils::{
 
 pub const WORKSPACE: base_db::SourceRootId = base_db::SourceRootId(0);
 
-pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
+pub trait WithFixture: Default + ExpandDatabase + SourceDatabase + 'static {
     #[track_caller]
     fn with_single_file(
         #[rust_analyzer::rust_fixture] ra_fixture: &str,
@@ -101,7 +102,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     }
 
     fn test_crate(&self) -> CrateId {
-        let crate_graph = self.crate_graph();
+        let crate_graph = RootQueryDb::crate_graph(self);
         let mut it = crate_graph.iter();
         let mut res = it.next().unwrap();
         while crate_graph[res].origin.is_lang() {
@@ -111,7 +112,7 @@ pub trait WithFixture: Default + ExpandDatabase + SourceRootDatabase + 'static {
     }
 }
 
-impl<DB: ExpandDatabase + SourceRootDatabase + Default + 'static> WithFixture for DB {}
+impl<DB: ExpandDatabase + SourceDatabase + Default + 'static> WithFixture for DB {}
 
 pub struct ChangeFixture {
     pub file_position: Option<(EditionedFileId, RangeOrOffset)>,

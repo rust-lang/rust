@@ -2,7 +2,7 @@
 
 use hir::{Crate, Module, ModuleDef, Semantics};
 use ide_db::{
-    base_db::{CrateGraph, CrateId, SourceDatabase},
+    base_db::{CrateGraph, CrateId, RootQueryDb},
     FileId, RootDatabase,
 };
 use syntax::TextRange;

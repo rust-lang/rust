@@ -72,7 +72,7 @@ proc-macro-srv = { path = "./crates/proc-macro-srv", version = "0.0.0" }
 proc-macro-srv-cli = { path = "./crates/proc-macro-srv-cli", version = "0.0.0" }
 profile = { path = "./crates/profile", version = "0.0.0" }
 project-model = { path = "./crates/project-model", version = "0.0.0" }
-ra-salsa = { path = "./crates/ra-salsa", package = "salsa", version = "0.0.0" }
+query-group = { package = "query-group-macro", path = "./crates/query-group-macro", version = "0.0.0" }
 span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
@@ -117,7 +117,7 @@ expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
   "inline-more",
 ], default-features = false }
-indexmap = "2.1.0"
+indexmap = { version = "2.1.0", features = ["serde"] }
 itertools = "0.12.0"
 libc = "0.2.150"
 libloading = "0.8.0"
@@ -135,6 +135,7 @@ process-wrap = { version = "8.0.2", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
 pulldown-cmark = { version = "0.9.0", default-features = false }
 rayon = "1.8.0"
+salsa = "0.19"
 rustc-hash = "2.0.0"
 semver = "1.0.14"
 serde = { version = "1.0.192" }

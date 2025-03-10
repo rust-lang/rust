@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::{ra_salsa::Cycle, CrateId};
+use base_db::{salsa::Cycle, CrateId};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     data::adt::{StructKind, VariantData},
@@ -2149,10 +2149,10 @@ pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<Mi
     Ok(Arc::new(result))
 }
 
-pub fn mir_body_recover(
+pub(crate) fn mir_body_recover(
     _db: &dyn HirDatabase,
     _cycle: &Cycle,
-    _def: &DefWithBodyId,
+    _def: DefWithBodyId,
 ) -> Result<Arc<MirBody>> {
     Err(MirLowerError::Loop)
 }

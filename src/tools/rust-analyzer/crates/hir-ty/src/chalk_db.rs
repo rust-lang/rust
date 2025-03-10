@@ -451,10 +451,10 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         self.db.type_alias_data(id).name.display(self.db.upcast(), self.edition()).to_string()
     }
     fn opaque_type_name(&self, opaque_ty_id: chalk_ir::OpaqueTyId<Interner>) -> String {
-        format!("Opaque_{}", opaque_ty_id.0)
+        format!("Opaque_{:?}", opaque_ty_id.0)
     }
     fn fn_def_name(&self, fn_def_id: chalk_ir::FnDefId<Interner>) -> String {
-        format!("fn_{}", fn_def_id.0)
+        format!("fn_{:?}", fn_def_id.0)
     }
     fn coroutine_datum(
         &self,

@@ -6,7 +6,7 @@ use rustc_hash::FxHashSet;
 
 use hir::{db::HirDatabase, sym, Crate, HirFileIdExt, Module};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{base_db::SourceRootDatabase, LineIndexDatabase};
+use ide_db::{base_db::SourceDatabase, LineIndexDatabase};
 use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
 
 use crate::cli::flags;
@@ -51,8 +51,8 @@ impl flags::Diagnostics {
 
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             !source_root.is_library
         });
 

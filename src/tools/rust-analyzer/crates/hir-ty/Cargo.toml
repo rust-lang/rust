@@ -31,8 +31,11 @@ la-arena.workspace = true
 triomphe.workspace = true
 nohash-hasher.workspace = true
 typed-arena = "2.0.1"
+dashmap.workspace = true
 indexmap.workspace = true
 rustc_apfloat = "0.2.0"
+query-group.workspace = true
+salsa.workspace = true
 
 ra-ap-rustc_abi.workspace = true
 ra-ap-rustc_index.workspace = true

@@ -7,6 +7,7 @@ use crate::{
 };
 use hir::FileRange;
 use ide_db::{
+    base_db::salsa::AsDynDatabase,
     defs::Definition,
     search::{SearchScope, UsageSearchResult},
     EditionedFileId, FileId, FxHashSet,
@@ -74,7 +75,12 @@ impl MatchFinder<'_> {
         resolved_path: &ResolvedPath,
         file_range: FileRange,
     ) -> Vec<SyntaxNode> {
-        let file = self.sema.parse(file_range.file_id);
+        let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+            self.sema.db.as_dyn_database(),
+            file_range.file_id,
+        );
+
+        let file = self.sema.parse(editioned_file_id_wrapper);
         let depth = resolved_path.depth as usize;
         let offset = file_range.range.start();
 
@@ -156,10 +162,10 @@ impl MatchFinder<'_> {
     fn search_files_do(&self, mut callback: impl FnMut(FileId)) {
         if self.restrict_ranges.is_empty() {
             // Unrestricted search.
-            use ide_db::base_db::SourceRootDatabase;
+            use ide_db::base_db::SourceDatabase;
             use ide_db::symbol_index::SymbolsDatabase;
             for &root in self.sema.db.local_roots().iter() {
-                let sr = self.sema.db.source_root(root);
+                let sr = self.sema.db.source_root(root).source_root(self.sema.db);
                 for file_id in sr.iter() {
                     callback(file_id);
                 }

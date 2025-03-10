@@ -2,6 +2,7 @@ use std::iter;
 
 use hir::{db, FilePosition, FileRange, HirFileId, InFile, Semantics};
 use ide_db::{
+    base_db::salsa::AsDynDatabase,
     defs::{Definition, IdentClass},
     helpers::pick_best_token,
     search::{FileReference, ReferenceCategory, SearchScope},
@@ -60,7 +61,10 @@ pub(crate) fn highlight_related(
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let syntax = sema.parse(file_id).syntax().clone();
+    let editioned_file_id_wrapper =
+        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
+
+    let syntax = sema.parse(editioned_file_id_wrapper).syntax().clone();
 
     let token = pick_best_token(syntax.token_at_offset(offset), |kind| match kind {
         T![?] => 4, // prefer `?` when the cursor is sandwiched like in `await$0?`

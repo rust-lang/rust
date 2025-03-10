@@ -15,7 +15,7 @@ mod type_alias_impl_traits;
 use std::env;
 use std::sync::LazyLock;
 
-use base_db::{CrateId, SourceDatabaseFileInputExt as _};
+use base_db::{CrateId, SourceDatabase};
 use expect_test::Expect;
 use hir_def::{
     db::DefDatabase,

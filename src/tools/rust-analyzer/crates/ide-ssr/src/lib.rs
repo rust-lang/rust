@@ -80,8 +80,12 @@ pub use crate::{errors::SsrError, from_comment::ssr_from_comment, matching::Matc
 
 use crate::{errors::bail, matching::MatchFailureReason};
 use hir::{FileRange, Semantics};
+use ide_db::symbol_index::SymbolsDatabase;
 use ide_db::text_edit::TextEdit;
-use ide_db::{base_db::SourceDatabase, EditionedFileId, FileId, FxHashMap, RootDatabase};
+use ide_db::{
+    base_db::{salsa::AsDynDatabase, SourceDatabase},
+    EditionedFileId, FileId, FxHashMap, RootDatabase,
+};
 use resolving::ResolvedRule;
 use syntax::{ast, AstNode, SyntaxNode, TextRange};
 
@@ -137,10 +141,11 @@ impl<'db> MatchFinder<'db> {
 
     /// Constructs an instance using the start of the first file in `db` as the lookup context.
     pub fn at_first_file(db: &'db ide_db::RootDatabase) -> Result<MatchFinder<'db>, SsrError> {
-        use ide_db::base_db::SourceRootDatabase;
-        use ide_db::symbol_index::SymbolsDatabase;
-        if let Some(first_file_id) =
-            db.local_roots().iter().next().and_then(|root| db.source_root(*root).iter().next())
+        if let Some(first_file_id) = db
+            .local_roots()
+            .iter()
+            .next()
+            .and_then(|root| db.source_root(*root).source_root(db).iter().next())
         {
             MatchFinder::in_context(
                 db,
@@ -184,7 +189,7 @@ impl<'db> MatchFinder<'db> {
                     replacing::matches_to_edit(
                         self.sema.db,
                         &matches,
-                        &self.sema.db.file_text(file_id),
+                        &self.sema.db.file_text(file_id).text(self.sema.db),
                         &self.rules,
                     ),
                 )
@@ -223,9 +228,12 @@ impl<'db> MatchFinder<'db> {
         file_id: EditionedFileId,
         snippet: &str,
     ) -> Vec<MatchDebugInfo> {
-        let file = self.sema.parse(file_id);
+        let editioned_file_id_wrapper =
+            ide_db::base_db::EditionedFileId::new(self.sema.db.as_dyn_database(), file_id);
+
+        let file = self.sema.parse(editioned_file_id_wrapper);
         let mut res = Vec::new();
-        let file_text = self.sema.db.file_text(file_id.into());
+        let file_text = self.sema.db.file_text(file_id.into()).text(self.sema.db);
         let mut remaining_text = &*file_text;
         let mut base = 0;
         let len = snippet.len() as u32;

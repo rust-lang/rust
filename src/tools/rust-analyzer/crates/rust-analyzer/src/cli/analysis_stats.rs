@@ -22,21 +22,15 @@ use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
-use ide_db::{
-    base_db::{
-        ra_salsa::{self, debug::DebugQueryTable, ParallelDatabase},
-        SourceDatabase, SourceRootDatabase,
-    },
-    EditionedFileId, LineIndexDatabase, SnippetCap,
-};
+use ide_db::{base_db::SourceDatabase, EditionedFileId, LineIndexDatabase, SnippetCap};
 use itertools::Itertools;
 use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
 use oorandom::Rand32;
-use profile::{Bytes, StopWatch};
+use profile::StopWatch;
 use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
-use syntax::{AstNode, SyntaxNode};
+use syntax::AstNode;
 use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
@@ -45,14 +39,6 @@ use crate::cli::{
     progress_report::ProgressReport,
     report_metric, Verbosity,
 };
-
-/// Need to wrap Snapshot to provide `Clone` impl for `map_with`
-struct Snap<DB>(DB);
-impl<DB: ParallelDatabase> Clone for Snap<ra_salsa::Snapshot<DB>> {
-    fn clone(&self) -> Snap<ra_salsa::Snapshot<DB>> {
-        Snap(self.0.snapshot())
-    }
-}
 
 impl flags::AnalysisStats {
     pub fn run(self, verbosity: Verbosity) -> anyhow::Result<()> {
@@ -129,10 +115,13 @@ impl flags::AnalysisStats {
 
         let mut item_tree_sw = self.stop_watch();
         let mut num_item_trees = 0;
-        let source_roots =
-            krates.iter().cloned().map(|krate| db.file_source_root(krate.root_file(db))).unique();
+        let source_roots = krates
+            .iter()
+            .cloned()
+            .map(|krate| db.file_source_root(krate.root_file(db)).source_root_id(db))
+            .unique();
         for source_root_id in source_roots {
-            let source_root = db.source_root(source_root_id);
+            let source_root = db.source_root(source_root_id).source_root(db);
             if !source_root.is_library || self.with_deps {
                 for file_id in source_root.iter() {
                     if let Some(p) = source_root.path_for_file(&file_id) {
@@ -157,8 +146,9 @@ impl flags::AnalysisStats {
             let module = krate.root_module();
             let file_id = module.definition_source_file_id(db);
             let file_id = file_id.original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+
+            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             if !source_root.is_library || self.with_deps {
                 num_crates += 1;
                 visit_queue.push(module);
@@ -268,17 +258,21 @@ impl flags::AnalysisStats {
         report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
 
         if self.source_stats {
-            let mut total_file_size = Bytes::default();
-            for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
-                total_file_size += syntax_len(db.parse(e.key).syntax_node())
-            }
+            // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
+            // and ParseMacroExpansionQuery (mcaro expansion "file") size whenever we implement
+            // Salsa's memory usage tracking works with tracked functions.
 
-            let mut total_macro_file_size = Bytes::default();
-            for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
-                let val = db.parse_macro_expansion(e.key).value.0;
-                total_macro_file_size += syntax_len(val.syntax_node())
-            }
-            eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
+            // let mut total_file_size = Bytes::default();
+            // for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
+            //     total_file_size += syntax_len(db.parse(e.key).syntax_node())
+            // }
+
+            // let mut total_macro_file_size = Bytes::default();
+            // for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
+            //     let val = db.parse_macro_expansion(e.key).value.0;
+            //     total_macro_file_size += syntax_len(val.syntax_node())
+            // }
+            // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
         }
 
         if verbosity.is_verbose() {
@@ -423,6 +417,7 @@ impl flags::AnalysisStats {
                 let range = sema.original_range(expected_tail.syntax()).range;
                 let original_text: String = db
                     .file_text(file_id.into())
+                    .text(db)
                     .chars()
                     .skip(usize::from(range.start()))
                     .take(usize::from(range.end()) - usize::from(range.start()))
@@ -475,7 +470,7 @@ impl flags::AnalysisStats {
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
 
                     // Validate if type-checks
-                    let mut txt = file_txt.to_string();
+                    let mut txt = file_txt.text(db).to_string();
 
                     let edit = ide::TextEdit::replace(range, generated.clone());
                     edit.apply(&mut txt);
@@ -530,7 +525,7 @@ impl flags::AnalysisStats {
             }
             // Revert file back to original state
             if self.validate_term_search {
-                std::fs::write(path, file_txt.to_string()).unwrap();
+                std::fs::write(path, file_txt.text(db).to_string()).unwrap();
             }
 
             bar.inc(1);
@@ -572,6 +567,11 @@ impl flags::AnalysisStats {
     }
 
     fn run_mir_lowering(&self, db: &RootDatabase, bodies: &[DefWithBody], verbosity: Verbosity) {
+        let mut bar = match verbosity {
+            Verbosity::Quiet | Verbosity::Spammy => ProgressReport::hidden(),
+            _ if self.parallel || self.output.is_some() => ProgressReport::hidden(),
+            _ => ProgressReport::new(bodies.len() as u64),
+        };
         let mut sw = self.stop_watch();
         let mut all = 0;
         let mut fail = 0;
@@ -593,11 +593,13 @@ impl flags::AnalysisStats {
                     .chain(Some(body.name(db).unwrap_or_else(Name::missing)))
                     .map(|it| it.display(db, Edition::LATEST).to_string())
                     .join("::");
-                println!("Mir body for {full_name} failed due {e:?}");
+                bar.println(format!("Mir body for {full_name} failed due {e:?}"));
             }
             fail += 1;
+            bar.tick();
         }
         let mir_lowering_time = sw.elapsed();
+        bar.finish_and_clear();
         eprintln!("{:<20} {}", "MIR lowering:", mir_lowering_time);
         eprintln!("Mir failed bodies: {fail} ({}%)", percentage(fail, all));
         report_metric("mir failed bodies", fail, "#");
@@ -619,12 +621,12 @@ impl flags::AnalysisStats {
 
         if self.parallel {
             let mut inference_sw = self.stop_watch();
-            let snap = Snap(db.snapshot());
+            let snap = db.snapshot();
             bodies
                 .par_iter()
                 .map_with(snap, |snap, &body| {
-                    snap.0.body(body.into());
-                    snap.0.infer(body.into());
+                    snap.body(body.into());
+                    snap.infer(body.into());
                 })
                 .count();
             eprintln!("{:<20} {}", "Parallel Inference:", inference_sw.elapsed());
@@ -1206,8 +1208,10 @@ fn percentage(n: u64, total: u64) -> u64 {
     (n * 100).checked_div(total).unwrap_or(100)
 }
 
-fn syntax_len(node: SyntaxNode) -> usize {
-    // Macro expanded code doesn't contain whitespace, so erase *all* whitespace
-    // to make macro and non-macro code comparable.
-    node.to_string().replace(|it: char| it.is_ascii_whitespace(), "").len()
-}
+// FIXME(salsa-transition): bring this back whenever we implement
+// Salsa's memory usage tracking to work with tracked functions.
+// fn syntax_len(node: SyntaxNode) -> usize {
+//     // Macro expanded code doesn't contain whitespace, so erase *all* whitespace
+//     // to make macro and non-macro code comparable.
+//     node.to_string().replace(|it: char| it.is_ascii_whitespace(), "").len()
+// }

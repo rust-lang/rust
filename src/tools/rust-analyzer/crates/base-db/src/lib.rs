@@ -3,14 +3,7 @@
 mod change;
 mod input;
 
-use std::panic;
-
-use ra_salsa::Durability;
-use rustc_hash::FxHashMap;
-use span::EditionedFileId;
-use syntax::{ast, Parse, SourceFile, SyntaxError};
-use triomphe::Arc;
-use vfs::FileId;
+use std::hash::BuildHasherDefault;
 
 pub use crate::{
     change::FileChange,
@@ -20,20 +13,30 @@ pub use crate::{
         TargetLayoutLoadResult,
     },
 };
-pub use ra_salsa::{self, Cancelled};
-pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, VfsPath};
-
+use dashmap::{mapref::entry::Entry, DashMap};
+pub use query_group::{self};
+use rustc_hash::{FxHashMap, FxHasher};
+pub use salsa::{self};
+use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
+use syntax::{ast, Parse, SyntaxError};
+use triomphe::Arc;
+pub use vfs::{file_set::FileSet, AnchoredPath, AnchoredPathBuf, FileId, VfsPath};
 
 #[macro_export]
 macro_rules! impl_intern_key {
-    ($name:ident) => {
-        impl $crate::ra_salsa::InternKey for $name {
-            fn from_intern_id(v: $crate::ra_salsa::InternId) -> Self {
-                $name(v)
-            }
-            fn as_intern_id(&self) -> $crate::ra_salsa::InternId {
-                self.0
+    ($id:ident, $loc:ident) => {
+        #[salsa::interned(no_debug, no_lifetime)]
+        pub struct $id {
+            pub loc: $loc,
+        }
+
+        // If we derive this salsa prints the values recursively, and this causes us to blow.
+        impl ::std::fmt::Debug for $id {
+            fn fmt(&self, f: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                f.debug_tuple(stringify!($id))
+                    .field(&format_args!("{:04x}", self.0.as_u32()))
+                    .finish()
             }
         }
     };
@@ -47,39 +50,213 @@ pub const DEFAULT_FILE_TEXT_LRU_CAP: u16 = 16;
 pub const DEFAULT_PARSE_LRU_CAP: u16 = 128;
 pub const DEFAULT_BORROWCK_LRU_CAP: u16 = 2024;
 
-pub trait FileLoader {
-    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId>;
-    /// Crates whose root's source root is the same as the source root of `file_id`
-    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
+#[derive(Debug, Default)]
+pub struct Files {
+    files: Arc<DashMap<vfs::FileId, FileText, BuildHasherDefault<FxHasher>>>,
+    source_roots: Arc<DashMap<SourceRootId, SourceRootInput, BuildHasherDefault<FxHasher>>>,
+    file_source_roots: Arc<DashMap<vfs::FileId, FileSourceRootInput, BuildHasherDefault<FxHasher>>>,
+}
+
+impl Files {
+    pub fn file_text(&self, file_id: vfs::FileId) -> FileText {
+        *self.files.get(&file_id).expect("Unable to fetch file; this is a bug")
+    }
+
+    pub fn set_file_text(&self, db: &mut dyn SourceDatabase, file_id: vfs::FileId, text: &str) {
+        let files = Arc::clone(&self.files);
+        match files.entry(file_id) {
+            Entry::Occupied(mut occupied) => {
+                occupied.get_mut().set_text(db).to(Arc::from(text));
+            }
+            Entry::Vacant(vacant) => {
+                let text = FileText::new(db, Arc::from(text), file_id);
+                vacant.insert(text);
+            }
+        };
+    }
+
+    pub fn set_file_text_with_durability(
+        &self,
+        db: &mut dyn SourceDatabase,
+        file_id: vfs::FileId,
+        text: &str,
+        durability: Durability,
+    ) {
+        let files = Arc::clone(&self.files);
+        match files.entry(file_id) {
+            Entry::Occupied(mut occupied) => {
+                occupied.get_mut().set_text(db).to(Arc::from(text));
+            }
+            Entry::Vacant(vacant) => {
+                let text =
+                    FileText::builder(Arc::from(text), file_id).durability(durability).new(db);
+                vacant.insert(text);
+            }
+        };
+    }
+
+    /// Source root of the file.
+    pub fn source_root(&self, source_root_id: SourceRootId) -> SourceRootInput {
+        let source_root = self
+            .source_roots
+            .get(&source_root_id)
+            .expect("Unable to fetch source root id; this is a bug");
+
+        *source_root
+    }
+
+    pub fn set_source_root_with_durability(
+        &self,
+        db: &mut dyn SourceDatabase,
+        source_root_id: SourceRootId,
+        source_root: Arc<SourceRoot>,
+        durability: Durability,
+    ) {
+        let source_roots = Arc::clone(&self.source_roots);
+        match source_roots.entry(source_root_id) {
+            Entry::Occupied(mut occupied) => {
+                occupied.get_mut().set_source_root(db).to(source_root);
+            }
+            Entry::Vacant(vacant) => {
+                let source_root =
+                    SourceRootInput::builder(source_root).durability(durability).new(db);
+                vacant.insert(source_root);
+            }
+        };
+    }
+
+    pub fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput {
+        let file_source_root = self
+            .file_source_roots
+            .get(&id)
+            .expect("Unable to fetch FileSourceRootInput; this is a bug");
+        *file_source_root
+    }
+
+    pub fn set_file_source_root_with_durability(
+        &self,
+        db: &mut dyn SourceDatabase,
+        id: vfs::FileId,
+        source_root_id: SourceRootId,
+        durability: Durability,
+    ) {
+        let file_source_roots = Arc::clone(&self.file_source_roots);
+        // let db = self;
+        match file_source_roots.entry(id) {
+            Entry::Occupied(mut occupied) => {
+                occupied.get_mut().set_source_root_id(db).to(source_root_id);
+            }
+            Entry::Vacant(vacant) => {
+                let file_source_root =
+                    FileSourceRootInput::builder(source_root_id).durability(durability).new(db);
+                vacant.insert(file_source_root);
+            }
+        };
+    }
+}
+
+#[salsa::interned(no_lifetime)]
+pub struct EditionedFileId {
+    pub editioned_file_id: span::EditionedFileId,
+}
+
+impl EditionedFileId {
+    pub fn file_id(&self, db: &dyn salsa::Database) -> vfs::FileId {
+        let id = self.editioned_file_id(db);
+        id.file_id()
+    }
+
+    fn unpack(&self, db: &dyn salsa::Database) -> (vfs::FileId, span::Edition) {
+        let id = self.editioned_file_id(db);
+        (id.file_id(), id.edition())
+    }
+}
+
+#[salsa::input]
+pub struct FileText {
+    pub text: Arc<str>,
+    pub file_id: vfs::FileId,
+}
+
+#[salsa::input]
+pub struct FileSourceRootInput {
+    pub source_root_id: SourceRootId,
+}
+
+#[salsa::input]
+pub struct SourceRootInput {
+    pub source_root: Arc<SourceRoot>,
 }
 
 /// Database which stores all significant input facts: source code and project
 /// model. Everything else in rust-analyzer is derived from these queries.
-#[ra_salsa::query_group(SourceDatabaseStorage)]
-pub trait SourceDatabase: FileLoader + std::fmt::Debug {
-    #[ra_salsa::input]
-    fn compressed_file_text(&self, file_id: FileId) -> Arc<[u8]>;
-
-    /// Text of the file.
-    #[ra_salsa::lru]
-    fn file_text(&self, file_id: FileId) -> Arc<str>;
-
+#[query_group::query_group]
+pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// Parses the file into the syntax tree.
-    #[ra_salsa::lru]
+    #[salsa::invoke_actual(parse)]
+    #[salsa::lru(128)]
     fn parse(&self, file_id: EditionedFileId) -> Parse<ast::SourceFile>;
 
     /// Returns the set of errors obtained from parsing the file including validation errors.
     fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
 
     /// The crate graph.
-    #[ra_salsa::input]
+    #[salsa::input]
     fn crate_graph(&self) -> Arc<CrateGraph>;
 
-    #[ra_salsa::input]
+    #[salsa::input]
     fn crate_workspace_data(&self) -> Arc<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>;
 
-    #[ra_salsa::transparent]
+    #[salsa::transparent]
     fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
+
+    /// Crates whose root file is in `id`.
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
+
+    #[salsa::transparent]
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
+}
+
+#[salsa::db]
+pub trait SourceDatabase: salsa::Database {
+    /// Text of the file.
+    fn file_text(&self, file_id: vfs::FileId) -> FileText;
+
+    fn set_file_text(&mut self, file_id: vfs::FileId, text: &str);
+
+    fn set_file_text_with_durability(
+        &mut self,
+        file_id: vfs::FileId,
+        text: &str,
+        durability: Durability,
+    );
+
+    /// Contents of the source root.
+    fn source_root(&self, id: SourceRootId) -> SourceRootInput;
+
+    fn file_source_root(&self, id: vfs::FileId) -> FileSourceRootInput;
+
+    fn set_file_source_root_with_durability(
+        &mut self,
+        id: vfs::FileId,
+        source_root_id: SourceRootId,
+        durability: Durability,
+    );
+
+    /// Source root of the file.
+    fn set_source_root_with_durability(
+        &mut self,
+        source_root_id: SourceRootId,
+        source_root: Arc<SourceRoot>,
+        durability: Durability,
+    );
+
+    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
+        // FIXME: this *somehow* should be platform agnostic...
+        let source_root = self.file_source_root(path.anchor);
+        let source_root = self.source_root(source_root.source_root_id(self));
+        source_root.source_root(self).resolve_path(path)
+    }
 }
 
 /// Crate related data shared by the whole workspace.
@@ -91,7 +268,7 @@ pub struct CrateWorkspaceData {
     pub toolchain: Option<Version>,
 }
 
-fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseChannel> {
+fn toolchain_channel(db: &dyn RootQueryDb, krate: CrateId) -> Option<ReleaseChannel> {
     db.crate_workspace_data()
         .get(&krate)?
         .toolchain
@@ -99,14 +276,14 @@ fn toolchain_channel(db: &dyn SourceDatabase, krate: CrateId) -> Option<ReleaseC
         .and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
-fn parse(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
+fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
     let _p = tracing::info_span!("parse", ?file_id).entered();
-    let (file_id, edition) = file_id.unpack();
-    let text = db.file_text(file_id);
-    SourceFile::parse(&text, edition)
+    let (file_id, edition) = file_id.unpack(db.as_dyn_database());
+    let text = db.file_text(file_id).text(db);
+    ast::SourceFile::parse(&text, edition)
 }
 
-fn parse_errors(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>> {
+fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>> {
     let errors = db.parse(file_id).errors();
     match &*errors {
         [] => None,
@@ -114,67 +291,13 @@ fn parse_errors(db: &dyn SourceDatabase, file_id: EditionedFileId) -> Option<Arc
     }
 }
 
-fn file_text(db: &dyn SourceDatabase, file_id: FileId) -> Arc<str> {
-    let bytes = db.compressed_file_text(file_id);
-    let bytes =
-        lz4_flex::decompress_size_prepended(&bytes).expect("lz4 decompression should not fail");
-    let text = std::str::from_utf8(&bytes).expect("file contents should be valid UTF-8");
-    Arc::from(text)
-}
-
-/// We don't want to give HIR knowledge of source roots, hence we extract these
-/// methods into a separate DB.
-#[ra_salsa::query_group(SourceRootDatabaseStorage)]
-pub trait SourceRootDatabase: SourceDatabase {
-    /// Path to a file, relative to the root of its source root.
-    /// Source root of the file.
-    #[ra_salsa::input]
-    fn file_source_root(&self, file_id: FileId) -> SourceRootId;
-    /// Contents of the source root.
-    #[ra_salsa::input]
-    fn source_root(&self, id: SourceRootId) -> Arc<SourceRoot>;
-
-    /// Crates whose root file is in `id`.
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
-}
-
-pub trait SourceDatabaseFileInputExt {
-    fn set_file_text(&mut self, file_id: FileId, text: &str) {
-        self.set_file_text_with_durability(file_id, text, Durability::LOW);
-    }
-
-    fn set_file_text_with_durability(
-        &mut self,
-        file_id: FileId,
-        text: &str,
-        durability: Durability,
-    );
-}
-
-impl<Db: ?Sized + SourceRootDatabase> SourceDatabaseFileInputExt for Db {
-    fn set_file_text_with_durability(
-        &mut self,
-        file_id: FileId,
-        text: &str,
-        durability: Durability,
-    ) {
-        let bytes = text.as_bytes();
-        let compressed = lz4_flex::compress_prepend_size(bytes);
-        self.set_compressed_file_text_with_durability(
-            file_id,
-            Arc::from(compressed.as_slice()),
-            durability,
-        )
-    }
-}
-
-fn source_root_crates(db: &dyn SourceRootDatabase, id: SourceRootId) -> Arc<[CrateId]> {
+fn source_root_crates(db: &dyn RootQueryDb, id: SourceRootId) -> Arc<[CrateId]> {
     let graph = db.crate_graph();
     let mut crates = graph
         .iter()
         .filter(|&krate| {
             let root_file = graph[krate].root_file_id;
-            db.file_source_root(root_file) == id
+            db.file_source_root(root_file).source_root_id(db) == id
         })
         .collect::<Vec<_>>();
     crates.sort();
@@ -182,22 +305,9 @@ fn source_root_crates(db: &dyn SourceRootDatabase, id: SourceRootId) -> Arc<[Cra
     crates.into_iter().collect()
 }
 
-// FIXME: Would be nice to get rid of this somehow
-/// Silly workaround for cyclic deps due to the SourceRootDatabase and SourceDatabase split
-/// regarding FileLoader
-pub struct FileLoaderDelegate<T>(pub T);
+fn relevant_crates(db: &dyn RootQueryDb, file_id: FileId) -> Arc<[CrateId]> {
+    let _p = tracing::info_span!("relevant_crates").entered();
 
-impl<T: SourceRootDatabase> FileLoader for FileLoaderDelegate<&'_ T> {
-    fn resolve_path(&self, path: AnchoredPath<'_>) -> Option<FileId> {
-        // FIXME: this *somehow* should be platform agnostic...
-        let source_root = self.0.file_source_root(path.anchor);
-        let source_root = self.0.source_root(source_root);
-        source_root.resolve_path(path)
-    }
-
-    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]> {
-        let _p = tracing::info_span!("relevant_crates").entered();
-        let source_root = self.0.file_source_root(file_id);
-        self.0.source_root_crates(source_root)
-    }
+    let source_root = db.file_source_root(file_id);
+    db.source_root_crates(source_root.source_root_id(db))
 }

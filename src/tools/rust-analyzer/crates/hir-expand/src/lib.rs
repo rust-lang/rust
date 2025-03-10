@@ -33,11 +33,11 @@ use triomphe::Arc;
 use core::fmt;
 use std::hash::Hash;
 
-use base_db::{ra_salsa::InternValueTrivial, CrateId};
+use base_db::CrateId;
 use either::Either;
 use span::{
     Edition, EditionedFileId, ErasedFileAstId, FileAstId, HirFileIdRepr, Span, SpanAnchor,
-    SyntaxContextData, SyntaxContextId,
+    SyntaxContextId,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -89,17 +89,17 @@ pub mod tt {
 macro_rules! impl_intern_lookup {
     ($db:ident, $id:ident, $loc:ident, $intern:ident, $lookup:ident) => {
         impl $crate::Intern for $loc {
-            type Database<'db> = dyn $db + 'db;
+            type Database = dyn $db;
             type ID = $id;
-            fn intern(self, db: &Self::Database<'_>) -> $id {
+            fn intern(self, db: &Self::Database) -> Self::ID {
                 db.$intern(self)
             }
         }
 
         impl $crate::Lookup for $id {
-            type Database<'db> = dyn $db + 'db;
+            type Database = dyn $db;
             type Data = $loc;
-            fn lookup(&self, db: &Self::Database<'_>) -> $loc {
+            fn lookup(&self, db: &Self::Database) -> Self::Data {
                 db.$lookup(*self)
             }
         }
@@ -108,15 +108,15 @@ macro_rules! impl_intern_lookup {
 
 // ideally these would be defined in base-db, but the orphan rule doesn't let us
 pub trait Intern {
-    type Database<'db>: ?Sized;
+    type Database: ?Sized;
     type ID;
-    fn intern(self, db: &Self::Database<'_>) -> Self::ID;
+    fn intern(self, db: &Self::Database) -> Self::ID;
 }
 
 pub trait Lookup {
-    type Database<'db>: ?Sized;
+    type Database: ?Sized;
     type Data;
-    fn lookup(&self, db: &Self::Database<'_>) -> Self::Data;
+    fn lookup(&self, db: &Self::Database) -> Self::Data;
 }
 
 impl_intern_lookup!(
@@ -125,14 +125,6 @@ impl_intern_lookup!(
     MacroCallLoc,
     intern_macro_call,
     lookup_intern_macro_call
-);
-
-impl_intern_lookup!(
-    ExpandDatabase,
-    SyntaxContextId,
-    SyntaxContextData,
-    intern_syntax_context,
-    lookup_intern_syntax_context
 );
 
 pub type ExpandResult<T> = ValueResult<T, ExpandError>;
@@ -262,7 +254,6 @@ pub struct MacroCallLoc {
     pub kind: MacroCallKind,
     pub ctxt: SyntaxContextId,
 }
-impl InternValueTrivial for MacroCallLoc {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct MacroDefId {
@@ -357,7 +348,7 @@ impl HirFileIdExt for HirFileId {
     fn edition(self, db: &dyn ExpandDatabase) -> Edition {
         match self.repr() {
             HirFileIdRepr::FileId(file_id) => file_id.edition(),
-            HirFileIdRepr::MacroFile(m) => m.macro_call_id.lookup(db).def.edition,
+            HirFileIdRepr::MacroFile(m) => db.lookup_intern_macro_call(m.macro_call_id).def.edition,
         }
     }
     fn original_file(self, db: &dyn ExpandDatabase) -> EditionedFileId {
@@ -366,7 +357,7 @@ impl HirFileIdExt for HirFileId {
             match file_id.repr() {
                 HirFileIdRepr::FileId(id) => break id,
                 HirFileIdRepr::MacroFile(MacroFileId { macro_call_id }) => {
-                    file_id = macro_call_id.lookup(db).kind.file_id();
+                    file_id = db.lookup_intern_macro_call(macro_call_id).kind.file_id()
                 }
             }
         }
@@ -409,7 +400,7 @@ impl HirFileIdExt for HirFileId {
 
     fn as_builtin_derive_attr_node(&self, db: &dyn ExpandDatabase) -> Option<InFile<ast::Attr>> {
         let macro_file = self.macro_file()?;
-        let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+        let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
         let attr = match loc.def.kind {
             MacroDefKind::BuiltInDerive(..) => loc.to_node(db),
             _ => return None,
@@ -467,7 +458,7 @@ impl MacroFileIdExt for MacroFileId {
         let mut level = 0;
         let mut macro_file = self;
         loop {
-            let loc: MacroCallLoc = db.lookup_intern_macro_call(macro_file.macro_call_id);
+            let loc = db.lookup_intern_macro_call(macro_file.macro_call_id);
 
             level += 1;
             macro_file = match loc.kind.file_id().repr() {
@@ -477,7 +468,7 @@ impl MacroFileIdExt for MacroFileId {
         }
     }
     fn parent(self, db: &dyn ExpandDatabase) -> HirFileId {
-        self.macro_call_id.lookup(db).kind.file_id()
+        db.lookup_intern_macro_call(self.macro_call_id).kind.file_id()
     }
 
     /// Return expansion information if it is a macro-expansion file
@@ -538,7 +529,7 @@ impl MacroDefId {
         kind: MacroCallKind,
         ctxt: SyntaxContextId,
     ) -> MacroCallId {
-        MacroCallLoc { def: self, krate, kind, ctxt }.intern(db)
+        db.intern_macro_call(MacroCallLoc { def: self, krate, kind, ctxt })
     }
 
     pub fn definition_range(&self, db: &dyn ExpandDatabase) -> InFile<TextRange> {

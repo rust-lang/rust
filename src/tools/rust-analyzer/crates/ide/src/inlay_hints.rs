@@ -8,7 +8,7 @@ use hir::{
     sym, ClosureStyle, DisplayTarget, HasVisibility, HirDisplay, HirDisplayError, HirWrite,
     ModuleDef, ModuleDefId, Semantics,
 };
-use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
+use ide_db::{base_db::salsa::AsDynDatabase, famous_defs::FamousDefs, FileRange, RootDatabase};
 use ide_db::{text_edit::TextEdit, FxHashSet};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
@@ -86,7 +86,9 @@ pub(crate) fn inlay_hints(
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
+    let editioned_file_id_wrapper =
+        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
+    let file = sema.parse(editioned_file_id_wrapper);
     let file = file.syntax();
 
     let mut acc = Vec::new();
@@ -137,7 +139,9 @@ pub(crate) fn inlay_hints_resolve(
     let file_id = sema
         .attach_first_edition(file_id)
         .unwrap_or_else(|| EditionedFileId::current_edition(file_id));
-    let file = sema.parse(file_id);
+    let editioned_file_id_wrapper =
+        ide_db::base_db::EditionedFileId::new(sema.db.as_dyn_database(), file_id);
+    let file = sema.parse(editioned_file_id_wrapper);
     let file = file.syntax();
 
     let scope = sema.scope(file)?;

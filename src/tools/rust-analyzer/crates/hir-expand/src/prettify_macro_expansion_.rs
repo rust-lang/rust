@@ -25,9 +25,8 @@ pub fn prettify_macro_expansion(
         let ctx = span_map.span_at(dollar_crate.text_range().start() + span_offset).ctx;
         let replacement =
             syntax_ctx_id_to_dollar_crate_replacement.entry(ctx).or_insert_with(|| {
-                let ctx_data = db.lookup_intern_syntax_context(ctx);
                 let macro_call_id =
-                    ctx_data.outer_expn.expect("`$crate` cannot come from `SyntaxContextId::ROOT`");
+                    ctx.outer_expn(db).expect("`$crate` cannot come from `SyntaxContextId::ROOT`");
                 let macro_call = db.lookup_intern_macro_call(macro_call_id);
                 let macro_def_crate = macro_call.def.krate;
                 // First, if this is the same crate as the macro, nothing will work but `crate`.

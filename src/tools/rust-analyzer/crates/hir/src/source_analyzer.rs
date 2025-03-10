@@ -1635,8 +1635,7 @@ pub(crate) fn name_hygiene(db: &dyn HirDatabase, name: InFile<&SyntaxNode>) -> H
     };
     let span_map = db.expansion_span_map(macro_file);
     let ctx = span_map.span_at(name.value.text_range().start()).ctx;
-    let ctx = db.lookup_intern_syntax_context(ctx);
-    HygieneId::new(ctx.opaque_and_semitransparent)
+    HygieneId::new(ctx.opaque_and_semitransparent(db))
 }
 
 fn type_of_expr_including_adjust(infer: &InferenceResult, id: ExprId) -> Option<&Ty> {

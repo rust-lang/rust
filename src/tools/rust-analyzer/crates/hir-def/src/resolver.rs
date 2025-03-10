@@ -207,7 +207,13 @@ impl Resolver {
             return self.module_scope.resolve_path_in_type_ns(db, path);
         }
 
-        let remaining_idx = || if path.segments().len() == 1 { None } else { Some(1) };
+        let remaining_idx = || {
+            if path.segments().len() == 1 {
+                None
+            } else {
+                Some(1)
+            }
+        };
 
         for scope in self.scopes() {
             match scope {
@@ -314,7 +320,7 @@ impl Resolver {
                         None,
                     ),
                     ResolvePathResultPrefixInfo::default(),
-                ))
+                ));
             }
             Path::LangItem(l, Some(_)) => {
                 let type_ns = match *l {
@@ -889,11 +895,10 @@ fn handle_macro_def_scope(
             // A macro is allowed to refer to variables from before its declaration.
             // Therefore, if we got to the rib of its declaration, give up its hygiene
             // and use its parent expansion.
-            let parent_ctx = db.lookup_intern_syntax_context(*parent_ctx);
-            *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent);
-            *hygiene_info = parent_ctx.outer_expn.map(|expansion| {
+            *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent(db));
+            *hygiene_info = parent_ctx.outer_expn(db).map(|expansion| {
                 let expansion = db.lookup_intern_macro_call(expansion);
-                (parent_ctx.parent, expansion.def)
+                (parent_ctx.parent(db), expansion.def)
             });
         }
     }
@@ -905,10 +910,10 @@ fn hygiene_info(
     hygiene_id: HygieneId,
 ) -> Option<(SyntaxContextId, MacroDefId)> {
     if !hygiene_id.is_root() {
-        let ctx = hygiene_id.lookup(db);
-        ctx.outer_expn.map(|expansion| {
+        let ctx = hygiene_id.lookup();
+        ctx.outer_expn(db).map(|expansion| {
             let expansion = db.lookup_intern_macro_call(expansion);
-            (ctx.parent, expansion.def)
+            (ctx.parent(db), expansion.def)
         })
     } else {
         None
@@ -1438,7 +1443,7 @@ impl HasResolver for MacroRulesId {
 fn lookup_resolver<'db>(
     db: &(dyn DefDatabase + 'db),
     lookup: impl Lookup<
-        Database<'db> = dyn DefDatabase + 'db,
+        Database = dyn DefDatabase,
         Data = impl ItemTreeLoc<Container = impl HasResolver>,
     >,
 ) -> Resolver {

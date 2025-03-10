@@ -7,7 +7,7 @@ use crate::{
     SsrMatches,
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
-use ide_db::{base_db::SourceDatabase, FxHashMap};
+use ide_db::{base_db::RootQueryDb, FxHashMap};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
     ast::{self, AstNode, AstToken, HasGenericArgs},

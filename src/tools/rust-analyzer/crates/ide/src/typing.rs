@@ -15,10 +15,13 @@
 
 mod on_enter;
 
+use ide_db::{
+    base_db::{salsa::AsDynDatabase, RootQueryDb},
+    FilePosition, RootDatabase,
+};
+use span::{Edition, EditionedFileId};
 use std::iter;
 
-use ide_db::{base_db::SourceDatabase, FilePosition, RootDatabase};
-use span::{Edition, EditionedFileId};
 use syntax::{
     algo::{ancestors_at_offset, find_node_at_offset},
     ast::{self, edit::IndentLevel, AstToken},
@@ -73,7 +76,11 @@ pub(crate) fn on_char_typed(
     // FIXME: We are hitting the database here, if we are unlucky this call might block momentarily
     // causing the editor to feel sluggish!
     let edition = Edition::CURRENT_FIXME;
-    let file = &db.parse(EditionedFileId::new(position.file_id, edition));
+    let editioned_file_id_wrapper = ide_db::base_db::EditionedFileId::new(
+        db.as_dyn_database(),
+        EditionedFileId::new(position.file_id, edition),
+    );
+    let file = &db.parse(editioned_file_id_wrapper);
     let char_matches_position =
         file.tree().syntax().text().char_at(position.offset) == Some(char_typed);
     if !stdx::always!(char_matches_position) {

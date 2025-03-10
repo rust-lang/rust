@@ -3,7 +3,7 @@ mod generated;
 use expect_test::expect;
 use hir::{FileRange, Semantics};
 use ide_db::{
-    base_db::{SourceDatabase, SourceRootDatabase},
+    base_db::SourceDatabase,
     imports::insert_use::{ImportGranularity, InsertUseConfig},
     source_change::FileSystemEdit,
     EditionedFileId, RootDatabase, SnippetCap,
@@ -222,7 +222,7 @@ pub(crate) fn check_assist_unresolved(
 fn check_doc_test(assist_id: &str, before: &str, after: &str) {
     let after = trim_indent(after);
     let (db, file_id, selection) = RootDatabase::with_range_or_offset(before);
-    let before = db.file_text(file_id.file_id()).to_string();
+    let before = db.file_text(file_id.file_id()).text(&db).to_string();
     let frange = FileRange { file_id, range: selection.into() };
 
     let assist = assists(&db, &TEST_CONFIG, AssistResolveStrategy::All, frange.into())
@@ -281,7 +281,7 @@ fn check_with_config(
 ) {
     let (mut db, file_with_caret_id, range_or_offset) = RootDatabase::with_range_or_offset(before);
     db.enable_proc_attr_macros();
-    let text_without_caret = db.file_text(file_with_caret_id.into()).to_string();
+    let text_without_caret = db.file_text(file_with_caret_id.into()).text(&db).to_string();
 
     let frange = FileRange { file_id: file_with_caret_id, range: range_or_offset.into() };
 
@@ -311,14 +311,14 @@ fn check_with_config(
 
             let mut buf = String::new();
             for (file_id, (edit, snippet_edit)) in source_change.source_file_edits {
-                let mut text = db.file_text(file_id).as_ref().to_owned();
+                let mut text = db.file_text(file_id).text(&db).as_ref().to_owned();
                 edit.apply(&mut text);
                 if let Some(snippet_edit) = snippet_edit {
                     snippet_edit.apply(&mut text);
                 }
                 if !skip_header {
-                    let sr = db.file_source_root(file_id);
-                    let sr = db.source_root(sr);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(&db);
+                    let sr = db.source_root(source_root_id).source_root(&db);
                     let path = sr.path_for_file(&file_id).unwrap();
                     format_to!(buf, "//- {}\n", path)
                 }
@@ -329,15 +329,16 @@ fn check_with_config(
                 let (dst, contents) = match file_system_edit {
                     FileSystemEdit::CreateFile { dst, initial_contents } => (dst, initial_contents),
                     FileSystemEdit::MoveFile { src, dst } => {
-                        (dst, db.file_text(src).as_ref().to_owned())
+                        (dst, db.file_text(src).text(&db).as_ref().to_owned())
                     }
                     FileSystemEdit::MoveDir { src, src_id, dst } => {
                         // temporary placeholder for MoveDir since we are not using MoveDir in ide assists yet.
                         (dst, format!("{src_id:?}\n{src:?}"))
                     }
                 };
-                let sr = db.file_source_root(dst.anchor);
-                let sr = db.source_root(sr);
+
+                let source_root_id = db.file_source_root(dst.anchor).source_root_id(&db);
+                let sr = db.source_root(source_root_id).source_root(&db);
                 let mut base = sr.path_for_file(&dst.anchor).unwrap().clone();
                 base.pop();
                 let created_file_path = base.join(&dst.path).unwrap();

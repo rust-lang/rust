@@ -8,7 +8,7 @@ use std::{ops::Not as _, time::Instant};
 use crossbeam_channel::{unbounded, Receiver, Sender};
 use hir::ChangeWithProcMacros;
 use ide::{Analysis, AnalysisHost, Cancellable, FileId, SourceRootId};
-use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase, SourceRootDatabase};
+use ide_db::base_db::{CrateId, ProcMacroPaths, SourceDatabase};
 use itertools::Itertools;
 use load_cargo::SourceRootConfig;
 use lsp_types::{SemanticTokens, Url};
@@ -426,29 +426,28 @@ impl GlobalState {
                     tracing::info!(%vfs_path, ?change_kind, "Processing rust-analyzer.toml changes");
                     if vfs_path.as_path() == user_config_abs_path {
                         tracing::info!(%vfs_path, ?change_kind, "Use config rust-analyzer.toml changes");
-                        change.change_user_config(Some(db.file_text(file_id)));
-                        continue;
+                        change.change_user_config(Some(db.file_text(file_id).text(db)));
                     }
 
                     // If change has been made to a ratoml file that
                     // belongs to a non-local source root, we will ignore it.
-                    let sr_id = db.file_source_root(file_id);
-                    let sr = db.source_root(sr_id);
+                    let source_root_id = db.file_source_root(file_id).source_root_id(db);
+                    let source_root = db.source_root(source_root_id).source_root(db);
 
-                    if !sr.is_library {
+                    if !source_root.is_library {
                         let entry = if workspace_ratoml_paths.contains(&vfs_path) {
-                            tracing::info!(%vfs_path, ?sr_id, "workspace rust-analyzer.toml changes");
+                            tracing::info!(%vfs_path, ?source_root_id, "workspace rust-analyzer.toml changes");
                             change.change_workspace_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         } else {
-                            tracing::info!(%vfs_path, ?sr_id, "crate rust-analyzer.toml changes");
+                            tracing::info!(%vfs_path, ?source_root_id, "crate rust-analyzer.toml changes");
                             change.change_ratoml(
-                                sr_id,
+                                source_root_id,
                                 vfs_path.clone(),
-                                Some(db.file_text(file_id)),
+                                Some(db.file_text(file_id).text(db)),
                             )
                         };
 
@@ -459,10 +458,14 @@ impl GlobalState {
                                 // Put the old one back in.
                                 match kind {
                                     RatomlFileKind::Crate => {
-                                        change.change_ratoml(sr_id, old_path, old_text);
+                                        change.change_ratoml(source_root_id, old_path, old_text);
                                     }
                                     RatomlFileKind::Workspace => {
-                                        change.change_workspace_ratoml(sr_id, old_path, old_text);
+                                        change.change_workspace_ratoml(
+                                            source_root_id,
+                                            old_path,
+                                            old_text,
+                                        );
                                     }
                                 }
                             }

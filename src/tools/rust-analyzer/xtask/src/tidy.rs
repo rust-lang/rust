@@ -127,7 +127,7 @@ fn check_cargo_toml(path: &Path, text: String) {
 
 fn check_licenses(sh: &Shell) {
     let expected = "
-(MIT OR Apache-2.0) AND Unicode-DFS-2016
+(MIT OR Apache-2.0) AND Unicode-3.0
 0BSD OR MIT OR Apache-2.0
 Apache-2.0
 Apache-2.0 OR BSL-1.0
@@ -141,14 +141,13 @@ ISC
 MIT
 MIT / Apache-2.0
 MIT OR Apache-2.0
-MIT OR Apache-2.0 OR Zlib
 MIT OR Zlib OR Apache-2.0
 MIT/Apache-2.0
 MPL-2.0
+Unicode-3.0
 Unlicense OR MIT
 Unlicense/MIT
 Zlib
-Zlib OR Apache-2.0 OR MIT
 "
     .lines()
     .filter(|it| !it.is_empty())

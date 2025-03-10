@@ -85,7 +85,7 @@ fn check_nth_fix_with_config(
     let actual = {
         let source_change = fix.source_change.as_ref().unwrap();
         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-        let mut actual = db.file_text(file_id).to_string();
+        let mut actual = db.file_text(file_id).text(&db).to_string();
 
         for (edit, snippet_edit) in source_change.source_file_edits.values() {
             edit.apply(&mut actual);
@@ -142,7 +142,7 @@ pub(crate) fn check_has_fix(
                     let actual = {
                         let source_change = fix.source_change.as_ref().unwrap();
                         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-                        let mut actual = db.file_text(file_id).to_string();
+                        let mut actual = db.file_text(file_id).text(&db).to_string();
 
                         for (edit, snippet_edit) in source_change.source_file_edits.values() {
                             edit.apply(&mut actual);
@@ -190,7 +190,7 @@ pub(crate) fn check_has_single_fix(
                     let actual = {
                         let source_change = fix.source_change.as_ref().unwrap();
                         let file_id = *source_change.source_file_edits.keys().next().unwrap();
-                        let mut actual = db.file_text(file_id).to_string();
+                        let mut actual = db.file_text(file_id).text(&db).to_string();
 
                         for (edit, snippet_edit) in source_change.source_file_edits.values() {
                             edit.apply(&mut actual);
@@ -276,7 +276,7 @@ pub(crate) fn check_diagnostics_with_config(
         let line_index = db.line_index(file_id);
 
         let mut actual = annotations.remove(&file_id).unwrap_or_default();
-        let expected = extract_annotations(&db.file_text(file_id));
+        let expected = extract_annotations(&db.file_text(file_id).text(&db));
         actual.sort_by_key(|(range, _)| range.start());
         // FIXME: We should panic on duplicates instead, but includes currently cause us to report
         // diagnostics twice for the calling module when both files are queried.
@@ -289,7 +289,7 @@ pub(crate) fn check_diagnostics_with_config(
             for (e, _) in &actual {
                 eprintln!(
                     "Code in range {e:?} = {}",
-                    &db.file_text(file_id)[usize::from(e.start())..usize::from(e.end())]
+                    &db.file_text(file_id).text(&db)[usize::from(e.start())..usize::from(e.end())]
                 )
             }
         }

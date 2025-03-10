@@ -295,9 +295,12 @@ impl ModuleOrigin {
     /// That is, a file or a `mod foo {}` with items.
     pub fn definition_source(&self, db: &dyn DefDatabase) -> InFile<ModuleSource> {
         match self {
-            &ModuleOrigin::File { definition, .. } | &ModuleOrigin::CrateRoot { definition } => {
+            &ModuleOrigin::File { definition: editioned_file_id, .. }
+            | &ModuleOrigin::CrateRoot { definition: editioned_file_id } => {
+                let definition = base_db::EditionedFileId::new(db, editioned_file_id);
+
                 let sf = db.parse(definition).tree();
-                InFile::new(definition.into(), ModuleSource::SourceFile(sf))
+                InFile::new(editioned_file_id.into(), ModuleSource::SourceFile(sf))
             }
             &ModuleOrigin::Inline { definition, definition_tree_id } => InFile::new(
                 definition_tree_id.file_id(),

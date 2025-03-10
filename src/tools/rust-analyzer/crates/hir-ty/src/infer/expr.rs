@@ -289,7 +289,7 @@ impl InferenceContext<'_> {
         expected: &Expectation,
         is_read: ExprIsRead,
     ) -> Ty {
-        self.db.unwind_if_cancelled();
+        self.db.unwind_if_revision_cancelled();
 
         let ty = match &self.body[tgt_expr] {
             Expr::Missing => self.err_ty(),

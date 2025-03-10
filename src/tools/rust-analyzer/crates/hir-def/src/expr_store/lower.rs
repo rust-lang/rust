@@ -1931,11 +1931,11 @@ impl ExprCollector<'_> {
             None => (HygieneId::ROOT, None),
             Some(span_map) => {
                 let span = span_map.span_at(lifetime.syntax().text_range().start());
-                let ctx = self.db.lookup_intern_syntax_context(span.ctx);
-                let hygiene_id = HygieneId::new(ctx.opaque_and_semitransparent);
-                let hygiene_info = ctx.outer_expn.map(|expansion| {
+                let ctx = span.ctx;
+                let hygiene_id = HygieneId::new(ctx.opaque_and_semitransparent(self.db));
+                let hygiene_info = ctx.outer_expn(self.db).map(|expansion| {
                     let expansion = self.db.lookup_intern_macro_call(expansion);
-                    (ctx.parent, expansion.def)
+                    (ctx.parent(self.db), expansion.def)
                 });
                 (hygiene_id, hygiene_info)
             }
@@ -1962,11 +1962,12 @@ impl ExprCollector<'_> {
                             // A macro is allowed to refer to labels from before its declaration.
                             // Therefore, if we got to the rib of its declaration, give up its hygiene
                             // and use its parent expansion.
-                            let parent_ctx = self.db.lookup_intern_syntax_context(parent_ctx);
-                            hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent);
-                            hygiene_info = parent_ctx.outer_expn.map(|expansion| {
+
+                            hygiene_id =
+                                HygieneId::new(parent_ctx.opaque_and_semitransparent(self.db));
+                            hygiene_info = parent_ctx.outer_expn(self.db).map(|expansion| {
                                 let expansion = self.db.lookup_intern_macro_call(expansion);
-                                (parent_ctx.parent, expansion.def)
+                                (parent_ctx.parent(self.db), expansion.def)
                             });
                         }
                     }
@@ -2593,7 +2594,7 @@ impl ExprCollector<'_> {
             None => HygieneId::ROOT,
             Some(span_map) => {
                 let ctx = span_map.span_at(span_start).ctx;
-                HygieneId::new(self.db.lookup_intern_syntax_context(ctx).opaque_and_semitransparent)
+                HygieneId::new(ctx.opaque_and_semitransparent(self.db))
             }
         }
     }

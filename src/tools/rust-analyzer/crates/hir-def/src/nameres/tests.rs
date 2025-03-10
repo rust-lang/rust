@@ -4,7 +4,7 @@ mod macros;
 mod mod_resolution;
 mod primitives;
 
-use base_db::SourceDatabase;
+use base_db::RootQueryDb;
 use expect_test::{expect, Expect};
 use test_fixture::WithFixture;
 use triomphe::Arc;

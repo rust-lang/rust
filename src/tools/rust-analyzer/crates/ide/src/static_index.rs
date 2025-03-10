@@ -3,7 +3,7 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::{SourceDatabase, SourceRootDatabase, VfsPath},
+    base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::Definition,
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -267,11 +267,11 @@ impl StaticIndex<'_> {
         analysis: &'a Analysis,
         vendored_libs_config: VendoredLibrariesConfig<'_>,
     ) -> StaticIndex<'a> {
-        let db = &*analysis.db;
+        let db = &analysis.db;
         let work = all_modules(db).into_iter().filter(|module| {
             let file_id = module.definition_source_file_id(db).original_file(db);
-            let source_root = db.file_source_root(file_id.into());
-            let source_root = db.source_root(source_root);
+            let source_root = db.file_source_root(file_id.into()).source_root_id(db);
+            let source_root = db.source_root(source_root).source_root(db);
             let is_vendored = match vendored_libs_config {
                 VendoredLibrariesConfig::Included { workspace_root } => source_root
                     .path_for_file(&file_id.into())

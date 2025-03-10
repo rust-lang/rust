@@ -28,7 +28,7 @@ use crate::{
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile, Intern,
+    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
     MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
@@ -47,13 +47,13 @@ pub fn expand_eager_macro_input(
     // When `lazy_expand` is called, its *parent* file must already exist.
     // Here we store an eager macro id for the argument expanded subtree
     // for that purpose.
-    let arg_id = MacroCallLoc {
+    let loc = MacroCallLoc {
         def,
         krate,
         kind: MacroCallKind::FnLike { ast_id, expand_to: ExpandTo::Expr, eager: None },
         ctxt: call_site,
-    }
-    .intern(db);
+    };
+    let arg_id = db.intern_macro_call(loc);
     #[allow(deprecated)] // builtin eager macros are never derives
     let (_, _, span) = db.macro_arg(arg_id);
     let ExpandResult { value: (arg_exp, arg_exp_map), err: parse_err } =
@@ -107,7 +107,7 @@ pub fn expand_eager_macro_input(
         ctxt: call_site,
     };
 
-    ExpandResult { value: Some(loc.intern(db)), err }
+    ExpandResult { value: Some(db.intern_macro_call(loc)), err }
 }
 
 fn lazy_expand(

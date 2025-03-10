@@ -2042,8 +2042,8 @@ fn f() { A { bar: b$0 }; }
             expect![[r#"
                 fn bar() fn() -> u8 [type+name]
                 fn baz() fn() -> u8 [type]
-                ex bar()  [type]
                 ex baz()  [type]
+                ex bar()  [type]
                 st A A []
                 fn f() fn() []
             "#]],

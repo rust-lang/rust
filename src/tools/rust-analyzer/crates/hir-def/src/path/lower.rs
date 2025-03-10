@@ -185,7 +185,7 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
     if segments.len() == 1 && kind == PathKind::Plain {
         if let Some(_macro_call) = path.syntax().parent().and_then(ast::MacroCall::cast) {
             let syn_ctxt = ctx.span_map().span_for_range(path.segment()?.syntax().text_range()).ctx;
-            if let Some(macro_call_id) = ctx.db.lookup_intern_syntax_context(syn_ctxt).outer_expn {
+            if let Some(macro_call_id) = syn_ctxt.outer_expn(ctx.db) {
                 if ctx.db.lookup_intern_macro_call(macro_call_id).def.local_inner {
                     kind = match resolve_crate_root(ctx.db.upcast(), syn_ctxt) {
                         Some(crate_root) => PathKind::DollarCrate(crate_root),

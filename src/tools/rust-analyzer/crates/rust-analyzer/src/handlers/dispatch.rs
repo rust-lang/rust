@@ -4,8 +4,7 @@ use std::{
     panic, thread,
 };
 
-use ide::Cancelled;
-use ide_db::base_db::ra_salsa::Cycle;
+use ide_db::base_db::salsa::{self, Cancelled, Cycle};
 use lsp_server::{ExtractError, Response, ResponseError};
 use serde::{de::DeserializeOwned, Serialize};
 use stdx::thread::ThreadIntent;
@@ -311,7 +310,7 @@ impl RequestDispatcher<'_> {
 #[derive(Debug)]
 enum HandlerCancelledError {
     PropagatedPanic,
-    Inner(ide::Cancelled),
+    Inner(salsa::Cancelled),
 }
 
 impl std::error::Error for HandlerCancelledError {

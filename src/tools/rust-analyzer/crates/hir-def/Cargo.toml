@@ -29,6 +29,8 @@ hashbrown.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.0"
 text-size.workspace = true
+salsa.workspace = true
+query-group.workspace = true
 
 ra-ap-rustc_hashes.workspace = true
 ra-ap-rustc_parse_format.workspace = true
@@ -45,7 +47,6 @@ cfg.workspace = true
 tt.workspace = true
 span.workspace = true
 
-
 [dev-dependencies]
 expect-test.workspace = true
 
@@ -53,6 +54,7 @@ expect-test.workspace = true
 test-utils.workspace = true
 test-fixture.workspace = true
 syntax-bridge.workspace = true
+
 [features]
 in-rust-tree = ["hir-expand/in-rust-tree"]
 

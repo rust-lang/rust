@@ -21,6 +21,8 @@ itertools.workspace = true
 hashbrown.workspace = true
 smallvec.workspace = true
 triomphe.workspace = true
+query-group.workspace = true
+salsa.workspace = true
 
 # local deps
 stdx.workspace = true
