@@ -172,16 +172,18 @@ additional arguments to the compiler when building the tests.
 ## Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are making a new
-test, you can pass `--bless` to the test subcommand. E.g. if some tests in
-`tests/ui` are failing, you can run
+test, you can pass `--bless` to the test subcommand.
+
+As an example,
+if some tests in `tests/ui` are failing, you can run this command:
 
 ```text
 ./x test tests/ui --bless
 ```
 
-to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
-all tests. Of course you can also target just specific tests with the
-`--test-args your_test_name` flag, just like when running the tests.
+It automatically adjusts the `.stderr`, `.stdout`, or `.fixed` files of all `test/ui` tests.
+Of course you can also target just specific tests with the `--test-args your_test_name` flag,
+just like when running the tests without the `--bless` flag.
 
 ## Configuring test running
 
