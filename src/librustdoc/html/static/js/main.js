@@ -1,5 +1,5 @@
 // Local js definitions:
-/* global addClass, getSettingValue, hasClass, searchState, updateLocalStorage */
+/* global addClass, getSettingValue, hasClass, updateLocalStorage */
 /* global onEachLazy, removeClass, getVar */
 
 "use strict";
@@ -121,12 +121,9 @@ function getNakedUrl() {
  * doesn't have a parent node.
  *
  * @param {HTMLElement} newNode
- * @param {HTMLElement} referenceNode
+ * @param {HTMLElement & { parentNode: HTMLElement }} referenceNode
  */
 function insertAfter(newNode, referenceNode) {
-    // You're not allowed to pass an element with no parent.
-    // I dunno how to make TS's typechecker see that.
-    // @ts-expect-error
     referenceNode.parentNode.insertBefore(newNode, referenceNode.nextSibling);
 }
 
@@ -305,11 +302,10 @@ function preLoadCss(cssUrl) {
                 window.searchState.timeout = null;
             }
         },
-        // @ts-expect-error
         isDisplayed: () => {
             const outputElement = window.searchState.outputElement();
-            return outputElement &&
-                outputElement.parentElement &&
+            return !!outputElement &&
+                !!outputElement.parentElement &&
                 outputElement.parentElement.id === ALTERNATIVE_DISPLAY_ID;
         },
         // Sets the focus on the search bar at the top of the page
@@ -325,8 +321,6 @@ function preLoadCss(cssUrl) {
                 search = window.searchState.outputElement();
             }
             switchDisplayedElement(search);
-            // @ts-expect-error
-            window.searchState.mouseMovedAfterSearch = false;
             document.title = window.searchState.title;
         },
         removeQueryParameters: () => {
@@ -503,34 +497,40 @@ function preLoadCss(cssUrl) {
         handleHashes(ev);
     }
 
-    // @ts-expect-error
+    /**
+     * @param {HTMLElement|null} elem
+     */
     function openParentDetails(elem) {
         while (elem) {
             if (elem.tagName === "DETAILS") {
+                // @ts-expect-error
                 elem.open = true;
             }
-            elem = elem.parentNode;
+            elem = elem.parentElement;
         }
     }
 
-    // @ts-expect-error
+    /**
+     * @param {string} id
+     */
     function expandSection(id) {
         openParentDetails(document.getElementById(id));
     }
 
-    // @ts-expect-error
+    /**
+     * @param {KeyboardEvent} ev
+     */
     function handleEscape(ev) {
-        // @ts-expect-error
-        searchState.clearInputTimeout();
-        // @ts-expect-error
-        searchState.hideResults();
+        window.searchState.clearInputTimeout();
+        window.searchState.hideResults();
         ev.preventDefault();
-        // @ts-expect-error
-        searchState.defocus();
+        window.searchState.defocus();
         window.hideAllModals(true); // true = reset focus for tooltips
     }
 
-    // @ts-expect-error
+    /**
+     * @param {KeyboardEvent} ev
+     */
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
@@ -538,8 +538,8 @@ function preLoadCss(cssUrl) {
             return;
         }
 
-        // @ts-expect-error
-        if (document.activeElement.tagName === "INPUT" &&
+        if (document.activeElement &&
+            document.activeElement.tagName === "INPUT" &&
             // @ts-expect-error
             document.activeElement.type !== "checkbox" &&
             // @ts-expect-error
@@ -559,8 +559,7 @@ function preLoadCss(cssUrl) {
             case "S":
             case "/":
                 ev.preventDefault();
-                // @ts-expect-error
-                searchState.focus();
+                window.searchState.focus();
                 break;
 
             case "+":
@@ -586,7 +585,6 @@ function preLoadCss(cssUrl) {
     document.addEventListener("keydown", handleShortcut);
 
     function addSidebarItems() {
-        // @ts-expect-error
         if (!window.SIDEBAR_ITEMS) {
             return;
         }
@@ -675,7 +673,6 @@ function preLoadCss(cssUrl) {
     }
 
     // <https://github.com/search?q=repo%3Arust-lang%2Frust+[RUSTDOCIMPL]+trait.impl&type=code>
-    // @ts-expect-error
     window.register_implementors = imp => {
         const implementors = document.getElementById("implementors-list");
         const synthetic_implementors = document.getElementById("synthetic-implementors-list");
@@ -767,9 +764,7 @@ function preLoadCss(cssUrl) {
             }
         }
     };
-    // @ts-expect-error
     if (window.pending_implementors) {
-        // @ts-expect-error
         window.register_implementors(window.pending_implementors);
     }
 
@@ -802,16 +797,14 @@ function preLoadCss(cssUrl) {
      *
      * - After processing all of the impls, it sorts the sidebar items by name.
      *
-     * @param {{[cratename: string]: Array<Array<string|0>>}} imp
+     * @param {rustdoc.TypeImpls} imp
      */
-    // @ts-expect-error
     window.register_type_impls = imp => {
         // @ts-expect-error
         if (!imp || !imp[window.currentCrate]) {
             return;
         }
-        // @ts-expect-error
-        window.pending_type_impls = null;
+        window.pending_type_impls = undefined;
         const idMap = new Map();
 
         let implementations = document.getElementById("implementations-list");
@@ -997,9 +990,7 @@ function preLoadCss(cssUrl) {
             list.replaceChildren(...newChildren);
         }
     };
-    // @ts-expect-error
     if (window.pending_type_impls) {
-        // @ts-expect-error
         window.register_type_impls(window.pending_type_impls);
     }
 
@@ -1695,8 +1686,7 @@ function preLoadCss(cssUrl) {
     addSidebarCrates();
     onHashChange(null);
     window.addEventListener("hashchange", onHashChange);
-    // @ts-expect-error
-    searchState.setup();
+    window.searchState.setup();
 }());
 
 // Hide, show, and resize the sidebar
