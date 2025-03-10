@@ -85,8 +85,7 @@ impl ProjectJson {
     ///
     /// * `manifest` - The path to the `rust-project.json`.
     /// * `base` - The path to the workspace root (i.e. the folder containing `rust-project.json`)
-    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via
-    ///   configuration.
+    /// * `data` - The parsed contents of `rust-project.json`, or project json that's passed via configuration.
     pub fn new(
         manifest: Option<ManifestPath>,
         base: &AbsPath,
