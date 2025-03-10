@@ -176,12 +176,12 @@ pub(crate) struct MaybeEscaped;
 #[derive(Clone)]
 pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
     // The element type ensures this is always ASCII, and thus also valid UTF-8.
-    // Invariant: `N < 128`. For non-printable characters, contains the escaped
+    // Invariant: For non-printable characters, contains the escaped
     // representation as ASCII characters. For printable characters, contains the
     // character itself.
     data: MaybeEscapedCharacter<N>,
 
-    // Invariant: For non-printable characters, `alive.start <= alive.end <= N`,
+    // Invariant: For non-printable characters, `alive.start <= alive.end <= N <= 127`,
     // for printable characters, `128 <= alive.start <= alive.end`.
     alive: Range<u8>,
 
@@ -189,30 +189,38 @@ pub(crate) struct EscapeIterInner<const N: usize, ESCAPING> {
 }
 
 impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
+    /// # Safety
+    ///
+    /// `data.escape_seq` must contain an escape sequence in the range given by `alive`.
     #[inline]
-    const fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
-        const { assert!(N < 128) };
+    unsafe const fn new(data: MaybeEscapedCharacter<N>, alive: Range<u8>) -> Self {
+        // Uphold the `alive` invariant for non-printable characters.
+        const { assert!(N <= 127) };
         Self { data, alive, escaping: PhantomData }
     }
 
     pub(crate) const fn backslash(c: ascii::Char) -> Self {
         let (data, range) = backslash(c);
-        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
+        // SAFETY: `data` contains an escape sequence in the range given by `range`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq: data }, range) }
     }
 
     pub(crate) const fn ascii(c: u8) -> Self {
         let (data, range) = escape_ascii(c);
-        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
+        // SAFETY: `data` contains an escape sequence in the range given by `range`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq: data }, range) }
     }
 
     pub(crate) const fn unicode(c: char) -> Self {
         let (data, range) = escape_unicode(c);
-        Self::new(MaybeEscapedCharacter { escape_seq: data }, range)
+        // SAFETY: `data` contains an escape sequence in the range given by `range`.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq: data }, range) }
     }
 
     #[inline]
     pub(crate) const fn empty() -> Self {
-        Self::new(MaybeEscapedCharacter { escape_seq: [ascii::Char::Null; N] }, 0..0)
+        // SAFETY: `0..0` ensures an empty escape sequence.
+        unsafe { Self::new(MaybeEscapedCharacter { escape_seq: [ascii::Char::Null; N] }, 0..0) }
     }
 
     /// # Safety
