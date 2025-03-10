@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeKind, InlineAttr, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -124,6 +124,13 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
                 ) => self.check_stability_promotable(*span, target),
+                Attribute::Parsed(AttributeKind::Inline(InlineAttr::Force { .. }, ..)) => {} // handled separately below
+                Attribute::Parsed(AttributeKind::Inline(_, attr_span)) => {
+                    self.check_inline(hir_id, *attr_span, span, target)
+                }
+                Attribute::Parsed(AttributeKind::Optimize(_, attr_span)) => {
+                    self.check_optimize(hir_id, *attr_span, span, target)
+                }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
                         hir_id,
@@ -140,9 +147,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         [sym::diagnostic, sym::on_unimplemented, ..] => {
                             self.check_diagnostic_on_unimplemented(attr.span(), hir_id, target)
                         }
-                        [sym::inline, ..] => self.check_inline(hir_id, attr, span, target),
                         [sym::coverage, ..] => self.check_coverage(attr, span, target),
-                        [sym::optimize, ..] => self.check_optimize(hir_id, attr, span, target),
                         [sym::no_sanitize, ..] => {
                             self.check_no_sanitize(attr, span, target)
                         }
@@ -351,11 +356,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         self.check_rustc_force_inline(hir_id, attrs, span, target);
     }
 
-    fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr: &Attribute, sym: &str) {
+    fn inline_attr_str_error_with_macro_def(&self, hir_id: HirId, attr_span: Span, sym: &str) {
         self.tcx.emit_node_span_lint(
             UNUSED_ATTRIBUTES,
             hir_id,
-            attr.span(),
+            attr_span,
             errors::IgnoredAttrWithMacro { sym },
         );
     }
@@ -415,7 +420,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_inline(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_inline(&self, hir_id: HirId, attr_span: Span, defn_span: Span, target: Target) {
         match target {
             Target::Fn
             | Target::Closure
@@ -424,7 +429,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.tcx.emit_node_span_lint(
                     UNUSED_ATTRIBUTES,
                     hir_id,
-                    attr.span(),
+                    attr_span,
                     errors::IgnoredInlineAttrFnProto,
                 )
             }
@@ -435,18 +440,15 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             Target::AssocConst => self.tcx.emit_node_span_lint(
                 UNUSED_ATTRIBUTES,
                 hir_id,
-                attr.span(),
+                attr_span,
                 errors::IgnoredInlineAttrConstants,
             ),
             // FIXME(#80564): Same for fields, arms, and macro defs
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "inline")
+                self.inline_attr_str_error_with_macro_def(hir_id, attr_span, "inline")
             }
             _ => {
-                self.dcx().emit_err(errors::InlineNotFnOrClosure {
-                    attr_span: attr.span(),
-                    defn_span: span,
-                });
+                self.dcx().emit_err(errors::InlineNotFnOrClosure { attr_span, defn_span });
             }
         }
     }
@@ -485,7 +487,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     /// Checks that `#[optimize(..)]` is applied to a function/closure/method,
     /// or to an impl block or module.
-    fn check_optimize(&self, hir_id: HirId, attr: &Attribute, span: Span, target: Target) {
+    fn check_optimize(&self, hir_id: HirId, attr_span: Span, span: Span, target: Target) {
         let is_valid = matches!(
             target,
             Target::Fn
@@ -494,7 +496,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         );
         if !is_valid {
             self.dcx().emit_err(errors::OptimizeInvalidTarget {
-                attr_span: attr.span(),
+                attr_span,
                 defn_span: span,
                 on_crate: hir_id == CRATE_HIR_ID,
             });
@@ -621,6 +623,16 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         ) => {
                             continue;
                         }
+                        Attribute::Parsed(AttributeKind::Inline(.., span)) => {
+                            self.dcx().emit_err(errors::NakedFunctionIncompatibleAttribute {
+                                span: *span,
+                                naked_span: attr.span(),
+                                attr: sym::inline,
+                            });
+
+                            return;
+                        }
+                        // FIXME(jdonszelmann): make exhaustive
                         _ => {}
                     }
 
@@ -640,7 +652,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "naked")
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "naked")
             }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
@@ -718,7 +730,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
                 for attr in attrs {
-                    self.inline_attr_str_error_with_macro_def(hir_id, attr, "track_caller");
+                    self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "track_caller");
                 }
             }
             _ => {
@@ -761,7 +773,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "non_exhaustive");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "non_exhaustive");
             }
             _ => {
                 self.dcx().emit_err(errors::NonExhaustiveWrongLocation {
@@ -781,7 +793,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "marker");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "marker");
             }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToTrait {
@@ -835,7 +847,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "target_feature");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "target_feature");
             }
             _ => {
                 self.dcx().emit_err(errors::AttrShouldBeAppliedToFn {
@@ -1546,7 +1558,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "cold");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "cold");
             }
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions and some crates used
@@ -1588,7 +1600,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "link_name");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "link_name");
             }
             _ => {
                 // FIXME: #[cold] was previously allowed on non-functions/statics and some crates
@@ -1622,7 +1634,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_link");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_link");
             }
             _ => {
                 self.dcx().emit_err(errors::NoLink { attr_span: attr.span(), span });
@@ -1644,7 +1656,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "export_name");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "export_name");
             }
             _ => {
                 self.dcx().emit_err(errors::ExportName { attr_span: attr.span(), span });
@@ -1818,7 +1830,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "link_section");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "link_section");
             }
             _ => {
                 // FIXME: #[link_section] was previously allowed on non-functions/statics and some
@@ -1843,7 +1855,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
             Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "no_mangle");
+                self.inline_attr_str_error_with_macro_def(hir_id, attr.span(), "no_mangle");
             }
             // FIXME: #[no_mangle] was previously allowed on non-functions/statics, this should be an error
             // The error should specify that the item that is wrong is specifically a *foreign* fn/static
@@ -2190,9 +2202,12 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // `#[allow_internal_unstable]` attribute with just a lint, because we previously
             // erroneously allowed it and some crates used it accidentally, to be compatible
             // with crates depending on them, we can't throw an error here.
-            Target::Field | Target::Arm | Target::MacroDef => {
-                self.inline_attr_str_error_with_macro_def(hir_id, attr, "allow_internal_unstable")
-            }
+            Target::Field | Target::Arm | Target::MacroDef => self
+                .inline_attr_str_error_with_macro_def(
+                    hir_id,
+                    attr.span(),
+                    "allow_internal_unstable",
+                ),
             _ => {
                 self.tcx
                     .dcx()
@@ -2568,8 +2583,10 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         span: Span,
         target: Target,
     ) {
-        let force_inline_attr = attrs.iter().find(|attr| attr.has_name(sym::rustc_force_inline));
-        match (target, force_inline_attr) {
+        match (
+            target,
+            find_attr!(attrs, AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span),
+        ) {
             (Target::Closure, None) => {
                 let is_coro = matches!(
                     self.tcx.hir().expect_expr(hir_id).kind,
@@ -2581,20 +2598,19 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 );
                 let parent_did = self.tcx.hir_get_parent_item(hir_id).to_def_id();
                 let parent_span = self.tcx.def_span(parent_did);
-                let parent_force_inline_attr =
-                    self.tcx.get_attr(parent_did, sym::rustc_force_inline);
-                if let Some(attr) = parent_force_inline_attr
-                    && is_coro
+
+                if let Some(attr_span) = find_attr!(
+                    self.tcx.get_all_attrs(parent_did),
+                    AttributeKind::Inline(InlineAttr::Force { attr_span, .. }, _) => *attr_span
+                ) && is_coro
                 {
-                    self.dcx().emit_err(errors::RustcForceInlineCoro {
-                        attr_span: attr.span(),
-                        span: parent_span,
-                    });
+                    self.dcx()
+                        .emit_err(errors::RustcForceInlineCoro { attr_span, span: parent_span });
                 }
             }
             (Target::Fn, _) => (),
-            (_, Some(attr)) => {
-                self.dcx().emit_err(errors::RustcForceInline { attr_span: attr.span(), span });
+            (_, Some(attr_span)) => {
+                self.dcx().emit_err(errors::RustcForceInline { attr_span, span });
             }
             (_, None) => (),
         }
@@ -2816,10 +2832,9 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
     let attrs = tcx.hir().attrs(item.hir_id());
 
-    for attr in attrs {
-        if attr.has_name(sym::inline) {
-            tcx.dcx().emit_err(errors::NonExportedMacroInvalidAttrs { attr_span: attr.span() });
-        }
+    if let Some(attr_span) = find_attr!(attrs, AttributeKind::Inline(i, span) if !matches!(i, InlineAttr::Force{..}) => *span)
+    {
+        tcx.dcx().emit_err(errors::NonExportedMacroInvalidAttrs { attr_span });
     }
 }
 
@@ -2839,6 +2854,7 @@ pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { check_mod_attrs, ..*providers };
 }
 
+// FIXME(jdonszelmann): remove, check during parsing
 fn check_duplicates(
     tcx: TyCtxt<'_>,
     attr: &Attribute,
