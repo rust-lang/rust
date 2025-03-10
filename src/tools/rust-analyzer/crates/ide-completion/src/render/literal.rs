@@ -8,7 +8,7 @@ use ide_db::{
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx, PathKind},
-    item::{Builder, CompletionItem},
+    item::{Builder, CompletionItem, CompletionRelevanceFn},
     render::{
         compute_type_match,
         variant::{
@@ -17,7 +17,7 @@ use crate::{
         },
         RenderContext,
     },
-    CompletionItemKind, CompletionRelevance,
+    CompletionItemKind, CompletionRelevance, CompletionRelevanceReturnType,
 };
 
 pub(crate) fn render_variant_lit(
@@ -131,6 +131,12 @@ fn render(
     let ty = thing.ty(db);
     item.set_relevance(CompletionRelevance {
         type_match: compute_type_match(ctx.completion, &ty),
+        // function is a misnomer here, this is more about constructor information
+        function: Some(CompletionRelevanceFn {
+            has_params: !fields.is_empty(),
+            has_self_param: false,
+            return_type: CompletionRelevanceReturnType::DirectConstructor,
+        }),
         ..ctx.completion_relevance()
     });
 
