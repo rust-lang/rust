@@ -1158,48 +1158,6 @@ impl Step for Cargo {
 }
 
 #[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
-pub struct Rls {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for Rls {
-    type Output = Option<GeneratedTarball>;
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rls");
-        run.alias("rls").default_condition(default)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rls {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
-        let target = self.target;
-
-        let rls = builder.ensure(tool::Rls { compiler, target });
-
-        let mut tarball = Tarball::new(builder, "rls", &target.triple);
-        tarball.set_overlay(OverlayKind::Rls);
-        tarball.is_preview(true);
-        tarball.add_file(rls.tool_path, "bin", 0o755);
-        tarball.add_legal_and_readme_to("share/doc/rls");
-        Some(tarball.generate())
-    }
-}
-
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
 pub struct RustAnalyzer {
     pub compiler: Compiler,
     pub target: TargetSelection,
@@ -1528,7 +1486,6 @@ impl Step for Extended {
         add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("cargo" => Cargo { compiler, target });
         add_component!("rustfmt" => Rustfmt { compiler, target });
-        add_component!("rls" => Rls { compiler, target });
         add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compiler, target });
