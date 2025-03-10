@@ -417,12 +417,12 @@ impl File {
         Ok(())
     }
 
-    pub fn seek(&self, _pos: SeekFrom) -> io::Result<u64> {
-        Err(Error::from_raw_os_error(22))
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        self.0.seek(pos)
     }
 
     pub fn tell(&self) -> io::Result<u64> {
-        self.seek(SeekFrom::Current(0))
+        self.0.tell()
     }
 
     pub fn duplicate(&self) -> io::Result<File> {
