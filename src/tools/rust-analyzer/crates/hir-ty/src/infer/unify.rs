@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, iter, mem};
+use std::{fmt, mem};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
@@ -386,7 +386,7 @@ impl<'a> InferenceTable<'a> {
     }
     fn extend_type_variable_table(&mut self, to_index: usize) {
         let count = to_index - self.type_variable_table.len() + 1;
-        self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
+        self.type_variable_table.extend(std::iter::repeat_n(TypeVariableFlags::default(), count));
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {

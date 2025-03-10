@@ -1549,7 +1549,7 @@ pub(crate) fn runnable(
             );
 
             let cwd = match runnable.kind {
-                ide::RunnableKind::Bin { .. } => workspace_root.clone(),
+                ide::RunnableKind::Bin => workspace_root.clone(),
                 _ => spec.cargo_toml.parent().to_owned(),
             };
 

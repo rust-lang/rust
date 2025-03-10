@@ -1119,7 +1119,7 @@ impl Evaluator<'_> {
                 "Stack overflow. Tried to grow stack to {stack_size} bytes"
             )));
         }
-        self.stack.extend(iter::repeat(0).take(stack_size));
+        self.stack.extend(std::iter::repeat_n(0, stack_size));
         Ok((locals, prev_stack_pointer))
     }
 
@@ -2122,7 +2122,7 @@ impl Evaluator<'_> {
             return Err(MirEvalError::Panic(format!("Memory allocation of {size} bytes failed")));
         }
         let pos = self.heap.len();
-        self.heap.extend(iter::repeat(0).take(size));
+        self.heap.extend(std::iter::repeat_n(0, size));
         Ok(Address::Heap(pos))
     }
 

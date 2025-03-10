@@ -263,7 +263,7 @@ impl TyBuilder<()> {
             .as_generic_def_id(db.upcast())
             .map(|p| generics(db.upcast(), p).placeholder_subst(db));
         // These represent resume type, yield type, and return type of coroutine.
-        let params = std::iter::repeat(ParamKind::Type).take(3).collect();
+        let params = std::iter::repeat_n(ParamKind::Type, 3).collect();
         TyBuilder::new((), params, parent_subst)
     }
 
@@ -340,7 +340,7 @@ impl TyBuilder<hir_def::AdtId> {
 pub struct Tuple(usize);
 impl TyBuilder<Tuple> {
     pub fn tuple(size: usize) -> TyBuilder<Tuple> {
-        TyBuilder::new(Tuple(size), iter::repeat(ParamKind::Type).take(size).collect(), None)
+        TyBuilder::new(Tuple(size), std::iter::repeat_n(ParamKind::Type, size).collect(), None)
     }
 
     pub fn build(self) -> Ty {
@@ -356,7 +356,7 @@ impl TyBuilder<Tuple> {
         let elements = elements.into_iter();
         let len = elements.len();
         let mut b =
-            TyBuilder::new(Tuple(len), iter::repeat(ParamKind::Type).take(len).collect(), None);
+            TyBuilder::new(Tuple(len), std::iter::repeat_n(ParamKind::Type, len).collect(), None);
         for e in elements {
             b = b.push(e);
         }

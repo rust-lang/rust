@@ -932,7 +932,7 @@ impl<'a> Ctx<'a> {
 fn desugar_future_path(ctx: &mut LowerCtx<'_>, orig: TypeRefId) -> PathId {
     let path = path![core::future::Future];
     let mut generic_args: Vec<_> =
-        std::iter::repeat(None).take(path.segments().len() - 1).collect();
+        std::iter::repeat_n(None, path.segments().len() - 1).collect();
     let binding = AssociatedTypeBinding {
         name: Name::new_symbol_root(sym::Output.clone()),
         args: None,
