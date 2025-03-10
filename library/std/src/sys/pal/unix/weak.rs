@@ -144,7 +144,7 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
-        // FIXME: Rust currently omits weak function definitions
+        // FIXME(#115199): Rust currently omits weak function definitions
         // and its metadata from LLVM IR.
         #[no_sanitize(cfi)]
         unsafe fn $name($($arg_name: $t),*) -> $ret {

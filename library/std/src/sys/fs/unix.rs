@@ -1454,6 +1454,8 @@ impl File {
         Ok(())
     }
 
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
     #[cfg_attr(
         any(
             target_os = "android",

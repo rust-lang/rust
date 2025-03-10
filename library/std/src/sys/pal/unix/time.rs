@@ -96,6 +96,8 @@ impl Timespec {
         }
     }
 
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
     #[cfg_attr(
         all(
             target_os = "linux",
