@@ -1094,8 +1094,8 @@ pub fn libm() {
     assert_approx_eq!(2.0f32.asinh(), 1.443635475178810342493276740273105f32);
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
 
-    // from #4207
-    // TODO: should this be the behaviour? I haven't found anything in the IEEE Standard
+    // Ensure `sin` always returns something that is a valid input for `asin`, and same for
+    // `cos` and `acos`
     let halve_pi_single = std::f32::consts::FRAC_PI_2;
     let halve_pi_double = std::f64::consts::FRAC_PI_2;
     let pi_single = std::f32::consts::PI;

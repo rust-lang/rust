@@ -263,6 +263,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         2, // log2(4)
                     );
 
+                    // Clamp the result to the guaranteed range of this function according to the C standard,
+                    // if any.
                     match intrinsic_name {
                         // sin and cos: [-1, 1]
                         "sinf32" | "cosf32" => res.clamp(Single::one().neg(), Single::one()), 
@@ -311,7 +313,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         2, // log2(4)
                     );
 
-                    // Clamp values to the output range defined in IEEE 754 9.1.
+                    // Clamp the result to the guaranteed range of this function according to the C standard,
+                    // if any.
                     match intrinsic_name {
                         // sin and cos: [-1, 1]
                         "sinf64" | "cosf64" => res.clamp(Double::one().neg(), Double::one()),
@@ -383,8 +386,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f2 = this.read_scalar(f2)?.to_f32()?;
 
                 let fixed_res = match (f1.category(), f2.category()) {
-                    // 1^y = 1 for any y even a NaN.
-                    // TODO: C Standard says any NaN, IEEE says not a Signaling NaN
+                    // 1^y = 1 for any y, even a NaN.
                     (Category::Normal, _) if f1 == 1.0f32.to_soft() => Some(1.0f32.to_soft()),
 
                     // (-1)^(±INF) = 1
@@ -415,7 +417,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                 let fixed_res = match (f1.category(), f2.category()) {
                     // 1^y = 1 for any y even a NaN.
-                    // TODO: C says any NaN, IEEE says no a Sign NaN
                     (Category::Normal, _) if f1 == 1.0f64.to_soft() => Some(1.0f64.to_soft()),
 
                     // (-1)^(±INF) = 1
@@ -649,11 +650,10 @@ fn fixed_float_value<S: Semantics>(
 where
     IeeeFloat<S>: std::cmp::PartialEq,
 {
-    // TODO: Should we really fix to ±0? Applying an error has no effect.
     let one = IeeeFloat::<S>::one();
     match intrinsic_name {
-        "sinf32" | "sinf64" if input.is_pos_zero() => Some(IeeeFloat::<S>::ZERO),
-        "sinf32" | "sinf64" if input.is_neg_zero() => Some(-IeeeFloat::<S>::ZERO),
+        // sin(+- 0) = +- 0.
+        "sinf32" | "sinf64" if input.is_zero() => Some(input),
         "cosf32" | "cosf64" if input.is_zero() => Some(one),
         "expf32" | "expf64" | "exp2f32" | "exp2f64" if input.is_zero() => Some(one),
         #[rustfmt::skip]
