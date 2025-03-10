@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{SpanRangeExt, snippet_with_applicability};
-use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
-use rustc_lint::{EarlyContext, EarlyLintPass};
+use rustc_hir::{Expr, ExprKind, Mutability, UnOp};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::declare_lint_pass;
 use rustc_span::{BytePos, Span};
 
@@ -37,17 +37,10 @@ declare_clippy_lint! {
 
 declare_lint_pass!(DerefAddrOf => [DEREF_ADDROF]);
 
-fn without_parens(mut e: &Expr) -> &Expr {
-    while let ExprKind::Paren(ref child_e) = e.kind {
-        e = child_e;
-    }
-    e
-}
-
-impl EarlyLintPass for DerefAddrOf {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
-        if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind
-            && let ExprKind::AddrOf(_, ref mutability, ref addrof_target) = without_parens(deref_target).kind
+impl LateLintPass<'_> for DerefAddrOf {
+    fn check_expr(&mut self, cx: &LateContext<'_>, e: &Expr<'_>) {
+        if let ExprKind::Unary(UnOp::Deref, deref_target) = e.kind
+            && let ExprKind::AddrOf(_, mutability, addrof_target) = deref_target.kind
             // NOTE(tesuji): `*&` forces rustc to const-promote the array to `.rodata` section.
             // See #12854 for details.
             && !matches!(addrof_target.kind, ExprKind::Array(_))
@@ -79,7 +72,7 @@ impl EarlyLintPass for DerefAddrOf {
                         })
                     };
 
-                    if *mutability == Mutability::Mut {
+                    if mutability == Mutability::Mut {
                         generate_snippet("mut")
                     } else {
                         generate_snippet("&")
