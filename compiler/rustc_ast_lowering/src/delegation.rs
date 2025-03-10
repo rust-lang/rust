@@ -60,25 +60,27 @@ pub(crate) struct DelegationResults<'hir> {
 }
 
 impl<'hir> LoweringContext<'_, 'hir> {
-    pub(crate) fn delegation_has_self(&self, item_id: NodeId, path_id: NodeId, span: Span) -> bool {
+    /// Defines whether the delegatee is an associated function whose first parameter is `self`.
+    pub(crate) fn delegatee_is_method(&self, item_id: NodeId, path_id: NodeId, span: Span) -> bool {
         let sig_id = self.get_delegation_sig_id(item_id, path_id, span);
         let Ok(sig_id) = sig_id else {
             return false;
         };
-        self.has_self(sig_id, span)
+        self.is_method(sig_id, span)
     }
 
-    fn has_self(&self, def_id: DefId, span: Span) -> bool {
-        if let Some(local_sig_id) = def_id.as_local() {
-            // The value may be missing due to recursive delegation.
-            // Error will be emitted later during HIR ty lowering.
-            self.resolver.delegation_fn_sigs.get(&local_sig_id).is_some_and(|sig| sig.has_self)
-        } else {
-            match self.tcx.def_kind(def_id) {
-                DefKind::Fn => false,
-                DefKind::AssocFn => self.tcx.associated_item(def_id).fn_has_self_parameter,
-                _ => span_bug!(span, "unexpected DefKind for delegation item"),
-            }
+    fn is_method(&self, def_id: DefId, span: Span) -> bool {
+        match self.tcx.def_kind(def_id) {
+            DefKind::Fn => false,
+            DefKind::AssocFn => match def_id.as_local() {
+                Some(local_def_id) => self
+                    .resolver
+                    .delegation_fn_sigs
+                    .get(&local_def_id)
+                    .is_some_and(|sig| sig.has_self),
+                None => self.tcx.associated_item(def_id).fn_has_self_parameter,
+            },
+            _ => span_bug!(span, "unexpected DefKind for delegation item"),
         }
     }
 
@@ -324,7 +326,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let call = if self
             .get_resolution_id(delegation.id, span)
-            .and_then(|def_id| Ok(self.has_self(def_id, span)))
+            .and_then(|def_id| Ok(self.is_method(def_id, span)))
             .unwrap_or_default()
             && delegation.qself.is_none()
             && !has_generic_args
