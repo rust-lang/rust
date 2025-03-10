@@ -154,7 +154,7 @@ const fn escape_unicode<const N: usize>(c: char) -> ([ascii::Char; N], Range<u8>
 #[derive(Clone, Copy)]
 union MaybeEscapedCharacter<const N: usize> {
     pub escaped: [ascii::Char; N],
-    pub unescaped: char,
+    pub literal: char,
 }
 
 /// Marker type to indicate that the character is always escaped,
@@ -235,9 +235,9 @@ impl<const N: usize, ESCAPING> EscapeIterInner<N, ESCAPING> {
     /// The caller must ensure that `self` contains a literal `char`.
     #[inline]
     unsafe fn as_char(&self) -> char {
-        // SAFETY: `self.data.unescaped` contains a literal `char`,
+        // SAFETY: `self.data.literal` contains a literal `char`,
         // as is guaranteed by the caller.
-        unsafe { self.data.unescaped }
+        unsafe { self.data.literal }
     }
 
     #[inline]
@@ -273,27 +273,27 @@ impl<const N: usize> EscapeIterInner<N, AlwaysEscaped> {
 }
 
 impl<const N: usize> EscapeIterInner<N, MaybeEscaped> {
-    const CHAR_FLAG: u8 = 0b10000000;
+    const CHAR_FLAG: u8 = 0b1000_0000;
 
     // This is the only way to create an `EscapeIterInner` with a literal `char`, which
     // means the `AlwaysEscaped` marker guarantees that `self` contains an escape sequence.
     pub(crate) const fn printable(c: char) -> Self {
         Self::new(
-            MaybeEscapedCharacter { unescaped: c },
+            MaybeEscapedCharacter { literal: c },
             // Ensure `len` behaves correctly.
             Self::CHAR_FLAG..(Self::CHAR_FLAG + 1),
         )
     }
 
     #[inline]
-    const fn is_unescaped(&self) -> bool {
+    const fn is_literal(&self) -> bool {
         self.alive.start & Self::CHAR_FLAG != 0
     }
 
     pub(crate) fn next(&mut self) -> Option<char> {
         let i = self.alive.next()?;
 
-        if self.is_unescaped() {
+        if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
             return Some(unsafe { self.as_char() });
         }
@@ -313,7 +313,7 @@ impl<const N: usize> fmt::Display for EscapeIterInner<N, AlwaysEscaped> {
 
 impl<const N: usize> fmt::Display for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_unescaped() {
+        if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
             f.write_char(unsafe { self.as_char() })
         } else {
@@ -335,7 +335,7 @@ impl<const N: usize> fmt::Debug for EscapeIterInner<N, AlwaysEscaped> {
 impl<const N: usize> fmt::Debug for EscapeIterInner<N, MaybeEscaped> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut d = f.debug_tuple("EscapeIterInner");
-        if self.is_unescaped() {
+        if self.is_literal() {
             // SAFETY: We just checked that `self` contains a literal `char`.
             d.field(unsafe { &self.as_char() });
         } else {
