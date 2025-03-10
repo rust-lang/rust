@@ -29,7 +29,7 @@ error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:58:18
    |
 LL | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&Option<Option<String>>`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<&Option<String>>`
 
 error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:73:24
@@ -179,5 +179,11 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn more_fun(items: impl Club<'static, i32>) {}
    |                    ^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&impl Club<'static, i32>`
 
-error: aborting due to 22 previous errors
+error: this argument is passed by value, but not consumed in the function body
+  --> tests/ui/needless_pass_by_value.rs:194:24
+   |
+LL | fn option_inner_ref(x: Option<String>) {
+   |                        ^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<&String>`
+
+error: aborting due to 23 previous errors
 
