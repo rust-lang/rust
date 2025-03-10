@@ -1,0 +1,24 @@
+// MIR for `unreachable` after built
+
+| User Type Annotations
+| 0: user_ty: Canonical { value: Ty(^0), max_universe: U0, variables: [CanonicalVarInfo { kind: Ty(General(U0)) }] }, span: $DIR/enum_cast.rs:97:10: 97:11, inferred_ty: u16
+|
+fn unreachable(_1: Infallible) -> u16 {
+    debug x => _1;
+    let mut _0: u16;
+    let mut _2: u16;
+    let _3: std::convert::Infallible;
+
+    bb0: {
+        StorageLive(_2);
+        StorageLive(_3);
+        _3 = copy _1;
+        assume(const false);
+        _2 = const 0_u16 as u16 (IntToInt);
+        AscribeUserType(_2, o, UserTypeProjection { base: UserType(0), projs: [] });
+        _0 = copy _2;
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
+    }
+}

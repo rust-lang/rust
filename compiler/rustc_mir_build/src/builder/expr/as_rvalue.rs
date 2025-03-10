@@ -1,6 +1,8 @@
 //! See docs in `build/expr/mod.rs`.
 
-use rustc_abi::{BackendRepr, FieldIdx, Primitive};
+use std::assert_matches::assert_matches;
+
+use rustc_abi::{BackendRepr, FieldIdx, TagEncoding, Variants};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
@@ -9,8 +11,8 @@ use rustc_middle::mir::interpret::Scalar;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
 use rustc_middle::ty::cast::{CastTy, mir_cast_kind};
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::util::IntTypeExt;
+use rustc_middle::ty::layout::PrimitiveExt;
+use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{self, Ty, UpvarArgs};
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
@@ -197,97 +199,78 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             ExprKind::Cast { source } => {
                 let source_expr = &this.thir[source];
 
-                // Casting an enum to an integer is equivalent to computing the discriminant and casting the
-                // discriminant. Previously every backend had to repeat the logic for this operation. Now we
-                // create all the steps directly in MIR with operations all backends need to support anyway.
                 let (source, ty) = if let ty::Adt(adt_def, ..) = source_expr.ty.kind()
                     && adt_def.is_enum()
                 {
-                    let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
                     let temp = unpack!(block = this.as_temp(block, scope, source, Mutability::Not));
-                    let layout =
-                        this.tcx.layout_of(this.typing_env().as_query_input(source_expr.ty));
-                    let discr = this.temp(discr_ty, source_expr.span);
-                    this.cfg.push_assign(
-                        block,
-                        source_info,
-                        discr,
-                        Rvalue::Discriminant(temp.into()),
-                    );
-                    let (op, ty) = (Operand::Move(discr), discr_ty);
-
-                    if let BackendRepr::Scalar(scalar) = layout.unwrap().backend_repr
-                        && !scalar.is_always_valid(&this.tcx)
-                        && let Primitive::Int(int_width, _signed) = scalar.primitive()
-                    {
-                        let unsigned_ty = int_width.to_ty(this.tcx, false);
-                        let unsigned_place = this.temp(unsigned_ty, expr_span);
-                        this.cfg.push_assign(
-                            block,
-                            source_info,
-                            unsigned_place,
-                            Rvalue::Cast(CastKind::IntToInt, Operand::Copy(discr), unsigned_ty),
-                        );
-
-                        let bool_ty = this.tcx.types.bool;
-                        let range = scalar.valid_range(&this.tcx);
-                        let merge_op =
-                            if range.start <= range.end { BinOp::BitAnd } else { BinOp::BitOr };
-
-                        let mut comparer = |range: u128, bin_op: BinOp| -> Place<'tcx> {
-                            // We can use `ty::TypingEnv::fully_monomorphized()` here
-                            // as we only need it to compute the layout of a primitive.
-                            let range_val = Const::from_bits(
-                                this.tcx,
-                                range,
-                                ty::TypingEnv::fully_monomorphized(),
-                                unsigned_ty,
-                            );
-                            let lit_op = this.literal_operand(expr.span, range_val);
-                            let is_bin_op = this.temp(bool_ty, expr_span);
-                            this.cfg.push_assign(
+                    let layout = this
+                        .tcx
+                        .layout_of(this.typing_env().as_query_input(source_expr.ty))
+                        .unwrap();
+                    match layout.variants {
+                        // Uninhabited enum, so we're in dead code.
+                        Variants::Empty => {
+                            let false_lit = this.zero_literal(expr_span, this.tcx.types.bool);
+                            this.cfg.push(
                                 block,
-                                source_info,
-                                is_bin_op,
-                                Rvalue::BinaryOp(
-                                    bin_op,
-                                    Box::new((Operand::Copy(unsigned_place), lit_op)),
-                                ),
-                            );
-                            is_bin_op
-                        };
-                        let assert_place = if range.start == 0 {
-                            comparer(range.end, BinOp::Le)
-                        } else {
-                            let start_place = comparer(range.start, BinOp::Ge);
-                            let end_place = comparer(range.end, BinOp::Le);
-                            let merge_place = this.temp(bool_ty, expr_span);
-                            this.cfg.push_assign(
-                                block,
-                                source_info,
-                                merge_place,
-                                Rvalue::BinaryOp(
-                                    merge_op,
-                                    Box::new((
-                                        Operand::Move(start_place),
-                                        Operand::Move(end_place),
+                                Statement {
+                                    source_info,
+                                    kind: StatementKind::Intrinsic(Box::new(
+                                        NonDivergingIntrinsic::Assume(false_lit),
                                     )),
-                                ),
+                                },
                             );
-                            merge_place
-                        };
-                        this.cfg.push(
-                            block,
-                            Statement {
-                                source_info,
-                                kind: StatementKind::Intrinsic(Box::new(
-                                    NonDivergingIntrinsic::Assume(Operand::Move(assert_place)),
-                                )),
-                            },
-                        );
+                            // We still need to emit *something*, to keep the following MIR legal,
+                            // so give a zero of the type the cast was asking for.
+                            (this.zero_literal(expr_span, expr.ty), expr.ty)
+                        }
+                        // Only one legal variant, so we can just look up its
+                        // discriminant directly and return it as a constant.
+                        // (In the discriminant's type, not the cast-to type,
+                        // to avoid worrying about truncation or extension.)
+                        Variants::Single { index } => {
+                            let Discr { val, ty } =
+                                adt_def.discriminant_for_variant(this.tcx, index);
+                            let val = Const::from_bits(this.tcx, val, this.typing_env(), ty);
+                            (this.literal_operand(expr_span, val), ty)
+                        }
+                        // Casting an enum to an integer is only supported for enums which
+                        // have no fields, so we can transmute the stored tag.
+                        // This used to emit `Assume`s into the MIR, but that bloated it,
+                        // so now we re-use the `Transmute` checks that backends ought to
+                        // support anyway for polymorphic MIR cases.
+                        Variants::Multiple { tag, ref tag_encoding, .. } => {
+                            assert_matches!(tag_encoding, TagEncoding::Direct);
+                            if let BackendRepr::Scalar(repr) = layout.backend_repr {
+                                assert_eq!(repr, tag);
+                                let tag_ty = tag.primitive().to_ty(this.tcx);
+                                let tag = this.temp(tag_ty, expr_span);
+                                this.cfg.push_assign(
+                                    block,
+                                    source_info,
+                                    tag,
+                                    Rvalue::Cast(
+                                        CastKind::Transmute,
+                                        Operand::Move(Place::from(temp)),
+                                        tag_ty,
+                                    ),
+                                );
+                                (Operand::Move(tag), tag_ty)
+                            } else {
+                                // FIXME: One `Transmute` works union-style (so it can truncate
+                                // the padding down to just the tag) we can remove this fallback.
+                                let discr_ty = adt_def.repr().discr_type().to_ty(this.tcx);
+                                let discr = this.temp(discr_ty, source_expr.span);
+                                this.cfg.push_assign(
+                                    block,
+                                    source_info,
+                                    discr,
+                                    Rvalue::Discriminant(temp.into()),
+                                );
+                                (Operand::Move(discr), discr_ty)
+                            }
+                        }
                     }
-
-                    (op, ty)
                 } else {
                     let ty = source_expr.ty;
                     let source = unpack!(

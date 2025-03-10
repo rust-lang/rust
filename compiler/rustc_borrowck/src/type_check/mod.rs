@@ -23,7 +23,7 @@ use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::cast::CastTy;
+use rustc_middle::ty::cast::{CastTy, IntTy};
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
@@ -2183,11 +2183,24 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::Transmute => {
-                        span_mirbug!(
-                            self,
-                            rvalue,
-                            "Unexpected CastKind::Transmute, which is not permitted in Analysis MIR",
-                        );
+                        let ty_from = op.ty(body, tcx);
+                        let cast_ty_from = CastTy::from_ty(ty_from);
+                        let cast_ty_to = CastTy::from_ty(*ty);
+                        match (cast_ty_from, cast_ty_to) {
+                            (
+                                Some(CastTy::Int(IntTy::CEnum)),
+                                Some(CastTy::Int(IntTy::U(_) | IntTy::I)),
+                            ) => (),
+                            _ => {
+                                span_mirbug!(
+                                    self,
+                                    rvalue,
+                                    "Invalid CastKind::Transmute cast {:?} -> {:?}",
+                                    ty_from,
+                                    ty
+                                )
+                            }
+                        }
                     }
                 }
             }
