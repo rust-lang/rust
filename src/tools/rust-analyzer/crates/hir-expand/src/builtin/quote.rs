@@ -61,7 +61,7 @@ macro_rules! quote_impl__ {
         $crate::builtin::quote::__quote!($span $builder $($tail)*);
     };
 
-    ($span:ident $builder:ident ## $first:ident $($tail:tt)* ) => {{
+    ($span:ident $builder:ident # # $first:ident $($tail:tt)* ) => {{
         ::std::iter::IntoIterator::into_iter($first).for_each(|it| $crate::builtin::quote::ToTokenTree::to_tokens(it, $span, $builder));
         $crate::builtin::quote::__quote!($span $builder $($tail)*);
     }};

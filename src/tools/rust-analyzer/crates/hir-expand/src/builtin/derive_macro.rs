@@ -117,7 +117,7 @@ impl VariantShape {
                     quote! {span => #it : #mapped , }
                 });
                 quote! {span =>
-                    #path { ##fields }
+                    #path { # #fields }
                 }
             }
             &VariantShape::Tuple(n) => {
@@ -128,7 +128,7 @@ impl VariantShape {
                     }
                 });
                 quote! {span =>
-                    #path ( ##fields )
+                    #path ( # #fields )
                 }
             }
             VariantShape::Unit => path,
@@ -523,7 +523,7 @@ fn expand_simple_derive_with_parsed(
 
     let name = info.name;
     quote! {invoc_span =>
-        impl < ##params #extra_impl_params > #trait_path for #name < ##args > where ##where_block { #trait_body }
+        impl < # #params #extra_impl_params > #trait_path for #name < # #args > where # #where_block { #trait_body }
     }
 }
 
@@ -572,7 +572,7 @@ fn clone_expand(
         quote! {span =>
             fn clone(&self) -> Self {
                 match self {
-                    ##arms
+                    # #arms
                 }
             }
         }
@@ -650,7 +650,7 @@ fn debug_expand(
                     }
                 });
                 quote! {span =>
-                    f.debug_struct(#name) ##for_fields .finish()
+                    f.debug_struct(#name) # #for_fields .finish()
                 }
             }
             VariantShape::Tuple(n) => {
@@ -660,7 +660,7 @@ fn debug_expand(
                     }
                 });
                 quote! {span =>
-                    f.debug_tuple(#name) ##for_fields .finish()
+                    f.debug_tuple(#name) # #for_fields .finish()
                 }
             }
             VariantShape::Unit => quote! {span =>
@@ -703,7 +703,7 @@ fn debug_expand(
         quote! {span =>
             fn fmt(&self, f: &mut #krate::fmt::Formatter) -> #krate::fmt::Result {
                 match self {
-                    ##arms
+                    # #arms
                 }
             }
         }
@@ -736,7 +736,7 @@ fn hash_expand(
                         let it =
                             names.iter().map(|it| quote! {span => #it . hash(ra_expand_state); });
                         quote! {span => {
-                            ##it
+                            # #it
                         } }
                     };
                     let fat_arrow = fat_arrow(span);
@@ -754,7 +754,7 @@ fn hash_expand(
             fn hash<H: #krate::hash::Hasher>(&self, ra_expand_state: &mut H) {
                 #check_discriminant
                 match self {
-                    ##arms
+                    # #arms
                 }
             }
         }
@@ -803,7 +803,7 @@ fn partial_eq_expand(
                             let t2 = tt::Ident::new(&format!("{}_other", first.sym), first.span);
                             quote!(span =>#t1 .eq( #t2 ))
                         };
-                        quote!(span =>#first ##rest)
+                        quote!(span =>#first # #rest)
                     }
                 };
                 quote! {span => ( #pat1 , #pat2 ) #fat_arrow #body , }
@@ -814,7 +814,7 @@ fn partial_eq_expand(
         quote! {span =>
             fn eq(&self, other: &Self) -> bool {
                 match (self, other) {
-                    ##arms
+                    # #arms
                     _unused #fat_arrow false
                 }
             }
@@ -891,7 +891,7 @@ fn ord_expand(
         let fat_arrow = fat_arrow(span);
         let mut body = quote! {span =>
             match (self, other) {
-                ##arms
+                # #arms
                 _unused #fat_arrow #krate::cmp::Ordering::Equal
             }
         };
@@ -961,7 +961,7 @@ fn partial_ord_expand(
             right,
             quote! {span =>
                 match (self, other) {
-                    ##arms
+                    # #arms
                     _unused #fat_arrow #krate::option::Option::Some(#krate::cmp::Ordering::Equal)
                 }
             },

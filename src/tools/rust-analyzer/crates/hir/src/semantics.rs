@@ -2087,7 +2087,7 @@ impl SemanticsScope<'_> {
         )
     }
 
-    pub fn resolve_mod_path(&self, path: &ModPath) -> impl Iterator<Item = ItemInNs> {
+    pub fn resolve_mod_path(&self, path: &ModPath) -> impl Iterator<Item = ItemInNs> + use<> {
         let items = self.resolver.resolve_module_path_in_items(self.db.upcast(), path);
         items.iter_items().map(|(item, _)| item.into())
     }

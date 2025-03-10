@@ -1066,7 +1066,7 @@ impl ast::GenericParamList {
             ast::GenericParam::TypeParam(_) | ast::GenericParam::ConstParam(_) => None,
         })
     }
-    pub fn type_or_const_params(&self) -> impl Iterator<Item = ast::TypeOrConstParam> {
+    pub fn type_or_const_params(&self) -> impl Iterator<Item = ast::TypeOrConstParam> + use<> {
         self.generic_params().filter_map(|param| match param {
             ast::GenericParam::TypeParam(it) => Some(ast::TypeOrConstParam::Type(it)),
             ast::GenericParam::LifetimeParam(_) => None,

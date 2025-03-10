@@ -268,13 +268,13 @@ fn hints_(
         ctx.lifetime_stacks.iter().flat_map(|it| it.iter()).cloned().zip(iter::repeat(0)).collect();
     // allocate names
     let mut gen_idx_name = {
-        let mut gen = (0u8..).map(|idx| match idx {
+        let mut generic = (0u8..).map(|idx| match idx {
             idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
             idx => format_smolstr!("'{idx}"),
         });
         let ctx = &*ctx;
         move || {
-            gen.by_ref()
+            generic.by_ref()
                 .find(|s| ctx.lifetime_stacks.iter().flat_map(|it| it.iter()).all(|n| n != s))
                 .unwrap_or_default()
         }

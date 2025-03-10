@@ -123,13 +123,15 @@ fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {
         // https://docs.microsoft.com/en-us/windows/win32/api/dbghelp/nf-dbghelp-syminitialize
         if let Ok(path) = env::current_exe() {
             if let Some(path) = path.parent() {
-                env::set_var("_NT_SYMBOL_PATH", path);
+                // SAFETY: This is safe because this is single-threaded.
+                unsafe { env::set_var("_NT_SYMBOL_PATH", path); }
             }
         }
     }
 
     if env::var("RUST_BACKTRACE").is_err() {
-        env::set_var("RUST_BACKTRACE", "short");
+        // SAFETY: This is safe because this is single-threaded.
+        unsafe { env::set_var("RUST_BACKTRACE", "short"); }
     }
 
     let log_file = env::var("RA_LOG_FILE").ok().map(PathBuf::from).or(log_file_flag);

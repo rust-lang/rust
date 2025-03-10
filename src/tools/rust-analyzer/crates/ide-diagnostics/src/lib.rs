@@ -780,7 +780,8 @@ fn fill_lint_attrs(
                     }
                 });
 
-                let all_matching_groups = lint_groups(&diag.code, edition)
+                let lints = lint_groups(&diag.code, edition);
+                let all_matching_groups = lints
                     .iter()
                     .filter_map(|lint_group| cached.get(lint_group));
                 let cached_severity =

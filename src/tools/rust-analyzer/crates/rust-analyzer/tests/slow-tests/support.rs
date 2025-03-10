@@ -148,7 +148,8 @@ impl Project<'_> {
                 let guard = CONFIG_DIR_LOCK.lock();
                 let test_dir = TestDir::new();
                 let value = test_dir.path().to_owned();
-                env::set_var("__TEST_RA_USER_CONFIG_DIR", &value);
+                // SAFETY: This is safe because this is single-threaded.
+                unsafe { env::set_var("__TEST_RA_USER_CONFIG_DIR", &value); }
                 (guard, test_dir)
             })
         } else {

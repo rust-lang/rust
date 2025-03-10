@@ -5261,7 +5261,7 @@ impl Type {
 
     /// Returns types that this type dereferences to (including this type itself). The returned
     /// iterator won't yield the same type more than once even if the deref chain contains a cycle.
-    pub fn autoderef(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Type> + '_ {
+    pub fn autoderef<'db>(&self, db: &'db dyn HirDatabase) -> impl Iterator<Item = Type> + use<'_, 'db> {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
@@ -5637,7 +5637,10 @@ impl Type {
             .map(Trait::from)
     }
 
-    pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<impl Iterator<Item = Trait>> {
+    pub fn as_impl_traits(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<impl Iterator<Item = Trait> + use<>> {
         self.ty.impl_trait_bounds(db).map(|it| {
             it.into_iter().filter_map(|pred| match pred.skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {
