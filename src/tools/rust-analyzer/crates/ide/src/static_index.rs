@@ -3,7 +3,7 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::{SourceRootDatabase, VfsPath},
+    base_db::{SourceDatabase, SourceRootDatabase, VfsPath},
     defs::Definition,
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -118,7 +118,11 @@ fn documentation_for_definition(
     def.docs(
         sema.db,
         famous_defs.as_ref(),
-        def.krate(sema.db).map(|it| it.edition(sema.db)).unwrap_or(Edition::CURRENT),
+        def.krate(sema.db)
+            .unwrap_or_else(|| {
+                (*sema.db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+            })
+            .to_display_target(sema.db),
     )
 }
 
@@ -173,6 +177,7 @@ impl StaticIndex<'_> {
         let root = sema.parse_guess_edition(file_id).syntax().clone();
         let edition =
             sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+        let display_target = sema.first_crate_or_default(file_id).to_display_target(self.db);
         let tokens = root.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
@@ -213,6 +218,7 @@ impl StaticIndex<'_> {
                         false,
                         &hover_config,
                         edition,
+                        display_target,
                     )),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
@@ -222,7 +228,7 @@ impl StaticIndex<'_> {
                     display_name: def
                         .name(self.db)
                         .map(|name| name.display(self.db, edition).to_string()),
-                    signature: Some(def.label(self.db, edition)),
+                    signature: Some(def.label(self.db, display_target)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);

@@ -5,6 +5,7 @@ import * as ra from "./lsp_ext";
 import { Config, prepareVSCodeConfig } from "./config";
 import { createClient } from "./client";
 import {
+    isCargoTomlEditor,
     isDocumentInWorkspace,
     isRustDocument,
     isRustEditor,
@@ -427,6 +428,11 @@ export class Ctx implements RustAnalyzerExtensionApi {
     get activeRustEditor(): RustEditor | undefined {
         const editor = vscode.window.activeTextEditor;
         return editor && isRustEditor(editor) ? editor : undefined;
+    }
+
+    get activeCargoTomlEditor(): RustEditor | undefined {
+        const editor = vscode.window.activeTextEditor;
+        return editor && isCargoTomlEditor(editor) ? editor : undefined;
     }
 
     get extensionPath(): string {

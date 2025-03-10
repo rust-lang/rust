@@ -170,6 +170,7 @@ impl Unit {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -247,6 +248,7 @@ fn complete_in_block() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -297,6 +299,7 @@ fn complete_after_if_expr() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -370,6 +373,7 @@ fn completes_in_loop_ctx() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -942,6 +946,7 @@ fn foo() { if foo {} $0 }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -983,6 +988,7 @@ fn foo() { if foo {} el$0 }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1072,6 +1078,7 @@ fn foo() { if foo {} $0 let x = 92; }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1113,6 +1120,7 @@ fn foo() { if foo {} el$0 let x = 92; }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1154,6 +1162,7 @@ fn foo() { if foo {} el$0 { let x = 92; } }
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1205,6 +1214,7 @@ pub struct UnstableThisShouldNotBeListed;
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1258,6 +1268,7 @@ pub struct UnstableButWeAreOnNightlyAnyway;
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1495,6 +1506,7 @@ fn main() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -1920,6 +1932,7 @@ fn bar() {
             md rust_2015 (use core::prelude::rust_2015)
             md rust_2018 (use core::prelude::rust_2018)
             md rust_2021 (use core::prelude::rust_2021)
+            md rust_2024 (use core::prelude::rust_2024)
             tt Clone
             tt Copy
             tt IntoIterator
@@ -1944,6 +1957,7 @@ fn bar() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod
@@ -2015,6 +2029,7 @@ fn foo() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod

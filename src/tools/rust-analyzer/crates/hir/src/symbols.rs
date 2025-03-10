@@ -13,11 +13,10 @@ use hir_def::{
 use hir_expand::{name::Name, HirFileId};
 use hir_ty::{
     db::HirDatabase,
-    display::{hir_display_with_types_map, HirDisplay},
+    display::{hir_display_with_types_map, DisplayTarget, HirDisplay},
 };
 use intern::Symbol;
 use rustc_hash::FxHashMap;
-use span::Edition;
 use syntax::{ast::HasName, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, ToSmolStr};
 
 use crate::{Module, ModuleDef, Semantics};
@@ -66,7 +65,7 @@ pub struct SymbolCollector<'a> {
     symbols: FxIndexSet<FileSymbol>,
     work: Vec<SymbolCollectorWork>,
     current_container_name: Option<SmolStr>,
-    edition: Edition,
+    display_target: DisplayTarget,
 }
 
 /// Given a [`ModuleId`] and a [`HirDatabase`], use the DefMap for the module's crate to collect
@@ -78,7 +77,10 @@ impl<'a> SymbolCollector<'a> {
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
-            edition: Edition::Edition2015,
+            display_target: DisplayTarget::from_crate(
+                db,
+                *db.crate_graph().crates_in_topological_order().last().unwrap(),
+            ),
         }
     }
 
@@ -91,7 +93,7 @@ impl<'a> SymbolCollector<'a> {
     pub fn collect(&mut self, module: Module) {
         let _p = tracing::info_span!("SymbolCollector::collect", ?module).entered();
         tracing::info!(?module, "SymbolCollector::collect",);
-        self.edition = module.krate().edition(self.db);
+        self.display_target = module.krate().to_display_target(self.db);
 
         // The initial work is the root module we're collecting, additional work will
         // be populated as we traverse the module's definitions.
@@ -307,7 +309,7 @@ impl<'a> SymbolCollector<'a> {
         let impl_data = self.db.impl_data(impl_id);
         let impl_name = Some(
             hir_display_with_types_map(impl_data.self_ty, &impl_data.types_map)
-                .display(self.db, self.edition)
+                .display(self.db, self.display_target)
                 .to_smolstr(),
         );
         self.with_container_name(impl_name, |s| {

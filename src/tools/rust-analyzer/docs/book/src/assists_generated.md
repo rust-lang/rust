@@ -28,6 +28,32 @@ fn foo(n: i32) -> i32 {
 ```
 
 
+### `add_explicit_enum_discriminant`
+**Source:**  [add_explicit_enum_discriminant.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/add_explicit_enum_discriminant.rs#L11) 
+
+Adds explicit discriminant to all enum variants.
+
+#### Before
+```rust
+enum TheEnum┃ {
+    Foo,
+    Bar,
+    Baz = 42,
+    Quux,
+}
+```
+
+#### After
+```rust
+enum TheEnum {
+    Foo = 0,
+    Bar = 1,
+    Baz = 42,
+    Quux = 43,
+}
+```
+
+
 ### `add_explicit_type`
 **Source:**  [add_explicit_type.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/add_explicit_type.rs#L7) 
 
@@ -280,7 +306,7 @@ fn main() {
 
 
 ### `apply_demorgan_iterator`
-**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L154) 
+**Source:**  [apply_demorgan.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/apply_demorgan.rs#L156) 
 
 Apply [De Morgan's law](https://en.wikipedia.org/wiki/De_Morgan%27s_laws) to
 `Iterator::all` and `Iterator::any`.
@@ -350,40 +376,6 @@ fn some_function(x: i32) {
 ```
 
 
-### `bool_to_enum`
-**Source:**  [bool_to_enum.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/bool_to_enum.rs#L29) 
-
-This converts boolean local variables, fields, constants, and statics into a new
-enum with two variants `Bool::True` and `Bool::False`, as well as replacing
-all assignments with the variants and replacing all usages with `== Bool::True` or
-`== Bool::False`.
-
-#### Before
-```rust
-fn main() {
-    let ┃bool = true;
-
-    if bool {
-        println!("foo");
-    }
-}
-```
-
-#### After
-```rust
-#[derive(PartialEq, Eq)]
-enum Bool { True, False }
-
-fn main() {
-    let bool = Bool::True;
-
-    if bool == Bool::True {
-        println!("foo");
-    }
-}
-```
-
-
 ### `change_visibility`
 **Source:**  [change_visibility.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/change_visibility.rs#L13) 
 
@@ -442,8 +434,42 @@ fn main() {
 ```
 
 
+### `convert_bool_to_enum`
+**Source:**  [convert_bool_to_enum.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_bool_to_enum.rs#L29) 
+
+This converts boolean local variables, fields, constants, and statics into a new
+enum with two variants `Bool::True` and `Bool::False`, as well as replacing
+all assignments with the variants and replacing all usages with `== Bool::True` or
+`== Bool::False`.
+
+#### Before
+```rust
+fn main() {
+    let ┃bool = true;
+
+    if bool {
+        println!("foo");
+    }
+}
+```
+
+#### After
+```rust
+#[derive(PartialEq, Eq)]
+enum Bool { True, False }
+
+fn main() {
+    let bool = Bool::True;
+
+    if bool == Bool::True {
+        println!("foo");
+    }
+}
+```
+
+
 ### `convert_closure_to_fn`
-**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L27) 
+**Source:**  [convert_closure_to_fn.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/convert_closure_to_fn.rs#L25) 
 
 This converts a closure to a freestanding function, changing all captures to parameters.
 
@@ -1043,28 +1069,50 @@ pub use foo::{Bar, Baz};
 ```
 
 
-### `explicit_enum_discriminant`
-**Source:**  [explicit_enum_discriminant.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/explicit_enum_discriminant.rs#L11) 
+### `expand_record_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L26) 
 
-Adds explicit discriminant to all enum variants.
+Fills fields by replacing rest pattern in record patterns.
 
 #### Before
 ```rust
-enum TheEnum┃ {
-    Foo,
-    Bar,
-    Baz = 42,
-    Quux,
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { ..┃ } = bar;
 }
 ```
 
 #### After
 ```rust
-enum TheEnum {
-    Foo = 0,
-    Bar = 1,
-    Baz = 42,
-    Quux = 43,
+struct Bar { y: Y, z: Z }
+
+fn foo(bar: Bar) {
+    let Bar { y, z  } = bar;
+}
+```
+
+
+### `expand_tuple_struct_rest_pattern`
+**Source:**  [expand_rest_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/expand_rest_pattern.rs#L82) 
+
+Fills fields by replacing rest pattern in tuple struct patterns.
+
+#### Before
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(..┃) = bar;
+}
+```
+
+#### After
+```rust
+struct Bar(Y, Z);
+
+fn foo(bar: Bar) {
+    let Bar(_0, _1) = bar;
 }
 ```
 
@@ -1255,30 +1303,6 @@ fn main() {
 ```
 
 
-### `fill_record_pattern_fields`
-**Source:**  [fill_record_pattern_fields.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/fill_record_pattern_fields.rs#L8) 
-
-Fills fields by replacing rest pattern in record patterns.
-
-#### Before
-```rust
-struct Bar { y: Y, z: Z }
-
-fn foo(bar: Bar) {
-    let Bar { ..┃ } = bar;
-}
-```
-
-#### After
-```rust
-struct Bar { y: Y, z: Z }
-
-fn foo(bar: Bar) {
-    let Bar { y, z  } = bar;
-}
-```
-
-
 ### `fix_visibility`
 **Source:**  [fix_visibility.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/fix_visibility.rs#L14) 
 
@@ -1348,7 +1372,7 @@ fn main() {
 ### `flip_or_pattern`
 **Source:**  [flip_or_pattern.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/flip_or_pattern.rs#L9) 
 
-Flips two trait bounds.
+Flips two patterns in an or-pattern.
 
 #### Before
 ```rust
@@ -2278,7 +2302,7 @@ fn bar() {
 
 
 ### `inline_local_variable`
-**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L21) 
+**Source:**  [inline_local_variable.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/inline_local_variable.rs#L17) 
 
 Inlines a local variable.
 
@@ -2423,22 +2447,6 @@ fn main() -> () {
 ```
 
 
-### `introduce_named_generic`
-**Source:**  [introduce_named_generic.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_generic.rs#L7) 
-
-Replaces `impl Trait` function argument with the named generic.
-
-#### Before
-```rust
-fn foo(bar: ┃impl Bar) {}
-```
-
-#### After
-```rust
-fn foo<┃B: Bar>(bar: B) {}
-```
-
-
 ### `introduce_named_lifetime`
 **Source:**  [introduce_named_lifetime.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_lifetime.rs#L13) 
 
@@ -2464,6 +2472,22 @@ impl<'a> Cursor<'a> {
         }
     }
 }
+```
+
+
+### `introduce_named_type_parameter`
+**Source:**  [introduce_named_type_parameter.rs](https://github.com/rust-lang/rust-analyzer/blob/master/crates/ide-assists/src/handlers/introduce_named_type_parameter.rs#L7) 
+
+Replaces `impl Trait` function argument with the named generic.
+
+#### Before
+```rust
+fn foo(bar: ┃impl Bar) {}
+```
+
+#### After
+```rust
+fn foo<┃B: Bar>(bar: B) {}
 ```
 
 

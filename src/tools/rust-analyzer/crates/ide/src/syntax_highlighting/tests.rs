@@ -589,7 +589,7 @@ fn main() {
 fn test_unsafe_highlighting() {
     check_highlighting(
         r#"
-//- minicore: sized
+//- minicore: sized, asm
 macro_rules! id {
     ($($tt:tt)*) => {
         $($tt)*
@@ -600,76 +600,79 @@ macro_rules! unsafe_deref {
         *(&() as *const ())
     };
 }
-static mut MUT_GLOBAL: Struct = Struct { field: 0 };
-static GLOBAL: Struct = Struct { field: 0 };
-unsafe fn unsafe_fn() {}
 
 union Union {
-    a: u32,
-    b: f32,
+    field: u32,
 }
 
 struct Struct { field: i32 }
+
+static mut MUT_GLOBAL: Struct = Struct { field: 0 };
+unsafe fn unsafe_fn() {}
+
 impl Struct {
     unsafe fn unsafe_method(&self) {}
 }
 
-#[repr(packed)]
-struct Packed {
-    a: u16,
-}
-
 unsafe trait UnsafeTrait {}
-unsafe impl UnsafeTrait for Packed {}
+unsafe impl UnsafeTrait for Union {}
 impl !UnsafeTrait for () {}
 
 fn unsafe_trait_bound<T: UnsafeTrait>(_: T) {}
 
-trait DoTheAutoref {
-    fn calls_autoref(&self);
-}
-
-impl DoTheAutoref for u16 {
-    fn calls_autoref(&self) {}
+extern {
+    static EXTERN_STATIC: ();
 }
 
 fn main() {
-    let x = &5 as *const _ as *const usize;
-    let u = Union { b: 0 };
+    let x: *const usize;
+    let u: Union;
 
+    // id should be safe here, but unsafe_deref should not
     id! {
         unsafe { unsafe_deref!() }
     };
 
     unsafe {
+        // unsafe macro calls
         unsafe_deref!();
         id! { unsafe_deref!() };
 
         // unsafe fn and method calls
         unsafe_fn();
-        let b = u.b;
-        match u {
-            Union { b: 0 } => (),
-            Union { a } => (),
-        }
+        self::unsafe_fn();
+        (unsafe_fn as unsafe fn())();
         Struct { field: 0 }.unsafe_method();
 
+        u.field;
+        &u.field;
+        &raw const u.field;
+        // this should be safe!
+        let Union { field: _ };
+        // but not these
+        let Union { field };
+        let Union { field: field };
+        let Union { field: ref field };
+        let Union { field: (_ | ref field) };
+
         // unsafe deref
-        *x;
+        *&raw const*&*x;
 
         // unsafe access to a static mut
         MUT_GLOBAL.field;
-        GLOBAL.field;
+        &MUT_GLOBAL.field;
+        &raw const MUT_GLOBAL.field;
+        MUT_GLOBAL;
+        &MUT_GLOBAL;
+        &raw const MUT_GLOBAL;
+        EXTERN_STATIC;
+        &EXTERN_STATIC;
+        &raw const EXTERN_STATIC;
 
-        // unsafe ref of packed fields
-        let packed = Packed { a: 0 };
-        let a = &packed.a;
-        let ref a = packed.a;
-        let Packed { ref a } = packed;
-        let Packed { a: ref _a } = packed;
-
-        // unsafe auto ref of packed field
-        packed.a.calls_autoref();
+        core::arch::asm!(
+            "push {base}",
+            base = const 0
+        );
     }
 }
 "#,

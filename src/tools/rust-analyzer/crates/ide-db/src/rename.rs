@@ -22,7 +22,10 @@
 //! Our current behavior is ¯\_(ツ)_/¯.
 use std::fmt;
 
-use crate::text_edit::{TextEdit, TextEditBuilder};
+use crate::{
+    source_change::ChangeAnnotation,
+    text_edit::{TextEdit, TextEditBuilder},
+};
 use base_db::AnchoredPathBuf;
 use either::Either;
 use hir::{FieldSource, FileRange, HirFileIdExt, InFile, ModuleSource, Semantics};
@@ -365,10 +368,12 @@ fn rename_reference(
     }));
 
     let mut insert_def_edit = |def| {
-        let (file_id, edit) = source_edit_from_def(sema, def, new_name)?;
+        let (file_id, edit) = source_edit_from_def(sema, def, new_name, &mut source_change)?;
         source_change.insert_source_edit(file_id, edit);
         Ok(())
     };
+    // This needs to come after the references edits, because we change the annotation of existing edits
+    // if a conflict is detected.
     insert_def_edit(def)?;
     Ok(source_change)
 }
@@ -537,6 +542,7 @@ fn source_edit_from_def(
     sema: &Semantics<'_, RootDatabase>,
     def: Definition,
     new_name: &str,
+    source_change: &mut SourceChange,
 ) -> Result<(FileId, TextEdit)> {
     let new_name_edition_aware = |new_name: &str, file_id: EditionedFileId| {
         if is_raw_identifier(new_name, file_id.edition()) {
@@ -548,6 +554,23 @@ fn source_edit_from_def(
     let mut edit = TextEdit::builder();
     if let Definition::Local(local) = def {
         let mut file_id = None;
+
+        let conflict_annotation = if !sema.rename_conflicts(&local, new_name).is_empty() {
+            Some(
+                source_change.insert_annotation(ChangeAnnotation {
+                    label: "This rename will change the program's meaning".to_owned(),
+                    needs_confirmation: true,
+                    description: Some(
+                        "Some variable(s) will shadow the renamed variable \
+                        or be shadowed by it if the rename is performed"
+                            .to_owned(),
+                    ),
+                }),
+            )
+        } else {
+            None
+        };
+
         for source in local.sources(sema.db) {
             let source = match source.source.clone().original_ast_node_rooted(sema.db) {
                 Some(source) => source,
@@ -611,8 +634,15 @@ fn source_edit_from_def(
                 }
             }
         }
+        let mut edit = edit.finish();
+
+        for (edit, _) in source_change.source_file_edits.values_mut() {
+            edit.set_annotation(conflict_annotation);
+        }
+        edit.set_annotation(conflict_annotation);
+
         let Some(file_id) = file_id else { bail!("No file available to rename") };
-        return Ok((EditionedFileId::file_id(file_id), edit.finish()));
+        return Ok((EditionedFileId::file_id(file_id), edit));
     }
     let FileRange { file_id, range } = def
         .range_for_rename(sema)

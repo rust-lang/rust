@@ -39,7 +39,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, LangCrateOrigin};
 use either::Either;
 use hir_def::{
     data::{adt::VariantData, TraitFlags},
@@ -139,6 +139,7 @@ pub use {
         },
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
+        mod_path::tool_path,
         name::Name,
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
@@ -147,7 +148,7 @@ pub use {
     hir_ty::{
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
-        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         method_resolution::TyFingerprint,
@@ -282,6 +283,21 @@ impl Crate {
         let data = &db.crate_graph()[self.id];
         data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }
+
+    pub fn to_display_target(self, db: &dyn HirDatabase) -> DisplayTarget {
+        DisplayTarget::from_crate(db, self.id)
+    }
+
+    fn core(db: &dyn HirDatabase) -> Option<Crate> {
+        let crate_graph = db.crate_graph();
+        let result = crate_graph
+            .iter()
+            .find(|&krate| {
+                matches!(crate_graph[krate].origin, CrateOrigin::Lang(LangCrateOrigin::Core))
+            })
+            .map(Crate::from);
+        result
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -296,6 +312,7 @@ pub enum ModuleDef {
     Function(Function),
     Adt(Adt),
     // Can't be directly declared, but can be imported.
+    // FIXME: Rename to `EnumVariant`
     Variant(Variant),
     Const(Const),
     Static(Static),
@@ -466,6 +483,17 @@ impl ModuleDef {
             ModuleDef::Macro(it) => it.attrs(db),
             ModuleDef::BuiltinType(_) => return None,
         })
+    }
+}
+
+impl HasCrate for ModuleDef {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        match self.module(db) {
+            Some(module) => module.krate(),
+            None => Crate::core(db).unwrap_or_else(|| {
+                (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+            }),
+        }
     }
 }
 
@@ -1564,6 +1592,7 @@ impl From<&Variant> for DefWithBodyId {
     }
 }
 
+// FIXME: Rename to `EnumVariant`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
     pub(crate) id: EnumVariantId,
@@ -1863,7 +1892,7 @@ impl DefWithBody {
     pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
         let body = db.mir_body(self.id());
         match body {
-            Ok(body) => body.pretty_print(db),
+            Ok(body) => body.pretty_print(db, self.module(db).krate().to_display_target(db)),
             Err(e) => format!("error:\n{e:?}"),
         }
     }
@@ -2449,8 +2478,6 @@ impl Function {
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
     ) -> Result<String, ConstEvalError> {
-        let krate = HasModule::krate(&self.id, db.upcast());
-        let edition = db.crate_graph()[krate].edition;
         let body = db.monomorphized_mir_body(
             self.id.into(),
             Substitution::empty(Interner),
@@ -2461,7 +2488,12 @@ impl Function {
             Ok(_) => "pass".to_owned(),
             Err(e) => {
                 let mut r = String::new();
-                _ = e.pretty_print(&mut r, db, &span_formatter, edition);
+                _ = e.pretty_print(
+                    &mut r,
+                    db,
+                    &span_formatter,
+                    self.krate(db).to_display_target(db),
+                );
                 r
             }
         };
@@ -2725,8 +2757,8 @@ pub struct EvaluatedConst {
 }
 
 impl EvaluatedConst {
-    pub fn render(&self, db: &dyn HirDatabase, edition: Edition) -> String {
-        format!("{}", self.const_.display(db, edition))
+    pub fn render(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
+        format!("{}", self.const_.display(db, display_target))
     }
 
     pub fn render_debug(&self, db: &dyn HirDatabase) -> Result<String, MirEvalError> {
@@ -4195,9 +4227,13 @@ impl ConstParam {
         Type::new(db, self.id.parent(), db.const_param_ty(self.id))
     }
 
-    pub fn default(self, db: &dyn HirDatabase, edition: Edition) -> Option<ast::ConstArg> {
+    pub fn default(
+        self,
+        db: &dyn HirDatabase,
+        display_target: DisplayTarget,
+    ) -> Option<ast::ConstArg> {
         let arg = generic_arg_from_param(db, self.id.into())?;
-        known_const_to_ast(arg.constant(Interner)?, db, edition)
+        known_const_to_ast(arg.constant(Interner)?, db, display_target)
     }
 }
 
@@ -4505,18 +4541,18 @@ impl Closure {
         TyKind::Closure(self.id, self.subst).intern(Interner)
     }
 
-    pub fn display_with_id(&self, db: &dyn HirDatabase, edition: Edition) -> String {
+    pub fn display_with_id(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         self.clone()
             .as_ty()
-            .display(db, edition)
+            .display(db, display_target)
             .with_closure_style(ClosureStyle::ClosureWithId)
             .to_string()
     }
 
-    pub fn display_with_impl(&self, db: &dyn HirDatabase, edition: Edition) -> String {
+    pub fn display_with_impl(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         self.clone()
             .as_ty()
-            .display(db, edition)
+            .display(db, display_target)
             .with_closure_style(ClosureStyle::ImplFn)
             .to_string()
     }
@@ -5321,7 +5357,7 @@ impl Type {
     pub fn type_and_const_arguments<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> impl Iterator<Item = SmolStr> + 'a {
         self.ty
             .strip_references()
@@ -5331,10 +5367,10 @@ impl Type {
             .filter_map(move |arg| {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
-                    Some(format_smolstr!("{}", ty.display(db, edition)))
+                    Some(format_smolstr!("{}", ty.display(db, display_target)))
                 } else {
                     arg.constant(Interner)
-                        .map(|const_| format_smolstr!("{}", const_.display(db, edition)))
+                        .map(|const_| format_smolstr!("{}", const_.display(db, display_target)))
                 }
             })
     }
@@ -5343,7 +5379,7 @@ impl Type {
     pub fn generic_parameters<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
@@ -5353,7 +5389,7 @@ impl Type {
             })
             .into_iter()
             // add the type and const parameters
-            .chain(self.type_and_const_arguments(db, edition))
+            .chain(self.type_and_const_arguments(db, display_target))
     }
 
     pub fn iterate_method_candidates_with_traits<T>(

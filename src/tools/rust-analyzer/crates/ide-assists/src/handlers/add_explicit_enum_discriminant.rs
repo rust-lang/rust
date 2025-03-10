@@ -8,7 +8,7 @@ use syntax::{ast, AstNode};
 
 use crate::{AssistContext, Assists};
 
-// Assist: explicit_enum_discriminant
+// Assist: add_explicit_enum_discriminant
 //
 // Adds explicit discriminant to all enum variants.
 //
@@ -29,7 +29,10 @@ use crate::{AssistContext, Assists};
 //     Quux = 43,
 // }
 // ```
-pub(crate) fn explicit_enum_discriminant(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
+pub(crate) fn add_explicit_enum_discriminant(
+    acc: &mut Assists,
+    ctx: &AssistContext<'_>,
+) -> Option<()> {
     let enum_node = ctx.find_node_at_offset::<ast::Enum>()?;
     let enum_def = ctx.sema.to_def(&enum_node)?;
 
@@ -50,7 +53,7 @@ pub(crate) fn explicit_enum_discriminant(acc: &mut Assists, ctx: &AssistContext<
     }
 
     acc.add(
-        AssistId("explicit_enum_discriminant", AssistKind::RefactorRewrite),
+        AssistId("add_explicit_enum_discriminant", AssistKind::RefactorRewrite),
         "Add explicit enum discriminants",
         enum_node.syntax().text_range(),
         |builder| {
@@ -88,12 +91,12 @@ fn add_variant_discriminant(
 mod tests {
     use crate::tests::{check_assist, check_assist_not_applicable};
 
-    use super::explicit_enum_discriminant;
+    use super::add_explicit_enum_discriminant;
 
     #[test]
     fn non_primitive_repr_non_data_bearing_add_discriminant() {
         check_assist(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 enum TheEnum$0 {
     Foo,
@@ -120,7 +123,7 @@ enum TheEnum {
     #[test]
     fn primitive_repr_data_bearing_add_discriminant() {
         check_assist(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 #[repr(u8)]
 $0enum TheEnum {
@@ -145,7 +148,7 @@ enum TheEnum {
     #[test]
     fn non_primitive_repr_data_bearing_not_applicable() {
         check_assist_not_applicable(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 enum TheEnum$0 {
     Foo,
@@ -159,7 +162,7 @@ enum TheEnum$0 {
     #[test]
     fn primitive_repr_non_data_bearing_add_discriminant() {
         check_assist(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 #[repr(i64)]
 enum TheEnum {
@@ -184,7 +187,7 @@ enum TheEnum {
     #[test]
     fn discriminants_already_explicit_not_applicable() {
         check_assist_not_applicable(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 enum TheEnum$0 {
     Foo = 0,
@@ -197,7 +200,7 @@ enum TheEnum$0 {
     #[test]
     fn empty_enum_not_applicable() {
         check_assist_not_applicable(
-            explicit_enum_discriminant,
+            add_explicit_enum_discriminant,
             r#"
 enum TheEnum$0 {}
 "#,

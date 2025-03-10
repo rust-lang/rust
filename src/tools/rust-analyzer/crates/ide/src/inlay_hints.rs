@@ -5,14 +5,14 @@ use std::{
 
 use either::Either;
 use hir::{
-    sym, ClosureStyle, HasVisibility, HirDisplay, HirDisplayError, HirWrite, ModuleDef,
-    ModuleDefId, Semantics,
+    sym, ClosureStyle, DisplayTarget, HasVisibility, HirDisplay, HirDisplayError, HirWrite,
+    ModuleDef, ModuleDefId, Semantics,
 };
 use ide_db::{famous_defs::FamousDefs, FileRange, RootDatabase};
 use ide_db::{text_edit::TextEdit, FxHashSet};
 use itertools::Itertools;
 use smallvec::{smallvec, SmallVec};
-use span::{Edition, EditionedFileId};
+use span::EditionedFileId;
 use stdx::never;
 use syntax::{
     ast::{self, AstNode, HasGenericParams},
@@ -207,7 +207,8 @@ fn hints(
     file_id: EditionedFileId,
     node: SyntaxNode,
 ) {
-    closing_brace::hints(hints, sema, config, file_id, node.clone());
+    let display_target = sema.first_crate_or_default(file_id.file_id()).to_display_target(sema.db);
+    closing_brace::hints(hints, sema, config, file_id, display_target, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, famous_defs, config, any_has_generic_args);
     }
@@ -215,8 +216,8 @@ fn hints(
     match_ast! {
         match node {
             ast::Expr(expr) => {
-                chaining::hints(hints, famous_defs, config, file_id, &expr);
-                adjustment::hints(hints, famous_defs, config, file_id, &expr);
+                chaining::hints(hints, famous_defs, config, display_target, &expr);
+                adjustment::hints(hints, famous_defs, config, display_target, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name::hints(hints, famous_defs, config, file_id, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
@@ -224,7 +225,7 @@ fn hints(
                     }
                     ast::Expr::ClosureExpr(it) => {
                         closure_captures::hints(hints, famous_defs, config, file_id, it.clone());
-                        closure_ret::hints(hints, famous_defs, config, file_id, it)
+                        closure_ret::hints(hints, famous_defs, config, display_target, it)
                     },
                     ast::Expr::RangeExpr(it) => range_exclusive::hints(hints, famous_defs, config, file_id,  it),
                     _ => Some(()),
@@ -234,7 +235,7 @@ fn hints(
                 binding_mode::hints(hints, famous_defs, config, file_id,  &it);
                 match it {
                     ast::Pat::IdentPat(it) => {
-                        bind_pat::hints(hints, famous_defs, config, file_id, &it);
+                        bind_pat::hints(hints, famous_defs, config, display_target, &it);
                     }
                     ast::Pat::RangePat(it) => {
                         range_exclusive::hints(hints, famous_defs, config, file_id, it);
@@ -704,7 +705,7 @@ fn label_of_ty(
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     ty: &hir::Type,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<InlayHintLabel> {
     fn rec(
         sema: &Semantics<'_, RootDatabase>,
@@ -713,7 +714,7 @@ fn label_of_ty(
         ty: &hir::Type,
         label_builder: &mut InlayHintLabelBuilder<'_>,
         config: &InlayHintsConfig,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> Result<(), HirDisplayError> {
         let iter_item_type = hint_iterator(sema, famous_defs, ty);
         match iter_item_type {
@@ -744,12 +745,12 @@ fn label_of_ty(
                 label_builder.write_str(LABEL_ITEM)?;
                 label_builder.end_location_link();
                 label_builder.write_str(LABEL_MIDDLE2)?;
-                rec(sema, famous_defs, max_length, &ty, label_builder, config, edition)?;
+                rec(sema, famous_defs, max_length, &ty, label_builder, config, display_target)?;
                 label_builder.write_str(LABEL_END)?;
                 Ok(())
             }
             None => ty
-                .display_truncated(sema.db, max_length, edition)
+                .display_truncated(sema.db, max_length, display_target)
                 .with_closure_style(config.closure_style)
                 .write_to(label_builder),
         }
@@ -762,7 +763,8 @@ fn label_of_ty(
         result: InlayHintLabel::default(),
         resolve: config.fields_to_resolve.resolve_label_location,
     };
-    let _ = rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config, edition);
+    let _ =
+        rec(sema, famous_defs, config.max_length, ty, &mut label_builder, config, display_target);
     let r = label_builder.finish();
     Some(r)
 }
