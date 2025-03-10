@@ -336,19 +336,29 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 ///         // The offset of `self.contents` is dynamic because it depends on the alignment of T
 ///         // which can be dynamic (if `T = dyn SomeTrait`). Therefore, we have to obtain it
 ///         // dynamically by examining `self`, rather than using `offset_of!`.
-///         let offset_of_contents =
-///             (&raw const self.contents).byte_offset_from_unsigned(&raw const *self);
+///         //
+///         // SAFETY: `self` by definition points somewhere before `&self.contents` in the same
+///         // allocation.
+///         let offset_of_contents = unsafe {
+///             (&raw const self.contents).byte_offset_from_unsigned(self)
+///         };
 ///
-///         // Since `flag` implements `Copy`, we can just copy it.
-///         // We use `pointer::write()` instead of assignment because the destination must be
-///         // assumed to be uninitialized, whereas an assignment assumes it is initialized.
-///         dest.add(offset_of!(Self, flag)).cast::<bool>().write(self.flag);
-///
-///         // Note: if `flag` owned any resources (i.e. had a `Drop` implementation), then we
-///         // must prepare to drop it in case `self.contents.clone_to_uninit()` panics.
-///         // In this simple case, where we have exactly one field for which `mem::needs_drop()`
-///         // might be true (`contents`), we don’t need to care about cleanup or ordering.
-///         self.contents.clone_to_uninit(dest.add(offset_of_contents));
+///         // Clone each field of `self` into `dest`.
+///         //
+///         // Since `flag` is `Sized`, we could also clone it as
+///         //    dest.add(offset_of!(Self, flag)).cast::<bool>().write(self.flag.clone());
+///         // Since it is `Copy` (and therefore does not have a destructor), we could even write
+///         //    *dest.add(offset_of!(Self, flag)) = self.flag;
+///         // but that must not be used for types with destructors, since it would read the place
+///         // in order to drop the old value. We have chosen to do neither of those, to demonstrate
+///         // the most general pattern.
+///         //
+///         // SAFETY: The caller must provide a `dest` such that these offsets are valid
+///         // to write to.
+///         unsafe {
+///             self.flag.clone_to_uninit(dest.add(offset_of!(Self, flag)));
+///             self.contents.clone_to_uninit(dest.add(offset_of_contents));
+///         }
 ///
 ///         // All fields of the struct have been initialized, therefore the struct is initialized,
 ///         // and we have satisfied our `unsafe impl CloneToUninit` obligations.
@@ -370,6 +380,7 @@ pub struct AssertParamIsCopy<T: Copy + ?Sized> {
 ///
 ///     assert_eq!(first.contents, [1, 2, 3, 4]);
 ///     assert_eq!(second.contents, [10, 20, 30, 40]);
+///     assert_eq!(second.flag, true);
 /// }
 /// ```
 ///
@@ -414,9 +425,8 @@ pub unsafe trait CloneToUninit {
     /// read or dropped, because even if it was previously valid, it may have been partially
     /// overwritten.
     ///
-    /// The caller may also need to take care to deallocate the allocation pointed to by `dest`,
-    /// if applicable, to avoid a memory leak, and may need to take other precautions to ensure
-    /// soundness in the presence of unwinding.
+    /// The caller may wish to to take care to deallocate the allocation pointed to by `dest`,
+    /// if applicable, to avoid a memory leak (but this is not a requirement).
     ///
     /// Implementors should avoid leaking values by, upon unwinding, dropping all component values
     /// that might have already been created. (For example, if a `[Foo]` of length 3 is being
