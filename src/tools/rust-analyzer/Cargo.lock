@@ -897,6 +897,7 @@ checksum = "de3fc2e30ba82dd1b3911c8de1ffc143c74a914a14e99514d7637e3099df5ea0"
 dependencies = [
  "equivalent",
  "hashbrown 0.14.5",
+ "serde",
 ]
 
 [[package]]
@@ -1866,6 +1867,7 @@ dependencies = [
  "ide-completion",
  "ide-db",
  "ide-ssr",
+ "indexmap",
  "intern",
  "itertools",
  "load-cargo",

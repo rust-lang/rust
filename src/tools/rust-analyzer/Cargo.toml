@@ -117,7 +117,7 @@ expect-test = "1.4.0"
 hashbrown = { version = "0.14", features = [
   "inline-more",
 ], default-features = false }
-indexmap = "2.1.0"
+indexmap = { version = "2.1.0", features = ["serde"] }
 itertools = "0.12.0"
 libc = "0.2.150"
 libloading = "0.8.0"
