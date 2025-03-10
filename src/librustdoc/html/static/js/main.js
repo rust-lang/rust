@@ -518,7 +518,9 @@ function preLoadCss(cssUrl) {
         openParentDetails(document.getElementById(id));
     }
 
-    // @ts-expect-error
+    /**
+     * @param {KeyboardEvent} ev
+     */
     function handleEscape(ev) {
         // @ts-expect-error
         searchState.clearInputTimeout();
@@ -530,7 +532,9 @@ function preLoadCss(cssUrl) {
         window.hideAllModals(true); // true = reset focus for tooltips
     }
 
-    // @ts-expect-error
+    /**
+     * @param {KeyboardEvent} ev
+     */
     function handleShortcut(ev) {
         // Don't interfere with browser shortcuts
         const disableShortcuts = getSettingValue("disable-shortcuts") === "true";
