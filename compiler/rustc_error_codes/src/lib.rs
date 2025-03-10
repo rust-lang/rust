@@ -6,6 +6,7 @@
 #![deny(rustdoc::invalid_codeblock_attributes)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // This higher-order macro defines the error codes that are in use. It is used

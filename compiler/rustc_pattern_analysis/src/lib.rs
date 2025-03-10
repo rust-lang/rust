@@ -6,6 +6,7 @@
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![cfg_attr(feature = "rustc", feature(let_chains))]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod constructor;

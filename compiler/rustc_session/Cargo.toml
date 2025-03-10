@@ -37,6 +37,3 @@ features = [
     "Win32_Foundation",
     "Win32_System_LibraryLoader",
 ]
-
-[lints]
-workspace = true

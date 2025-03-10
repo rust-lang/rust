@@ -6,6 +6,7 @@
 #![feature(proc_macro_diagnostic)]
 #![feature(proc_macro_span)]
 #![feature(proc_macro_tracked_env)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use proc_macro::TokenStream;

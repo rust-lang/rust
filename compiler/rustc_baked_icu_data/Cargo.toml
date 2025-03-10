@@ -11,6 +11,3 @@ icu_locid_transform = "1.3.2"
 icu_provider = { version = "1.2", features = ["sync"] }
 zerovec = "0.10.0"
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

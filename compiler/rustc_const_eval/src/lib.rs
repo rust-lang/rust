@@ -16,6 +16,7 @@
 #![feature(unqualified_local_imports)]
 #![feature(yeet_expr)]
 #![warn(unqualified_local_imports)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod check_consts;

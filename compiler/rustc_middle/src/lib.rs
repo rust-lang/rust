@@ -61,6 +61,7 @@
 #![feature(try_trait_v2_yeet)]
 #![feature(type_alias_impl_trait)]
 #![feature(yeet_expr)]
+#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(test)]

@@ -19,6 +19,3 @@ nightly = [
     "dep:rustc_macros",
     "dep:rustc_span",
 ]
-
-[lints]
-workspace = true

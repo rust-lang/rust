@@ -79,6 +79,3 @@ rustc_randomized_layouts = [
     'rustc_middle/rustc_randomized_layouts'
 ]
 # tidy-alphabetical-end
-
-[lints]
-workspace = true

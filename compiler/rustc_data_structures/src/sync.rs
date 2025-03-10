@@ -88,7 +88,7 @@ mod mode {
 
     // Whether thread safety might be enabled.
     #[inline]
-    pub(super) fn might_be_dyn_thread_safe() -> bool {
+    pub fn might_be_dyn_thread_safe() -> bool {
         DYN_THREAD_SAFE_MODE.load(Ordering::Relaxed) != DYN_NOT_THREAD_SAFE
     }
 
