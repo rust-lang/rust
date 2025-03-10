@@ -302,11 +302,10 @@ function preLoadCss(cssUrl) {
                 window.searchState.timeout = null;
             }
         },
-        // @ts-expect-error
         isDisplayed: () => {
             const outputElement = window.searchState.outputElement();
-            return outputElement &&
-                outputElement.parentElement &&
+            return !!outputElement &&
+                !!outputElement.parentElement &&
                 outputElement.parentElement.id === ALTERNATIVE_DISPLAY_ID;
         },
         // Sets the focus on the search bar at the top of the page
