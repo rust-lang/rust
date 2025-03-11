@@ -1,6 +1,6 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast};
+use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_parse::exp;
@@ -39,6 +39,10 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
     };
 
     let pat = P(TyPat { id: pat.id, kind, span: pat.span, tokens: pat.tokens });
+
+    if parser.token != token::Eof {
+        parser.unexpected()?;
+    }
 
     Ok((ty, pat))
 }
