@@ -259,8 +259,8 @@ impl CodegenBackend for GccCodegenBackend {
             .join(sess)
     }
 
-    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features_cfg(sess, allow_unstable, &self.target_info)
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+        target_features_cfg(sess, &self.target_info)
     }
 }
 
@@ -486,35 +486,41 @@ fn to_gcc_opt_level(optlevel: Option<OptLevel>) -> OptimizationLevel {
 /// Returns the features that should be set in `cfg(target_feature)`.
 fn target_features_cfg(
     sess: &Session,
-    allow_unstable: bool,
     target_info: &LockedTargetInfo,
-) -> Vec<Symbol> {
+) -> (Vec<Symbol>, Vec<Symbol>) {
     // TODO(antoyo): use global_gcc_features.
-    sess.target
-        .rust_target_features()
-        .iter()
-        .filter_map(|&(feature, gate, _)| {
-            if allow_unstable
-                || (gate.in_cfg() && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
-            {
-                Some(feature)
-            } else {
-                None
-            }
-        })
-        .filter(|feature| {
-            // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
-            if *feature == "neon" {
-                return false;
-            }
-            target_info.cpu_supports(feature)
-            /*
-              adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
-              avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
-              bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
-              sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
-            */
-        })
-        .map(Symbol::intern)
-        .collect()
+    let f = |allow_unstable| {
+        sess.target
+            .rust_target_features()
+            .iter()
+            .filter_map(|&(feature, gate, _)| {
+                if allow_unstable
+                    || (gate.in_cfg()
+                        && (sess.is_nightly_build() || gate.requires_nightly().is_none()))
+                {
+                    Some(feature)
+                } else {
+                    None
+                }
+            })
+            .filter(|feature| {
+                // TODO: we disable Neon for now since we don't support the LLVM intrinsics for it.
+                if *feature == "neon" {
+                    return false;
+                }
+                target_info.cpu_supports(feature)
+                /*
+                  adx, aes, avx, avx2, avx512bf16, avx512bitalg, avx512bw, avx512cd, avx512dq, avx512er, avx512f, avx512fp16, avx512ifma,
+                  avx512pf, avx512vbmi, avx512vbmi2, avx512vl, avx512vnni, avx512vp2intersect, avx512vpopcntdq,
+                  bmi1, bmi2, cmpxchg16b, ermsb, f16c, fma, fxsr, gfni, lzcnt, movbe, pclmulqdq, popcnt, rdrand, rdseed, rtm,
+                  sha, sse, sse2, sse3, sse4.1, sse4.2, sse4a, ssse3, tbm, vaes, vpclmulqdq, xsave, xsavec, xsaveopt, xsaves
+                */
+            })
+            .map(Symbol::intern)
+            .collect()
+    };
+
+    let target_features = f(false);
+    let unstable_target_features = f(true);
+    (target_features, unstable_target_features)
 }

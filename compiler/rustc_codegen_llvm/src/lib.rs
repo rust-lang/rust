@@ -341,8 +341,8 @@ impl CodegenBackend for LlvmCodegenBackend {
         llvm_util::print_version();
     }
 
-    fn target_features_cfg(&self, sess: &Session, allow_unstable: bool) -> Vec<Symbol> {
-        target_features_cfg(sess, allow_unstable)
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
+        target_features_cfg(sess)
     }
 
     fn codegen_crate<'tcx>(
