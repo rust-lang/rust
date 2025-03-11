@@ -1,20 +1,20 @@
 error: unknown start of token: `
-  --> <crate attribute>:1:1
+  --> <crate attribute>:1:4
    |
-LL | `%~@$#
-   | ^
+LL | #![`%~@$#]
+   |    ^
    |
 help: Unicode character '`' (Grave Accent) looks like ''' (Single Quote), but it is not
    |
-LL - `%~@$#
-LL + '%~@$#
+LL - #![`%~@$#]
+LL + #!['%~@$#]
    |
 
 error: expected identifier, found `%`
-  --> <crate attribute>:1:2
+  --> <crate attribute>:1:5
    |
-LL | `%~@$#
-   |  ^ expected identifier
+LL | #![`%~@$#]
+   |     ^ expected identifier
 
 error: aborting due to 2 previous errors
 
