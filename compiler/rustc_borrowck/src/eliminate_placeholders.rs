@@ -20,7 +20,7 @@ use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
 use crate::ConstraintCategory;
-use crate::constraints::graph::{ConstraintGraph, Normal};
+use crate::constraints::graph::{ConstraintGraph, Normal, RegionGraph};
 use crate::constraints::{ConstraintSccIndex, OutlivesConstraintSet};
 use crate::consumers::OutlivesConstraint;
 use crate::diagnostics::{RegionErrorKind, RegionErrors};
@@ -556,6 +556,8 @@ fn find_region<'tcx>(
         Visited,
     }
 
+    let graph = RegionGraph::new(constraints, graph, fr_static);
+
     let mut context = IndexVec::from_elem(Trace::NotVisited, definitions);
     context[start_region] = Trace::StartRegion;
 
@@ -567,11 +569,7 @@ fn find_region<'tcx>(
             return r;
         }
 
-        let outgoing_edges_from_graph = graph.outgoing_edges(r, constraints, Some(fr_static));
-
-        for constraint in outgoing_edges_from_graph {
-            debug_assert_eq!(constraint.sup, r);
-            let sub_region = constraint.sub;
+        for sub_region in graph.outgoing_regions(r) {
             if let Trace::NotVisited = context[sub_region] {
                 context[sub_region] = Trace::Visited;
                 deque.push_back(sub_region);
