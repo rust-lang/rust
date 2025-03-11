@@ -370,4 +370,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
     },
+    ChangeInfo {
+        change_id: 138051,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a new `gcc` config section that can be used to download GCC from CI using `gcc.download-ci-gcc = true`",
+    },
 ];
