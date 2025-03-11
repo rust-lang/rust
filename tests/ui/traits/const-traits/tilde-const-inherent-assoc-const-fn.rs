@@ -4,7 +4,7 @@
 
 #[const_trait]
 trait Foo {
-    fn foo(&self) {}
+    (const) fn foo(&self) {}
 }
 
 struct Bar<T>(T);

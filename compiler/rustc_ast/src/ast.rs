@@ -3009,7 +3009,7 @@ impl BoundPolarity {
     }
 }
 
-/// The constness of a trait bound.
+/// The constness of a trait bound or function.
 #[derive(Copy, Clone, PartialEq, Eq, Encodable, Decodable, Debug, Hash)]
 #[derive(HashStable_Generic)]
 pub enum BoundConstness {
@@ -3461,7 +3461,7 @@ pub struct FnHeader {
     /// Whether this is `async`, `gen`, or nothing.
     pub coroutine_kind: Option<CoroutineKind>,
     /// The `const` keyword, if any
-    pub constness: Const,
+    pub constness: BoundConstness,
     /// The `extern` keyword and corresponding ABI string, if any.
     pub ext: Extern,
 }
@@ -3472,7 +3472,7 @@ impl FnHeader {
         let Self { safety, coroutine_kind, constness, ext } = self;
         matches!(safety, Safety::Unsafe(_))
             || coroutine_kind.is_some()
-            || matches!(constness, Const::Yes(_))
+            || !matches!(constness, BoundConstness::Never)
             || !matches!(ext, Extern::None)
     }
 }
@@ -3482,7 +3482,7 @@ impl Default for FnHeader {
         FnHeader {
             safety: Safety::Default,
             coroutine_kind: None,
-            constness: Const::No,
+            constness: BoundConstness::Never,
             ext: Extern::None,
         }
     }

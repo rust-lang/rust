@@ -857,13 +857,20 @@ impl<'a> Parser<'a> {
         false
     }
 
+    fn is_paren_const(&self, i: usize) -> bool {
+        self.look_ahead(i, |t| *t == token::OpenParen)
+            && self.look_ahead(1 + i, |t| t.is_keyword(kw::Const))
+            && self.look_ahead(2 + i, |t| *t == token::CloseParen)
+    }
+
     /// Parses defaultness (i.e., `default` or nothing).
     fn parse_defaultness(&mut self) -> Defaultness {
         // We are interested in `default` followed by another identifier.
         // However, we must avoid keywords that occur as binary operators.
         // Currently, the only applicable keyword is `as` (`default as Ty`).
         if self.check_keyword(exp!(Default))
-            && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+            && (self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
+                || self.is_paren_const(1))
         {
             self.bump(); // `default`
             Defaultness::Default(self.prev_token_uninterpolated_span())
@@ -2613,6 +2620,8 @@ impl<'a> Parser<'a> {
                         // Rule out `async gen {` and `async gen move {`
                         && !self.is_async_gen_block())
                 })
+            // `(const)`
+            || self.is_paren_const(0)
             // `extern ABI fn`
             || self.check_keyword_case(exp!(Extern), case)
                 // Use `tree_look_ahead` because `ABI` might be a metavariable,
@@ -2647,12 +2656,31 @@ impl<'a> Parser<'a> {
                 )
     }
 
+    pub fn parse_fn_constness(&mut self, case: Case) -> PResult<'a, BoundConstness> {
+        Ok(if self.eat_keyword_case(exp!(Const), case) {
+            BoundConstness::Always(self.prev_token.span)
+        } else if self.check(exp!(OpenParen))
+            && self.look_ahead(1, |t| t.is_keyword(kw::Const))
+            && self.look_ahead(2, |t| *t == token::CloseParen)
+        {
+            let start = self.token.span;
+            self.bump();
+            self.expect_keyword(exp!(Const)).unwrap();
+            self.bump();
+            let span = start.to(self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
+        } else {
+            BoundConstness::Never
+        })
+    }
+
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
     /// up to and including the `fn` keyword. The formal grammar is:
     ///
     /// ```text
     /// Extern = "extern" StringLit? ;
-    /// FnQual = "const"? "async"? "unsafe"? Extern? ;
+    /// FnQual = "(const)"? "const"? "async"? "unsafe"? Extern? ;
     /// FnFrontMatter = FnQual "fn" ;
     /// ```
     ///
@@ -2664,7 +2692,7 @@ impl<'a> Parser<'a> {
         case: Case,
     ) -> PResult<'a, FnHeader> {
         let sp_start = self.token.span;
-        let constness = self.parse_constness(case);
+        let constness = self.parse_fn_constness(case)?;
 
         let async_start_sp = self.token.span;
         let coroutine_kind = self.parse_coroutine_kind(case);
@@ -2713,9 +2741,11 @@ impl<'a> Parser<'a> {
                     // that the keyword is already present and the second instance should be removed.
                     let wrong_kw = if self.check_keyword(exp!(Const)) {
                         match constness {
-                            Const::Yes(sp) => Some(WrongKw::Duplicated(sp)),
-                            Const::No => {
-                                recover_constness = Const::Yes(self.token.span);
+                            BoundConstness::Always(sp) | BoundConstness::Maybe(sp) => {
+                                Some(WrongKw::Duplicated(sp))
+                            }
+                            BoundConstness::Never => {
+                                recover_constness = BoundConstness::Always(self.token.span);
                                 Some(WrongKw::Misplaced(async_start_sp))
                             }
                         }

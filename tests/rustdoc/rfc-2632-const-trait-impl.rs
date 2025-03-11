@@ -25,7 +25,7 @@ pub trait Tr<T> {
     //@ has - '//section[@id="method.a"]/h4[@class="code-header"]/a[@class="trait"]' 'Fn'
     //@ !has - '//section[@id="method.a"]/h4[@class="code-header"]/span[@class="where"]' '~const'
     //@ has - '//section[@id="method.a"]/h4[@class="code-header"]/div[@class="where"]' ': Fn'
-    fn a<A: /* ~const */ Fn() /* + ~const Destruct */>()
+    (const) fn a<A: /* ~const */ Fn() /* + ~const Destruct */>()
     where
         Option<A>: /* ~const */ Fn() /* + ~const Destruct */,
     {
@@ -41,7 +41,7 @@ impl<T: /* ~const */ Fn() /* + ~const Destruct */> const Tr<T> for T
 where
     Option<T>: /* ~const */ Fn() /* + ~const Destruct */,
 {
-    fn a<A: /* ~const */ Fn() /* + ~const Destruct */>()
+    (const) fn a<A: /* ~const */ Fn() /* + ~const Destruct */>()
     where
         Option<A>: /* ~const */ Fn() /* + ~const Destruct */,
     {

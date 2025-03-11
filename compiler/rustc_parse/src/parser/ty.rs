@@ -682,7 +682,9 @@ impl<'a> Parser<'a> {
         //  |           |                safety_sp.lo
         //  |           coroutine_sp.lo
         //  const_sp.lo
-        if let ast::Const::Yes(const_span) = constness {
+        if let ast::BoundConstness::Always(const_span) | ast::BoundConstness::Maybe(const_span) =
+            constness
+        {
             let next_token_lo = if let Some(
                 ast::CoroutineKind::Async { span, .. }
                 | ast::CoroutineKind::Gen { span, .. }
@@ -1098,7 +1100,7 @@ impl<'a> Parser<'a> {
         Ok(TraitBoundModifiers { constness, asyncness, polarity })
     }
 
-    fn parse_bound_constness(&mut self) -> PResult<'a, BoundConstness> {
+    pub fn parse_bound_constness(&mut self) -> PResult<'a, BoundConstness> {
         Ok(if self.eat(exp!(Tilde)) {
             let tilde = self.prev_token.span;
             self.expect_keyword(exp!(Const))?;
@@ -1108,6 +1110,17 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(exp!(Const)) {
             self.psess.gated_spans.gate(sym::const_trait_impl, self.prev_token.span);
             BoundConstness::Always(self.prev_token.span)
+        } else if self.check(exp!(OpenParen))
+            && self.look_ahead(1, |t| t.is_keyword(kw::Const))
+            && self.look_ahead(2, |t| *t == token::CloseParen)
+        {
+            let start = self.prev_token.span;
+            self.bump();
+            self.expect_keyword(exp!(Const)).unwrap();
+            self.bump();
+            let span = start.to(self.prev_token.span);
+            self.psess.gated_spans.gate(sym::const_trait_impl, span);
+            BoundConstness::Maybe(span)
         } else {
             BoundConstness::Never
         })

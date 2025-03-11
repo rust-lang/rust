@@ -198,6 +198,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     pub(crate) fn dcx(&self) -> DiagCtxtHandle<'hir> {
         self.tcx.dcx()
     }
+
+    fn lower_fn_header_constness(&self, constness: BoundConstness) -> hir::Constness {
+        match constness {
+            BoundConstness::Never => hir::Constness::NotConst,
+            BoundConstness::Always(_) => hir::Constness::Const,
+            // FIXME(const_trait_impls): support non-const fn and `(const)` fns within the same trait
+            BoundConstness::Maybe(_) => hir::Constness::NotConst,
+        }
+    }
 }
 
 #[extension(trait ResolverAstLoweringExt)]

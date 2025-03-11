@@ -10,8 +10,8 @@ LL |     type Bar<T> = () where T: const Bar;
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/predicate-entailment-fails.rs:17:26
    |
-LL |     fn foo<T>() where T: ~const Bar;
-   |     -------------------------------- definition of `foo` from trait
+LL |     (const) fn foo<T>() where T: ~const Bar;
+   |     ---------------------------------------- definition of `foo` from trait
 ...
 LL |     fn foo<T>() where T: const Bar {}
    |                          ^^^^^^^^^ impl has extra requirement `T: const Bar`
@@ -28,8 +28,8 @@ LL |     type Bar<T> = () where T: const Bar;
 error[E0276]: impl has stricter requirements than trait
   --> $DIR/predicate-entailment-fails.rs:31:26
    |
-LL |     fn foo<T>() where T: Bar;
-   |     ------------------------- definition of `foo` from trait
+LL |     (const) fn foo<T>() where T: Bar;
+   |     --------------------------------- definition of `foo` from trait
 ...
 LL |     fn foo<T>() where T: const Bar {}
    |                          ^^^^^^^^^ impl has extra requirement `T: const Bar`
@@ -44,13 +44,13 @@ LL |     type Bar<T> = () where T: ~const Bar;
    |                               ^^^^^^^^^^ impl has extra requirement `T: ~const Bar`
 
 error[E0276]: impl has stricter requirements than trait
-  --> $DIR/predicate-entailment-fails.rs:38:26
+  --> $DIR/predicate-entailment-fails.rs:38:34
    |
-LL |     fn foo<T>() where T: Bar;
-   |     ------------------------- definition of `foo` from trait
+LL |     (const) fn foo<T>() where T: Bar;
+   |     --------------------------------- definition of `foo` from trait
 ...
-LL |     fn foo<T>() where T: ~const Bar {}
-   |                          ^^^^^^^^^^ impl has extra requirement `T: ~const Bar`
+LL |     (const) fn foo<T>() where T: ~const Bar {}
+   |                                  ^^^^^^^^^^ impl has extra requirement `T: ~const Bar`
 
 error: aborting due to 6 previous errors
 

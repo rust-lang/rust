@@ -6,16 +6,16 @@
 
 #[const_trait]
 trait Foo {
-    fn method(&self);
+    (const) fn method(&self);
 }
 
 impl<T: ~const Foo> const Foo for (T,) {
-    fn method(&self) {}
+    (const) fn method(&self) {}
 }
 
 #[cfg(yes)]
 impl const Foo for () {
-    fn method(&self) {}
+    (const) fn method(&self) {}
 }
 
 #[cfg(no)]

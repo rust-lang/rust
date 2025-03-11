@@ -28,11 +28,11 @@ pub enum Bar {
 }
 
 #[const_trait] pub trait ConstDefault {
-    fn value() -> Self;
+    (const) fn value() -> Self;
 }
 
 impl const ConstDefault for i32 {
-    fn value() -> i32 {
+    (const) fn value() -> i32 {
         101
     }
 }

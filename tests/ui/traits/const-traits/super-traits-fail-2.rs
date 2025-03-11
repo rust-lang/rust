@@ -4,6 +4,9 @@
 
 #[cfg_attr(any(yy, yn), const_trait)]
 trait Foo {
+    #[cfg(any(yy, yn))]
+    (const) fn a(&self);
+    #[cfg(any(ny, nn))]
     fn a(&self);
 }
 

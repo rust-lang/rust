@@ -1981,7 +1981,7 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_header_info(&mut self, header: ast::FnHeader) {
-        self.print_constness(header.constness);
+        self.print_bound_constness(header.constness);
         header.coroutine_kind.map(|coroutine_kind| self.print_coroutine_kind(coroutine_kind));
         self.print_safety(header.safety);
 
@@ -2012,6 +2012,14 @@ impl<'a> State<'a> {
         match s {
             ast::Const::No => {}
             ast::Const::Yes(_) => self.word_nbsp("const"),
+        }
+    }
+
+    fn print_bound_constness(&mut self, s: ast::BoundConstness) {
+        match s {
+            ast::BoundConstness::Never => {}
+            ast::BoundConstness::Always(_) => self.word_nbsp("const"),
+            ast::BoundConstness::Maybe(_) => self.word_nbsp("~const"),
         }
     }
 

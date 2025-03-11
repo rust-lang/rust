@@ -8,14 +8,14 @@ impl const Sup for () {}
 
 #[const_trait]
 pub trait A {
-    fn a() -> u32;
+    (const) fn a() -> u32;
 }
 
 #[const_trait]
 pub trait Spec {}
 
 impl<T: ~const Spec> const A for T {
-    default fn a() -> u32 {
+    default (const) fn a() -> u32 {
         2
     }
 }

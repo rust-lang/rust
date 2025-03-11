@@ -3,9 +3,9 @@
 
 #[const_trait]
 trait ConstDefaultFn: Sized {
-    fn b(self);
+    (const) fn b(self);
 
-    fn a(self) {
+    (const) fn a(self) {
         self.b();
     }
 }
@@ -18,7 +18,7 @@ impl ConstDefaultFn for NonConstImpl {
 }
 
 impl const ConstDefaultFn for ConstImpl {
-    fn b(self) {}
+    (const) fn b(self) {}
 }
 
 const fn test() {

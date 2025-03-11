@@ -18,7 +18,7 @@ impl Drop for NonTrivialDrop {
 struct ConstImplWithDropGlue(NonTrivialDrop);
 
 impl const Drop for ConstImplWithDropGlue {
-    fn drop(&mut self) {}
+    (const) fn drop(&mut self) {}
 }
 
 const fn check<T: ~const Destruct>(_: T) {}

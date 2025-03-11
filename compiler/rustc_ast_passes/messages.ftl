@@ -47,6 +47,8 @@ ast_passes_const_and_coroutine = functions cannot be both `const` and `{$corouti
 
 ast_passes_const_bound_trait_object = const trait bounds are not allowed in trait object types
 
+ast_passes_const_in_trait = `const fn` in traits is unstable
+
 ast_passes_const_without_body =
     free constant item without body
     .suggestion = provide a definition for the constant

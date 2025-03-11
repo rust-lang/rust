@@ -5,7 +5,7 @@
 
 #[const_trait]
 trait Trait {
-    fn method() {}
+    (const) fn method() {}
 }
 
 impl const Trait for () {}

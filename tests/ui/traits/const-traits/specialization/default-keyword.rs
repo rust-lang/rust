@@ -5,11 +5,11 @@
 
 #[const_trait]
 trait Foo {
-    fn foo();
+    (const) fn foo();
 }
 
 impl const Foo for u32 {
-    default fn foo() {}
+    default (const) fn foo() {}
 }
 
 fn main() {}

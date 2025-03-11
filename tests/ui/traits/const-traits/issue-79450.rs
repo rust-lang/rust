@@ -3,9 +3,9 @@
 
 #[const_trait]
 trait Tr {
-    fn req(&self);
+    (const) fn req(&self);
 
-    fn prov(&self) {
+    (const) fn prov(&self) {
         println!("lul"); //~ ERROR: cannot call non-const function `_print` in constant functions
         self.req();
     }
@@ -14,7 +14,7 @@ trait Tr {
 struct S;
 
 impl const Tr for S {
-    fn req(&self) {}
+    (const) fn req(&self) {}
 }
 
 fn main() {}

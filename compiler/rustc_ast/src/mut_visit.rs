@@ -902,6 +902,14 @@ fn visit_constness<T: MutVisitor>(vis: &mut T, constness: &mut Const) {
     }
 }
 
+// No `noop_` prefix because there isn't a corresponding method in `MutVisitor`.
+fn walk_bound_constness<T: MutVisitor>(vis: &mut T, constness: &mut BoundConstness) {
+    match constness {
+        BoundConstness::Never => {}
+        BoundConstness::Always(span) | BoundConstness::Maybe(span) => vis.visit_span(span),
+    }
+}
+
 fn walk_closure_binder<T: MutVisitor>(vis: &mut T, binder: &mut ClosureBinder) {
     match binder {
         ClosureBinder::NotPresent => {}
@@ -1131,10 +1139,7 @@ fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
 
 fn walk_modifiers<V: MutVisitor>(vis: &mut V, m: &mut TraitBoundModifiers) {
     let TraitBoundModifiers { constness, asyncness, polarity } = m;
-    match constness {
-        BoundConstness::Never => {}
-        BoundConstness::Always(span) | BoundConstness::Maybe(span) => vis.visit_span(span),
-    }
+    walk_bound_constness(vis, constness);
     match asyncness {
         BoundAsyncness::Normal => {}
         BoundAsyncness::Async(span) => vis.visit_span(span),
@@ -1443,7 +1448,7 @@ fn walk_const_item<T: MutVisitor>(vis: &mut T, item: &mut ConstItem) {
 
 fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
     let FnHeader { safety, coroutine_kind, constness, ext: _ } = header;
-    visit_constness(vis, constness);
+    walk_bound_constness(vis, constness);
     coroutine_kind.as_mut().map(|coroutine_kind| vis.visit_coroutine_kind(coroutine_kind));
     visit_safety(vis, safety);
 }

@@ -42,7 +42,7 @@ mod recursive {
 mod effects {
     #[const_trait]
     trait Trait {
-        fn foo();
+        (const) fn foo();
     }
 
     reuse Trait::foo;

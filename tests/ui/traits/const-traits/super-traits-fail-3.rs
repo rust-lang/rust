@@ -15,6 +15,10 @@
 #[cfg_attr(any(yyy, yyn, nyy, nyn), const_trait)]
 //[nyy,nyn]~^ ERROR: `const_trait` is a temporary placeholder for marking a trait that is suitable for `const` `impls` and all default bodies as `const`, which may be removed or renamed in the future
 trait Foo {
+    #[cfg(any(yyy, yyn, nyy, nyn))]
+    (const) fn a(&self); //[nyy,nyn]~ ERROR: `const fn` in traits is unstable
+    //[nyy,nyn,nny,nnn]~^ ERROR: const trait impls are experimental
+    #[cfg(not(any(yyy, yyn, nyy, nyn)))]
     fn a(&self);
 }
 

@@ -15,7 +15,7 @@ impl Foo {
 impl<T> const Deref for Wrap<T> {
     type Target = T;
 
-    fn deref(&self) -> &Self::Target {
+    (const) fn deref(&self) -> &Self::Target {
         &self.0
     }
 }

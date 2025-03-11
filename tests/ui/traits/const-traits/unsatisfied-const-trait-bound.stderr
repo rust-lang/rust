@@ -1,3 +1,9 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/unsatisfied-const-trait-bound.rs:12:5
+   |
+LL |     fn make() -> u32;
+   |     ^ help: mark the function as const: `(const)`
+
 error: `-Znext-solver=globally` and `generic_const_exprs` are incompatible, using them at the same time is not allowed
   --> $DIR/unsatisfied-const-trait-bound.rs:5:30
    |
@@ -134,6 +140,6 @@ LL | const fn accept1<T: ~const Trait>(_: Container<{ T::make() }>) {}
    |                                                ^^^^^^^^^^^^^
    = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0391`.

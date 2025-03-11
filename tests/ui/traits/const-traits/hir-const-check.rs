@@ -6,11 +6,11 @@
 
 #[const_trait]
 pub trait MyTrait {
-    fn method(&self) -> Option<()>;
+    (const) fn method(&self) -> Option<()>;
 }
 
 impl const MyTrait for () {
-    fn method(&self) -> Option<()> {
+    (const) fn method(&self) -> Option<()> {
         Some(())?;
         //~^ ERROR `?` is not allowed on
         //~| ERROR `?` is not allowed on

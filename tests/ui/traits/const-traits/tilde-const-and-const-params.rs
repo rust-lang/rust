@@ -15,11 +15,11 @@ impl<const N: usize> Foo<N> {
 
 #[const_trait]
 trait Add42 {
-    fn add(a: usize) -> usize;
+    (const) fn add(a: usize) -> usize;
 }
 
 impl const Add42 for () {
-    fn add(a: usize) -> usize {
+    (const) fn add(a: usize) -> usize {
         a + 42
     }
 }

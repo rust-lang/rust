@@ -1,3 +1,33 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:18:5
+   |
+LL |     fn bar();
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:25:5
+   |
+LL |     default fn bar() {}
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:38:5
+   |
+LL |     fn baz();
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:45:5
+   |
+LL |     default fn baz() {}
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-default-bound-non-const-specialized-bound.rs:53:5
+   |
+LL |     fn baz() {}
+   |     ^ help: mark the function as const: `const`
+
 error[E0119]: conflicting implementations of trait `Bar`
   --> $DIR/const-default-bound-non-const-specialized-bound.rs:28:1
    |
@@ -26,6 +56,6 @@ LL | |     T: Foo,
 LL | |     T: Specialize,
    | |__________________^ conflicting implementation
 
-error: aborting due to 2 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0119`.

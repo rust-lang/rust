@@ -14,7 +14,7 @@ trait Trait {
     where
         U: ~const Other;
 
-    fn func();
+    (const) fn func();
 }
 
 #[const_trait]
