@@ -1,0 +1,105 @@
+error[E0603]: struct `Priv1` is private
+  --> $DIR/non-exhaustive-ctor-2.rs:19:39
+   |
+LL |     let _ = S { field: (), field1: m::Priv1 {} };
+   |                            ------     ^^^^^ private struct
+   |                            |
+   |                            while setting this field
+   |
+note: the struct `Priv1` is defined here
+  --> $DIR/non-exhaustive-ctor-2.rs:14:4
+   |
+LL |    struct Priv1 {}
+   |    ^^^^^^^^^^^^
+help: the type `Priv1` of field `field1` is private, but you can construct the default value defined for it in `S` using `..` in the struct initializer expression
+   |
+LL -     let _ = S { field: (), field1: m::Priv1 {} };
+LL +     let _ = S { field: (), .. };
+   |
+
+error[E0603]: struct `Priv1` is private
+  --> $DIR/non-exhaustive-ctor-2.rs:22:39
+   |
+LL |     let _ = S { field: (), field1: m::Priv1 {}, field2: m::Priv2 };
+   |                            ------     ^^^^^ private struct
+   |                            |
+   |                            while setting this field
+   |
+note: the struct `Priv1` is defined here
+  --> $DIR/non-exhaustive-ctor-2.rs:14:4
+   |
+LL |    struct Priv1 {}
+   |    ^^^^^^^^^^^^
+help: the type `Priv1` of field `field1` is private, but you can construct the default value defined for it in `S` using `..` in the struct initializer expression
+   |
+LL -     let _ = S { field: (), field1: m::Priv1 {}, field2: m::Priv2 };
+LL +     let _ = S { field: (), field2: m::Priv2, .. };
+   |
+
+error[E0603]: unit struct `Priv2` is private
+  --> $DIR/non-exhaustive-ctor-2.rs:22:60
+   |
+LL |     let _ = S { field: (), field1: m::Priv1 {}, field2: m::Priv2 };
+   |                                                 ------     ^^^^^ private unit struct
+   |                                                 |
+   |                                                 while setting this field
+   |
+note: the unit struct `Priv2` is defined here
+  --> $DIR/non-exhaustive-ctor-2.rs:15:4
+   |
+LL |    struct Priv2;
+   |    ^^^^^^^^^^^^^
+help: the type `Priv2` of field `field2` is private, but you can construct the default value defined for it in `S` using `..` in the struct initializer expression
+   |
+LL -     let _ = S { field: (), field1: m::Priv1 {}, field2: m::Priv2 };
+LL +     let _ = S { field: (), field1: m::Priv1 {}, .. };
+   |
+
+error[E0603]: unit struct `Priv` is private
+  --> $DIR/non-exhaustive-ctor-2.rs:25:28
+   |
+LL |     let _ = xc::B { a: xc::Priv };
+   |                     -      ^^^^ private unit struct
+   |                     |
+   |                     while setting this field
+   |
+note: the unit struct `Priv` is defined here
+  --> $DIR/auxiliary/struct_field_default.rs:7:1
+   |
+LL | struct Priv;
+   | ^^^^^^^^^^^
+help: the type `Priv` of field `a` is private, but you can construct the default value defined for it in `B` using `..` in the struct initializer expression
+   |
+LL -     let _ = xc::B { a: xc::Priv };
+LL +     let _ = xc::B { .. };
+   |
+
+error[E0603]: unit struct `Priv` is private
+  --> $DIR/non-exhaustive-ctor-2.rs:27:28
+   |
+LL |     let _ = xc::C { a: xc::Priv };
+   |                     -      ^^^^ private unit struct
+   |                     |
+   |                     while setting this field
+   |
+note: the unit struct `Priv` is defined here
+  --> $DIR/auxiliary/struct_field_default.rs:7:1
+   |
+LL | struct Priv;
+   | ^^^^^^^^^^^
+
+error[E0063]: missing field `field2` in initializer of `S`
+  --> $DIR/non-exhaustive-ctor-2.rs:19:13
+   |
+LL |     let _ = S { field: (), field1: m::Priv1 {} };
+   |             ^ missing `field2`
+   |
+help: all remaining fields have default values, you can use those values with `..`
+   |
+LL |     let _ = S { field: (), field1: m::Priv1 {}, .. };
+   |                                               ++++
+
+error: aborting due to 6 previous errors
+
+Some errors have detailed explanations: E0063, E0603.
+For more information about an error, try `rustc --explain E0063`.
