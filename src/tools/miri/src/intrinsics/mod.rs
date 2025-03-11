@@ -7,8 +7,8 @@ use std::ops::Neg;
 
 use rand::Rng;
 use rustc_abi::Size;
-use rustc_apfloat::ieee::{Double, IeeeFloat, Semantics, Single};
-use rustc_apfloat::{self, Float, Round};
+use rustc_apfloat::ieee::{IeeeFloat, Semantics};
+use rustc_apfloat::{self, Category, Float, Round};
 use rustc_middle::mir;
 use rustc_middle::ty::{self, FloatTy, ScalarInt};
 use rustc_span::{Symbol, sym};
@@ -18,63 +18,6 @@ use self::helpers::{ToHost, ToSoft, check_intrinsic_arg_count};
 use self::simd::EvalContextExt as _;
 use crate::math::{IeeeExt, apply_random_float_error_ulp};
 use crate::*;
-
-macro_rules! pow_impl {
-    ($this: expr, powf($f1: expr, $f2: expr)) => {{
-        let host1 = $f1.to_host();
-        let host2 = $f2.to_host();
-
-        let fixed_res = match (host1, host2) {
-            // 1^y = 1 for any y even a NaN.
-            (one @ 1.0, _) => Some(one),
-
-            // (-1)^(±INF) = 1
-            (-1.0, exp) if exp.is_infinite() => Some(1.0),
-
-            // x^(±0) = 1 for any x, even a NaN
-            (_, 0.0) => Some(1.0),
-
-            _ => None,
-        };
-        fixed_res.map_or_else(|| {
-            // Using host floats (but it's fine, this operation does not have guaranteed precision).
-            let res = host1.powf(host2).to_soft();
-            // Apply a relative error of 4ULP to introduce some non-determinism
-            // simulating imprecise implementations and optimizations.
-            apply_random_float_error_ulp(
-                $this, res, 2, // log2(4)
-            )
-        }, ToSoft::to_soft)
-    }};
-    ($this: expr, powi($f: expr, $i: expr)) => {{
-        let host = $f.to_host();
-        let exp = $i;
-
-        let fixed_res = match (host, exp) {
-            // ±0^x = ±0 with x an odd integer.
-            (zero @ 0.0, x) if x % 2 != 0 => Some(zero), // preserve sign of zero.
-
-            // ±0^x = +0 with x an even integer.
-            (0.0, x) if x % 2 == 0 => Some(0.0),
-
-            // x^0 = 1:
-            // Standard specifies we can only fix to 1 if x is is not a Signaling NaN.
-            // TODO: How to do this in normal rust?
-            (_, 0) /* if !f.is_signaling() */ => Some(1.0),
-
-            _ => None,
-        };
-        fixed_res.map_or_else(|| {
-            // Using host floats (but it's fine, this operation does not have guaranteed precision).
-            let res = host.powi(exp).to_soft();
-            // Apply a relative error of 4ULP to introduce some non-determinism
-            // simulating imprecise implementations and optimizations.
-            apply_random_float_error_ulp(
-                $this, res, 2, // log2(4)
-            )
-        }, ToSoft::to_soft)
-    }};
-}
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
@@ -296,7 +239,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
 
-                let res = fixed_float_value(intrinsic_name, f).unwrap_or_else(||{
+                let res = fixed_float_value(intrinsic_name, &[f]).unwrap_or_else(||{
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let host = f.to_host();
@@ -322,13 +265,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
                     // if any.
-                    match intrinsic_name {
-                        // sin and cos: [-1, 1]
-                        "sinf32" | "cosf32" => res.clamp(Single::one().neg(), Single::one()), 
-                        // exp: [0, +INF]
-                        "expf32" | "exp2f32" => res.maximum(Single::ZERO), 
-                        _ => res,
-                    }
+                    clamp_float_value(intrinsic_name, res)
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -346,7 +283,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [f] = check_intrinsic_arg_count(args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
 
-                let res = fixed_float_value(intrinsic_name, f).unwrap_or_else(||{
+                let res = fixed_float_value(intrinsic_name, &[f]).unwrap_or_else(||{
                     // Using host floats (but it's fine, these operations do not have
                     // guaranteed precision).
                     let host = f.to_host();
@@ -372,13 +309,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
                     // Clamp the result to the guaranteed range of this function according to the C standard,
                     // if any.
-                    match intrinsic_name {
-                        // sin and cos: [-1, 1]
-                        "sinf64" | "cosf64" => res.clamp(Double::one().neg(), Double::one()),
-                        // exp: [0, +INF]
-                        "expf64" | "exp2f64" => res.maximum(Double::ZERO),
-                        _ => res,
-                    }
+                    clamp_float_value(intrinsic_name, res)
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
@@ -442,7 +373,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f1 = this.read_scalar(f1)?.to_f32()?;
                 let f2 = this.read_scalar(f2)?.to_f32()?;
 
-                let res = pow_impl!(this, powf(f1, f2));
+                let res = fixed_float_value(intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -451,7 +391,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f1 = this.read_scalar(f1)?.to_f64()?;
                 let f2 = this.read_scalar(f2)?.to_f64()?;
 
-                let res = pow_impl!(this, powf(f1, f2));
+                let res = fixed_float_value(intrinsic_name, &[f1, f2]).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f1.to_host().powf(f2.to_host()).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -461,7 +410,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f32()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = pow_impl!(this, powi(f, i));
+                let res = fixed_powi_float_value(f, i).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f.to_host().powi(i).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -470,7 +428,16 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let f = this.read_scalar(f)?.to_f64()?;
                 let i = this.read_scalar(i)?.to_i32()?;
 
-                let res = pow_impl!(this, powi(f, i));
+                let res = fixed_powi_float_value(f, i).unwrap_or_else(|| {
+                    // Using host floats (but it's fine, this operation does not have guaranteed precision).
+                    let res = f.to_host().powi(i).to_soft();
+
+                    // Apply a relative error of 4ULP to introduce some non-determinism
+                    // simulating imprecise implementations and optimizations.
+                    apply_random_float_error_ulp(
+                        this, res, 2, // log2(4)
+                    )
+                });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -607,34 +574,121 @@ fn apply_random_float_error_to_imm<'tcx>(
     interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
-/// For the operations:
+// TODO(lorrens): This can be moved to `helpers` when we implement the other intrinsics.
+/// For the intrinsics:
 /// - sinf32, sinf64
 /// - cosf32, cosf64
 /// - expf32, expf64, exp2f32, exp2f64
 /// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
+/// - powf32, powf64
 ///
-/// Returns Some(`output`) if the operation results in a defined fixed `output` when given `input`
-/// as an input, else None.
+/// Returns Some(`output`) if the operation results in a defined fixed `output` specified in the C standard when given `args`
+/// as arguments, else None.
 fn fixed_float_value<S: Semantics>(
     intrinsic_name: &str,
-    input: IeeeFloat<S>,
-) -> Option<IeeeFloat<S>>
-where
-    IeeeFloat<S>: std::cmp::PartialEq,
-{
+    args: &[IeeeFloat<S>],
+) -> Option<IeeeFloat<S>> {
+    // TODO: not sure about this pattern matching stuff. It's definitly cleaner than if-else chains
+    // Error code 0158 explains this: https://doc.rust-lang.org/stable/error_codes/E0158.html
+    // The only reason I did this is to use the same function for powf as for sin/cos/exp/log
+    // TODO: I can't fit powi logic in this because of the exponent being a i32 -> seperate fn "fixed_powi_float_value" for now
     let one = IeeeFloat::<S>::one();
-    match intrinsic_name {
+    match (intrinsic_name, args) {
         // sin(+- 0) = +- 0.
-        "sinf32" | "sinf64" if input.is_zero() => Some(input),
-        "cosf32" | "cosf64" if input.is_zero() => Some(one),
-        "expf32" | "expf64" | "exp2f32" | "exp2f64" if input.is_zero() => Some(one),
+        ("sinf32" | "sinf64", [input]) if input.is_zero() => Some(*input),
+
+        // cos(+- 0) = 1
+        ("cosf32" | "cosf64", [input]) if input.is_zero() => Some(one),
+
+        // e^0 = 1
+        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input])
+            if input.is_zero() => Some(one),
+
+        // log(1) = 0
         #[rustfmt::skip]
-        "logf32"
+        ("logf32"
         | "logf64"
         | "log10f32"
         | "log10f64"
         | "log2f32"
-        | "log2f64" if input == one => Some(IeeeFloat::<S>::ZERO),
+        | "log2f64", [input]) if *input == one => Some(IeeeFloat::<S>::ZERO),
+
+        // 1^y = 1 for any y, even a NaN.
+        ("powf32" | "powf64", [base, _]) if *base == one => Some(one),
+
+        // (-1)^(±INF) = 1
+        ("powf32" | "powf64", [base, exp]) if *base == -one && exp.is_infinite() => Some(one),
+
+        // x^(±0) = 1 for any x, even a NaN
+        ("powf32" | "powf64", [_, exp]) if exp.is_zero() => Some(one),
+
+        // C standard doesn't specify or invalid combination
         _ => None,
     }
 }
+
+/// Returns Some(`output`) if powi results in a fixed value specified in the C standard when doing `base^exp` else None.
+fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
+    match (base.category(), exp) {
+        // ±0^x = ±0 with x an odd integer.
+        (Category::Zero, x) if x % 2 != 0 => Some(base), // preserve sign of zero.
+
+        // ±0^x = +0 with x an even integer.
+        (Category::Zero, x) if x % 2 == 0 => Some(IeeeFloat::<S>::ZERO),
+
+        // x^y = 1, if y is not a Signaling NaN
+        (_, 0) if !base.is_signaling() => Some(IeeeFloat::<S>::one()),
+
+        _ => None,
+    }
+}
+
+/// Given an floating-point operation and a floating-point value, clamps the result to the output
+/// range of the given operation.
+fn clamp_float_value<S: Semantics>(intrinsic_name: &str, val: IeeeFloat<S>) -> IeeeFloat<S> {
+    match intrinsic_name {
+        // sin and cos: [-1, 1]
+        "sinf32" | "cosf32" | "sinf64" | "cosf64" =>
+            val.clamp(IeeeFloat::<S>::one().neg(), IeeeFloat::<S>::one()),
+        // exp: [0, +INF]
+        "expf32" | "exp2f32" | "expf64" | "exp2f64" => val.maximum(IeeeFloat::<S>::ZERO),
+        _ => val,
+    }
+}
+
+// TODO: clean up when I'm sure this is not needed, because powf is now included in fixed_float_value
+// fn powf_impl<'tcx, S: Semantics, Op>(
+//     ecx: &mut MiriInterpCx<'tcx>,
+//     base: IeeeFloat<S>,
+//     exp: IeeeFloat<S>,
+//     op: Op,
+// ) -> IeeeFloat<S>
+// where
+//     IeeeFloat<S>: ToHost,
+//     Op: Fn(IeeeFloat<S>, IeeeFloat<S>) -> IeeeFloat<S>,
+// {
+//     let one = IeeeFloat::<S>::one();
+//     let fixed_res = match (base.category(), exp.category()) {
+//         // 1^y = 1 for any y, even a NaN.
+//         (Category::Normal, _) if base == one => Some(one),
+
+//         // (-1)^(±INF) = 1
+//         (Category::Normal, Category::Infinity) if base == -one => Some(one),
+
+//         // x^(±0) = 1 for any x, even a NaN
+//         (_, Category::Zero) => Some(one),
+
+//         // TODO: pow has a lot of "edge" cases which mostly result in ±0 or ±INF
+//         // do we have to catch them all?
+//         _ => None,
+//     };
+
+//     fixed_res.unwrap_or_else(|| {
+//         let res = op(base, exp);
+//         // Apply a relative error of 4ULP to introduce some non-determinism
+//         // simulating imprecise implementations and optimizations.
+//         apply_random_float_error_ulp(
+//             ecx, res, 2, // log2(4)
+//         )
+//     })
+// }
