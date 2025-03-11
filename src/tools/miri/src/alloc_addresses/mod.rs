@@ -198,8 +198,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 AllocKind::Dead => unreachable!(),
             };
-            // Ensure this pointer's provenance is exposed, so that it can be used by FFI code.
-            return interp_ok(base_ptr.expose_provenance().try_into().unwrap());
+            // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
+            return interp_ok(base_ptr.addr().try_into().unwrap());
         }
         // We are not in native lib mode, so we control the addresses ourselves.
         if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
