@@ -1071,6 +1071,7 @@ impl Builder<'_> {
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
             lint_flags.push("-Wkeyword_idents_2024");
+            lint_flags.push("-Wunreachable_pub");
             lint_flags.push("-Wunsafe_op_in_unsafe_fn");
         }
 
