@@ -9,6 +9,7 @@ use rustc_abi::{
 use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_middle::bug;
+use rustc_middle::mir::CoroutineSavedLocal;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::layout::{
     FloatExt, HasTyCtxt, IntegerExt, LayoutCx, LayoutError, LayoutOf, TyAndLayout,
@@ -410,7 +411,7 @@ fn layout_of_uncached<'tcx>(
                 return Err(error(cx, LayoutError::Unknown(ty)));
             };
 
-            let local_layouts = info
+            let local_layouts: IndexVec<_, _> = info
                 .field_tys
                 .iter()
                 .map(|local| {
@@ -418,20 +419,17 @@ fn layout_of_uncached<'tcx>(
                     let uninit_ty = Ty::new_maybe_uninit(tcx, field_ty.instantiate(tcx, args));
                     cx.spanned_layout_of(uninit_ty, local.source_info.span)
                 })
-                .try_collect::<IndexVec<_, _>>()?;
+                .try_collect()?;
 
-            let prefix_layouts = args
-                .as_coroutine()
-                .prefix_tys()
-                .iter()
-                .map(|ty| cx.layout_of(ty))
-                .try_collect::<IndexVec<_, _>>()?;
-
+            let relocated_upvars = IndexVec::from_fn_n(
+                |local: CoroutineSavedLocal| info.relocated_upvars.get(&local).copied(),
+                info.field_tys.len(),
+            );
             let layout = cx
                 .calc
                 .coroutine(
                     &local_layouts,
-                    prefix_layouts,
+                    &relocated_upvars,
                     &info.variant_fields,
                     &info.storage_conflicts,
                     |tag| TyAndLayout {
@@ -826,7 +824,11 @@ fn variant_info_for_coroutine<'tcx>(
                             .then(|| Symbol::intern(&field_layout.ty.to_string())),
                     }
                 })
-                .chain(upvar_fields.iter().copied())
+                .chain(
+                    if variant_idx == FIRST_VARIANT { &upvar_fields[..] } else { &[] }
+                        .iter()
+                        .copied(),
+                )
                 .collect();
 
             // If the variant has no state-specific fields, then it's the size of the upvars.
