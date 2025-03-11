@@ -591,7 +591,7 @@ auto:
       RUST_CONFIGURE_ARGS: >-
         --build=i686-pc-windows-msvc
         --host=i686-pc-windows-msvc
-        --target=i686-pc-windows-msvc,i586-pc-windows-msvc
+        --target=i686-pc-windows-msvc
         --enable-full-tools
         --enable-profiler
       SCRIPT: python x.py dist bootstrap --include-default-paths

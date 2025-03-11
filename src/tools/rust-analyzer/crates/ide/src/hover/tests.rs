@@ -10947,3 +10947,42 @@ pub struct ManuallyDrop$0<T: ?Sized> {
         "#]],
     );
 }
+
+#[test]
+fn projection_const() {
+    // This uses two crates, which have *no* relation between them, to test another thing:
+    // `render_const_scalar()` used to just use the last crate for the trait env, which will
+    // fail in this scenario.
+    check(
+        r#"
+//- /foo.rs crate:foo
+pub trait PublicFlags {
+    type Internal;
+}
+
+pub struct NoteDialects(<NoteDialects as PublicFlags>::Internal);
+
+impl NoteDialects {
+    pub const CLAP$0: Self = Self(InternalBitFlags);
+}
+
+pub struct InternalBitFlags;
+
+impl PublicFlags for NoteDialects {
+    type Internal = InternalBitFlags;
+}
+//- /bar.rs crate:bar
+    "#,
+        expect![[r#"
+            *CLAP*
+
+            ```rust
+            foo::NoteDialects
+            ```
+
+            ```rust
+            pub const CLAP: Self = NoteDialects(InternalBitFlags)
+            ```
+        "#]],
+    );
+}

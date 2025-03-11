@@ -7,7 +7,7 @@ use std::arch::{asm, global_asm};
 #[repr(simd)]
 struct SimdNonCopy([f32; 4]);
 
-fn main() {
+fn test1() {
     unsafe {
         // Inputs must be initialized
 
@@ -26,7 +26,11 @@ fn main() {
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
         asm!("{}", inout(reg) v[0]);
+    }
+}
 
+fn test2() {
+    unsafe {
         // Register operands must be Copy
 
         asm!("{}", in(xmm_reg) SimdNonCopy([0.0, 0.0, 0.0, 0.0]));
@@ -68,3 +72,5 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
+
+fn main() {}

@@ -100,7 +100,7 @@ fn write_header(
     }
 
     if let Some(extra) = extra_content {
-        out.push_str(&extra);
+        out.push_str(extra);
     }
     if class.is_empty() {
         write_str(
@@ -131,7 +131,7 @@ fn write_header(
 /// * If the other `Class` is unclassified and only contains white characters (backline,
 ///   whitespace, etc), it can be merged.
 /// * `Class::Ident` is considered the same as unclassified (because it doesn't have an associated
-///    CSS class).
+///   CSS class).
 fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
     match (class1, class2) {
         (Some(c1), Some(c2)) => c1.is_equal_to(c2),
@@ -233,7 +233,7 @@ impl<F: Write> TokenHandler<'_, '_, F> {
 
     #[inline]
     fn write_line_number(&mut self, line: u32, extra: &'static str) {
-        (self.write_line_number)(&mut self.out, line, extra);
+        (self.write_line_number)(self.out, line, extra);
     }
 }
 
@@ -610,7 +610,7 @@ impl Decorations {
         let (mut starts, mut ends): (Vec<_>, Vec<_>) = info
             .0
             .iter()
-            .flat_map(|(&kind, ranges)| ranges.into_iter().map(move |&(lo, hi)| ((lo, kind), hi)))
+            .flat_map(|(&kind, ranges)| ranges.iter().map(move |&(lo, hi)| ((lo, kind), hi)))
             .unzip();
 
         // Sort the sequences in document order.
@@ -1102,53 +1102,52 @@ fn string_without_closing_tag<T: Display>(
         });
     }
 
-    if let Some(href_context) = href_context {
-        if let Some(href) =
-            href_context.context.shared.span_correspondence_map.get(&def_span).and_then(|href| {
-                let context = href_context.context;
-                // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
-                // one to the documentation page and one to the source definition.
-                // FIXME: currently, external items only generate a link to their documentation,
-                // a link to their definition can be generated using this:
-                // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
-                match href {
-                    LinkFromSrc::Local(span) => {
-                        context.href_from_span_relative(*span, &href_context.current_href)
-                    }
-                    LinkFromSrc::External(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|(url, _, _)| url)
-                    }
-                    LinkFromSrc::Primitive(prim) => format::href_with_root_path(
-                        PrimitiveType::primitive_locations(context.tcx())[prim],
-                        context,
-                        Some(href_context.root_path),
-                    )
-                    .ok()
-                    .map(|(url, _, _)| url),
-                    LinkFromSrc::Doc(def_id) => {
-                        format::href_with_root_path(*def_id, context, Some(href_context.root_path))
-                            .ok()
-                            .map(|(doc_link, _, _)| doc_link)
-                    }
+    if let Some(href_context) = href_context
+        && let Some(href) = href_context.context.shared.span_correspondence_map.get(&def_span)
+        && let Some(href) = {
+            let context = href_context.context;
+            // FIXME: later on, it'd be nice to provide two links (if possible) for all items:
+            // one to the documentation page and one to the source definition.
+            // FIXME: currently, external items only generate a link to their documentation,
+            // a link to their definition can be generated using this:
+            // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
+            match href {
+                LinkFromSrc::Local(span) => {
+                    context.href_from_span_relative(*span, &href_context.current_href)
                 }
-            })
-        {
-            if !open_tag {
-                // We're already inside an element which has the same klass, no need to give it
-                // again.
-                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-            } else {
-                let klass_s = klass.as_html();
-                if klass_s.is_empty() {
-                    write!(out, "<a href=\"{href}\">{text_s}").unwrap();
-                } else {
-                    write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
+                LinkFromSrc::External(def_id) => {
+                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                        .ok()
+                        .map(|(url, _, _)| url)
+                }
+                LinkFromSrc::Primitive(prim) => format::href_with_root_path(
+                    PrimitiveType::primitive_locations(context.tcx())[prim],
+                    context,
+                    Some(href_context.root_path),
+                )
+                .ok()
+                .map(|(url, _, _)| url),
+                LinkFromSrc::Doc(def_id) => {
+                    format::href_with_root_path(*def_id, context, Some(href_context.root_path))
+                        .ok()
+                        .map(|(doc_link, _, _)| doc_link)
                 }
             }
-            return Some("</a>");
         }
+    {
+        if !open_tag {
+            // We're already inside an element which has the same klass, no need to give it
+            // again.
+            write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+        } else {
+            let klass_s = klass.as_html();
+            if klass_s.is_empty() {
+                write!(out, "<a href=\"{href}\">{text_s}").unwrap();
+            } else {
+                write!(out, "<a class=\"{klass_s}\" href=\"{href}\">{text_s}").unwrap();
+            }
+        }
+        return Some("</a>");
     }
     if !open_tag {
         write!(out, "{}", text_s).unwrap();

@@ -268,8 +268,7 @@ struct AttrsStats {
 
 impl fmt::Display for AttrsStats {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let size =
-            self.entries * std::mem::size_of::<Attrs>() + self.total * std::mem::size_of::<Attr>();
+        let size = self.entries * size_of::<Attrs>() + self.total * size_of::<Attr>();
         let size = Bytes::new(size as _);
         write!(
             fmt,

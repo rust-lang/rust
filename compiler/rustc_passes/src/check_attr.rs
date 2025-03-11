@@ -1998,7 +1998,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
                     if item.is_some() {
                         match target {
-                            Target::Struct | Target::Union | Target::Enum => {}
+                            Target::Struct | Target::Union | Target::Enum => continue,
                             Target::Fn | Target::Method(_) => {
                                 feature_err(
                                     &self.tcx.sess,

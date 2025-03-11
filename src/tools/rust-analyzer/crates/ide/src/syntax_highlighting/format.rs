@@ -41,7 +41,7 @@ pub(super) fn highlight_format_string(
             if let Some(res) = res {
                 stack.add(HlRange {
                     range,
-                    highlight: highlight_def(sema, krate, Definition::from(res), edition),
+                    highlight: highlight_def(sema, krate, Definition::from(res), edition, true),
                     binding_hash: None,
                 })
             }

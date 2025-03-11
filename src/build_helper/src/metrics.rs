@@ -74,7 +74,7 @@ pub struct Test {
     pub outcome: TestOutcome,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash)]
 #[serde(tag = "outcome", rename_all = "snake_case")]
 pub enum TestOutcome {
     Passed,

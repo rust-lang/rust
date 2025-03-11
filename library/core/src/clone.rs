@@ -184,6 +184,59 @@ pub macro Clone($item:item) {
     /* compiler built-in */
 }
 
+/// Trait for objects whose [`Clone`] impl is lightweight (e.g. reference-counted)
+///
+/// Cloning an object implementing this trait should in general:
+/// - be O(1) (constant) time regardless of the amount of data managed by the object,
+/// - not require a memory allocation,
+/// - not require copying more than roughly 64 bytes (a typical cache line size),
+/// - not block the current thread,
+/// - not have any semantic side effects (e.g. allocating a file descriptor), and
+/// - not have overhead larger than a couple of atomic operations.
+///
+/// The `UseCloned` trait does not provide a method; instead, it indicates that
+/// `Clone::clone` is lightweight, and allows the use of the `.use` syntax.
+///
+/// ## .use postfix syntax
+///
+/// Values can be `.use`d by adding `.use` postfix to the value you want to use.
+///
+/// ```ignore (this won't work until we land use)
+/// fn foo(f: Foo) {
+///     // if `Foo` implements `Copy` f would be copied into x.
+///     // if `Foo` implements `UseCloned` f would be cloned into x.
+///     // otherwise f would be moved into x.
+///     let x = f.use;
+///     // ...
+/// }
+/// ```
+///
+/// ## use closures
+///
+/// Use closures allow captured values to be automatically used.
+/// This is similar to have a closure that you would call `.use` over each captured value.
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+#[cfg_attr(not(bootstrap), lang = "use_cloned")]
+pub trait UseCloned: Clone {
+    // Empty.
+}
+
+macro_rules! impl_use_cloned {
+    ($($t:ty)*) => {
+        $(
+            #[unstable(feature = "ergonomic_clones", issue = "132290")]
+            impl UseCloned for $t {}
+        )*
+    }
+}
+
+impl_use_cloned! {
+    usize u8 u16 u32 u64 u128
+    isize i8 i16 i32 i64 i128
+             f16 f32 f64 f128
+    bool char
+}
+
 // FIXME(aburka): these structs are used solely by #[derive] to
 // assert that every component of a type implements Clone or Copy.
 //
@@ -244,8 +297,8 @@ pub unsafe trait CloneToUninit {
     ///
     /// Behavior is undefined if any of the following conditions are violated:
     ///
-    /// * `dst` must be [valid] for writes for `std::mem::size_of_val(self)` bytes.
-    /// * `dst` must be properly aligned to `std::mem::align_of_val(self)`.
+    /// * `dst` must be [valid] for writes for `size_of_val(self)` bytes.
+    /// * `dst` must be properly aligned to `align_of_val(self)`.
     ///
     /// [valid]: crate::ptr#safety
     /// [pointer metadata]: crate::ptr::metadata()

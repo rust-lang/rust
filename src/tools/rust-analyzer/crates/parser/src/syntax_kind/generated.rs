@@ -315,6 +315,7 @@ pub enum SyntaxKind {
     USE_TREE,
     USE_TREE_LIST,
     VARIANT,
+    VARIANT_DEF,
     VARIANT_LIST,
     VISIBILITY,
     WHERE_CLAUSE,
@@ -501,6 +502,7 @@ impl SyntaxKind {
             | USE_TREE
             | USE_TREE_LIST
             | VARIANT
+            | VARIANT_DEF
             | VARIANT_LIST
             | VISIBILITY
             | WHERE_CLAUSE

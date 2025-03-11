@@ -12,14 +12,16 @@ pub(crate) mod printf {
         Escape((usize, usize)),
     }
 
-    impl<'a> Substitution<'a> {
-        pub(crate) fn as_str(&self) -> &str {
+    impl ToString for Substitution<'_> {
+        fn to_string(&self) -> String {
             match self {
-                Substitution::Format(fmt) => fmt.span,
-                Substitution::Escape(_) => "%%",
+                Substitution::Format(fmt) => fmt.span.into(),
+                Substitution::Escape(_) => "%%".into(),
             }
         }
+    }
 
+    impl Substitution<'_> {
         pub(crate) fn position(&self) -> InnerSpan {
             match self {
                 Substitution::Format(fmt) => fmt.position,
@@ -627,15 +629,17 @@ pub(crate) mod shell {
         Escape((usize, usize)),
     }
 
-    impl Substitution<'_> {
-        pub(crate) fn as_str(&self) -> String {
+    impl ToString for Substitution<'_> {
+        fn to_string(&self) -> String {
             match self {
                 Substitution::Ordinal(n, _) => format!("${n}"),
                 Substitution::Name(n, _) => format!("${n}"),
                 Substitution::Escape(_) => "$$".into(),
             }
         }
+    }
 
+    impl Substitution<'_> {
         pub(crate) fn position(&self) -> InnerSpan {
             let (Self::Ordinal(_, pos) | Self::Name(_, pos) | Self::Escape(pos)) = self;
             InnerSpan::new(pos.0, pos.1)

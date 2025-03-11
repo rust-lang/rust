@@ -619,7 +619,7 @@ impl Iterator for TokenTypeSetIter {
     type Item = TokenType;
 
     fn next(&mut self) -> Option<TokenType> {
-        let num_bits: u32 = (std::mem::size_of_val(&self.0.0) * 8) as u32;
+        let num_bits: u32 = (size_of_val(&self.0.0) * 8) as u32;
         assert_eq!(num_bits, 128);
         let z = self.0.0.trailing_zeros();
         if z == num_bits {

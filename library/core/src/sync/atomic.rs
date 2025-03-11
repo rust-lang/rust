@@ -44,8 +44,9 @@
 //! The most important aspect of this model is that *data races* are undefined behavior. A data race
 //! is defined as conflicting non-synchronized accesses where at least one of the accesses is
 //! non-atomic. Here, accesses are *conflicting* if they affect overlapping regions of memory and at
-//! least one of them is a write. They are *non-synchronized* if neither of them *happens-before*
-//! the other, according to the happens-before order of the memory model.
+//! least one of them is a write. (A `compare_exchange` or `compare_exchange_weak` that does not
+//! succeed is not considered a write.) They are *non-synchronized* if neither of them
+//! *happens-before* the other, according to the happens-before order of the memory model.
 //!
 //! The other possible cause of undefined behavior in the memory model are mixed-size accesses: Rust
 //! inherits the C++ limitation that non-synchronized conflicting atomic accesses may not partially
@@ -2033,7 +2034,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_add(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_add(val.wrapping_mul(core::mem::size_of::<T>()), order)
+        self.fetch_byte_add(val.wrapping_mul(size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by subtracting `val` (in units of `T`),
@@ -2078,7 +2079,7 @@ impl<T> AtomicPtr<T> {
     #[unstable(feature = "strict_provenance_atomic_ptr", issue = "99108")]
     #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
     pub fn fetch_ptr_sub(&self, val: usize, order: Ordering) -> *mut T {
-        self.fetch_byte_sub(val.wrapping_mul(core::mem::size_of::<T>()), order)
+        self.fetch_byte_sub(val.wrapping_mul(size_of::<T>()), order)
     }
 
     /// Offsets the pointer's address by adding `val` *bytes*, returning the
@@ -3997,24 +3998,24 @@ unsafe fn atomic_umin<T: Copy>(dst: *mut T, val: T, order: Ordering) -> T {
 ///
 /// A fence 'A' which has (at least) [`Release`] ordering semantics, synchronizes
 /// with a fence 'B' with (at least) [`Acquire`] semantics, if and only if there
-/// exist operations X and Y, both operating on some atomic object 'M' such
+/// exist operations X and Y, both operating on some atomic object 'm' such
 /// that A is sequenced before X, Y is sequenced before B and Y observes
-/// the change to M. This provides a happens-before dependence between A and B.
+/// the change to m. This provides a happens-before dependence between A and B.
 ///
 /// ```text
 ///     Thread 1                                          Thread 2
 ///
 /// fence(Release);      A --------------
-/// x.store(3, Relaxed); X ---------    |
+/// m.store(3, Relaxed); X ---------    |
 ///                                |    |
 ///                                |    |
-///                                -------------> Y  if x.load(Relaxed) == 3 {
+///                                -------------> Y  if m.load(Relaxed) == 3 {
 ///                                     |-------> B      fence(Acquire);
 ///                                                      ...
 ///                                                  }
 /// ```
 ///
-/// Note that in the example above, it is crucial that the accesses to `x` are atomic. Fences cannot
+/// Note that in the example above, it is crucial that the accesses to `m` are atomic. Fences cannot
 /// be used to establish synchronization among non-atomic accesses in different threads. However,
 /// thanks to the happens-before relationship between A and B, any non-atomic accesses that
 /// happen-before A are now also properly synchronized with any non-atomic accesses that

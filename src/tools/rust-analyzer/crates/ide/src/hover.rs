@@ -7,7 +7,8 @@ use std::{iter, ops::Not};
 
 use either::Either;
 use hir::{
-    db::DefDatabase, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
+    db::DefDatabase, DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem,
+    Semantics,
 };
 use ide_db::{
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
@@ -129,10 +130,18 @@ pub(crate) fn hover(
     let file = sema.parse_guess_edition(file_id).syntax().clone();
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
+    let display_target = sema.first_crate_or_default(file_id).to_display_target(db);
     let mut res = if range.is_empty() {
-        hover_offset(sema, FilePosition { file_id, offset: range.start() }, file, config, edition)
+        hover_offset(
+            sema,
+            FilePosition { file_id, offset: range.start() },
+            file,
+            config,
+            edition,
+            display_target,
+        )
     } else {
-        hover_ranged(sema, frange, file, config, edition)
+        hover_ranged(sema, frange, file, config, edition, display_target)
     }?;
 
     if let HoverDocFormat::PlainText = config.format {
@@ -148,6 +157,7 @@ fn hover_offset(
     file: SyntaxNode,
     config: &HoverConfig,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<RangeInfo<HoverResult>> {
     let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
         IDENT
@@ -169,8 +179,18 @@ fn hover_offset(
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
         cov_mark::hit!(no_highlight_on_comment_hover);
         return doc_comment.get_definition_with_descend_at(sema, offset, |def, node, range| {
-            let res =
-                hover_for_definition(sema, file_id, def, None, &node, None, false, config, edition);
+            let res = hover_for_definition(
+                sema,
+                file_id,
+                def,
+                None,
+                &node,
+                None,
+                false,
+                config,
+                edition,
+                display_target,
+            );
             Some(RangeInfo::new(range, res))
         });
     }
@@ -188,6 +208,7 @@ fn hover_offset(
             false,
             config,
             edition,
+            display_target,
         );
         return Some(RangeInfo::new(range, res));
     }
@@ -277,6 +298,7 @@ fn hover_offset(
                         hovered_definition,
                         config,
                         edition,
+                        display_target,
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -286,12 +308,12 @@ fn hover_offset(
             res.extend(definitions);
             continue;
         }
-        let keywords = || render::keyword(sema, config, &token, edition);
+        let keywords = || render::keyword(sema, config, &token, edition, display_target);
         let underscore = || {
             if !is_same_kind {
                 return None;
             }
-            render::underscore(sema, config, &token, edition)
+            render::underscore(sema, config, &token, edition, display_target)
         };
         let rest_pat = || {
             if !is_same_kind || token.kind() != DOT2 {
@@ -305,7 +327,7 @@ fn hover_offset(
             let record_pat =
                 record_pat_field_list.syntax().parent().and_then(ast::RecordPat::cast)?;
 
-            Some(render::struct_rest_pat(sema, config, &record_pat, edition))
+            Some(render::struct_rest_pat(sema, config, &record_pat, edition, display_target))
         };
         let call = || {
             if !is_same_kind || token.kind() != T!['('] && token.kind() != T![')'] {
@@ -319,17 +341,17 @@ fn hover_offset(
                     _ => return None,
                 }
             };
-            render::type_info_of(sema, config, &Either::Left(call_expr), edition)
+            render::type_info_of(sema, config, &Either::Left(call_expr), edition, display_target)
         };
         let closure = || {
             if !is_same_kind || token.kind() != T![|] {
                 return None;
             }
             let c = token.parent().and_then(|x| x.parent()).and_then(ast::ClosureExpr::cast)?;
-            render::closure_expr(sema, config, c, edition)
+            render::closure_expr(sema, config, c, edition, display_target)
         };
         let literal = || {
-            render::literal(sema, original_token.clone(), edition)
+            render::literal(sema, original_token.clone(), display_target)
                 .map(|markup| HoverResult { markup, actions: vec![] })
         };
         if let Some(result) = keywords()
@@ -362,6 +384,7 @@ fn hover_ranged(
     file: SyntaxNode,
     config: &HoverConfig,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<RangeInfo<HoverResult>> {
     // FIXME: make this work in attributes
     let expr_or_pat = file
@@ -371,16 +394,17 @@ fn hover_ranged(
         .find_map(Either::<ast::Expr, ast::Pat>::cast)?;
     let res = match &expr_or_pat {
         Either::Left(ast::Expr::TryExpr(try_expr)) => {
-            render::try_expr(sema, config, try_expr, edition)
+            render::try_expr(sema, config, try_expr, edition, display_target)
         }
         Either::Left(ast::Expr::PrefixExpr(prefix_expr))
             if prefix_expr.op_kind() == Some(ast::UnaryOp::Deref) =>
         {
-            render::deref_expr(sema, config, prefix_expr, edition)
+            render::deref_expr(sema, config, prefix_expr, edition, display_target)
         }
         _ => None,
     };
-    let res = res.or_else(|| render::type_info_of(sema, config, &expr_or_pat, edition));
+    let res =
+        res.or_else(|| render::type_info_of(sema, config, &expr_or_pat, edition, display_target));
     res.map(|it| {
         let range = match expr_or_pat {
             Either::Left(it) => it.syntax().text_range(),
@@ -401,6 +425,7 @@ pub(crate) fn hover_for_definition(
     hovered_definition: bool,
     config: &HoverConfig,
     edition: Edition,
+    display_target: DisplayTarget,
 ) -> HoverResult {
     let famous_defs = match &def {
         Definition::BuiltinType(_) => sema.scope(scope_node).map(|it| FamousDefs(sema, it.krate())),
@@ -435,6 +460,7 @@ pub(crate) fn hover_for_definition(
         subst_types.as_ref(),
         config,
         edition,
+        display_target,
     );
     HoverResult {
         markup: render::process_markup(sema.db, def, &markup, config),

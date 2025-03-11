@@ -1,5 +1,6 @@
 mod cpu_usage;
 mod datadog;
+mod merge_report;
 mod metrics;
 mod utils;
 
@@ -13,6 +14,7 @@ use serde_yaml::Value;
 
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
+use crate::merge_report::post_merge_report;
 use crate::metrics::postprocess_metrics;
 use crate::utils::load_env_var;
 
@@ -182,6 +184,10 @@ fn yaml_map_to_json(map: &BTreeMap<String, Value>) -> BTreeMap<String, serde_jso
         .collect()
 }
 
+/// Maximum number of custom try jobs that can be requested in a single
+/// `@bors try` request.
+const MAX_TRY_JOBS_COUNT: usize = 20;
+
 fn calculate_jobs(
     run_type: &RunType,
     db: &JobDatabase,
@@ -191,9 +197,9 @@ fn calculate_jobs(
         RunType::PullRequest => (db.pr_jobs.clone(), "PR", &db.envs.pr_env),
         RunType::TryJob { custom_jobs } => {
             let jobs = if let Some(custom_jobs) = custom_jobs {
-                if custom_jobs.len() > 10 {
+                if custom_jobs.len() > MAX_TRY_JOBS_COUNT {
                     return Err(anyhow::anyhow!(
-                        "It is only possible to schedule up to 10 custom jobs, received {} custom jobs",
+                        "It is only possible to schedule up to {MAX_TRY_JOBS_COUNT} custom jobs, received {} custom jobs",
                         custom_jobs.len()
                     ));
                 }
@@ -369,6 +375,13 @@ enum Args {
         /// Path to a CSV containing the CI job CPU usage.
         cpu_usage_csv: PathBuf,
     },
+    /// Generate a report of test execution changes between two rustc commits.
+    PostMergeReport {
+        /// Parent commit to use as a base of the comparison.
+        parent: String,
+        /// Current commit that will be compared to `parent`.
+        current: String,
+    },
 }
 
 #[derive(clap::ValueEnum, Clone)]
@@ -405,6 +418,9 @@ fn main() -> anyhow::Result<()> {
         }
         Args::PostprocessMetrics { metrics_path, summary_path } => {
             postprocess_metrics(&metrics_path, &summary_path)?;
+        }
+        Args::PostMergeReport { current: commit, parent } => {
+            post_merge_report(load_db(default_jobs_file)?, parent, commit)?;
         }
     }
 

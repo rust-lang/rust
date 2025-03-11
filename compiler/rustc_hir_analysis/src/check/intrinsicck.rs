@@ -3,8 +3,11 @@ use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, LangItem};
+use rustc_infer::infer::InferCtxt;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, UintTy};
+use rustc_middle::ty::{
+    self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitableExt, TypeckResults, UintTy,
+};
 use rustc_session::lint;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{Symbol, sym};
@@ -14,12 +17,11 @@ use rustc_target::asm::{
 
 use crate::errors::RegisterTypeUnstable;
 
-pub struct InlineAsmCtxt<'a, 'tcx: 'a> {
-    tcx: TyCtxt<'tcx>,
+pub struct InlineAsmCtxt<'a, 'tcx> {
     typing_env: ty::TypingEnv<'tcx>,
     target_features: &'tcx FxIndexSet<Symbol>,
-    expr_ty: Box<dyn Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a>,
-    node_ty: Box<dyn Fn(hir::HirId) -> Ty<'tcx> + 'a>,
+    infcx: &'a InferCtxt<'tcx>,
+    typeck_results: &'a TypeckResults<'tcx>,
 }
 
 enum NonAsmTypeReason<'tcx> {
@@ -31,34 +33,38 @@ enum NonAsmTypeReason<'tcx> {
 
 impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     pub fn new(
-        tcx: TyCtxt<'tcx>,
         def_id: LocalDefId,
+        infcx: &'a InferCtxt<'tcx>,
         typing_env: ty::TypingEnv<'tcx>,
-        expr_ty: impl Fn(&hir::Expr<'tcx>) -> Ty<'tcx> + 'a,
-        node_ty: impl Fn(hir::HirId) -> Ty<'tcx> + 'a,
+        typeck_results: &'a TypeckResults<'tcx>,
     ) -> Self {
         InlineAsmCtxt {
-            tcx,
             typing_env,
-            target_features: tcx.asm_target_features(def_id),
-            expr_ty: Box::new(expr_ty),
-            node_ty: Box::new(node_ty),
+            target_features: infcx.tcx.asm_target_features(def_id),
+            infcx,
+            typeck_results,
         }
     }
 
-    fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
-        (self.expr_ty)(expr)
+    fn tcx(&self) -> TyCtxt<'tcx> {
+        self.infcx.tcx
     }
 
-    fn node_ty(&self, hir_id: hir::HirId) -> Ty<'tcx> {
-        (self.node_ty)(hir_id)
+    fn expr_ty(&self, expr: &hir::Expr<'tcx>) -> Ty<'tcx> {
+        let ty = self.typeck_results.expr_ty_adjusted(expr);
+        let ty = self.infcx.resolve_vars_if_possible(ty);
+        if ty.has_non_region_infer() {
+            Ty::new_misc_error(self.tcx())
+        } else {
+            self.tcx().erase_regions(ty)
+        }
     }
 
     // FIXME(compiler-errors): This could use `<$ty as Pointee>::Metadata == ()`
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
         // on those, so just erase them before querying.
-        if ty.is_sized(self.tcx, self.typing_env) {
+        if ty.is_sized(self.tcx(), self.typing_env) {
             return true;
         }
         if let ty::Foreign(..) = ty.kind() {
@@ -68,7 +74,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     }
 
     fn get_asm_ty(&self, ty: Ty<'tcx>) -> Result<InlineAsmType, NonAsmTypeReason<'tcx>> {
-        let asm_ty_isize = match self.tcx.sess.target.pointer_width {
+        let asm_ty_isize = match self.tcx().sess.target.pointer_width {
             16 => InlineAsmType::I16,
             32 => InlineAsmType::I32,
             64 => InlineAsmType::I64,
@@ -97,12 +103,12 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             ty::Adt(adt, args) if adt.repr().simd() => {
                 let fields = &adt.non_enum_variant().fields;
                 let field = &fields[FieldIdx::ZERO];
-                let elem_ty = field.ty(self.tcx, args);
+                let elem_ty = field.ty(self.tcx(), args);
 
                 let (size, ty) = match elem_ty.kind() {
                     ty::Array(ty, len) => {
-                        let len = self.tcx.normalize_erasing_regions(self.typing_env, *len);
-                        if let Some(len) = len.try_to_target_usize(self.tcx) {
+                        let len = self.tcx().normalize_erasing_regions(self.typing_env, *len);
+                        if let Some(len) = len.try_to_target_usize(self.tcx()) {
                             (len, *ty)
                         } else {
                             return Err(NonAsmTypeReason::UnevaluatedSIMDArrayLength(
@@ -122,7 +128,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         Ok(InlineAsmType::VecI128(size))
                     }
                     ty::Int(IntTy::Isize) | ty::Uint(UintTy::Usize) => {
-                        Ok(match self.tcx.sess.target.pointer_width {
+                        Ok(match self.tcx().sess.target.pointer_width {
                             16 => InlineAsmType::VecI16(size),
                             32 => InlineAsmType::VecI32(size),
                             64 => InlineAsmType::VecI64(size),
@@ -159,9 +165,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             // `!` is allowed for input but not for output (issue #87802)
             ty::Never if is_input => return None,
             _ if ty.references_error() => return None,
-            ty::Adt(adt, args) if self.tcx.is_lang_item(adt.did(), LangItem::MaybeUninit) => {
+            ty::Adt(adt, args) if self.tcx().is_lang_item(adt.did(), LangItem::MaybeUninit) => {
                 let fields = &adt.non_enum_variant().fields;
-                let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx, args);
+                let ty = fields[FieldIdx::from_u32(1)].ty(self.tcx(), args);
                 // FIXME: Are we just trying to map to the `T` in `MaybeUninit<T>`?
                 // If so, just get it from the args.
                 let ty::Adt(ty, args) = ty.kind() else {
@@ -172,7 +178,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     "expected first field of `MaybeUninit` to be `ManuallyDrop`"
                 );
                 let fields = &ty.non_enum_variant().fields;
-                let ty = fields[FieldIdx::ZERO].ty(self.tcx, args);
+                let ty = fields[FieldIdx::ZERO].ty(self.tcx(), args);
                 self.get_asm_ty(ty)
             }
             _ => self.get_asm_ty(ty),
@@ -183,9 +189,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                 match reason {
                     NonAsmTypeReason::UnevaluatedSIMDArrayLength(did, len) => {
                         let msg = format!("cannot evaluate SIMD vector length `{len}`");
-                        self.tcx
+                        self.infcx
                             .dcx()
-                            .struct_span_err(self.tcx.def_span(did), msg)
+                            .struct_span_err(self.tcx().def_span(did), msg)
                             .with_span_note(
                                 expr.span,
                                 "SIMD vector length needs to be known statically for use in `asm!`",
@@ -194,7 +200,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                     NonAsmTypeReason::Invalid(ty) => {
                         let msg = format!("cannot use value of type `{ty}` for inline assembly");
-                        self.tcx.dcx().struct_span_err(expr.span, msg).with_note(
+                        self.infcx.dcx().struct_span_err(expr.span, msg).with_note(
                             "only integers, floats, SIMD vectors, pointers and function pointers \
                             can be used as arguments for inline assembly",
                         ).emit();
@@ -203,7 +209,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         let msg = format!(
                             "cannot use value of unsized pointer type `{ty}` for inline assembly"
                         );
-                        self.tcx
+                        self.infcx
                             .dcx()
                             .struct_span_err(expr.span, msg)
                             .with_note("only sized pointers can be used in inline assembly")
@@ -213,8 +219,8 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         let msg = format!(
                             "cannot use SIMD vector with element type `{ty}` for inline assembly"
                         );
-                        self.tcx.dcx()
-                        .struct_span_err(self.tcx.def_span(did), msg).with_span_note(
+                        self.infcx.dcx()
+                        .struct_span_err(self.tcx().def_span(did), msg).with_span_note(
                             expr.span,
                             "only integers, floats, SIMD vectors, pointers and function pointers \
                             can be used as arguments for inline assembly",
@@ -227,9 +233,9 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !self.tcx.type_is_copy_modulo_regions(self.typing_env, ty) {
+        if !self.tcx().type_is_copy_modulo_regions(self.typing_env, ty) {
             let msg = "arguments for inline assembly must be copyable";
-            self.tcx
+            self.infcx
                 .dcx()
                 .struct_span_err(expr.span, msg)
                 .with_note(format!("`{ty}` does not implement the Copy trait"))
@@ -249,7 +255,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
             if in_asm_ty != asm_ty {
                 let msg = "incompatible types for asm inout argument";
                 let in_expr_ty = self.expr_ty(in_expr);
-                self.tcx
+                self.infcx
                     .dcx()
                     .struct_span_err(vec![in_expr.span, expr.span], msg)
                     .with_span_label(in_expr.span, format!("type `{in_expr_ty}`"))
@@ -268,21 +274,21 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
         // Check the type against the list of types supported by the selected
         // register class.
-        let asm_arch = self.tcx.sess.asm_arch.unwrap();
-        let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
+        let asm_arch = self.tcx().sess.asm_arch.unwrap();
+        let allow_experimental_reg = self.tcx().features().asm_experimental_reg();
         let reg_class = reg.reg_class();
         let supported_tys = reg_class.supported_types(asm_arch, allow_experimental_reg);
         let Some((_, feature)) = supported_tys.iter().find(|&&(t, _)| t == asm_ty) else {
             let mut err = if !allow_experimental_reg
                 && reg_class.supported_types(asm_arch, true).iter().any(|&(t, _)| t == asm_ty)
             {
-                self.tcx.sess.create_feature_err(
+                self.tcx().sess.create_feature_err(
                     RegisterTypeUnstable { span: expr.span, ty },
                     sym::asm_experimental_reg,
                 )
             } else {
                 let msg = format!("type `{ty}` cannot be used with this register class");
-                let mut err = self.tcx.dcx().struct_span_err(expr.span, msg);
+                let mut err = self.infcx.dcx().struct_span_err(expr.span, msg);
                 let supported_tys: Vec<_> =
                     supported_tys.iter().map(|(t, _)| t.to_string()).collect();
                 err.note(format!(
@@ -312,7 +318,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         if let Some(feature) = feature {
             if !self.target_features.contains(feature) {
                 let msg = format!("`{feature}` target feature is not enabled");
-                self.tcx
+                self.infcx
                     .dcx()
                     .struct_span_err(expr.span, msg)
                     .with_note(format!(
@@ -349,7 +355,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     result: default_result,
                     size: default_size,
                 } = reg_class.default_modifier(asm_arch).unwrap();
-                self.tcx.node_span_lint(
+                self.tcx().node_span_lint(
                     lint::builtin::ASM_SUB_REGISTER,
                     expr.hir_id,
                     spans,
@@ -371,11 +377,11 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     }
 
     pub fn check_asm(&self, asm: &hir::InlineAsm<'tcx>) {
-        let Some(asm_arch) = self.tcx.sess.asm_arch else {
-            self.tcx.dcx().delayed_bug("target architecture does not support asm");
+        let Some(asm_arch) = self.tcx().sess.asm_arch else {
+            self.infcx.dcx().delayed_bug("target architecture does not support asm");
             return;
         };
-        let allow_experimental_reg = self.tcx.features().asm_experimental_reg();
+        let allow_experimental_reg = self.tcx().features().asm_experimental_reg();
         for (idx, &(op, op_sp)) in asm.operands.iter().enumerate() {
             // Validate register classes against currently enabled target
             // features. We check that at least one type is available for
@@ -398,13 +404,13 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                     if let Err(msg) = reg.validate(
                         asm_arch,
-                        self.tcx.sess.relocation_model(),
+                        self.tcx().sess.relocation_model(),
                         self.target_features,
-                        &self.tcx.sess.target,
+                        &self.tcx().sess.target,
                         op.is_clobber(),
                     ) {
                         let msg = format!("cannot use register `{}`: {}", reg.name(), msg);
-                        self.tcx.dcx().span_err(op_sp, msg);
+                        self.infcx.dcx().span_err(op_sp, msg);
                         continue;
                     }
                 }
@@ -444,7 +450,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                 reg_class.name(),
                                 feature
                             );
-                            self.tcx.dcx().span_err(op_sp, msg);
+                            self.infcx.dcx().span_err(op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -458,7 +464,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                                     .intersperse(", ")
                                     .collect::<String>(),
                             );
-                            self.tcx.dcx().span_err(op_sp, msg);
+                            self.infcx.dcx().span_err(op_sp, msg);
                             // register isn't enabled, don't do more checks
                             continue;
                         }
@@ -493,16 +499,16 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                     }
                 }
                 hir::InlineAsmOperand::Const { anon_const } => {
-                    let ty = self.node_ty(anon_const.hir_id);
+                    let ty = self.expr_ty(self.tcx().hir_body(anon_const.body).value);
                     match ty.kind() {
                         ty::Error(_) => {}
                         _ if ty.is_integral() => {}
                         _ => {
-                            self.tcx
+                            self.infcx
                                 .dcx()
                                 .struct_span_err(op_sp, "invalid type for `const` operand")
                                 .with_span_label(
-                                    self.tcx.def_span(anon_const.def_id),
+                                    self.tcx().def_span(anon_const.def_id),
                                     format!("is {} `{}`", ty.kind().article(), ty),
                                 )
                                 .with_help("`const` operands must be of an integer type")
@@ -517,7 +523,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
                         ty::FnDef(..) => {}
                         ty::Error(_) => {}
                         _ => {
-                            self.tcx
+                            self.infcx
                                 .dcx()
                                 .struct_span_err(op_sp, "invalid `sym` operand")
                                 .with_span_label(

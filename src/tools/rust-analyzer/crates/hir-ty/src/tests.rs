@@ -15,7 +15,7 @@ mod type_alias_impl_traits;
 use std::env;
 use std::sync::LazyLock;
 
-use base_db::SourceDatabaseFileInputExt as _;
+use base_db::{CrateId, SourceDatabaseFileInputExt as _};
 use expect_test::Expect;
 use hir_def::{
     db::DefDatabase,
@@ -41,7 +41,7 @@ use triomphe::Arc;
 
 use crate::{
     db::HirDatabase,
-    display::HirDisplay,
+    display::{DisplayTarget, HirDisplay},
     infer::{Adjustment, TypeMismatch},
     test_db::TestDB,
     InferenceResult, Ty,
@@ -124,7 +124,7 @@ fn check_impl(
     }
     assert!(had_annotations || allow_none, "no `//^` annotations found");
 
-    let mut defs: Vec<DefWithBodyId> = Vec::new();
+    let mut defs: Vec<(DefWithBodyId, CrateId)> = Vec::new();
     for file_id in files {
         let module = db.module_for_file_opt(file_id);
         let module = match module {
@@ -133,16 +133,17 @@ fn check_impl(
         };
         let def_map = module.def_map(&db);
         visit_module(&db, &def_map, module.local_id, &mut |it| {
-            defs.push(match it {
+            let def = match it {
                 ModuleDefId::FunctionId(it) => it.into(),
                 ModuleDefId::EnumVariantId(it) => it.into(),
                 ModuleDefId::ConstId(it) => it.into(),
                 ModuleDefId::StaticId(it) => it.into(),
                 _ => return,
-            })
+            };
+            defs.push((def, module.krate()))
         });
     }
-    defs.sort_by_key(|def| match def {
+    defs.sort_by_key(|(def, _)| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
@@ -162,7 +163,8 @@ fn check_impl(
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
     let mut unexpected_type_mismatches = String::new();
-    for def in defs {
+    for (def, krate) in defs {
+        let display_target = DisplayTarget::from_crate(&db, krate);
         let (body, body_source_map) = db.body_with_source_map(def);
         let inference_result = db.infer(def);
 
@@ -179,7 +181,7 @@ fn check_impl(
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
-                    ty.display_test(&db).to_string()
+                    ty.display_test(&db, display_target).to_string()
                 };
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
@@ -195,7 +197,7 @@ fn check_impl(
                 let actual = if display_source {
                     ty.display_source_code(&db, def.module(&db), true).unwrap()
                 } else {
-                    ty.display_test(&db).to_string()
+                    ty.display_test(&db, display_target).to_string()
                 };
                 assert_eq!(actual, expected, "type annotation differs at {:#?}", range.range);
             }
@@ -224,8 +226,8 @@ fn check_impl(
             let range = node.as_ref().original_file_range_rooted(&db);
             let actual = format!(
                 "expected {}, got {}",
-                mismatch.expected.display_test(&db),
-                mismatch.actual.display_test(&db)
+                mismatch.expected.display_test(&db, display_target),
+                mismatch.actual.display_test(&db, display_target)
             );
             match mismatches.remove(&range) {
                 Some(annotation) => assert_eq!(actual, annotation),
@@ -299,7 +301,9 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
 
     let mut infer_def = |inference_result: Arc<InferenceResult>,
                          body: Arc<Body>,
-                         body_source_map: Arc<BodySourceMap>| {
+                         body_source_map: Arc<BodySourceMap>,
+                         krate: CrateId| {
+        let display_target = DisplayTarget::from_crate(&db, krate);
         let mut types: Vec<(InFile<SyntaxNode>, &Ty)> = Vec::new();
         let mut mismatches: Vec<(InFile<SyntaxNode>, &TypeMismatch)> = Vec::new();
 
@@ -361,7 +365,7 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                 macro_prefix,
                 range,
                 ellipsize(text, 15),
-                ty.display_test(&db)
+                ty.display_test(&db, display_target)
             );
         }
         if include_mismatches {
@@ -377,8 +381,8 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
                     "{}{:?}: expected {}, got {}\n",
                     macro_prefix,
                     range,
-                    mismatch.expected.display_test(&db),
-                    mismatch.actual.display_test(&db),
+                    mismatch.expected.display_test(&db, display_target),
+                    mismatch.actual.display_test(&db, display_target),
                 );
             }
         }
@@ -387,17 +391,18 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
     let module = db.module_for_file(file_id);
     let def_map = module.def_map(&db);
 
-    let mut defs: Vec<DefWithBodyId> = Vec::new();
+    let mut defs: Vec<(DefWithBodyId, CrateId)> = Vec::new();
     visit_module(&db, &def_map, module.local_id, &mut |it| {
-        defs.push(match it {
+        let def = match it {
             ModuleDefId::FunctionId(it) => it.into(),
             ModuleDefId::EnumVariantId(it) => it.into(),
             ModuleDefId::ConstId(it) => it.into(),
             ModuleDefId::StaticId(it) => it.into(),
             _ => return,
-        })
+        };
+        defs.push((def, module.krate()))
     });
-    defs.sort_by_key(|def| match def {
+    defs.sort_by_key(|(def, _)| match def {
         DefWithBodyId::FunctionId(it) => {
             let loc = it.lookup(&db);
             loc.source(&db).value.syntax().text_range().start()
@@ -416,10 +421,10 @@ fn infer_with_mismatches(content: &str, include_mismatches: bool) -> String {
         }
         DefWithBodyId::InTypeConstId(it) => it.source(&db).syntax().text_range().start(),
     });
-    for def in defs {
+    for (def, krate) in defs {
         let (body, source_map) = db.body_with_source_map(def);
         let infer = db.infer(def);
-        infer_def(infer, body, source_map);
+        infer_def(infer, body, source_map, krate);
     }
 
     buf.truncate(buf.trim_end().len());

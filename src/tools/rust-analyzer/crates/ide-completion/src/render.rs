@@ -144,7 +144,7 @@ pub(crate) fn render_field(
         is_skipping_completion: receiver.is_some(),
         ..CompletionRelevance::default()
     });
-    item.detail(ty.display(db, ctx.completion.edition).to_string())
+    item.detail(ty.display(db, ctx.completion.display_target).to_string())
         .set_documentation(field.docs(db))
         .set_deprecated(is_deprecated)
         .lookup_by(name);
@@ -212,7 +212,7 @@ pub(crate) fn render_tuple_field(
         field_with_receiver(receiver.as_deref(), &field.to_string()),
         ctx.completion.edition,
     );
-    item.detail(ty.display(ctx.db(), ctx.completion.edition).to_string())
+    item.detail(ty.display(ctx.db(), ctx.completion.display_target).to_string())
         .lookup_by(field.to_string());
     item.set_relevance(CompletionRelevance {
         is_skipping_completion: receiver.is_some(),
@@ -303,7 +303,8 @@ pub(crate) fn render_expr(
 
     let cfg = ctx.config.import_path_config(ctx.is_nightly);
 
-    let label = expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.edition).ok()?;
+    let label =
+        expr.gen_source_code(&ctx.scope, &mut label_formatter, cfg, ctx.display_target).ok()?;
 
     let source_range = match ctx.original_token.parent() {
         Some(node) => match node.ancestors().find_map(ast::Path::cast) {
@@ -318,7 +319,7 @@ pub(crate) fn render_expr(
 
     let snippet = format!(
         "{}$0",
-        expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg, ctx.edition).ok()?
+        expr.gen_source_code(&ctx.scope, &mut snippet_formatter, cfg, ctx.display_target).ok()?
     );
     let edit = TextEdit::replace(source_range, snippet);
     item.snippet_edit(ctx.config.snippet_cap?, edit);
@@ -398,6 +399,8 @@ fn render_resolution_path(
     let _p = tracing::info_span!("render_resolution_path").entered();
     use hir::ModuleDef::*;
 
+    let krate = ctx.completion.display_target;
+
     match resolution {
         ScopeDef::ModuleDef(Macro(mac)) => {
             let ctx = ctx.import_to_add(import_to_add);
@@ -459,7 +462,7 @@ fn render_resolution_path(
 
     let mut set_item_relevance = |ty: Type| {
         if !ty.is_unknown() {
-            item.detail(ty.display(db, completion.edition).to_string());
+            item.detail(ty.display(db, krate).to_string());
         }
 
         item.set_relevance(CompletionRelevance {
@@ -1151,6 +1154,24 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo{}",
                         detail: "Foo { x: i32, y: i32 }",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1183,6 +1204,24 @@ fn main() { Foo::Fo$0 }
                         ),
                         lookup: "Foo()",
                         detail: "Foo(i32, i32)",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1261,6 +1300,24 @@ fn main() { Foo::Fo$0 }
                             Variant,
                         ),
                         detail: "Foo",
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                 ]
@@ -1335,7 +1392,13 @@ fn main() { let _: m::Spam = S$0 }
                             requires_import: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            function: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: true,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
                             is_skipping_completion: false,
                         },
                         trigger_call_info: true,
@@ -1365,7 +1428,13 @@ fn main() { let _: m::Spam = S$0 }
                             requires_import: false,
                             is_private_editable: false,
                             postfix_match: None,
-                            function: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
                             is_skipping_completion: false,
                         },
                         trigger_call_info: true,
@@ -1590,6 +1659,24 @@ use self::E::*;
                         documentation: Documentation(
                             "variant docs",
                         ),
+                        relevance: CompletionRelevance {
+                            exact_name_match: false,
+                            type_match: None,
+                            is_local: false,
+                            trait_: None,
+                            is_name_already_imported: false,
+                            requires_import: false,
+                            is_private_editable: false,
+                            postfix_match: None,
+                            function: Some(
+                                CompletionRelevanceFn {
+                                    has_params: false,
+                                    has_self_param: false,
+                                    return_type: DirectConstructor,
+                                },
+                            ),
+                            is_skipping_completion: false,
+                        },
                         trigger_call_info: true,
                     },
                     CompletionItem {
@@ -2081,8 +2168,8 @@ fn main() {
 }
             "#,
             expect![[r#"
-                lc ssss S [type+local]
                 st S S [type]
+                lc ssss S [type+local]
                 st S S [type]
                 ex ssss  [type]
                 ex S  [type]
@@ -2153,12 +2240,12 @@ fn main() {
 }
             "#,
             expect![[r#"
+                st S S []
+                st &S [type]
                 ex core::ops::Deref::deref(&t)  [type_could_unify]
                 lc m i32 [local]
                 lc t T [local]
                 lc &t [type+local]
-                st S S []
-                st &S [type]
                 st S S []
                 st &S [type]
                 st T T []
@@ -2202,12 +2289,12 @@ fn main() {
 }
             "#,
             expect![[r#"
+                st S S []
+                st &mut S [type]
                 ex core::ops::DerefMut::deref_mut(&mut t)  [type_could_unify]
                 lc m i32 [local]
                 lc t T [local]
                 lc &mut t [type+local]
-                st S S []
-                st &mut S [type]
                 st S S []
                 st &mut S [type]
                 st T T []
@@ -2306,9 +2393,9 @@ fn main() {
 }
 "#,
             expect![[r#"
-                ex core::ops::Deref::deref(&bar())  [type_could_unify]
                 st S S []
                 st &S [type]
+                ex core::ops::Deref::deref(&bar())  [type_could_unify]
                 st S S []
                 st &S [type]
                 st T T []
@@ -2686,10 +2773,12 @@ fn foo(f: Foo) { let _: &u32 = f.b$0 }
                                 Indel {
                                     insert: "(",
                                     delete: 107..107,
+                                    annotation: None,
                                 },
                                 Indel {
                                     insert: "qux)()",
                                     delete: 109..110,
+                                    annotation: None,
                                 },
                             ],
                         },
@@ -2827,11 +2916,11 @@ fn foo() {
 }
 "#,
             expect![[r#"
+                ev Foo::B Foo::B [type_could_unify]
+                ev Foo::A(…) Foo::A(T) [type_could_unify]
                 lc foo Foo<u32> [type+local]
                 ex foo  [type]
                 ex Foo::B  [type]
-                ev Foo::A(…) Foo::A(T) [type_could_unify]
-                ev Foo::B Foo::B [type_could_unify]
                 en Foo Foo<{unknown}> [type_could_unify]
                 fn foo() fn() []
                 fn bar() fn() -> Foo<u8> []

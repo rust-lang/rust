@@ -24,7 +24,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_hir::{MissingLifetimeKind, PrimTy};
 use rustc_middle::ty;
 use rustc_session::{Session, lint};
-use rustc_span::edit_distance::find_best_match_for_name;
+use rustc_span::edit_distance::{edit_distance, find_best_match_for_name};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -2919,23 +2919,35 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             )
             .with_span_label(lifetime_ref.ident.span, "undeclared lifetime")
         };
-        self.suggest_introducing_lifetime(
-            &mut err,
-            Some(lifetime_ref.ident.name.as_str()),
-            |err, _, span, message, suggestion, span_suggs| {
-                err.multipart_suggestion_with_style(
-                    message,
-                    std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
-                    Applicability::MaybeIncorrect,
-                    if span_suggs.is_empty() {
-                        SuggestionStyle::ShowCode
-                    } else {
-                        SuggestionStyle::ShowAlways
-                    },
-                );
-                true
-            },
-        );
+
+        // Check if this is a typo of `'static`.
+        if edit_distance(lifetime_ref.ident.name.as_str(), "'static", 2).is_some() {
+            err.span_suggestion_verbose(
+                lifetime_ref.ident.span,
+                "you may have misspelled the `'static` lifetime",
+                "'static",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            self.suggest_introducing_lifetime(
+                &mut err,
+                Some(lifetime_ref.ident.name.as_str()),
+                |err, _, span, message, suggestion, span_suggs| {
+                    err.multipart_suggestion_with_style(
+                        message,
+                        std::iter::once((span, suggestion)).chain(span_suggs.clone()).collect(),
+                        Applicability::MaybeIncorrect,
+                        if span_suggs.is_empty() {
+                            SuggestionStyle::ShowCode
+                        } else {
+                            SuggestionStyle::ShowAlways
+                        },
+                    );
+                    true
+                },
+            );
+        }
+
         err.emit();
     }
 

@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
-use std::fmt;
-use std::fmt::{Display, Write as _};
+use std::fmt::{self, Display, Write as _};
+use std::iter;
 
 use rinja::Template;
 use rustc_abi::VariantIdx;
@@ -1192,10 +1192,8 @@ fn item_trait(cx: &Context<'_>, it: &clean::Item, t: &clean::Trait) -> impl fmt:
         // to already be in the HTML, and will be ignored.
         //
         // [JSONP]: https://en.wikipedia.org/wiki/JSONP
-        let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
-            .take(cx.current.len())
-            .chain(std::iter::once("trait.impl"))
-            .collect();
+        let mut js_src_path: UrlPartsBuilder =
+            iter::repeat_n("..", cx.current.len()).chain(iter::once("trait.impl")).collect();
         if let Some(did) = it.item_id.as_def_id()
             && let get_extern = { || cx.shared.cache.external_paths.get(&did).map(|s| &s.0) }
             && let Some(fqp) = cx.shared.cache.exact_paths.get(&did).or_else(get_extern)
@@ -1446,10 +1444,8 @@ fn item_type_alias(cx: &Context<'_>, it: &clean::Item, t: &clean::TypeAlias) -> 
             && let get_local = { || cache.paths.get(&self_did).map(|(p, _)| p) }
             && let Some(self_fqp) = cache.exact_paths.get(&self_did).or_else(get_local)
         {
-            let mut js_src_path: UrlPartsBuilder = std::iter::repeat("..")
-                .take(cx.current.len())
-                .chain(std::iter::once("type.impl"))
-                .collect();
+            let mut js_src_path: UrlPartsBuilder =
+                iter::repeat_n("..", cx.current.len()).chain(iter::once("type.impl")).collect();
             js_src_path.extend(target_fqp[..target_fqp.len() - 1].iter().copied());
             js_src_path.push_fmt(format_args!("{target_type}.{}.js", target_fqp.last().unwrap()));
             let self_path = fmt::from_fn(|f| self_fqp.iter().joined("::", f));
@@ -1493,7 +1489,7 @@ fn item_union(cx: &Context<'_>, it: &clean::Item, s: &clean::Union) -> impl fmt:
 
         fn fields_iter(
             &self,
-        ) -> std::iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>> {
+        ) -> iter::Peekable<impl Iterator<Item = (&'a clean::Item, &'a clean::Type)>> {
             self.s
                 .fields
                 .iter()

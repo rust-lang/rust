@@ -1340,7 +1340,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         &mut self,
         parent: LocalDefId,
         node_id: ast::NodeId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,

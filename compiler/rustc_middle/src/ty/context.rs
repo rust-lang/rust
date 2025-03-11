@@ -1327,6 +1327,11 @@ pub struct TyCtxt<'tcx> {
     gcx: &'tcx GlobalCtxt<'tcx>,
 }
 
+// Explicitly implement `DynSync` and `DynSend` for `TyCtxt` to short circuit trait resolution. Its
+// field are asserted to implement these traits below, so this is trivially safe, and it greatly
+// speeds-up compilation of this crate and its dependents.
+unsafe impl DynSend for TyCtxt<'_> {}
+unsafe impl DynSync for TyCtxt<'_> {}
 fn _assert_tcx_fields() {
     sync::assert_dyn_sync::<&'_ GlobalCtxt<'_>>();
     sync::assert_dyn_send::<&'_ GlobalCtxt<'_>>();
@@ -1885,7 +1890,7 @@ impl<'tcx> TyCtxtAt<'tcx> {
     pub fn create_def(
         self,
         parent: LocalDefId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let feed = self.tcx.create_def(parent, name, def_kind);
@@ -1900,7 +1905,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn create_def(
         self,
         parent: LocalDefId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
     ) -> TyCtxtFeed<'tcx, LocalDefId> {
         let data = def_kind.def_path_data(name);
