@@ -1,10 +1,10 @@
 use core::cell::SyncUnsafeCell;
 use core::sync::atomic::AtomicUsize;
 
-use crate::{BsanAllocator, Provenance};
-use crate::shadow::{ShadowHeap, L1};
 #[cfg(test)]
 use crate::TEST_ALLOC;
+use crate::shadow::{L1, ShadowHeap};
+use crate::{BsanAllocator, Provenance};
 
 #[derive(Debug)]
 pub struct GlobalContext {
@@ -15,13 +15,11 @@ pub struct GlobalContext {
 
 impl GlobalContext {
     fn new(allocator: BsanAllocator) -> Self {
-
-        let l1 : L1<Provenance> = L1::new(allocator);
-        Self { allocator, next_alloc_id: AtomicUsize::new(1), shadow_heap: ShadowHeap {l1, }}
+        let l1: L1<Provenance> = L1::new(allocator);
+        Self { allocator, next_alloc_id: AtomicUsize::new(1), shadow_heap: ShadowHeap { l1 } }
 
         // TODO: Before returning, make sure to create and init a shadowheap object, including the L1 table using MMMAP
         // TODO: Follow line 189 on the softboundsCETS.cpp to implement it, with the same flags and asserts
-
     }
 }
 

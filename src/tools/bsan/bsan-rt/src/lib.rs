@@ -28,8 +28,8 @@ type BorrowTag = usize;
 
 #[derive(Debug)]
 pub struct Provenance {
-    lock_address : *mut c_void,
-    alloc_id : AllocID,
+    lock_address: *mut c_void,
+    alloc_id: AllocID,
     borrow_tag: BorrowTag,
 }
 
@@ -39,7 +39,7 @@ impl Clone for Provenance {
         Provenance {
             lock_address: self.lock_address,
             alloc_id: self.alloc_id,
-            borrow_tag: self.borrow_tag
+            borrow_tag: self.borrow_tag,
         }
     }
 }
@@ -51,17 +51,14 @@ unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {
 }
 
 #[no_mangle]
-extern "C" fn bsan_load_prov(ptr: *mut c_void) -> Provenance { // TODO implement null function (cannot use options)
+extern "C" fn bsan_load_prov(ptr: *mut c_void) -> Provenance {
+    // TODO implement null function (cannot use options)
     // TODO: get the global context, and then through their call a shadow heap method/function
-    return Provenance {
-        lock_address: ptr,
-        alloc_id: 0,
-        borrow_tag: 0,
-    }
+    return Provenance { lock_address: ptr, alloc_id: 0, borrow_tag: 0 };
 }
 
 #[no_mangle]
-extern "C" fn bsan_store_prov(provenance : *const Provenance) {
+extern "C" fn bsan_store_prov(provenance: *const Provenance) {
     // TODO: store the provenance in the shadow heap, and then through a call to the shadow heap store it
 }
 

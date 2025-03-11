@@ -1,12 +1,13 @@
 use core::alloc::Layout;
 use core::ffi::c_void;
 use core::marker::PhantomData;
-use core::mem;
-use core::ptr;
 use core::ops::{Add, BitAnd, Deref, DerefMut, Shr};
+use core::{mem, ptr};
+
 use libc::{MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE};
+
 use crate::BsanAllocator;
-use crate::global::{global_ctx, GlobalContext};
+use crate::global::{GlobalContext, global_ctx};
 
 /// Different targets have a different number
 /// of significant bits in their pointer representation.
@@ -72,7 +73,6 @@ pub struct L2<T: Provenance> {
 }
 
 impl<T: Provenance> L2<T> {
-
     fn new(allocator: BsanAllocator) {}
     #[inline(always)]
     unsafe fn lookup_mut(&mut self, index: usize) -> &mut T {
@@ -86,20 +86,20 @@ impl<T: Provenance> L2<T> {
 
 #[repr(C)]
 pub struct L1<T: Provenance> {
-    entries: *mut [*mut L2<T>; L1_LEN], // 
+    entries: *mut [*mut L2<T>; L1_LEN], //
 }
 
 impl<T: Provenance> L1<T> {
     pub fn new(allocator: BsanAllocator) -> Self {
-
-        let mut l1 : L1<T> = unsafe {
+        let mut l1: L1<T> = unsafe {
             let l1_void = (allocator.mmap)(
                 core::ptr::null_mut(),
                 PTR_BYTES * L1_LEN,
                 PROT_READ | PROT_WRITE,
                 MAP_PRIVATE | MAP_ANONYMOUS,
                 -1,
-                0);
+                0,
+            );
             if l1_void == core::ptr::null_mut() {
                 panic!("mmap failed")
             }
@@ -137,7 +137,6 @@ pub struct ShadowHeap<T: Provenance> {
 
 impl<T: Provenance> Default for ShadowHeap<T> {
     fn default() -> Self {
-
         let l1 = unsafe {
             let allocator = global_ctx().allocator;
             L1::new(allocator)
