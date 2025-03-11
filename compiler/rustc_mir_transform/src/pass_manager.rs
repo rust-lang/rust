@@ -294,11 +294,20 @@ fn run_passes_inner<'tcx>(
             if dump_enabled {
                 dump_mir_for_pass(tcx, body, name, true);
             }
+            let (dialect, phase_num) = body.phase.index();
             if validate {
-                validate_body(tcx, body, format!("after pass {name}"));
+                validate_body(
+                    tcx,
+                    body,
+                    format!("after pass {name} {dialect}-{phase_num}-{:03}", body.pass_count),
+                );
             }
             if lint {
-                lint_body(tcx, body, format!("after pass {name}"));
+                lint_body(
+                    tcx,
+                    body,
+                    format!("after pass {name} {dialect}-{phase_num}-{:03}", body.pass_count),
+                );
             }
 
             body.pass_count += 1;
