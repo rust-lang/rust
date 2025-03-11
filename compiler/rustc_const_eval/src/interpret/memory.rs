@@ -982,6 +982,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     todo.push(id);
                 }
             }
+            // Also expose the provenance of the interpreter-level allocation, so it can
+            // be read by FFI. The `black_box` is defensive programming as LLVM likes
+            // to (incorrectly) optimize away ptr2int casts whose result is unused.
+            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {

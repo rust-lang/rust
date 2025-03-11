@@ -266,7 +266,7 @@ fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
         ty::RawPtr(..) => {
             let s = v.to_scalar().to_pointer(cx)?.addr();
-            // This relies on the `expose_provenance` in `addr_from_alloc_id`.
+            // This relies on the `expose_provenance` in `prepare_for_native_call`.
             CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
         }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),
