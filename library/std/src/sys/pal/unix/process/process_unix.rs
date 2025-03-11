@@ -434,6 +434,9 @@ impl Command {
         target_os = "nto",
         target_vendor = "apple",
     ))]
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[cfg_attr(target_os = "linux", no_sanitize(cfi))]
     fn posix_spawn(
         &mut self,
         stdio: &ChildPipes,
