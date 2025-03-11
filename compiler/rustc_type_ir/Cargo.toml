@@ -33,6 +33,3 @@ nightly = [
     "rustc_index/nightly",
     "rustc_ast_ir/nightly",
 ]
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bootstrap)'] }
