@@ -10,6 +10,7 @@ use hir_expand::{
     name::{AsName, Name},
     ExpandResult,
 };
+use intern::sym;
 use la_arena::{Arena, RawIdx};
 use stdx::{
     impl_from,
@@ -446,12 +447,23 @@ impl GenericParams {
 
 #[derive(Clone, Default)]
 pub(crate) struct GenericParamsCollector {
-    pub(crate) type_or_consts: Arena<TypeOrConstParamData>,
+    type_or_consts: Arena<TypeOrConstParamData>,
     lifetimes: Arena<LifetimeParamData>,
     where_predicates: Vec<WherePredicate>,
 }
 
 impl GenericParamsCollector {
+    pub(crate) fn fill_self_param(&mut self) {
+        self.type_or_consts.alloc(
+            TypeParamData {
+                name: Some(Name::new_symbol_root(sym::Self_.clone())),
+                default: None,
+                provenance: TypeParamProvenance::TraitSelf,
+            }
+            .into(),
+        );
+    }
+
     pub(crate) fn fill(
         &mut self,
         lower_ctx: &mut LowerCtx<'_>,

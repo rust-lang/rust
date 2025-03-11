@@ -21,7 +21,7 @@ use triomphe::Arc;
 
 use crate::{
     db::DefDatabase,
-    generics::{GenericParams, GenericParamsCollector, TypeParamData, TypeParamProvenance},
+    generics::{GenericParams, GenericParamsCollector},
     item_tree::{
         AssocItem, AttrOwner, Const, Either, Enum, ExternBlock, ExternCrate, Field, FieldParent,
         FieldsShape, FileItemTreeId, FnFlags, Function, GenericArgs, GenericItemSourceMapBuilder,
@@ -881,14 +881,7 @@ impl<'a> Ctx<'a> {
 
         if let HasImplicitSelf::Yes(bounds) = has_implicit_self {
             // Traits and trait aliases get the Self type as an implicit first type parameter.
-            generics.type_or_consts.alloc(
-                TypeParamData {
-                    name: Some(Name::new_symbol_root(sym::Self_.clone())),
-                    default: None,
-                    provenance: TypeParamProvenance::TraitSelf,
-                }
-                .into(),
-            );
+            generics.fill_self_param();
             // add super traits as bounds on Self
             // i.e., `trait Foo: Bar` is equivalent to `trait Foo where Self: Bar`
             let bound_target = Either::Left(body_ctx.alloc_type_ref_desugared(TypeRef::Path(
