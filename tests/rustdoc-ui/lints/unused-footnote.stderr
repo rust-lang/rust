@@ -1,0 +1,14 @@
+error: unused footnote definition
+  --> $DIR/unused-footnote.rs:7:6
+   |
+LL | //! [^1]: footnote defined
+   |      ^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-footnote.rs:3:9
+   |
+LL | #![deny(rustdoc::unused_footnote_definition)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
