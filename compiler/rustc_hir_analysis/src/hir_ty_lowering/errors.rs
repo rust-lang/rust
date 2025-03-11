@@ -1520,7 +1520,7 @@ fn generics_args_err_extend<'a>(
                 })
                 .collect();
             if args.len() > 1
-                && let Some(span) = args.into_iter().last()
+                && let Some(span) = args.into_iter().next_back()
             {
                 err.note(
                     "generic arguments are not allowed on both an enum and its variant's path \
