@@ -13,11 +13,9 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
 use build_helper::ci::CiEnv;
-use build_helper::git::get_closest_merge_commit;
 
-use crate::Config;
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
-use crate::core::config::{GccCiMode, TargetSelection};
+use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
@@ -93,9 +91,10 @@ pub enum GccBuildStatus {
 /// Tries to download GCC from CI if it is enabled and GCC artifacts
 /// are available for the given target.
 /// Returns a path to the libgccjit.so file.
+#[cfg(not(test))]
 fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<PathBuf> {
     // Try to download GCC from CI if configured and available
-    if !matches!(builder.config.gcc_ci_mode, GccCiMode::DownloadFromCi) {
+    if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
         return None;
     }
     if target != "x86_64-unknown-linux-gnu" {
@@ -112,6 +111,11 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
     }
     // FIXME: put libgccjit.so into a lib directory in dist::Gcc
     Some(root.join("libgccjit.so"))
+}
+
+#[cfg(test)]
+fn try_download_gcc(_builder: &Builder<'_>, _target: TargetSelection) -> Option<PathBuf> {
+    None
 }
 
 /// This returns information about whether GCC should be built or if it's already built.
@@ -247,12 +251,16 @@ pub fn add_cg_gcc_cargo_flags(cargo: &mut Cargo, gcc: &GccOutput) {
 }
 
 /// The absolute path to the downloaded GCC artifacts.
-fn ci_gcc_root(config: &Config) -> PathBuf {
+#[cfg(not(test))]
+fn ci_gcc_root(config: &crate::Config) -> PathBuf {
     config.out.join(config.build).join("ci-gcc")
 }
 
 /// This retrieves the GCC sha we *want* to use, according to git history.
-fn detect_gcc_sha(config: &Config, is_git: bool) -> String {
+#[cfg(not(test))]
+fn detect_gcc_sha(config: &crate::Config, is_git: bool) -> String {
+    use build_helper::git::get_closest_merge_commit;
+
     let gcc_sha = if is_git {
         get_closest_merge_commit(
             Some(&config.src),
