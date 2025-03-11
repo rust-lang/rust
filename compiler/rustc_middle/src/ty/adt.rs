@@ -53,8 +53,6 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
-        /// Indicates whether the type is anonymous.
-        const IS_ANONYMOUS                = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -400,12 +398,6 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_manually_drop(self) -> bool {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
-    }
-
-    /// Returns `true` if this is an anonymous adt
-    #[inline]
-    pub fn is_anonymous(self) -> bool {
-        self.flags().contains(AdtFlags::IS_ANONYMOUS)
     }
 
     /// Returns `true` if this type has a destructor.
