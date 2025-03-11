@@ -1,7 +1,7 @@
 // MIR for `main::{closure#0}` 0 coroutine_resume
 /* coroutine_layout = CoroutineLayout {
     field_tys: {
-        _0: CoroutineSavedTy {
+        corsl_0: CoroutineSavedTy {
             ty: HasDrop,
             source_info: SourceInfo {
                 span: $DIR/coroutine_tiny.rs:22:13: 22:15 (#0),
@@ -14,10 +14,10 @@
         Unresumed(0): [],
         Returned (1): [],
         Panicked (2): [],
-        Suspend0 (3): [_0],
+        Suspend0 (3): [corsl_0],
     },
     storage_conflicts: BitMatrix(1x1) {
-        (_0, _0),
+        (corsl_0, corsl_0),
     },
 } */
 

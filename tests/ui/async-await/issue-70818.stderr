@@ -5,7 +5,7 @@ LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
    |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
    |
 note: captured value is not `Send`
-  --> $DIR/issue-70818.rs:6:18
+  --> $DIR/issue-70818.rs:7:18
    |
 LL |     async { (ty, ty1) }
    |                  ^^^ has type `U` which is not `Send`
@@ -14,5 +14,21 @@ help: consider restricting type parameter `U` with trait `Send`
 LL | fn foo<T: Send, U: std::marker::Send>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
    |                  +++++++++++++++++++
 
-error: aborting due to 1 previous error
+error: future cannot be sent between threads safely
+  --> $DIR/issue-70818.rs:4:38
+   |
+LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
+   |                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ future created by async block is not `Send`
+   |
+note: captured value is not `Send`
+  --> $DIR/issue-70818.rs:4:27
+   |
+LL | fn foo<T: Send, U>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
+   |                           ^^^ has type `U` which is not `Send`
+help: consider restricting type parameter `U` with trait `Send`
+   |
+LL | fn foo<T: Send, U: std::marker::Send>(ty: T, ty1: U) -> impl Future<Output = (T, U)> + Send {
+   |                  +++++++++++++++++++
+
+error: aborting due to 2 previous errors
 
