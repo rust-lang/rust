@@ -497,9 +497,6 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let mut location = Location { block, statement_index: 0 };
             for stmt in &block_data.statements {
-                if !stmt.source_info.span.is_dummy() {
-                    self.last_span = stmt.source_info.span;
-                }
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;
             }
@@ -895,11 +892,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
+    fn visit_span(&mut self, span: Span) {
+        if !span.is_dummy() {
+            debug!(?span);
+            self.last_span = span;
+        }
+    }
+
     #[instrument(skip(self, body), level = "debug")]
     fn visit_body(&mut self, body: &Body<'tcx>) {
         debug_assert!(std::ptr::eq(self.body, body));
-        self.last_span = body.span;
-        debug!(?body.span);
 
         for (local, local_decl) in body.local_decls.iter_enumerated() {
             self.visit_local_decl(local, local_decl);
@@ -908,9 +910,6 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         for (block, block_data) in body.basic_blocks.iter_enumerated() {
             let mut location = Location { block, statement_index: 0 };
             for stmt in &block_data.statements {
-                if !stmt.source_info.span.is_dummy() {
-                    self.last_span = stmt.source_info.span;
-                }
                 self.visit_statement(stmt, location);
                 location.statement_index += 1;
             }
@@ -2098,7 +2097,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
-        self.last_span = block_data.terminator().source_info.span;
         match block_data.terminator().kind {
             TerminatorKind::Goto { target } => {
                 self.assert_iscleanup(block_data, target, is_cleanup)
