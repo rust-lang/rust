@@ -1,59 +1,19 @@
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1 == _`
+error[E0277]: the trait bound `<T as Foo1>::Assoc1: Bar` is not satisfied
   --> $DIR/recursive-self-normalization-2.rs:15:17
    |
 LL |     needs_bar::<T::Assoc1>();
-   |                 ^^^^^^^^^
-
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1: Bar`
-  --> $DIR/recursive-self-normalization-2.rs:15:17
-   |
-LL |     needs_bar::<T::Assoc1>();
-   |                 ^^^^^^^^^
+   |                 ^^^^^^^^^ the trait `Bar` is not implemented for `<T as Foo1>::Assoc1`
    |
 note: required by a bound in `needs_bar`
   --> $DIR/recursive-self-normalization-2.rs:12:17
    |
 LL | fn needs_bar<S: Bar>() {}
    |                 ^^^ required by this bound in `needs_bar`
+help: consider further restricting the associated type
+   |
+LL | fn test<T: Foo1<Assoc1 = <T as Foo2>::Assoc2> + Foo2<Assoc2 = <T as Foo1>::Assoc1>>() where <T as Foo1>::Assoc1: Bar {
+   |                                                                                       ++++++++++++++++++++++++++++++
 
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1: Sized`
-  --> $DIR/recursive-self-normalization-2.rs:15:17
-   |
-LL |     needs_bar::<T::Assoc1>();
-   |                 ^^^^^^^^^
-   |
-note: required by an implicit `Sized` bound in `needs_bar`
-  --> $DIR/recursive-self-normalization-2.rs:12:14
-   |
-LL | fn needs_bar<S: Bar>() {}
-   |              ^ required by the implicit `Sized` requirement on this type parameter in `needs_bar`
-help: consider relaxing the implicit `Sized` restriction
-   |
-LL | fn needs_bar<S: Bar + ?Sized>() {}
-   |                     ++++++++
+error: aborting due to 1 previous error
 
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1 == _`
-  --> $DIR/recursive-self-normalization-2.rs:15:5
-   |
-LL |     needs_bar::<T::Assoc1>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1 == _`
-  --> $DIR/recursive-self-normalization-2.rs:15:5
-   |
-LL |     needs_bar::<T::Assoc1>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error[E0275]: overflow evaluating the requirement `<T as Foo1>::Assoc1 == _`
-  --> $DIR/recursive-self-normalization-2.rs:15:17
-   |
-LL |     needs_bar::<T::Assoc1>();
-   |                 ^^^^^^^^^
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-
-error: aborting due to 6 previous errors
-
-For more information about this error, try `rustc --explain E0275`.
+For more information about this error, try `rustc --explain E0277`.
