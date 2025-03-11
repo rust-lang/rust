@@ -898,34 +898,35 @@ impl FromStr for Conv {
     }
 }
 
+fn conv_to_externabi(conv: &Conv) -> ExternAbi {
+    match conv {
+        Conv::Rust => ExternAbi::Rust,
+        Conv::PreserveMost => ExternAbi::RustCold,
+        Conv::X86Stdcall => ExternAbi::Stdcall{unwind: false},
+        Conv::X86Fastcall => ExternAbi::Fastcall{unwind: false},
+        Conv::X86VectorCall => ExternAbi::Vectorcall{unwind: false},
+        Conv::X86ThisCall => ExternAbi::Thiscall{unwind: false},
+        Conv::C => ExternAbi::C{unwind: false},
+        Conv::X86_64Win64 => ExternAbi::Win64{unwind: false},
+        Conv::X86_64SysV => ExternAbi::SysV64{unwind: false},
+        Conv::ArmAapcs => ExternAbi::Aapcs{unwind: false},
+        Conv::CCmseNonSecureCall => ExternAbi::CCmseNonSecureCall,
+        Conv::CCmseNonSecureEntry => ExternAbi::CCmseNonSecureEntry,
+        Conv::PtxKernel => ExternAbi::PtxKernel,
+        Conv::Msp430Intr => ExternAbi::Msp430Interrupt,
+        Conv::X86Intr => ExternAbi::X86Interrupt,
+        Conv::GpuKernel => ExternAbi::GpuKernel,
+        Conv::AvrInterrupt => ExternAbi::AvrInterrupt,
+        Conv::AvrNonBlockingInterrupt => ExternAbi::AvrNonBlockingInterrupt,
+        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => ExternAbi::RiscvInterruptM,
+        Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => ExternAbi::RiscvInterruptS,
+        Conv::Cold | Conv::PreserveAll => panic!("This is deadcode"),
+    }
+}
+
 impl Display for Conv {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Conv::C => "C",
-            Conv::Rust => "Rust",
-            Conv::Cold => "Cold",
-            Conv::PreserveMost => "PreserveMost",
-            Conv::PreserveAll => "PreserveAll",
-            Conv::ArmAapcs => "ArmAapcs",
-            Conv::CCmseNonSecureCall => "CCmseNonSecureCall",
-            Conv::CCmseNonSecureEntry => "CCmseNonSecureEntry",
-            Conv::Msp430Intr => "Msp430Intr",
-            Conv::PtxKernel => "PtxKernel",
-            Conv::GpuKernel => "GpuKernel",
-            Conv::X86Fastcall => "X86Fastcall",
-            Conv::X86Intr => "X86Intr",
-            Conv::X86Stdcall => "X86Stdcall",
-            Conv::X86ThisCall => "X86ThisCall",
-            Conv::X86VectorCall => "X86VectorCall",
-            Conv::X86_64SysV => "X86_64SysV",
-            Conv::X86_64Win64 => "X86_64Win64",
-            Conv::AvrInterrupt => "AvrInterrupt",
-            Conv::AvrNonBlockingInterrupt => "AvrNonBlockingInterrupt",
-            Conv::RiscvInterrupt { kind: RiscvInterruptKind::Machine } => "RiscvInterrupt(machine)",
-            Conv::RiscvInterrupt { kind: RiscvInterruptKind::Supervisor } => {
-                "RiscvInterrupt(supervisor)"
-            }
-        })
+        write!(f, "{}", conv_to_externabi(self))
     }
 }
 
