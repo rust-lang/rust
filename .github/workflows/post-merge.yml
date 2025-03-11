@@ -36,7 +36,7 @@ jobs:
           cd src/ci/citool
 
           echo "Post-merge analysis result" > output.log
-          cargo run --release post-merge-analysis ${PARENT_COMMIT} ${{ github.sha }} >> output.log
+          cargo run --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
           cat output.log
 
           gh pr comment ${HEAD_PR} -F output.log
