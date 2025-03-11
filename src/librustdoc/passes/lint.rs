@@ -3,6 +3,7 @@
 
 mod bare_urls;
 mod check_code_block_syntax;
+mod footnotes;
 mod html_tags;
 mod redundant_explicit_links;
 mod unescaped_backticks;
@@ -41,6 +42,7 @@ impl DocVisitor<'_> for Linter<'_, '_> {
             if may_have_link {
                 bare_urls::visit_item(self.cx, item, hir_id, &dox);
                 redundant_explicit_links::visit_item(self.cx, item, hir_id);
+                footnotes::visit_item(self.cx, item, hir_id, &dox);
             }
             if may_have_code {
                 check_code_block_syntax::visit_item(self.cx, item, &dox);
