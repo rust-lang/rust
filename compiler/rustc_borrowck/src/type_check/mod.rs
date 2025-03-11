@@ -156,6 +156,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         infcx,
         last_span: body.span,
         body,
+        promoted,
         user_type_annotations: &body.user_type_annotations,
         region_bound_pairs,
         known_type_outlives_obligations,
@@ -170,10 +171,6 @@ pub(crate) fn type_check<'a, 'tcx>(
     };
 
     typeck.check_user_type_annotations();
-
-    let mut verifier = TypeVerifier { typeck: &mut typeck, promoted, last_span: body.span };
-    verifier.visit_body(body);
-
     typeck.visit_body(body);
     typeck.equate_inputs_and_outputs(&normalized_inputs_and_output);
     typeck.check_signature_annotation();
@@ -212,367 +209,6 @@ enum FieldAccessError {
     OutOfRange { field_count: usize },
 }
 
-/// Verifies that MIR types are sane.
-///
-/// FIXME: This should be merged with the actual `TypeChecker`.
-struct TypeVerifier<'a, 'b, 'tcx> {
-    typeck: &'a mut TypeChecker<'b, 'tcx>,
-    promoted: &'b IndexSlice<Promoted, Body<'tcx>>,
-    last_span: Span,
-}
-
-impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
-    fn visit_span(&mut self, span: Span) {
-        if !span.is_dummy() {
-            self.last_span = span;
-        }
-    }
-
-    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        self.super_place(place, context, location);
-        let tcx = self.tcx();
-        let place_ty = place.ty(self.body(), tcx);
-        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
-            let trait_ref = ty::TraitRef::new(
-                tcx,
-                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
-                [place_ty.ty],
-            );
-
-            // To have a `Copy` operand, the type `T` of the
-            // value must be `Copy`. Note that we prove that `T: Copy`,
-            // rather than using the `is_copy_modulo_regions`
-            // test. This is important because
-            // `is_copy_modulo_regions` ignores the resulting region
-            // obligations and assumes they pass. This can result in
-            // bounds from `Copy` impls being unsoundly ignored (e.g.,
-            // #29149). Note that we decide to use `Copy` before knowing
-            // whether the bounds fully apply: in effect, the rule is
-            // that if a value of some type could implement `Copy`, then
-            // it must.
-            self.typeck.prove_trait_ref(
-                trait_ref,
-                location.to_locations(),
-                ConstraintCategory::CopyBound,
-            );
-        }
-    }
-
-    fn visit_projection_elem(
-        &mut self,
-        place: PlaceRef<'tcx>,
-        elem: PlaceElem<'tcx>,
-        context: PlaceContext,
-        location: Location,
-    ) {
-        let tcx = self.tcx();
-        let base_ty = place.ty(self.body(), tcx);
-        match elem {
-            // All these projections don't add any constraints, so there's nothing to
-            // do here. We check their invariants in the MIR validator after all.
-            ProjectionElem::Deref
-            | ProjectionElem::Index(_)
-            | ProjectionElem::ConstantIndex { .. }
-            | ProjectionElem::Subslice { .. }
-            | ProjectionElem::Downcast(..) => {}
-            ProjectionElem::Field(field, fty) => {
-                let fty = self.typeck.normalize(fty, location);
-                let ty = base_ty.field_ty(tcx, field);
-                let ty = self.typeck.normalize(ty, location);
-                debug!(?fty, ?ty);
-
-                if let Err(terr) = self.typeck.relate_types(
-                    ty,
-                    context.ambient_variance(),
-                    fty,
-                    location.to_locations(),
-                    ConstraintCategory::Boring,
-                ) {
-                    span_mirbug!(self, place, "bad field access ({:?}: {:?}): {:?}", ty, fty, terr);
-                }
-            }
-            ProjectionElem::OpaqueCast(ty) => {
-                let ty = self.typeck.normalize(ty, location);
-                self.typeck
-                    .relate_types(
-                        ty,
-                        context.ambient_variance(),
-                        base_ty.ty,
-                        location.to_locations(),
-                        ConstraintCategory::TypeAnnotation(AnnotationSource::OpaqueCast),
-                    )
-                    .unwrap();
-            }
-            ProjectionElem::UnwrapUnsafeBinder(ty) => {
-                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
-                    unreachable!();
-                };
-                let found_ty = self.typeck.infcx.instantiate_binder_with_fresh_vars(
-                    self.body().source_info(location).span,
-                    BoundRegionConversionTime::HigherRankedType,
-                    binder_ty.into(),
-                );
-                self.typeck
-                    .relate_types(
-                        ty,
-                        context.ambient_variance(),
-                        found_ty,
-                        location.to_locations(),
-                        ConstraintCategory::Boring,
-                    )
-                    .unwrap();
-            }
-            ProjectionElem::Subtype(_) => {
-                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
-        self.super_const_operand(constant, location);
-        let ty = constant.const_.ty();
-
-        self.typeck.infcx.tcx.for_each_free_region(&ty, |live_region| {
-            let live_region_vid = self.typeck.universal_regions.to_region_vid(live_region);
-            self.typeck.constraints.liveness_constraints.add_location(live_region_vid, location);
-        });
-
-        let locations = location.to_locations();
-        if let Some(annotation_index) = constant.user_ty {
-            if let Err(terr) = self.typeck.relate_type_and_user_type(
-                constant.const_.ty(),
-                ty::Invariant,
-                &UserTypeProjection { base: annotation_index, projs: vec![] },
-                locations,
-                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
-            ) {
-                let annotation = &self.typeck.user_type_annotations[annotation_index];
-                span_mirbug!(
-                    self,
-                    constant,
-                    "bad constant user type {:?} vs {:?}: {:?}",
-                    annotation,
-                    constant.const_.ty(),
-                    terr,
-                );
-            }
-        } else {
-            let tcx = self.tcx();
-            let maybe_uneval = match constant.const_ {
-                Const::Ty(_, ct) => match ct.kind() {
-                    ty::ConstKind::Unevaluated(uv) => {
-                        Some(UnevaluatedConst { def: uv.def, args: uv.args, promoted: None })
-                    }
-                    _ => None,
-                },
-                Const::Unevaluated(uv, _) => Some(uv),
-                _ => None,
-            };
-
-            if let Some(uv) = maybe_uneval {
-                if let Some(promoted) = uv.promoted {
-                    let check_err = |verifier: &mut TypeVerifier<'a, 'b, 'tcx>,
-                                     promoted: &Body<'tcx>,
-                                     ty,
-                                     san_ty| {
-                        if let Err(terr) = verifier.typeck.eq_types(
-                            ty,
-                            san_ty,
-                            locations,
-                            ConstraintCategory::Boring,
-                        ) {
-                            span_mirbug!(
-                                verifier,
-                                promoted,
-                                "bad promoted type ({:?}: {:?}): {:?}",
-                                ty,
-                                san_ty,
-                                terr
-                            );
-                        };
-                    };
-
-                    let promoted_body = &self.promoted[promoted];
-                    self.verify_promoted(promoted_body, location);
-
-                    let promoted_ty = promoted_body.return_ty();
-                    check_err(self, promoted_body, ty, promoted_ty);
-                } else {
-                    self.typeck.ascribe_user_type(
-                        constant.const_.ty(),
-                        ty::UserType::new(ty::UserTypeKind::TypeOf(
-                            uv.def,
-                            UserArgs { args: uv.args, user_self_ty: None },
-                        )),
-                        locations.span(self.typeck.body),
-                    );
-                }
-            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
-                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
-                let normalized_ty = self.typeck.normalize(unnormalized_ty, locations);
-                let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
-
-                if let Err(terr) = self.typeck.eq_types(
-                    literal_ty,
-                    normalized_ty,
-                    locations,
-                    ConstraintCategory::Boring,
-                ) {
-                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
-                }
-            }
-
-            if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
-                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
-                self.typeck.normalize_and_prove_instantiated_predicates(
-                    def_id,
-                    instantiated_predicates,
-                    locations,
-                );
-
-                assert!(!matches!(
-                    tcx.impl_of_method(def_id).map(|imp| tcx.def_kind(imp)),
-                    Some(DefKind::Impl { of_trait: true })
-                ));
-                self.typeck.prove_predicates(
-                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
-                    locations,
-                    ConstraintCategory::Boring,
-                );
-            }
-        }
-    }
-
-    fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
-        self.super_local_decl(local, local_decl);
-
-        for user_ty in
-            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
-        {
-            let span = self.typeck.user_type_annotations[user_ty.base].span;
-
-            let ty = if local_decl.is_nonref_binding() {
-                local_decl.ty
-            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
-                // If we have a binding of the form `let ref x: T = ..`
-                // then remove the outermost reference so we can check the
-                // type annotation for the remaining type.
-                rty
-            } else {
-                bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
-            };
-
-            if let Err(terr) = self.typeck.relate_type_and_user_type(
-                ty,
-                ty::Invariant,
-                user_ty,
-                Locations::All(span),
-                ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
-            ) {
-                span_mirbug!(
-                    self,
-                    local,
-                    "bad user type on variable {:?}: {:?} != {:?} ({:?})",
-                    local,
-                    local_decl.ty,
-                    local_decl.user_ty,
-                    terr,
-                );
-            }
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn visit_body(&mut self, body: &Body<'tcx>) {
-        debug_assert!(std::ptr::eq(self.typeck.body, body));
-        // We intentionally do not recurse into `body.required_consts` or
-        // `body.mentioned_items` here as the MIR at this phase should still
-        // refer to all items and we don't want to check them multiple times.
-
-        for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.visit_local_decl(local, local_decl);
-        }
-
-        for (block, block_data) in body.basic_blocks.iter_enumerated() {
-            let mut location = Location { block, statement_index: 0 };
-            for stmt in &block_data.statements {
-                self.visit_statement(stmt, location);
-                location.statement_index += 1;
-            }
-
-            self.visit_terminator(block_data.terminator(), location);
-        }
-    }
-}
-
-impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
-    fn body(&self) -> &Body<'tcx> {
-        self.typeck.body
-    }
-
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.typeck.infcx.tcx
-    }
-
-    fn verify_promoted(&mut self, promoted_body: &'b Body<'tcx>, location: Location) {
-        // Determine the constraints from the promoted MIR by running the type
-        // checker on the promoted MIR, then transfer the constraints back to
-        // the main MIR, changing the locations to the provided location.
-
-        let parent_body = mem::replace(&mut self.typeck.body, promoted_body);
-
-        // Use new sets of constraints and closure bounds so that we can
-        // modify their locations.
-        let polonius_facts = &mut None;
-        let mut constraints = Default::default();
-        let mut liveness_constraints =
-            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
-        // Don't try to add borrow_region facts for the promoted MIR
-
-        let mut swap_constraints = |this: &mut Self| {
-            mem::swap(this.typeck.polonius_facts, polonius_facts);
-            mem::swap(&mut this.typeck.constraints.outlives_constraints, &mut constraints);
-            mem::swap(&mut this.typeck.constraints.liveness_constraints, &mut liveness_constraints);
-        };
-
-        swap_constraints(self);
-
-        self.visit_body(promoted_body);
-
-        self.typeck.visit_body(promoted_body);
-
-        self.typeck.body = parent_body;
-        // Merge the outlives constraints back in, at the given location.
-        swap_constraints(self);
-
-        let locations = location.to_locations();
-        for constraint in constraints.outlives().iter() {
-            let mut constraint = *constraint;
-            constraint.locations = locations;
-            if let ConstraintCategory::Return(_)
-            | ConstraintCategory::UseAsConst
-            | ConstraintCategory::UseAsStatic = constraint.category
-            {
-                // "Returning" from a promoted is an assignment to a
-                // temporary from the user's point of view.
-                constraint.category = ConstraintCategory::Boring;
-            }
-            self.typeck.constraints.outlives_constraints.push(constraint)
-        }
-        // If the region is live at least one location in the promoted MIR,
-        // then add a liveness constraint to the main MIR for this region
-        // at the location provided as an argument to this method
-        //
-        // add_location doesn't care about ordering so not a problem for the live regions to be
-        // unordered.
-        #[allow(rustc::potential_query_instability)]
-        for region in liveness_constraints.live_regions_unordered() {
-            self.typeck.constraints.liveness_constraints.add_location(region, location);
-        }
-    }
-}
-
 /// The MIR type checker. Visits the MIR and enforces all the
 /// constraints needed for it to be valid and well-typed. Along the
 /// way, it accrues region constraints -- these can later be used by
@@ -581,6 +217,9 @@ struct TypeChecker<'a, 'tcx> {
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
+    /// The bodies of all promoteds. As promoteds have a completely separate CFG
+    /// recursing into them may corrupt your data structures if you're not careful.
+    promoted: &'a IndexSlice<Promoted, Body<'tcx>>,
     /// User type annotations are shared between the main MIR and the MIR of
     /// all of the promoted items.
     user_type_annotations: &'a CanonicalUserTypeAnnotations<'tcx>,
@@ -858,6 +497,62 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.relate_types(ty, v.xform(ty::Contravariant), a, locations, category)?;
 
         Ok(())
+    }
+
+    fn check_promoted(&mut self, promoted_body: &'a Body<'tcx>, location: Location) {
+        // Determine the constraints from the promoted MIR by running the type
+        // checker on the promoted MIR, then transfer the constraints back to
+        // the main MIR, changing the locations to the provided location.
+
+        let parent_body = mem::replace(&mut self.body, promoted_body);
+
+        // Use new sets of constraints and closure bounds so that we can
+        // modify their locations.
+        let polonius_facts = &mut None;
+        let mut constraints = Default::default();
+        let mut liveness_constraints =
+            LivenessValues::without_specific_points(Rc::new(DenseLocationMap::new(promoted_body)));
+
+        // Don't try to add borrow_region facts for the promoted MIR as they refer
+        // to the wrong locations.
+        let mut swap_constraints = |this: &mut Self| {
+            mem::swap(this.polonius_facts, polonius_facts);
+            mem::swap(&mut this.constraints.outlives_constraints, &mut constraints);
+            mem::swap(&mut this.constraints.liveness_constraints, &mut liveness_constraints);
+        };
+
+        swap_constraints(self);
+
+        self.visit_body(promoted_body);
+
+        self.body = parent_body;
+
+        // Merge the outlives constraints back in, at the given location.
+        swap_constraints(self);
+        let locations = location.to_locations();
+        for constraint in constraints.outlives().iter() {
+            let mut constraint = *constraint;
+            constraint.locations = locations;
+            if let ConstraintCategory::Return(_)
+            | ConstraintCategory::UseAsConst
+            | ConstraintCategory::UseAsStatic = constraint.category
+            {
+                // "Returning" from a promoted is an assignment to a
+                // temporary from the user's point of view.
+                constraint.category = ConstraintCategory::Boring;
+            }
+            self.constraints.outlives_constraints.push(constraint)
+        }
+        // If the region is live at least one location in the promoted MIR,
+        // then add a liveness constraint to the main MIR for this region
+        // at the location provided as an argument to this method
+        //
+        // add_location doesn't care about ordering so not a problem for the live regions to be
+        // unordered.
+        #[allow(rustc::potential_query_instability)]
+        for region in liveness_constraints.live_regions_unordered() {
+            self.constraints.liveness_constraints.add_location(region, location);
+        }
     }
 
     fn check_inline_const(
@@ -1238,25 +933,61 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
 
     fn visit_local_decl(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
         self.super_local_decl(local, local_decl);
-        match self.body.local_kind(local) {
-            LocalKind::ReturnPointer | LocalKind::Arg => {
-                // return values of normal functions are required to be
-                // sized by typeck, but return values of ADT constructors are
-                // not because we don't include a `Self: Sized` bounds on them.
-                //
-                // Unbound parts of arguments were never required to be Sized
-                // - maybe we should make that a warning.
-                return;
+
+        for user_ty in
+            local_decl.user_ty.as_deref().into_iter().flat_map(UserTypeProjections::projections)
+        {
+            let span = self.user_type_annotations[user_ty.base].span;
+
+            let ty = if local_decl.is_nonref_binding() {
+                local_decl.ty
+            } else if let &ty::Ref(_, rty, _) = local_decl.ty.kind() {
+                // If we have a binding of the form `let ref x: T = ..`
+                // then remove the outermost reference so we can check the
+                // type annotation for the remaining type.
+                rty
+            } else {
+                bug!("{:?} with ref binding has wrong type {}", local, local_decl.ty);
+            };
+
+            if let Err(terr) = self.relate_type_and_user_type(
+                ty,
+                ty::Invariant,
+                user_ty,
+                Locations::All(span),
+                ConstraintCategory::TypeAnnotation(AnnotationSource::Declaration),
+            ) {
+                span_mirbug!(
+                    self,
+                    local,
+                    "bad user type on variable {:?}: {:?} != {:?} ({:?})",
+                    local,
+                    local_decl.ty,
+                    local_decl.user_ty,
+                    terr,
+                );
             }
-            LocalKind::Temp => {}
         }
 
         // When `unsized_fn_params` or `unsized_locals` is enabled, only function calls
         // and nullary ops are checked in `check_call_dest`.
         if !self.unsized_feature_enabled() {
-            let span = local_decl.source_info.span;
-            let ty = local_decl.ty;
-            self.ensure_place_sized(ty, span);
+            match self.body.local_kind(local) {
+                LocalKind::ReturnPointer | LocalKind::Arg => {
+                    // return values of normal functions are required to be
+                    // sized by typeck, but return values of ADT constructors are
+                    // not because we don't include a `Self: Sized` bounds on them.
+                    //
+                    // Unbound parts of arguments were never required to be Sized
+                    // - maybe we should make that a warning.
+                    return;
+                }
+                LocalKind::Temp => {
+                    let span = local_decl.source_info.span;
+                    let ty = local_decl.ty;
+                    self.ensure_place_sized(ty, span);
+                }
+            }
         }
     }
 
@@ -1959,6 +1690,202 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                         );
                     }
                 }
+            }
+        }
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    fn visit_const_operand(&mut self, constant: &ConstOperand<'tcx>, location: Location) {
+        self.super_const_operand(constant, location);
+        let ty = constant.const_.ty();
+
+        self.infcx.tcx.for_each_free_region(&ty, |live_region| {
+            let live_region_vid = self.universal_regions.to_region_vid(live_region);
+            self.constraints.liveness_constraints.add_location(live_region_vid, location);
+        });
+
+        let locations = location.to_locations();
+        if let Some(annotation_index) = constant.user_ty {
+            if let Err(terr) = self.relate_type_and_user_type(
+                constant.const_.ty(),
+                ty::Invariant,
+                &UserTypeProjection { base: annotation_index, projs: vec![] },
+                locations,
+                ConstraintCategory::TypeAnnotation(AnnotationSource::GenericArg),
+            ) {
+                let annotation = &self.user_type_annotations[annotation_index];
+                span_mirbug!(
+                    self,
+                    constant,
+                    "bad constant user type {:?} vs {:?}: {:?}",
+                    annotation,
+                    constant.const_.ty(),
+                    terr,
+                );
+            }
+        } else {
+            let tcx = self.tcx();
+            let maybe_uneval = match constant.const_ {
+                Const::Ty(_, ct) => match ct.kind() {
+                    ty::ConstKind::Unevaluated(uv) => {
+                        Some(UnevaluatedConst { def: uv.def, args: uv.args, promoted: None })
+                    }
+                    _ => None,
+                },
+                Const::Unevaluated(uv, _) => Some(uv),
+                _ => None,
+            };
+
+            if let Some(uv) = maybe_uneval {
+                if let Some(promoted) = uv.promoted {
+                    let promoted_body = &self.promoted[promoted];
+                    self.check_promoted(promoted_body, location);
+                    let promoted_ty = promoted_body.return_ty();
+                    if let Err(terr) =
+                        self.eq_types(ty, promoted_ty, locations, ConstraintCategory::Boring)
+                    {
+                        span_mirbug!(
+                            self,
+                            promoted,
+                            "bad promoted type ({:?}: {:?}): {:?}",
+                            ty,
+                            promoted_ty,
+                            terr
+                        );
+                    };
+                } else {
+                    self.ascribe_user_type(
+                        constant.const_.ty(),
+                        ty::UserType::new(ty::UserTypeKind::TypeOf(
+                            uv.def,
+                            UserArgs { args: uv.args, user_self_ty: None },
+                        )),
+                        locations.span(self.body),
+                    );
+                }
+            } else if let Some(static_def_id) = constant.check_static_ptr(tcx) {
+                let unnormalized_ty = tcx.type_of(static_def_id).instantiate_identity();
+                let normalized_ty = self.normalize(unnormalized_ty, locations);
+                let literal_ty = constant.const_.ty().builtin_deref(true).unwrap();
+
+                if let Err(terr) =
+                    self.eq_types(literal_ty, normalized_ty, locations, ConstraintCategory::Boring)
+                {
+                    span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
+                }
+            }
+
+            if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {
+                let instantiated_predicates = tcx.predicates_of(def_id).instantiate(tcx, args);
+                self.normalize_and_prove_instantiated_predicates(
+                    def_id,
+                    instantiated_predicates,
+                    locations,
+                );
+
+                assert!(!matches!(
+                    tcx.impl_of_method(def_id).map(|imp| tcx.def_kind(imp)),
+                    Some(DefKind::Impl { of_trait: true })
+                ));
+                self.prove_predicates(
+                    args.types().map(|ty| ty::ClauseKind::WellFormed(ty.into())),
+                    locations,
+                    ConstraintCategory::Boring,
+                );
+            }
+        }
+    }
+
+    fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
+        self.super_place(place, context, location);
+        let tcx = self.tcx();
+        let place_ty = place.ty(self.body, tcx);
+        if let PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy) = context {
+            let trait_ref = ty::TraitRef::new(
+                tcx,
+                tcx.require_lang_item(LangItem::Copy, Some(self.last_span)),
+                [place_ty.ty],
+            );
+
+            // To have a `Copy` operand, the type `T` of the
+            // value must be `Copy`. Note that we prove that `T: Copy`,
+            // rather than using the `is_copy_modulo_regions`
+            // test. This is important because
+            // `is_copy_modulo_regions` ignores the resulting region
+            // obligations and assumes they pass. This can result in
+            // bounds from `Copy` impls being unsoundly ignored (e.g.,
+            // #29149). Note that we decide to use `Copy` before knowing
+            // whether the bounds fully apply: in effect, the rule is
+            // that if a value of some type could implement `Copy`, then
+            // it must.
+            self.prove_trait_ref(trait_ref, location.to_locations(), ConstraintCategory::CopyBound);
+        }
+    }
+
+    fn visit_projection_elem(
+        &mut self,
+        place: PlaceRef<'tcx>,
+        elem: PlaceElem<'tcx>,
+        context: PlaceContext,
+        location: Location,
+    ) {
+        let tcx = self.tcx();
+        let base_ty = place.ty(self.body(), tcx);
+        match elem {
+            // All these projections don't add any constraints, so there's nothing to
+            // do here. We check their invariants in the MIR validator after all.
+            ProjectionElem::Deref
+            | ProjectionElem::Index(_)
+            | ProjectionElem::ConstantIndex { .. }
+            | ProjectionElem::Subslice { .. }
+            | ProjectionElem::Downcast(..) => {}
+            ProjectionElem::Field(field, fty) => {
+                let fty = self.normalize(fty, location);
+                let ty = base_ty.field_ty(tcx, field);
+                let ty = self.normalize(ty, location);
+                debug!(?fty, ?ty);
+
+                if let Err(terr) = self.relate_types(
+                    ty,
+                    context.ambient_variance(),
+                    fty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                ) {
+                    span_mirbug!(self, place, "bad field access ({:?}: {:?}): {:?}", ty, fty, terr);
+                }
+            }
+            ProjectionElem::OpaqueCast(ty) => {
+                let ty = self.normalize(ty, location);
+                self.relate_types(
+                    ty,
+                    context.ambient_variance(),
+                    base_ty.ty,
+                    location.to_locations(),
+                    ConstraintCategory::TypeAnnotation(AnnotationSource::OpaqueCast),
+                )
+                .unwrap();
+            }
+            ProjectionElem::UnwrapUnsafeBinder(ty) => {
+                let ty::UnsafeBinder(binder_ty) = *base_ty.ty.kind() else {
+                    unreachable!();
+                };
+                let found_ty = self.infcx.instantiate_binder_with_fresh_vars(
+                    self.body.source_info(location).span,
+                    BoundRegionConversionTime::HigherRankedType,
+                    binder_ty.into(),
+                );
+                self.relate_types(
+                    ty,
+                    context.ambient_variance(),
+                    found_ty,
+                    location.to_locations(),
+                    ConstraintCategory::Boring,
+                )
+                .unwrap();
+            }
+            ProjectionElem::Subtype(_) => {
+                bug!("ProjectionElem::Subtype shouldn't exist in borrowck")
             }
         }
     }
