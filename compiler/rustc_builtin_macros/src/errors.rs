@@ -110,13 +110,6 @@ pub(crate) struct ProcMacro {
 }
 
 #[derive(Diagnostic)]
-#[diag(builtin_macros_invalid_crate_attribute)]
-pub(crate) struct InvalidCrateAttr {
-    #[primary_span]
-    pub(crate) span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(builtin_macros_non_abi)]
 pub(crate) struct NonABI {
     #[primary_span]
