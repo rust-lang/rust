@@ -11,7 +11,6 @@ LL | impl PartialOrd for DeriveOrd {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: `-D clippy::derive-ord-xor-partial-ord` implied by `-D warnings`
    = help: to override `-D warnings` add `#[allow(clippy::derive_ord_xor_partial_ord)]`
-   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are deriving `Ord` but have implemented `PartialOrd` explicitly
   --> tests/ui/derive_ord_xor_partial_ord.rs:33:10
@@ -24,7 +23,6 @@ note: `PartialOrd` implemented here
    |
 LL | impl PartialOrd<DeriveOrdWithExplicitTypeVariable> for DeriveOrdWithExplicitTypeVariable {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `Ord` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
   --> tests/ui/derive_ord_xor_partial_ord.rs:47:1
@@ -42,7 +40,6 @@ note: `PartialOrd` implemented here
    |
 LL | #[derive(PartialOrd, PartialEq, Eq)]
    |          ^^^^^^^^^^
-   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: you are implementing `Ord` explicitly but have derived `PartialOrd`
   --> tests/ui/derive_ord_xor_partial_ord.rs:69:5
@@ -60,7 +57,6 @@ note: `PartialOrd` implemented here
    |
 LL |     #[derive(PartialOrd, PartialEq, Eq)]
    |              ^^^^^^^^^^
-   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

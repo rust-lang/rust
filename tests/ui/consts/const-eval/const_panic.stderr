@@ -3,24 +3,18 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const Z: () = std::panic!("cheese");
    |               ^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: cheese
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:9:16
    |
 LL | const Z2: () = std::panic!();
    |                ^^^^^^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:12:15
    |
 LL | const Y: () = std::unreachable!();
    |               ^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
-   |
-   = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `std::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:15:15
@@ -35,40 +29,30 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const W: () = std::panic!(MSG);
    |               ^^^^^^^^^^^^^^^^ evaluation panicked: hello
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:21:16
    |
 LL | const W2: () = std::panic!("{}", MSG);
    |                ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:24:20
    |
 LL | const Z_CORE: () = core::panic!("cheese");
    |                    ^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: cheese
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:27:21
    |
 LL | const Z2_CORE: () = core::panic!();
    |                     ^^^^^^^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:30:20
    |
 LL | const Y_CORE: () = core::unreachable!();
    |                    ^^^^^^^^^^^^^^^^^^^^ evaluation panicked: internal error: entered unreachable code
-   |
-   = note: this error originates in the macro `$crate::panic::unreachable_2015` which comes from the expansion of the macro `core::unreachable` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:33:20
@@ -83,16 +67,12 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const W_CORE: () = core::panic!(MSG);
    |                    ^^^^^^^^^^^^^^^^^ evaluation panicked: hello
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const_panic.rs:39:21
    |
 LL | const W2_CORE: () = core::panic!("{}", MSG);
    |                     ^^^^^^^^^^^^^^^^^^^^^^^ evaluation panicked: hello
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `core::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 12 previous errors
 

@@ -9,7 +9,6 @@ note: the lint level is defined here
    |
 LL | #![deny(unnameable_test_items)]
    |         ^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the attribute macro `test_case` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

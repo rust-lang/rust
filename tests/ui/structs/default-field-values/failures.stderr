@@ -21,7 +21,6 @@ LL | pub struct Bar {
 LL |     pub bar: S,
    |     ^^^^^^^^^^ the trait `Default` is not implemented for `S`
    |
-   = note: this error originates in the derive macro `Default` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider annotating `S` with `#[derive(Default)]`
    |
 LL + #[derive(Default)]

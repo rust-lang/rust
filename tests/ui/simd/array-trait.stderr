@@ -22,8 +22,6 @@ LL | #[derive(Copy, Clone)]
    |                ----- in this derive macro expansion
 LL | pub struct T<S: Simd>([S::Lane; S::SIZE]);
    |                       ^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors
 

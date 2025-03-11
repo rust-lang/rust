@@ -36,8 +36,6 @@ error: sub-expression diverges
    |
 LL |                 _ => true || panic!("boo"),
    |                              ^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: sub-expression diverges
   --> tests/ui/diverging_sub_expression.rs:52:29
