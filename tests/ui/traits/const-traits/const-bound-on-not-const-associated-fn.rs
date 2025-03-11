@@ -4,7 +4,7 @@
 
 #[const_trait]
 trait MyTrait {
-    fn do_something(&self);
+    (const) fn do_something(&self);
 }
 
 trait OtherTrait {
@@ -15,7 +15,7 @@ trait OtherTrait {
 struct MyStruct<T>(T);
 
 impl const MyTrait for u32 {
-    fn do_something(&self) {}
+    (const) fn do_something(&self) {}
 }
 
 impl<T> MyStruct<T> {

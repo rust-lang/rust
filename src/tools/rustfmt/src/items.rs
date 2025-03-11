@@ -303,7 +303,7 @@ pub(crate) struct FnSig<'a> {
     generics: &'a ast::Generics,
     ext: ast::Extern,
     coroutine_kind: Cow<'a, Option<ast::CoroutineKind>>,
-    constness: ast::Const,
+    constness: ast::BoundConstness,
     defaultness: ast::Defaultness,
     safety: ast::Safety,
     visibility: &'a ast::Visibility,

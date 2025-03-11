@@ -2,15 +2,15 @@
 
 #[const_trait]
 trait Tr {
-    fn req(&self);
+    (const) fn req(&self);
 
-    fn default() {}
+    (const) fn default() {}
 }
 
 struct S;
 
 impl const Tr for u16 {
-    fn default() {}
+    (const) fn default() {}
 } //~^^ ERROR not all trait items implemented
 
 

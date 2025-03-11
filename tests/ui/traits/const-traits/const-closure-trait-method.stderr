@@ -1,3 +1,15 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-closure-trait-method.rs:7:5
+   |
+LL |     fn a(self) -> i32;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-closure-trait-method.rs:11:5
+   |
+LL |     fn a(self) -> i32 { 42 }
+   |     ^ help: mark the function as const: `const`
+
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const-closure-trait-method.rs:14:32
    |
@@ -25,6 +37,6 @@ LL |     x(())
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

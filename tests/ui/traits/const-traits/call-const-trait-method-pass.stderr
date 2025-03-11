@@ -1,3 +1,33 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-const-trait-method-pass.rs:10:5
+   |
+LL |     fn add(self, rhs: Self) -> Self {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-const-trait-method-pass.rs:16:5
+   |
+LL |     fn eq(&self, rhs: &Self) -> bool {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-const-trait-method-pass.rs:19:5
+   |
+LL |     fn ne(&self, other: &Self) -> bool {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-const-trait-method-pass.rs:26:5
+   |
+LL |     fn plus(self, rhs: Self) -> Self;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-const-trait-method-pass.rs:30:5
+   |
+LL |     fn plus(self, rhs: Self) -> Self {
+   |     ^ help: mark the function as const: `const`
+
 error: const `impl` for trait `PartialEq` which is not marked with `#[const_trait]`
   --> $DIR/call-const-trait-method-pass.rs:15:12
    |
@@ -15,6 +45,6 @@ LL |         !self.eq(other)
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 2 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

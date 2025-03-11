@@ -5,7 +5,7 @@ struct S;
 
 #[const_trait]
 trait Foo {
-    fn eq(&self, _: &Self) -> bool;
+    (const) fn eq(&self, _: &Self) -> bool;
 }
 
 impl Foo for S {

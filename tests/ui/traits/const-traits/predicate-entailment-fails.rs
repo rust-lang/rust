@@ -8,7 +8,7 @@ impl const Bar for () {}
 #[const_trait] trait TildeConst {
     type Bar<T> where T: ~const Bar;
 
-    fn foo<T>() where T: ~const Bar;
+    (const) fn foo<T>() where T: ~const Bar;
 }
 impl TildeConst for () {
     type Bar<T> = () where T: const Bar;
@@ -22,7 +22,7 @@ impl TildeConst for () {
 #[const_trait] trait NeverConst {
     type Bar<T> where T: Bar;
 
-    fn foo<T>() where T: Bar;
+    (const) fn foo<T>() where T: Bar;
 }
 impl NeverConst for i32 {
     type Bar<T> = () where T: const Bar;
@@ -35,7 +35,7 @@ impl const NeverConst for u32 {
     type Bar<T> = () where T: ~const Bar;
     //~^ ERROR impl has stricter requirements than trait
 
-    fn foo<T>() where T: ~const Bar {}
+    (const) fn foo<T>() where T: ~const Bar {}
     //~^ ERROR impl has stricter requirements than trait
 }
 

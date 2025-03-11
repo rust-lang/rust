@@ -6,7 +6,7 @@
 
 #[const_trait]
 trait Bar {
-    fn foo(&self);
+    (const) fn foo(&self);
 }
 
 impl Bar for () {

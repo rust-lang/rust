@@ -6,7 +6,7 @@
 
 #[const_trait]
 pub trait Foo {
-    fn method(self) -> impl ~const Bar;
+    (const) fn method(self) -> impl ~const Bar;
 }
 
 #[const_trait]
@@ -14,7 +14,7 @@ pub trait Bar {}
 
 struct A<T>(T);
 impl<T> const Foo for A<T> where A<T>: ~const Bar {
-    fn method(self) -> impl ~const Bar {
+    (const) fn method(self) -> impl ~const Bar {
         self
     }
 }

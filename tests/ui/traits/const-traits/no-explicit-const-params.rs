@@ -4,7 +4,7 @@ const fn foo() {}
 
 #[const_trait]
 trait Bar {
-    fn bar();
+    (const) fn bar();
 }
 
 impl Bar for () {

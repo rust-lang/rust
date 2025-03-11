@@ -11,13 +11,13 @@ impl<T> const Bar for T {}
 
 #[const_trait]
 trait Foo {
-    fn method(&self);
+    (const) fn method(&self);
 }
 impl<T> const Foo for T
 where
     T: ~const Bar,
 {
-    default fn method(&self) {}
+    default (const) fn method(&self) {}
 }
 // specializing impl:
 impl<T> Foo for (T,) {

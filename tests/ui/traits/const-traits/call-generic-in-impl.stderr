@@ -1,3 +1,15 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-generic-in-impl.rs:7:5
+   |
+LL |     fn eq(&self, other: &Self) -> bool;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/call-generic-in-impl.rs:11:5
+   |
+LL |     fn eq(&self, other: &Self) -> bool {
+   |     ^ help: mark the function as const: `const`
+
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/call-generic-in-impl.rs:10:9
    |
@@ -25,6 +37,6 @@ LL |         PartialEq::eq(self, other)
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 3 previous errors
+error: aborting due to 5 previous errors
 
 For more information about this error, try `rustc --explain E0015`.

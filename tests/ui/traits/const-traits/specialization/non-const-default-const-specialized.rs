@@ -8,7 +8,7 @@
 
 #[const_trait]
 trait Value {
-    fn value() -> u32;
+    (const) fn value() -> u32;
 }
 
 const fn get_value<T: ~const Value>() -> u32 {
@@ -25,7 +25,7 @@ impl<T> Value for T {
 struct FortyTwo;
 
 impl const Value for FortyTwo {
-    fn value() -> u32 {
+    (const) fn value() -> u32 {
         42
     }
 }

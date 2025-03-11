@@ -1,3 +1,9 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/constifconst-call-in-const-position.rs:8:5
+   |
+LL |     fn a() -> usize;
+   |     ^ help: mark the function as const: `(const)`
+
 error[E0277]: the trait bound `T: const Tr` is not satisfied
   --> $DIR/constifconst-call-in-const-position.rs:17:38
    |
@@ -10,6 +16,6 @@ error[E0277]: the trait bound `T: const Tr` is not satisfied
 LL |     [0; T::a()]
    |         ^
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

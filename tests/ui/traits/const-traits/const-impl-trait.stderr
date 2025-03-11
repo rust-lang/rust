@@ -1,3 +1,15 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-impl-trait.rs:23:5
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-impl-trait.rs:27:5
+   |
+LL |     fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+   |     ^ help: mark the function as const: `const`
+
 error[E0635]: unknown feature `const_cmp`
   --> $DIR/const-impl-trait.rs:7:30
    |
@@ -191,7 +203,7 @@ LL |     a == a
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 21 previous errors
+error: aborting due to 23 previous errors
 
 Some errors have detailed explanations: E0015, E0635.
 For more information about an error, try `rustc --explain E0015`.

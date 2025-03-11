@@ -16,7 +16,7 @@ impl<T> Clone for S<T> {
 impl<T> const std::ops::Add for S<T> {
     type Output = Self;
 
-    fn add(self, _: Self) -> Self {
+    (const) fn add(self, _: Self) -> Self {
         S(std::marker::PhantomData)
     }
 }

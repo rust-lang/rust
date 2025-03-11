@@ -1,3 +1,45 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:8:5
+   |
+LL |     fn foo() -> u32;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:16:5
+   |
+LL |     default fn foo() -> u32 {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:22:5
+   |
+LL |     fn foo() -> u32 {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:31:5
+   |
+LL |     fn a() -> u32;
+   |     ^ help: mark the function as const: `(const)`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:35:5
+   |
+LL |     default fn a() -> u32 {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:41:5
+   |
+LL |     default fn a() -> u32 {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const_trait_impl.rs:47:5
+   |
+LL |     fn a() -> u32 {
+   |     ^ help: mark the function as const: `const`
+
 error: `~const` can only be applied to `#[const_trait]` traits
   --> $DIR/const_trait_impl.rs:34:9
    |
@@ -55,5 +97,5 @@ note: `Default` can't be used with `~const` because it isn't annotated with `#[c
   --> $SRC_DIR/core/src/default.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 6 previous errors
+error: aborting due to 13 previous errors
 

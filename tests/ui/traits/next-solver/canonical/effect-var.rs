@@ -5,17 +5,17 @@
 
 #[const_trait]
 trait Foo {
-    fn foo();
+    (const) fn foo();
 }
 
 trait Bar {}
 
 impl const Foo for i32 {
-    fn foo() {}
+    (const) fn foo() {}
 }
 
 impl<T> const Foo for T where T: Bar {
-    fn foo() {}
+    (const) fn foo() {}
 }
 
 fn main() {}

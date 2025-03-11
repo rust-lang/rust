@@ -1,3 +1,15 @@
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-and-non-const-impl.rs:10:5
+   |
+LL |     fn add(self, rhs: Self) -> Self {
+   |     ^ help: mark the function as const: `const`
+
+error: non-const fn in const traits are not supported yet
+  --> $DIR/const-and-non-const-impl.rs:26:5
+   |
+LL |     fn add(self, rhs: Self) -> Self {
+   |     ^ help: mark the function as const: `const`
+
 error[E0119]: conflicting implementations of trait `Add` for type `Int`
   --> $DIR/const-and-non-const-impl.rs:23:1
    |
@@ -20,7 +32,7 @@ LL | impl const std::ops::Add for i32 {
    = note: for more information see https://doc.rust-lang.org/reference/items/implementations.html#orphan-rules
    = note: define and implement a trait or new type instead
 
-error: aborting due to 2 previous errors
+error: aborting due to 4 previous errors
 
 Some errors have detailed explanations: E0117, E0119.
 For more information about an error, try `rustc --explain E0117`.

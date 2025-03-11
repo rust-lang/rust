@@ -13,11 +13,11 @@ pub const K1: i32 = CREATE; // arg inferred
 
 #[const_trait]
 trait Create {
-    fn create() -> Self;
+    (const) fn create() -> Self;
 }
 
 impl const Create for i32 {
-    fn create() -> i32 {
+    (const) fn create() -> i32 {
         4096
     }
 }
