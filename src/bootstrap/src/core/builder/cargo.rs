@@ -511,7 +511,19 @@ impl Builder<'_> {
         // needs to not accidentally link to libLLVM in stage0/lib.
         cargo.env("REAL_LIBRARY_PATH_VAR", helpers::dylib_path_var());
         if let Some(e) = env::var_os(helpers::dylib_path_var()) {
-            cargo.env("REAL_LIBRARY_PATH", e);
+            // We only need the original LIBRARY_PATH when using system llvm. In all other cases, we can
+            // just discard it. This is useful because rust-analyzer sometimes has a different
+            // LIBRARY_PATH than a baseline environment, causing spurious rebuilds.
+            let ci_llvm = self.config.llvm_from_ci && target == self.build.build;
+            let prebuilt_llvm = self
+                .config
+                .target_config
+                .get(&target)
+                .and_then(|conf| conf.llvm_config.as_ref())
+                .is_some();
+            if prebuilt_llvm && !ci_llvm {
+                cargo.env("REAL_LIBRARY_PATH", e);
+            }
         }
 
         // Set a flag for `check`/`clippy`/`fix`, so that certain build
