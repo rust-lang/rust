@@ -7,11 +7,11 @@ use crate::TEST_ALLOC;
 
 #[derive(Debug)]
 pub struct GlobalContext {
-    allocator: BsanAllocator,
-    next_alloc_id: AtomicUsize,
+    pub allocator: BsanAllocator,
+    pub next_alloc_id: AtomicUsize,
 
     // pointer to l1 table
-    shadow_heap: ShadowMap<crate::Provenance>,
+    pub shadow_heap: ShadowMap<crate::Provenance>,
 }
 
 impl GlobalContext {

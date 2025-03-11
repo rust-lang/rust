@@ -26,14 +26,11 @@ mod shadow;
 type AllocID = usize;
 type BorrowTag = usize;
 
-#
 pub struct Provenance {
     lock_address : *mut c_void,
     alloc_id : AllocID,
     borrow_tag: BorrowTag,
 }
-
-impl 
 
 #[no_mangle]
 unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {
@@ -43,7 +40,11 @@ unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {
 #[no_mangle]
 extern "C" fn bsan_load_prov(ptr: *mut c_void) -> Provenance { // TODO implement null function (cannot use options)
     // TODO: get the global context, and then through their call a shadow heap method/function
-    return Provenance {}
+    return Provenance {
+        lock_address: ptr,
+        alloc_id: 0,
+        borrow_tag: 0,
+    }
 }
 
 #[no_mangle]

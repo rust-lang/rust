@@ -12,10 +12,10 @@ pub type Free = unsafe extern "C" fn(*mut c_void);
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct BsanAllocator {
-    malloc: Malloc,
-    free: Free,
-    mmap: MMap,
-    munmap: MUnmap,
+    pub malloc: Malloc,
+    pub free: Free,
+    pub mmap: MMap,
+    pub munmap: MUnmap,
 }
 
 unsafe impl Send for BsanAllocator {}
