@@ -29,7 +29,7 @@ error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:58:18
    |
 LL | fn test_match(x: Option<Option<String>>, y: Option<Option<String>>) {
-   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<&Option<String>>`
+   |                  ^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<Option<&String>>`
 
 error: this argument is passed by value, but not consumed in the function body
   --> tests/ui/needless_pass_by_value.rs:73:24
@@ -185,5 +185,29 @@ error: this argument is passed by value, but not consumed in the function body
 LL | fn option_inner_ref(x: Option<String>) {
    |                        ^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<&String>`
 
-error: aborting due to 23 previous errors
+error: this argument is passed by value, but not consumed in the function body
+  --> tests/ui/needless_pass_by_value.rs:204:27
+   |
+LL | fn non_standard_option(x: non_standard::Option<String>) {
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `&non_standard::Option<String>`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> tests/ui/needless_pass_by_value.rs:209:22
+   |
+LL | fn option_by_name(x: Option<std::option::Option<core::option::Option<non_standard::Option<String>>>>) {
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider taking a reference instead: `Option<std::option::Option<core::option::Option<&non_standard::Option<String>>>>`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> tests/ui/needless_pass_by_value.rs:216:18
+   |
+LL | fn non_option(x: OptStr) {
+   |                  ^^^^^^ help: consider taking a reference instead: `&OptStr`
+
+error: this argument is passed by value, but not consumed in the function body
+  --> tests/ui/needless_pass_by_value.rs:223:25
+   |
+LL | fn non_option_either(x: Opt<String>) {
+   |                         ^^^^^^^^^^^ help: consider taking a reference instead: `&Opt<String>`
+
+error: aborting due to 27 previous errors
 
