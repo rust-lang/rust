@@ -5,6 +5,7 @@ use rustc_abi::{
 };
 use rustc_codegen_ssa::common;
 use rustc_codegen_ssa::traits::*;
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -12,9 +13,9 @@ use rustc_middle::mir::interpret::{
     Allocation, ConstAllocation, ErrorHandled, InitChunk, Pointer, Scalar as InterpScalar,
     read_target_uint,
 };
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::Instance;
+use rustc_middle::mir::mono::{Linkage, MonoItem};
 use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
+use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use tracing::{debug, instrument, trace};
 
@@ -171,8 +172,27 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        // Declare a symbol `foo` with the desired linkage.
-        let g1 = cx.declare_global(sym, cx.type_i8());
+        // Declare a symbol `foo`. If `foo` is an extern_weak symbol, we declare
+        // an extern_weak function, otherwise a global with the desired linkage.
+        let g1 = if matches!(attrs.import_linkage, Some(Linkage::ExternalWeak)) {
+            // An `extern_weak` function is represented as an `Option<unsafe extern ...>`,
+            // we extract the function signature and declare it as an extern_weak function
+            // instead of an extern_weak i8.
+            let instance = Instance::mono(cx.tcx, def_id);
+            if let ty::Adt(struct_def, args) = instance.ty(cx.tcx, cx.typing_env()).kind()
+                && cx.tcx.is_lang_item(struct_def.did(), LangItem::Option)
+                && let ty::FnPtr(sig, header) = args.type_at(0).kind()
+            {
+                let fn_sig = sig.with(*header);
+
+                let fn_abi = cx.fn_abi_of_fn_ptr(fn_sig, ty::List::empty());
+                cx.declare_fn(sym, &fn_abi, None)
+            } else {
+                cx.declare_global(sym, cx.type_i8())
+            }
+        } else {
+            cx.declare_global(sym, cx.type_i8())
+        };
         llvm::set_linkage(g1, base::linkage_to_llvm(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
