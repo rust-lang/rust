@@ -220,6 +220,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         debug!("fcx {}", self.tag());
 
+        // Don't write user type annotations for const param types, since we give them
+        // identity args just so that we can trivially substitute their `EarlyBinder`.
+        // We enforce that they match their type in MIR later on.
+        if matches!(self.tcx.def_kind(def_id), DefKind::ConstParam) {
+            return;
+        }
+
         if Self::can_contain_user_lifetime_bounds((args, user_self_ty)) {
             let canonicalized = self.canonicalize_user_type_annotation(ty::UserType::new(
                 ty::UserTypeKind::TypeOf(def_id, UserArgs { args, user_self_ty }),

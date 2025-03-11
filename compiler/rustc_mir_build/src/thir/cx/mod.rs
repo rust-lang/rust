@@ -207,7 +207,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
         &self,
         hir_id: HirId,
     ) -> Option<ty::CanonicalUserType<'tcx>> {
-        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.tcx, self.typeck_results, hir_id)
     }
 }
 

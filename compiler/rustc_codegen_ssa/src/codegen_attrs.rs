@@ -1,9 +1,7 @@
 use std::str::FromStr;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::expand::autodiff_attrs::{
-    AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
-};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::ReprAttr::ReprAlign;
 use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
@@ -872,15 +870,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
                 span_bug!(arg_symbol.span, "invalid input activity");
             }
         }
-    }
-
-    for &input in &arg_activities {
-        if !valid_input_activity(mode, input) {
-            span_bug!(attr.span(), "Invalid input activity {} for {} mode", input, mode);
-        }
-    }
-    if !valid_ret_activity(mode, ret_activity) {
-        span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
     }
 
     Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
