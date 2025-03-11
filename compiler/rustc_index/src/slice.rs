@@ -120,13 +120,12 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
         assert!(ai != bi);
+        let len = self.raw.len();
+        assert!(ai < len && bi < len);
 
-        if ai < bi {
-            let (c1, c2) = self.raw.split_at_mut(bi);
-            (&mut c1[ai], &mut c2[0])
-        } else {
-            let (c2, c1) = self.pick2_mut(b, a);
-            (c1, c2)
+        match self.raw.get_disjoint_mut([ai, bi]) {
+            Ok([a, b]) => (a, b),
+            Err(_) => panic!("Can't get mutable references"),
         }
     }
 
@@ -139,8 +138,11 @@ impl<I: Idx, T> IndexSlice<I, T> {
         assert!(ai != bi && bi != ci && ci != ai);
         let len = self.raw.len();
         assert!(ai < len && bi < len && ci < len);
-        let ptr = self.raw.as_mut_ptr();
-        unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
+
+        match self.raw.get_disjoint_mut([ai, bi, ci]) {
+            Ok([a, b, c]) => (a, b, c),
+            Err(_) => panic!("Can't get mutable references"),
+        }
     }
 
     #[inline]
