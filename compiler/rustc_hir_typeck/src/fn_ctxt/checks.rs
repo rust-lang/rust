@@ -1636,7 +1636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Char(_) => tcx.types.char,
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => Ty::new_int(tcx, ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
-            ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+            ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
@@ -1645,6 +1645,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
                     ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
+                    &ty::Pat(base, _) if base.is_integral() => {
+                        let layout = tcx
+                            .layout_of(self.typing_env(self.param_env).as_query_input(ty))
+                            .ok()?;
+                        assert!(!layout.uninhabited);
+
+                        match layout.backend_repr {
+                            rustc_abi::BackendRepr::Scalar(scalar) => {
+                                scalar.valid_range(&tcx).contains(u128::from(i.get())).then_some(ty)
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
