@@ -35,7 +35,7 @@ miniz_oxide = { version = "0.8.0", optional = true, default-features = false }
 addr2line = { version = "0.24.0", optional = true, default-features = false }
 
 [target.'cfg(not(all(windows, target_env = "msvc")))'.dependencies]
-libc = { version = "0.2.170", default-features = false, features = [
+libc = { version = "0.2.171", default-features = false, features = [
     'rustc-dep-of-std',
 ], public = true }
 
