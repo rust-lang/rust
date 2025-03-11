@@ -26,11 +26,24 @@ mod shadow;
 type AllocID = usize;
 type BorrowTag = usize;
 
+#[derive(Debug)]
 pub struct Provenance {
     lock_address : *mut c_void,
     alloc_id : AllocID,
     borrow_tag: BorrowTag,
 }
+
+impl Copy for Provenance {}
+impl Clone for Provenance {
+    fn clone(&self) -> Self {
+        Provenance {
+            lock_address: self.lock_address,
+            alloc_id: self.alloc_id,
+            borrow_tag: self.borrow_tag
+        }
+    }
+}
+impl shadow::Provenance for Provenance {}
 
 #[no_mangle]
 unsafe extern "C" fn bsan_init(alloc: BsanAllocator) {

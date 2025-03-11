@@ -90,7 +90,7 @@ pub struct L1<T: Provenance> {
 }
 
 impl<T: Provenance> L1<T> {
-    fn new(allocator: BsanAllocator) -> Self {
+    pub fn new(allocator: BsanAllocator) -> Self {
 
         let mut l1 : L1<T> = unsafe {
             let l1_void = (allocator.mmap)(
@@ -130,8 +130,9 @@ impl<T: Provenance> L1<T> {
 /// the interior, unsafe implementation, providing debug assertions
 /// for each method.
 #[repr(transparent)]
+#[derive(Debug)]
 pub struct ShadowHeap<T: Provenance> {
-    l1: L1<T>,
+    pub(crate) l1: L1<T>,
 }
 
 impl<T: Provenance> Default for ShadowHeap<T> {
