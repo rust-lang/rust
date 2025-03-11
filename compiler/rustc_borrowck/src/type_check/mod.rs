@@ -174,11 +174,11 @@ pub(crate) fn type_check<'a, 'tcx>(
     let mut verifier = TypeVerifier { typeck: &mut typeck, promoted, last_span: body.span };
     verifier.visit_body(body);
 
-    typeck.typeck_mir(body);
-    typeck.equate_inputs_and_outputs(body, &normalized_inputs_and_output);
-    typeck.check_signature_annotation(body);
+    typeck.typeck_mir();
+    typeck.equate_inputs_and_outputs(&normalized_inputs_and_output);
+    typeck.check_signature_annotation();
 
-    liveness::generate(&mut typeck, body, &location_map, flow_inits, move_data);
+    liveness::generate(&mut typeck, &location_map, flow_inits, move_data);
 
     let opaque_type_values =
         opaque_types::take_opaques_and_register_member_constraints(&mut typeck);
@@ -485,6 +485,7 @@ impl<'a, 'b, 'tcx> Visitor<'tcx> for TypeVerifier<'a, 'b, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     fn visit_body(&mut self, body: &Body<'tcx>) {
+        debug_assert!(std::ptr::eq(self.typeck.body, body));
         // We intentionally do not recurse into `body.required_consts` or
         // `body.mentioned_items` here as the MIR at this phase should still
         // refer to all items and we don't want to check them multiple times.
@@ -542,7 +543,7 @@ impl<'a, 'b, 'tcx> TypeVerifier<'a, 'b, 'tcx> {
 
         self.visit_body(promoted_body);
 
-        self.typeck.typeck_mir(promoted_body);
+        self.typeck.typeck_mir();
 
         self.typeck.body = parent_body;
         // Merge the outlives constraints back in, at the given location.
@@ -892,8 +893,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    #[instrument(skip(self, body), level = "debug")]
-    fn check_stmt(&mut self, body: &Body<'tcx>, stmt: &Statement<'tcx>, location: Location) {
+    #[instrument(skip(self), level = "debug")]
+    fn check_stmt(&mut self, stmt: &Statement<'tcx>, location: Location) {
         let tcx = self.tcx();
         debug!("stmt kind: {:?}", stmt.kind);
         match &stmt.kind {
@@ -916,11 +917,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     Some(l)
-                        if matches!(body.local_decls[l].local_info(), LocalInfo::AggregateTemp) =>
+                        if matches!(
+                            self.body.local_decls[l].local_info(),
+                            LocalInfo::AggregateTemp
+                        ) =>
                     {
                         ConstraintCategory::Usage
                     }
-                    Some(l) if !body.local_decls[l].is_user_variable() => {
+                    Some(l) if !self.body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
                     _ => ConstraintCategory::Assignment,
@@ -928,14 +932,14 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 debug!(
                     "assignment category: {:?} {:?}",
                     category,
-                    place.as_local().map(|l| &body.local_decls[l])
+                    place.as_local().map(|l| &self.body.local_decls[l])
                 );
 
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(self.body, tcx).ty;
                 debug!(?place_ty);
                 let place_ty = self.normalize(place_ty, location);
                 debug!("place_ty normalized: {:?}", place_ty);
-                let rv_ty = rv.ty(body, tcx);
+                let rv_ty = rv.ty(self.body, tcx);
                 debug!(?rv_ty);
                 let rv_ty = self.normalize(rv_ty, location);
                 debug!("normalized rv_ty: {:?}", rv_ty);
@@ -972,7 +976,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
 
-                self.check_rvalue(body, rv, location);
+                self.check_rvalue(rv, location);
                 if !self.unsized_feature_enabled() {
                     let trait_ref = ty::TraitRef::new(
                         tcx,
@@ -987,7 +991,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
             }
             StatementKind::AscribeUserType(box (place, projection), variance) => {
-                let place_ty = place.ty(body, tcx).ty;
+                let place_ty = place.ty(self.body, tcx).ty;
                 if let Err(terr) = self.relate_type_and_user_type(
                     place_ty,
                     *variance,
@@ -1029,13 +1033,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, body, term_location), level = "debug")]
-    fn check_terminator(
-        &mut self,
-        body: &Body<'tcx>,
-        term: &Terminator<'tcx>,
-        term_location: Location,
-    ) {
+    #[instrument(skip(self, term_location), level = "debug")]
+    fn check_terminator(&mut self, term: &Terminator<'tcx>, term_location: Location) {
         let tcx = self.tcx();
         debug!("terminator kind: {:?}", term.kind);
         match &term.kind {
@@ -1055,7 +1054,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::SwitchInt { discr, .. } => {
                 self.check_operand(discr, term_location);
 
-                let switch_ty = discr.ty(body, tcx);
+                let switch_ty = discr.ty(self.body, tcx);
                 if !switch_ty.is_integral() && !switch_ty.is_char() && !switch_ty.is_bool() {
                     span_mirbug!(self, term, "bad SwitchInt discr ty {:?}", switch_ty);
                 }
@@ -1074,7 +1073,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.check_operand(&arg.node, term_location);
                 }
 
-                let func_ty = func.ty(body, tcx);
+                let func_ty = func.ty(self.body, tcx);
                 debug!("func_ty.kind: {:?}", func_ty.kind());
 
                 let sig = match func_ty.kind() {
@@ -1142,7 +1141,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 }
 
                 if let TerminatorKind::Call { destination, target, .. } = term.kind {
-                    self.check_call_dest(body, term, &sig, destination, target, term_location);
+                    self.check_call_dest(term, &sig, destination, target, term_location);
                 }
 
                 // The ordinary liveness rules will ensure that all
@@ -1157,21 +1156,21 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     self.constraints.liveness_constraints.add_location(region_vid, term_location);
                 }
 
-                self.check_call_inputs(body, term, func, &sig, args, term_location, call_source);
+                self.check_call_inputs(term, func, &sig, args, term_location, call_source);
             }
             TerminatorKind::Assert { cond, msg, .. } => {
                 self.check_operand(cond, term_location);
 
-                let cond_ty = cond.ty(body, tcx);
+                let cond_ty = cond.ty(self.body, tcx);
                 if cond_ty != tcx.types.bool {
                     span_mirbug!(self, term, "bad Assert ({:?}, not bool", cond_ty);
                 }
 
                 if let AssertKind::BoundsCheck { len, index } = &**msg {
-                    if len.ty(body, tcx) != tcx.types.usize {
+                    if len.ty(self.body, tcx) != tcx.types.usize {
                         span_mirbug!(self, len, "bounds-check length non-usize {:?}", len)
                     }
-                    if index.ty(body, tcx) != tcx.types.usize {
+                    if index.ty(self.body, tcx) != tcx.types.usize {
                         span_mirbug!(self, index, "bounds-check index non-usize {:?}", index)
                     }
                 }
@@ -1179,10 +1178,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             TerminatorKind::Yield { value, resume_arg, .. } => {
                 self.check_operand(value, term_location);
 
-                match body.yield_ty() {
+                match self.body.yield_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
-                        let value_ty = value.ty(body, tcx);
+                        let value_ty = value.ty(self.body, tcx);
                         if let Err(terr) = self.sub_types(
                             value_ty,
                             ty,
@@ -1201,10 +1200,10 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
                 }
 
-                match body.resume_ty() {
+                match self.body.resume_ty() {
                     None => span_mirbug!(self, term, "yield in non-coroutine"),
                     Some(ty) => {
-                        let resume_ty = resume_arg.ty(body, tcx);
+                        let resume_ty = resume_arg.ty(self.body, tcx);
                         if let Err(terr) = self.sub_types(
                             ty,
                             resume_ty.ty,
@@ -1228,7 +1227,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_call_dest(
         &mut self,
-        body: &Body<'tcx>,
         term: &Terminator<'tcx>,
         sig: &ty::FnSig<'tcx>,
         destination: Place<'tcx>,
@@ -1238,7 +1236,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.tcx();
         match target {
             Some(_) => {
-                let dest_ty = destination.ty(body, tcx).ty;
+                let dest_ty = destination.ty(self.body, tcx).ty;
                 let dest_ty = self.normalize(dest_ty, term_location);
                 let category = match destination.as_local() {
                     Some(RETURN_PLACE) => {
@@ -1254,7 +1252,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             ConstraintCategory::Return(ReturnConstraint::Normal)
                         }
                     }
-                    Some(l) if !body.local_decls[l].is_user_variable() => {
+                    Some(l) if !self.body.local_decls[l].is_user_variable() => {
                         ConstraintCategory::Boring
                     }
                     // The return type of a call is interesting for diagnostics.
@@ -1295,10 +1293,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self, body, term, func, term_location, call_source))]
+    #[instrument(level = "debug", skip(self, term, func, term_location, call_source))]
     fn check_call_inputs(
         &mut self,
-        body: &Body<'tcx>,
         term: &Terminator<'tcx>,
         func: &Operand<'tcx>,
         sig: &ty::FnSig<'tcx>,
@@ -1310,7 +1307,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             span_mirbug!(self, term, "call to {:?} with wrong # of args", sig);
         }
 
-        let func_ty = func.ty(body, self.infcx.tcx);
+        let func_ty = func.ty(self.body, self.infcx.tcx);
         if let ty::FnDef(def_id, _) = *func_ty.kind() {
             // Some of the SIMD intrinsics are special: they need a particular argument to be a
             // constant. (Eventually this should use const-generics, but those are not up for the
@@ -1334,7 +1331,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         debug!(?func_ty);
 
         for (n, (fn_arg, op_arg)) in iter::zip(sig.inputs(), args).enumerate() {
-            let op_arg_ty = op_arg.node.ty(body, self.tcx());
+            let op_arg_ty = op_arg.node.ty(self.body, self.tcx());
 
             let op_arg_ty = self.normalize(op_arg_ty, term_location);
             let category = if call_source.from_hir_call() {
@@ -1358,16 +1355,16 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_iscleanup(&mut self, body: &Body<'tcx>, block_data: &BasicBlockData<'tcx>) {
+    fn check_iscleanup(&mut self, block_data: &BasicBlockData<'tcx>) {
         let is_cleanup = block_data.is_cleanup;
         self.last_span = block_data.terminator().source_info.span;
         match block_data.terminator().kind {
             TerminatorKind::Goto { target } => {
-                self.assert_iscleanup(body, block_data, target, is_cleanup)
+                self.assert_iscleanup(block_data, target, is_cleanup)
             }
             TerminatorKind::SwitchInt { ref targets, .. } => {
                 for target in targets.all_targets() {
-                    self.assert_iscleanup(body, block_data, *target, is_cleanup);
+                    self.assert_iscleanup(block_data, *target, is_cleanup);
                 }
             }
             TerminatorKind::UnwindResume => {
@@ -1399,55 +1396,48 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if is_cleanup {
                     span_mirbug!(self, block_data, "yield in cleanup block")
                 }
-                self.assert_iscleanup(body, block_data, resume, is_cleanup);
+                self.assert_iscleanup(block_data, resume, is_cleanup);
                 if let Some(drop) = drop {
-                    self.assert_iscleanup(body, block_data, drop, is_cleanup);
+                    self.assert_iscleanup(block_data, drop, is_cleanup);
                 }
             }
             TerminatorKind::Unreachable => {}
             TerminatorKind::Drop { target, unwind, .. }
             | TerminatorKind::Assert { target, unwind, .. } => {
-                self.assert_iscleanup(body, block_data, target, is_cleanup);
-                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
+                self.assert_iscleanup(block_data, target, is_cleanup);
+                self.assert_iscleanup_unwind(block_data, unwind, is_cleanup);
             }
             TerminatorKind::Call { ref target, unwind, .. } => {
                 if let &Some(target) = target {
-                    self.assert_iscleanup(body, block_data, target, is_cleanup);
+                    self.assert_iscleanup(block_data, target, is_cleanup);
                 }
-                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
+                self.assert_iscleanup_unwind(block_data, unwind, is_cleanup);
             }
             TerminatorKind::FalseEdge { real_target, imaginary_target } => {
-                self.assert_iscleanup(body, block_data, real_target, is_cleanup);
-                self.assert_iscleanup(body, block_data, imaginary_target, is_cleanup);
+                self.assert_iscleanup(block_data, real_target, is_cleanup);
+                self.assert_iscleanup(block_data, imaginary_target, is_cleanup);
             }
             TerminatorKind::FalseUnwind { real_target, unwind } => {
-                self.assert_iscleanup(body, block_data, real_target, is_cleanup);
-                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
+                self.assert_iscleanup(block_data, real_target, is_cleanup);
+                self.assert_iscleanup_unwind(block_data, unwind, is_cleanup);
             }
             TerminatorKind::InlineAsm { ref targets, unwind, .. } => {
                 for &target in targets {
-                    self.assert_iscleanup(body, block_data, target, is_cleanup);
+                    self.assert_iscleanup(block_data, target, is_cleanup);
                 }
-                self.assert_iscleanup_unwind(body, block_data, unwind, is_cleanup);
+                self.assert_iscleanup_unwind(block_data, unwind, is_cleanup);
             }
         }
     }
 
-    fn assert_iscleanup(
-        &mut self,
-        body: &Body<'tcx>,
-        ctxt: &dyn fmt::Debug,
-        bb: BasicBlock,
-        iscleanuppad: bool,
-    ) {
-        if body[bb].is_cleanup != iscleanuppad {
+    fn assert_iscleanup(&mut self, ctxt: &dyn fmt::Debug, bb: BasicBlock, iscleanuppad: bool) {
+        if self.body[bb].is_cleanup != iscleanuppad {
             span_mirbug!(self, ctxt, "cleanuppad mismatch: {:?} should be {:?}", bb, iscleanuppad);
         }
     }
 
     fn assert_iscleanup_unwind(
         &mut self,
-        body: &Body<'tcx>,
         ctxt: &dyn fmt::Debug,
         unwind: UnwindAction,
         is_cleanup: bool,
@@ -1457,7 +1447,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 if is_cleanup {
                     span_mirbug!(self, ctxt, "unwind on cleanup block")
                 }
-                self.assert_iscleanup(body, ctxt, unwind, true);
+                self.assert_iscleanup(ctxt, unwind, true);
             }
             UnwindAction::Continue => {
                 if is_cleanup {
@@ -1468,8 +1458,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    fn check_local(&mut self, body: &Body<'tcx>, local: Local, local_decl: &LocalDecl<'tcx>) {
-        match body.local_kind(local) {
+    fn check_local(&mut self, local: Local, local_decl: &LocalDecl<'tcx>) {
+        match self.body.local_kind(local) {
             LocalKind::ReturnPointer | LocalKind::Arg => {
                 // return values of normal functions are required to be
                 // sized by typeck, but return values of ADT constructors are
@@ -1598,23 +1588,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, body), level = "debug")]
-    fn check_rvalue(&mut self, body: &Body<'tcx>, rvalue: &Rvalue<'tcx>, location: Location) {
+    #[instrument(skip(self), level = "debug")]
+    fn check_rvalue(&mut self, rvalue: &Rvalue<'tcx>, location: Location) {
         let tcx = self.tcx();
-        let span = body.source_info(location).span;
+        let span = self.body.source_info(location).span;
 
         match rvalue {
             Rvalue::Aggregate(ak, ops) => {
                 for op in ops {
                     self.check_operand(op, location);
                 }
-                self.check_aggregate_rvalue(body, rvalue, ak, ops, location)
+                self.check_aggregate_rvalue(rvalue, ak, ops, location)
             }
 
             Rvalue::Repeat(operand, len) => {
                 self.check_operand(operand, location);
 
-                let array_ty = rvalue.ty(body.local_decls(), tcx);
+                let array_ty = rvalue.ty(self.body.local_decls(), tcx);
                 self.prove_predicate(
                     ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(array_ty.into())),
                     Locations::Single(location),
@@ -1633,7 +1623,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                         Operand::Move(place) => {
                             // Make sure that repeated elements implement `Copy`.
-                            let ty = place.ty(body, tcx).ty;
+                            let ty = place.ty(self.body, tcx).ty;
                             let trait_ref = ty::TraitRef::new(
                                 tcx,
                                 tcx.require_lang_item(LangItem::Copy, Some(span)),
@@ -1688,7 +1678,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 match *cast_kind {
                     CastKind::PointerCoercion(PointerCoercion::ReifyFnPointer, coercion_source) => {
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
-                        let src_ty = op.ty(body, tcx);
+                        let src_ty = op.ty(self.body, tcx);
                         let mut src_sig = src_ty.fn_sig(tcx);
                         if let ty::FnDef(def_id, _) = src_ty.kind()
                             && let ty::FnPtr(_, target_hdr) = *ty.kind()
@@ -1697,7 +1687,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             && let Some(safe_sig) = tcx.adjust_target_feature_sig(
                                 *def_id,
                                 src_sig,
-                                body.source.def_id(),
+                                self.body.source.def_id(),
                             )
                         {
                             src_sig = safe_sig;
@@ -1790,7 +1780,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         PointerCoercion::ClosureFnPointer(safety),
                         coercion_source,
                     ) => {
-                        let sig = match op.ty(body, tcx).kind() {
+                        let sig = match op.ty(self.body, tcx).kind() {
                             ty::Closure(_, args) => args.as_closure().sig(),
                             _ => bug!(),
                         };
@@ -1819,7 +1809,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         PointerCoercion::UnsafeFnPointer,
                         coercion_source,
                     ) => {
-                        let fn_sig = op.ty(body, tcx).fn_sig(tcx);
+                        let fn_sig = op.ty(self.body, tcx).fn_sig(tcx);
 
                         // The type that we see in the fcx is like
                         // `foo::<'a, 'b>`, where `foo` is the path to a
@@ -1853,7 +1843,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         let trait_ref = ty::TraitRef::new(
                             tcx,
                             tcx.require_lang_item(LangItem::CoerceUnsized, Some(span)),
-                            [op.ty(body, tcx), ty],
+                            [op.ty(self.body, tcx), ty],
                         );
 
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
@@ -1879,7 +1869,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                             _ => panic!("Invalid dyn* cast_ty"),
                         };
 
-                        let self_ty = op.ty(body, tcx);
+                        let self_ty = op.ty(self.body, tcx);
 
                         let is_implicit_coercion = coercion_source == CoercionSource::Implicit;
                         self.prove_predicates(
@@ -1906,7 +1896,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         PointerCoercion::MutToConstPointer,
                         coercion_source,
                     ) => {
-                        let ty::RawPtr(ty_from, hir::Mutability::Mut) = op.ty(body, tcx).kind()
+                        let ty::RawPtr(ty_from, hir::Mutability::Mut) =
+                            op.ty(self.body, tcx).kind()
                         else {
                             span_mirbug!(self, rvalue, "unexpected base type for cast {:?}", ty,);
                             return;
@@ -1934,7 +1925,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerCoercion(PointerCoercion::ArrayToPointer, coercion_source) => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
 
                         let opt_ty_elem_mut = match ty_from.kind() {
                             ty::RawPtr(array_ty, array_mut) => match array_ty.kind() {
@@ -1997,7 +1988,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerExposeProvenance => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2015,7 +2006,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     }
 
                     CastKind::PointerWithExposedProvenance => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2032,7 +2023,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2049,7 +2040,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::IntToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2066,7 +2057,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToInt => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2083,7 +2074,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FloatToFloat => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2100,7 +2091,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::FnPtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2117,7 +2108,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         }
                     }
                     CastKind::PtrToPtr => {
-                        let ty_from = op.ty(body, tcx);
+                        let ty_from = op.ty(self.body, tcx);
                         let cast_ty_from = CastTy::from_ty(ty_from);
                         let cast_ty_to = CastTy::from_ty(*ty);
                         match (cast_ty_from, cast_ty_to) {
@@ -2193,7 +2184,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
 
             Rvalue::Ref(region, _borrow_kind, borrowed_place) => {
-                self.add_reborrow_constraint(body, location, *region, borrowed_place);
+                self.add_reborrow_constraint(location, *region, borrowed_place);
             }
 
             Rvalue::BinaryOp(
@@ -2203,12 +2194,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 self.check_operand(left, location);
                 self.check_operand(right, location);
 
-                let ty_left = left.ty(body, tcx);
+                let ty_left = left.ty(self.body, tcx);
                 match ty_left.kind() {
                     // Types with regions are comparable if they have a common super-type.
                     ty::RawPtr(_, _) | ty::FnPtr(..) => {
-                        let ty_right = right.ty(body, tcx);
-                        let common_ty = self.infcx.next_ty_var(body.source_info(location).span);
+                        let ty_right = right.ty(self.body, tcx);
+                        let common_ty =
+                            self.infcx.next_ty_var(self.body.source_info(location).span);
                         self.sub_types(
                             ty_left,
                             common_ty,
@@ -2237,7 +2229,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // For types with no regions we can just check that the
                     // both operands have the same type.
                     ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_)
-                        if ty_left == right.ty(body, tcx) => {}
+                        if ty_left == right.ty(self.body, tcx) => {}
                     // Other types are compared by trait methods, not by
                     // `Rvalue::BinaryOp`.
                     _ => span_mirbug!(
@@ -2245,7 +2237,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                         rvalue,
                         "unexpected comparison types {:?} and {:?}",
                         ty_left,
-                        right.ty(body, tcx)
+                        right.ty(self.body, tcx)
                     ),
                 }
             }
@@ -2326,7 +2318,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     fn check_aggregate_rvalue(
         &mut self,
-        body: &Body<'tcx>,
         rvalue: &Rvalue<'tcx>,
         aggregate_kind: &AggregateKind<'tcx>,
         operands: &IndexSlice<FieldIdx, Operand<'tcx>>,
@@ -2359,7 +2350,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     continue;
                 }
             };
-            let operand_ty = operand.ty(body, tcx);
+            let operand_ty = operand.ty(self.body, tcx);
             let operand_ty = self.normalize(operand_ty, location);
 
             if let Err(terr) = self.sub_types(
@@ -2389,7 +2380,6 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     /// - `borrowed_place`: the place `P` being borrowed
     fn add_reborrow_constraint(
         &mut self,
-        body: &Body<'tcx>,
         location: Location,
         borrow_region: ty::Region<'tcx>,
         borrowed_place: &Place<'tcx>,
@@ -2428,7 +2418,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let def = self.body.source.def_id().expect_local();
         let upvars = tcx.closure_captures(def);
         let field =
-            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), body);
+            path_utils::is_upvar_field_projection(tcx, upvars, borrowed_place.as_ref(), self.body);
         let category = if let Some(field) = field {
             ConstraintCategory::ClosureUpvar(field)
         } else {
@@ -2440,7 +2430,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
             match elem {
                 ProjectionElem::Deref => {
-                    let base_ty = base.ty(body, tcx).ty;
+                    let base_ty = base.ty(self.body, tcx).ty;
 
                     debug!("add_reborrow_constraint - base_ty = {:?}", base_ty);
                     match base_ty.kind() {
@@ -2449,7 +2439,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                                 sup: ref_region.as_var(),
                                 sub: borrow_region.as_var(),
                                 locations: location.to_locations(),
-                                span: location.to_locations().span(body),
+                                span: location.to_locations().span(self.body),
                                 category,
                                 variance_info: ty::VarianceDiagInfo::default(),
                                 from_closure: false,
@@ -2634,27 +2624,27 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         tcx.predicates_of(def_id).instantiate(tcx, args)
     }
 
-    #[instrument(skip(self, body), level = "debug")]
-    fn typeck_mir(&mut self, body: &Body<'tcx>) {
-        self.last_span = body.span;
-        debug!(?body.span);
+    #[instrument(skip(self), level = "debug")]
+    fn typeck_mir(&mut self) {
+        self.last_span = self.body.span;
+        debug!(?self.body.span);
 
-        for (local, local_decl) in body.local_decls.iter_enumerated() {
-            self.check_local(body, local, local_decl);
+        for (local, local_decl) in self.body.local_decls.iter_enumerated() {
+            self.check_local(local, local_decl);
         }
 
-        for (block, block_data) in body.basic_blocks.iter_enumerated() {
+        for (block, block_data) in self.body.basic_blocks.iter_enumerated() {
             let mut location = Location { block, statement_index: 0 };
             for stmt in &block_data.statements {
                 if !stmt.source_info.span.is_dummy() {
                     self.last_span = stmt.source_info.span;
                 }
-                self.check_stmt(body, stmt, location);
+                self.check_stmt(stmt, location);
                 location.statement_index += 1;
             }
 
-            self.check_terminator(body, block_data.terminator(), location);
-            self.check_iscleanup(body, block_data);
+            self.check_terminator(block_data.terminator(), location);
+            self.check_iscleanup(block_data);
         }
     }
 }
