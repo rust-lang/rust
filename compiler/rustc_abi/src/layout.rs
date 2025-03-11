@@ -315,7 +315,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
-        is_unsafe_cell: bool,
+        is_special_no_niche: bool,
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         discr_range_of_repr: impl Fn(i128, i128) -> (Integer, bool),
         discriminants: impl Iterator<Item = (VariantIdx, i128)>,
@@ -348,7 +348,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                 repr,
                 variants,
                 is_enum,
-                is_unsafe_cell,
+                is_special_no_niche,
                 scalar_valid_range,
                 always_sized,
                 present_first,
@@ -505,7 +505,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         repr: &ReprOptions,
         variants: &IndexSlice<VariantIdx, IndexVec<FieldIdx, F>>,
         is_enum: bool,
-        is_unsafe_cell: bool,
+        is_special_no_niche: bool,
         scalar_valid_range: (Bound<u128>, Bound<u128>),
         always_sized: bool,
         present_first: VariantIdx,
@@ -524,7 +524,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         let mut st = self.univariant(&variants[v], repr, kind)?;
         st.variants = Variants::Single { index: v };
 
-        if is_unsafe_cell {
+        if is_special_no_niche {
             let hide_niches = |scalar: &mut _| match scalar {
                 Scalar::Initialized { value, valid_range } => {
                     *valid_range = WrappingRange::full(value.size(dl))
