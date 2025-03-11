@@ -1,3 +1,31 @@
+error: item does not constrain `FutNothing::{opaque#0}`
+  --> $DIR/hkl_forbidden4.rs:19:10
+   |
+LL | async fn call<F>(_f: F)
+   |          ^^^^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/hkl_forbidden4.rs:10:23
+   |
+LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: item does not constrain `FutNothing::{opaque#0}`
+  --> $DIR/hkl_forbidden4.rs:23:1
+   |
+LL | / {
+...  |
+LL | | }
+   | |_^
+   |
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/hkl_forbidden4.rs:10:23
+   |
+LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error: concrete type differs from previous defining opaque type use
   --> $DIR/hkl_forbidden4.rs:12:1
    |
@@ -10,34 +38,6 @@ note: previous use here
 LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 
-error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signature
-  --> $DIR/hkl_forbidden4.rs:18:10
-   |
-LL | async fn call<F>(_f: F)
-   |          ^^^^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/hkl_forbidden4.rs:10:23
-   |
-LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: item does not constrain `FutNothing::{opaque#0}`, but has it in its signature
-  --> $DIR/hkl_forbidden4.rs:22:1
-   |
-LL | / {
-...  |
-LL | | }
-   | |_^
-   |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/hkl_forbidden4.rs:10:23
-   |
-LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error[E0792]: expected generic lifetime parameter, found `'any`
   --> $DIR/hkl_forbidden4.rs:14:5
    |
@@ -48,7 +48,7 @@ LL |     call(operation).await
    |     ^^^^^^^^^^^^^^^
 
 error[E0792]: expected generic lifetime parameter, found `'any`
-  --> $DIR/hkl_forbidden4.rs:22:1
+  --> $DIR/hkl_forbidden4.rs:23:1
    |
 LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                   -- this generic parameter must be used with a generic lifetime parameter

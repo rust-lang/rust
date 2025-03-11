@@ -4529,6 +4529,7 @@ version = "0.0.0"
 dependencies = [
  "itertools",
  "rustc_abi",
+ "rustc_attr_parsing",
  "rustc_data_structures",
  "rustc_errors",
  "rustc_fluent_macro",

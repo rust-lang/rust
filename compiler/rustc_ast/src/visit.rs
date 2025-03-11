@@ -892,7 +892,14 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, contract, body },
+            Fn {
+                defaultness: _,
+                sig: FnSig { header, decl, span: _ },
+                generics,
+                contract,
+                body,
+                define_opaque,
+            },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
@@ -900,6 +907,9 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             try_visit!(visitor.visit_fn_decl(decl));
             visit_opt!(visitor, visit_contract, contract);
             visit_opt!(visitor, visit_block, body);
+            for (id, path) in define_opaque.iter().flatten() {
+                try_visit!(visitor.visit_path(path, *id))
+            }
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
@@ -1203,7 +1213,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
                 FnKind::Closure(binder, coroutine_kind, fn_decl, body),
                 *span,
                 *id
-            ))
+            ));
         }
         ExprKind::Block(block, opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);

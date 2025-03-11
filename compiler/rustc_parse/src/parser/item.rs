@@ -217,7 +217,14 @@ impl<'a> Parser<'a> {
                 self.parse_fn(attrs, fn_parse_mode, lo, vis, case)?;
             (
                 ident,
-                ItemKind::Fn(Box::new(Fn { defaultness: def_(), sig, generics, contract, body })),
+                ItemKind::Fn(Box::new(Fn {
+                    defaultness: def_(),
+                    sig,
+                    generics,
+                    contract,
+                    body,
+                    define_opaque: None,
+                })),
             )
         } else if self.eat_keyword(exp!(Extern)) {
             if self.eat_keyword(exp!(Crate)) {

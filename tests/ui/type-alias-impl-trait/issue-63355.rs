@@ -21,6 +21,7 @@ impl Foo for () {}
 impl Bar for () {
     type Foo = FooImpl;
 
+    #[define_opaque(FooImpl)]
     fn foo() -> Self::Foo {
         ()
     }
@@ -33,10 +34,12 @@ impl Baz for () {
     type Foo = FooImpl;
     type Bar = BarImpl;
 
+    #[define_opaque(FooImpl)]
     fn foo() -> Self::Foo {
         ()
     }
 
+    #[define_opaque(BarImpl)]
     fn bar() -> Self::Bar {
         //~^ ERROR: item does not constrain `FooImpl::{opaque#0}`
         ()

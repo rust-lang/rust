@@ -9,6 +9,7 @@ fn main() {
     type WrongGeneric<T> = impl 'static;
     //~^ ERROR: at least one trait must be specified
 
+    #[define_opaque(WrongGeneric)]
     fn wrong_generic<T>(t: T) -> WrongGeneric<T> {
         t
         //~^ ERROR the parameter type `T` may not live long enough

@@ -650,7 +650,16 @@ impl<'a> State<'a> {
         attrs: &[ast::Attribute],
         func: &ast::Fn,
     ) {
-        let ast::Fn { defaultness, generics, sig, contract, body } = func;
+        let ast::Fn { defaultness, generics, sig, contract, body, define_opaque } = func;
+
+        if let Some(define_opaque) = define_opaque {
+            for (_, path) in define_opaque {
+                self.word("define opaques from ");
+                self.print_path(path, false, 0);
+                self.word(",");
+            }
+        }
+
         if body.is_some() {
             self.head("");
         }
@@ -698,7 +707,7 @@ impl<'a> State<'a> {
         }
         self.print_generic_params(&generics.params);
         self.print_fn_params_and_ret(decl, false);
-        self.print_where_clause(&generics.where_clause)
+        self.print_where_clause(&generics.where_clause);
     }
 
     pub(crate) fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {

@@ -1307,13 +1307,18 @@ impl Attribute {
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
     pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
+    /// Preprocessed `#[define_opaque]` attribute.
+    pub define_opaque: Option<&'tcx [(Span, LocalDefId)]>,
     // Only present when the crate hash is needed.
     pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> AttributeMap<'tcx> {
-    pub const EMPTY: &'static AttributeMap<'static> =
-        &AttributeMap { map: SortedMap::new(), opt_hash: Some(Fingerprint::ZERO) };
+    pub const EMPTY: &'static AttributeMap<'static> = &AttributeMap {
+        map: SortedMap::new(),
+        opt_hash: Some(Fingerprint::ZERO),
+        define_opaque: None,
+    };
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {

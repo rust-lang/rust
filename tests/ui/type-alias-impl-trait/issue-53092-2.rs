@@ -2,15 +2,14 @@
 #![allow(dead_code)]
 
 type Bug<T, U> = impl Fn(T) -> U + Copy;
-//~^ ERROR cycle detected
 
+#[define_opaque(Bug)]
+//~^ ERROR: only functions and methods can define opaque types
 const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
-//~^ ERROR item does not constrain `Bug::{opaque#0}`, but has it in its signature
-//~| ERROR item does not constrain `Bug::{opaque#0}`, but has it in its signature
-//~| ERROR non-defining opaque type use in defining scope
 
+#[define_opaque(Bug)]
 fn make_bug<T, U: From<T>>() -> Bug<T, U> {
-    |x| x.into()
+    |x| x.into() //~ ERROR is not satisfied
 }
 
 fn main() {
