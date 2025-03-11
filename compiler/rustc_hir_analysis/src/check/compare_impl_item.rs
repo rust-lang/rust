@@ -264,9 +264,9 @@ fn compare_method_predicate_entailment<'tcx>(
     }
 
     // If we're within a const implementation, we need to make sure that the method
-    // does not assume stronger `~const` bounds than the trait definition.
+    // does not assume stronger `[const]` bounds than the trait definition.
     //
-    // This registers the `~const` bounds of the impl method, which we will prove
+    // This registers the `[const]` bounds of the impl method, which we will prove
     // using the hybrid param-env that we earlier augmented with the const conditions
     // from the impl header and trait method declaration.
     if is_conditionally_const {
@@ -2335,7 +2335,7 @@ pub(super) fn check_type_bounds<'tcx>(
     )
     .collect();
 
-    // Only in a const implementation do we need to check that the `~const` item bounds hold.
+    // Only in a const implementation do we need to check that the `[const]` item bounds hold.
     if tcx.is_conditionally_const(impl_ty_def_id) {
         obligations.extend(util::elaborate(
             tcx,

@@ -4,13 +4,13 @@ error: const trait bounds are not allowed in trait object types
 LL |     let _: &dyn const Trait;
    |                 ^^^^^^^^^^^
 
-error: `~const` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:10:17
+error: `[const]` is not allowed here
+  --> $DIR/const-trait-bounds-trait-objects.rs:10:13
    |
-LL |     let _: &dyn ~const Trait;
-   |                 ^^^^^^
+LL |     let _: &dyn [const] Trait;
+   |             ^^^^^^^^^^^
    |
-   = note: trait objects cannot have `~const` trait bounds
+   = note: trait objects cannot have `[const]` trait bounds
 
 error: const trait bounds are not allowed in trait object types
   --> $DIR/const-trait-bounds-trait-objects.rs:15:25
@@ -18,13 +18,13 @@ error: const trait bounds are not allowed in trait object types
 LL | const fn handle(_: &dyn const NonConst) {}
    |                         ^^^^^^^^^^^^^^
 
-error: `~const` is not allowed here
-  --> $DIR/const-trait-bounds-trait-objects.rs:17:23
+error: `[const]` is not allowed here
+  --> $DIR/const-trait-bounds-trait-objects.rs:17:19
    |
-LL | const fn take(_: &dyn ~const NonConst) {}
-   |                       ^^^^^^
+LL | const fn take(_: &dyn [const] NonConst) {}
+   |                   ^^^^^^^^^^^
    |
-   = note: trait objects cannot have `~const` trait bounds
+   = note: trait objects cannot have `[const]` trait bounds
 
 error: aborting due to 4 previous errors
 

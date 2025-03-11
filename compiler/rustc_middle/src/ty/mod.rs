@@ -2156,7 +2156,7 @@ impl<'tcx> TyCtxt<'tcx> {
             },
             DefKind::Closure => {
                 // Closures and RPITs will eventually have const conditions
-                // for `~const` bounds.
+                // for `[const]` bounds.
                 false
             }
             DefKind::Ctor(_, CtorKind::Const)

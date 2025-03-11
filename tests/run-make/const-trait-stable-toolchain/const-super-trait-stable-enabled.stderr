@@ -1,10 +1,10 @@
-error: `~const` is not allowed here
+error: `[const]` is not allowed here
  --> const-super-trait.rs:7:12
   |
 7 | trait Bar: ~const Foo {}
   |            ^^^^^^
   |
-note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
  --> const-super-trait.rs:7:1
   |
 7 | trait Bar: ~const Foo {}
@@ -16,25 +16,25 @@ error[E0554]: `#![feature]` may not be used on the NIGHTLY release channel
 1 | #![cfg_attr(feature_enabled, feature(const_trait_impl))]
   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: `~const` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `#[const_trait]` traits
  --> const-super-trait.rs:7:12
   |
 7 | trait Bar: ~const Foo {}
   |            ^^^^^^ can't be applied to `Foo`
   |
-note: `Foo` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Foo` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
  --> const-super-trait.rs:3:1
   |
 3 | trait Foo {
   | ^^^^^^^^^
 
-error: `~const` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `#[const_trait]` traits
  --> const-super-trait.rs:9:17
   |
 9 | const fn foo<T: ~const Bar>(x: &T) {
   |                 ^^^^^^ can't be applied to `Bar`
   |
-note: `Bar` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `Bar` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
  --> const-super-trait.rs:7:1
   |
 7 | trait Bar: ~const Foo {}

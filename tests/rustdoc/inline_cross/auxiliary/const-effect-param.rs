@@ -4,7 +4,7 @@
 #[const_trait]
 pub trait Resource {}
 
-pub const fn load<R: ~const Resource>() -> i32 {
+pub const fn load<R: [const] Resource>() -> i32 {
     0
 }
 

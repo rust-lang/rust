@@ -421,7 +421,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             Some(ConstConditionsHold::Yes)
         } else {
             tcx.dcx()
-                .span_delayed_bug(call_span, "this should have reported a ~const error in HIR");
+                .span_delayed_bug(call_span, "this should have reported a [const] error in HIR");
             Some(ConstConditionsHold::No)
         }
     }

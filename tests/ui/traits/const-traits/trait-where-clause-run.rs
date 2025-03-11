@@ -10,7 +10,7 @@ trait Bar {
 
 #[const_trait]
 trait Foo {
-    fn foo() -> u8 where Self: ~const Bar {
+    fn foo() -> u8 where Self: [const] Bar {
         <Self as Bar>::bar() * 6
     }
 }

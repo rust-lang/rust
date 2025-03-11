@@ -1,19 +1,19 @@
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method.rs:14:32
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closure-trait-method.rs:14:30
    |
-LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                ^^^^^^ can't be applied to `FnOnce`
+LL | const fn need_const_closure<T: [const] FnOnce(()) -> i32>(x: T) -> i32 {
+   |                              ^^^^^^^^^ can't be applied to `FnOnce`
    |
-note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 
-error: `~const` can only be applied to `#[const_trait]` traits
-  --> $DIR/const-closure-trait-method.rs:14:32
+error: `[const]` can only be applied to `#[const_trait]` traits
+  --> $DIR/const-closure-trait-method.rs:14:30
    |
-LL | const fn need_const_closure<T: ~const FnOnce(()) -> i32>(x: T) -> i32 {
-   |                                ^^^^^^ can't be applied to `FnOnce`
+LL | const fn need_const_closure<T: [const] FnOnce(()) -> i32>(x: T) -> i32 {
+   |                              ^^^^^^^^^ can't be applied to `FnOnce`
    |
-note: `FnOnce` can't be used with `~const` because it isn't annotated with `#[const_trait]`
+note: `FnOnce` can't be used with `[const]` because it isn't annotated with `#[const_trait]`
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 

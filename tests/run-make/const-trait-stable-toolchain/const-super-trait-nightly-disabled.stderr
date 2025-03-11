@@ -1,10 +1,10 @@
-error: `~const` is not allowed here
+error: `[const]` is not allowed here
   --> const-super-trait.rs:7:12
    |
 LL | trait Bar: ~const Foo {}
    |            ^^^^^^
    |
-note: this trait is not a `#[const_trait]`, so it cannot have `~const` trait bounds
+note: this trait is not a `#[const_trait]`, so it cannot have `[const]` trait bounds
   --> const-super-trait.rs:7:1
    |
 LL | trait Bar: ~const Foo {}
@@ -30,7 +30,7 @@ LL | const fn foo<T: ~const Bar>(x: &T) {
    = help: add `#![feature(const_trait_impl)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: `~const` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `#[const_trait]` traits
   --> const-super-trait.rs:7:12
    |
 LL | trait Bar: ~const Foo {}
@@ -41,7 +41,7 @@ help: enable `#![feature(const_trait_impl)]` in your crate and mark `Foo` as `#[
 LL | #[const_trait] trait Foo {
    | ++++++++++++++
 
-error: `~const` can only be applied to `#[const_trait]` traits
+error: `[const]` can only be applied to `#[const_trait]` traits
   --> const-super-trait.rs:9:17
    |
 LL | const fn foo<T: ~const Bar>(x: &T) {
