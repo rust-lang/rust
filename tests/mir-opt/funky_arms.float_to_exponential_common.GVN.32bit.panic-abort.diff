@@ -29,6 +29,16 @@
                   debug precision => _8;
                   let _8: usize;
                   scope 5 (inlined Formatter::<'_>::precision) {
+                      let mut _22: std::option::Option<u16>;
+                      scope 6 (inlined Option::<u16>::map::<usize, {closure@Formatter<'_>::precision::{closure#0}}>) {
+                          let mut _23: isize;
+                          let _24: u16;
+                          let mut _25: usize;
+                          scope 7 {
+                              scope 8 (inlined Formatter::<'_>::precision::{closure#0}) {
+                              }
+                          }
+                      }
                   }
               }
           }
@@ -65,9 +75,12 @@
   
       bb3: {
           StorageLive(_6);
-          _6 = copy (((*_1).0: std::fmt::FormattingOptions).4: std::option::Option<usize>);
-          _7 = discriminant(_6);
-          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb9];
+          StorageLive(_24);
+          StorageLive(_22);
+          _22 = copy (((*_1).0: std::fmt::FormattingOptions).4: std::option::Option<u16>);
+          StorageLive(_23);
+          _23 = discriminant(_22);
+          switchInt(move _23) -> [0: bb11, 1: bb12, otherwise: bb10];
       }
   
       bb4: {
@@ -135,7 +148,33 @@
       }
   
       bb9: {
+          StorageDead(_23);
+          StorageDead(_22);
+          StorageDead(_24);
+          _7 = discriminant(_6);
+          switchInt(move _7) -> [1: bb4, 0: bb6, otherwise: bb10];
+      }
+  
+      bb10: {
           unreachable;
       }
+  
+      bb11: {
+          _6 = const Option::<usize>::None;
+          goto -> bb9;
+      }
+  
+      bb12: {
+          _24 = move ((_22 as Some).0: u16);
+          StorageLive(_25);
+          _25 = copy _24 as usize (IntToInt);
+          _6 = Option::<usize>::Some(move _25);
+          StorageDead(_25);
+          goto -> bb9;
+      }
+  }
+  
+  ALLOC0 (size: 8, align: 4) {
+      00 00 00 00 __ __ __ __                         │ ....░░░░
   }
   

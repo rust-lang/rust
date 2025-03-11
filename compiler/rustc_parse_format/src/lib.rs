@@ -190,7 +190,7 @@ pub enum DebugHex {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
-    CountIs(usize),
+    CountIs(u16),
     /// The count is specified by the argument with the given name.
     CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
@@ -565,7 +565,7 @@ impl<'a> Parser<'a> {
     /// consuming a macro argument, `None` if it's the case.
     fn position(&mut self) -> Option<Position<'a>> {
         if let Some(i) = self.integer() {
-            Some(ArgumentIs(i))
+            Some(ArgumentIs(i.into()))
         } else {
             match self.cur.peek() {
                 Some(&(lo, c)) if rustc_lexer::is_id_start(c) => {
@@ -771,7 +771,7 @@ impl<'a> Parser<'a> {
     /// width.
     fn count(&mut self, start: usize) -> Count<'a> {
         if let Some(i) = self.integer() {
-            if self.consume('$') { CountIsParam(i) } else { CountIs(i) }
+            if self.consume('$') { CountIsParam(i.into()) } else { CountIs(i) }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
@@ -822,15 +822,15 @@ impl<'a> Parser<'a> {
         word
     }
 
-    fn integer(&mut self) -> Option<usize> {
-        let mut cur: usize = 0;
+    fn integer(&mut self) -> Option<u16> {
+        let mut cur: u16 = 0;
         let mut found = false;
         let mut overflow = false;
         let start = self.current_pos();
         while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
                 let (tmp, mul_overflow) = cur.overflowing_mul(10);
-                let (tmp, add_overflow) = tmp.overflowing_add(i as usize);
+                let (tmp, add_overflow) = tmp.overflowing_add(i as u16);
                 if mul_overflow || add_overflow {
                     overflow = true;
                 }
@@ -847,11 +847,11 @@ impl<'a> Parser<'a> {
             let overflowed_int = &self.input[start..end];
             self.err(
                 format!(
-                    "integer `{}` does not fit into the type `usize` whose range is `0..={}`",
+                    "integer `{}` does not fit into the type `u16` whose range is `0..={}`",
                     overflowed_int,
-                    usize::MAX
+                    u16::MAX
                 ),
-                "integer out of range for `usize`",
+                "integer out of range for `u16`",
                 self.span(start, end),
             );
         }
