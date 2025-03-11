@@ -853,6 +853,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(sanitizer_cfi_generalize_pointers, Some(true));
     tracked!(sanitizer_cfi_normalize_integers, Some(true));
     tracked!(sanitizer_dataflow_abilist, vec![String::from("/rustc/abc")]);
+    tracked!(sanitizer_kcfi_arity, Some(true));
     tracked!(sanitizer_memory_track_origins, 2);
     tracked!(sanitizer_recover, SanitizerSet::ADDRESS);
     tracked!(saturating_float_casts, Some(true));
