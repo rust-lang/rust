@@ -7,6 +7,8 @@ declare global {
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
+        /** Generated in `render/context.rs` */
+        SIDEBAR_ITEMS?: { [key: string]: string[] };
         /** Used by the popover tooltip code. */
         RUSTDOC_TOOLTIP_HOVER_MS: number;
         /** Used by the popover tooltip code. */
@@ -42,6 +44,17 @@ declare global {
          * Set up event listeners for a scraped source example.
          */
         updateScrapedExample?: function(HTMLElement, HTMLElement),
+        /**
+         * register trait implementors, called by code generated in
+         * `write_shared.rs`
+         */
+        register_implementors?: function(rustdoc.Implementors): void,
+        /**
+         * fallback in case `register_implementors` isn't defined yet.
+         */
+        pending_implementors?: rustdoc.Implementors,
+        register_type_impls?: function(rustdoc.TypeImpls): void,
+        pending_type_impls?: rustdoc.TypeImpls,
     }
     interface HTMLElement {
         /** Used by the popover tooltip code. */
@@ -413,4 +426,16 @@ declare namespace rustdoc {
     };
 
     type VlqData = VlqData[] | number;
+
+    /**
+     * Maps from crate names to trait implementation data.
+     * Provied by generated `trait.impl` files.
+     */
+    type Implementors = {
+        [key: string]: Array<[string, number, Array<string>]>
+    }
+
+    type TypeImpls = {
+        [cratename: string]: Array<Array<string|0>>
+    }
 }
