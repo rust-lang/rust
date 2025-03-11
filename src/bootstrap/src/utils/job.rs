@@ -61,38 +61,41 @@ mod for_windows {
     use crate::Build;
 
     pub unsafe fn setup(build: &mut Build) {
-        // Enable the Windows Error Reporting dialog which msys disables,
-        // so we can JIT debug rustc
-        let mode = SetErrorMode(THREAD_ERROR_MODE::default());
-        let mode = THREAD_ERROR_MODE(mode);
-        SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
+        // SAFETY: pretty much everything below is unsafe
+        unsafe {
+            // Enable the Windows Error Reporting dialog which msys disables,
+            // so we can JIT debug rustc
+            let mode = SetErrorMode(THREAD_ERROR_MODE::default());
+            let mode = THREAD_ERROR_MODE(mode);
+            SetErrorMode(mode & !SEM_NOGPFAULTERRORBOX);
 
-        // Create a new job object for us to use
-        let job = CreateJobObjectW(None, PCWSTR::null()).unwrap();
+            // Create a new job object for us to use
+            let job = CreateJobObjectW(None, PCWSTR::null()).unwrap();
 
-        // Indicate that when all handles to the job object are gone that all
-        // process in the object should be killed. Note that this includes our
-        // entire process tree by default because we've added ourselves and our
-        // children will reside in the job by default.
-        let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
-        info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-        if build.config.low_priority {
-            info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
-            info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS.0;
-        }
-        let r = SetInformationJobObject(
-            job,
-            JobObjectExtendedLimitInformation,
-            &info as *const _ as *const c_void,
-            size_of_val(&info) as u32,
-        );
-        assert!(r.is_ok(), "{}", io::Error::last_os_error());
+            // Indicate that when all handles to the job object are gone that all
+            // process in the object should be killed. Note that this includes our
+            // entire process tree by default because we've added ourselves and our
+            // children will reside in the job by default.
+            let mut info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION::default();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            if build.config.low_priority {
+                info.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_PRIORITY_CLASS;
+                info.BasicLimitInformation.PriorityClass = BELOW_NORMAL_PRIORITY_CLASS.0;
+            }
+            let r = SetInformationJobObject(
+                job,
+                JobObjectExtendedLimitInformation,
+                &info as *const _ as *const c_void,
+                size_of_val(&info) as u32,
+            );
+            assert!(r.is_ok(), "{}", io::Error::last_os_error());
 
-        // Assign our process to this job object.
-        let r = AssignProcessToJobObject(job, GetCurrentProcess());
-        if r.is_err() {
-            CloseHandle(job).ok();
-            return;
+            // Assign our process to this job object.
+            let r = AssignProcessToJobObject(job, GetCurrentProcess());
+            if r.is_err() {
+                CloseHandle(job).ok();
+                return;
+            }
         }
 
         // Note: we intentionally leak the job object handle. When our process exits
