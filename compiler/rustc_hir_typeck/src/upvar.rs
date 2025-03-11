@@ -781,7 +781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
             };
-            let var_ident = self.tcx.hir().ident(var_hir_id);
+            let var_ident = self.tcx.hir_ident(var_hir_id);
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
@@ -988,13 +988,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
                                     let cause_span = self.tcx.hir().span(*capture_expr_id);
                                     lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
-                                        self.tcx.hir().name(*var_hir_id),
+                                        self.tcx.hir_name(*var_hir_id),
                                         captured_name,
                                     ));
                                 }
                                 UpvarMigrationInfo::CapturingNothing { use_span } => {
                                     lint.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
-                                        self.tcx.hir().name(*var_hir_id),
+                                        self.tcx.hir_name(*var_hir_id),
                                     ));
                                 }
 
@@ -1009,13 +1009,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
                                         lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
-                                            self.tcx.hir().name(*var_hir_id),
+                                            self.tcx.hir_name(*var_hir_id),
                                             captured_name,
                                         ));
                                     }
                                     UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
                                         lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
-                                            v = self.tcx.hir().name(*var_hir_id),
+                                            v = self.tcx.hir_name(*var_hir_id),
                                         ));
                                     }
                                 }
@@ -1026,7 +1026,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // not capturing something anymore cannot cause a trait to fail to be implemented:
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
-                                        let var_name = self.tcx.hir().name(*var_hir_id);
+                                        let var_name = self.tcx.hir_name(*var_hir_id);
                                         lint.span_label(closure_head_span, format!("\
                                         in Rust 2018, this closure implements {missing_trait} \
                                         as `{var_name}` implements {missing_trait}, but in Rust 2021, \
@@ -2300,7 +2300,7 @@ fn construct_capture_info_string<'tcx>(
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: HirId) -> Symbol {
-    tcx.hir().name(var_hir_id)
+    tcx.hir_name(var_hir_id)
 }
 
 #[instrument(level = "debug", skip(tcx))]

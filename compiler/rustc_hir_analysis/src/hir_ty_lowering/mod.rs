@@ -370,7 +370,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     #[instrument(level = "debug", skip(self), ret)]
     pub fn lower_resolved_lifetime(&self, resolved: rbv::ResolvedArg) -> ty::Region<'tcx> {
         let tcx = self.tcx();
-        let lifetime_name = |def_id| tcx.hir().name(tcx.local_def_id_to_hir_id(def_id));
+        let lifetime_name = |def_id| tcx.hir_name(tcx.local_def_id_to_hir_id(def_id));
 
         match resolved {
             rbv::ResolvedArg::StaticLifetime => tcx.lifetimes.re_static,
