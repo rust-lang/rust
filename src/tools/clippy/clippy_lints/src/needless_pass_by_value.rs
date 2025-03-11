@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         match kind {
             FnKind::ItemFn(.., header) => {
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
