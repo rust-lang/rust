@@ -12,9 +12,6 @@ extern crate ra_ap_rustc_index as rustc_index;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_abi;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_hashes;
-
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
@@ -23,9 +20,6 @@ extern crate rustc_pattern_analysis;
 
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_pattern_analysis as rustc_pattern_analysis;
-
-#[cfg(not(feature = "in-rust-tree"))]
-extern crate ra_ap_rustc_hashes as rustc_hashes;
 
 mod builder;
 mod chalk_db;
@@ -76,13 +70,15 @@ use intern::{sym, Symbol};
 use la_arena::{Arena, Idx};
 use mir::{MirEvalError, VTableMap};
 use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
-use span::Edition;
 use syntax::ast::{make, ConstArg};
 use traits::FnTrait;
 use triomphe::Arc;
 
 use crate::{
-    consteval::unknown_const, db::HirDatabase, display::HirDisplay, generics::Generics,
+    consteval::unknown_const,
+    db::HirDatabase,
+    display::{DisplayTarget, HirDisplay},
+    generics::Generics,
     infer::unify::InferenceTable,
 };
 
@@ -1044,7 +1040,7 @@ where
 pub fn known_const_to_ast(
     konst: &Const,
     db: &dyn HirDatabase,
-    edition: Edition,
+    display_target: DisplayTarget,
 ) -> Option<ConstArg> {
     if let ConstValue::Concrete(c) = &konst.interned().value {
         match c.interned {
@@ -1055,7 +1051,7 @@ pub fn known_const_to_ast(
             _ => (),
         }
     }
-    Some(make::expr_const_value(konst.display(db, edition).to_string().as_str()))
+    Some(make::expr_const_value(konst.display(db, display_target).to_string().as_str()))
 }
 
 #[derive(Debug, Copy, Clone)]

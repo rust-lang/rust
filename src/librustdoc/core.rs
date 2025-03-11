@@ -154,13 +154,12 @@ pub(crate) fn new_dcx(
         false,
     );
     let emitter: Box<DynEmitter> = match error_format {
-        ErrorOutputType::HumanReadable(kind, color_config) => {
+        ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
-                    .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if let HumanReadableErrorType::Unicode = kind {

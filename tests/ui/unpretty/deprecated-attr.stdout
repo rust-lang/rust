@@ -5,17 +5,24 @@ extern crate std;
 //@ compile-flags: -Zunpretty=hir
 //@ check-pass
 
-#[deprecated]
+// FIXME(jdonszelmann): the pretty printing output for deprecated (and possibly more attrs) is
+// slightly broken.
+#[attr="Deprecation{deprecation: Deprecation{since: Unspecifiednote:
+suggestion: }span: }")]
 struct PlainDeprecated;
 
-#[deprecated = "here's why this is deprecated"]
+#[attr="Deprecation{deprecation: Deprecation{since: Unspecifiednote:
+here's why this is deprecatedsuggestion: }span: }")]
 struct DirectNote;
 
-#[deprecated = "here's why this is deprecated"]
+#[attr="Deprecation{deprecation: Deprecation{since: Unspecifiednote:
+here's why this is deprecatedsuggestion: }span: }")]
 struct ExplicitNote;
 
-#[deprecated(since = "1.2.3", note = "here's why this is deprecated"]
+#[attr="Deprecation{deprecation: Deprecation{since: NonStandard(1.2.3)note:
+here's why this is deprecatedsuggestion: }span: }")]
 struct SinceAndNote;
 
-#[deprecated(since = "1.2.3", note = "here's why this is deprecated"]
+#[attr="Deprecation{deprecation: Deprecation{since: NonStandard(1.2.3)note:
+here's why this is deprecatedsuggestion: }span: }")]
 struct FlippedOrder;

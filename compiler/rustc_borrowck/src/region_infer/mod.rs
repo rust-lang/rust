@@ -21,8 +21,8 @@ use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
 use rustc_mir_dataflow::points::DenseLocationMap;
-use rustc_span::Span;
 use rustc_span::hygiene::DesugaringKind;
+use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
 
 use crate::BorrowckInferCtxt;
@@ -311,9 +311,11 @@ enum RegionRelationCheckResult {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-enum Trace<'tcx> {
+enum Trace<'a, 'tcx> {
     StartRegion,
-    FromOutlivesConstraint(OutlivesConstraint<'tcx>),
+    FromGraph(&'a OutlivesConstraint<'tcx>),
+    FromStatic(RegionVid),
+    FromMember(RegionVid, RegionVid, Span),
     NotVisited,
 }
 
@@ -1764,6 +1766,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mut context = IndexVec::from_elem(Trace::NotVisited, &self.definitions);
         context[from_region] = Trace::StartRegion;
 
+        let fr_static = self.universal_regions().fr_static;
+
         // Use a deque so that we do a breadth-first search. We will
         // stop at the first match, which ought to be the shortest
         // path (fewest constraints).
@@ -1783,13 +1787,39 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if target_test(r) {
                 let mut result = vec![];
                 let mut p = r;
+                // This loop is cold and runs at the end, which is why we delay
+                // `OutlivesConstraint` construction until now.
                 loop {
-                    match context[p].clone() {
-                        Trace::NotVisited => {
-                            bug!("found unvisited region {:?} on path to {:?}", p, r)
+                    match context[p] {
+                        Trace::FromGraph(c) => {
+                            p = c.sup;
+                            result.push(*c);
                         }
 
-                        Trace::FromOutlivesConstraint(c) => {
+                        Trace::FromStatic(sub) => {
+                            let c = OutlivesConstraint {
+                                sup: fr_static,
+                                sub,
+                                locations: Locations::All(DUMMY_SP),
+                                span: DUMMY_SP,
+                                category: ConstraintCategory::Internal,
+                                variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
+                            };
+                            p = c.sup;
+                            result.push(c);
+                        }
+
+                        Trace::FromMember(sup, sub, span) => {
+                            let c = OutlivesConstraint {
+                                sup,
+                                sub,
+                                locations: Locations::All(span),
+                                span,
+                                category: ConstraintCategory::OpaqueType,
+                                variance_info: ty::VarianceDiagInfo::default(),
+                                from_closure: false,
+                            };
                             p = c.sup;
                             result.push(c);
                         }
@@ -1797,6 +1827,10 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                         Trace::StartRegion => {
                             result.reverse();
                             return Some((result, r));
+                        }
+
+                        Trace::NotVisited => {
+                            bug!("found unvisited region {:?} on path to {:?}", p, r)
                         }
                     }
                 }
@@ -1808,45 +1842,42 @@ impl<'tcx> RegionInferenceContext<'tcx> {
 
             // A constraint like `'r: 'x` can come from our constraint
             // graph.
-            let fr_static = self.universal_regions().fr_static;
-            let outgoing_edges_from_graph =
-                self.constraint_graph.outgoing_edges(r, &self.constraints, fr_static);
 
             // Always inline this closure because it can be hot.
-            let mut handle_constraint = #[inline(always)]
-            |constraint: OutlivesConstraint<'tcx>| {
-                debug_assert_eq!(constraint.sup, r);
-                let sub_region = constraint.sub;
-                if let Trace::NotVisited = context[sub_region] {
-                    context[sub_region] = Trace::FromOutlivesConstraint(constraint);
-                    deque.push_back(sub_region);
+            let mut handle_trace = #[inline(always)]
+            |sub, trace| {
+                if let Trace::NotVisited = context[sub] {
+                    context[sub] = trace;
+                    deque.push_back(sub);
                 }
             };
 
-            // This loop can be hot.
-            for constraint in outgoing_edges_from_graph {
-                if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
-                    debug!("Ignoring illegal universe constraint: {constraint:?}");
-                    continue;
+            // If this is the `'static` region and the graph's direction is normal, then set up the
+            // Edges iterator to return all regions (#53178).
+            if r == fr_static && self.constraint_graph.is_normal() {
+                for sub in self.constraint_graph.outgoing_edges_from_static() {
+                    handle_trace(sub, Trace::FromStatic(sub));
                 }
-                handle_constraint(constraint);
+            } else {
+                let edges = self.constraint_graph.outgoing_edges_from_graph(r, &self.constraints);
+                // This loop can be hot.
+                for constraint in edges {
+                    if matches!(constraint.category, ConstraintCategory::IllegalUniverse) {
+                        debug!("Ignoring illegal universe constraint: {constraint:?}");
+                        continue;
+                    }
+                    debug_assert_eq!(constraint.sup, r);
+                    handle_trace(constraint.sub, Trace::FromGraph(constraint));
+                }
             }
 
             // Member constraints can also give rise to `'r: 'x` edges that
             // were not part of the graph initially, so watch out for those.
             // (But they are extremely rare; this loop is very cold.)
             for constraint in self.applied_member_constraints(self.constraint_sccs.scc(r)) {
+                let sub = constraint.min_choice;
                 let p_c = &self.member_constraints[constraint.member_constraint_index];
-                let constraint = OutlivesConstraint {
-                    sup: r,
-                    sub: constraint.min_choice,
-                    locations: Locations::All(p_c.definition_span),
-                    span: p_c.definition_span,
-                    category: ConstraintCategory::OpaqueType,
-                    variance_info: ty::VarianceDiagInfo::default(),
-                    from_closure: false,
-                };
-                handle_constraint(constraint);
+                handle_trace(sub, Trace::FromMember(r, sub, p_c.definition_span));
             }
         }
 

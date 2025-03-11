@@ -1,4 +1,4 @@
-use std::thread;
+use std::{panic, thread};
 
 use llvm::prebuilt_llvm_config;
 
@@ -1134,4 +1134,36 @@ fn test_get_tool_rustc_compiler() {
     let expected = Compiler::new(1, target_triple_1);
     let actual = tool::get_tool_rustc_compiler(&builder, compiler);
     assert_eq!(expected, actual);
+}
+
+/// When bootstrap detects a step dependency cycle (which is a bug), its panic
+/// message should show the actual steps on the stack, not just several copies
+/// of `Any { .. }`.
+#[test]
+fn step_cycle_debug() {
+    let cmd = ["run", "cyclic-step"].map(str::to_owned);
+    let config = configure_with_args(&cmd, &[TEST_TRIPLE_1], &[TEST_TRIPLE_1]);
+
+    let err = panic::catch_unwind(|| run_build(&config.paths.clone(), config)).unwrap_err();
+    let err = err.downcast_ref::<String>().unwrap().as_str();
+
+    assert!(!err.contains("Any"));
+    assert!(err.contains("CyclicStep { n: 1 }"));
+}
+
+/// The `AnyDebug` trait should delegate to the underlying type's `Debug`, and
+/// should also allow downcasting as expected.
+#[test]
+fn any_debug() {
+    #[derive(Debug, PartialEq, Eq)]
+    struct MyStruct {
+        x: u32,
+    }
+
+    let x: &dyn AnyDebug = &MyStruct { x: 7 };
+
+    // Debug-formatting should delegate to the underlying type.
+    assert_eq!(format!("{x:?}"), format!("{:?}", MyStruct { x: 7 }));
+    // Downcasting to the underlying type should succeed.
+    assert_eq!(x.downcast_ref::<MyStruct>(), Some(&MyStruct { x: 7 }));
 }

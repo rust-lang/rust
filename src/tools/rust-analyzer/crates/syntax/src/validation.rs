@@ -37,6 +37,7 @@ pub(crate) fn validate(root: &SyntaxNode, errors: &mut Vec<SyntaxError>) {
                 ast::FnPtrType(it) => validate_trait_object_fn_ptr_ret_ty(it, errors),
                 ast::MacroRules(it) => validate_macro_rules(it, errors),
                 ast::LetExpr(it) => validate_let_expr(it, errors),
+                ast::ImplTraitType(it) => validate_impl_object_ty(it, errors),
                 _ => (),
             }
         }
@@ -340,17 +341,34 @@ fn validate_trait_object_fn_ptr_ret_ty(ty: ast::FnPtrType, errors: &mut Vec<Synt
 
 fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
     let tbl = ty.type_bound_list()?;
+    let bounds_count = tbl.bounds().count();
 
-    if tbl.bounds().count() > 1 {
-        let dyn_token = ty.dyn_token()?;
-        let potential_parenthesis =
-            algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
-        let kind = potential_parenthesis.kind();
-        if !matches!(kind, T!['('] | T![<] | T![=]) {
-            return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+    match bounds_count {
+        0 => Some(SyntaxError::new(
+            "At least one trait is required for an object type",
+            ty.syntax().text_range(),
+        )),
+        _ if bounds_count > 1 => {
+            let dyn_token = ty.dyn_token()?;
+            let preceding_token =
+                algo::skip_trivia_token(dyn_token.prev_token()?, Direction::Prev)?;
+
+            if !matches!(preceding_token.kind(), T!['('] | T![<] | T![=]) {
+                return Some(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
+            }
+            None
         }
+        _ => None,
     }
-    None
+}
+
+fn validate_impl_object_ty(ty: ast::ImplTraitType, errors: &mut Vec<SyntaxError>) {
+    if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
+        errors.push(SyntaxError::new(
+            "At least one trait must be specified",
+            ty.syntax().text_range(),
+        ));
+    }
 }
 
 fn validate_macro_rules(mac: ast::MacroRules, errors: &mut Vec<SyntaxError>) {

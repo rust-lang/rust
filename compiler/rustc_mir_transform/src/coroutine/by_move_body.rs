@@ -78,7 +78,6 @@ use rustc_middle::hir::place::{Projection, ProjectionKind};
 use rustc_middle::mir::visit::MutVisitor;
 use rustc_middle::mir::{self, dump_mir};
 use rustc_middle::ty::{self, InstanceKind, Ty, TyCtxt, TypeVisitableExt};
-use rustc_span::kw;
 
 pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -170,7 +169,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
             // this when building the field projection in the MIR body later on.
             let mut parent_capture_ty = parent_capture.place.ty();
             parent_capture_ty = match parent_capture.info.capture_kind {
-                ty::UpvarCapture::ByValue => parent_capture_ty,
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => parent_capture_ty,
                 ty::UpvarCapture::ByRef(kind) => Ty::new_ref(
                     tcx,
                     tcx.lifetimes.re_erased,
@@ -214,7 +213,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
     MakeByMoveBody { tcx, field_remapping, by_move_coroutine_ty }.visit_body(&mut by_move_body);
 
     // This will always be `{closure#1}`, since the original coroutine is `{closure#0}`.
-    let body_def = tcx.create_def(parent_def_id, kw::Empty, DefKind::SyntheticCoroutineBody);
+    let body_def = tcx.create_def(parent_def_id, None, DefKind::SyntheticCoroutineBody);
     by_move_body.source =
         mir::MirSource::from_instance(InstanceKind::Item(body_def.def_id().to_def_id()));
     dump_mir(tcx, false, "built", &"after", &by_move_body, |_, _| Ok(()));

@@ -15,9 +15,10 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, generics::Generics, infer::InferenceContext, lower::ParamLoweringMode,
-    mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue,
-    GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder,
+    db::HirDatabase, display::DisplayTarget, generics::Generics, infer::InferenceContext,
+    lower::ParamLoweringMode, mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData,
+    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
+    TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -62,11 +63,15 @@ impl ConstEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(span::FileId, span::TextRange) -> String,
-        edition: span::Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            ConstEvalError::MirLowerError(e) => e.pretty_print(f, db, span_formatter, edition),
-            ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter, edition),
+            ConstEvalError::MirLowerError(e) => {
+                e.pretty_print(f, db, span_formatter, display_target)
+            }
+            ConstEvalError::MirEvalError(e) => {
+                e.pretty_print(f, db, span_formatter, display_target)
+            }
         }
     }
 }

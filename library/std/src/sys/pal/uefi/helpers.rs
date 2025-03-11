@@ -15,7 +15,7 @@ use r_efi::protocols::{device_path, device_path_to_text, service_binding, shell}
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_error};
 use crate::marker::PhantomData;
-use crate::mem::{MaybeUninit, size_of};
+use crate::mem::MaybeUninit;
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::{self};

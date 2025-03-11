@@ -7,8 +7,7 @@ use crate::{
     SsrMatches,
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
-use ide_db::FxHashMap;
-use parser::Edition;
+use ide_db::{base_db::SourceDatabase, FxHashMap};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
     ast::{self, AstNode, AstToken, HasGenericArgs},
@@ -627,22 +626,23 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
             .original;
-        let edition = self
-            .sema
-            .scope(expr.syntax())
-            .map(|it| it.krate().edition(self.sema.db))
-            .unwrap_or(Edition::CURRENT);
-        // Temporary needed to make the borrow checker happy.
+        let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
+            hir::Crate::from(
+                *self.sema.db.crate_graph().crates_in_topological_order().last().unwrap(),
+            )
+        });
         let res = code_type
             .autoderef(self.sema.db)
             .enumerate()
             .find(|(_, deref_code_type)| pattern_type == deref_code_type)
             .map(|(count, _)| count)
             .ok_or_else(|| {
+                let display_target = krate.to_display_target(self.sema.db);
+                // Temporary needed to make the borrow checker happy.
                 match_error!(
                     "Pattern type `{}` didn't match code type `{}`",
-                    pattern_type.display(self.sema.db, edition),
-                    code_type.display(self.sema.db, edition)
+                    pattern_type.display(self.sema.db, display_target),
+                    code_type.display(self.sema.db, display_target)
                 )
             });
         res

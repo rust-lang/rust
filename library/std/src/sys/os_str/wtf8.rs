@@ -117,6 +117,11 @@ impl Buf {
     }
 
     #[inline]
+    pub fn push_str(&mut self, s: &str) {
+        self.inner.push_str(s);
+    }
+
+    #[inline]
     pub fn reserve(&mut self, additional: usize) {
         self.inner.reserve(additional)
     }

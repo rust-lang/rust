@@ -36,7 +36,6 @@ fn test_fd() {
 #[cfg(any(unix, target_os = "wasi"))]
 #[test]
 fn test_niche_optimizations() {
-    use crate::mem::size_of;
     #[cfg(unix)]
     use crate::os::unix::io::{BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
     #[cfg(target_os = "wasi")]

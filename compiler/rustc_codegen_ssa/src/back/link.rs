@@ -1177,7 +1177,7 @@ mod win {
             let mut cp: u32 = 0;
             // We're using the `LOCALE_RETURN_NUMBER` flag to return a u32.
             // But the API requires us to pass the data as though it's a [u16] string.
-            let len = std::mem::size_of::<u32>() / std::mem::size_of::<u16>();
+            let len = size_of::<u32>() / size_of::<u16>();
             let data = std::slice::from_raw_parts_mut(&mut cp as *mut u32 as *mut u16, len);
             let len_written = GetLocaleInfoEx(
                 LOCALE_NAME_SYSTEM_DEFAULT,
@@ -3382,6 +3382,35 @@ fn add_lld_args(
     // this, `wasm-component-ld`, which is overridden if this option is passed.
     if !sess.target.is_like_wasm {
         cmd.cc_arg("-fuse-ld=lld");
+
+        // On ELF platforms like at least x64 linux, GNU ld and LLD have opposite defaults on some
+        // section garbage-collection features. For example, the somewhat popular `linkme` crate and
+        // its dependents rely in practice on this difference: when using lld, they need `-z
+        // nostart-stop-gc` to prevent encapsulation symbols and sections from being
+        // garbage-collected.
+        //
+        // More information about all this can be found in:
+        // - https://maskray.me/blog/2021-01-31-metadata-sections-comdat-and-shf-link-order
+        // - https://lld.llvm.org/ELF/start-stop-gc
+        //
+        // So when using lld, we restore, for now, the traditional behavior to help migration, but
+        // will remove it in the future.
+        // Since this only disables an optimization, it shouldn't create issues, but is in theory
+        // slightly suboptimal. However, it:
+        // - doesn't have any visible impact on our benchmarks
+        // - reduces the need to disable lld for the crates that depend on this
+        //
+        // Note that lld can detect some cases where this difference is relied on, and emits a
+        // dedicated error to add this link arg. We could make use of this error to emit an FCW. As
+        // of writing this, we don't do it, because lld is already enabled by default on nightly
+        // without this mitigation: no working project would see the FCW, so we do this to help
+        // stabilization.
+        //
+        // FIXME: emit an FCW if linking fails due its absence, and then remove this link-arg in the
+        // future.
+        if sess.target.llvm_target == "x86_64-unknown-linux-gnu" {
+            cmd.link_arg("-znostart-stop-gc");
+        }
     }
 
     if !flavor.is_gnu() {

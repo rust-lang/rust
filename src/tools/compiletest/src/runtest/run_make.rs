@@ -105,6 +105,11 @@ impl TestCx<'_> {
             .expect("stage0 rustc is required to run run-make tests");
         let mut rustc = Command::new(&stage0_rustc);
         rustc
+            // `rmake.rs` **must** be buildable by a stable compiler, it may not use *any* unstable
+            // library or compiler features. Here, we force the stage 0 rustc to consider itself as
+            // a stable-channel compiler via `RUSTC_BOOTSTRAP=-1` to prevent *any* unstable
+            // library/compiler usages, even if stage 0 rustc is *actually* a nightly rustc.
+            .env("RUSTC_BOOTSTRAP", "-1")
             .arg("-o")
             .arg(&recipe_bin)
             // Specify library search paths for `run_make_support`.

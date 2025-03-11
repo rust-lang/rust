@@ -3,8 +3,6 @@
 // -Clinker-plugin-lto.
 // See https://github.com/rust-lang/rust/pull/50000
 
-#![feature(path_file_prefix)]
-
 use std::path::PathBuf;
 
 use run_make_support::{
@@ -92,10 +90,17 @@ fn check_bitcode(instructions: LibBuild) {
         llvm_ar().extract().arg(&instructions.output).run();
     }
 
-    for object in shallow_find_files(cwd(), |path| {
-        has_prefix(path, instructions.output.file_prefix().unwrap().to_str().unwrap())
+    let objects = shallow_find_files(cwd(), |path| {
+        let mut output_path = instructions.output.clone();
+        output_path.set_extension("");
+        has_prefix(path, output_path.file_name().unwrap().to_str().unwrap())
             && has_extension(path, "o")
-    }) {
+    });
+    assert!(!objects.is_empty());
+    println!("objects: {:#?}", objects);
+
+    for object in objects {
+        println!("reading bitcode: {}", object.display());
         // All generated object files should be LLVM bitcode files - this will fail otherwise.
         llvm_bcanalyzer().input(object).run();
     }

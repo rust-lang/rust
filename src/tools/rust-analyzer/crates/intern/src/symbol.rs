@@ -18,20 +18,17 @@ use triomphe::Arc;
 pub mod symbols;
 
 // some asserts for layout compatibility
-const _: () = assert!(std::mem::size_of::<Box<str>>() == std::mem::size_of::<&str>());
-const _: () = assert!(std::mem::align_of::<Box<str>>() == std::mem::align_of::<&str>());
+const _: () = assert!(size_of::<Box<str>>() == size_of::<&str>());
+const _: () = assert!(align_of::<Box<str>>() == align_of::<&str>());
 
-const _: () = assert!(std::mem::size_of::<Arc<Box<str>>>() == std::mem::size_of::<&&str>());
-const _: () = assert!(std::mem::align_of::<Arc<Box<str>>>() == std::mem::align_of::<&&str>());
+const _: () = assert!(size_of::<Arc<Box<str>>>() == size_of::<&&str>());
+const _: () = assert!(align_of::<Arc<Box<str>>>() == align_of::<&&str>());
 
-const _: () =
-    assert!(std::mem::size_of::<*const *const str>() == std::mem::size_of::<TaggedArcPtr>());
-const _: () =
-    assert!(std::mem::align_of::<*const *const str>() == std::mem::align_of::<TaggedArcPtr>());
+const _: () = assert!(size_of::<*const *const str>() == size_of::<TaggedArcPtr>());
+const _: () = assert!(align_of::<*const *const str>() == align_of::<TaggedArcPtr>());
 
-const _: () = assert!(std::mem::size_of::<Arc<Box<str>>>() == std::mem::size_of::<TaggedArcPtr>());
-const _: () =
-    assert!(std::mem::align_of::<Arc<Box<str>>>() == std::mem::align_of::<TaggedArcPtr>());
+const _: () = assert!(size_of::<Arc<Box<str>>>() == size_of::<TaggedArcPtr>());
+const _: () = assert!(align_of::<Arc<Box<str>>>() == align_of::<TaggedArcPtr>());
 
 /// A pointer that points to a pointer to a `str`, it may be backed as a `&'static &'static str` or
 /// `Arc<Box<str>>` but its size is that of a thin pointer. The active variant is encoded as a tag
@@ -49,9 +46,7 @@ impl TaggedArcPtr {
     const BOOL_BITS: usize = true as usize;
 
     const fn non_arc(r: &'static &'static str) -> Self {
-        assert!(
-            mem::align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS
-        );
+        assert!(align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS);
         // SAFETY: The pointer is non-null as it is derived from a reference
         // Ideally we would call out to `pack_arc` but for a `false` tag, unfortunately the
         // packing stuff requires reading out the pointer to an integer which is not supported
@@ -64,9 +59,7 @@ impl TaggedArcPtr {
     }
 
     fn arc(arc: Arc<Box<str>>) -> Self {
-        assert!(
-            mem::align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS
-        );
+        assert!(align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS);
         Self {
             packed: Self::pack_arc(
                 // Safety: `Arc::into_raw` always returns a non null pointer
@@ -131,8 +124,8 @@ impl fmt::Debug for Symbol {
     }
 }
 
-const _: () = assert!(std::mem::size_of::<Symbol>() == std::mem::size_of::<NonNull<()>>());
-const _: () = assert!(std::mem::align_of::<Symbol>() == std::mem::align_of::<NonNull<()>>());
+const _: () = assert!(size_of::<Symbol>() == size_of::<NonNull<()>>());
+const _: () = assert!(align_of::<Symbol>() == align_of::<NonNull<()>>());
 
 static MAP: OnceLock<DashMap<SymbolProxy, (), BuildHasherDefault<FxHasher>>> = OnceLock::new();
 

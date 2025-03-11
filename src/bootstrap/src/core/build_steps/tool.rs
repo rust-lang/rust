@@ -121,10 +121,18 @@ impl Step for ToolBuild {
 
         match self.mode {
             Mode::ToolRustc => {
-                builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
-                builder.ensure(compile::Rustc::new(self.compiler, target));
+                // If compiler was forced, its artifacts should be prepared earlier.
+                if !self.compiler.is_forced_compiler() {
+                    builder.ensure(compile::Std::new(self.compiler, self.compiler.host));
+                    builder.ensure(compile::Rustc::new(self.compiler, target));
+                }
             }
-            Mode::ToolStd => builder.ensure(compile::Std::new(self.compiler, target)),
+            Mode::ToolStd => {
+                // If compiler was forced, its artifacts should be prepared earlier.
+                if !self.compiler.is_forced_compiler() {
+                    builder.ensure(compile::Std::new(self.compiler, target))
+                }
+            }
             Mode::ToolBootstrap => {} // uses downloaded stage0 compiler libs
             _ => panic!("unexpected Mode for tool build"),
         }
@@ -319,18 +327,20 @@ pub(crate) fn get_tool_rustc_compiler(
     builder: &Builder<'_>,
     target_compiler: Compiler,
 ) -> Compiler {
-    if builder.download_rustc() && target_compiler.stage == 1 {
-        // We already have the stage 1 compiler, we don't need to cut the stage.
-        builder.compiler(target_compiler.stage, builder.config.build)
-    } else if target_compiler.is_forced_compiler() {
-        target_compiler
-    } else {
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
-        // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
-        // compiler it's paired with, so it must be built with the previous stage compiler.
-        builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.build)
+    if target_compiler.is_forced_compiler() {
+        return target_compiler;
     }
+
+    if builder.download_rustc() && target_compiler.stage > 0 {
+        // We already have the stage N compiler, we don't need to cut the stage.
+        return builder.compiler(target_compiler.stage, builder.config.build);
+    }
+
+    // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
+    // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
+    // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
+    // compiler it's paired with, so it must be built with the previous stage compiler.
+    builder.compiler(target_compiler.stage.saturating_sub(1), builder.config.build)
 }
 
 /// Links a built tool binary with the given `name` from the build directory to the
@@ -1191,13 +1201,23 @@ fn run_tool_build_step(
     }
 }
 
-tool_extended!(Cargofmt { path: "src/tools/rustfmt", tool_name: "cargo-fmt", stable: true });
-tool_extended!(CargoClippy { path: "src/tools/clippy", tool_name: "cargo-clippy", stable: true });
+tool_extended!(Cargofmt {
+    path: "src/tools/rustfmt",
+    tool_name: "cargo-fmt",
+    stable: true,
+    add_bins_to_sysroot: ["cargo-fmt"]
+});
+tool_extended!(CargoClippy {
+    path: "src/tools/clippy",
+    tool_name: "cargo-clippy",
+    stable: true,
+    add_bins_to_sysroot: ["cargo-clippy"]
+});
 tool_extended!(Clippy {
     path: "src/tools/clippy",
     tool_name: "clippy-driver",
     stable: true,
-    add_bins_to_sysroot: ["clippy-driver", "cargo-clippy"]
+    add_bins_to_sysroot: ["clippy-driver"]
 });
 tool_extended!(Miri {
     path: "src/tools/miri",
@@ -1216,7 +1236,7 @@ tool_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",
     stable: true,
-    add_bins_to_sysroot: ["rustfmt", "cargo-fmt"]
+    add_bins_to_sysroot: ["rustfmt"]
 });
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

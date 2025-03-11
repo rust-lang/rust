@@ -15052,7 +15052,7 @@ cannot be represented as the underlying type without loss."##,
     },
     Lint {
         label: "clippy::manual_bits",
-        description: r##"Checks for usage of `std::mem::size_of::<T>() * 8` when
+        description: r##"Checks for usage of `size_of::<T>() * 8` when
 `T::BITS` is available."##,
         default_severity: Severity::Allow,
         warn_since: None,
@@ -17394,7 +17394,7 @@ count of elements of type `T`"##,
     },
     Lint {
         label: "clippy::size_of_ref",
-        description: r##"Checks for calls to `std::mem::size_of_val()` where the argument is
+        description: r##"Checks for calls to `size_of_val()` where the argument is
 a reference to a reference."##,
         default_severity: Severity::Allow,
         warn_since: None,

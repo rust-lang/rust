@@ -12,7 +12,8 @@ use std::{
 
 use either::Either;
 use hir_def::{
-    hir::{Expr, ExprOrPatId},
+    expr_store::{Body, ExprOrPatSource},
+    hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lower::LowerCtx,
     nameres::{MacroSubNs, ModuleOrigin},
     path::ModPath,
@@ -30,6 +31,7 @@ use hir_expand::{
     name::AsName,
     ExpandResult, FileRange, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
 };
+use hir_ty::diagnostics::unsafe_operations_for_body;
 use intern::{sym, Symbol};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -48,8 +50,8 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{name_hygiene, resolve_hir_path, SourceAnalyzer},
-    Access, Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const,
-    ConstParam, Crate, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
+    Adjust, Adjustment, Adt, AutoBorrow, BindingMode, BuiltinAttr, Callable, Const, ConstParam,
+    Crate, DefWithBody, DeriveHelper, Enum, Field, Function, GenericSubstitution, HasSource,
     HirFileId, Impl, InFile, InlineAsmOperand, ItemInNs, Label, LifetimeParam, Local, Macro,
     Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, Static, Struct, ToolModule, Trait,
     TraitAlias, TupleField, Type, TypeAlias, TypeParam, Union, Variant, VariantDef,
@@ -309,6 +311,14 @@ impl<'db> SemanticsImpl<'db> {
         let tree = self.db.parse(file_id).tree();
         self.cache(tree.syntax().clone(), file_id.into());
         tree
+    }
+
+    /// If not crate is found for the file, returns the last crate in topological order.
+    pub fn first_crate_or_default(&self, file: FileId) -> Crate {
+        match self.file_to_module_defs(file).next() {
+            Some(module) => module.krate(),
+            None => (*self.db.crate_graph().crates_in_topological_order().last().unwrap()).into(),
+        }
     }
 
     pub fn attach_first_edition(&self, file: FileId) -> Option<EditionedFileId> {
@@ -625,6 +635,31 @@ impl<'db> SemanticsImpl<'db> {
             speculative_args.syntax(),
             token_to_map,
         )
+    }
+
+    /// Checks if renaming `renamed` to `new_name` may introduce conflicts with other locals,
+    /// and returns the conflicting locals.
+    pub fn rename_conflicts(&self, to_be_renamed: &Local, new_name: &str) -> Vec<Local> {
+        let body = self.db.body(to_be_renamed.parent);
+        let resolver = to_be_renamed.parent.resolver(self.db.upcast());
+        let starting_expr =
+            body.binding_owners.get(&to_be_renamed.binding_id).copied().unwrap_or(body.body_expr);
+        let mut visitor = RenameConflictsVisitor {
+            body: &body,
+            conflicts: FxHashSet::default(),
+            db: self.db,
+            new_name: Symbol::intern(new_name),
+            old_name: to_be_renamed.name(self.db).symbol().clone(),
+            owner: to_be_renamed.parent,
+            to_be_renamed: to_be_renamed.binding_id,
+            resolver,
+        };
+        visitor.rename_conflicts(starting_expr);
+        visitor
+            .conflicts
+            .into_iter()
+            .map(|binding_id| Local { parent: to_be_renamed.parent, binding_id })
+            .collect()
     }
 
     /// Retrieves all the formatting parts of the format_args! (or `asm!`) template string.
@@ -1555,6 +1590,19 @@ impl<'db> SemanticsImpl<'db> {
             .matched_arm
     }
 
+    pub fn get_unsafe_ops(&self, def: DefWithBody) -> FxHashSet<ExprOrPatSource> {
+        let def = DefWithBodyId::from(def);
+        let (body, source_map) = self.db.body_with_source_map(def);
+        let infer = self.db.infer(def);
+        let mut res = FxHashSet::default();
+        unsafe_operations_for_body(self.db, &infer, def, &body, &mut |node| {
+            if let Ok(node) = source_map.expr_or_pat_syntax(node) {
+                res.insert(node);
+            }
+        });
+        res
+    }
+
     pub fn is_unsafe_macro_call(&self, macro_call: &ast::MacroCall) -> bool {
         let Some(mac) = self.resolve_macro_call(macro_call) else { return false };
         if mac.is_asm_or_global_asm(self.db) {
@@ -1682,6 +1730,15 @@ impl<'db> SemanticsImpl<'db> {
         Some(res)
     }
 
+    pub fn body_for(&self, node: InFile<&SyntaxNode>) -> Option<DefWithBody> {
+        let container = self.with_ctx(|ctx| ctx.find_container(node))?;
+
+        match container {
+            ChildContainer::DefWithBodyId(def) => Some(def.into()),
+            _ => None,
+        }
+    }
+
     /// Returns none if the file of the node is not part of a crate.
     fn analyze(&self, node: &SyntaxNode) -> Option<SourceAnalyzer> {
         let node = self.find_file(node);
@@ -1781,91 +1838,6 @@ impl<'db> SemanticsImpl<'db> {
             )
         });
         InFile::new(file_id, node)
-    }
-
-    pub fn is_unsafe_method_call(&self, method_call_expr: &ast::MethodCallExpr) -> bool {
-        method_call_expr
-            .receiver()
-            .and_then(|expr| {
-                let field_expr = match expr {
-                    ast::Expr::FieldExpr(field_expr) => field_expr,
-                    _ => return None,
-                };
-                let ty = self.type_of_expr(&field_expr.expr()?)?.original;
-                if !ty.is_packed(self.db) {
-                    return None;
-                }
-
-                let func = self.resolve_method_call(method_call_expr)?;
-                let res = match func.self_param(self.db)?.access(self.db) {
-                    Access::Shared | Access::Exclusive => true,
-                    Access::Owned => false,
-                };
-                Some(res)
-            })
-            .unwrap_or(false)
-    }
-
-    pub fn is_unsafe_ref_expr(&self, ref_expr: &ast::RefExpr) -> bool {
-        ref_expr
-            .expr()
-            .and_then(|expr| {
-                let field_expr = match expr {
-                    ast::Expr::FieldExpr(field_expr) => field_expr,
-                    _ => return None,
-                };
-                let expr = field_expr.expr()?;
-                self.type_of_expr(&expr)
-            })
-            // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.original.is_packed(self.db))
-            .unwrap_or(false)
-
-        // FIXME This needs layout computation to be correct. It will highlight
-        // more than it should with the current implementation.
-    }
-
-    pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
-        if ident_pat.ref_token().is_none() {
-            return false;
-        }
-
-        ident_pat
-            .syntax()
-            .parent()
-            .and_then(|parent| {
-                // `IdentPat` can live under `RecordPat` directly under `RecordPatField` or
-                // `RecordPatFieldList`. `RecordPatField` also lives under `RecordPatFieldList`,
-                // so this tries to lookup the `IdentPat` anywhere along that structure to the
-                // `RecordPat` so we can get the containing type.
-                let record_pat = ast::RecordPatField::cast(parent.clone())
-                    .and_then(|record_pat| record_pat.syntax().parent())
-                    .or_else(|| Some(parent.clone()))
-                    .and_then(|parent| {
-                        ast::RecordPatFieldList::cast(parent)?
-                            .syntax()
-                            .parent()
-                            .and_then(ast::RecordPat::cast)
-                    });
-
-                // If this doesn't match a `RecordPat`, fallback to a `LetStmt` to see if
-                // this is initialized from a `FieldExpr`.
-                if let Some(record_pat) = record_pat {
-                    self.type_of_pat(&ast::Pat::RecordPat(record_pat))
-                } else if let Some(let_stmt) = ast::LetStmt::cast(parent) {
-                    let field_expr = match let_stmt.initializer()? {
-                        ast::Expr::FieldExpr(field_expr) => field_expr,
-                        _ => return None,
-                    };
-
-                    self.type_of_expr(&field_expr.expr()?)
-                } else {
-                    None
-                }
-            })
-            // Binding a reference to a packed type is possibly unsafe.
-            .map(|ty| ty.original.is_packed(self.db))
-            .unwrap_or(false)
     }
 
     /// Returns `true` if the `node` is inside an `unsafe` context.
@@ -2153,5 +2125,71 @@ impl ops::Deref for VisibleTraits {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+struct RenameConflictsVisitor<'a> {
+    db: &'a dyn HirDatabase,
+    owner: DefWithBodyId,
+    resolver: Resolver,
+    body: &'a Body,
+    to_be_renamed: BindingId,
+    new_name: Symbol,
+    old_name: Symbol,
+    conflicts: FxHashSet<BindingId>,
+}
+
+impl RenameConflictsVisitor<'_> {
+    fn resolve_path(&mut self, node: ExprOrPatId, path: &Path) {
+        if let Path::BarePath(path) = path {
+            if let Some(name) = path.as_ident() {
+                if *name.symbol() == self.new_name {
+                    if let Some(conflicting) = self.resolver.rename_will_conflict_with_renamed(
+                        self.db.upcast(),
+                        name,
+                        path,
+                        self.body.expr_or_pat_path_hygiene(node),
+                        self.to_be_renamed,
+                    ) {
+                        self.conflicts.insert(conflicting);
+                    }
+                } else if *name.symbol() == self.old_name {
+                    if let Some(conflicting) =
+                        self.resolver.rename_will_conflict_with_another_variable(
+                            self.db.upcast(),
+                            name,
+                            path,
+                            self.body.expr_or_pat_path_hygiene(node),
+                            &self.new_name,
+                            self.to_be_renamed,
+                        )
+                    {
+                        self.conflicts.insert(conflicting);
+                    }
+                }
+            }
+        }
+    }
+
+    fn rename_conflicts(&mut self, expr: ExprId) {
+        match &self.body[expr] {
+            Expr::Path(path) => {
+                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                self.resolve_path(expr.into(), path);
+                self.resolver.reset_to_guard(guard);
+            }
+            &Expr::Assignment { target, .. } => {
+                let guard = self.resolver.update_to_inner_scope(self.db.upcast(), self.owner, expr);
+                self.body.walk_pats(target, &mut |pat| {
+                    if let Pat::Path(path) = &self.body[pat] {
+                        self.resolve_path(pat.into(), path);
+                    }
+                });
+                self.resolver.reset_to_guard(guard);
+            }
+            _ => {}
+        }
+
+        self.body.walk_child_exprs(expr, |expr| self.rename_conflicts(expr));
     }
 }

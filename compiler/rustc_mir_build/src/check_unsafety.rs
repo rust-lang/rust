@@ -451,6 +451,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Unary { .. }
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Break { .. }

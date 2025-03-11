@@ -2,8 +2,8 @@
 
 use super::hermit_abi;
 use crate::cmp;
-use crate::io::{self, IoSlice, IoSliceMut, Read};
-use crate::os::hermit::io::{FromRawFd, OwnedFd, RawFd, *};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, SeekFrom};
+use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
 
@@ -21,6 +21,21 @@ impl FileDesc {
         let result =
             cvt(unsafe { hermit_abi::read(self.fd.as_raw_fd(), buf.as_mut_ptr(), buf.len()) })?;
         Ok(result as usize)
+    }
+
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        // SAFETY: The `read` syscall does not read from the buffer, so it is
+        // safe to use `&mut [MaybeUninit<u8>]`.
+        let result = cvt(unsafe {
+            hermit_abi::read(
+                self.fd.as_raw_fd(),
+                buf.as_mut().as_mut_ptr() as *mut u8,
+                buf.capacity(),
+            )
+        })?;
+        // SAFETY: Exactly `result` bytes have been filled.
+        unsafe { buf.advance_unchecked(result as usize) };
+        Ok(())
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
@@ -66,9 +81,26 @@ impl FileDesc {
         true
     }
 
+    pub fn seek(&self, pos: SeekFrom) -> io::Result<u64> {
+        let (whence, pos) = match pos {
+            // Casting to `i64` is fine, too large values will end up as
+            // negative which will cause an error in `lseek`.
+            SeekFrom::Start(off) => (hermit_abi::SEEK_SET, off as i64),
+            SeekFrom::End(off) => (hermit_abi::SEEK_END, off),
+            SeekFrom::Current(off) => (hermit_abi::SEEK_CUR, off),
+        };
+        let n = cvt(unsafe { hermit_abi::lseek(self.as_raw_fd(), pos as isize, whence) })?;
+        Ok(n as u64)
+    }
+
+    pub fn tell(&self) -> io::Result<u64> {
+        self.seek(SeekFrom::Current(0))
+    }
+
     pub fn duplicate(&self) -> io::Result<FileDesc> {
         self.duplicate_path(&[])
     }
+
     pub fn duplicate_path(&self, _path: &[u8]) -> io::Result<FileDesc> {
         unsupported()
     }

@@ -14,6 +14,7 @@ use intern::{sym, Symbol};
 use stdx::never;
 
 use crate::{
+    display::DisplayTarget,
     error_lifetime,
     mir::eval::{
         pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
@@ -835,8 +836,7 @@ impl Evaluator<'_> {
                     // render full paths.
                     Err(_) => {
                         let krate = locals.body.owner.krate(self.db.upcast());
-                        let edition = self.db.crate_graph()[krate].edition;
-                        ty.display(self.db, edition).to_string()
+                        ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
                     }
                 };
                 let len = ty_name.len();

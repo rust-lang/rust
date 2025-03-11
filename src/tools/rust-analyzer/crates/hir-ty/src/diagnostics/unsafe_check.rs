@@ -95,7 +95,26 @@ enum UnsafeDiagnostic {
     DeprecatedSafe2024 { node: ExprId, inside_unsafe_block: InsideUnsafeBlock },
 }
 
-pub fn unsafe_expressions(
+pub fn unsafe_operations_for_body(
+    db: &dyn HirDatabase,
+    infer: &InferenceResult,
+    def: DefWithBodyId,
+    body: &Body,
+    callback: &mut dyn FnMut(ExprOrPatId),
+) {
+    let mut visitor_callback = |diag| {
+        if let UnsafeDiagnostic::UnsafeOperation { node, .. } = diag {
+            callback(node);
+        }
+    };
+    let mut visitor = UnsafeVisitor::new(db, infer, body, def, &mut visitor_callback);
+    visitor.walk_expr(body.body_expr);
+    for &param in &body.params {
+        visitor.walk_pat(param);
+    }
+}
+
+pub fn unsafe_operations(
     db: &dyn HirDatabase,
     infer: &InferenceResult,
     def: DefWithBodyId,
@@ -281,13 +300,6 @@ impl<'a> UnsafeVisitor<'a> {
                     self.on_unsafe_op(current.into(), UnsafetyReason::RawPtrDeref);
                 }
             }
-            Expr::Unsafe { .. } => {
-                let old_inside_unsafe_block =
-                    mem::replace(&mut self.inside_unsafe_block, InsideUnsafeBlock::Yes);
-                self.body.walk_child_exprs_without_pats(current, |child| self.walk_expr(child));
-                self.inside_unsafe_block = old_inside_unsafe_block;
-                return;
-            }
             &Expr::Assignment { target, value: _ } => {
                 let old_inside_assignment = mem::replace(&mut self.inside_assignment, true);
                 self.walk_pats_top(std::iter::once(target), current);
@@ -305,6 +317,20 @@ impl<'a> UnsafeVisitor<'a> {
                         self.on_unsafe_op(current.into(), UnsafetyReason::UnionField);
                     }
                 }
+            }
+            Expr::Unsafe { statements, .. } => {
+                let old_inside_unsafe_block =
+                    mem::replace(&mut self.inside_unsafe_block, InsideUnsafeBlock::Yes);
+                self.walk_pats_top(
+                    statements.iter().filter_map(|statement| match statement {
+                        &Statement::Let { pat, .. } => Some(pat),
+                        _ => None,
+                    }),
+                    current,
+                );
+                self.body.walk_child_exprs_without_pats(current, |child| self.walk_expr(child));
+                self.inside_unsafe_block = old_inside_unsafe_block;
+                return;
             }
             Expr::Block { statements, .. } | Expr::Async { statements, .. } => {
                 self.walk_pats_top(

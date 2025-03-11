@@ -3,10 +3,11 @@ use std::{fmt, iter, mem};
 
 use base_db::CrateId;
 use hir_expand::{name::Name, MacroDefId};
-use intern::sym;
+use intern::{sym, Symbol};
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
+use span::SyntaxContextId;
 use triomphe::Arc;
 
 use crate::{
@@ -343,15 +344,7 @@ impl Resolver {
         }
 
         if n_segments <= 1 {
-            let mut hygiene_info = if !hygiene_id.is_root() {
-                let ctx = hygiene_id.lookup(db);
-                ctx.outer_expn.map(|expansion| {
-                    let expansion = db.lookup_intern_macro_call(expansion);
-                    (ctx.parent, expansion.def)
-                })
-            } else {
-                None
-            };
+            let mut hygiene_info = hygiene_info(db, hygiene_id);
             for scope in self.scopes() {
                 match scope {
                     Scope::ExprScope(scope) => {
@@ -371,19 +364,7 @@ impl Resolver {
                         }
                     }
                     Scope::MacroDefScope(macro_id) => {
-                        if let Some((parent_ctx, label_macro_id)) = hygiene_info {
-                            if label_macro_id == **macro_id {
-                                // A macro is allowed to refer to variables from before its declaration.
-                                // Therefore, if we got to the rib of its declaration, give up its hygiene
-                                // and use its parent expansion.
-                                let parent_ctx = db.lookup_intern_syntax_context(parent_ctx);
-                                hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent);
-                                hygiene_info = parent_ctx.outer_expn.map(|expansion| {
-                                    let expansion = db.lookup_intern_macro_call(expansion);
-                                    (parent_ctx.parent, expansion.def)
-                                });
-                            }
-                        }
+                        handle_macro_def_scope(db, &mut hygiene_id, &mut hygiene_info, macro_id)
                     }
                     Scope::GenericParams { params, def } => {
                         if let Some(id) = params.find_const_by_name(first_name, *def) {
@@ -730,6 +711,107 @@ impl Resolver {
         })
     }
 
+    /// Checks if we rename `renamed` (currently named `current_name`) to `new_name`, will the meaning of this reference
+    /// (that contains `current_name` path) change from `renamed` to some another variable (returned as `Some`).
+    pub fn rename_will_conflict_with_another_variable(
+        &self,
+        db: &dyn DefDatabase,
+        current_name: &Name,
+        current_name_as_path: &ModPath,
+        mut hygiene_id: HygieneId,
+        new_name: &Symbol,
+        to_be_renamed: BindingId,
+    ) -> Option<BindingId> {
+        let mut hygiene_info = hygiene_info(db, hygiene_id);
+        let mut will_be_resolved_to = None;
+        for scope in self.scopes() {
+            match scope {
+                Scope::ExprScope(scope) => {
+                    for entry in scope.expr_scopes.entries(scope.scope_id) {
+                        if entry.hygiene() == hygiene_id {
+                            if entry.binding() == to_be_renamed {
+                                // This currently resolves to our renamed variable, now `will_be_resolved_to`
+                                // contains `Some` if the meaning will change or `None` if not.
+                                return will_be_resolved_to;
+                            } else if entry.name().symbol() == new_name {
+                                will_be_resolved_to = Some(entry.binding());
+                            }
+                        }
+                    }
+                }
+                Scope::MacroDefScope(macro_id) => {
+                    handle_macro_def_scope(db, &mut hygiene_id, &mut hygiene_info, macro_id)
+                }
+                Scope::GenericParams { params, def } => {
+                    if params.find_const_by_name(current_name, *def).is_some() {
+                        // It does not resolve to our renamed variable.
+                        return None;
+                    }
+                }
+                Scope::AdtScope(_) | Scope::ImplDefScope(_) => continue,
+                Scope::BlockScope(m) => {
+                    if m.resolve_path_in_value_ns(db, current_name_as_path).is_some() {
+                        // It does not resolve to our renamed variable.
+                        return None;
+                    }
+                }
+            }
+        }
+        // It does not resolve to our renamed variable.
+        None
+    }
+
+    /// Checks if we rename `renamed` to `name`, will the meaning of this reference (that contains `name` path) change
+    /// from some other variable (returned as `Some`) to `renamed`.
+    pub fn rename_will_conflict_with_renamed(
+        &self,
+        db: &dyn DefDatabase,
+        name: &Name,
+        name_as_path: &ModPath,
+        mut hygiene_id: HygieneId,
+        to_be_renamed: BindingId,
+    ) -> Option<BindingId> {
+        let mut hygiene_info = hygiene_info(db, hygiene_id);
+        let mut will_resolve_to_renamed = false;
+        for scope in self.scopes() {
+            match scope {
+                Scope::ExprScope(scope) => {
+                    for entry in scope.expr_scopes.entries(scope.scope_id) {
+                        if entry.binding() == to_be_renamed {
+                            will_resolve_to_renamed = true;
+                        } else if entry.hygiene() == hygiene_id && entry.name() == name {
+                            if will_resolve_to_renamed {
+                                // This will resolve to the renamed variable before it resolves to the original variable.
+                                return Some(entry.binding());
+                            } else {
+                                // This will resolve to the original variable.
+                                return None;
+                            }
+                        }
+                    }
+                }
+                Scope::MacroDefScope(macro_id) => {
+                    handle_macro_def_scope(db, &mut hygiene_id, &mut hygiene_info, macro_id)
+                }
+                Scope::GenericParams { params, def } => {
+                    if params.find_const_by_name(name, *def).is_some() {
+                        // Here and below, it might actually resolve to our renamed variable - in which case it'll
+                        // hide the generic parameter or some other thing (not a variable). We don't check for that
+                        // because due to naming conventions, it is rare that variable will shadow a non-variable.
+                        return None;
+                    }
+                }
+                Scope::AdtScope(_) | Scope::ImplDefScope(_) => continue,
+                Scope::BlockScope(m) => {
+                    if m.resolve_path_in_value_ns(db, name_as_path).is_some() {
+                        return None;
+                    }
+                }
+            }
+        }
+        None
+    }
+
     /// `expr_id` is required to be an expression id that comes after the top level expression scope in the given resolver
     #[must_use]
     pub fn update_to_inner_scope(
@@ -792,6 +874,44 @@ impl Resolver {
 
     pub fn reset_to_guard(&mut self, UpdateGuard(start): UpdateGuard) {
         self.scopes.truncate(start);
+    }
+}
+
+#[inline]
+fn handle_macro_def_scope(
+    db: &dyn DefDatabase,
+    hygiene_id: &mut HygieneId,
+    hygiene_info: &mut Option<(SyntaxContextId, MacroDefId)>,
+    macro_id: &MacroDefId,
+) {
+    if let Some((parent_ctx, label_macro_id)) = hygiene_info {
+        if label_macro_id == macro_id {
+            // A macro is allowed to refer to variables from before its declaration.
+            // Therefore, if we got to the rib of its declaration, give up its hygiene
+            // and use its parent expansion.
+            let parent_ctx = db.lookup_intern_syntax_context(*parent_ctx);
+            *hygiene_id = HygieneId::new(parent_ctx.opaque_and_semitransparent);
+            *hygiene_info = parent_ctx.outer_expn.map(|expansion| {
+                let expansion = db.lookup_intern_macro_call(expansion);
+                (parent_ctx.parent, expansion.def)
+            });
+        }
+    }
+}
+
+#[inline]
+fn hygiene_info(
+    db: &dyn DefDatabase,
+    hygiene_id: HygieneId,
+) -> Option<(SyntaxContextId, MacroDefId)> {
+    if !hygiene_id.is_root() {
+        let ctx = hygiene_id.lookup(db);
+        ctx.outer_expn.map(|expansion| {
+            let expansion = db.lookup_intern_macro_call(expansion);
+            (ctx.parent, expansion.def)
+        })
+    } else {
+        None
     }
 }
 

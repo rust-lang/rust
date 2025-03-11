@@ -67,6 +67,10 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
     let mut table = "| Test suite | Passed ✅ | Ignored 🚫 | Failed  ❌ |\n".to_string();
     writeln!(table, "|:------|------:|------:|------:|").unwrap();
 
+    fn compute_pct(value: f64, total: f64) -> f64 {
+        if total == 0.0 { 0.0 } else { value / total }
+    }
+
     fn write_row(
         buffer: &mut String,
         name: &str,
@@ -75,9 +79,9 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
     ) -> std::fmt::Result {
         let TestSuiteRecord { passed, ignored, failed } = record;
         let total = (record.passed + record.ignored + record.failed) as f64;
-        let passed_pct = ((*passed as f64) / total) * 100.0;
-        let ignored_pct = ((*ignored as f64) / total) * 100.0;
-        let failed_pct = ((*failed as f64) / total) * 100.0;
+        let passed_pct = compute_pct(*passed as f64, total) * 100.0;
+        let ignored_pct = compute_pct(*ignored as f64, total) * 100.0;
+        let failed_pct = compute_pct(*failed as f64, total) * 100.0;
 
         write!(buffer, "| {surround}{name}{surround} |")?;
         write!(buffer, " {surround}{passed} ({passed_pct:.0}%){surround} |")?;
@@ -105,17 +109,21 @@ struct TestSuiteRecord {
     failed: u64,
 }
 
+fn test_metadata_name(metadata: &TestSuiteMetadata) -> String {
+    match metadata {
+        TestSuiteMetadata::CargoPackage { crates, stage, .. } => {
+            format!("{} (stage {stage})", crates.join(", "))
+        }
+        TestSuiteMetadata::Compiletest { suite, stage, .. } => {
+            format!("{suite} (stage {stage})")
+        }
+    }
+}
+
 fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRecord> {
     let mut records: BTreeMap<String, TestSuiteRecord> = BTreeMap::new();
     for suite in suites {
-        let name = match &suite.metadata {
-            TestSuiteMetadata::CargoPackage { crates, stage, .. } => {
-                format!("{} (stage {stage})", crates.join(", "))
-            }
-            TestSuiteMetadata::Compiletest { suite, stage, .. } => {
-                format!("{suite} (stage {stage})")
-            }
-        };
+        let name = test_metadata_name(&suite.metadata);
         let record = records.entry(name).or_default();
         for test in &suite.tests {
             match test.outcome {
@@ -134,7 +142,7 @@ fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRec
     records
 }
 
-fn get_test_suites(metrics: &JsonRoot) -> Vec<&TestSuite> {
+pub fn get_test_suites(metrics: &JsonRoot) -> Vec<&TestSuite> {
     fn visit_test_suites<'a>(nodes: &'a [JsonNode], suites: &mut Vec<&'a TestSuite>) {
         for node in nodes {
             match node {

@@ -154,11 +154,11 @@ fn socket_addr_to_c(addr: &SocketAddr) -> (SocketAddrCRepr, c::socklen_t) {
     match addr {
         SocketAddr::V4(a) => {
             let sockaddr = SocketAddrCRepr { v4: socket_addr_v4_to_c(a) };
-            (sockaddr, mem::size_of::<c::sockaddr_in>() as c::socklen_t)
+            (sockaddr, size_of::<c::sockaddr_in>() as c::socklen_t)
         }
         SocketAddr::V6(a) => {
             let sockaddr = SocketAddrCRepr { v6: socket_addr_v6_to_c(a) };
-            (sockaddr, mem::size_of::<c::sockaddr_in6>() as c::socklen_t)
+            (sockaddr, size_of::<c::sockaddr_in6>() as c::socklen_t)
         }
     }
 }
@@ -169,13 +169,13 @@ unsafe fn socket_addr_from_c(
 ) -> io::Result<SocketAddr> {
     match (*storage).ss_family as c_int {
         c::AF_INET => {
-            assert!(len >= mem::size_of::<c::sockaddr_in>());
+            assert!(len >= size_of::<c::sockaddr_in>());
             Ok(SocketAddr::V4(socket_addr_v4_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in)
             })))
         }
         c::AF_INET6 => {
-            assert!(len >= mem::size_of::<c::sockaddr_in6>());
+            assert!(len >= size_of::<c::sockaddr_in6>());
             Ok(SocketAddr::V6(socket_addr_v6_from_c(unsafe {
                 *(storage as *const _ as *const c::sockaddr_in6)
             })))
@@ -200,7 +200,7 @@ pub fn setsockopt<T>(
             level,
             option_name,
             (&raw const option_value) as *const _,
-            mem::size_of::<T>() as c::socklen_t,
+            size_of::<T>() as c::socklen_t,
         ))?;
         Ok(())
     }
@@ -209,7 +209,7 @@ pub fn setsockopt<T>(
 pub fn getsockopt<T: Copy>(sock: &Socket, level: c_int, option_name: c_int) -> io::Result<T> {
     unsafe {
         let mut option_value: T = mem::zeroed();
-        let mut option_len = mem::size_of::<T>() as c::socklen_t;
+        let mut option_len = size_of::<T>() as c::socklen_t;
         cvt(c::getsockopt(
             sock.as_raw(),
             level,
@@ -227,7 +227,7 @@ where
 {
     unsafe {
         let mut storage: c::sockaddr_storage = mem::zeroed();
-        let mut len = mem::size_of_val(&storage) as c::socklen_t;
+        let mut len = size_of_val(&storage) as c::socklen_t;
         cvt(f((&raw mut storage) as *mut _, &mut len))?;
         socket_addr_from_c(&storage, len as usize)
     }
@@ -561,7 +561,7 @@ impl TcpListener {
         // so we don't need to zero it here.
         // reference: https://linux.die.net/man/2/accept4
         let mut storage: mem::MaybeUninit<c::sockaddr_storage> = mem::MaybeUninit::uninit();
-        let mut len = mem::size_of_val(&storage) as c::socklen_t;
+        let mut len = size_of_val(&storage) as c::socklen_t;
         let sock = self.inner.accept(storage.as_mut_ptr() as *mut _, &mut len)?;
         let addr = unsafe { socket_addr_from_c(storage.as_ptr(), len as usize)? };
         Ok((TcpStream { inner: sock }, addr))

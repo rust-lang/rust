@@ -1,5 +1,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![feature(default_field_values)]
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(rustc_attrs)]

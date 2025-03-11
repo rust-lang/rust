@@ -397,6 +397,12 @@ pub enum Ordering {
 }
 
 impl Ordering {
+    #[inline]
+    const fn as_raw(self) -> i8 {
+        // FIXME(const-hack): just use `PartialOrd` against `Equal` once that's const
+        crate::intrinsics::discriminant_value(&self)
+    }
+
     /// Returns `true` if the ordering is the `Equal` variant.
     ///
     /// # Examples
@@ -413,7 +419,11 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_eq(self) -> bool {
-        matches!(self, Equal)
+        // All the `is_*` methods are implemented as comparisons against zero
+        // to follow how clang's libcxx implements their equivalents in
+        // <https://github.com/llvm/llvm-project/blob/60486292b79885b7800b082754153202bef5b1f0/libcxx/include/__compare/is_eq.h#L23-L28>
+
+        self.as_raw() == 0
     }
 
     /// Returns `true` if the ordering is not the `Equal` variant.
@@ -432,7 +442,7 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ne(self) -> bool {
-        !matches!(self, Equal)
+        self.as_raw() != 0
     }
 
     /// Returns `true` if the ordering is the `Less` variant.
@@ -451,7 +461,7 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_lt(self) -> bool {
-        matches!(self, Less)
+        self.as_raw() < 0
     }
 
     /// Returns `true` if the ordering is the `Greater` variant.
@@ -470,7 +480,7 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_gt(self) -> bool {
-        matches!(self, Greater)
+        self.as_raw() > 0
     }
 
     /// Returns `true` if the ordering is either the `Less` or `Equal` variant.
@@ -489,7 +499,7 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_le(self) -> bool {
-        !matches!(self, Greater)
+        self.as_raw() <= 0
     }
 
     /// Returns `true` if the ordering is either the `Greater` or `Equal` variant.
@@ -508,7 +518,7 @@ impl Ordering {
     #[rustc_const_stable(feature = "ordering_helpers", since = "1.53.0")]
     #[stable(feature = "ordering_helpers", since = "1.53.0")]
     pub const fn is_ge(self) -> bool {
-        !matches!(self, Less)
+        self.as_raw() >= 0
     }
 
     /// Reverses the `Ordering`.

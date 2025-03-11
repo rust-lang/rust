@@ -26,7 +26,8 @@ pub fn test(x: Option<bool>) {
     }
 
     // CHECK-LABEL: @test(
-    // CHECK: br i1 %1, label %bb2, label %bb1, !prof ![[NUM:[0-9]+]]
+    // CHECK: %[[IS_NONE:.+]] = icmp eq i8 %0, 2
+    // CHECK: br i1 %[[IS_NONE]], label %bb2, label %bb1, !prof ![[NUM:[0-9]+]]
     // CHECK: bb1:
     // CHECK: path_a
     // CHECK: bb2:
