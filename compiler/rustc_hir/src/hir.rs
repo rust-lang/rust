@@ -161,9 +161,11 @@ impl Lifetime {
         self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
     }
 
-    pub fn suggestion_position(&self) -> (LifetimeSuggestionPosition, Span) {
+    pub fn suggestion_position(&self, is_ref: bool) -> (LifetimeSuggestionPosition, Span) {
         if self.ident.name == kw::Empty {
-            if self.ident.span.is_empty() {
+            if is_ref {
+                (LifetimeSuggestionPosition::Ampersand, self.ident.span)
+            } else if self.ident.span.is_empty() {
                 (LifetimeSuggestionPosition::ElidedPathArgument, self.ident.span)
             } else {
                 (LifetimeSuggestionPosition::ElidedPath, self.ident.span.shrink_to_hi())
@@ -177,9 +179,9 @@ impl Lifetime {
         }
     }
 
-    pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
+    pub fn suggestion(&self, new_lifetime: &str, is_ref: bool) -> (Span, String) {
         debug_assert!(new_lifetime.starts_with('\''));
-        let (pos, span) = self.suggestion_position();
+        let (pos, span) = self.suggestion_position(is_ref);
         let code = match pos {
             LifetimeSuggestionPosition::Normal => format!("{new_lifetime}"),
             LifetimeSuggestionPosition::Ampersand => format!("{new_lifetime} "),
