@@ -118,7 +118,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     ) where
         F: FnOnce(&mut Self),
     {
-        let attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
+        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
         let depr = attr::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
@@ -795,7 +795,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
-                    let attrs = self.tcx.hir().attrs(item.hir_id());
+                    let attrs = self.tcx.hir_attrs(item.hir_id());
                     let stab = attr::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
                     // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
@@ -1034,7 +1034,7 @@ fn is_unstable_reexport(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
 
     // If this is a path that isn't a use, we don't need to do anything special
-    if !matches!(tcx.hir().expect_item(def_id).kind, ItemKind::Use(..)) {
+    if !matches!(tcx.hir_expect_item(def_id).kind, ItemKind::Use(..)) {
         return false;
     }
 

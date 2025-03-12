@@ -182,7 +182,7 @@ fn suggestion<'tcx>(
 }
 
 fn field_with_attrs_span(tcx: TyCtxt<'_>, field: &hir::ExprField<'_>) -> Span {
-    if let Some(attr) = tcx.hir().attrs(field.hir_id).first() {
+    if let Some(attr) = tcx.hir_attrs(field.hir_id).first() {
         field.span.with_lo(attr.span().lo())
     } else {
         field.span

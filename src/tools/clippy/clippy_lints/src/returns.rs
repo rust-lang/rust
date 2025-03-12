@@ -231,7 +231,7 @@ impl<'tcx> LateLintPass<'tcx> for Return {
             && let Some(stmt) = block.stmts.iter().last()
             && let StmtKind::Let(local) = &stmt.kind
             && local.ty.is_none()
-            && cx.tcx.hir().attrs(local.hir_id).is_empty()
+            && cx.tcx.hir_attrs(local.hir_id).is_empty()
             && let Some(initexpr) = &local.init
             && let PatKind::Binding(_, local_id, _, _) = local.pat.kind
             && path_to_local_id(retexpr, local_id)
@@ -401,7 +401,7 @@ fn check_final_expr<'tcx>(
             // This allows the addition of attributes, like `#[allow]` (See: clippy#9361)
             // `#[expect(clippy::needless_return)]` needs to be handled separately to
             // actually fulfill the expectation (clippy::#12998)
-            match cx.tcx.hir().attrs(expr.hir_id) {
+            match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {
                     if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
