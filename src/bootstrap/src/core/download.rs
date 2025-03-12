@@ -19,7 +19,7 @@ static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
 /// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     config.try_run(cmd)
 }
 
