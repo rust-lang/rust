@@ -156,6 +156,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         if let ItemKind::Fn(f) = &i.kind {
             extra_hir_attributes.extend(f.eii_impl.iter().map(|(id, mi)| {
                 let did = self.lower_path_simple_eii(*id, &mi.path);
+
                 hir::Attribute::Parsed(AttributeKind::EiiImpl { eii_macro: did })
             }));
         }
@@ -518,22 +519,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     fn lower_path_simple_eii(&mut self, id: NodeId, path: &Path) -> DefId {
-        let lowered = self.lower_qpath(
-            id,
-            &None,
-            path,
-            ParamMode::Explicit,
-            crate::AllowReturnTypeNotation::No,
-            ImplTraitContext::Disallowed(ImplTraitPosition::Path),
-            None,
-        );
-
-        let QPath::Resolved(None, path) = lowered else {
-            // TODO
-            panic!("{lowered:?}");
+        let res = self.resolver.get_partial_res(id).unwrap();
+        let Some(did) = res.expect_full_res().opt_def_id() else {
+            self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+            todo!()
         };
 
-        path.res.def_id()
+        did
     }
 
     fn lower_const_item(
