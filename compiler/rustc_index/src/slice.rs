@@ -1,6 +1,7 @@
 use std::fmt;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut};
+use std::slice::GetDisjointMutError::*;
 use std::slice::{self, SliceIndex};
 
 use crate::{Idx, IndexVec, IntoSliceIdx};
@@ -121,32 +122,36 @@ impl<I: Idx, T> IndexSlice<I, T> {
 
     /// Returns mutable references to two distinct elements, `a` and `b`.
     ///
-    /// Panics if `a == b`.
+    /// Panics if `a == b` or if some of them are out of bounds.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
-        assert!(ai != bi);
 
-        if ai < bi {
-            let (c1, c2) = self.raw.split_at_mut(bi);
-            (&mut c1[ai], &mut c2[0])
-        } else {
-            let (c2, c1) = self.pick2_mut(b, a);
-            (c1, c2)
+        match self.raw.get_disjoint_mut([ai, bi]) {
+            Ok([a, b]) => (a, b),
+            Err(OverlappingIndices) => panic!("Indices {ai:?} and {bi:?} are not disjoint!"),
+            Err(IndexOutOfBounds) => {
+                panic!("Some indices among ({ai:?}, {bi:?}) are out of bounds")
+            }
         }
     }
 
     /// Returns mutable references to three distinct elements.
     ///
-    /// Panics if the elements are not distinct.
+    /// Panics if the elements are not distinct or if some of them are out of bounds.
     #[inline]
     pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
         let (ai, bi, ci) = (a.index(), b.index(), c.index());
-        assert!(ai != bi && bi != ci && ci != ai);
-        let len = self.raw.len();
-        assert!(ai < len && bi < len && ci < len);
-        let ptr = self.raw.as_mut_ptr();
-        unsafe { (&mut *ptr.add(ai), &mut *ptr.add(bi), &mut *ptr.add(ci)) }
+
+        match self.raw.get_disjoint_mut([ai, bi, ci]) {
+            Ok([a, b, c]) => (a, b, c),
+            Err(OverlappingIndices) => {
+                panic!("Indices {ai:?}, {bi:?} and {ci:?} are not disjoint!")
+            }
+            Err(IndexOutOfBounds) => {
+                panic!("Some indices among ({ai:?}, {bi:?}, {ci:?}) are out of bounds")
+            }
+        }
     }
 
     #[inline]
