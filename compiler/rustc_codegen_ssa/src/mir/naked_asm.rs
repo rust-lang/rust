@@ -245,7 +245,7 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
             writeln!(begin, ".type 32").unwrap();
-            writeln!(begin, ".endef {asm_name}").unwrap();
+            writeln!(begin, ".endef").unwrap();
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
