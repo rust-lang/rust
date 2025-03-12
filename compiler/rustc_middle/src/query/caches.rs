@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
-use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::sync::SyncTable;
+use rustc_data_structures::sync::collect::pin;
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -41,7 +42,7 @@ pub trait QueryCache: Sized {
 /// In-memory cache for queries whose keys aren't suitable for any of the
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    cache: SyncTable<K, (V, DepNodeIndex)>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -53,33 +54,34 @@ impl<K, V> Default for DefaultCache<K, V> {
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
     K: QueryKey,
-    V: Copy,
+    V: Copy + Send,
 {
     type Key = K;
     type Value = V;
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        self.cache.get(key)
+        pin(|pin| {
+            let result = self.cache.read(pin).get(key, None);
+            if let Some((_, value)) = result { Some(*value) } else { None }
+        })
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        // We may be overwriting another value. This is all right, since the dep-graph
-        // will check that the value fingerprint matches.
-        self.cache.insert(key, (value, index));
+        self.cache.lock().insert_new(key, (value, index), None);
     }
 
     fn for_each(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        for shard in self.cache.lock_shards() {
-            for (k, v) in shard.iter() {
+        pin(|pin| {
+            for (k, v) in self.cache.read(pin).iter() {
                 f(k, &v.0, v.1);
             }
-        }
+        })
     }
 
     fn len(&self) -> usize {
-        self.cache.len()
+        pin(|pin| self.cache.read(pin).len())
     }
 }
 
@@ -142,7 +144,7 @@ impl<V> Default for DefIdCache<V> {
 
 impl<V> QueryCache for DefIdCache<V>
 where
-    V: Copy,
+    V: Copy + Send,
 {
     type Key = DefId;
     type Value = V;
