@@ -832,15 +832,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let trait_missing_method =
                     matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
-                if item_name.name != kw::Empty {
-                    self.report_method_error(
-                        hir_id,
-                        ty.normalized,
-                        error,
-                        Expectation::NoExpectation,
-                        trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
-                    );
-                }
+                assert_ne!(item_name.name, kw::Empty);
+                self.report_method_error(
+                    hir_id,
+                    ty.normalized,
+                    error,
+                    Expectation::NoExpectation,
+                    trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
+                );
 
                 result
             });

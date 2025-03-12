@@ -274,7 +274,7 @@ fn parse_tree<'a>(
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx().span_err(token.span, msg);
-                    TokenTree::MetaVar(token.span, Ident::empty())
+                    TokenTree::MetaVar(token.span, Ident::dummy())
                 }
 
                 // There are no more tokens. Just return the `$` we already have.

@@ -2933,7 +2933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let guar = if field.name == kw::Empty {
-            self.dcx().span_delayed_bug(field.span, "field name with no name")
+            self.dcx().span_bug(field.span, "field name with no name")
         } else if self.method_exists_for_diagnostic(
             field,
             base_ty,
