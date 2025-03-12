@@ -194,6 +194,9 @@ pub enum AttributeKind {
     EiiImpl {
         eii_macro: DefId,
     },
+    EiiMacroFor {
+        eii_extern_item: DefId,
+    },
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),
     Stability {

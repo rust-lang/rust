@@ -413,7 +413,6 @@ define_tables! {
 
 - optional:
     attributes: Table<DefIndex, LazyArray<hir::Attribute>>,
-    eii_macro_for: Table<DefIndex, LazyValue<DefIndex>>,
     // For non-reexported names in a module every name is associated with a separate `DefId`,
     // so we can take their names, visibilities etc from other encoded tables.
     module_children_non_reexports: Table<DefIndex, LazyArray<DefIndex>>,

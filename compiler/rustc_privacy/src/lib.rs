@@ -576,12 +576,8 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // have normal hygiene, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
-                let item = self.tcx.hir().expect_item(def_id);
-                if let hir::ItemKind::Macro {
-                    ast_macro_def: MacroDef { macro_rules: false, .. },
-                    ..
-                } = item.kind
-                {
+                let item = self.tcx.hir_expect_item(def_id);
+                if let hir::ItemKind::Macro(_, MacroDef { macro_rules: false, .. }, _) = item.kind {
                     if vis.is_accessible_from(module, self.tcx) {
                         self.update(def_id, macro_ev, Level::Reachable);
                     }
@@ -660,14 +656,9 @@ impl<'tcx> Visitor<'tcx> for EmbargoVisitor<'tcx> {
             | hir::ItemKind::GlobalAsm { .. } => {}
             // The interface is empty, and all nested items are processed by `visit_item`.
             hir::ItemKind::Mod(..) => {}
-            hir::ItemKind::Macro { ast_macro_def, .. } => {
-                // TODO: consider EII for reachability
+            hir::ItemKind::Macro(_, macro_def, _) => {
                 if let Some(item_ev) = item_ev {
-                    self.update_reachability_from_macro(
-                        item.owner_id.def_id,
-                        ast_macro_def,
-                        item_ev,
-                    );
+                    self.update_reachability_from_macro(item.owner_id.def_id, macro_def, item_ev);
                 }
             }
             hir::ItemKind::Const(..)

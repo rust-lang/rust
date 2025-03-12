@@ -1851,18 +1851,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro { ast_macro_def, kind: _, eii_macro_for } =
-            tcx.hir().expect_item(def_id).kind
-        else {
-            bug!()
-        };
-        self.tables.is_macro_rules.set(def_id.local_def_index, ast_macro_def.macro_rules);
-
-        if let Some(did) = eii_macro_for {
-            record!(self.tables.eii_macro_for[def_id.to_def_id()] <- did.index);
-        }
-
-        record!(self.tables.macro_definition[def_id.to_def_id()] <- &*ast_macro_def.body);
+        let hir::ItemKind::Macro(_, macro_def, _) = tcx.hir_expect_item(def_id).kind else { bug!() };
+        self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
+        record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }
 
     fn encode_native_libraries(&mut self) -> LazyArray<NativeLib> {

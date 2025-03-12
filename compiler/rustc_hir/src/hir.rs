@@ -4113,7 +4113,7 @@ impl<'hir> Item<'hir> {
         expect_fn, (Ident, &FnSig<'hir>, &'hir Generics<'hir>, BodyId),
             ItemKind::Fn { ident, sig, generics, body, .. }, (*ident, sig, generics, *body);
 
-        expect_macro, (Ident, &ast::MacroDef, MacroKind, Option<DefId>), ItemKind::Macro {name: ident, ast_macro_def, kind, eii_macro_for}, (*ident, ast_macro_def, *kind, *eii_macro_for);
+        expect_macro, (Ident, &ast::MacroDef, MacroKind), ItemKind::Macro(ident, def, mk), (*ident, def, *mk);
 
         expect_mod, (Ident, &'hir Mod<'hir>), ItemKind::Mod(ident, m), (*ident, m);
 
@@ -4290,7 +4290,7 @@ pub enum ItemKind<'hir> {
         has_body: bool,
     },
     /// A MBE macro definition (`macro_rules!` or `macro`).
-    Macro { name: Ident, ast_macro_def: &'hir ast::MacroDef, kind: MacroKind, eii_macro_for: Option<DefId> },
+    Macro(Ident, &'hir ast::MacroDef, MacroKind),
     /// A module.
     Mod(Ident, &'hir Mod<'hir>),
     /// An external module, e.g. `extern { .. }`.
@@ -4390,7 +4390,7 @@ impl ItemKind<'_> {
             ItemKind::Static(..) => "static item",
             ItemKind::Const(..) => "constant item",
             ItemKind::Fn { .. } => "function",
-            ItemKind::Macro { .. } => "macro",
+            ItemKind::Macro(..) => "macro",
             ItemKind::Mod(..) => "module",
             ItemKind::ForeignMod { .. } => "extern block",
             ItemKind::GlobalAsm { .. } => "global asm item",

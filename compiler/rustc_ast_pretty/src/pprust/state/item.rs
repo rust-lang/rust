@@ -677,9 +677,9 @@ impl<'a> State<'a> {
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
 
-        for (_, mi) in eii_impl {
+        for (_, path) in eii_impl {
             self.word("#[");
-            self.print_meta_item(mi);
+            self.print_path(path, false, 0);
             self.word("]");
             self.hardbreak();
         }

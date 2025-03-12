@@ -3582,7 +3582,7 @@ pub struct Fn {
     pub body: Option<P<Block>>,
 
     /// This fn implements some EII, pointed to by the `path`
-    pub eii_impl: ThinVec<(NodeId, MetaItem)>,
+    pub eii_impl: ThinVec<(NodeId, Path)>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
