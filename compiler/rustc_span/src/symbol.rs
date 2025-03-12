@@ -878,6 +878,7 @@ symbols! {
         eii,
         eii_impl,
         eii_internals,
+        eii_macro,
         eii_macro_for,
         emit,
         emit_enum,

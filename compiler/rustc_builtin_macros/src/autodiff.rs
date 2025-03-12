@@ -314,6 +314,7 @@ mod llvm_enzyme {
             contract: None,
             body: Some(d_body),
             define_opaque: None,
+            eii_impl: ThinVec::new(),
         });
         let mut rustc_ad_attr =
             P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));

@@ -886,11 +886,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: HirId,
         attrs: &[Attribute],
         target_span: Span,
+        extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
         if attrs.is_empty() {
             &[]
         } else {
-            let lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
+            let mut lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
+            lowered_attrs.extend(extra_hir_attributes.iter().cloned());
 
             debug_assert_eq!(id.owner, self.current_hir_id_owner);
             let ret = self.arena.alloc_from_iter(lowered_attrs);
@@ -1859,7 +1861,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let (name, kind) = self.lower_generic_param_kind(param, source);
 
         let hir_id = self.lower_node_id(param.id);
-        self.lower_attrs(hir_id, &param.attrs, param.span());
+        self.lower_attrs(hir_id, &param.attrs, param.span(), &[]);
         hir::GenericParam {
             hir_id,
             def_id: self.local_def_id(param.id),

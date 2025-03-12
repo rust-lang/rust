@@ -948,13 +948,18 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     contract: _,
                     body,
                     define_opaque: _,
+                    eii_impl,
                 },
             ) => {
                 self.visit_attrs_vis_ident(&item.attrs, &item.vis, ident);
                 self.check_defaultness(item.span, *defaultness);
 
+                for (id, mi) in eii_impl {
+                    self.visit_path(&mi.path, *id);
+                }
+
                 let is_intrinsic = item.attrs.iter().any(|a| a.has_name(sym::rustc_intrinsic));
-                if body.is_none() && !is_intrinsic && !self.is_sdylib_interface {
+                if body.is_none() && !is_intrinsic {
                     self.dcx().emit_err(errors::FnWithoutBody {
                         span: item.span,
                         replace_span: self.ending_semi_or_hi(item.span),

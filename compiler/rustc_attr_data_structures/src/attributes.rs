@@ -2,6 +2,7 @@ use rustc_abi::Align;
 use rustc_ast::token::CommentKind;
 use rustc_ast::{self as ast, AttrStyle};
 use rustc_macros::{Decodable, Encodable, HashStable_Generic, PrintAttribute};
+use rustc_span::def_id::DefId;
 use rustc_span::hygiene::Transparency;
 use rustc_span::{Span, Symbol};
 use thin_vec::ThinVec;
@@ -188,6 +189,10 @@ pub enum AttributeKind {
         kind: CommentKind,
         span: Span,
         comment: Symbol,
+    },
+    Eii(Span),
+    EiiImpl {
+        eii_macro: DefId,
     },
     MacroTransparency(Transparency),
     Repr(ThinVec<(ReprAttr, Span)>),

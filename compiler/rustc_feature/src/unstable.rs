@@ -211,6 +211,8 @@ declare_features! (
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
     (internal, custom_mir, "1.65.0", None),
+    /// Implementation details of externally implementatble items
+    (unstable, eii_internals, "CURRENT_RUSTC_VERSION", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
     /// Allows using the #[rustc_intrinsic] attribute.
@@ -495,6 +497,8 @@ declare_features! (
     (unstable, extern_system_varargs, "1.86.0", Some(136946)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
+    /// Externally implementatble items
+    (unstable, eii, "CURRENT_RUSTC_VERSION", Some(125418)),
     /// Allow using 128-bit (quad precision) floating point numbers.
     (unstable, f128, "1.78.0", Some(116909)),
     /// Allow using 16-bit (half precision) floating point numbers.

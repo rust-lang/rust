@@ -425,6 +425,8 @@ pub(crate) enum PathSource<'a> {
     ReturnTypeNotation,
     /// Paths from `#[define_opaque]` attributes
     DefineOpaques,
+    // Resolving a macro
+    Macro,
 }
 
 impl<'a> PathSource<'a> {
@@ -441,6 +443,7 @@ impl<'a> PathSource<'a> {
             | PathSource::ReturnTypeNotation => ValueNS,
             PathSource::TraitItem(ns) => ns,
             PathSource::PreciseCapturingArg(ns) => ns,
+            PathSource::Macro => MacroNS,
         }
     }
 
@@ -456,7 +459,8 @@ impl<'a> PathSource<'a> {
             | PathSource::TraitItem(..)
             | PathSource::DefineOpaques
             | PathSource::Delegation
-            | PathSource::PreciseCapturingArg(..) => false,
+            | PathSource::PreciseCapturingArg(..)
+            | PathSource::Macro => false,
         }
     }
 
@@ -497,6 +501,7 @@ impl<'a> PathSource<'a> {
             },
             PathSource::ReturnTypeNotation | PathSource::Delegation => "function",
             PathSource::PreciseCapturingArg(..) => "type or const parameter",
+            PathSource::Macro => "macro",
         }
     }
 
@@ -591,6 +596,7 @@ impl<'a> PathSource<'a> {
                 Res::Def(DefKind::TyParam, _) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. }
             ),
             PathSource::PreciseCapturingArg(MacroNS) => false,
+            PathSource::Macro => matches!(res, Res::Def(DefKind::Macro(_), _)),
         }
     }
 
@@ -610,6 +616,7 @@ impl<'a> PathSource<'a> {
             (PathSource::TraitItem(..) | PathSource::ReturnTypeNotation, false) => E0576,
             (PathSource::PreciseCapturingArg(..), true) => E0799,
             (PathSource::PreciseCapturingArg(..), false) => E0800,
+            (PathSource::Macro, _) => E0425,
         }
     }
 }
@@ -1058,6 +1065,12 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
             FnKind::Closure(..) => {}
         };
         debug!("(resolving function) entering function");
+
+        if let FnKind::Fn(_, _, _, f) = fn_kind {
+            for (id, mi) in &f.eii_impl {
+                self.smart_resolve_path(*id, &None, &mi.path, PathSource::Macro);
+            }
+        }
 
         // Create a value rib for the function.
         self.with_rib(ValueNS, RibKind::FnOrCoroutine, |this| {
@@ -2038,7 +2051,8 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 | PathSource::TraitItem(..)
                 | PathSource::Type
                 | PathSource::PreciseCapturingArg(..)
-                | PathSource::ReturnTypeNotation => false,
+                | PathSource::ReturnTypeNotation
+                | PathSource::Macro => false,
                 PathSource::Expr(..)
                 | PathSource::Pat
                 | PathSource::Struct

@@ -224,6 +224,7 @@ impl<'a> Parser<'a> {
                 contract,
                 body,
                 define_opaque: None,
+                eii_impl: ThinVec::new(),
             }))
         } else if self.eat_keyword(exp!(Extern)) {
             if self.eat_keyword(exp!(Crate)) {

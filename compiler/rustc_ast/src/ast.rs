@@ -3580,6 +3580,9 @@ pub struct Fn {
     pub contract: Option<P<FnContract>>,
     pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<P<Block>>,
+
+    /// This fn implements some EII, pointed to by the `path`
+    pub eii_impl: ThinVec<(NodeId, MetaItem)>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3929,7 +3932,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 184);
+    static_assert_size!(Fn, 192);
     static_assert_size!(ForeignItem, 80);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

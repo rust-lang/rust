@@ -839,11 +839,17 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
                 body,
                 sig: FnSig { header, decl, span },
                 define_opaque,
+                eii_impl,
             },
         ) => {
             // Visibility is visited as a part of the item.
             visit_defaultness(vis, defaultness);
             vis.visit_ident(ident);
+
+            for (node_id, mi) in eii_impl {
+                vis.visit_id(node_id);
+                vis.visit_path(&mut mi.path);
+            }
             vis.visit_fn_header(header);
             vis.visit_generics(generics);
             vis.visit_fn_decl(decl);
