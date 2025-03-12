@@ -567,10 +567,7 @@ fn test_log2() {
     let nan: f32 = f32::NAN;
     let inf: f32 = f32::INFINITY;
     let neg_inf: f32 = f32::NEG_INFINITY;
-    assert_approx_eq!(
-        10.0f32.log2(),
-        3.321928 /* Miri float-non-det: Make tests pass for now */
-    );
+    assert_approx_eq!(10.0f32.log2(), 3.321928);
     assert_approx_eq!(2.3f32.log2(), 1.201634);
     assert_approx_eq!(1.0f32.exp().log2(), 1.442695);
     assert!(nan.log2().is_nan());

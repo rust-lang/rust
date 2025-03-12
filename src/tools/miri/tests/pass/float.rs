@@ -38,7 +38,7 @@ macro_rules! assert_approx_eq {
     }};
 
     ($a:expr, $b: expr) => {
-        // accept up to 52ULP (16ULP for host floats, 4ULP for miri artificial error and 32 for any rounding errors)
+        // accept up to 32LP (4ULP for miri artificial error and 28ULP for any rounding errors)
         assert_approx_eq!($a, $b, 32);
     };
 }

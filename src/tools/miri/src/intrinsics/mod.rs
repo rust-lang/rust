@@ -269,8 +269,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
-
             }
+
             #[rustfmt::skip]
             | "sinf64"
             | "cosf64"
@@ -313,7 +313,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 });
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
-
             }
 
             "fmaf32" => {
@@ -601,8 +600,7 @@ fn fixed_float_value<S: Semantics>(
         ("cosf32" | "cosf64", [input]) if input.is_zero() => Some(one),
 
         // e^0 = 1
-        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input])
-            if input.is_zero() => Some(one),
+        ("expf32" | "expf64" | "exp2f32" | "exp2f64", [input]) if input.is_zero() => Some(one),
 
         // log(1) = 0
         #[rustfmt::skip]
