@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_data_structures::intern::Interned;
 use rustc_error_messages::MultiSpan;
-use rustc_macros::HashStable;
+use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_type_ir::{self as ir, TypeFlags, WithCachedTypeInfo};
 
 use crate::ty::{self, Ty, TyCtxt};
@@ -243,4 +243,12 @@ impl<'tcx> Const<'tcx> {
     pub fn is_ct_infer(self) -> bool {
         matches!(self.kind(), ty::ConstKind::Infer(_))
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable, HashStable)]
+pub enum AnonConstKind {
+    GCEConst,
+    MCGConst,
+    RepeatExprCount,
+    NonTypeSystem,
 }
