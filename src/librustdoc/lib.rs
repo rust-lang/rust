@@ -22,6 +22,7 @@
 #![allow(clippy::collapsible_if, clippy::collapsible_else_if)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(bootstrap, feature(os_str_display))]
 
 extern crate thin_vec;
 
