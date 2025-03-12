@@ -16,7 +16,7 @@ LL |     type Assoc<const N: Self>;
    = note: the only supported types are integers, `bool`, and `char`
 
 error: anonymous constants referencing generics are not yet supported
-  --> $DIR/references-parent-generics.rs:14:21
+  --> $DIR/references-parent-generics.rs:15:21
    |
 LL |     let x: T::Assoc<3>;
    |                     ^
