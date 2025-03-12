@@ -2697,12 +2697,12 @@ impl Symbol {
         self >= kw::As && self <= kw::While
     }
 
-    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
-        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
-    }
-
     fn is_unused_keyword_always(self) -> bool {
         self >= kw::Abstract && self <= kw::Yield
+    }
+
+    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
