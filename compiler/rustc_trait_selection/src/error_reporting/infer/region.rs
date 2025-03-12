@@ -853,13 +853,41 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             needle: hir::LifetimeName,
             new_lt: &'a str,
             add_lt_suggs: &'a mut Vec<(Span, String)>,
+            is_ref: bool,
         }
 
         impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
             fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
                 if lt.res == self.needle {
-                    self.add_lt_suggs.push(lt.suggestion(self.new_lt));
+                    self.add_lt_suggs.push(lt.suggestion(self.new_lt, self.is_ref));
                 }
+            }
+
+            fn visit_ty(
+                &mut self,
+                ty: &'hir rustc_hir::Ty<'hir, rustc_hir::AmbigArg>,
+            ) -> Self::Result {
+                use rustc_hir::TyKind::*;
+
+                let old_is_ref = self.is_ref;
+
+                match ty.kind {
+                    Ref(..) => {
+                        self.is_ref = true;
+                    }
+
+                    Path(..) => {
+                        self.is_ref = false;
+                    }
+
+                    InferDelegation(..) | Slice(..) | Array(..) | Ptr(..) | BareFn(..)
+                    | UnsafeBinder(..) | Never | Tup(..) | OpaqueDef(..) | TraitAscription(..)
+                    | TraitObject(..) | Typeof(..) | Err(..) | Pat(..) | Infer(..) => {}
+                }
+
+                rustc_hir::intravisit::walk_ty(self, ty);
+
+                self.is_ref = old_is_ref;
             }
         }
 
@@ -897,6 +925,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             needle: hir::LifetimeName::Param(lifetime_def_id),
             add_lt_suggs,
             new_lt: &new_lt,
+            is_ref: false,
         };
         match self.tcx.expect_hir_owner_node(lifetime_scope) {
             hir::OwnerNode::Item(i) => visitor.visit_item(i),

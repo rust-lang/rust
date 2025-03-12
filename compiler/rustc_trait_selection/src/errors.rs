@@ -551,15 +551,6 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
 
             impl<'v> Visitor<'v> for ImplicitLifetimeFinder {
                 fn visit_ty(&mut self, ty: &'v hir::Ty<'v, AmbigArg>) {
-                    let make_suggestion = |ident: Ident| {
-                        if ident.name == kw::Empty && ident.span.is_empty() {
-                            format!("{}, ", self.suggestion_param_name)
-                        } else if ident.name == kw::UnderscoreLifetime && ident.span.is_empty() {
-                            format!("{} ", self.suggestion_param_name)
-                        } else {
-                            self.suggestion_param_name.clone()
-                        }
-                    };
                     match ty.kind {
                         hir::TyKind::Path(hir::QPath::Resolved(_, path)) => {
                             for segment in path.segments {
@@ -587,9 +578,9 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                                             if let hir::GenericArg::Lifetime(lifetime) = arg
                                                 && lifetime.is_anonymous()
                                             {
-                                                self.suggestions.push((
-                                                    lifetime.ident.span,
-                                                    make_suggestion(lifetime.ident),
+                                                self.suggestions.push(lifetime.suggestion(
+                                                    &self.suggestion_param_name,
+                                                    false,
                                                 ));
                                             }
                                         }
@@ -599,7 +590,7 @@ impl Subdiagnostic for AddLifetimeParamsSuggestion<'_> {
                         }
                         hir::TyKind::Ref(lifetime, ..) if lifetime.is_anonymous() => {
                             self.suggestions
-                                .push((lifetime.ident.span, make_suggestion(lifetime.ident)));
+                                .push(lifetime.suggestion(&self.suggestion_param_name, true));
                         }
                         _ => {}
                     }
