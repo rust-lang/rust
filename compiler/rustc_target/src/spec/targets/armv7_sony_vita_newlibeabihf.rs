@@ -15,7 +15,7 @@ pub(crate) fn target() -> Target {
     );
 
     Target {
-        llvm_target: "thumbv7a-vita-eabihf".into(),
+        llvm_target: "thumbv7a-sony-vita-eabihf".into(),
         metadata: TargetMetadata {
             description: Some(
                 "Armv7-A Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)".into(),
