@@ -1,5 +1,6 @@
-use core::intrinsics;
+use core::arch;
 use core::mem;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 // Kernel-provided user-mode helper functions:
 // https://www.kernel.org/doc/Documentation/arm/kernel_user_helpers.txt
@@ -7,6 +8,7 @@ unsafe fn __kuser_cmpxchg(oldval: u32, newval: u32, ptr: *mut u32) -> bool {
     let f: extern "C" fn(u32, u32, *mut u32) -> u32 = mem::transmute(0xffff0fc0usize as *const ());
     f(oldval, newval, ptr) == 0
 }
+
 unsafe fn __kuser_memory_barrier() {
     let f: extern "C" fn() = mem::transmute(0xffff0fa0usize as *const ());
     f();
@@ -54,13 +56,52 @@ fn insert_aligned(aligned: u32, val: u32, shift: u32, mask: u32) -> u32 {
     (aligned & !(mask << shift)) | ((val & mask) << shift)
 }
 
+/// Performs a relaxed atomic load of 4 bytes at `ptr`. Some of the bytes are allowed to be out of
+/// bounds as long as `size_of::<T>()` bytes are in bounds.
+///
+/// # Safety
+///
+/// - `ptr` must be 4-aligned.
+/// - `size_of::<T>()` must be at most 4.
+/// - if `size_of::<T>() == 1`, `ptr` or `ptr` offset by 1, 2 or 3 bytes must be valid for a relaxed
+///   atomic read of 1 byte.
+/// - if `size_of::<T>() == 2`, `ptr` or `ptr` offset by 2 bytes must be valid for a relaxed atomic
+///   read of 2 bytes.
+/// - if `size_of::<T>() == 4`, `ptr` must be valid for a relaxed atomic read of 4 bytes.
+unsafe fn atomic_load_aligned<T>(ptr: *mut u32) -> u32 {
+    if mem::size_of::<T>() == 4 {
+        // SAFETY: As `T` has a size of 4, the caller garantees this is sound.
+        unsafe { AtomicU32::from_ptr(ptr).load(Ordering::Relaxed) }
+    } else {
+        // SAFETY:
+        // As all 4 bytes pointed to by `ptr` might not be dereferenceable due to being out of
+        // bounds when doing atomic operations on a `u8`/`i8`/`u16`/`i16`, inline ASM is used to
+        // avoid causing undefined behaviour. However, as `ptr` is 4-aligned and at least 1 byte of
+        // `ptr` is dereferencable, the load won't cause a segfault as the page size is always
+        // larger than 4 bytes.
+        // The `ldr` instruction does not touch the stack or flags, or write to memory, so
+        // `nostack`, `preserves_flags` and `readonly` are sound. The caller garantees that `ptr` is
+        // 4-aligned, as required by `ldr`.
+        unsafe {
+            let res: u32;
+            arch::asm!(
+                "ldr {res}, [{ptr}]",
+                ptr = in(reg) ptr,
+                res = lateout(reg) res,
+                options(nostack, preserves_flags, readonly)
+            );
+            res
+        }
+    }
+}
+
 // Generic atomic read-modify-write operation
 unsafe fn atomic_rmw<T, F: Fn(u32) -> u32, G: Fn(u32, u32) -> u32>(ptr: *mut T, f: F, g: G) -> u32 {
     let aligned_ptr = align_ptr(ptr);
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        let curval_aligned = intrinsics::atomic_load_unordered(aligned_ptr);
+        let curval_aligned = atomic_load_aligned::<T>(aligned_ptr);
         let curval = extract_aligned(curval_aligned, shift, mask);
         let newval = f(curval);
         let newval_aligned = insert_aligned(curval_aligned, newval, shift, mask);
@@ -76,7 +117,7 @@ unsafe fn atomic_cmpxchg<T>(ptr: *mut T, oldval: u32, newval: u32) -> u32 {
     let (shift, mask) = get_shift_mask(ptr);
 
     loop {
-        let curval_aligned = intrinsics::atomic_load_unordered(aligned_ptr);
+        let curval_aligned = atomic_load_aligned::<T>(aligned_ptr);
         let curval = extract_aligned(curval_aligned, shift, mask);
         if curval != oldval {
             return curval;
