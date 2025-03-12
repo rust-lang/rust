@@ -391,9 +391,6 @@ where
     LaneCount<N>: SupportedLaneCount,
 {
     /// Converts a SIMD mask to an array of bools.
-    ///
-    /// ## Cost
-    /// Copies the bytes of the array
     #[inline]
     fn from(vector: Mask<T, N>) -> Self {
         vector.to_array()
