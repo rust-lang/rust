@@ -9,7 +9,7 @@ pub(crate) fn eii_macro_for(
     mut item: Annotatable,
 ) -> Vec<Annotatable> {
     let Annotatable::Item(i) = &mut item else { panic!("expected item") };
-    let ItemKind::MacroDef(d) = &mut i.kind else { panic!("expected macro def") };
+    let ItemKind::MacroDef(_, d) = &mut i.kind else { panic!("expected macro def") };
 
     let Some(list) = meta_item.meta_item_list() else { panic!("expected list") };
 
@@ -31,7 +31,7 @@ pub(crate) fn eii_macro(
 
     assert!(meta_item.is_word());
 
-    f.eii_impl.push((DUMMY_NODE_ID, meta_item.clone()));
+    f.eii_impl.push((DUMMY_NODE_ID, meta_item.path.clone()));
 
     vec![item]
 }

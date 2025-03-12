@@ -682,9 +682,9 @@ impl<'a> State<'a> {
         let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impl } = func;
         self.print_define_opaques(define_opaque.as_deref());
 
-        for (_, mi) in eii_impl {
+        for (_, path) in eii_impl {
             self.word("#[");
-            self.print_meta_item(mi);
+            self.print_path(path, false, 0);
             self.word("]");
             self.hardbreak();
         }

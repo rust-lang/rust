@@ -631,9 +631,8 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ItemKind::Macro { name: ident, ast_macro_def, kind: _, eii_macro_for: _ } => {
-                // TODO: print macro for as comment
-                self.print_mac_def(ast_macro_def, &ident, item.span, |_| {});
+            hir::ItemKind::Macro(ident, macro_def, _) => {
+                self.print_mac_def(macro_def, &ident, item.span, |_| {});
             }
             hir::ItemKind::Mod(ident, mod_) => {
                 self.head("mod");
