@@ -27,6 +27,7 @@ use super::{
     throw_ub_custom, throw_ub_format,
 };
 use crate::fluent_generated as fluent;
+use crate::interpret::Writeable;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum MulAddType {
@@ -68,10 +69,10 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId
 }
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Generates a value of `TypeId` for `ty` in-place.
-    fn write_type_id(
+    pub(crate) fn write_type_id(
         &mut self,
         ty: Ty<'tcx>,
-        dest: &PlaceTy<'tcx, M::Provenance>,
+        dest: &impl Writeable<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, ()> {
         let tcx = self.tcx;
         let type_id_hash = tcx.type_id_hash(ty).as_u128();

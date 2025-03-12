@@ -62,7 +62,6 @@ generate! {
     MsrvStack,
     Octal,
     OpenOptions,
-    Other,
     PathLookup,
     Regex,
     RegexBuilder,
