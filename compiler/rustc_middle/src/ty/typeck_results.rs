@@ -310,7 +310,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -554,7 +554,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });
