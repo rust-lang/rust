@@ -1948,7 +1948,7 @@ impl DummyAstNode for Item {
                 span: Default::default(),
                 tokens: Default::default(),
             },
-            ident: Ident::empty(),
+            ident: Ident::dummy(),
             kind: ItemKind::ExternCrate(None),
             tokens: Default::default(),
         }
