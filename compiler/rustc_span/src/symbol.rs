@@ -27,9 +27,8 @@ symbols! {
     // (e.g. `_`).
     //
     // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
-    // predicates and `used_keywords`. (This should rarely be necessary if
-    // the keywords are kept in alphabetic order.) Also consider adding new
-    // keywords to the `ui/parser/raw/raw-idents.rs` test.
+    // predicates and `used_keywords`. Also consider adding new keywords to the
+    // `ui/parser/raw/raw-idents.rs` test.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
@@ -43,13 +42,16 @@ symbols! {
         //   present, it's better to use `sym::dummy` than `kw::Empty`, because
         //   it's clearer that it's intended as a dummy value, and more likely
         //   to be detected if it accidentally does get used.
+        // tidy-alphabetical-start
+        DollarCrate:        "$crate",
         Empty:              "",
         PathRoot:           "{{root}}",
-        DollarCrate:        "$crate",
         Underscore:         "_",
+        // tidy-alphabetical-end
 
         // Keywords that are used in stable Rust.
         // Matching predicates: `is_used_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -85,9 +87,11 @@ symbols! {
         Use:                "use",
         Where:              "where",
         While:              "while",
+        // tidy-alphabetical-end
 
         // Keywords that are used in unstable Rust or reserved for future use.
         // Matching predicates: `is_unused_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -100,39 +104,48 @@ symbols! {
         Unsized:            "unsized",
         Virtual:            "virtual",
         Yield:              "yield",
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in stable Rust.
         // Matching predicates: `is_used_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
         // Matching predicates: `is_unused_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
+        // tidy-alphabetical-end
 
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: none
-        UnderscoreLifetime: "'_",
+        // tidy-alphabetical-start
         StaticLifetime:     "'static",
+        UnderscoreLifetime: "'_",
+        // tidy-alphabetical-end
 
         // Weak keywords, have special meaning only in specific contexts.
         // Matching predicates: none
+        // tidy-alphabetical-start
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
+        ContractEnsures:    "contract_ensures",
+        ContractRequires:   "contract_requires",
         Default:            "default",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
-        ContractEnsures:    "contract_ensures",
-        ContractRequires:   "contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
+        // tidy-alphabetical-end
     }
 
     // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
@@ -2781,7 +2794,7 @@ impl Ident {
 /// *Note:* Please update this if a new keyword is added beyond the current
 /// range.
 pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+    (kw::DollarCrate.as_u32()..kw::Yeet.as_u32())
         .filter_map(|kw| {
             let kw = Symbol::new(kw);
             if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {
