@@ -371,6 +371,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "gimli",
     "gsgdt",
     "hashbrown",
+    "horde",
     "icu_list",
     "icu_locale_core",
     "icu_locale_fallback",
