@@ -8,7 +8,7 @@ pub(crate) fn target() -> Target {
     base.panic_strategy = PanicStrategy::Abort;
 
     Target {
-        llvm_target: "x86_64-unknown-l4re-uclibc".into(),
+        llvm_target: "x86_64-unknown-l4re-gnu".into(),
         metadata: TargetMetadata {
             description: None,
             tier: Some(3),

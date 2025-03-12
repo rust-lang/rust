@@ -4,7 +4,7 @@ use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "mips-unknown-linux-uclibc".into(),
+        llvm_target: "mips-unknown-linux-gnu".into(),
         metadata: TargetMetadata {
             description: Some("MIPS Linux with uClibc".into()),
             tier: Some(3),

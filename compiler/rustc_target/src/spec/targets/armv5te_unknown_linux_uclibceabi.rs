@@ -2,7 +2,7 @@ use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "armv5te-unknown-linux-uclibcgnueabi".into(),
+        llvm_target: "armv5te-unknown-linux-gnueabi".into(),
         metadata: TargetMetadata {
             description: Some("Armv5TE Linux with uClibc".into()),
             tier: Some(3),

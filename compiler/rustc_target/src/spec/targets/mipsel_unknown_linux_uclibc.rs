@@ -2,7 +2,7 @@ use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "mipsel-unknown-linux-uclibc".into(),
+        llvm_target: "mipsel-unknown-linux-gnu".into(),
         metadata: TargetMetadata {
             description: Some("MIPS (LE) Linux with uClibc".into()),
             tier: Some(3),
