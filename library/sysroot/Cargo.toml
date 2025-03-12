@@ -3,7 +3,7 @@ cargo-features = ["public-dependency"]
 [package]
 name = "sysroot"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 # this is a dummy crate to ensure that all required crates appear in the sysroot
 [dependencies]
