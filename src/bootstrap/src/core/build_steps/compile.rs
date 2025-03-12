@@ -194,11 +194,7 @@ impl Step for Std {
         trace!(?compiler_to_use);
 
         if compiler_to_use != compiler {
-            trace!(
-                ?compiler_to_use,
-                ?compiler,
-                "compiler != compiler_to_use, handling cross-compile scenario"
-            );
+            trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
             builder.ensure(Std::new(compiler_to_use, target));
             let msg = if compiler_to_use.host == target {
