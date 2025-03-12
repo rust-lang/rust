@@ -452,7 +452,7 @@ pub enum TargetKindData {
 }
 /// Identifies a crate by position in the crates array.
 ///
-/// This will differ from `CrateId` when multiple `ProjectJson`
+/// This will differ from `Crate` when multiple `ProjectJson`
 /// workspaces are loaded.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Eq, PartialEq, Hash)]
 #[serde(transparent)]

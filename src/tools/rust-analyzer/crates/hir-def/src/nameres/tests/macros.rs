@@ -1095,7 +1095,7 @@ pub fn derive_macro_2(_item: TokenStream) -> TokenStream {
 }
 "#,
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = *db.all_crates().last().unwrap();
     let def_map = db.crate_def_map(krate);
 
     assert_eq!(def_map.data.exported_derives.len(), 1);
@@ -1445,7 +1445,7 @@ struct TokenStream;
 fn proc_attr(a: TokenStream, b: TokenStream) -> TokenStream { a }
     "#,
     );
-    let krate = db.crate_graph().iter().next().unwrap();
+    let krate = *db.all_crates().last().unwrap();
     let def_map = db.crate_def_map(krate);
 
     let root_module = &def_map[DefMap::ROOT].scope;

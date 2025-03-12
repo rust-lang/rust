@@ -260,7 +260,7 @@ impl AsName for ast::FieldKind {
     }
 }
 
-impl AsName for base_db::Dependency {
+impl AsName for base_db::BuiltDependency {
     fn as_name(&self) -> Name {
         Name::new_symbol_root((*self.name).clone())
     }

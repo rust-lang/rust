@@ -3,7 +3,7 @@
 
 use std::{hash::Hash, iter};
 
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{
     fold::{FallibleTypeFolder, Shift},
     DebruijnIndex,
@@ -34,10 +34,7 @@ use crate::{
     TraitRefExt, Ty, WhereClause,
 };
 
-pub(crate) fn fn_traits(
-    db: &dyn DefDatabase,
-    krate: CrateId,
-) -> impl Iterator<Item = TraitId> + '_ {
+pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
     [LangItem::Fn, LangItem::FnMut, LangItem::FnOnce]
         .into_iter()
         .filter_map(move |lang| db.lang_item(krate, lang))

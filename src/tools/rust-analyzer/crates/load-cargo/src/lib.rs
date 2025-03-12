@@ -2,15 +2,15 @@
 //! for incorporating changes.
 // Note, don't remove any public api from this. This API is consumed by external tools
 // to run rust-analyzer as a library.
-use std::{collections::hash_map::Entry, iter, mem, path::Path, sync};
+use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
 use crossbeam_channel::{unbounded, Receiver};
 use hir_expand::proc_macro::{
     ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
-    ProcMacros,
+    ProcMacrosBuilder,
 };
 use ide_db::{
-    base_db::{CrateGraph, CrateWorkspaceData, Env, SourceRoot, SourceRootId},
+    base_db::{CrateGraphBuilder, Env, SourceRoot, SourceRootId},
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
@@ -139,7 +139,6 @@ pub fn load_workspace(
     });
 
     let db = load_crate_graph(
-        &ws,
         crate_graph,
         proc_macros,
         project_folders.source_root_config,
@@ -418,15 +417,12 @@ pub fn load_proc_macro(
 }
 
 fn load_crate_graph(
-    ws: &ProjectWorkspace,
-    crate_graph: CrateGraph,
-    proc_macros: ProcMacros,
+    crate_graph: CrateGraphBuilder,
+    proc_macros: ProcMacrosBuilder,
     source_root_config: SourceRootConfig,
     vfs: &mut vfs::Vfs,
     receiver: &Receiver<vfs::loader::Message>,
 ) -> RootDatabase {
-    let ProjectWorkspace { toolchain, target_layout, .. } = ws;
-
     let lru_cap = std::env::var("RA_LRU_CAP").ok().and_then(|it| it.parse::<u16>().ok());
     let mut db = RootDatabase::new(lru_cap);
     let mut analysis_change = ChangeWithProcMacros::new();
@@ -461,14 +457,7 @@ fn load_crate_graph(
     let source_roots = source_root_config.partition(vfs);
     analysis_change.set_roots(source_roots);
 
-    let ws_data = crate_graph
-        .iter()
-        .zip(iter::repeat(From::from(CrateWorkspaceData {
-            data_layout: target_layout.clone(),
-            toolchain: toolchain.clone(),
-        })))
-        .collect();
-    analysis_change.set_crate_graph(crate_graph, ws_data);
+    analysis_change.set_crate_graph(crate_graph);
     analysis_change.set_proc_macros(proc_macros);
 
     db.apply_change(analysis_change);
@@ -494,7 +483,7 @@ fn expander_to_proc_macro(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 struct Expander(proc_macro_api::ProcMacro);
 
 impl ProcMacroExpander for Expander {
@@ -522,6 +511,10 @@ impl ProcMacroExpander for Expander {
             Err(err) => Err(ProcMacroExpansionError::System(err.to_string())),
         }
     }
+
+    fn eq_dyn(&self, other: &dyn ProcMacroExpander) -> bool {
+        other.as_any().downcast_ref::<Self>().is_some_and(|other| self == other)
+    }
 }
 
 #[cfg(test)]
@@ -543,7 +536,7 @@ mod tests {
         let (db, _vfs, _proc_macro) =
             load_workspace_at(path, &cargo_config, &load_cargo_config, &|_| {}).unwrap();
 
-        let n_crates = db.crate_graph().iter().count();
+        let n_crates = db.all_crates().len();
         // RA has quite a few crates, but the exact count doesn't matter
         assert!(n_crates > 20);
     }

@@ -3,7 +3,7 @@
 
 use std::sync;
 
-use base_db::{impl_intern_key, CrateId, Upcast};
+use base_db::{impl_intern_key, Crate, Upcast};
 use hir_def::{
     db::DefDatabase, hir::ExprId, layout::TargetDataLayout, AdtId, BlockId, CallableDefId,
     ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
@@ -103,8 +103,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::cycle(crate::layout::layout_of_ty_recover)]
     fn layout_of_ty(&self, ty: Ty, env: Arc<TraitEnvironment>) -> Result<Arc<Layout>, LayoutError>;
 
-    #[salsa::invoke(crate::layout::target_data_layout_query)]
-    fn target_data_layout(&self, krate: CrateId) -> Result<Arc<TargetDataLayout>, Arc<str>>;
+    #[salsa::invoke_actual(crate::layout::target_data_layout_query)]
+    fn target_data_layout(&self, krate: Crate) -> Result<Arc<TargetDataLayout>, Arc<str>>;
 
     #[salsa::invoke_actual(crate::dyn_compatibility::dyn_compatibility_of_trait_query)]
     fn dyn_compatibility_of_trait(&self, trait_: TraitId) -> Option<DynCompatibilityViolation>;
@@ -196,8 +196,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke_actual(crate::lower::generic_defaults_query)]
     fn generic_defaults(&self, def: GenericDefId) -> GenericDefaults;
 
-    #[salsa::invoke(InherentImpls::inherent_impls_in_crate_query)]
-    fn inherent_impls_in_crate(&self, krate: CrateId) -> Arc<InherentImpls>;
+    #[salsa::invoke_actual(InherentImpls::inherent_impls_in_crate_query)]
+    fn inherent_impls_in_crate(&self, krate: Crate) -> Arc<InherentImpls>;
 
     #[salsa::invoke_actual(InherentImpls::inherent_impls_in_block_query)]
     fn inherent_impls_in_block(&self, block: BlockId) -> Option<Arc<InherentImpls>>;
@@ -209,18 +209,18 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(crate::method_resolution::incoherent_inherent_impl_crates)]
     fn incoherent_inherent_impl_crates(
         &self,
-        krate: CrateId,
+        krate: Crate,
         fp: TyFingerprint,
-    ) -> SmallVec<[CrateId; 2]>;
+    ) -> SmallVec<[Crate; 2]>;
 
-    #[salsa::invoke(TraitImpls::trait_impls_in_crate_query)]
-    fn trait_impls_in_crate(&self, krate: CrateId) -> Arc<TraitImpls>;
+    #[salsa::invoke_actual(TraitImpls::trait_impls_in_crate_query)]
+    fn trait_impls_in_crate(&self, krate: Crate) -> Arc<TraitImpls>;
 
     #[salsa::invoke_actual(TraitImpls::trait_impls_in_block_query)]
     fn trait_impls_in_block(&self, block: BlockId) -> Option<Arc<TraitImpls>>;
 
-    #[salsa::invoke(TraitImpls::trait_impls_in_deps_query)]
-    fn trait_impls_in_deps(&self, krate: CrateId) -> Arc<[Arc<TraitImpls>]>;
+    #[salsa::invoke_actual(TraitImpls::trait_impls_in_deps_query)]
+    fn trait_impls_in_deps(&self, krate: Crate) -> Arc<[Arc<TraitImpls>]>;
 
     // Interned IDs for Chalk integration
     #[salsa::interned]
@@ -253,23 +253,16 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(chalk_db::trait_datum_query)]
     fn trait_datum(
         &self,
-        krate: CrateId,
+        krate: Crate,
         trait_id: chalk_db::TraitId,
     ) -> sync::Arc<chalk_db::TraitDatum>;
 
     #[salsa::invoke(chalk_db::adt_datum_query)]
-    fn adt_datum(
-        &self,
-        krate: CrateId,
-        struct_id: chalk_db::AdtId,
-    ) -> sync::Arc<chalk_db::AdtDatum>;
+    fn adt_datum(&self, krate: Crate, struct_id: chalk_db::AdtId) -> sync::Arc<chalk_db::AdtDatum>;
 
     #[salsa::invoke(chalk_db::impl_datum_query)]
-    fn impl_datum(
-        &self,
-        krate: CrateId,
-        impl_id: chalk_db::ImplId,
-    ) -> sync::Arc<chalk_db::ImplDatum>;
+    fn impl_datum(&self, krate: Crate, impl_id: chalk_db::ImplId)
+        -> sync::Arc<chalk_db::ImplDatum>;
 
     #[salsa::invoke(chalk_db::fn_def_datum_query)]
     fn fn_def_datum(&self, fn_def_id: FnDefId) -> sync::Arc<chalk_db::FnDefDatum>;
@@ -287,7 +280,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(chalk_db::associated_ty_value_query)]
     fn associated_ty_value(
         &self,
-        krate: CrateId,
+        krate: Crate,
         id: chalk_db::AssociatedTyValueId,
     ) -> sync::Arc<chalk_db::AssociatedTyValue>;
 
@@ -302,7 +295,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(crate::traits::trait_solve_query)]
     fn trait_solve(
         &self,
-        krate: CrateId,
+        krate: Crate,
         block: Option<BlockId>,
         goal: crate::Canonical<crate::InEnvironment<crate::Goal>>,
     ) -> Option<crate::Solution>;
@@ -310,7 +303,7 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> + std::fmt::Debug {
     #[salsa::invoke(chalk_db::program_clauses_for_chalk_env_query)]
     fn program_clauses_for_chalk_env(
         &self,
-        krate: CrateId,
+        krate: Crate,
         block: Option<BlockId>,
         env: chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner>;

@@ -8,14 +8,15 @@ use std::hash::BuildHasherDefault;
 pub use crate::{
     change::FileChange,
     input::{
-        CrateData, CrateDisplayName, CrateGraph, CrateId, CrateName, CrateOrigin, Dependency, Env,
-        LangCrateOrigin, ProcMacroPaths, ReleaseChannel, SourceRoot, SourceRootId,
-        TargetLayoutLoadResult,
+        BuiltCrateData, BuiltDependency, Crate, CrateBuilder, CrateBuilderId, CrateDataBuilder,
+        CrateDisplayName, CrateGraphBuilder, CrateName, CrateOrigin, CratesIdMap, CratesMap,
+        DependencyBuilder, Env, ExtraCrateData, LangCrateOrigin, ProcMacroPaths, ReleaseChannel,
+        SourceRoot, SourceRootId, TargetLayoutLoadResult, UniqueCrateData,
     },
 };
 use dashmap::{mapref::entry::Entry, DashMap};
 pub use query_group::{self};
-use rustc_hash::{FxHashMap, FxHasher};
+use rustc_hash::{FxHashSet, FxHasher};
 pub use salsa::{self};
 use salsa::{Durability, Setter};
 pub use semver::{BuildMetadata, Prerelease, Version, VersionReq};
@@ -200,21 +201,53 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
     /// Returns the set of errors obtained from parsing the file including validation errors.
     fn parse_errors(&self, file_id: EditionedFileId) -> Option<Arc<[SyntaxError]>>;
 
-    /// The crate graph.
-    #[salsa::input]
-    fn crate_graph(&self) -> Arc<CrateGraph>;
-
-    #[salsa::input]
-    fn crate_workspace_data(&self) -> Arc<FxHashMap<CrateId, Arc<CrateWorkspaceData>>>;
-
     #[salsa::transparent]
-    fn toolchain_channel(&self, krate: CrateId) -> Option<ReleaseChannel>;
+    fn toolchain_channel(&self, krate: Crate) -> Option<ReleaseChannel>;
 
     /// Crates whose root file is in `id`.
-    fn source_root_crates(&self, id: SourceRootId) -> Arc<[CrateId]>;
+    fn source_root_crates(&self, id: SourceRootId) -> Arc<[Crate]>;
 
     #[salsa::transparent]
-    fn relevant_crates(&self, file_id: FileId) -> Arc<[CrateId]>;
+    fn relevant_crates(&self, file_id: FileId) -> Arc<[Crate]>;
+
+    /// Returns the crates in topological order.
+    ///
+    /// **Warning**: do not use this query in analysis! It kills incrementality across crate metadata modifications.
+    #[salsa::input]
+    fn all_crates(&self) -> Arc<Box<[Crate]>>;
+
+    /// Returns an iterator over all transitive dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: do not use this query in analysis! It kills incrementality across crate metadata modifications.
+    ///
+    #[salsa::transparent]
+    fn transitive_deps(&self, crate_id: Crate) -> FxHashSet<Crate>;
+
+    /// Returns all transitive reverse dependencies of the given crate,
+    /// including the crate itself.
+    ///
+    /// **Warning**: Do not use this query in analysis! It kills incrementality across crate metadata modifications.
+    #[salsa::invoke(input::transitive_rev_deps)]
+    #[salsa::transparent]
+    fn transitive_rev_deps(&self, of: Crate) -> FxHashSet<Crate>;
+}
+
+pub fn transitive_deps(db: &dyn SourceDatabase, crate_id: Crate) -> FxHashSet<Crate> {
+    // There is a bit of duplication here and in `CrateGraphBuilder` in the same method, but it's not terrible
+    // and removing that is a bit difficult.
+    let mut worklist = vec![crate_id];
+    let mut deps = FxHashSet::default();
+
+    while let Some(krate) = worklist.pop() {
+        if !deps.insert(krate) {
+            continue;
+        }
+
+        worklist.extend(krate.data(db).dependencies.iter().map(|dep| dep.crate_id));
+    }
+
+    deps
 }
 
 #[salsa::db]
@@ -257,6 +290,9 @@ pub trait SourceDatabase: salsa::Database {
         let source_root = self.source_root(source_root.source_root_id(self));
         source_root.source_root(self).resolve_path(path)
     }
+
+    #[doc(hidden)]
+    fn crates_map(&self) -> Arc<CratesMap>;
 }
 
 /// Crate related data shared by the whole workspace.
@@ -268,12 +304,8 @@ pub struct CrateWorkspaceData {
     pub toolchain: Option<Version>,
 }
 
-fn toolchain_channel(db: &dyn RootQueryDb, krate: CrateId) -> Option<ReleaseChannel> {
-    db.crate_workspace_data()
-        .get(&krate)?
-        .toolchain
-        .as_ref()
-        .and_then(|v| ReleaseChannel::from_str(&v.pre))
+fn toolchain_channel(db: &dyn RootQueryDb, krate: Crate) -> Option<ReleaseChannel> {
+    krate.workspace_data(db).toolchain.as_ref().and_then(|v| ReleaseChannel::from_str(&v.pre))
 }
 
 fn parse(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Parse<ast::SourceFile> {
@@ -291,21 +323,19 @@ fn parse_errors(db: &dyn RootQueryDb, file_id: EditionedFileId) -> Option<Arc<[S
     }
 }
 
-fn source_root_crates(db: &dyn RootQueryDb, id: SourceRootId) -> Arc<[CrateId]> {
-    let graph = db.crate_graph();
-    let mut crates = graph
+fn source_root_crates(db: &dyn RootQueryDb, id: SourceRootId) -> Arc<[Crate]> {
+    let crates = db.all_crates();
+    crates
         .iter()
+        .copied()
         .filter(|&krate| {
-            let root_file = graph[krate].root_file_id;
+            let root_file = krate.data(db).root_file_id;
             db.file_source_root(root_file).source_root_id(db) == id
         })
-        .collect::<Vec<_>>();
-    crates.sort();
-    crates.dedup();
-    crates.into_iter().collect()
+        .collect()
 }
 
-fn relevant_crates(db: &dyn RootQueryDb, file_id: FileId) -> Arc<[CrateId]> {
+fn relevant_crates(db: &dyn RootQueryDb, file_id: FileId) -> Arc<[Crate]> {
     let _p = tracing::info_span!("relevant_crates").entered();
 
     let source_root = db.file_source_root(file_id);

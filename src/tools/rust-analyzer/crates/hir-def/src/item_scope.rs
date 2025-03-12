@@ -3,7 +3,7 @@
 
 use std::sync::LazyLock;
 
-use base_db::CrateId;
+use base_db::Crate;
 use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
 use indexmap::map::Entry;
 use itertools::Itertools;
@@ -916,7 +916,7 @@ impl ItemInNs {
     }
 
     /// Returns the crate defining this item (or `None` if `self` is built-in).
-    pub fn krate(&self, db: &dyn DefDatabase) -> Option<CrateId> {
+    pub fn krate(&self, db: &dyn DefDatabase) -> Option<Crate> {
         match self {
             ItemInNs::Types(id) | ItemInNs::Values(id) => id.module(db).map(|m| m.krate),
             ItemInNs::Macros(id) => Some(id.module(db).krate),

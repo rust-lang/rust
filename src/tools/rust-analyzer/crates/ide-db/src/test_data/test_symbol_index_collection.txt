@@ -2,7 +2,9 @@
     (
         Module {
             id: ModuleId {
-                krate: Idx::<CrateData>(0),
+                krate: Crate {
+                    [salsa id]: Id(2c00),
+                },
                 block: None,
                 local_id: Idx::<ModuleData>(0),
             },
@@ -532,7 +534,9 @@
                 def: Module(
                     Module {
                         id: ModuleId {
-                            krate: Idx::<CrateData>(0),
+                            krate: Crate {
+                                [salsa id]: Id(2c00),
+                            },
                             block: None,
                             local_id: Idx::<ModuleData>(1),
                         },
@@ -565,7 +569,9 @@
                 def: Module(
                     Module {
                         id: ModuleId {
-                            krate: Idx::<CrateData>(0),
+                            krate: Crate {
+                                [salsa id]: Id(2c00),
+                            },
                             block: None,
                             local_id: Idx::<ModuleData>(2),
                         },
@@ -827,7 +833,9 @@
     (
         Module {
             id: ModuleId {
-                krate: Idx::<CrateData>(0),
+                krate: Crate {
+                    [salsa id]: Id(2c00),
+                },
                 block: None,
                 local_id: Idx::<ModuleData>(1),
             },
@@ -871,7 +879,9 @@
     (
         Module {
             id: ModuleId {
-                krate: Idx::<CrateData>(0),
+                krate: Crate {
+                    [salsa id]: Id(2c00),
+                },
                 block: None,
                 local_id: Idx::<ModuleData>(2),
             },

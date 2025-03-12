@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use base_db::CrateId;
+use base_db::Crate;
 use fst::{raw::IndexedValue, Automaton, Streamer};
 use hir_expand::name::Name;
 use itertools::Itertools;
@@ -78,7 +78,7 @@ impl ImportMap {
         out
     }
 
-    pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: CrateId) -> Arc<Self> {
+    pub(crate) fn import_map_query(db: &dyn DefDatabase, krate: Crate) -> Arc<Self> {
         let _p = tracing::info_span!("import_map_query").entered();
 
         let map = Self::collect_import_map(db, krate);
@@ -129,7 +129,7 @@ impl ImportMap {
         self.item_to_info_map.get(&item).map(|(info, _)| &**info)
     }
 
-    fn collect_import_map(db: &dyn DefDatabase, krate: CrateId) -> ImportMapIndex {
+    fn collect_import_map(db: &dyn DefDatabase, krate: Crate) -> ImportMapIndex {
         let _p = tracing::info_span!("collect_import_map").entered();
 
         let def_map = db.crate_def_map(krate);
@@ -400,15 +400,13 @@ impl Query {
 /// This returns a list of items that could be imported from dependencies of `krate`.
 pub fn search_dependencies(
     db: &dyn DefDatabase,
-    krate: CrateId,
+    krate: Crate,
     query: &Query,
 ) -> FxHashSet<ItemInNs> {
     let _p = tracing::info_span!("search_dependencies", ?query).entered();
 
-    let graph = db.crate_graph();
-
     let import_maps: Vec<_> =
-        graph[krate].dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
+        krate.data(db).dependencies.iter().map(|dep| db.import_map(dep.crate_id)).collect();
 
     let mut op = fst::map::OpBuilder::new();
 
@@ -512,11 +510,13 @@ mod tests {
         expect: Expect,
     ) {
         let db = TestDB::with_files(ra_fixture);
-        let crate_graph = db.crate_graph();
-        let krate = crate_graph
+        let all_crates = db.all_crates();
+        let krate = all_crates
             .iter()
+            .copied()
             .find(|&krate| {
-                crate_graph[krate]
+                krate
+                    .extra_data(&db)
                     .display_name
                     .as_ref()
                     .is_some_and(|it| it.crate_name().as_str() == crate_name)
@@ -545,7 +545,7 @@ mod tests {
 
                 Some(format!(
                     "{}::{} ({})\n",
-                    crate_graph[dependency_krate].display_name.as_ref()?,
+                    dependency_krate.extra_data(&db).display_name.as_ref()?,
                     path,
                     mark
                 ))
@@ -590,12 +590,13 @@ mod tests {
 
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let db = TestDB::with_files(ra_fixture);
-        let crate_graph = db.crate_graph();
+        let all_crates = db.all_crates();
 
-        let actual = crate_graph
+        let actual = all_crates
             .iter()
+            .copied()
             .filter_map(|krate| {
-                let cdata = &crate_graph[krate];
+                let cdata = &krate.extra_data(&db);
                 let name = cdata.display_name.as_ref()?;
 
                 let map = db.import_map(krate);

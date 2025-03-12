@@ -318,7 +318,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn first_crate_or_default(&self, file: FileId) -> Crate {
         match self.file_to_module_defs(file).next() {
             Some(module) => module.krate(),
-            None => (*self.db.crate_graph().crates_in_topological_order().last().unwrap()).into(),
+            None => (*self.db.all_crates().last().unwrap()).into(),
         }
     }
 

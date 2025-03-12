@@ -119,9 +119,7 @@ fn documentation_for_definition(
         sema.db,
         famous_defs.as_ref(),
         def.krate(sema.db)
-            .unwrap_or_else(|| {
-                (*sema.db.crate_graph().crates_in_topological_order().last().unwrap()).into()
-            })
+            .unwrap_or_else(|| (*sema.db.all_crates().last().unwrap()).into())
             .to_display_target(sema.db),
     )
 }

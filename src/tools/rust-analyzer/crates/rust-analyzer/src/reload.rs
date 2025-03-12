@@ -15,10 +15,9 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
-use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacros, ProcMacrosBuilder};
-use ide::CrateId;
+use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacrosBuilder};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraph, CrateWorkspaceData, ProcMacroPaths},
+    base_db::{salsa::Durability, CrateGraphBuilder, ProcMacroPaths, RootQueryDb},
     FxHashMap,
 };
 use itertools::Itertools;
@@ -60,7 +59,7 @@ pub(crate) enum BuildDataProgress {
 pub(crate) enum ProcMacroProgress {
     Begin,
     Report(String),
-    End(ProcMacros),
+    End(ChangeWithProcMacros),
 }
 
 impl GlobalState {
@@ -387,7 +386,12 @@ impl GlobalState {
         });
     }
 
-    pub(crate) fn fetch_proc_macros(&mut self, cause: Cause, paths: Vec<ProcMacroPaths>) {
+    pub(crate) fn fetch_proc_macros(
+        &mut self,
+        cause: Cause,
+        mut change: ChangeWithProcMacros,
+        paths: Vec<ProcMacroPaths>,
+    ) {
         info!(%cause, "will load proc macros");
         let ignored_proc_macros = self.config.ignored_proc_macros(None).clone();
         let proc_macro_clients = self.proc_macro_clients.clone();
@@ -440,14 +444,9 @@ impl GlobalState {
                     .for_each(|(krate, res)| builder.insert(krate, res));
             }
 
-            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(builder.build()))).unwrap();
+            change.set_proc_macros(builder);
+            sender.send(Task::LoadProcMacros(ProcMacroProgress::End(change))).unwrap();
         });
-    }
-
-    pub(crate) fn set_proc_macros(&mut self, proc_macros: ProcMacros) {
-        let mut change = ChangeWithProcMacros::new();
-        change.set_proc_macros(proc_macros);
-        self.analysis_host.apply_change(change);
     }
 
     pub(crate) fn switch_workspaces(&mut self, cause: Cause) {
@@ -528,6 +527,14 @@ impl GlobalState {
             if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;
                 self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
+
+                let initial_build = self.analysis_host.raw_database().all_crates().is_empty();
+                if !initial_build {
+                    // `switch_workspaces()` will be called again when build scripts already run, which should
+                    // take a short time. If we update the workspace now we will invalidate proc macros and cfgs,
+                    // and then when build scripts complete we will invalidate them again.
+                    return;
+                }
             }
         }
 
@@ -711,7 +718,7 @@ impl GlobalState {
             })
             .collect();
 
-        let (crate_graph, proc_macro_paths, ws_data) = {
+        let (crate_graph, proc_macro_paths) = {
             // Create crate graph from all the workspaces
             let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
@@ -725,24 +732,35 @@ impl GlobalState {
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
         };
         let mut change = ChangeWithProcMacros::new();
-        if self.config.expand_proc_macros() {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
-                    .collect(),
-            );
-            self.fetch_proc_macros_queue.request_op(cause, proc_macro_paths);
-        } else {
-            change.set_proc_macros(
-                crate_graph
-                    .iter()
-                    .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
-                    .collect(),
-            );
+        let initial_build = self.analysis_host.raw_database().all_crates().is_empty();
+        if initial_build || !self.config.expand_proc_macros() {
+            if self.config.expand_proc_macros() {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err(("proc-macro has not been built yet".to_owned(), true))))
+                        .collect(),
+                );
+            } else {
+                change.set_proc_macros(
+                    crate_graph
+                        .iter()
+                        .map(|id| (id, Err(("proc-macro expansion is disabled".to_owned(), false))))
+                        .collect(),
+                );
+            }
+
+            change.set_crate_graph(crate_graph);
+            self.analysis_host.apply_change(change);
+
+            self.finish_loading_crate_graph();
+            return;
         }
-        change.set_crate_graph(crate_graph, ws_data);
-        self.analysis_host.apply_change(change);
+        change.set_crate_graph(crate_graph);
+        self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
+    }
+
+    pub(crate) fn finish_loading_crate_graph(&mut self) {
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::End,
@@ -883,26 +901,19 @@ pub fn ws_to_crate_graph(
     workspaces: &[ProjectWorkspace],
     extra_env: &FxHashMap<String, String>,
     mut load: impl FnMut(&AbsPath) -> Option<vfs::FileId>,
-) -> (CrateGraph, Vec<ProcMacroPaths>, FxHashMap<CrateId, Arc<CrateWorkspaceData>>) {
-    let mut crate_graph = CrateGraph::default();
+) -> (CrateGraphBuilder, Vec<ProcMacroPaths>) {
+    let mut crate_graph = CrateGraphBuilder::default();
     let mut proc_macro_paths = Vec::default();
-    let mut ws_data = FxHashMap::default();
     for ws in workspaces {
         let (other, mut crate_proc_macros) = ws.to_crate_graph(&mut load, extra_env);
-        let ProjectWorkspace { toolchain, target_layout, .. } = ws;
 
-        let mapping = crate_graph.extend(other, &mut crate_proc_macros);
-        // Populate the side tables for the newly merged crates
-        ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
-            toolchain: toolchain.clone(),
-            data_layout: target_layout.clone(),
-        }))));
+        crate_graph.extend(other, &mut crate_proc_macros);
         proc_macro_paths.push(crate_proc_macros);
     }
 
     crate_graph.shrink_to_fit();
     proc_macro_paths.shrink_to_fit();
-    (crate_graph, proc_macro_paths, ws_data)
+    (crate_graph, proc_macro_paths)
 }
 
 pub(crate) fn should_refresh_for_change(

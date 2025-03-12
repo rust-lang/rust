@@ -1,7 +1,7 @@
 //! Name resolution façade.
 use std::{fmt, iter, mem};
 
-use base_db::CrateId;
+use base_db::Crate;
 use hir_expand::{name::Name, MacroDefId};
 use intern::{sym, Symbol};
 use itertools::Itertools as _;
@@ -22,7 +22,7 @@ use crate::{
     hir::{BindingId, ExprId, LabelId},
     item_scope::{BuiltinShadowMode, ImportOrExternCrate, ImportOrGlob, BUILTIN_SCOPE},
     lang_item::LangItemTarget,
-    nameres::{DefMap, MacroSubNs, ResolvePathResultPrefixInfo},
+    nameres::{DefMap, LocalDefMap, MacroSubNs, ResolvePathResultPrefixInfo},
     path::{ModPath, Path, PathKind},
     per_ns::PerNs,
     type_ref::{LifetimeRef, TypesMap},
@@ -47,6 +47,7 @@ pub struct Resolver {
 #[derive(Clone)]
 struct ModuleItemMap {
     def_map: Arc<DefMap>,
+    local_def_map: Arc<LocalDefMap>,
     module_id: LocalModuleId,
 }
 
@@ -278,8 +279,8 @@ impl Resolver {
         let within_impl = self.scopes().any(|scope| matches!(scope, Scope::ImplDefScope(_)));
         match visibility {
             RawVisibility::Module(_, _) => {
-                let (item_map, module) = self.item_scope();
-                item_map.resolve_visibility(db, module, visibility, within_impl)
+                let (item_map, item_local_map, module) = self.item_scope();
+                item_map.resolve_visibility(item_local_map, db, module, visibility, within_impl)
             }
             RawVisibility::Public => Some(Visibility::Public),
         }
@@ -474,9 +475,16 @@ impl Resolver {
         path: &ModPath,
         expected_macro_kind: Option<MacroSubNs>,
     ) -> Option<(MacroId, Option<ImportOrGlob>)> {
-        let (item_map, module) = self.item_scope();
+        let (item_map, item_local_map, module) = self.item_scope();
         item_map
-            .resolve_path(db, module, path, BuiltinShadowMode::Other, expected_macro_kind)
+            .resolve_path(
+                item_local_map,
+                db,
+                module,
+                path,
+                BuiltinShadowMode::Other,
+                expected_macro_kind,
+            )
             .0
             .take_macros_import()
     }
@@ -550,7 +558,7 @@ impl Resolver {
         for scope in self.scopes() {
             scope.process_names(&mut res, db);
         }
-        let ModuleItemMap { ref def_map, module_id } = self.module_scope;
+        let ModuleItemMap { ref def_map, module_id, ref local_def_map } = self.module_scope;
         // FIXME: should we provide `self` here?
         // f(
         //     Name::self_param(),
@@ -572,7 +580,7 @@ impl Resolver {
                 res.add(name, ScopeDef::ModuleDef(def.into()));
             },
         );
-        def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
+        local_def_map.extern_prelude().for_each(|(name, (def, _extern_crate))| {
             res.add(name, ScopeDef::ModuleDef(ModuleDefId::ModuleId(def.into())));
         });
         BUILTIN_SCOPE.iter().for_each(|(name, &def)| {
@@ -599,7 +607,7 @@ impl Resolver {
 
     pub fn extern_crates_in_scope(&self) -> impl Iterator<Item = (Name, ModuleId)> + '_ {
         self.module_scope
-            .def_map
+            .local_def_map
             .extern_prelude()
             .map(|(name, module_id)| (name.clone(), module_id.0.into()))
     }
@@ -647,11 +655,11 @@ impl Resolver {
     }
 
     pub fn module(&self) -> ModuleId {
-        let (def_map, local_id) = self.item_scope();
+        let (def_map, _, local_id) = self.item_scope();
         def_map.module_id(local_id)
     }
 
-    pub fn krate(&self) -> CrateId {
+    pub fn krate(&self) -> Crate {
         self.module_scope.def_map.krate()
     }
 
@@ -844,9 +852,12 @@ impl Resolver {
             }));
             if let Some(block) = expr_scopes.block(scope_id) {
                 let def_map = db.block_def_map(block);
-                resolver
-                    .scopes
-                    .push(Scope::BlockScope(ModuleItemMap { def_map, module_id: DefMap::ROOT }));
+                let local_def_map = block.lookup(db).module.only_local_def_map(db);
+                resolver.scopes.push(Scope::BlockScope(ModuleItemMap {
+                    def_map,
+                    local_def_map,
+                    module_id: DefMap::ROOT,
+                }));
                 // FIXME: This adds as many module scopes as there are blocks, but resolving in each
                 // already traverses all parents, so this is O(n²). I think we could only store the
                 // innermost module scope instead?
@@ -933,9 +944,10 @@ impl Resolver {
         path: &ModPath,
         shadow: BuiltinShadowMode,
     ) -> PerNs {
-        let (item_map, module) = self.item_scope();
+        let (item_map, item_local_map, module) = self.item_scope();
         // This method resolves `path` just like import paths, so no expected macro subns is given.
-        let (module_res, segment_index) = item_map.resolve_path(db, module, path, shadow, None);
+        let (module_res, segment_index) =
+            item_map.resolve_path(item_local_map, db, module, path, shadow, None);
         if segment_index.is_some() {
             return PerNs::none();
         }
@@ -943,13 +955,17 @@ impl Resolver {
     }
 
     /// The innermost block scope that contains items or the module scope that contains this resolver.
-    fn item_scope(&self) -> (&DefMap, LocalModuleId) {
+    fn item_scope(&self) -> (&DefMap, &LocalDefMap, LocalModuleId) {
         self.scopes()
             .find_map(|scope| match scope {
-                Scope::BlockScope(m) => Some((&*m.def_map, m.module_id)),
+                Scope::BlockScope(m) => Some((&*m.def_map, &*m.local_def_map, m.module_id)),
                 _ => None,
             })
-            .unwrap_or((&self.module_scope.def_map, self.module_scope.module_id))
+            .unwrap_or((
+                &self.module_scope.def_map,
+                &self.module_scope.local_def_map,
+                self.module_scope.module_id,
+            ))
     }
 }
 
@@ -1050,7 +1066,8 @@ fn resolver_for_scope_(
     for scope in scope_chain.into_iter().rev() {
         if let Some(block) = scopes.block(scope) {
             let def_map = db.block_def_map(block);
-            r = r.push_block_scope(def_map);
+            let local_def_map = block.lookup(db).module.only_local_def_map(db);
+            r = r.push_block_scope(def_map, local_def_map);
             // FIXME: This adds as many module scopes as there are blocks, but resolving in each
             // already traverses all parents, so this is O(n²). I think we could only store the
             // innermost module scope instead?
@@ -1079,9 +1096,12 @@ impl Resolver {
         self.push_scope(Scope::ImplDefScope(impl_def))
     }
 
-    fn push_block_scope(self, def_map: Arc<DefMap>) -> Resolver {
-        debug_assert!(def_map.block_id().is_some());
-        self.push_scope(Scope::BlockScope(ModuleItemMap { def_map, module_id: DefMap::ROOT }))
+    fn push_block_scope(self, def_map: Arc<DefMap>, local_def_map: Arc<LocalDefMap>) -> Resolver {
+        self.push_scope(Scope::BlockScope(ModuleItemMap {
+            def_map,
+            local_def_map,
+            module_id: DefMap::ROOT,
+        }))
     }
 
     fn push_expr_scope(
@@ -1100,8 +1120,13 @@ impl ModuleItemMap {
         db: &dyn DefDatabase,
         path: &ModPath,
     ) -> Option<(ResolveValueResult, ResolvePathResultPrefixInfo)> {
-        let (module_def, unresolved_idx, prefix_info) =
-            self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
+        let (module_def, unresolved_idx, prefix_info) = self.def_map.resolve_path_locally(
+            &self.local_def_map,
+            db,
+            self.module_id,
+            path,
+            BuiltinShadowMode::Other,
+        );
         match unresolved_idx {
             None => {
                 let (value, import) = to_value_ns(module_def)?;
@@ -1134,8 +1159,13 @@ impl ModuleItemMap {
         path: &ModPath,
     ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>, ResolvePathResultPrefixInfo)>
     {
-        let (module_def, idx, prefix_info) =
-            self.def_map.resolve_path_locally(db, self.module_id, path, BuiltinShadowMode::Other);
+        let (module_def, idx, prefix_info) = self.def_map.resolve_path_locally(
+            &self.local_def_map,
+            db,
+            self.module_id,
+            path,
+            BuiltinShadowMode::Other,
+        );
         let (res, import) = to_type_ns(module_def)?;
         Some((res, idx, import, prefix_info))
     }
@@ -1230,11 +1260,14 @@ pub trait HasResolver: Copy {
 
 impl HasResolver for ModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
-        let mut def_map = self.def_map(db);
+        let (mut def_map, local_def_map) = self.local_def_map(db);
         let mut module_id = self.local_id;
 
         if !self.is_block_module() {
-            return Resolver { scopes: vec![], module_scope: ModuleItemMap { def_map, module_id } };
+            return Resolver {
+                scopes: vec![],
+                module_scope: ModuleItemMap { def_map, local_def_map, module_id },
+            };
         }
 
         let mut modules: SmallVec<[_; 1]> = smallvec![];
@@ -1248,10 +1281,14 @@ impl HasResolver for ModuleId {
         }
         let mut resolver = Resolver {
             scopes: Vec::with_capacity(modules.len()),
-            module_scope: ModuleItemMap { def_map, module_id },
+            module_scope: ModuleItemMap {
+                def_map,
+                local_def_map: local_def_map.clone(),
+                module_id,
+            },
         };
         for def_map in modules.into_iter().rev() {
-            resolver = resolver.push_block_scope(def_map);
+            resolver = resolver.push_block_scope(def_map, local_def_map.clone());
         }
         resolver
     }
@@ -1259,9 +1296,10 @@ impl HasResolver for ModuleId {
 
 impl HasResolver for CrateRootModuleId {
     fn resolver(self, db: &dyn DefDatabase) -> Resolver {
+        let (def_map, local_def_map) = self.local_def_map(db);
         Resolver {
             scopes: vec![],
-            module_scope: ModuleItemMap { def_map: self.def_map(db), module_id: DefMap::ROOT },
+            module_scope: ModuleItemMap { def_map, local_def_map, module_id: DefMap::ROOT },
         }
     }
 }

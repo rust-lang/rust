@@ -5,7 +5,7 @@
 use std::ops::ControlFlow;
 
 use arrayvec::ArrayVec;
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{cast::Cast, UniverseIndex, WithKind};
 use hir_def::{
     data::{adt::StructFlags, ImplData, TraitFlags},
@@ -148,7 +148,7 @@ pub struct TraitImpls {
 }
 
 impl TraitImpls {
-    pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+    pub(crate) fn trait_impls_in_crate_query(db: &dyn HirDatabase, krate: Crate) -> Arc<Self> {
         let _p = tracing::info_span!("trait_impls_in_crate_query", ?krate).entered();
         let mut impls = FxHashMap::default();
 
@@ -175,13 +175,11 @@ impl TraitImpls {
 
     pub(crate) fn trait_impls_in_deps_query(
         db: &dyn HirDatabase,
-        krate: CrateId,
+        krate: Crate,
     ) -> Arc<[Arc<Self>]> {
         let _p = tracing::info_span!("trait_impls_in_deps_query", ?krate).entered();
-        let crate_graph = db.crate_graph();
-
         Arc::from_iter(
-            crate_graph.transitive_deps(krate).map(|krate| db.trait_impls_in_crate(krate)),
+            db.transitive_deps(krate).into_iter().map(|krate| db.trait_impls_in_crate(krate)),
         )
     }
 
@@ -282,7 +280,7 @@ pub struct InherentImpls {
 }
 
 impl InherentImpls {
-    pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: CrateId) -> Arc<Self> {
+    pub(crate) fn inherent_impls_in_crate_query(db: &dyn HirDatabase, krate: Crate) -> Arc<Self> {
         let _p = tracing::info_span!("inherent_impls_in_crate_query", ?krate).entered();
         let mut impls = Self { map: FxHashMap::default(), invalid_impls: Vec::default() };
 
@@ -367,16 +365,15 @@ impl InherentImpls {
 
 pub(crate) fn incoherent_inherent_impl_crates(
     db: &dyn HirDatabase,
-    krate: CrateId,
+    krate: Crate,
     fp: TyFingerprint,
-) -> SmallVec<[CrateId; 2]> {
+) -> SmallVec<[Crate; 2]> {
     let _p = tracing::info_span!("incoherent_inherent_impl_crates").entered();
     let mut res = SmallVec::new();
-    let crate_graph = db.crate_graph();
 
     // should pass crate for finger print and do reverse deps
 
-    for krate in crate_graph.transitive_deps(krate) {
+    for krate in db.transitive_deps(krate) {
         let impls = db.inherent_impls_in_crate(krate);
         if impls.map.get(&fp).is_some_and(|v| !v.is_empty()) {
             res.push(krate);
@@ -386,11 +383,7 @@ pub(crate) fn incoherent_inherent_impl_crates(
     res
 }
 
-pub fn def_crates(
-    db: &dyn HirDatabase,
-    ty: &Ty,
-    cur_crate: CrateId,
-) -> Option<SmallVec<[CrateId; 2]>> {
+pub fn def_crates(db: &dyn HirDatabase, ty: &Ty, cur_crate: Crate) -> Option<SmallVec<[Crate; 2]>> {
     match ty.kind(Interner) {
         &TyKind::Adt(AdtId(def_id), _) => {
             let rustc_has_incoherent_inherent_impls = match def_id {
@@ -1226,7 +1219,7 @@ fn iterate_trait_method_candidates(
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if !db.crate_graph()[krate].edition.at_least_2021() {
+            if !krate.data(db).edition.at_least_2021() {
                 continue;
             }
         }
@@ -1239,7 +1232,7 @@ fn iterate_trait_method_candidates(
         {
             // FIXME: this should really be using the edition of the method name's span, in case it
             // comes from a macro
-            if !db.crate_graph()[krate].edition.at_least_2024() {
+            if !krate.data(db).edition.at_least_2024() {
                 continue;
             }
         }

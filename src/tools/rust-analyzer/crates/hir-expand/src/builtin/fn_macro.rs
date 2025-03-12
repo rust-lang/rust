@@ -231,7 +231,7 @@ fn assert_expand(
     let cond = expect_fragment(
         &mut iter,
         parser::PrefixEntryPoint::Expr,
-        db.crate_graph()[id.lookup(db).krate].edition,
+        id.lookup(db).krate.data(db).edition,
         tt.top_subtree().delimiter.delim_span(),
     );
     _ = iter.expect_char(',');
@@ -333,7 +333,7 @@ fn cfg_expand(
 ) -> ExpandResult<tt::TopSubtree> {
     let loc = db.lookup_intern_macro_call(id);
     let expr = CfgExpr::parse(tt);
-    let enabled = db.crate_graph()[loc.krate].cfg_options.check(&expr) != Some(false);
+    let enabled = loc.krate.cfg_options(db).check(&expr) != Some(false);
     let expanded = if enabled { quote!(span=>true) } else { quote!(span=>false) };
     ExpandResult::ok(expanded)
 }
@@ -669,7 +669,7 @@ fn relative_file(
     if res == call_site && !allow_recursion {
         Err(ExpandError::other(err_span, format!("recursive inclusion of `{path_str}`")))
     } else {
-        Ok(EditionedFileId::new(res, db.crate_graph()[lookup.krate].edition))
+        Ok(EditionedFileId::new(res, lookup.krate.data(db).edition))
     }
 }
 
@@ -812,7 +812,7 @@ fn include_str_expand(
 
 fn get_env_inner(db: &dyn ExpandDatabase, arg_id: MacroCallId, key: &Symbol) -> Option<String> {
     let krate = db.lookup_intern_macro_call(arg_id).krate;
-    db.crate_graph()[krate].env.get(key.as_str())
+    krate.env(db).get(key.as_str())
 }
 
 fn env_expand(

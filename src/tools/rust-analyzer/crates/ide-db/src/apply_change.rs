@@ -233,7 +233,13 @@ impl RootDatabase {
             // // SourceDatabase
             // base_db::ParseQuery
             // base_db::ParseErrorsQuery
-            // base_db::CrateGraphQuery
+            // base_db::AllCratesQuery
+            // base_db::InternUniqueCrateDataQuery
+            // base_db::InternUniqueCrateDataLookupQuery
+            // base_db::CrateDataQuery
+            // base_db::ExtraCrateDataQuery
+            // base_db::CrateCfgQuery
+            // base_db::CrateEnvQuery
             // base_db::CrateWorkspaceDataQuery
 
             // // SourceDatabaseExt

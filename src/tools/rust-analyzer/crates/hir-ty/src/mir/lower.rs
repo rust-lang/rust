@@ -2,7 +2,7 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::{salsa::Cycle, CrateId};
+use base_db::{salsa::Cycle, Crate};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
     data::adt::{StructKind, VariantData},
@@ -1920,10 +1920,10 @@ impl<'ctx> MirLowerCtx<'ctx> {
     }
 
     fn edition(&self) -> Edition {
-        self.db.crate_graph()[self.krate()].edition
+        self.krate().data(self.db).edition
     }
 
-    fn krate(&self) -> CrateId {
+    fn krate(&self) -> Crate {
         self.owner.krate(self.db.upcast())
     }
 
@@ -2121,7 +2121,7 @@ pub fn mir_body_for_closure_query(
 
 pub fn mir_body_query(db: &dyn HirDatabase, def: DefWithBodyId) -> Result<Arc<MirBody>> {
     let krate = def.krate(db.upcast());
-    let edition = db.crate_graph()[krate].edition;
+    let edition = krate.data(db).edition;
     let detail = match def {
         DefWithBodyId::FunctionId(it) => {
             db.function_data(it).name.display(db.upcast(), edition).to_string()

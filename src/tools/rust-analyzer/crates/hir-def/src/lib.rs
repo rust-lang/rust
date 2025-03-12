@@ -71,7 +71,7 @@ mod test_db;
 
 use std::hash::{Hash, Hasher};
 
-use base_db::{impl_intern_key, CrateId};
+use base_db::{impl_intern_key, Crate};
 use hir_expand::{
     builtin::{BuiltinAttrExpander, BuiltinDeriveExpander, BuiltinFnLikeExpander, EagerExpander},
     db::ExpandDatabase,
@@ -99,10 +99,10 @@ use crate::{
         Const, Enum, ExternCrate, Function, Impl, ItemTreeId, ItemTreeNode, Macro2, MacroRules,
         Static, Struct, Trait, TraitAlias, TypeAlias, Union, Use, Variant,
     },
+    nameres::LocalDefMap,
 };
 
-type FxIndexMap<K, V> =
-    indexmap::IndexMap<K, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+type FxIndexMap<K, V> = indexmap::IndexMap<K, V, rustc_hash::FxBuildHasher>;
 /// A wrapper around three booleans
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub struct ImportPathConfig {
@@ -338,7 +338,7 @@ pub struct ConstBlockLoc {
 /// A `ModuleId` that is always a crate's root module.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CrateRootModuleId {
-    krate: CrateId,
+    krate: Crate,
 }
 
 impl CrateRootModuleId {
@@ -346,7 +346,11 @@ impl CrateRootModuleId {
         db.crate_def_map(self.krate)
     }
 
-    pub fn krate(self) -> CrateId {
+    pub(crate) fn local_def_map(&self, db: &dyn DefDatabase) -> (Arc<DefMap>, Arc<LocalDefMap>) {
+        db.crate_local_def_map(self.krate)
+    }
+
+    pub fn krate(self) -> Crate {
         self.krate
     }
 }
@@ -374,8 +378,8 @@ impl From<CrateRootModuleId> for ModuleDefId {
     }
 }
 
-impl From<CrateId> for CrateRootModuleId {
-    fn from(krate: CrateId) -> Self {
+impl From<Crate> for CrateRootModuleId {
+    fn from(krate: Crate) -> Self {
         CrateRootModuleId { krate }
     }
 }
@@ -394,7 +398,7 @@ impl TryFrom<ModuleId> for CrateRootModuleId {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct ModuleId {
-    krate: CrateId,
+    krate: Crate,
     /// If this `ModuleId` was derived from a `DefMap` for a block expression, this stores the
     /// `BlockId` of that block expression. If `None`, this module is part of the crate-level
     /// `DefMap` of `krate`.
@@ -411,11 +415,22 @@ impl ModuleId {
         }
     }
 
+    pub(crate) fn local_def_map(self, db: &dyn DefDatabase) -> (Arc<DefMap>, Arc<LocalDefMap>) {
+        match self.block {
+            Some(block) => (db.block_def_map(block), self.only_local_def_map(db)),
+            None => db.crate_local_def_map(self.krate),
+        }
+    }
+
+    pub(crate) fn only_local_def_map(self, db: &dyn DefDatabase) -> Arc<LocalDefMap> {
+        db.crate_local_def_map(self.krate).1
+    }
+
     pub fn crate_def_map(self, db: &dyn DefDatabase) -> Arc<DefMap> {
         db.crate_def_map(self.krate)
     }
 
-    pub fn krate(self) -> CrateId {
+    pub fn krate(self) -> Crate {
         self.krate
     }
 
@@ -982,7 +997,7 @@ impl From<CallableDefId> for ModuleDefId {
 }
 
 impl CallableDefId {
-    pub fn krate(self, db: &dyn DefDatabase) -> CrateId {
+    pub fn krate(self, db: &dyn DefDatabase) -> Crate {
         match self {
             CallableDefId::FunctionId(f) => f.krate(db),
             CallableDefId::StructId(s) => s.krate(db),
@@ -1119,7 +1134,7 @@ pub trait HasModule {
     /// Returns the crate this thing is defined within.
     #[inline]
     #[doc(alias = "crate")]
-    fn krate(&self, db: &dyn DefDatabase) -> CrateId {
+    fn krate(&self, db: &dyn DefDatabase) -> Crate {
         self.module(db).krate
     }
 }
@@ -1367,7 +1382,7 @@ pub trait AsMacroCall {
     fn as_call_id(
         &self,
         db: &dyn ExpandDatabase,
-        krate: CrateId,
+        krate: Crate,
         resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Option<MacroCallId> {
         self.as_call_id_with_errors(db, krate, resolver).ok()?.value
@@ -1376,7 +1391,7 @@ pub trait AsMacroCall {
     fn as_call_id_with_errors(
         &self,
         db: &dyn ExpandDatabase,
-        krate: CrateId,
+        krate: Crate,
         resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro>;
 }
@@ -1385,7 +1400,7 @@ impl AsMacroCall for InFile<&ast::MacroCall> {
     fn as_call_id_with_errors(
         &self,
         db: &dyn ExpandDatabase,
-        krate: CrateId,
+        krate: Crate,
         resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
     ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {
         let expands_to = hir_expand::ExpandTo::from_call_site(self.value);
@@ -1442,7 +1457,7 @@ fn macro_call_as_call_id(
     call: &AstIdWithPath<ast::MacroCall>,
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
-    krate: CrateId,
+    krate: Crate,
     resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
 ) -> Result<Option<MacroCallId>, UnresolvedMacro> {
     macro_call_as_call_id_with_eager(
@@ -1464,7 +1479,7 @@ fn macro_call_as_call_id_with_eager(
     path: &path::ModPath,
     call_site: SyntaxContextId,
     expand_to: ExpandTo,
-    krate: CrateId,
+    krate: Crate,
     resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,
     eager_resolver: impl Fn(&path::ModPath) -> Option<MacroDefId>,
 ) -> Result<ExpandResult<Option<MacroCallId>>, UnresolvedMacro> {

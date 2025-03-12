@@ -104,6 +104,12 @@ impl CfgOptions {
             _ => None,
         })
     }
+
+    pub fn to_hashable(&self) -> HashableCfgOptions {
+        let mut enabled = self.enabled.iter().cloned().collect::<Box<[_]>>();
+        enabled.sort_unstable();
+        HashableCfgOptions { _enabled: enabled }
+    }
 }
 
 impl Extend<CfgAtom> for CfgOptions {
@@ -255,4 +261,10 @@ impl fmt::Display for InactiveReason {
 
         Ok(())
     }
+}
+
+/// A `CfgOptions` that implements `Hash`, for the sake of hashing only.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HashableCfgOptions {
+    _enabled: Box<[CfgAtom]>,
 }

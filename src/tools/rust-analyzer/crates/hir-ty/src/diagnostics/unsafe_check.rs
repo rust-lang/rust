@@ -160,7 +160,7 @@ impl<'a> UnsafeVisitor<'a> {
             DefWithBodyId::FunctionId(func) => TargetFeatures::from_attrs(&db.attrs(func.into())),
             _ => TargetFeatures::default(),
         };
-        let edition = db.crate_graph()[resolver.module().krate()].edition;
+        let edition = resolver.module().krate().data(db).edition;
         Self {
             db,
             infer,

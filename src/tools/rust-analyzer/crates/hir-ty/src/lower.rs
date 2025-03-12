@@ -14,7 +14,7 @@ use std::{
     ops::{self, Not as _},
 };
 
-use base_db::CrateId;
+use base_db::Crate;
 use chalk_ir::{
     cast::Cast,
     fold::{Shift, TypeFoldable},
@@ -801,7 +801,7 @@ impl<'a> TyLoweringContext<'a> {
         }
     }
 
-    fn lower_impl_trait(&mut self, bounds: &[TypeBound], krate: CrateId) -> ImplTrait {
+    fn lower_impl_trait(&mut self, bounds: &[TypeBound], krate: Crate) -> ImplTrait {
         cov_mark::hit!(lower_rpit);
         let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
         let predicates = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
@@ -1863,8 +1863,11 @@ pub(crate) fn const_or_path_to_chalk<'g>(
             .unwrap_or_else(|| unknown_const(expected_ty))
         }
         &ConstRef::Complex(it) => {
-            let crate_data = &db.crate_graph()[resolver.krate()];
-            if crate_data.env.get("__ra_is_test_fixture").is_none() && crate_data.origin.is_local()
+            let krate = resolver.krate();
+            // Keep the `&&` this way, because it's better to access the crate data, as we access it for
+            // a bunch of other things nevertheless.
+            if krate.data(db).origin.is_local()
+                && krate.env(db).get("__ra_is_test_fixture").is_none()
             {
                 // FIXME: current `InTypeConstId` is very unstable, so we only use it in non local crate
                 // that are unlikely to be edited.

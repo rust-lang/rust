@@ -1,4 +1,4 @@
-use ide_db::base_db::{CrateData, RootQueryDb, Upcast};
+use ide_db::base_db::{BuiltCrateData, ExtraCrateData};
 use ide_db::RootDatabase;
 use itertools::Itertools;
 use span::FileId;
@@ -34,28 +34,25 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
         if crates.is_empty() {
             format_to!(buf, "Does not belong to any crate");
         }
-
-        let crate_graph = Upcast::<dyn RootQueryDb>::upcast(db).crate_graph();
         for crate_id in crates {
-            let CrateData {
+            let BuiltCrateData {
                 root_file_id,
                 edition,
-                version,
-                display_name,
-                cfg_options,
-                potential_cfg_options,
-                env,
                 dependencies,
                 origin,
                 is_proc_macro,
                 proc_macro_cwd,
-            } = &crate_graph[crate_id];
+            } = crate_id.data(db);
+            let ExtraCrateData { version, display_name, potential_cfg_options } =
+                crate_id.extra_data(db);
+            let cfg_options = crate_id.cfg_options(db);
+            let env = crate_id.env(db);
             format_to!(
                 buf,
                 "Crate: {}\n",
                 match display_name {
-                    Some(it) => format!("{it}({})", crate_id.into_raw()),
-                    None => format!("{}", crate_id.into_raw()),
+                    Some(it) => format!("{it}({:?})", crate_id),
+                    None => format!("{:?}", crate_id),
                 }
             );
             format_to!(buf, "    Root module file id: {}\n", root_file_id.index());
@@ -69,7 +66,7 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
             format_to!(buf, "    Proc macro cwd: {:?}\n", proc_macro_cwd);
             let deps = dependencies
                 .iter()
-                .map(|dep| format!("{}={}", dep.name, dep.crate_id.into_raw()))
+                .map(|dep| format!("{}={:?}", dep.name, dep.crate_id))
                 .format(", ");
             format_to!(buf, "    Dependencies: {}\n", deps);
         }

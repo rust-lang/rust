@@ -13,7 +13,7 @@ mod process;
 
 use paths::{AbsPath, AbsPathBuf};
 use span::Span;
-use std::{fmt, io, sync::Arc};
+use std::{fmt, io, sync::Arc, time::SystemTime};
 
 use crate::{
     legacy_protocol::msg::{
@@ -66,6 +66,7 @@ pub struct ProcMacro {
     dylib_path: Arc<AbsPathBuf>,
     name: Box<str>,
     kind: ProcMacroKind,
+    dylib_last_modified: Option<SystemTime>,
 }
 
 impl Eq for ProcMacro {}
@@ -73,7 +74,8 @@ impl PartialEq for ProcMacro {
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name
             && self.kind == other.kind
-            && Arc::ptr_eq(&self.dylib_path, &other.dylib_path)
+            && self.dylib_path == other.dylib_path
+            && self.dylib_last_modified == other.dylib_last_modified
             && Arc::ptr_eq(&self.process, &other.process)
     }
 }
@@ -116,6 +118,9 @@ impl ProcMacroClient {
         let macros = self.process.find_proc_macros(&dylib.path)?;
 
         let dylib_path = Arc::new(dylib.path);
+        let dylib_last_modified = std::fs::metadata(dylib_path.as_path())
+            .ok()
+            .and_then(|metadata| metadata.modified().ok());
         match macros {
             Ok(macros) => Ok(macros
                 .into_iter()
@@ -124,6 +129,7 @@ impl ProcMacroClient {
                     name: name.into(),
                     kind,
                     dylib_path: dylib_path.clone(),
+                    dylib_last_modified,
                 })
                 .collect()),
             Err(message) => Err(ServerError { message, io: None }),

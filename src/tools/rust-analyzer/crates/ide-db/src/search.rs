@@ -162,13 +162,13 @@ impl SearchScope {
     fn crate_graph(db: &RootDatabase) -> SearchScope {
         let mut entries = FxHashMap::default();
 
-        let graph = db.crate_graph();
-        for krate in graph.iter() {
-            let root_file = graph[krate].root_file_id;
-            let source_root = db.file_source_root(root_file).source_root_id(db);
+        let all_crates = db.all_crates();
+        for &krate in all_crates.iter() {
+            let crate_data = krate.data(db);
+            let source_root = db.file_source_root(crate_data.root_file_id).source_root_id(db);
             let source_root = db.source_root(source_root).source_root(db);
             entries.extend(
-                source_root.iter().map(|id| (EditionedFileId::new(id, graph[krate].edition), None)),
+                source_root.iter().map(|id| (EditionedFileId::new(id, crate_data.edition), None)),
             );
         }
         SearchScope { entries }

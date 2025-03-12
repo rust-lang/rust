@@ -44,7 +44,7 @@ use std::{
 };
 
 use ast::{AstNode, StructKind};
-use base_db::CrateId;
+use base_db::Crate;
 use either::Either;
 use hir_expand::{attrs::RawAttrs, name::Name, ExpandTo, HirFileId, InFile};
 use intern::{Interned, Symbol};
@@ -202,7 +202,7 @@ impl ItemTree {
     }
 
     /// Returns the inner attributes of the source file.
-    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: CrateId) -> Attrs {
+    pub fn top_level_attrs(&self, db: &dyn DefDatabase, krate: Crate) -> Attrs {
         Attrs::filter(
             db,
             krate,
@@ -214,7 +214,7 @@ impl ItemTree {
         self.attrs.get(&of).unwrap_or(&RawAttrs::EMPTY)
     }
 
-    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: CrateId, of: AttrOwner) -> Attrs {
+    pub(crate) fn attrs(&self, db: &dyn DefDatabase, krate: Crate, of: AttrOwner) -> Attrs {
         Attrs::filter(db, krate, self.raw_attrs(of).clone())
     }
 

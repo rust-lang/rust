@@ -1,6 +1,6 @@
 //! Compiled declarative macro expanders (`macro_rules!` and `macro`)
 
-use base_db::CrateId;
+use base_db::Crate;
 use intern::sym;
 use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContextId};
 use stdx::TupleExt;
@@ -70,7 +70,7 @@ impl DeclarativeMacroExpander {
 
     pub(crate) fn expander(
         db: &dyn ExpandDatabase,
-        def_crate: CrateId,
+        def_crate: Crate,
         id: AstId<ast::Macro>,
     ) -> Arc<DeclarativeMacroExpander> {
         let (root, map) = crate::db::parse_with_map(db, id.file_id);
@@ -101,14 +101,12 @@ impl DeclarativeMacroExpander {
             }
         };
         let ctx_edition = |ctx: SyntaxContextId| {
-            let crate_graph = db.crate_graph();
-
             if ctx.is_root() {
-                crate_graph[def_crate].edition
+                def_crate.data(db).edition
             } else {
                 // UNWRAP-SAFETY: Only the root context has no outer expansion
                 let krate = db.lookup_intern_macro_call(ctx.outer_expn(db).unwrap()).def.krate;
-                crate_graph[krate].edition
+                krate.data(db).edition
             }
         };
         let (mac, transparency) = match id.to_ptr(db).to_node(&root) {

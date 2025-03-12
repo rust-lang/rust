@@ -498,9 +498,8 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
     };
     let krate = def.krate(db);
     let edition = krate.map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
-    let display_target = krate
-        .unwrap_or_else(|| (*db.crate_graph().crates_in_topological_order().last().unwrap()).into())
-        .to_display_target(db);
+    let display_target =
+        krate.unwrap_or_else(|| (*db.all_crates().last().unwrap()).into()).to_display_target(db);
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
