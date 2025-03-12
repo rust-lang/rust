@@ -2,29 +2,27 @@
 //!
 //! It is based on the table from the `hashbrown` crate.
 
-use crate::{
-    collect::{self, Pin, pin},
-    raw::{bitmask::BitMask, imp::Group},
-    scopeguard::guard,
-    util::{cold_path, make_insert_hash},
-};
 use core::ptr::NonNull;
+use std::alloc::{Allocator, Global, Layout, LayoutError, handle_alloc_error};
+use std::borrow::Borrow;
+use std::cell::UnsafeCell;
+use std::collections::hash_map::RandomState;
+use std::hash::{BuildHasher, Hash};
+use std::intrinsics::{likely, unlikely};
+use std::iter::{FromIterator, FusedIterator};
+use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicPtr, AtomicU8, AtomicUsize, Ordering};
+use std::{cmp, fmt, mem};
+
 use parking_lot::{Mutex, MutexGuard};
-use std::{
-    alloc::{Allocator, Global, Layout, LayoutError, handle_alloc_error},
-    cell::UnsafeCell,
-    cmp, fmt,
-    hash::BuildHasher,
-    intrinsics::{likely, unlikely},
-    iter::{FromIterator, FusedIterator},
-    marker::PhantomData,
-    mem,
-    sync::atomic::{AtomicU8, Ordering},
-};
-use std::{borrow::Borrow, hash::Hash};
-use std::{collections::hash_map::RandomState, sync::Arc};
-use std::{ops::Deref, sync::atomic::AtomicPtr};
-use std::{ops::DerefMut, sync::atomic::AtomicUsize};
+
+use super::collect::{self, Pin, pin};
+use super::raw::bitmask::BitMask;
+use super::raw::imp::Group;
+use super::scopeguard::guard;
+use super::util::{cold_path, make_insert_hash};
 
 mod code;
 mod tests;
@@ -81,9 +79,7 @@ impl<T> Bucket<T> {
             } else {
                 self.ptr.as_ptr().sub(offset)
             };
-            Self {
-                ptr: NonNull::new_unchecked(ptr),
-            }
+            Self { ptr: NonNull::new_unchecked(ptr) }
         }
     }
     #[inline]
@@ -280,10 +276,7 @@ impl TableInfo {
     #[inline]
     unsafe fn record_item_insert_at(&self, index: usize, hash: u64) {
         unsafe {
-            self.growth_left.store(
-                self.growth_left.load(Ordering::Relaxed) - 1,
-                Ordering::Release,
-            );
+            self.growth_left.store(self.growth_left.load(Ordering::Relaxed) - 1, Ordering::Release);
             self.set_ctrl_release(index, h2(hash));
         }
     }
@@ -329,10 +322,7 @@ impl TableInfo {
     /// reaching a group containing an empty bucket.
     #[inline]
     unsafe fn probe_seq(&self, hash: u64) -> ProbeSeq {
-        ProbeSeq {
-            pos: h1(hash) & self.bucket_mask,
-            stride: 0,
-        }
+        ProbeSeq { pos: h1(hash) & self.bucket_mask, stride: 0 }
     }
 }
 
@@ -347,10 +337,7 @@ impl<T> Copy for TableRef<T> {}
 impl<T> Clone for TableRef<T> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            data: self.data,
-            marker: self.marker,
-        }
+        Self { data: self.data, marker: self.marker }
     }
 }
 
@@ -400,10 +387,7 @@ impl<T> TableRef<T> {
         let info =
             unsafe { NonNull::new_unchecked(ptr.as_ptr().add(info_offset) as *mut TableInfo) };
 
-        let mut result = Self {
-            data: info,
-            marker: PhantomData,
-        };
+        let mut result = Self { data: info, marker: PhantomData };
 
         unsafe {
             *result.info_mut() = TableInfo {
@@ -412,10 +396,7 @@ impl<T> TableRef<T> {
                 tombstones: AtomicUsize::new(0),
             };
 
-            result
-                .info()
-                .ctrl(0)
-                .write_bytes(EMPTY, result.info().num_ctrl_bytes());
+            result.info().ctrl(0).write_bytes(EMPTY, result.info().num_ctrl_bytes());
         }
 
         result
@@ -531,9 +512,7 @@ impl<T> TableRef<T> {
         unsafe {
             debug_assert!(index < self.info().buckets());
 
-            Bucket {
-                ptr: NonNull::new_unchecked(self.bucket_past_last().sub(index)),
-            }
+            Bucket { ptr: NonNull::new_unchecked(self.bucket_past_last().sub(index)) }
         }
     }
 
@@ -544,9 +523,7 @@ impl<T> TableRef<T> {
     #[inline]
     unsafe fn iter(&self) -> RawIterRange<T> {
         unsafe {
-            let data = Bucket {
-                ptr: NonNull::new_unchecked(self.bucket_past_last()),
-            };
+            let data = Bucket { ptr: NonNull::new_unchecked(self.bucket_past_last()) };
             RawIterRange::new(self.info().ctrl(0), data, self.info().buckets())
         }
     }
@@ -595,11 +572,7 @@ impl<T> TableRef<T> {
     unsafe fn find(&self, hash: u64, eq: impl FnMut(&T) -> bool) -> Option<(usize, Bucket<T>)> {
         unsafe {
             self.search(hash, eq, |group, _| {
-                if likely(group.match_empty().any_bit_set()) {
-                    Some(())
-                } else {
-                    None
-                }
+                if likely(group.match_empty().any_bit_set()) { Some(()) } else { None }
             })
             .ok()
         }
@@ -617,10 +590,7 @@ impl<T> TableRef<T> {
                 let bit = group.match_empty().lowest_set_bit();
                 if likely(bit.is_some()) {
                     let index = (probe_seq.pos + bit.unwrap_unchecked()) & self.info().bucket_mask;
-                    Some(PotentialSlot {
-                        table_info: &*self.data.as_ptr(),
-                        index,
-                    })
+                    Some(PotentialSlot { table_info: &*self.data.as_ptr(), index })
                 } else {
                     None
                 }
@@ -770,25 +740,16 @@ impl<K, V, S> SyncTable<K, V, S> {
     /// Creates a [LockedWrite] handle by taking the underlying mutex that protects writes.
     #[inline]
     pub fn lock(&self) -> LockedWrite<'_, K, V, S> {
-        LockedWrite {
-            table: Write { table: self },
-            _guard: self.lock.lock(),
-        }
+        LockedWrite { table: Write { table: self }, _guard: self.lock.lock() }
     }
 
     /// Creates a [LockedWrite] handle from a guard protecting the underlying mutex that protects writes.
     #[inline]
     pub fn lock_from_guard<'a>(&'a self, guard: MutexGuard<'a, ()>) -> LockedWrite<'a, K, V, S> {
         // Verify that we are target of the guard
-        assert_eq!(
-            &self.lock as *const _,
-            MutexGuard::mutex(&guard) as *const _
-        );
+        assert_eq!(&self.lock as *const _, MutexGuard::mutex(&guard) as *const _);
 
-        LockedWrite {
-            table: Write { table: self },
-            _guard: guard,
-        }
+        LockedWrite { table: Write { table: self }, _guard: guard }
     }
 
     #[inline]
@@ -870,12 +831,7 @@ impl<'a, K, V, S: BuildHasher> Read<'a, K, V, S> {
     {
         let hash = self.table.unwrap_hash(key, hash);
 
-        unsafe {
-            self.table
-                .current()
-                .find(hash, eq(key))
-                .map(|(_, bucket)| bucket.as_pair_ref())
-        }
+        unsafe { self.table.current().find(hash, eq(key)).map(|(_, bucket)| bucket.as_pair_ref()) }
     }
 }
 
@@ -914,12 +870,7 @@ impl<'a, K, V, S> Read<'a, K, V, S> {
         let table = self.table.current();
 
         // Here we tie the lifetime of self to the iter.
-        unsafe {
-            Iter {
-                inner: table.iter(),
-                marker: PhantomData,
-            }
-        }
+        unsafe { Iter { inner: table.iter(), marker: PhantomData } }
     }
 
     #[allow(dead_code)]
@@ -1009,10 +960,10 @@ impl<'a, K: Send, V: Send + Clone, S: BuildHasher> Write<'a, K, V, S> {
             table.find(hash, eq(key)).map(|(index, bucket)| {
                 debug_assert!(is_full(*table.info().ctrl(index)));
                 table.info().set_ctrl_release(index, DELETED);
-                table.info().tombstones.store(
-                    table.info().tombstones.load(Ordering::Relaxed) + 1,
-                    Ordering::Release,
-                );
+                table
+                    .info()
+                    .tombstones
+                    .store(table.info().tombstones.load(Ordering::Relaxed) + 1, Ordering::Release);
                 bucket.as_pair_ref()
             })
         }
@@ -1118,14 +1069,9 @@ impl<K: Hash + Send, V: Send, S: BuildHasher> Write<'_, K, V, S> {
     fn replace_table(&mut self, new_table: TableRef<(K, V)>) {
         let table = self.table.current();
 
-        self.table
-            .current
-            .store(new_table.data.as_ptr(), Ordering::Release);
+        self.table.current.store(new_table.data.as_ptr(), Ordering::Release);
 
-        let destroy = Arc::new(DestroyTable {
-            table,
-            lock: Mutex::new(false),
-        });
+        let destroy = Arc::new(DestroyTable { table, lock: Mutex::new(false) });
 
         unsafe {
             (*self.table.old.get()).push(destroy.clone());
@@ -1373,10 +1319,7 @@ pub struct Iter<'a, K, V> {
 impl<K, V> Clone for Iter<'_, K, V> {
     #[inline]
     fn clone(&self) -> Self {
-        Iter {
-            inner: self.inner.clone(),
-            marker: PhantomData,
-        }
+        Iter { inner: self.inner.clone(), marker: PhantomData }
     }
 }
 
@@ -1391,9 +1334,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
 
     #[inline]
     fn next(&mut self) -> Option<(&'a K, &'a V)> {
-        self.inner
-            .next()
-            .map(|bucket| unsafe { bucket.as_pair_ref() })
+        self.inner.next().map(|bucket| unsafe { bucket.as_pair_ref() })
     }
 }
 
@@ -1499,10 +1440,7 @@ impl ProbeSeq {
     #[inline]
     fn move_next(&mut self, bucket_mask: usize) {
         // We should have found an empty bucket by now and ended the probe.
-        debug_assert!(
-            self.stride <= bucket_mask,
-            "Went past end of probe sequence"
-        );
+        debug_assert!(self.stride <= bucket_mask, "Went past end of probe sequence");
 
         self.stride += Group::WIDTH;
         self.pos += self.stride;
@@ -1542,12 +1480,7 @@ impl<T> RawIterRange<T> {
             let current_group = Group::load_aligned(ctrl).match_full();
             let next_ctrl = ctrl.add(Group::WIDTH);
 
-            Self {
-                current_group,
-                data,
-                next_ctrl,
-                end,
-            }
+            Self { current_group, data, next_ctrl, end }
         }
     }
 }

@@ -1,26 +1,21 @@
 //! A contiguous push-only array type with lock-free reads.
 
-use crate::{
-    collect::{self, Pin},
-    scopeguard::guard,
-};
 use core::ptr::NonNull;
+use std::alloc::{Allocator, Global, Layout, LayoutError, handle_alloc_error};
+use std::cell::UnsafeCell;
+use std::intrinsics::unlikely;
+use std::iter::FromIterator;
+use std::marker::PhantomData;
+use std::ops::{Deref, DerefMut};
+use std::ptr::slice_from_raw_parts;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
+use std::{cmp, mem};
+
 use parking_lot::{Mutex, MutexGuard};
-use std::{
-    alloc::{Allocator, Global, Layout, LayoutError, handle_alloc_error},
-    cell::UnsafeCell,
-    intrinsics::unlikely,
-    iter::FromIterator,
-    marker::PhantomData,
-    mem,
-    ops::{Deref, DerefMut},
-    sync::atomic::{AtomicPtr, Ordering},
-};
-use std::{
-    cmp,
-    ptr::slice_from_raw_parts,
-    sync::{Arc, atomic::AtomicUsize},
-};
+
+use super::collect::{self, Pin};
+use super::scopeguard::guard;
 
 mod code;
 mod tests;
@@ -94,10 +89,7 @@ impl<T> Copy for TableRef<T> {}
 impl<T> Clone for TableRef<T> {
     #[inline]
     fn clone(&self) -> Self {
-        Self {
-            data: self.data,
-            marker: self.marker,
-        }
+        Self { data: self.data, marker: self.marker }
     }
 }
 
@@ -115,12 +107,8 @@ impl<T> TableRef<T> {
             info: TableInfo,
         }
 
-        static EMPTY: EmptyTable = EmptyTable {
-            info: TableInfo {
-                capacity: 0,
-                items: AtomicUsize::new(0),
-            },
-        };
+        static EMPTY: EmptyTable =
+            EmptyTable { info: TableInfo { capacity: 0, items: AtomicUsize::new(0) } };
 
         Self {
             data: unsafe {
@@ -149,16 +137,10 @@ impl<T> TableRef<T> {
         let info =
             unsafe { NonNull::new_unchecked(ptr.as_ptr().add(info_offset) as *mut TableInfo) };
 
-        let mut result = Self {
-            data: info,
-            marker: PhantomData,
-        };
+        let mut result = Self { data: info, marker: PhantomData };
 
         unsafe {
-            *result.info_mut() = TableInfo {
-                capacity,
-                items: AtomicUsize::new(0),
-            };
+            *result.info_mut() = TableInfo { capacity, items: AtomicUsize::new(0) };
         }
 
         result
@@ -342,13 +324,9 @@ impl<T> SyncPushVec<T> {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             current: AtomicPtr::new(
-                if capacity > 0 {
-                    TableRef::<T>::allocate(capacity)
-                } else {
-                    TableRef::empty()
-                }
-                .data
-                .as_ptr(),
+                if capacity > 0 { TableRef::<T>::allocate(capacity) } else { TableRef::empty() }
+                    .data
+                    .as_ptr(),
             ),
             old: UnsafeCell::new(Vec::new()),
             marker: PhantomData,
@@ -389,25 +367,16 @@ impl<T> SyncPushVec<T> {
     /// Creates a [LockedWrite] handle by taking the underlying mutex that protects writes.
     #[inline]
     pub fn lock(&self) -> LockedWrite<'_, T> {
-        LockedWrite {
-            table: Write { table: self },
-            _guard: self.lock.lock(),
-        }
+        LockedWrite { table: Write { table: self }, _guard: self.lock.lock() }
     }
 
     /// Creates a [LockedWrite] handle from a guard protecting the underlying mutex that protects writes.
     #[inline]
     pub fn lock_from_guard<'a>(&'a self, guard: MutexGuard<'a, ()>) -> LockedWrite<'a, T> {
         // Verify that we are target of the guard
-        assert_eq!(
-            &self.lock as *const _,
-            MutexGuard::mutex(&guard) as *const _
-        );
+        assert_eq!(&self.lock as *const _, MutexGuard::mutex(&guard) as *const _);
 
-        LockedWrite {
-            table: Write { table: self },
-            _guard: guard,
-        }
+        LockedWrite { table: Write { table: self }, _guard: guard }
     }
 
     /// Extracts a mutable slice of the entire vector.
@@ -545,14 +514,9 @@ impl<T: Send> Write<'_, T> {
     fn replace_table(&mut self, new_table: TableRef<T>) {
         let table = self.table.current();
 
-        self.table
-            .current
-            .store(new_table.data.as_ptr(), Ordering::Release);
+        self.table.current.store(new_table.data.as_ptr(), Ordering::Release);
 
-        let destroy = Arc::new(DestroyTable {
-            table,
-            lock: Mutex::new(false),
-        });
+        let destroy = Arc::new(DestroyTable { table, lock: Mutex::new(false) });
 
         unsafe {
             (*self.table.old.get()).push(destroy.clone());

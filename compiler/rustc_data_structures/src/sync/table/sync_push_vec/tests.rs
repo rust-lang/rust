@@ -8,15 +8,7 @@ fn test_iter() {
     let mut m = SyncPushVec::new();
     m.write().push(1);
     m.write().push(2);
-    assert_eq!(
-        m.write()
-            .read()
-            .as_slice()
-            .iter()
-            .copied()
-            .collect::<Vec<i32>>(),
-        vec![1, 2]
-    );
+    assert_eq!(m.write().read().as_slice().iter().copied().collect::<Vec<i32>>(), vec![1, 2]);
 }
 
 #[test]

@@ -1,14 +1,11 @@
 #![cfg(test)]
 
+use std::collections::HashMap;
+use std::collections::hash_map::{DefaultHasher, RandomState};
+use std::hash::Hasher;
+
 use super::SyncTable;
-use crate::collect::Pin;
-use crate::collect::pin;
-use crate::collect::release;
-use std::collections::hash_map::RandomState;
-use std::{
-    collections::{HashMap, hash_map::DefaultHasher},
-    hash::Hasher,
-};
+use crate::collect::{Pin, pin, release};
 
 #[test]
 fn high_align() {
@@ -217,10 +214,7 @@ fn test_interning(intern: impl Fn(&SyncTable<u64, u64>, u64, u64, Pin<'_>) -> bo
 
     pin(|pin| {
         for i in 0..INTERN_SIZE {
-            assert_eq!(
-                intern(&test, i, i * 2, pin),
-                control.insert(i, i * 2).is_some()
-            )
+            assert_eq!(intern(&test, i, i * 2, pin), control.insert(i, i * 2).is_some())
         }
     });
 

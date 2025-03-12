@@ -1,5 +1,6 @@
-use super::imp::{BITMASK_MASK, BITMASK_STRIDE, BitMaskWord};
 use core::intrinsics;
+
+use super::imp::{BITMASK_MASK, BITMASK_STRIDE, BitMaskWord};
 
 /// A bit mask which contains the result of a `Match` operation on a `Group` and
 /// allows iterating through them.
@@ -39,11 +40,7 @@ impl BitMask {
     /// Returns the first set bit in the `BitMask`, if there is one.
     #[inline]
     pub fn lowest_set_bit(self) -> Option<usize> {
-        if self.0 == 0 {
-            None
-        } else {
-            Some(unsafe { self.lowest_set_bit_nonzero() })
-        }
+        if self.0 == 0 { None } else { Some(unsafe { self.lowest_set_bit_nonzero() }) }
     }
 
     /// Returns the first set bit in the `BitMask`, if there is one. The

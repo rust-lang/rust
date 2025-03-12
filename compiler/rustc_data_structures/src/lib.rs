@@ -13,6 +13,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
+#![feature(alloc_layout_extra)]
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(ascii_char)]

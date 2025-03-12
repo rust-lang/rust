@@ -1,18 +1,19 @@
 //! An API for quiescent state based reclamation.
 
-use crate::{scopeguard::guard, util::cold_path};
-use parking_lot::Mutex;
 use std::arch::asm;
-use std::{
-    cell::Cell,
-    collections::HashMap,
-    intrinsics::unlikely,
-    marker::PhantomData,
-    mem,
-    sync::LazyLock,
-    sync::atomic::{AtomicUsize, Ordering},
-    thread::{self, ThreadId},
-};
+use std::cell::Cell;
+use std::collections::HashMap;
+use std::intrinsics::unlikely;
+use std::marker::PhantomData;
+use std::mem;
+use std::sync::LazyLock;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::thread::{self, ThreadId};
+
+use parking_lot::Mutex;
+
+use super::scopeguard::guard;
+use super::util::cold_path;
 
 mod code;
 
@@ -53,12 +54,15 @@ where
     }
 }
 
-#[thread_local]
-static DATA: Data = Data {
-    pinned: Cell::new(false),
-    registered: Cell::new(false),
-    seen_events: Cell::new(0),
-};
+thread_local! {
+    static DATA: Data = const {
+        Data {
+            pinned: Cell::new(false),
+            registered: Cell::new(false),
+            seen_events: Cell::new(0),
+        }
+    };
+}
 
 struct Data {
     pinned: Cell<bool>,
@@ -110,16 +114,12 @@ cfg_if! {
     }
 }
 
-// Never inline due to thread_local bugs
-#[inline(never)]
 fn data() -> *const Data {
-    &DATA as *const Data
+    DATA.with(|data| data as *const Data)
 }
 
-// Never inline due to thread_local bugs
-#[inline(never)]
 fn data_init() -> *const Data {
-    let data = hide(&DATA as *const Data);
+    let data = hide(DATA.with(|data| data as *const Data));
 
     {
         let data = unsafe { &*data };
@@ -149,9 +149,7 @@ pub fn pin<R>(f: impl FnOnce(Pin<'_>) -> R) -> R {
     let old_pinned = data.pinned.get();
     data.pinned.set(true);
     guard(old_pinned, |pin| data.pinned.set(*pin));
-    f(Pin {
-        _private: PhantomData,
-    })
+    f(Pin { _private: PhantomData })
 }
 
 /// Removes the current thread from the threads allowed to access lock-free data structures.

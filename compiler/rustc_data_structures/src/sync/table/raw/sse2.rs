@@ -1,12 +1,12 @@
-use super::EMPTY;
-use super::bitmask::BitMask;
 use core::arch::asm;
-use core::mem;
-
 #[cfg(target_arch = "x86")]
 use core::arch::x86;
 #[cfg(target_arch = "x86_64")]
 use core::arch::x86_64 as x86;
+use core::mem;
+
+use super::EMPTY;
+use super::bitmask::BitMask;
 
 pub type BitMaskWord = u16;
 pub const BITMASK_STRIDE: usize = 1;
@@ -36,10 +36,8 @@ impl Group {
             _align: [Group; 0],
             bytes: [u8; Group::WIDTH],
         }
-        const ALIGNED_BYTES: AlignedBytes = AlignedBytes {
-            _align: [],
-            bytes: [EMPTY; Group::WIDTH],
-        };
+        const ALIGNED_BYTES: AlignedBytes =
+            AlignedBytes { _align: [], bytes: [EMPTY; Group::WIDTH] };
         unsafe { mem::transmute(ALIGNED_BYTES) }
     };
 
