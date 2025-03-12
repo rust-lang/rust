@@ -24,7 +24,7 @@ use crate::{mir, traits};
 #[derive(Copy, Clone, Debug)]
 pub struct LocalCrate;
 
-pub trait QueryKeyBounds = Copy + Debug + Eq + Hash + StableHash;
+pub trait QueryKeyBounds = Copy + Debug + Eq + Hash + Send + StableHash;
 
 /// Controls what types can legally be used as the key for a query.
 pub trait QueryKey: Sized + QueryKeyBounds {

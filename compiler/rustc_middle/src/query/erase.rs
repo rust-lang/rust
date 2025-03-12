@@ -37,6 +37,8 @@ pub struct ErasedData<Storage: Copy> {
 // SAFETY: The bounds on `erase_val` ensure the types we erase are `DynSync` and `DynSend`
 unsafe impl<Storage: Copy> DynSync for ErasedData<Storage> {}
 unsafe impl<Storage: Copy> DynSend for ErasedData<Storage> {}
+unsafe impl<Storage: Copy> Send for ErasedData<Storage> {}
+unsafe impl<Storage: Copy> Sync for ErasedData<Storage> {}
 
 /// Trait for types that can be erased into [`Erased<Self>`].
 ///
