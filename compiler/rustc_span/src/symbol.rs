@@ -32,7 +32,7 @@ symbols! {
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
-        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        // Matching predicates: `is_special`/`is_reserved`
         //
         // Notes about `kw::Empty`:
         // - Its use can blur the lines between "empty symbol" and "no symbol".
@@ -48,7 +48,7 @@ symbols! {
         Underscore:         "_",
 
         // Keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
+        // Matching predicates: `is_used_keyword_always`/`is_reserved`
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -86,7 +86,7 @@ symbols! {
         While:              "while",
 
         // Keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
+        // Matching predicates: `is_unused_keyword_always`/`is_reserved`
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -101,14 +101,14 @@ symbols! {
         Yield:              "yield",
 
         // Edition-specific keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_used_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_unused_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
@@ -116,12 +116,12 @@ symbols! {
         // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
 
         // "Lifetime keywords": regular keywords with a leading `'`.
-        // Matching predicates: `is_any_keyword`
+        // Matching predicates: none
         UnderscoreLifetime: "'_",
         StaticLifetime:     "'static",
 
         // Weak keywords, have special meaning only in specific contexts.
-        // Matching predicates: `is_any_keyword`
+        // Matching predicates: none
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
@@ -2677,11 +2677,6 @@ pub mod sym {
 }
 
 impl Symbol {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self >= kw::As && self <= kw::Yeet
-    }
-
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2738,11 +2733,6 @@ impl Symbol {
 }
 
 impl Ident {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self.name.is_any_keyword()
-    }
-
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
