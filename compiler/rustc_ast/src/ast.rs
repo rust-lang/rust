@@ -1657,7 +1657,7 @@ pub enum ExprKind {
     Try(P<Expr>),
 
     /// A `yield`, with an optional value to be yielded.
-    Yield(Option<P<Expr>>),
+    Yield(Option<P<Expr>>, YieldKind),
 
     /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
     /// with an optional value to be returned.
@@ -1900,6 +1900,15 @@ pub enum MatchKind {
     /// match expr { ... }
     Prefix,
     /// expr.match { ... }
+    Postfix,
+}
+
+/// The kind of yield expression
+#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq)]
+pub enum YieldKind {
+    /// yield expr { ... }
+    Prefix,
+    /// expr.yield { ... }
     Postfix,
 }
 
