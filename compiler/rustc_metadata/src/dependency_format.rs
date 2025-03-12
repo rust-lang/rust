@@ -84,7 +84,7 @@ pub(crate) fn calculate(tcx: TyCtxt<'_>) -> Dependencies {
 fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
     let sess = &tcx.sess;
 
-    if !sess.opts.output_types.should_codegen() {
+    if !sess.opts.output_types.should_link() {
         return IndexVec::new();
     }
 
