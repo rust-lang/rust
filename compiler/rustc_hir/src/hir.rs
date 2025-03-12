@@ -243,7 +243,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn invalid() -> Self {
-        Self::new(Ident::empty(), HirId::INVALID, Res::Err)
+        Self::new(Ident::dummy(), HirId::INVALID, Res::Err)
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
