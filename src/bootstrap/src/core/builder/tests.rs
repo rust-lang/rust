@@ -234,7 +234,7 @@ fn alias_and_path_for_library() {
     );
     assert_eq!(
         first(cache.all::<doc::Std>()),
-        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 0)]
+        &[doc_std!(TEST_TRIPLE_1 => TEST_TRIPLE_1, stage = 1)]
     );
 }
 
@@ -392,14 +392,14 @@ mod defaults {
         assert_eq!(first(cache.all::<doc::ErrorIndex>()), &[doc::ErrorIndex { target: a },]);
         assert_eq!(
             first(cache.all::<tool::ErrorIndex>()),
-            &[tool::ErrorIndex { compiler: Compiler::new(0, a) }]
+            &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
         );
         // docs should be built with the beta compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(
             first(cache.all::<tool::Rustdoc>()),
-            &[tool::Rustdoc { compiler: Compiler::new(0, a) },]
+            &[tool::Rustdoc { compiler: Compiler::new(1, a) },]
         );
     }
 }
