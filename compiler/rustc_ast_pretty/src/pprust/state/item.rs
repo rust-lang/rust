@@ -679,9 +679,15 @@ impl<'a> State<'a> {
     }
 
     fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
-        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque } = func;
-
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque, eii_impl } = func;
         self.print_define_opaques(define_opaque.as_deref());
+
+        for (_, mi) in eii_impl {
+            self.word("#[");
+            self.print_meta_item(mi);
+            self.word("]");
+            self.hardbreak();
+        }
 
         if body.is_some() {
             self.head("");
