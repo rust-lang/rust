@@ -23,6 +23,7 @@ use super::raw::bitmask::BitMask;
 use super::raw::imp::Group;
 use super::scopeguard::guard;
 use super::util::{cold_path, make_insert_hash};
+use crate::sync::{DynSend, DynSync};
 
 mod code;
 mod tests;
@@ -627,7 +628,10 @@ struct DestroyTable<T> {
 }
 
 unsafe impl<T> Sync for DestroyTable<T> {}
-unsafe impl<T: Send> Send for DestroyTable<T> {}
+
+// FIXME: Unsound
+//unsafe impl<T: Send> Send for DestroyTable<T> {}
+unsafe impl<T: DynSend> Send for DestroyTable<T> {}
 
 impl<T> DestroyTable<T> {
     unsafe fn run(&self) {
@@ -653,8 +657,9 @@ unsafe impl<#[may_dangle] K, #[may_dangle] V, S> Drop for SyncTable<K, V, S> {
     }
 }
 
-unsafe impl<K: Send, V: Send, S: Send> Send for SyncTable<K, V, S> {}
+unsafe impl<K: DynSend, V: DynSend, S: DynSend> DynSend for SyncTable<K, V, S> {}
 unsafe impl<K: Sync, V: Sync, S: Sync> Sync for SyncTable<K, V, S> {}
+unsafe impl<K: DynSync, V: DynSync, S: DynSync> DynSync for SyncTable<K, V, S> {}
 
 impl<K, V, S: Default> Default for SyncTable<K, V, S> {
     #[inline]
@@ -944,7 +949,7 @@ impl<'a, K, V, S> Write<'a, K, V, S> {
     }
 }
 
-impl<'a, K: Send, V: Send + Clone, S: BuildHasher> Write<'a, K, V, S> {
+impl<'a, K: DynSend, V: DynSend + Clone, S: BuildHasher> Write<'a, K, V, S> {
     /// Removes an element from the table, and returns a reference to it if was present.
     #[inline]
     pub fn remove<Q>(&mut self, key: &Q, hash: Option<u64>) -> Option<(&'a K, &'a V)>
@@ -970,7 +975,7 @@ impl<'a, K: Send, V: Send + Clone, S: BuildHasher> Write<'a, K, V, S> {
     }
 }
 
-impl<'a, K: Hash + Eq + Send + Clone, V: Send + Clone, S: BuildHasher> Write<'a, K, V, S> {
+impl<'a, K: Hash + Eq + DynSend + Clone, V: DynSend + Clone, S: BuildHasher> Write<'a, K, V, S> {
     /// Inserts a element into the table.
     /// Returns `false` if it already exists and doesn't update the value.
     #[inline]
@@ -995,7 +1000,7 @@ impl<'a, K: Hash + Eq + Send + Clone, V: Send + Clone, S: BuildHasher> Write<'a,
     }
 }
 
-impl<'a, K: Hash + Send + Clone, V: Send + Clone, S: BuildHasher> Write<'a, K, V, S> {
+impl<'a, K: Hash + DynSend + Clone, V: DynSend + Clone, S: BuildHasher> Write<'a, K, V, S> {
     /// Inserts a new element into the table, and returns a reference to it.
     ///
     /// This does not check if the given element already exists in the table.
@@ -1065,7 +1070,7 @@ impl<'a, K: Hash + Send + Clone, V: Send + Clone, S: BuildHasher> Write<'a, K, V
     }
 }
 
-impl<K: Hash + Send, V: Send, S: BuildHasher> Write<'_, K, V, S> {
+impl<K: Hash + DynSend, V: DynSend, S: BuildHasher> Write<'_, K, V, S> {
     fn replace_table(&mut self, new_table: TableRef<(K, V)>) {
         let table = self.table.current();
 
@@ -1111,8 +1116,8 @@ impl<K: Hash + Send, V: Send, S: BuildHasher> Write<'_, K, V, S> {
     }
 }
 
-impl<K: Eq + Hash + Clone + Send, V: Clone + Send, S: BuildHasher + Default> FromIterator<(K, V)>
-    for SyncTable<K, V, S>
+impl<K: Eq + Hash + Clone + DynSend, V: Clone + DynSend, S: BuildHasher + Default>
+    FromIterator<(K, V)> for SyncTable<K, V, S>
 {
     fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
         let iter = iter.into_iter();
@@ -1221,7 +1226,7 @@ impl<'a> PotentialSlot<'a> {
     ///
     /// This does not check if the given element already exists in the table.
     #[inline]
-    pub fn insert_new<'b, K: Hash + Send + Clone, V: Send + Clone, S: BuildHasher>(
+    pub fn insert_new<'b, K: Hash + DynSend + Clone, V: DynSend + Clone, S: BuildHasher>(
         self,
         table: &mut Write<'b, K, V, S>,
         key: K,
@@ -1485,9 +1490,9 @@ impl<T> RawIterRange<T> {
     }
 }
 
-// We make raw iterators unconditionally Send and Sync, and let the PhantomData
-// in the actual iterator implementations determine the real Send/Sync bounds.
-unsafe impl<T> Send for RawIterRange<T> {}
+// We make raw iterators unconditionally DynSend and Sync, and let the PhantomData
+// in the actual iterator implementations determine the real DynSend/Sync bounds.
+unsafe impl<T> DynSend for RawIterRange<T> {}
 unsafe impl<T> Sync for RawIterRange<T> {}
 
 impl<T> Clone for RawIterRange<T> {
