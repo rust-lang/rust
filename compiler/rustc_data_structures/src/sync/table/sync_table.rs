@@ -16,14 +16,14 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicPtr, AtomicU8, AtomicUsize, Ordering};
 use std::{cmp, fmt, mem};
 
-use parking_lot::{Mutex, MutexGuard};
+use parking_lot::Mutex;
 
 use super::collect::{self, Pin, pin};
 use super::raw::bitmask::BitMask;
 use super::raw::imp::Group;
 use super::scopeguard::guard;
 use super::util::{cold_path, make_insert_hash};
-use crate::sync::{DynSend, DynSync};
+use crate::sync::{DynSend, DynSync, Lock, LockGuard};
 
 mod code;
 mod tests;
@@ -137,7 +137,7 @@ pub struct Write<'a, K, V, S = DefaultHashBuilder> {
 /// A handle to a [SyncTable] with write access protected by a lock.
 pub struct LockedWrite<'a, K, V, S = DefaultHashBuilder> {
     table: Write<'a, K, V, S>,
-    _guard: MutexGuard<'a, ()>,
+    _guard: LockGuard<'a, ()>,
 }
 
 impl<'a, K, V, S> Deref for LockedWrite<'a, K, V, S> {
@@ -167,7 +167,7 @@ pub struct SyncTable<K, V, S = DefaultHashBuilder> {
 
     current: AtomicPtr<TableInfo>,
 
-    lock: Mutex<()>,
+    lock: Lock<()>,
 
     old: UnsafeCell<Vec<Arc<DestroyTable<(K, V)>>>>,
 
@@ -702,7 +702,7 @@ impl<K, V, S> SyncTable<K, V, S> {
             ),
             old: UnsafeCell::new(Vec::new()),
             marker: PhantomData,
-            lock: Mutex::new(()),
+            lock: Lock::new(()),
         }
     }
 
@@ -714,7 +714,7 @@ impl<K, V, S> SyncTable<K, V, S> {
 
     /// Gets a reference to the underlying mutex that protects writes.
     #[inline]
-    pub fn mutex(&self) -> &Mutex<()> {
+    pub fn mutex(&self) -> &Lock<()> {
         &self.lock
     }
 
@@ -747,16 +747,16 @@ impl<K, V, S> SyncTable<K, V, S> {
     pub fn lock(&self) -> LockedWrite<'_, K, V, S> {
         LockedWrite { table: Write { table: self }, _guard: self.lock.lock() }
     }
+    /*
+        /// Creates a [LockedWrite] handle from a guard protecting the underlying mutex that protects writes.
+        #[inline]
+        pub fn lock_from_guard<'a>(&'a self, guard: LockGuard<'a, ()>) -> LockedWrite<'a, K, V, S> {
+            // Verify that we are target of the guard
+            assert_eq!(&self.lock as *const _, LockGuard::mutex(&guard) as *const _);
 
-    /// Creates a [LockedWrite] handle from a guard protecting the underlying mutex that protects writes.
-    #[inline]
-    pub fn lock_from_guard<'a>(&'a self, guard: MutexGuard<'a, ()>) -> LockedWrite<'a, K, V, S> {
-        // Verify that we are target of the guard
-        assert_eq!(&self.lock as *const _, MutexGuard::mutex(&guard) as *const _);
-
-        LockedWrite { table: Write { table: self }, _guard: guard }
-    }
-
+            LockedWrite { table: Write { table: self }, _guard: guard }
+        }
+    */
     #[inline]
     fn current(&self) -> TableRef<(K, V)> {
         TableRef {
@@ -928,7 +928,7 @@ impl<K: Hash + Clone, V: Clone, S: Clone + BuildHasher> Clone for SyncTable<K, V
                     ),
                     old: UnsafeCell::new(Vec::new()),
                     marker: PhantomData,
-                    lock: Mutex::new(()),
+                    lock: Lock::new(()),
                 }
             }
         })
