@@ -54,6 +54,7 @@ mod lock;
 mod parallel;
 mod vec;
 mod worker_local;
+mod table;
 
 /// Keep the conditional imports together in a submodule, so that import-sorting
 /// doesn't split them up.
