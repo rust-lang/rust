@@ -113,6 +113,11 @@ impl<T> Lock<T> {
     }
 
     #[inline(always)]
+    pub fn mode(&self) -> Mode {
+        self.mode
+    }
+
+    #[inline(always)]
     pub fn try_lock(&self) -> Option<LockGuard<'_, T>> {
         let mode = self.mode;
         // SAFETY: This is safe since the union fields are used in accordance with `self.mode`.
