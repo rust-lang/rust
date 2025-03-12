@@ -63,15 +63,20 @@ impl Step for Gcc {
         }
 
         build_gcc(&metadata, builder, target);
-
-        let lib_alias = metadata.install_dir.join("lib/libgccjit.so.0");
-        if !lib_alias.exists() {
-            t!(builder.symlink_file(&libgccjit_path, lib_alias));
-        }
+        create_lib_alias(builder, &libgccjit_path);
 
         t!(metadata.stamp.write());
 
         GccOutput { libgccjit: libgccjit_path }
+    }
+}
+
+/// Creates a libgccjit.so.0 alias next to libgccjit.so if it does not
+/// already exist
+fn create_lib_alias(builder: &Builder<'_>, libgccjit: &PathBuf) {
+    let lib_alias = libgccjit.parent().unwrap().join("libgccjit.so.0");
+    if !lib_alias.exists() {
+        t!(builder.symlink_file(libgccjit, lib_alias));
     }
 }
 
@@ -109,8 +114,11 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         builder.config.download_ci_gcc(&sha, &root);
         t!(gcc_stamp.write());
     }
+
     // FIXME: put libgccjit.so into a lib directory in dist::Gcc
-    Some(root.join("libgccjit.so"))
+    let libgccjit = root.join("libgccjit.so");
+    create_lib_alias(builder, &libgccjit);
+    Some(libgccjit)
 }
 
 #[cfg(test)]
