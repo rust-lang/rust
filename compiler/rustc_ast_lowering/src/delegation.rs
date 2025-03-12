@@ -190,14 +190,19 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::FnSig<'hir> {
         let header = if let Some(local_sig_id) = sig_id.as_local() {
             match self.resolver.delegation_fn_sigs.get(&local_sig_id) {
-                Some(sig) => self.lower_fn_header(
-                    sig.header,
+                Some(sig) => {
+                    let parent = self.tcx.parent(sig_id);
                     // HACK: we override the default safety instead of generating attributes from the ether.
                     // We are not forwarding the attributes, as the delegation fn sigs are collected on the ast,
                     // and here we need the hir attributes.
-                    if sig.target_feature { hir::Safety::Unsafe } else { hir::Safety::Safe },
-                    &[],
-                ),
+                    let default_safety =
+                        if sig.target_feature || self.tcx.def_kind(parent) == DefKind::ForeignMod {
+                            hir::Safety::Unsafe
+                        } else {
+                            hir::Safety::Safe
+                        };
+                    self.lower_fn_header(sig.header, default_safety, &[])
+                }
                 None => self.generate_header_error(),
             }
         } else {
