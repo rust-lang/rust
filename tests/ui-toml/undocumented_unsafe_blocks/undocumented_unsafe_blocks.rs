@@ -703,4 +703,24 @@ mod issue_11709_regression {
     //~[disabled]^ undocumented_unsafe_blocks
 }
 
+fn issue_13039() {
+    unsafe fn foo() -> usize {
+        1234
+    }
+
+    fn bar() -> usize {
+        1234
+    }
+
+    // SAFETY: unnecessary_safety_comment should not trigger here
+    _ = unsafe { foo() };
+
+    // SAFETY: unnecessary_safety_comment triggers here
+    _ = bar();
+    //~^ unnecessary_safety_comment
+
+    // SAFETY: unnecessary_safety_comment should not trigger here
+    _ = unsafe { foo() }
+}
+
 fn main() {}

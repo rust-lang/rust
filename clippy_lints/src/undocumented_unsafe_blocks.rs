@@ -312,6 +312,25 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
             },
             _,
         ) => ControlFlow::Break(()),
+        // `_ = foo()` is desugared to `{ let _ = foo(); }`
+        hir::ExprKind::Block(
+            Block {
+                rules: BlockCheckMode::DefaultBlock,
+                stmts:
+                    [
+                        hir::Stmt {
+                            kind:
+                                hir::StmtKind::Let(hir::LetStmt {
+                                    source: hir::LocalSource::AssignDesugar(_),
+                                    ..
+                                }),
+                            ..
+                        },
+                    ],
+                ..
+            },
+            _,
+        ) => ControlFlow::Continue(Descend::Yes),
         // statements will be handled by check_stmt itself again
         hir::ExprKind::Block(..) => ControlFlow::Continue(Descend::No),
         _ => ControlFlow::Continue(Descend::Yes),

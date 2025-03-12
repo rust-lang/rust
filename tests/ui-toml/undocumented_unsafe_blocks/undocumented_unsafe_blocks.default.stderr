@@ -342,5 +342,17 @@ LL |         const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 39 previous errors
+error: statement has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:719:5
+   |
+LL |     _ = bar();
+   |     ^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:718:5
+   |
+LL |     // SAFETY: unnecessary_safety_comment triggers here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 40 previous errors
 
