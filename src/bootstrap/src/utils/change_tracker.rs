@@ -375,4 +375,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "There is now a new `gcc` config section that can be used to download GCC from CI using `gcc.download-ci-gcc = true`",
     },
+    ChangeInfo {
+        change_id: 126856,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
+    },
 ];
