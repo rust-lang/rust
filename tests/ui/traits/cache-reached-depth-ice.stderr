@@ -1,8 +1,8 @@
 error: evaluate(Binder { value: TraitPredicate(<A as std::marker::Send>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
-  --> $DIR/cache-reached-depth-ice.rs:43:5
+  --> $DIR/cache-reached-depth-ice.rs:44:5
    |
-LL | fn test<X: ?Sized + Send>() {}
-   |                     ---- predicate
+LL | fn test<X: PointeeSized + Send>() {}
+   |                           ---- predicate
 ...
 LL |     test::<A>();
    |     ^^^^^^^^^

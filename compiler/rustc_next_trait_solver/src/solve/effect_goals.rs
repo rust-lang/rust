@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
@@ -198,11 +199,30 @@ where
         unreachable!("trait aliases are never const")
     }
 
-    fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+    fn consider_builtin_sizedness_candidates(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Sized is never const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let const_conditions =
+            structural_traits::const_conditions_for_sizedness(cx, self_ty, sizedness)?;
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Trivial).enter(|ecx| {
+            ecx.add_goals(
+                GoalSource::AliasBoundConstCondition,
+                const_conditions.into_iter().map(|trait_ref| {
+                    goal.with(
+                        cx,
+                        ty::Binder::dummy(trait_ref)
+                            .to_host_effect_clause(cx, goal.predicate.constness),
+                    )
+                }),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_copy_clone_candidate(

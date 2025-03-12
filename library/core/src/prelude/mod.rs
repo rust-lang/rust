@@ -92,4 +92,8 @@ pub mod rust_future {
     #[stable(feature = "prelude_2024", since = "1.85.0")]
     #[doc(no_inline)]
     pub use crate::future::{Future, IntoFuture};
+
+    #[unstable(feature = "prelude_next", issue = "none")]
+    #[doc(no_inline)]
+    pub use crate::marker::{MetaSized, PointeeSized};
 }

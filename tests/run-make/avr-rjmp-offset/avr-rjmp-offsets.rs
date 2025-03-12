@@ -3,6 +3,7 @@
 //! The function [`delay()`] is removed, as it is not necessary to trigger the
 //! wrong behavior and would require some additional lang items.
 #![feature(no_core, lang_items, intrinsics, rustc_attrs)]
+#![feature(const_trait_impl)]
 #![no_core]
 #![no_main]
 #![allow(internal_features)]
@@ -24,14 +25,22 @@ pub fn main() -> ! {
 
 // FIXME: replace with proper minicore once available (#130693)
 mod minicore {
+    #[lang = "pointeesized"]
+    pub trait PointeeSized {}
+
+    #[lang = "metasized"]
+    #[const_trait]
+    pub trait MetaSized: PointeeSized {}
+
     #[lang = "sized"]
-    pub trait Sized {}
+    #[const_trait]
+    pub trait Sized: MetaSized {}
 
     #[lang = "copy"]
     pub trait Copy {}
     impl Copy for u32 {}
     impl Copy for &u32 {}
-    impl<T: ?Sized> Copy for *mut T {}
+    impl<T: PointeeSized> Copy for *mut T {}
 
     pub mod ptr {
         #[inline]

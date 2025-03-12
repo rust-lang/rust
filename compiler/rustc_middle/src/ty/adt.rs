@@ -53,6 +53,13 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
+        /// Indicates whether the type is annotated with `#[rustc_non_const_sized]`.
+        ///
+        /// Necessary to know when to add a type flag since `TyCtxt` isn't available and the
+        /// presence of the attribute cannot be checked.
+        /// FIXME(sized-hierarchy): Consider removing this when scalable vectors are implemented
+        /// and `def.repr.scalable` can be checked.
+        const HAS_NON_CONST_SIZEDNESS      = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -231,6 +238,14 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
         self.sized_constraint(tcx)
     }
 
+    fn metasized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.metasized_constraint(tcx)
+    }
+
+    fn pointeesized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        self.pointeesized_constraint(tcx)
+    }
+
     fn is_fundamental(self) -> bool {
         self.is_fundamental()
     }
@@ -275,6 +290,10 @@ impl AdtDefData {
         if kind == AdtKind::Enum && tcx.has_attr(did, sym::non_exhaustive) {
             debug!("found non-exhaustive variant list for {:?}", did);
             flags = flags | AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE;
+        }
+
+        if tcx.has_attr(did, sym::rustc_non_const_sized) {
+            flags = flags | AdtFlags::HAS_NON_CONST_SIZEDNESS;
         }
 
         flags |= match kind {
@@ -330,6 +349,12 @@ impl<'tcx> AdtDef<'tcx> {
     #[inline]
     pub fn is_variant_list_non_exhaustive(self) -> bool {
         self.flags().contains(AdtFlags::IS_VARIANT_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if this type only has non-const implementations of sizedness traits.
+    #[inline]
+    pub fn has_non_const_sizedness(self) -> bool {
+        self.flags().contains(AdtFlags::HAS_NON_CONST_SIZEDNESS)
     }
 
     /// Returns the kind of the ADT.
@@ -616,6 +641,24 @@ impl<'tcx> AdtDef<'tcx> {
     /// or `None` if the type is always sized.
     pub fn sized_constraint(self, tcx: TyCtxt<'tcx>) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
         if self.is_struct() { tcx.adt_sized_constraint(self.did()) } else { None }
+    }
+
+    /// Returns a type such that `Self: MetaSized` if and only if that type is `MetaSized`,
+    /// or `None` if the type is always `MetaSized`.
+    pub fn metasized_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_metasized_constraint(self.did()) } else { None }
+    }
+
+    /// Returns a type such that `Self: PointeeSized` if and only if that type is `PointeeSized`,
+    /// or `None` if the type is always `PointeeSized`.
+    pub fn pointeesized_constraint(
+        self,
+        tcx: TyCtxt<'tcx>,
+    ) -> Option<ty::EarlyBinder<'tcx, Ty<'tcx>>> {
+        if self.is_struct() { tcx.adt_pointeesized_constraint(self.did()) } else { None }
     }
 }
 

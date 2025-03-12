@@ -5,9 +5,9 @@ use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, ErrorGuaranteed, MultiSpan, listify, pluralize, struct_span_code_err,
 };
-use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
+use rustc_hir::{self as hir, HirId, LangItem, PolyTraitRef};
 use rustc_middle::bug;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::print::{PrintPolyTraitRefExt as _, PrintTraitRefExt as _};
@@ -15,6 +15,7 @@ use rustc_middle::ty::{
     self, AdtDef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt,
     suggest_constraining_type_param,
 };
+use rustc_session::lint;
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::{BytePos, DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -32,6 +33,145 @@ use crate::fluent_generated as fluent;
 use crate::hir_ty_lowering::{AssocItemQSelf, HirTyLowerer};
 
 impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
+    /// Check for multiple relaxed default bounds and relaxed bounds.
+    pub(crate) fn check_and_report_invalid_unbounds_on_param(
+        &self,
+        trait_hir_id: HirId,
+        unbounds: SmallVec<[&PolyTraitRef<'_>; 1]>,
+    ) {
+        let tcx = self.tcx();
+
+        let sized_did = tcx.require_lang_item(LangItem::Sized, None);
+
+        let mut unique_bounds = FxIndexSet::default();
+        let mut seen_repeat = false;
+        for unbound in &unbounds {
+            if let Res::Def(DefKind::Trait, unbound_def_id) = unbound.trait_ref.path.res {
+                seen_repeat |= !unique_bounds.insert(unbound_def_id);
+            }
+        }
+
+        if unbounds.len() > 1 {
+            let err = errors::MultipleRelaxedDefaultBounds {
+                spans: unbounds.iter().map(|ptr| ptr.span).collect(),
+            };
+
+            if seen_repeat {
+                self.dcx().emit_err(err);
+            } else if !tcx.features().more_maybe_bounds() {
+                tcx.sess.create_feature_err(err, sym::more_maybe_bounds).emit();
+            };
+        }
+
+        for unbound in unbounds {
+            let is_sized = matches!(
+                unbound.trait_ref.path.res,
+                Res::Def(DefKind::Trait, did) if did == sized_did
+            );
+            if is_sized && !tcx.features().sized_hierarchy() {
+                continue;
+            }
+
+            if tcx.features().sized_hierarchy() && is_sized {
+                tcx.node_span_lint(
+                    lint::builtin::SIZED_HIERARCHY_MIGRATION,
+                    trait_hir_id,
+                    unbound.span,
+                    |lint| {
+                        lint.primary_message(
+                            "`?Sized` bound relaxations are being migrated to `const MetaSized`",
+                        );
+                        lint.span_suggestion(
+                            unbound.span,
+                            "replace `?Sized` with `const MetaSized`",
+                            "const MetaSized",
+                            Applicability::MachineApplicable,
+                        );
+                    },
+                );
+                return;
+            }
+
+            // There was a `?Trait` bound, but it was not `?Sized`.
+            self.dcx().span_err(
+                unbound.span,
+                "relaxing a default bound only does something for `?Sized`; all other traits \
+                 are not bound by default",
+            );
+        }
+    }
+
+    /// Emit lint adding a `const MetaSized` supertrait as part of sized hierarchy migration.
+    pub(crate) fn emit_implicit_const_metasized_supertrait_lint(
+        &self,
+        trait_hir_id: HirId,
+        span: Span,
+    ) {
+        let tcx = self.tcx();
+        if tcx.features().sized_hierarchy() {
+            tcx.node_span_lint(
+                lint::builtin::SIZED_HIERARCHY_MIGRATION,
+                trait_hir_id,
+                span,
+                |lint| {
+                    lint.primary_message(
+                        "a `const MetaSized` supertrait is required to maintain backwards \
+                         compatibility",
+                    );
+                    lint.span_suggestion(
+                        span.shrink_to_hi(),
+                        "add an explicit `const MetaSized` supertrait",
+                        ": const MetaSized",
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        }
+    }
+
+    /// Emit lint changing `Sized` bounds to `const MetaSized` bounds as part of sized hierarchy
+    /// migration.
+    pub(crate) fn emit_sized_to_const_sized_lint(&self, trait_hir_id: HirId, span: Span) {
+        let tcx = self.tcx();
+        if tcx.features().sized_hierarchy() {
+            tcx.node_span_lint(
+                lint::builtin::SIZED_HIERARCHY_MIGRATION,
+                trait_hir_id,
+                span,
+                |lint| {
+                    lint.primary_message("`Sized` bounds are being migrated to `const Sized`");
+                    lint.span_suggestion(
+                        span,
+                        "replace `Sized` with `const Sized`",
+                        "const Sized",
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        }
+    }
+
+    /// Emit lint adding `const MetaSized` bound as part of sized hierarchy migration.
+    pub(crate) fn emit_default_sized_to_const_sized_lint(&self, trait_hir_id: HirId, span: Span) {
+        let tcx = self.tcx();
+        if tcx.features().sized_hierarchy() {
+            tcx.node_span_lint(
+                lint::builtin::SIZED_HIERARCHY_MIGRATION,
+                trait_hir_id,
+                span,
+                |lint| {
+                    lint.primary_message("default bounds are being migrated to `const Sized`");
+                    lint.span_suggestion(
+                        span.shrink_to_hi(),
+                        "add `const Sized`",
+                        ": const Sized",
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        }
+    }
+
     /// On missing type parameters, emit an E0393 error and provide a structured suggestion using
     /// the type parameter's name as a placeholder.
     pub(crate) fn complain_about_missing_type_params(

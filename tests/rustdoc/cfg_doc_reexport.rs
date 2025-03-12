@@ -1,11 +1,20 @@
 #![feature(doc_cfg)]
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 
 #![crate_name = "foo"]
 #![no_core]
 
+#[lang = "pointeesized"]
+pub trait PointeeSized {}
+
+#[lang = "metasized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 //@ has 'foo/index.html'
 //@ has - '//dt/*[@class="stab portability"]' 'foobar'

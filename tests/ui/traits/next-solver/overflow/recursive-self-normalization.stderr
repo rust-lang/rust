@@ -32,6 +32,18 @@ help: consider relaxing the implicit `Sized` restriction
 LL | fn needs_bar<S: Bar + ?Sized>() {}
    |                     ++++++++
 
+error[E0275]: overflow evaluating the requirement `<T as Foo>::Assoc: const Sized`
+  --> $DIR/recursive-self-normalization.rs:11:17
+   |
+LL |     needs_bar::<T::Assoc>();
+   |                 ^^^^^^^^
+   |
+note: required by a bound in `needs_bar`
+  --> $DIR/recursive-self-normalization.rs:8:14
+   |
+LL | fn needs_bar<S: Bar>() {}
+   |              ^ required by this bound in `needs_bar`
+
 error[E0275]: overflow evaluating the requirement `<T as Foo>::Assoc == _`
   --> $DIR/recursive-self-normalization.rs:11:5
    |
@@ -54,6 +66,6 @@ LL |     needs_bar::<T::Assoc>();
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 6 previous errors
+error: aborting due to 7 previous errors
 
 For more information about this error, try `rustc --explain E0275`.

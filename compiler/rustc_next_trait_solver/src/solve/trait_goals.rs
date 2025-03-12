@@ -4,12 +4,12 @@ use rustc_type_ir::data_structures::IndexSet;
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
-use rustc_type_ir::solve::CanonicalResponse;
+use rustc_type_ir::solve::{CanonicalResponse, SizedTraitKind};
 use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{
     self as ty, Interner, Movability, TraitPredicate, TypingMode, Upcast as _, elaborate,
 };
-use tracing::{instrument, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::assembly::structural_traits::{self, AsyncCallableRelevantTypes};
@@ -217,9 +217,10 @@ where
         })
     }
 
-    fn consider_builtin_sized_candidate(
+    fn consider_builtin_sizedness_candidates(
         ecx: &mut EvalCtxt<'_, D>,
         goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
         if goal.predicate.polarity != ty::PredicatePolarity::Positive {
             return Err(NoSolution);
@@ -228,7 +229,17 @@ where
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Trivial),
             goal,
-            structural_traits::instantiate_constituent_tys_for_sized_trait,
+            match sizedness {
+                SizedTraitKind::Sized => {
+                    structural_traits::instantiate_constituent_tys_for_sized_trait
+                }
+                SizedTraitKind::MetaSized => {
+                    structural_traits::instantiate_constituent_tys_for_metasized_trait
+                }
+                SizedTraitKind::PointeeSized => {
+                    structural_traits::instantiate_constituent_tys_for_pointeesized_trait
+                }
+            },
         )
     }
 
@@ -1329,6 +1340,7 @@ where
         goal: Goal<I, TraitPredicate<I>>,
     ) -> Result<(CanonicalResponse<I>, Option<TraitGoalProvenVia>), NoSolution> {
         let candidates = self.assemble_and_evaluate_candidates(goal);
+        debug!(?candidates);
         self.merge_trait_candidates(goal, candidates)
     }
 }
