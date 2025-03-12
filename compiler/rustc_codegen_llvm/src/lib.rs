@@ -19,7 +19,6 @@
 #![feature(rustdoc_internals)]
 #![feature(slice_as_array)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::any::Any;
