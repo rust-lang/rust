@@ -553,7 +553,8 @@ pub fn try_evaluate_const<'tcx>(
             //
             // FIXME: `const_eval_resolve_for_typeck` should probably just modify the env itself
             // instead of having this logic here
-            let (args, typing_env) = if tcx.features().generic_const_exprs()
+            let (args, typing_env) = if tcx.def_kind(uv.def) == DefKind::AnonConst
+                && let ty::AnonConstKind::GCEConst = tcx.anon_const_kind(uv.def)
                 && uv.has_non_region_infer()
             {
                 // `feature(generic_const_exprs)` causes anon consts to inherit all parent generics. This can cause
@@ -582,7 +583,10 @@ pub fn try_evaluate_const<'tcx>(
                         (args, typing_env)
                     }
                 }
-            } else if tcx.def_kind(uv.def) == DefKind::AnonConst && uv.has_non_region_infer() {
+            } else if tcx.def_kind(uv.def) == DefKind::AnonConst
+                && let ty::AnonConstKind::RepeatExprCount = tcx.anon_const_kind(uv.def)
+                && uv.has_non_region_infer()
+            {
                 // FIXME: remove this when `const_evaluatable_unchecked` is a hard error.
                 //
                 // Diagnostics will sometimes replace the identity args of anon consts in
@@ -599,6 +603,7 @@ pub fn try_evaluate_const<'tcx>(
 
                 let args = GenericArgs::identity_for_item(tcx, uv.def);
                 let typing_env = ty::TypingEnv::post_analysis(tcx, uv.def);
+
                 (args, typing_env)
             } else {
                 // FIXME: This codepath is reachable under `associated_const_equality` and in the

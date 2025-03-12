@@ -68,6 +68,7 @@ trivially_parameterized_over_tcx! {
     ty::AsyncDestructor,
     ty::AssocItemContainer,
     ty::Asyncness,
+    ty::AnonConstKind,
     ty::DeducedParamAttrs,
     ty::Destructor,
     ty::Generics,
