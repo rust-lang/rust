@@ -753,6 +753,7 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
                 GlobalAlloc::Static(tables.static_def(*def))
             }
             mir::interpret::GlobalAlloc::Memory(alloc) => GlobalAlloc::Memory(alloc.stable(tables)),
+            mir::interpret::GlobalAlloc::Type(_) => todo!(),
         }
     }
 }
