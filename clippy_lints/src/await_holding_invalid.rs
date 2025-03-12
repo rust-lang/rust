@@ -179,9 +179,14 @@ pub struct AwaitHolding {
 
 impl AwaitHolding {
     pub(crate) fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
-        Self {
-            def_ids: create_disallowed_map(tcx, &conf.await_holding_invalid_types),
-        }
+        let (def_ids, _) = create_disallowed_map(
+            tcx,
+            &conf.await_holding_invalid_types,
+            crate::disallowed_types::def_kind_predicate,
+            "type",
+            false,
+        );
+        Self { def_ids }
     }
 }
 
