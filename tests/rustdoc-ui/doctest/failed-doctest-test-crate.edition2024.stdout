@@ -9,9 +9,7 @@ error[E0432]: unresolved import `test`
   --> $DIR/failed-doctest-test-crate.rs:15:5
    |
 LL | use test::*;
-   |     ^^^^ use of unresolved module or unlinked crate `test`
-   |
-   = help: you might be missing a crate named `test`
+   |     ^^^^ use of undeclared crate or module `test`
 
 error: aborting due to 1 previous error
 
