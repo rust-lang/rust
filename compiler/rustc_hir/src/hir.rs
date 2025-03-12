@@ -89,7 +89,7 @@ impl ParamName {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, HashStable_Generic)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, HashStable_Generic)]
 pub enum LifetimeName {
     /// User-given names or fresh (synthetic) names.
     Param(LocalDefId),
@@ -158,11 +158,23 @@ impl Lifetime {
     }
 
     pub fn is_anonymous(&self) -> bool {
-        self.ident.name == kw::Empty || self.ident.name == kw::UnderscoreLifetime
+        self.is_syntactically_hidden() || self.is_syntactically_anonymous()
+    }
+
+    pub fn is_syntactically_hidden(&self) -> bool {
+        self.ident.name == kw::Empty
+    }
+
+    pub fn is_syntactically_anonymous(&self) -> bool {
+        self.ident.name == kw::UnderscoreLifetime
+    }
+
+    pub fn is_static(&self) -> bool {
+        self.res == LifetimeName::Static
     }
 
     pub fn suggestion_position(&self, is_ref: bool) -> (LifetimeSuggestionPosition, Span) {
-        if self.ident.name == kw::Empty {
+        if self.is_syntactically_hidden() {
             if is_ref {
                 (LifetimeSuggestionPosition::Ampersand, self.ident.span)
             } else if self.ident.span.is_empty() {

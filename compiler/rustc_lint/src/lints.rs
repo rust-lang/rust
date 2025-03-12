@@ -3163,3 +3163,98 @@ pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
 }
+
+pub(crate) struct MismatchedLifetimeSyntaxes {
+    pub lifetime_name: String,
+    pub inputs: Vec<Span>,
+    pub outputs: Vec<Span>,
+
+    pub suggestions: Vec<MismatchedLifetimeSyntaxesSuggestion>,
+}
+
+impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSyntaxes {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(fluent::lint_mismatched_lifetime_syntaxes);
+
+        // TODO: how avoid calling it lifetime_name2?
+        diag.arg("lifetime_name2", self.lifetime_name);
+
+        diag.arg("n_inputs", self.inputs.len());
+        for input in self.inputs {
+            diag.span_label(input, fluent::lint_label_mismatched_lifetime_syntaxes_inputs);
+        }
+
+        diag.arg("n_outputs", self.outputs.len());
+        for output in self.outputs {
+            diag.span_label(output, fluent::lint_label_mismatched_lifetime_syntaxes_outputs);
+        }
+
+        let mut suggestions = self.suggestions.into_iter();
+        if let Some(s) = suggestions.next() {
+            diag.subdiagnostic(s);
+
+            for mut s in suggestions {
+                s.make_tool_only();
+                diag.subdiagnostic(s);
+            }
+        }
+    }
+}
+
+pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
+    Hidden { suggestions: Vec<Span>, tool_only: bool },
+
+    Named { lifetime_name: String, suggestions: Vec<(Span, String)>, tool_only: bool },
+}
+
+impl MismatchedLifetimeSyntaxesSuggestion {
+    fn make_tool_only(&mut self) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let tool_only = match self {
+            Hidden { tool_only, .. } | Named { tool_only, .. } => tool_only,
+        };
+
+        *tool_only = true;
+    }
+}
+
+impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: &F,
+    ) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let style = |tool_only| {
+            if tool_only { SuggestionStyle::CompletelyHidden } else { SuggestionStyle::ShowAlways }
+        };
+
+        match self {
+            Hidden { suggestions, tool_only } => {
+                let suggestions = suggestions.into_iter().map(|s| (s, String::new())).collect();
+                diag.multipart_suggestion_with_style(
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_hidden,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+
+            Named { lifetime_name, suggestions, tool_only } => {
+                diag.arg("lifetime_name", lifetime_name);
+
+                let msg =
+                    f(diag, fluent::lint_mismatched_lifetime_syntaxes_suggestion_named.into());
+
+                diag.multipart_suggestion_with_style(
+                    msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+        }
+    }
+}
