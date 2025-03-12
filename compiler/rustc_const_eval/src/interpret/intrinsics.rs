@@ -4,8 +4,10 @@
 
 use std::assert_matches::assert_matches;
 
-use rustc_abi::Size;
+use rustc_abi::{FieldIdx, Size};
 use rustc_apfloat::ieee::{Double, Half, Quad, Single};
+use rustc_ast::Mutability;
+use rustc_middle::mir::interpret::{AllocId, AllocInit, alloc_range};
 use rustc_middle::mir::{self, BinOp, ConstValue, NonDivergingIntrinsic};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_middle::ty::{Ty, TyCtxt};
@@ -27,6 +29,37 @@ pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ConstAll
     let path = crate::util::type_name(tcx, ty);
     let alloc = Allocation::from_bytes_byte_aligned_immutable(path.into_bytes(), ());
     tcx.mk_const_alloc(alloc)
+}
+
+pub(crate) fn alloc_type_id<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> AllocId {
+    let size = Size::from_bytes(16);
+    let align = tcx.data_layout.pointer_align();
+    let mut alloc = Allocation::new(size, *align, AllocInit::Uninit, ());
+    let ptr_size = tcx.data_layout.pointer_size();
+    let type_id_hash = tcx.type_id_hash(ty).as_u128();
+    alloc
+        .write_scalar(
+            &tcx,
+            alloc_range(Size::ZERO, Size::from_bytes(16)),
+            Scalar::from_u128(type_id_hash),
+        )
+        .unwrap();
+
+    // Give the first pointer-size bytes provenance that knows about the type id
+
+    let alloc_id = tcx.reserve_and_set_type_id_alloc(ty);
+    let offset = alloc
+        .read_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), false)
+        .unwrap()
+        .to_target_usize(&tcx)
+        .unwrap();
+    let ptr = Pointer::new(alloc_id.into(), Size::from_bytes(offset));
+    let val = Scalar::from_pointer(ptr, &tcx);
+    alloc.write_scalar(&tcx, alloc_range(Size::ZERO, ptr_size), val).unwrap();
+
+    alloc.mutability = Mutability::Not;
+
+    tcx.reserve_and_set_memory_alloc(tcx.mk_const_alloc(alloc))
 }
 
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
@@ -63,9 +96,51 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             sym::type_id => {
                 let tp_ty = instance.args.type_at(0);
                 ensure_monomorphic_enough(tcx, tp_ty)?;
-                let val = ConstValue::from_u128(tcx.type_id_hash(tp_ty).as_u128());
+                let alloc_id = alloc_type_id(tcx, tp_ty);
+                let val = ConstValue::Indirect { alloc_id, offset: Size::ZERO };
                 let val = self.const_val_to_op(val, dest.layout.ty, Some(dest.layout))?;
                 self.copy_op(&val, dest)?;
+            }
+            sym::type_id_eq => {
+                // Both operands are `TypeId`, which is a newtype around an array of pointers.
+                // Project until we have the array elements.
+                let a_fields = self.project_field(&args[0], FieldIdx::ZERO)?;
+                let b_fields = self.project_field(&args[1], FieldIdx::ZERO)?;
+
+                let mut a_fields = self.project_array_fields(&a_fields)?;
+                let mut b_fields = self.project_array_fields(&b_fields)?;
+
+                let (_idx, a) = a_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let a = self.deref_pointer(&a)?;
+                let (a, offset_a) = self.get_ptr_type_id(a.ptr())?;
+
+                let (_idx, b) = b_fields
+                    .next(self)?
+                    .expect("we know the layout of TypeId has at least 2 array elements");
+                let b = self.deref_pointer(&b)?;
+                let (b, offset_b) = self.get_ptr_type_id(b.ptr())?;
+
+                let provenance_matches = a == b;
+
+                let mut eq_id = offset_a == offset_b;
+
+                while let Some((_, a)) = a_fields.next(self)? {
+                    let (_, b) = b_fields.next(self)?.unwrap();
+
+                    let a = self.read_target_usize(&a)?;
+                    let b = self.read_target_usize(&b)?;
+                    eq_id &= a == b;
+                }
+
+                if !eq_id && provenance_matches {
+                    throw_ub_format!(
+                        "type_id_eq: one of the TypeId arguments is invalid, the hash does not match the type it represents"
+                    )
+                }
+
+                self.write_scalar(Scalar::from_bool(provenance_matches), dest)?;
             }
             sym::variant_count => {
                 let tp_ty = instance.args.type_at(0);

@@ -23,6 +23,9 @@ pub enum GlobalAlloc {
     Static(StaticDef),
     /// The alloc ID points to memory.
     Memory(Allocation),
+    /// The first pointer-sized segment of a type id. On 64 bit systems, the 128 bit type id
+    /// is split into two segments, on 32 bit systems there are 4 segments, and so on.
+    TypeId { ty: Ty },
 }
 
 impl From<AllocId> for GlobalAlloc {

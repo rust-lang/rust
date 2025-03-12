@@ -1,7 +1,6 @@
 use gccjit::{LValue, RValue, ToRValue, Type};
-use rustc_abi as abi;
-use rustc_abi::HasDataLayout;
 use rustc_abi::Primitive::Pointer;
+use rustc_abi::{self as abi, HasDataLayout};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, MiscCodegenMethods, StaticCodegenMethods,
 };
@@ -281,6 +280,13 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                             .unwrap_memory();
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
+                    }
+                    GlobalAlloc::TypeId { .. } => {
+                        let val = self.const_usize(offset.bytes());
+                        // This is still a variable of pointer type, even though we only use the provenance
+                        // of that pointer in CTFE and Miri. But to make LLVM's type system happy,
+                        // we need an int-to-ptr cast here (it doesn't matter at all which provenance that picks).
+                        return self.context.new_cast(None, val, ty);
                     }
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));

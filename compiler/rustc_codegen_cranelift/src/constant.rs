@@ -175,6 +175,13 @@ pub(crate) fn codegen_const_value<'tcx>(
                             fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
                         fx.bcx.ins().global_value(fx.pointer_type, local_data_id)
                     }
+                    GlobalAlloc::TypeId { .. } => {
+                        return CValue::const_val(
+                            fx,
+                            layout,
+                            ScalarInt::try_from_target_usize(offset.bytes(), fx.tcx).unwrap(),
+                        );
+                    }
                     GlobalAlloc::Static(def_id) => {
                         assert!(fx.tcx.is_static(def_id));
                         let data_id = data_id_for_static(
@@ -360,6 +367,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     GlobalAlloc::Memory(alloc) => alloc,
                     GlobalAlloc::Function { .. }
                     | GlobalAlloc::Static(_)
+                    | GlobalAlloc::TypeId { .. }
                     | GlobalAlloc::VTable(..) => {
                         unreachable!()
                     }
@@ -471,6 +479,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                         .principal()
                         .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
                 ),
+                GlobalAlloc::TypeId { .. } => {
+                    // Nothing to do, the bytes/offset of this pointer have already been written together with all other bytes,
+                    // so we just need to drop this provenance.
+                    continue;
+                }
                 GlobalAlloc::Static(def_id) => {
                     if tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::THREAD_LOCAL)
                     {

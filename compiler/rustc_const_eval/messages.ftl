@@ -78,6 +78,8 @@ const_eval_dealloc_kind_mismatch =
 
 const_eval_deref_function_pointer =
     accessing {$allocation} which contains a function
+const_eval_deref_typeid_pointer =
+    accessing {$allocation} which contains a `TypeId`
 const_eval_deref_vtable_pointer =
     accessing {$allocation} which contains a vtable
 const_eval_division_by_zero =
