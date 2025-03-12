@@ -1,9 +1,9 @@
 # These defaults are meant for contributors to the standard library and documentation.
 [build]
 # When building the standard library, you almost never want to build the compiler itself.
-build-stage = 0
-test-stage = 0
-bench-stage = 0
+build-stage = 1
+test-stage = 1
+bench-stage = 1
 
 [rust]
 # This greatly increases the speed of rebuilds, especially when there are only minor changes. However, it makes the initial build slightly slower.
