@@ -103,6 +103,7 @@ impl Step for Vendor {
         // Will read the libstd Cargo.toml
         // which uses the unstable `public-dependency` feature.
         cmd.env("RUSTC_BOOTSTRAP", "1");
+        cmd.env("RUSTC", &builder.initial_rustc);
 
         cmd.current_dir(self.root_dir).arg(&self.output_dir);
 
