@@ -322,7 +322,6 @@ language_item_table! {
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
     // Lang items needed for `format_args!()`.
-    FormatAlignment,         sym::format_alignment,    format_alignment,           Target::Enum,           GenericRequirement::None;
     FormatArgument,          sym::format_argument,     format_argument,            Target::Struct,         GenericRequirement::None;
     FormatArguments,         sym::format_arguments,    format_arguments,           Target::Struct,         GenericRequirement::None;
     FormatCount,             sym::format_count,        format_count,               Target::Enum,           GenericRequirement::None;
