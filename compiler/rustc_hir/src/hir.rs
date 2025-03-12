@@ -243,7 +243,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn invalid() -> Self {
-        Self::new(Ident::empty(), HirId::INVALID, Res::Err)
+        Self::new(Ident::dummy(), HirId::INVALID, Res::Err)
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
@@ -4332,16 +4332,6 @@ pub enum OwnerNode<'hir> {
 }
 
 impl<'hir> OwnerNode<'hir> {
-    pub fn ident(&self) -> Option<Ident> {
-        match self {
-            OwnerNode::Item(Item { ident, .. })
-            | OwnerNode::ForeignItem(ForeignItem { ident, .. })
-            | OwnerNode::ImplItem(ImplItem { ident, .. })
-            | OwnerNode::TraitItem(TraitItem { ident, .. }) => Some(*ident),
-            OwnerNode::Crate(..) | OwnerNode::Synthetic => None,
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             OwnerNode::Item(Item { span, .. })
