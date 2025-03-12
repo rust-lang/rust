@@ -2194,6 +2194,7 @@ symbols! {
         type_changing_struct_update,
         type_const,
         type_id,
+        type_id_eq,
         type_ir,
         type_ir_infer_ctxt_like,
         type_ir_inherent,

@@ -864,6 +864,9 @@ impl<'tcx> Stable<'tcx> for mir::interpret::GlobalAlloc<'tcx> {
             mir::interpret::GlobalAlloc::Memory(alloc) => {
                 GlobalAlloc::Memory(alloc.stable(tables, cx))
             }
+            mir::interpret::GlobalAlloc::TypeId { ty } => {
+                GlobalAlloc::TypeId { ty: ty.stable(tables, cx) }
+            }
         }
     }
 }

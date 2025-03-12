@@ -475,6 +475,7 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             WriteToReadOnly(_) => const_eval_write_to_read_only,
             DerefFunctionPointer(_) => const_eval_deref_function_pointer,
             DerefVTablePointer(_) => const_eval_deref_vtable_pointer,
+            DerefTypeIdPointer(_) => const_eval_deref_typeid_pointer,
             InvalidBool(_) => const_eval_invalid_bool,
             InvalidChar(_) => const_eval_invalid_char,
             InvalidTag(_) => const_eval_invalid_tag,
@@ -588,7 +589,10 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
                 diag.arg("has", has.bytes());
                 diag.arg("msg", format!("{msg:?}"));
             }
-            WriteToReadOnly(alloc) | DerefFunctionPointer(alloc) | DerefVTablePointer(alloc) => {
+            WriteToReadOnly(alloc)
+            | DerefFunctionPointer(alloc)
+            | DerefVTablePointer(alloc)
+            | DerefTypeIdPointer(alloc) => {
                 diag.arg("allocation", alloc);
             }
             InvalidBool(b) => {
