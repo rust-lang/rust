@@ -210,7 +210,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
         .env("CXXFLAGS", "-Wno-everything -g -O2")
         .env("CFLAGS", "-Wno-everything -g -O2")
         .arg("--enable-host-shared")
-        .arg("--enable-languages=jit")
+        .arg("--enable-languages=c,jit,lto")
         .arg("--enable-checking=release")
         .arg("--disable-bootstrap")
         .arg("--disable-multilib")
