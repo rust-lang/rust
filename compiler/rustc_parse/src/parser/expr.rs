@@ -1310,6 +1310,13 @@ impl<'a> Parser<'a> {
             return self.parse_match_block(lo, match_span, self_arg, MatchKind::Postfix);
         }
 
+        // Post-fix yield
+        if self.eat_keyword(exp!(Yield)) {
+            let yield_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::yield_expr, yield_span);
+            return Ok(self.mk_expr(yield_span, ExprKind::Yield(Some(self_arg))));
+        }
+
         let fn_span_lo = self.token.span;
         let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&seg, &[exp!(OpenParen)]);
