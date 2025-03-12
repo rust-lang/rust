@@ -954,17 +954,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 }
                             }
                         };
-                        let mut err = self.dcx().create_err(err);
-                        if !self.tcx.features().return_type_notation()
-                            && self.tcx.sess.is_nightly_build()
-                        {
-                            add_feature_diagnostics(
-                                &mut err,
-                                &self.tcx.sess,
-                                sym::return_type_notation,
-                            );
-                        }
-                        err.emit();
+                        self.dcx().emit_err(err);
                         GenericArgsCtor {
                             args: Default::default(),
                             constraints: &[],

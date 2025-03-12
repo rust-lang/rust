@@ -475,7 +475,11 @@ fn fn_sig_suggestion<'tcx>(
         ""
     };
 
-    let output = if !output.is_unit() { format!(" -> {output}") } else { String::new() };
+    let output = if !output.is_unit() {
+        with_types_for_signature!(format!(" -> {output}"))
+    } else {
+        String::new()
+    };
 
     let safety = sig.safety.prefix_str();
     let (generics, where_clauses) = bounds_from_generic_predicates(tcx, predicates);

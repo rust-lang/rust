@@ -1,5 +1,5 @@
 error[E0221]: ambiguous associated function `test` in bounds of `Foo`
-  --> $DIR/super-method-bound-ambig.rs:24:12
+  --> $DIR/super-method-bound-ambig.rs:22:12
    |
 LL |     async fn test();
    |     ---------------- ambiguous `test` from `for<'a> Super1<'a>`

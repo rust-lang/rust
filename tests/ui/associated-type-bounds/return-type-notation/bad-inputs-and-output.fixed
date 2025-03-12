@@ -1,6 +1,6 @@
 //@ edition: 2021
 //@ run-rustfix
-#![feature(return_type_notation)]
+
 #![allow(dead_code)]
 
 trait Trait {

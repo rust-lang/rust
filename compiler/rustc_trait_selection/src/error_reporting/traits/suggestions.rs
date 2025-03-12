@@ -137,9 +137,7 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
         || projection.is_some_and(|projection| {
-            (tcx.is_impl_trait_in_trait(projection.def_id)
-                && !tcx.features().return_type_notation())
-                || tcx.lookup_stability(projection.def_id).is_some_and(|stab| stab.is_unstable())
+            tcx.lookup_stability(projection.def_id).is_some_and(|stab| stab.is_unstable())
         })
     {
         return;
@@ -4563,90 +4561,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
             });
         }
-    }
-
-    pub(super) fn suggest_desugaring_async_fn_in_trait(
-        &self,
-        err: &mut Diag<'_>,
-        trait_pred: ty::PolyTraitPredicate<'tcx>,
-    ) {
-        // Don't suggest if RTN is active -- we should prefer a where-clause bound instead.
-        if self.tcx.features().return_type_notation() {
-            return;
-        }
-
-        let trait_def_id = trait_pred.def_id();
-
-        // Only suggest specifying auto traits
-        if !self.tcx.trait_is_auto(trait_def_id) {
-            return;
-        }
-
-        // Look for an RPITIT
-        let ty::Alias(ty::Projection, alias_ty) = trait_pred.self_ty().skip_binder().kind() else {
-            return;
-        };
-        let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id }) =
-            self.tcx.opt_rpitit_info(alias_ty.def_id)
-        else {
-            return;
-        };
-
-        let auto_trait = self.tcx.def_path_str(trait_def_id);
-        // ... which is a local function
-        let Some(fn_def_id) = fn_def_id.as_local() else {
-            // If it's not local, we can at least mention that the method is async, if it is.
-            if self.tcx.asyncness(fn_def_id).is_async() {
-                err.span_note(
-                    self.tcx.def_span(fn_def_id),
-                    format!(
-                        "`{}::{}` is an `async fn` in trait, which does not \
-                    automatically imply that its future is `{auto_trait}`",
-                        alias_ty.trait_ref(self.tcx),
-                        self.tcx.item_name(fn_def_id)
-                    ),
-                );
-            }
-            return;
-        };
-        let hir::Node::TraitItem(item) = self.tcx.hir_node_by_def_id(fn_def_id) else {
-            return;
-        };
-
-        // ... whose signature is `async` (i.e. this is an AFIT)
-        let (sig, body) = item.expect_fn();
-        let hir::FnRetTy::Return(hir::Ty { kind: hir::TyKind::OpaqueDef(opaq_def, ..), .. }) =
-            sig.decl.output
-        else {
-            // This should never happen, but let's not ICE.
-            return;
-        };
-
-        // Check that this is *not* a nested `impl Future` RPIT in an async fn
-        // (i.e. `async fn foo() -> impl Future`)
-        if opaq_def.def_id.to_def_id() != opaque_def_id {
-            return;
-        }
-
-        let Some(sugg) = suggest_desugaring_async_fn_to_impl_future_in_trait(
-            self.tcx,
-            *sig,
-            *body,
-            opaque_def_id.expect_local(),
-            &format!(" + {auto_trait}"),
-        ) else {
-            return;
-        };
-
-        let function_name = self.tcx.def_path_str(fn_def_id);
-        err.multipart_suggestion(
-            format!(
-                "`{auto_trait}` can be made part of the associated future's \
-                guarantees for all implementations of `{function_name}`"
-            ),
-            sugg,
-            Applicability::MachineApplicable,
-        );
     }
 
     pub fn ty_kind_suggestion(

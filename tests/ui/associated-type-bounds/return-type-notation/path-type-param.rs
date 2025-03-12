@@ -1,5 +1,3 @@
-#![feature(return_type_notation)]
-
 trait Foo {
     fn method<T>() -> impl Sized;
 }

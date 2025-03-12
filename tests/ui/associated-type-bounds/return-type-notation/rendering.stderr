@@ -1,5 +1,5 @@
 error[E0046]: not all trait items implemented, missing: `missing`
-  --> $DIR/rendering.rs:10:1
+  --> $DIR/rendering.rs:9:1
    |
 LL |     fn missing() -> impl Sized;
    |     --------------------------- `missing` from trait

@@ -1,5 +1,5 @@
 error[E0220]: associated function `methid` not found for `Trait`
-  --> $DIR/missing.rs:9:17
+  --> $DIR/missing.rs:7:17
    |
 LL | fn bar<T: Trait<methid(..): Send>>() {}
    |                 ^^^^^^ help: there is an associated function with a similar name: `method`

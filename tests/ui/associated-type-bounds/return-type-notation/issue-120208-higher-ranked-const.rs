@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(return_type_notation)]
-
 trait HealthCheck {
     async fn check<const N: usize>() -> bool;
 }

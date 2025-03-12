@@ -1,5 +1,5 @@
 error: return type notation is not allowed for functions that have const parameters
-  --> $DIR/issue-120208-higher-ranked-const.rs:11:21
+  --> $DIR/issue-120208-higher-ranked-const.rs:9:21
    |
 LL |     async fn check<const N: usize>() -> bool;
    |                    -------------- const parameter declared here

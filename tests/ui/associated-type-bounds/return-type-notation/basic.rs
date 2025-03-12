@@ -2,8 +2,6 @@
 //@ edition: 2021
 //@ [with] check-pass
 
-#![feature(return_type_notation)]
-
 trait Foo {
     async fn method() -> Result<(), ()>;
 }

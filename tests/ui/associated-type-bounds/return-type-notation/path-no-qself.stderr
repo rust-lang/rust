@@ -1,5 +1,5 @@
 error[E0223]: ambiguous associated type
-  --> $DIR/path-no-qself.rs:9:5
+  --> $DIR/path-no-qself.rs:7:5
    |
 LL |     Trait::method(..): Send,
    |     ^^^^^^^^^^^^^^^^^

@@ -1,5 +1,3 @@
-#![feature(return_type_notation)]
-
 trait A {
     #[allow(non_camel_case_types)]
     type bad;

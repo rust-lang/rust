@@ -4,16 +4,20 @@
 #![allow(unused)]
 
 trait Foo {
-    fn test() -> impl std::future::Future<Output = ()> + Send { async {} }
-    fn test2() -> impl std::future::Future<Output = i32> + Send {async { 1 + 2 } }
+    async fn test() -> () {}
+    async fn test2() -> i32 { 1 + 2 }
 }
 
-fn bar<T: Foo>() {
-    fn needs_send(_: impl Send) {}
+fn needs_send(_: impl Send) {}
+
+fn bar<T: Foo>() where <T as Foo>::test(..): Send {
     needs_send(T::test());
-    //~^ ERROR `impl Future<Output = ()>` cannot be sent between threads safely
+    //~^ ERROR `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
+}
+
+fn bar2<T: Foo>() where <T as Foo>::test2(..): Send {
     needs_send(T::test2());
-    //~^ ERROR `impl Future<Output = i32>` cannot be sent between threads safely
+    //~^ ERROR `impl Future<Output = i32> { <T as Foo>::test2(..) }` cannot be sent between threads safely
 }
 
 fn main() {}

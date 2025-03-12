@@ -1,8 +1,6 @@
 //@ edition:2021
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 use std::future::Future;
 
 struct JoinHandle<T>(fn() -> T);

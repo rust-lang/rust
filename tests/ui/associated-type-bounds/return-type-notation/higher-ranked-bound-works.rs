@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 trait Trait<'a> {
     fn late<'b>(&'b self, _: &'a ()) -> impl Sized;
     fn early<'b: 'b>(&'b self, _: &'a ()) -> impl Sized;
