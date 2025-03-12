@@ -54,13 +54,8 @@ if [ "$FORCE_CI_RUSTC" == "" ]; then
     DISABLE_CI_RUSTC_IF_INCOMPATIBLE=1
 fi
 
-if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf || \
-  isCiBranch automation/bors/try; then
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
-    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
-    HAS_METRICS=1
-fi
-
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-verbose-configure"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
@@ -266,14 +261,10 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --set change-id=99999999
 
   # Save the build metrics before we wipe the directory
-  if [ "$HAS_METRICS" = 1 ]; then
-    mv build/metrics.json .
-  fi
+  mv build/metrics.json .
   rm -rf build
-  if [ "$HAS_METRICS" = 1 ]; then
-    mkdir build
-    mv metrics.json build
-  fi
+  mkdir build
+  mv metrics.json build
 
   CARGO_INCREMENTAL=0 ../x check
 fi
