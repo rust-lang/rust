@@ -166,6 +166,18 @@ index 30387af428c..f7895b12961 100644
                  "/build-root",
              )
              .normalize(r#""[^"]*\/symbols.o""#, "\\"/symbols.o\\"")
+diff --git a/src/tools/compiletest/src/runtest/run_make.rs b/src/tools/compiletest/src/runtest/run_make.rs
+index 073116933bd..c3e4578204d 100644
+--- a/src/tools/compiletest/src/runtest/run_make.rs
++++ b/src/tools/compiletest/src/runtest/run_make.rs
+@@ -109,7 +109,6 @@ pub(super) fn run_rmake_test(&self) {
+             // library or compiler features. Here, we force the stage 0 rustc to consider itself as
+             // a stable-channel compiler via \`RUSTC_BOOTSTRAP=-1\` to prevent *any* unstable
+             // library/compiler usages, even if stage 0 rustc is *actually* a nightly rustc.
+-            .env("RUSTC_BOOTSTRAP", "-1")
+             .arg("-o")
+             .arg(&recipe_bin)
+             // Specify library search paths for \`run_make_support\`.
 EOF
 
 echo "[TEST] rustc test suite"
