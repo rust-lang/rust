@@ -303,6 +303,8 @@ impl<'gcc, 'tcx> ConstCodegenMethods for CodegenCx<'gcc, 'tcx> {
                         let init = self.const_data_from_alloc(alloc);
                         self.static_addr_of(init, alloc.inner().align, None)
                     }
+                    // TODO: generate pointer to allocation containing the actual type id hash u128 value
+                    GlobalAlloc::Type(_ty) => todo!(),
                     GlobalAlloc::Static(def_id) => {
                         assert!(self.tcx.is_static(def_id));
                         self.get_static(def_id).get_address(None)
