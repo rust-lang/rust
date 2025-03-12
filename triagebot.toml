@@ -948,9 +948,9 @@ This PR modifies `src/bootstrap/defaults`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
-[mentions."config.example.toml"]
+[mentions."bootstrap.example.toml"]
 message = """
-This PR modifies `config.example.toml`.
+This PR modifies `bootstrap.example.toml`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
