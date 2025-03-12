@@ -26,9 +26,10 @@ symbols! {
     // documents (such as the Rust Reference) about whether it is a keyword
     // (e.g. `_`).
     //
-    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
-    // `used_keywords`.
-    // But this should rarely be necessary if the keywords are kept in alphabetic order.
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
+    // predicates and `used_keywords`. (This should rarely be necessary if
+    // the keywords are kept in alphabetic order.) Also consider adding new
+    // keywords to the `ui/parser/raw/raw-idents.rs` test.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
@@ -112,8 +113,6 @@ symbols! {
         // the edition suffices)
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
-
-        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
 
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: none
