@@ -279,13 +279,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
                         }
                     }
 
-                    let inner_input = peel_hir_ty_options(cx, input);
-                    let before_span = input.span.until(inner_input.span);
-                    let after_span = before_span.shrink_to_hi().to(input.span.shrink_to_hi());
-                    diag.span_suggestion(
-                        input.span,
+                    diag.span_suggestion_verbose(
+                        peel_hir_ty_options(cx, input).span.shrink_to_lo(),
                         "consider taking a reference instead",
-                        format!("{}&{}", snippet(cx, before_span, "_"), snippet(cx, after_span, "_")),
+                        '&',
                         Applicability::MaybeIncorrect,
                     );
                 };
