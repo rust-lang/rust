@@ -65,6 +65,8 @@ impl<I: Idx, T> IndexSlice<I, T> {
 
     #[inline]
     pub fn iter_enumerated(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         self.raw.iter().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
@@ -72,6 +74,8 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn indices(
         &self,
     ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         (0..self.len()).map(|n| I::new(n))
     }
 
@@ -84,6 +88,8 @@ impl<I: Idx, T> IndexSlice<I, T> {
     pub fn iter_enumerated_mut(
         &mut self,
     ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
+        // Allow the optimizer to elide the bounds checking when creating each index.
+        let _ = I::new(self.len());
         self.raw.iter_mut().enumerate().map(|(n, t)| (I::new(n), t))
     }
 
