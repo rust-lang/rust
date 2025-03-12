@@ -45,6 +45,7 @@ pub use self::mode::{is_dyn_thread_safe, set_dyn_thread_safe_mode};
 pub use self::parallel::{
     join, par_for_each_in, par_map, parallel_guard, scope, try_par_for_each_in,
 };
+pub use self::table::*;
 pub use self::vec::{AppendOnlyIndexVec, AppendOnlyVec};
 pub use self::worker_local::{Registry, WorkerLocal};
 pub use crate::marker::*;
@@ -52,6 +53,7 @@ pub use crate::marker::*;
 mod freeze;
 mod lock;
 mod parallel;
+mod table;
 mod vec;
 mod worker_local;
 

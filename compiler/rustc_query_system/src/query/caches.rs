@@ -1,9 +1,10 @@
 use std::fmt::Debug;
-use std::hash::Hash;
+use std::hash::{BuildHasherDefault, Hash};
 use std::sync::OnceLock;
 
-use rustc_data_structures::fx::FxHashMap;
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::fx::FxHasher;
+use rustc_data_structures::sync::collect::{self, pin};
+use rustc_data_structures::sync::{DynSend, SyncTable};
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -36,46 +37,43 @@ pub trait QueryCache: Sized {
 /// In-memory cache for queries whose keys aren't suitable for any of the
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
+    cache: SyncTable<K, (V, DepNodeIndex), BuildHasherDefault<FxHasher>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
     fn default() -> Self {
-        DefaultCache { cache: Default::default() }
+        DefaultCache { cache: SyncTable::new_with(BuildHasherDefault::default(), 0) }
     }
 }
 
 impl<K, V> QueryCache for DefaultCache<K, V>
 where
-    K: Eq + Hash + Copy + Debug,
-    V: Copy,
+    K: Eq + Hash + Copy + Debug + DynSend,
+    V: Copy + DynSend,
 {
     type Key = K;
     type Value = V;
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        let key_hash = sharded::make_hash(key);
-        let lock = self.cache.lock_shard_by_hash(key_hash);
-        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
-
-        if let Some((_, value)) = result { Some(*value) } else { None }
+        pin(|pin| {
+            let result = self.cache.read(pin).get(key, None);
+            if let Some((_, value)) = result { Some(*value) } else { None }
+        })
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
-        let mut lock = self.cache.lock_shard_by_value(&key);
-        // We may be overwriting another value. This is all right, since the dep-graph
-        // will check that the fingerprint matches.
-        lock.insert(key, (value, index));
+        self.cache.lock().insert_new(key, (value, index), None);
+        collect::collect();
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
-        for shard in self.cache.lock_shards() {
-            for (k, v) in shard.iter() {
+        pin(|pin| {
+            for (k, v) in self.cache.read(pin).iter() {
                 f(k, &v.0, v.1);
             }
-        }
+        })
     }
 }
 
@@ -134,7 +132,7 @@ impl<V> Default for DefIdCache<V> {
 
 impl<V> QueryCache for DefIdCache<V>
 where
-    V: Copy,
+    V: Copy + DynSend,
 {
     type Key = DefId;
     type Value = V;
