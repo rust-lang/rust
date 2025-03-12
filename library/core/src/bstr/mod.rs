@@ -92,6 +92,13 @@ impl ByteStr {
     pub fn as_bytes(&self) -> &[u8] {
         &self.0
     }
+
+    #[doc(hidden)]
+    #[unstable(feature = "bstr_internals", issue = "none")]
+    #[inline]
+    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
 }
 
 #[unstable(feature = "bstr", issue = "134915")]

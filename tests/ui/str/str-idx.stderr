@@ -4,11 +4,12 @@ error[E0277]: the type `str` cannot be indexed by `{integer}`
 LL |     let _: u8 = s[4];
    |                   ^ string indices are ranges of `usize`
    |
+   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
-           but trait `SliceIndex<[_]>` is implemented for `usize`
-   = help: for that trait implementation, expected `[_]`, found `str`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
    = note: required for `str` to implement `Index<{integer}>`
 
 error[E0277]: the type `str` cannot be indexed by `{integer}`
@@ -19,11 +20,12 @@ LL |     let _ = s.get(4);
    |               |
    |               required by a bound introduced by this call
    |
+   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
-           but trait `SliceIndex<[_]>` is implemented for `usize`
-   = help: for that trait implementation, expected `[_]`, found `str`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
 note: required by a bound in `core::str::<impl str>::get`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 
@@ -35,11 +37,12 @@ LL |     let _ = s.get_unchecked(4);
    |               |
    |               required by a bound introduced by this call
    |
+   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
    = note: you can use `.chars().nth()` or `.bytes().nth()`
            for more information, see chapter 8 in The Book: <https://doc.rust-lang.org/book/ch08-02-strings.html#indexing-into-strings>
-   = help: the trait `SliceIndex<str>` is not implemented for `{integer}`
-           but trait `SliceIndex<[_]>` is implemented for `usize`
-   = help: for that trait implementation, expected `[_]`, found `str`
+   = help: the following other types implement trait `SliceIndex<T>`:
+             `usize` implements `SliceIndex<ByteStr>`
+             `usize` implements `SliceIndex<[T]>`
 note: required by a bound in `core::str::<impl str>::get_unchecked`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
 
