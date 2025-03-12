@@ -4,6 +4,7 @@ use std::num::NonZero;
 use std::sync::Arc;
 
 use parking_lot::{Condvar, Mutex};
+use rustc_data_structures::sync::collect;
 use rustc_span::Span;
 
 use crate::query::plumbing::CycleError;
@@ -108,6 +109,7 @@ impl<'tcx> QueryLatch<'tcx> {
         // we have to be in the `wait` call. This is ensured by the deadlock handler
         // getting the self.info lock.
         rustc_thread_pool::mark_blocked();
+        collect::release();
         tcx.jobserver_proxy.release_thread();
         waiter.condvar.wait(&mut waiters_guard);
         // Release the lock before we potentially block in `acquire_thread`
