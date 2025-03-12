@@ -883,6 +883,13 @@ fn run_required_analyses(tcx: TyCtxt<'_>) {
                 CStore::from_tcx(tcx).report_unused_deps(tcx);
             },
             {
+                // emit lints that couldnt be emitted during hir building because
+                // the lint level couldn't be determined
+                for (lint, hir_id, span, decorate) in tcx.dcx().steal_hir_delayed_lints() {
+                    tcx.node_span_lint(lint, hir_id, span, decorate);
+                }
+            },
+            {
                 tcx.par_hir_for_each_module(|module| {
                     tcx.ensure_ok().check_mod_loops(module);
                     tcx.ensure_ok().check_mod_attrs(module);
