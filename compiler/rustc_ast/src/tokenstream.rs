@@ -23,7 +23,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::{DUMMY_SP, Span, SpanDecoder, SpanEncoder, Symbol, sym};
 
-use crate::ast::{AttrStyle, StmtKind};
+use crate::ast::AttrStyle;
 use crate::ast_traits::{HasAttrs, HasTokens};
 use crate::token::{self, Delimiter, InvisibleOrigin, Nonterminal, Token, TokenKind};
 use crate::{AttrVec, Attribute};
@@ -461,13 +461,7 @@ impl TokenStream {
 
     pub fn from_nonterminal_ast(nt: &Nonterminal) -> TokenStream {
         match nt {
-            Nonterminal::NtItem(item) => TokenStream::from_ast(item),
             Nonterminal::NtBlock(block) => TokenStream::from_ast(block),
-            Nonterminal::NtStmt(stmt) if let StmtKind::Empty = stmt.kind => {
-                // FIXME: Properly collect tokens for empty statements.
-                TokenStream::token_alone(token::Semi, stmt.span)
-            }
-            Nonterminal::NtStmt(stmt) => TokenStream::from_ast(stmt),
             Nonterminal::NtExpr(expr) | Nonterminal::NtLiteral(expr) => TokenStream::from_ast(expr),
         }
     }
