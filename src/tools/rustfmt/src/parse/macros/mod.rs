@@ -81,7 +81,7 @@ pub(crate) struct ParsedMacroArgs {
 }
 
 fn check_keyword<'a, 'b: 'a>(parser: &'a mut Parser<'b>) -> Option<MacroArg> {
-    if parser.token.is_any_keyword()
+    if parser.token.is_reserved_ident()
         && parser.look_ahead(1, |t| *t == TokenKind::Eof || *t == TokenKind::Comma)
     {
         let keyword = parser.token.ident().unwrap().0.name;
