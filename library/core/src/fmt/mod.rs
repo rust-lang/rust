@@ -1546,7 +1546,7 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
 #[cfg(bootstrap)]
 unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<u16> {
     match *cnt {
-        rt::Count::Is(n) => Some(n as u16),
+        rt::Count::Is(n) => Some(n),
         rt::Count::Implied => None,
         rt::Count::Param(i) => {
             debug_assert!(i < args.len());
