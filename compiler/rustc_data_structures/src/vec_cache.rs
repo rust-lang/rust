@@ -29,8 +29,6 @@ struct Slot<V> {
 struct SlotIndex {
     // the index of the bucket in VecCache (0 to 20)
     bucket_idx: usize,
-    // number of entries in that bucket
-    entries: usize,
     // the index of the slot within the bucket
     index_in_bucket: usize,
 }
@@ -39,12 +37,12 @@ struct SlotIndex {
 // compile-time. Visiting all powers of two is enough to hit all the buckets.
 //
 // We confirm counts are accurate in the slot_index_exhaustive test.
-const ENTRIES_BY_BUCKET: [usize; 21] = {
-    let mut entries = [0; 21];
+const ENTRIES_BY_BUCKET: [usize; BUCKETS] = {
+    let mut entries = [0; BUCKETS];
     let mut key = 0;
     loop {
         let si = SlotIndex::from_index(key);
-        entries[si.bucket_idx] = si.entries;
+        entries[si.bucket_idx] = si.entries();
         if key == 0 {
             key = 1;
         } else if key == (1 << 31) {
@@ -56,7 +54,14 @@ const ENTRIES_BY_BUCKET: [usize; 21] = {
     entries
 };
 
+const BUCKETS: usize = 21;
+
 impl SlotIndex {
+    /// The total possible number of entries in the bucket
+    const fn entries(&self) -> usize {
+        if self.bucket_idx == 0 { 1 << 12 } else { 1 << (self.bucket_idx + 11) }
+    }
+
     // This unpacks a flat u32 index into identifying which bucket it belongs to and the offset
     // within that bucket. As noted in the VecCache docs, buckets double in size with each index.
     // Typically that would mean 31 buckets (2^0 + 2^1 ... + 2^31 = u32::MAX - 1), but to reduce
@@ -70,18 +75,13 @@ impl SlotIndex {
     const fn from_index(idx: u32) -> Self {
         const FIRST_BUCKET_SHIFT: usize = 12;
         if idx < (1 << FIRST_BUCKET_SHIFT) {
-            return SlotIndex {
-                bucket_idx: 0,
-                entries: 1 << FIRST_BUCKET_SHIFT,
-                index_in_bucket: idx as usize,
-            };
+            return SlotIndex { bucket_idx: 0, index_in_bucket: idx as usize };
         }
         // We already ruled out idx 0, so this `ilog2` never panics (and the check optimizes away)
         let bucket = idx.ilog2() as usize;
         let entries = 1 << bucket;
         SlotIndex {
             bucket_idx: bucket - FIRST_BUCKET_SHIFT + 1,
-            entries,
             index_in_bucket: idx as usize - entries,
         }
     }
@@ -98,7 +98,7 @@ impl SlotIndex {
         if ptr.is_null() {
             return None;
         }
-        assert!(self.index_in_bucket < self.entries);
+        debug_assert!(self.index_in_bucket < self.entries());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
         let slot = unsafe { ptr.add(self.index_in_bucket) };
@@ -126,11 +126,12 @@ impl SlotIndex {
 
     fn bucket_ptr<V>(&self, bucket: &AtomicPtr<Slot<V>>) -> *mut Slot<V> {
         let ptr = bucket.load(Ordering::Acquire);
-        if ptr.is_null() { self.initialize_bucket(bucket) } else { ptr }
+        if ptr.is_null() { Self::initialize_bucket(bucket, self.bucket_idx) } else { ptr }
     }
 
     #[cold]
-    fn initialize_bucket<V>(&self, bucket: &AtomicPtr<Slot<V>>) -> *mut Slot<V> {
+    #[inline(never)]
+    fn initialize_bucket<V>(bucket: &AtomicPtr<Slot<V>>, bucket_idx: usize) -> *mut Slot<V> {
         static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
         // If we are initializing the bucket, then acquire a global lock.
@@ -144,8 +145,8 @@ impl SlotIndex {
         // OK, now under the allocator lock, if we're still null then it's definitely us that will
         // initialize this bucket.
         if ptr.is_null() {
-            let bucket_layout =
-                std::alloc::Layout::array::<Slot<V>>(self.entries as usize).unwrap();
+            let bucket_len = SlotIndex { bucket_idx, index_in_bucket: 0 }.entries();
+            let bucket_layout = std::alloc::Layout::array::<Slot<V>>(bucket_len).unwrap();
             // This is more of a sanity check -- this code is very cold, so it's safe to pay a
             // little extra cost here.
             assert!(bucket_layout.size() > 0);
@@ -171,7 +172,7 @@ impl SlotIndex {
         let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
         let ptr = self.bucket_ptr(bucket);
 
-        assert!(self.index_in_bucket < self.entries);
+        debug_assert!(self.index_in_bucket < self.entries());
         // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
         // must be inbounds.
         let slot = unsafe { ptr.add(self.index_in_bucket) };
@@ -204,6 +205,31 @@ impl SlotIndex {
             Err(_) => false,
         }
     }
+
+    /// Inserts into the map, given that the slot is unique, so it won't race with other threads.
+    #[inline]
+    unsafe fn put_unique<V>(&self, buckets: &[AtomicPtr<Slot<V>>; 21], value: V, extra: u32) {
+        // SAFETY: `bucket_idx` is ilog2(u32).saturating_sub(11), which is at most 21, i.e.,
+        // in-bounds of buckets.
+        let bucket = unsafe { buckets.get_unchecked(self.bucket_idx) };
+        let ptr = self.bucket_ptr(bucket);
+
+        debug_assert!(self.index_in_bucket < self.entries());
+        // SAFETY: `bucket` was allocated (so <= isize in total bytes) to hold `entries`, so this
+        // must be inbounds.
+        let slot = unsafe { ptr.add(self.index_in_bucket) };
+
+        // SAFETY: We known our slot is unique as a precondition of this function, so this can't race.
+        unsafe {
+            (&raw mut (*slot).value).write(value);
+        }
+
+        // SAFETY: initialized bucket has zeroed all memory within the bucket, so we are valid for
+        // AtomicU32 access.
+        let index_and_lock = unsafe { &(*slot).index_and_lock };
+
+        index_and_lock.store(extra.checked_add(2).unwrap(), Ordering::Release);
+    }
 }
 
 /// In-memory cache for queries whose keys are densely-numbered IDs
@@ -229,11 +255,11 @@ pub struct VecCache<K: Idx, V, I> {
     // Bucket 19: 1073741824
     // Bucket 20: 2147483648
     // The total number of entries if all buckets are initialized is u32::MAX-1.
-    buckets: [AtomicPtr<Slot<V>>; 21],
+    buckets: [AtomicPtr<Slot<V>>; BUCKETS],
 
     // In the compiler's current usage these are only *read* during incremental and self-profiling.
     // They are an optimization over iterating the full buckets array.
-    present: [AtomicPtr<Slot<()>>; 21],
+    present: [AtomicPtr<Slot<()>>; BUCKETS],
     len: AtomicUsize,
 
     key: PhantomData<(K, I)>,
@@ -307,9 +333,11 @@ where
         let slot_idx = SlotIndex::from_index(key);
         if slot_idx.put(&self.buckets, value, index.index() as u32) {
             let present_idx = self.len.fetch_add(1, Ordering::Relaxed);
-            let slot = SlotIndex::from_index(present_idx as u32);
-            // We should always be uniquely putting due to `len` fetch_add returning unique values.
-            assert!(slot.put(&self.present, (), key));
+            let slot = SlotIndex::from_index(u32::try_from(present_idx).unwrap());
+            // SAFETY: We should always be uniquely putting due to `len` fetch_add returning unique values.
+            // We can't get here if `len` overflows because `put` will not succeed u32::MAX + 1 times
+            // as it will run out of slots.
+            unsafe { slot.put_unique(&self.present, (), key) };
         }
     }
 
