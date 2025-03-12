@@ -12,21 +12,15 @@ fn adjust_activity_to_abi<'tcx>(tcx: TyCtxt<'tcx>, fn_ty: Ty<'tcx>, da: &mut Vec
     if !matches!(fn_ty.kind(), ty::FnDef(..)) {
         bug!("expected fn def for autodiff, got {:?}", fn_ty);
     }
-    let fnc_binder: ty::Binder<'_, ty::FnSig<'_>> = fn_ty.fn_sig(tcx);
 
-    // If rustc compiles the unmodified primal, we know that this copy of the function
-    // also has correct lifetimes. We know that Enzyme won't free the shadow too early
-    // (or actually at all), so let's strip lifetimes when computing the layout.
-    let x = tcx.instantiate_bound_regions_with_erased(fnc_binder);
+    // We don't actually pass the types back into the type system.
+    // All we do is decide how to handle the arguments.
+    let sig = fn_ty.fn_sig(tcx).skip_binder();
+
     let mut new_activities = vec![];
     let mut new_positions = vec![];
-    for (i, ty) in x.inputs().iter().enumerate() {
+    for (i, ty) in sig.inputs().iter().enumerate() {
         if let Some(inner_ty) = ty.builtin_deref(true) {
-            if ty.is_fn_ptr() {
-                // FIXME(ZuseZ4): add a nicer error, or just figure out how to support them,
-                // since Enzyme itself can handle them.
-                tcx.dcx().err("function pointers are currently not supported in autodiff");
-            }
             if inner_ty.is_slice() {
                 // We know that the length will be passed as extra arg.
                 if !da.is_empty() {
