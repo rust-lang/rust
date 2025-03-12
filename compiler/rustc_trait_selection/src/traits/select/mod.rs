@@ -2289,6 +2289,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             | ty::Float(_)
             | ty::FnDef(..)
             | ty::FnPtr(..)
+            | ty::Foreign(..)
             | ty::Error(_)
             | ty::Infer(ty::IntVar(_) | ty::FloatVar(_))
             | ty::Never
@@ -2303,7 +2304,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             ty::Placeholder(..)
             | ty::Dynamic(..)
             | ty::Param(..)
-            | ty::Foreign(..)
             | ty::Alias(ty::Projection | ty::Inherent | ty::Weak, ..)
             | ty::Bound(..)
             | ty::Infer(ty::TyVar(_) | ty::FreshTy(_) | ty::FreshIntTy(_) | ty::FreshFloatTy(_)) => {

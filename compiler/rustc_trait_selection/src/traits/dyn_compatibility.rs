@@ -8,6 +8,7 @@ use std::ops::ControlFlow;
 
 use rustc_errors::FatalError;
 use rustc_hir as hir;
+use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
@@ -598,8 +599,26 @@ fn receiver_is_dispatchable<'tcx>(
             ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
-        let caller_bounds =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
+        // U: `experimental_default_bounds`
+        let default_auto_trait_predicates = {
+            let mut predicates = vec![];
+            for default_trait in tcx.default_traits().iter() {
+                if *default_trait != LangItem::Sized
+                    && let Some(trait_def_id) = tcx.lang_items().get(*default_trait)
+                {
+                    let predicate =
+                        ty::TraitRef::new(tcx, trait_def_id, [unsized_self_ty]).upcast(tcx);
+                    predicates.push(predicate);
+                }
+            }
+            predicates
+        };
+
+        let caller_bounds = param_env
+            .caller_bounds()
+            .iter()
+            .chain([unsize_predicate, trait_predicate])
+            .chain(default_auto_trait_predicates);
 
         ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
     };
