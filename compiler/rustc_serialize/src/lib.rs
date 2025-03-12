@@ -3,6 +3,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::internal)]
+#![cfg_attr(bootstrap, feature(ptr_sub_ptr))]
 #![cfg_attr(test, feature(test))]
 #![doc(
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
