@@ -441,6 +441,40 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     }
 
                     // These are all AtomicRMW ops
+                    "max" | "min" => {
+                        let atom_op = if instruction == "max" {
+                            AtomicRmwBinOp::AtomicMax
+                        } else {
+                            AtomicRmwBinOp::AtomicMin
+                        };
+
+                        let ty = fn_args.type_at(0);
+                        if matches!(ty.kind(), ty::Int(_)) {
+                            let ptr = args[0].immediate();
+                            let val = args[1].immediate();
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
+                        } else {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                    }
+                    "umax" | "umin" => {
+                        let atom_op = if instruction == "umax" {
+                            AtomicRmwBinOp::AtomicUMax
+                        } else {
+                            AtomicRmwBinOp::AtomicUMin
+                        };
+
+                        let ty = fn_args.type_at(0);
+                        if matches!(ty.kind(), ty::Uint(_)) {
+                            let ptr = args[0].immediate();
+                            let val = args[1].immediate();
+                            bx.atomic_rmw(atom_op, ptr, val, parse_ordering(bx, ordering))
+                        } else {
+                            invalid_monomorphization(ty);
+                            return Ok(());
+                        }
+                    }
                     op => {
                         let atom_op = match op {
                             "xchg" => AtomicRmwBinOp::AtomicXchg,
@@ -450,10 +484,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             "nand" => AtomicRmwBinOp::AtomicNand,
                             "or" => AtomicRmwBinOp::AtomicOr,
                             "xor" => AtomicRmwBinOp::AtomicXor,
-                            "max" => AtomicRmwBinOp::AtomicMax,
-                            "min" => AtomicRmwBinOp::AtomicMin,
-                            "umax" => AtomicRmwBinOp::AtomicUMax,
-                            "umin" => AtomicRmwBinOp::AtomicUMin,
                             _ => bx.sess().dcx().emit_fatal(errors::UnknownAtomicOperation),
                         };
 

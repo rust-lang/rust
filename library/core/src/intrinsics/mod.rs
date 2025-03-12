@@ -90,6 +90,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 // memory, which is not valid for either `&` or `&mut`.
 
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -99,6 +100,7 @@ pub unsafe fn drop_in_place<T: ?Sized>(to_drop: *mut T) {
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -108,6 +110,7 @@ pub unsafe fn atomic_cxchg_relaxed_relaxed<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -117,6 +120,7 @@ pub unsafe fn atomic_cxchg_relaxed_acquire<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -126,6 +130,7 @@ pub unsafe fn atomic_cxchg_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -135,6 +140,7 @@ pub unsafe fn atomic_cxchg_acquire_relaxed<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -144,6 +150,7 @@ pub unsafe fn atomic_cxchg_acquire_acquire<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -153,6 +160,7 @@ pub unsafe fn atomic_cxchg_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -162,6 +170,7 @@ pub unsafe fn atomic_cxchg_release_relaxed<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_release_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -171,6 +180,7 @@ pub unsafe fn atomic_cxchg_release_acquire<T: Copy>(dst: *mut T, old: T, src: T)
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -180,6 +190,7 @@ pub unsafe fn atomic_cxchg_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -189,6 +200,7 @@ pub unsafe fn atomic_cxchg_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -198,6 +210,7 @@ pub unsafe fn atomic_cxchg_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -207,6 +220,7 @@ pub unsafe fn atomic_cxchg_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -216,6 +230,7 @@ pub unsafe fn atomic_cxchg_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchg_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange` method by passing
@@ -226,6 +241,7 @@ pub unsafe fn atomic_cxchg_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) 
 pub unsafe fn atomic_cxchg_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -239,6 +255,7 @@ pub unsafe fn atomic_cxchgweak_relaxed_relaxed<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -252,6 +269,7 @@ pub unsafe fn atomic_cxchgweak_relaxed_acquire<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -261,6 +279,7 @@ pub unsafe fn atomic_cxchgweak_relaxed_acquire<T: Copy>(
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_relaxed_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -274,6 +293,7 @@ pub unsafe fn atomic_cxchgweak_acquire_relaxed<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -287,6 +307,7 @@ pub unsafe fn atomic_cxchgweak_acquire_acquire<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -296,6 +317,7 @@ pub unsafe fn atomic_cxchgweak_acquire_acquire<T: Copy>(
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_acquire_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -309,6 +331,7 @@ pub unsafe fn atomic_cxchgweak_release_relaxed<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -322,6 +345,7 @@ pub unsafe fn atomic_cxchgweak_release_acquire<T: Copy>(
     _src: T,
 ) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -331,6 +355,7 @@ pub unsafe fn atomic_cxchgweak_release_acquire<T: Copy>(
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_release_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -340,6 +365,7 @@ pub unsafe fn atomic_cxchgweak_release_seqcst<T: Copy>(dst: *mut T, old: T, src:
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -349,6 +375,7 @@ pub unsafe fn atomic_cxchgweak_acqrel_relaxed<T: Copy>(dst: *mut T, old: T, src:
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -358,6 +385,7 @@ pub unsafe fn atomic_cxchgweak_acqrel_acquire<T: Copy>(dst: *mut T, old: T, src:
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -367,6 +395,7 @@ pub unsafe fn atomic_cxchgweak_acqrel_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -376,6 +405,7 @@ pub unsafe fn atomic_cxchgweak_seqcst_relaxed<T: Copy>(dst: *mut T, old: T, src:
 #[rustc_nounwind]
 pub unsafe fn atomic_cxchgweak_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 /// Stores a value if the current value is the same as the `old` value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `compare_exchange_weak` method by passing
@@ -386,6 +416,7 @@ pub unsafe fn atomic_cxchgweak_seqcst_acquire<T: Copy>(dst: *mut T, old: T, src:
 pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: T) -> (T, bool);
 
 /// Loads the current value of the pointer.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method by passing
@@ -394,6 +425,7 @@ pub unsafe fn atomic_cxchgweak_seqcst_seqcst<T: Copy>(dst: *mut T, old: T, src: 
 #[rustc_nounwind]
 pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method by passing
@@ -402,6 +434,7 @@ pub unsafe fn atomic_load_seqcst<T: Copy>(src: *const T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_load_acquire<T: Copy>(src: *const T) -> T;
 /// Loads the current value of the pointer.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `load` method by passing
@@ -417,6 +450,7 @@ pub unsafe fn atomic_load_relaxed<T: Copy>(src: *const T) -> T;
 pub unsafe fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 
 /// Stores the value at the specified memory location.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `store` method by passing
@@ -425,6 +459,7 @@ pub unsafe fn atomic_load_unordered<T: Copy>(src: *const T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_store_seqcst<T: Copy>(dst: *mut T, val: T);
 /// Stores the value at the specified memory location.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `store` method by passing
@@ -433,6 +468,7 @@ pub unsafe fn atomic_store_seqcst<T: Copy>(dst: *mut T, val: T);
 #[rustc_nounwind]
 pub unsafe fn atomic_store_release<T: Copy>(dst: *mut T, val: T);
 /// Stores the value at the specified memory location.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `store` method by passing
@@ -448,6 +484,7 @@ pub unsafe fn atomic_store_relaxed<T: Copy>(dst: *mut T, val: T);
 pub unsafe fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 
 /// Stores the value at the specified memory location, returning the old value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method by passing
@@ -456,6 +493,7 @@ pub unsafe fn atomic_store_unordered<T: Copy>(dst: *mut T, val: T);
 #[rustc_nounwind]
 pub unsafe fn atomic_xchg_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Stores the value at the specified memory location, returning the old value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method by passing
@@ -464,6 +502,7 @@ pub unsafe fn atomic_xchg_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Stores the value at the specified memory location, returning the old value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method by passing
@@ -472,6 +511,7 @@ pub unsafe fn atomic_xchg_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xchg_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Stores the value at the specified memory location, returning the old value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method by passing
@@ -480,6 +520,7 @@ pub unsafe fn atomic_xchg_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Stores the value at the specified memory location, returning the old value.
+/// `T` must be an integer or pointer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `swap` method by passing
@@ -489,6 +530,9 @@ pub unsafe fn atomic_xchg_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Adds to the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method by passing
@@ -497,6 +541,9 @@ pub unsafe fn atomic_xchg_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xadd_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Adds to the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method by passing
@@ -505,6 +552,9 @@ pub unsafe fn atomic_xadd_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xadd_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Adds to the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method by passing
@@ -513,6 +563,9 @@ pub unsafe fn atomic_xadd_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xadd_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Adds to the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method by passing
@@ -521,6 +574,9 @@ pub unsafe fn atomic_xadd_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Adds to the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_add` method by passing
@@ -530,6 +586,9 @@ pub unsafe fn atomic_xadd_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Subtract from the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method by passing
@@ -538,6 +597,9 @@ pub unsafe fn atomic_xadd_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Subtract from the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method by passing
@@ -546,6 +608,9 @@ pub unsafe fn atomic_xsub_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xsub_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Subtract from the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method by passing
@@ -554,6 +619,9 @@ pub unsafe fn atomic_xsub_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xsub_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Subtract from the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method by passing
@@ -562,6 +630,9 @@ pub unsafe fn atomic_xsub_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Subtract from the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_sub` method by passing
@@ -571,6 +642,9 @@ pub unsafe fn atomic_xsub_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Bitwise and with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method by passing
@@ -579,6 +653,9 @@ pub unsafe fn atomic_xsub_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_and_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise and with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method by passing
@@ -587,6 +664,9 @@ pub unsafe fn atomic_and_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise and with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method by passing
@@ -595,6 +675,9 @@ pub unsafe fn atomic_and_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_and_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise and with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method by passing
@@ -603,6 +686,9 @@ pub unsafe fn atomic_and_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise and with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_and` method by passing
@@ -612,6 +698,9 @@ pub unsafe fn atomic_and_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Bitwise nand with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method by passing
@@ -620,6 +709,9 @@ pub unsafe fn atomic_and_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise nand with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method by passing
@@ -628,6 +720,9 @@ pub unsafe fn atomic_nand_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_nand_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise nand with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method by passing
@@ -636,6 +731,9 @@ pub unsafe fn atomic_nand_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_nand_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise nand with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method by passing
@@ -644,6 +742,9 @@ pub unsafe fn atomic_nand_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise nand with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`AtomicBool`] type via the `fetch_nand` method by passing
@@ -653,6 +754,9 @@ pub unsafe fn atomic_nand_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Bitwise or with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method by passing
@@ -661,6 +765,9 @@ pub unsafe fn atomic_nand_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_or_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise or with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method by passing
@@ -669,6 +776,9 @@ pub unsafe fn atomic_or_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_or_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise or with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method by passing
@@ -677,6 +787,9 @@ pub unsafe fn atomic_or_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise or with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method by passing
@@ -685,6 +798,9 @@ pub unsafe fn atomic_or_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise or with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_or` method by passing
@@ -694,6 +810,9 @@ pub unsafe fn atomic_or_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Bitwise xor with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method by passing
@@ -702,6 +821,9 @@ pub unsafe fn atomic_or_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise xor with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method by passing
@@ -710,6 +832,9 @@ pub unsafe fn atomic_xor_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xor_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise xor with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method by passing
@@ -718,6 +843,9 @@ pub unsafe fn atomic_xor_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xor_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise xor with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method by passing
@@ -726,6 +854,9 @@ pub unsafe fn atomic_xor_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Bitwise xor with the current value, returning the previous value.
+/// `T` must be an integer or pointer type.
+/// If `T` is a pointer type, the provenance of `src` is ignored: both the return value and the new
+/// value stored at `*dst` will have the provenance of the old value stored there.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] types via the `fetch_xor` method by passing
@@ -735,6 +866,7 @@ pub unsafe fn atomic_xor_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Maximum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method by passing
@@ -743,6 +875,7 @@ pub unsafe fn atomic_xor_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_max_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method by passing
@@ -751,6 +884,7 @@ pub unsafe fn atomic_max_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_max_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method by passing
@@ -759,6 +893,7 @@ pub unsafe fn atomic_max_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_max_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method by passing
@@ -766,7 +901,8 @@ pub unsafe fn atomic_max_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
-/// Maximum with the current value.
+/// Maximum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_max` method by passing
@@ -776,6 +912,7 @@ pub unsafe fn atomic_max_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method by passing
@@ -784,6 +921,7 @@ pub unsafe fn atomic_max_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_min_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method by passing
@@ -792,6 +930,7 @@ pub unsafe fn atomic_min_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_min_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method by passing
@@ -800,6 +939,7 @@ pub unsafe fn atomic_min_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_min_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method by passing
@@ -808,6 +948,7 @@ pub unsafe fn atomic_min_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using a signed comparison.
+/// `T` must be a signed integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] signed integer types via the `fetch_min` method by passing
@@ -817,6 +958,7 @@ pub unsafe fn atomic_min_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Minimum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
@@ -825,6 +967,7 @@ pub unsafe fn atomic_min_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umin_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
@@ -833,6 +976,7 @@ pub unsafe fn atomic_umin_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umin_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
@@ -841,6 +985,7 @@ pub unsafe fn atomic_umin_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umin_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
@@ -849,6 +994,7 @@ pub unsafe fn atomic_umin_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Minimum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_min` method by passing
@@ -858,6 +1004,7 @@ pub unsafe fn atomic_umin_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 pub unsafe fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 
 /// Maximum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
@@ -866,6 +1013,7 @@ pub unsafe fn atomic_umin_relaxed<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umax_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
@@ -874,6 +1022,7 @@ pub unsafe fn atomic_umax_seqcst<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umax_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
@@ -882,6 +1031,7 @@ pub unsafe fn atomic_umax_acquire<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umax_release<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
@@ -890,6 +1040,7 @@ pub unsafe fn atomic_umax_release<T: Copy>(dst: *mut T, src: T) -> T;
 #[rustc_nounwind]
 pub unsafe fn atomic_umax_acqrel<T: Copy>(dst: *mut T, src: T) -> T;
 /// Maximum with the current value using an unsigned comparison.
+/// `T` must be an unsigned integer type.
 ///
 /// The stabilized version of this intrinsic is available on the
 /// [`atomic`] unsigned integer types via the `fetch_max` method by passing
