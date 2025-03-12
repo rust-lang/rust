@@ -1,7 +1,7 @@
 use std::ffi::OsStr;
 use std::str;
 
-use rustc_abi::Size;
+use rustc_abi::{ExternAbi, Size};
 use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_span::Symbol;
@@ -200,7 +200,14 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 this.write(fd, buf, count, Some(offset), dest)?;
             }
             "close" => {
-                let [fd] = this.check_shim(abi, Conv::C, link_name, args)?;
+                let [fd] = this.check_shim_abi(
+                    link_name,
+                    abi,
+                    ExternAbi::C { unwind: false },
+                    [this.tcx.types.i32],
+                    this.tcx.types.i32,
+                    args,
+                )?;
                 let result = this.close(fd)?;
                 this.write_scalar(result, dest)?;
             }
