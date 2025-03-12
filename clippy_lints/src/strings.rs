@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
@@ -438,27 +438,85 @@ declare_clippy_lint! {
 
 declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 
+fn is_parent_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
+    if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::MethodCall(name, ..) = parent_expr.kind
+        && name.ident.name == sym::map
+        && let Some(caller_def_id) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
+        && (clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Result)
+            || clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Option)
+            || clippy_utils::is_diag_trait_item(cx, caller_def_id, sym::Iterator))
+    {
+        Some(parent_expr.span)
+    } else {
+        None
+    }
+}
+
+fn is_called_from_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
+    let parent = get_parent_expr(cx, expr)?;
+
+    if matches!(parent.kind, ExprKind::Closure(_)) {
+        is_parent_map_like(cx, parent)
+    } else {
+        None
+    }
+}
+
+fn suggest_cloned_string_to_string(cx: &LateContext<'_>, span: rustc_span::Span) {
+    span_lint_and_help(
+        cx,
+        STRING_TO_STRING,
+        span,
+        "`to_string()` called on a `String`",
+        None,
+        "consider using `.cloned()`",
+    );
+}
+
 impl<'tcx> LateLintPass<'tcx> for StringToString {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'_>) {
         if expr.span.from_expansion() {
             return;
         }
 
-        if let ExprKind::MethodCall(path, self_arg, [], _) = &expr.kind
-            && path.ident.name == sym::to_string
-            && let ty = cx.typeck_results().expr_ty(self_arg)
-            && is_type_lang_item(cx, ty, LangItem::String)
-        {
-            #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-            span_lint_and_then(
-                cx,
-                STRING_TO_STRING,
-                expr.span,
-                "`to_string()` called on a `String`",
-                |diag| {
-                    diag.help("consider using `.clone()`");
-                },
-            );
+        match &expr.kind {
+            ExprKind::MethodCall(path, self_arg, [], _) => {
+                if path.ident.name == sym::to_string
+                    && let ty = cx.typeck_results().expr_ty(self_arg)
+                    && is_type_lang_item(cx, ty.peel_refs(), LangItem::String)
+                {
+                    if let Some(parent_span) = is_called_from_map_like(cx, expr) {
+                        suggest_cloned_string_to_string(cx, parent_span);
+                    } else {
+                        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
+                        span_lint_and_then(
+                            cx,
+                            STRING_TO_STRING,
+                            expr.span,
+                            "`to_string()` called on a `String`",
+                            |diag| {
+                                diag.help("consider using `.clone()`");
+                            },
+                        );
+                    }
+                }
+            },
+            ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
+                if segment.ident.name == sym::to_string
+                    && let rustc_hir::TyKind::Path(QPath::Resolved(_, path)) = ty.peel_refs().kind
+                    && let rustc_hir::def::Res::Def(_, def_id) = path.res
+                    && cx
+                        .tcx
+                        .lang_items()
+                        .get(LangItem::String)
+                        .is_some_and(|lang_id| lang_id == def_id)
+                    && let Some(parent_span) = is_parent_map_like(cx, expr)
+                {
+                    suggest_cloned_string_to_string(cx, parent_span);
+                }
+            },
+            _ => {},
         }
     }
 }
