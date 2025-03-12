@@ -40,7 +40,6 @@
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::sync::Arc;

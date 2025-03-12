@@ -2,7 +2,7 @@
 
 mod rusti {
     #[rustc_intrinsic]
-    pub unsafe fn ctlz_nonzero<T>(_x: T) -> u32;
+    pub unsafe fn ctlz_nonzero<T>(x: T) -> u32;
 }
 
 pub fn main() {

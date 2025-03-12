@@ -8,7 +8,6 @@
 #![doc(rust_logo)]
 #![feature(file_buffered)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
