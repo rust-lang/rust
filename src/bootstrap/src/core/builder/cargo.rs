@@ -1045,8 +1045,11 @@ impl Builder<'_> {
         // so this line allows the use of custom libcs.
         cargo.env("LIBC_CHECK_CFG", "1");
 
+        let mut lint_flags = Vec::new();
+
+        // Lints for all in-tree code: compiler, rustdoc, cranelift, gcc,
+        // clippy, rustfmt, rust-analyzer, etc.
         if source_type == SourceType::InTree {
-            let mut lint_flags = Vec::new();
             // When extending this list, add the new lints to the RUSTFLAGS of the
             // build_bootstrap function of src/bootstrap/bootstrap.py as well as
             // some code doesn't go through this `rustc` wrapper.
@@ -1058,27 +1061,32 @@ impl Builder<'_> {
                 rustdocflags.arg("-Dwarnings");
             }
 
-            // This does not use RUSTFLAGS due to caching issues with Cargo.
-            // Clippy is treated as an "in tree" tool, but shares the same
-            // cache as other "submodule" tools. With these options set in
-            // RUSTFLAGS, that causes *every* shared dependency to be rebuilt.
-            // By injecting this into the rustc wrapper, this circumvents
-            // Cargo's fingerprint detection. This is fine because lint flags
-            // are always ignored in dependencies. Eventually this should be
-            // fixed via better support from Cargo.
-            cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
-
             rustdocflags.arg("-Wrustdoc::invalid_codeblock_attributes");
         }
 
+        // Lints just for `compiler/` crates.
         if mode == Mode::Rustc {
-            rustflags.arg("-Wrustc::internal");
-            rustflags.arg("-Drustc::symbol_intern_string_literal");
+            lint_flags.push("-Wrustc::internal");
+            lint_flags.push("-Drustc::symbol_intern_string_literal");
             // FIXME(edition_2024): Change this to `-Wrust_2024_idioms` when all
             // of the individual lints are satisfied.
-            rustflags.arg("-Wkeyword_idents_2024");
-            rustflags.arg("-Wunsafe_op_in_unsafe_fn");
+            lint_flags.push("-Wkeyword_idents_2024");
+            lint_flags.push("-Wunreachable_pub");
+            lint_flags.push("-Wunsafe_op_in_unsafe_fn");
         }
+
+        // This does not use RUSTFLAGS for two reasons.
+        // - Due to caching issues with Cargo. Clippy is treated as an "in
+        //   tree" tool, but shares the same cache as other "submodule" tools.
+        //   With these options set in RUSTFLAGS, that causes *every* shared
+        //   dependency to be rebuilt. By injecting this into the rustc
+        //   wrapper, this circumvents Cargo's fingerprint detection. This is
+        //   fine because lint flags are always ignored in dependencies.
+        //   Eventually this should be fixed via better support from Cargo.
+        // - RUSTFLAGS is ignored for proc macro crates that are being built on
+        //   the host (because `--target` is given). But we want the lint flags
+        //   to be applied to proc macro crates.
+        cargo.env("RUSTC_LINT_FLAGS", lint_flags.join(" "));
 
         if self.config.rust_frame_pointers {
             rustflags.arg("-Cforce-frame-pointers=true");

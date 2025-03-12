@@ -1,7 +1,3 @@
-// tidy-alphabetical-start
-#![warn(unreachable_pub)]
-// tidy-alphabetical-end
-
 use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
