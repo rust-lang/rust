@@ -942,14 +942,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert_eq!(orig_id.owner, self.hir_id.owner);
 
         let mut id = orig_id;
-        let hir = self.tcx.hir();
         loop {
             if id == self.hir_id {
                 // This is a moderately common case, mostly hit for previously unseen nodes.
                 break;
             }
 
-            if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
+            if self.tcx.hir_attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 // This is a rare case. It's for a node path that doesn't reach the root due to an
                 // intervening lint level attribute. This result doesn't get cached.
                 return id;

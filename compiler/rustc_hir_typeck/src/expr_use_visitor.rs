@@ -1235,7 +1235,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cx.tainted_by_errors()?;
                 bug!(
                     "no type for node {} in mem_categorization",
-                    self.cx.tcx().hir().node_to_string(id)
+                    self.cx.tcx().hir_id_to_string(id)
                 );
             }
         }

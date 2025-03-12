@@ -140,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn local_ty(&self, span: Span, nid: HirId) -> Ty<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(|| {
-            span_bug!(span, "no type for local variable {}", self.tcx.hir().node_to_string(nid))
+            span_bug!(span, "no type for local variable {}", self.tcx.hir_id_to_string(nid))
         })
     }
 
@@ -559,11 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             None => {
-                bug!(
-                    "no type for node {} in fcx {}",
-                    self.tcx.hir().node_to_string(id),
-                    self.tag()
-                );
+                bug!("no type for node {} in fcx {}", self.tcx.hir_id_to_string(id), self.tag());
             }
         }
     }

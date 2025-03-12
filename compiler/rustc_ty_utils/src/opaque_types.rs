@@ -187,7 +187,7 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
         if !hir_id.is_owner() {
             return;
         }
-        let Some(defines) = self.tcx.hir_attrs(hir_id.owner).define_opaque else {
+        let Some(defines) = self.tcx.hir_attr_map(hir_id.owner).define_opaque else {
             return;
         };
         for &(span, define) in defines {

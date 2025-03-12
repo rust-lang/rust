@@ -34,8 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for InlineFnWithoutBody {
         if let TraitItemKind::Fn(_, TraitFn::Required(_)) = item.kind
             && let Some(attr) = cx
                 .tcx
-                .hir()
-                .attrs(item.hir_id())
+                .hir_attrs(item.hir_id())
                 .iter()
                 .find(|a| a.has_name(sym::inline))
         {

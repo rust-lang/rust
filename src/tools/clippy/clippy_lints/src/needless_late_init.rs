@@ -261,7 +261,7 @@ fn check<'tcx>(
     binding_id: HirId,
 ) -> Option<()> {
     let usage = first_usage(cx, binding_id, local_stmt.hir_id, block)?;
-    let binding_name = cx.tcx.hir().opt_name(binding_id)?;
+    let binding_name = cx.tcx.hir_opt_name(binding_id)?;
     let let_snippet = local_snippet_without_semicolon(cx, local)?;
 
     match usage.expr.kind {

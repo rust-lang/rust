@@ -247,7 +247,7 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 /// This function extracts the version value of a `clippy::version` attribute if the given value has
 /// one
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
         if let hir::Attribute::Unparsed(attr_kind) = &attr
             // Identify attribute
