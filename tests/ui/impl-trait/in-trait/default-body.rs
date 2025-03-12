@@ -4,7 +4,6 @@
 use std::fmt::Debug;
 
 trait Foo {
-    #[allow(async_fn_in_trait)]
     async fn baz(&self) -> &str {
         ""
     }

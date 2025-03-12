@@ -2,7 +2,6 @@
 //@ edition:2021
 
 pub trait Foo {
-    #[allow(async_fn_in_trait)]
     async fn bar<'a: 'a>(&'a mut self);
 }
 

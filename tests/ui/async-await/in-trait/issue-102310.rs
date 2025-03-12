@@ -2,7 +2,6 @@
 //@ edition:2021
 
 pub trait SpiDevice {
-    #[allow(async_fn_in_trait)]
     async fn transaction<F, R>(&mut self);
 }
 

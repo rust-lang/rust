@@ -21,10 +21,6 @@ lint_associated_const_elided_lifetime = {$elided ->
     .suggestion = use the `'static` lifetime
     .note = cannot automatically infer `'static` because of other lifetimes in scope
 
-lint_async_fn_in_trait = use of `async fn` in public traits is discouraged as auto trait bounds cannot be specified
-    .note = you can suppress this lint if you plan to use the trait only in your own code, or do not care about auto traits like `Send` on the `Future`
-    .suggestion = you can alternatively desugar to a normal `fn` that returns `impl Future` and add any desired bounds such as `Send`, but these cannot be relaxed without a breaking API change
-
 lint_atomic_ordering_fence = memory fences cannot have `Relaxed` ordering
     .help = consider using ordering modes `Acquire`, `Release`, `AcqRel` or `SeqCst`
 

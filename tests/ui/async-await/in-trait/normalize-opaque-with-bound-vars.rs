@@ -10,7 +10,6 @@
 pub struct SharedState {}
 
 pub trait State {
-    #[allow(async_fn_in_trait)]
     async fn execute(self, shared_state: &SharedState);
 }
 

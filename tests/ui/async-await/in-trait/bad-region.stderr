@@ -1,5 +1,5 @@
 error[E0726]: implicit elided lifetime not allowed here
-  --> $DIR/bad-region.rs:12:6
+  --> $DIR/bad-region.rs:10:6
    |
 LL | impl BleRadio for Radio {
    |      ^^^^^^^^ expected lifetime parameter

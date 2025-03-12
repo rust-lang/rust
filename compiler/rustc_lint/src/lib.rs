@@ -36,7 +36,6 @@
 // tidy-alphabetical-end
 
 mod async_closures;
-mod async_fn_in_trait;
 pub mod builtin;
 mod context;
 mod dangling;
@@ -82,7 +81,6 @@ mod unqualified_local_imports;
 mod unused;
 
 use async_closures::AsyncClosureUsage;
-use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use dangling::*;
 use default_could_be_derived::DefaultCouldBeDerived;
@@ -238,7 +236,6 @@ late_lint_methods!(
             MissingDebugImplementations: MissingDebugImplementations,
             MissingDoc: MissingDoc,
             AsyncClosureUsage: AsyncClosureUsage,
-            AsyncFnInTrait: AsyncFnInTrait,
             NonLocalDefinitions: NonLocalDefinitions::default(),
             ImplTraitOvercaptures: ImplTraitOvercaptures,
             IfLetRescope: IfLetRescope::default(),
@@ -604,6 +601,11 @@ fn register_builtins(store: &mut LintStore) {
         "converted into hard error, see issue #127323 \
          <https://github.com/rust-lang/rust/issues/127323> for more information",
     );
+    store.register_removed(
+        "async_fn_in_trait",
+        "lint was relaxed since return-type notation is stabilized; \
+        see <https://github.com/rust-lang/rust/pull/138424> for more information",
+    )
 }
 
 fn register_internals(store: &mut LintStore) {
