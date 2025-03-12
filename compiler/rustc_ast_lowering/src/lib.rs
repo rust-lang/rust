@@ -888,7 +888,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         target_span: Span,
         extra_hir_attributes: &[hir::Attribute],
     ) -> &'hir [hir::Attribute] {
-        if attrs.is_empty() {
+        if attrs.is_empty() && extra_hir_attributes.is_empty() {
             &[]
         } else {
             let mut lowered_attrs = self.lower_attrs_vec(attrs, self.lower_span(target_span));
