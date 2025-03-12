@@ -9,6 +9,7 @@
     target_os = "illumos",
     target_os = "haiku",
     target_os = "nto",
+    target_os = "cygwin"
 ))]
 use libc::MSG_NOSIGNAL;
 
@@ -37,6 +38,7 @@ use crate::{fmt, io};
     target_os = "illumos",
     target_os = "haiku",
     target_os = "nto",
+    target_os = "cygwin"
 )))]
 const MSG_NOSIGNAL: core::ffi::c_int = 0x0;
 

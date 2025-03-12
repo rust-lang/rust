@@ -59,7 +59,8 @@ cfg_if::cfg_if! {
         target_os = "dragonfly", target_os = "freebsd",
         target_os = "openbsd", target_os = "netbsd",
         target_os = "solaris", target_os = "illumos",
-        target_os = "haiku", target_os = "nto"))] {
+        target_os = "haiku", target_os = "nto",
+        target_os = "cygwin"))] {
         use libc::MSG_NOSIGNAL;
     } else {
         const MSG_NOSIGNAL: c_int = 0x0;
