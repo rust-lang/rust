@@ -22,6 +22,7 @@ use rustc_target::spec::{
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
+use crate::traits::ObligationCause;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::query::TyCtxtAt;
 use crate::ty::normalize_erasing_regions::NormalizationError;
@@ -398,6 +399,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                         ),
                     },
                     || {},
+                    ObligationCause::dummy(),
                 );
 
                 match tail.kind() {
