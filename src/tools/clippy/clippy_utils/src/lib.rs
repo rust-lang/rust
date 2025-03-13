@@ -644,7 +644,7 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let root_mod;
     let item_kind = match tcx.hir_node_by_def_id(local_id) {
         Node::Crate(r#mod) => {
-            root_mod = ItemKind::Mod(Ident::empty(), r#mod);
+            root_mod = ItemKind::Mod(Ident::dummy(), r#mod);
             &root_mod
         },
         Node::Item(item) => &item.kind,
