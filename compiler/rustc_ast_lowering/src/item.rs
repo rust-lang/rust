@@ -1818,6 +1818,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     bounded_ty: self.arena.alloc(bounded_ty),
                     bounds,
                     bound_generic_params: &[],
+                    bound_assumptions: &[],
                     origin,
                 })
             }
@@ -1846,6 +1847,20 @@ impl<'hir> LoweringContext<'_, 'hir> {
             }) => hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params: self
                     .lower_generic_params(bound_generic_params, hir::GenericParamSource::Binder),
+                bound_assumptions: self.arena.alloc_from_iter(
+                    bound_generic_params.iter().filter_map(|param| {
+                        self.lower_generic_bound_predicate(
+                            param.ident,
+                            param.id,
+                            &param.kind,
+                            &param.bounds,
+                            param.colon_span,
+                            span,
+                            ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                            PredicateOrigin::GenericParam,
+                        )
+                    }),
+                ),
                 bounded_ty: self
                     .lower_ty(bounded_ty, ImplTraitContext::Disallowed(ImplTraitPosition::Bound)),
                 bounds: self.lower_param_bounds(

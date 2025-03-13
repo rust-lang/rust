@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
-use std::ops::{ControlFlow, Deref};
+use std::ops::Deref;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
@@ -284,8 +284,7 @@ impl<I: Interner, T> Binder<I, T> {
     where
         T: TypeVisitable<I>,
     {
-        // `self.value` is equivalent to `self.skip_binder()`
-        if self.value.has_escaping_bound_vars() && self.clauses.is_empty() {
+        if self.value.has_escaping_bound_vars() || !self.clauses.is_empty() {
             None
         } else {
             Some(self.skip_binder())
@@ -326,7 +325,7 @@ impl<I: Interner> ValidateBoundVars<I> {
 }
 
 impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
-    type Result = ControlFlow<()>;
+    type Result = ();
 
     fn visit_binder<T: TypeVisitable<I>>(&mut self, t: &Binder<I, T>) -> Self::Result {
         self.binder_index.shift_in(1);
@@ -339,7 +338,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
         if t.outer_exclusive_binder() < self.binder_index
             || !self.visited.insert((self.binder_index, t))
         {
-            return ControlFlow::Break(());
+            return;
         }
         match t.kind() {
             ty::Bound(debruijn, bound_ty) if debruijn == self.binder_index => {
@@ -367,8 +366,6 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 
             _ => (),
         };
-
-        ControlFlow::Continue(())
     }
 }
 

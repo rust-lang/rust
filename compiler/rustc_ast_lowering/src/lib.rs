@@ -55,7 +55,7 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem, ParamName,
+    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, PredicateOrigin,
     TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
@@ -1728,6 +1728,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         hir::GenericBound::Trait(hir::PolyTraitRef {
             bound_generic_params: &[],
+            bound_assumptions: &[],
             modifiers: hir::TraitBoundModifiers::NONE,
             trait_ref: hir::TraitRef {
                 path: self.make_lang_item_path(trait_lang_item, opaque_ty_span, Some(bound_args)),
@@ -1948,12 +1949,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         p: &PolyTraitRef,
         itctx: ImplTraitContext,
     ) -> hir::PolyTraitRef<'hir> {
+        let bound_assumptions =
+            self.arena.alloc_from_iter(p.bound_generic_params.iter().filter_map(|param| {
+                self.lower_generic_bound_predicate(
+                    param.ident,
+                    param.id,
+                    &param.kind,
+                    &param.bounds,
+                    param.colon_span,
+                    p.span,
+                    ImplTraitContext::Disallowed(ImplTraitPosition::Bound),
+                    PredicateOrigin::GenericParam,
+                )
+            }));
         let bound_generic_params =
             self.lower_lifetime_binder(p.trait_ref.ref_id, &p.bound_generic_params);
         let trait_ref = self.lower_trait_ref(p.modifiers, &p.trait_ref, itctx);
         let modifiers = self.lower_trait_bound_modifiers(p.modifiers);
         hir::PolyTraitRef {
             bound_generic_params,
+            bound_assumptions,
             modifiers,
             trait_ref,
             span: self.lower_span(p.span),
@@ -2362,6 +2377,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Res::Def(DefKind::Trait | DefKind::TraitAlias, _) => {
                         let principal = hir::PolyTraitRef {
                             bound_generic_params: &[],
+                            bound_assumptions: &[],
                             modifiers: hir::TraitBoundModifiers::NONE,
                             trait_ref: hir::TraitRef { path, hir_ref_id: hir_id },
                             span: self.lower_span(span),
