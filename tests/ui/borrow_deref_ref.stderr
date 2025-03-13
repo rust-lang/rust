@@ -19,5 +19,11 @@ error: deref on an immutable reference
 LL |         let addr_y = &&*x as *const _ as usize; // assert ok
    |                       ^^^ help: if you would like to reborrow, try removing `&*`: `x`
 
-error: aborting due to 3 previous errors
+error: deref on an immutable reference
+  --> tests/ui/borrow_deref_ref.rs:123:9
+   |
+LL |         (&*s).foo();
+   |         ^^^^^ help: if you would like to reborrow, try removing `&*`: `s`
+
+error: aborting due to 4 previous errors
 
