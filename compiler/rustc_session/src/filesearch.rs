@@ -160,8 +160,7 @@ fn current_dll_path() -> Result<PathBuf, String> {
 
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_tuple();
-    let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
-        smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
+    let mut sysroot_candidates: SmallVec<[PathBuf; 2]> = smallvec![get_or_default_sysroot()];
     let path = current_dll_path().and_then(|s| try_canonicalize(s).map_err(|e| e.to_string()));
     if let Ok(dll) = path {
         // use `parent` twice to chop off the file name and then also the
@@ -195,12 +194,12 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
 /// Returns the provided sysroot or calls [`get_or_default_sysroot`] if it's none.
 /// Panics if [`get_or_default_sysroot`]  returns an error.
 pub fn materialize_sysroot(maybe_sysroot: Option<PathBuf>) -> PathBuf {
-    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot().expect("Failed finding sysroot"))
+    maybe_sysroot.unwrap_or_else(|| get_or_default_sysroot())
 }
 
 /// This function checks if sysroot is found using env::args().next(), and if it
 /// is not found, finds sysroot from current rustc_driver dll.
-pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
+pub fn get_or_default_sysroot() -> PathBuf {
     // Follow symlinks. If the resolved path is relative, make it absolute.
     fn canonicalize(path: PathBuf) -> PathBuf {
         let path = try_canonicalize(&path).unwrap_or(path);
@@ -255,30 +254,25 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
     // binary able to locate Rust libraries in systems using content-addressable
     // storage (CAS).
     fn from_env_args_next() -> Option<PathBuf> {
-        match env::args_os().next() {
-            Some(first_arg) => {
-                let mut p = PathBuf::from(first_arg);
+        let mut p = PathBuf::from(env::args_os().next()?);
 
-                // Check if sysroot is found using env::args().next() only if the rustc in argv[0]
-                // is a symlink (see #79253). We might want to change/remove it to conform with
-                // https://www.gnu.org/prep/standards/standards.html#Finding-Program-Files in the
-                // future.
-                if fs::read_link(&p).is_err() {
-                    // Path is not a symbolic link or does not exist.
-                    return None;
-                }
-
-                // Pop off `bin/rustc`, obtaining the suspected sysroot.
-                p.pop();
-                p.pop();
-                // Look for the target rustlib directory in the suspected sysroot.
-                let mut rustlib_path = rustc_target::relative_target_rustlib_path(&p, "dummy");
-                rustlib_path.pop(); // pop off the dummy target.
-                rustlib_path.exists().then_some(p)
-            }
-            None => None,
+        // Check if sysroot is found using env::args().next() only if the rustc in argv[0]
+        // is a symlink (see #79253). We might want to change/remove it to conform with
+        // https://www.gnu.org/prep/standards/standards.html#Finding-Program-Files in the
+        // future.
+        if fs::read_link(&p).is_err() {
+            // Path is not a symbolic link or does not exist.
+            return None;
         }
+
+        // Pop off `bin/rustc`, obtaining the suspected sysroot.
+        p.pop();
+        p.pop();
+        // Look for the target rustlib directory in the suspected sysroot.
+        let mut rustlib_path = rustc_target::relative_target_rustlib_path(&p, "dummy");
+        rustlib_path.pop(); // pop off the dummy target.
+        rustlib_path.exists().then_some(p)
     }
 
-    Ok(from_env_args_next().unwrap_or(default_from_rustc_driver_dll()?))
+    from_env_args_next().unwrap_or(default_from_rustc_driver_dll().expect("Failed finding sysroot"))
 }
