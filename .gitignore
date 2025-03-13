@@ -101,3 +101,4 @@ flake.lock
 /default.nix
 
 # Before adding new lines, see the comment at the top.
+test-install/
