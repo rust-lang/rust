@@ -330,6 +330,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .unwrap_or_default()
             && delegation.qself.is_none()
             && !has_generic_args
+            && !args.is_empty()
         {
             let ast_segment = delegation.path.segments.last().unwrap();
             let segment = self.lower_path_segment(

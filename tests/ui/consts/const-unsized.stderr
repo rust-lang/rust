@@ -58,17 +58,17 @@ error[E0507]: cannot move out of a shared reference
 LL | static STATIC_BAR: str = *"bar";
    |                          ^^^^^^ move occurs because value has type `str`, which does not implement the `Copy` trait
 
-error[E0161]: cannot move a value of type `str`
-  --> $DIR/const-unsized.rs:20:48
-   |
-LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
-   |                                                ^^^^^^^^^ the size of `str` cannot be statically determined
-
 error[E0161]: cannot move a value of type `dyn Debug + Sync`
   --> $DIR/const-unsized.rs:20:38
    |
 LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
    |                                      ^^^^^^^ the size of `dyn Debug + Sync` cannot be statically determined
+
+error[E0161]: cannot move a value of type `str`
+  --> $DIR/const-unsized.rs:20:48
+   |
+LL |     println!("{:?} {:?} {:?} {:?}", &CONST_0, &CONST_FOO, &STATIC_1, &STATIC_BAR);
+   |                                                ^^^^^^^^^ the size of `str` cannot be statically determined
 
 error: aborting due to 10 previous errors
 

@@ -1,16 +1,9 @@
-error: `Self` is forbidden as the type of a const generic parameter
+error[E0770]: the type of const parameters must not depend on other generic parameters
   --> $DIR/references-parent-generics.rs:7:25
    |
 LL |     type Assoc<const N: Self>;
-   |                         ^^^^
-   |
-   = note: the only supported types are integers, `bool`, and `char`
+   |                         ^^^^ the type must not depend on the parameter `Self`
 
-error: anonymous constants referencing generics are not yet supported
-  --> $DIR/references-parent-generics.rs:14:21
-   |
-LL |     let x: T::Assoc<3>;
-   |                     ^
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
+For more information about this error, try `rustc --explain E0770`.

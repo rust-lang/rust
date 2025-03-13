@@ -139,12 +139,12 @@ defined in the map. By matching on this, you can find out what sort of
 node the `HirId` referred to and also get a pointer to the data
 itself. Often, you know what sort of node `n` is – e.g. if you know
 that `n` must be some HIR expression, you can do
-[`tcx.hir().expect_expr(n)`][expect_expr], which will extract and return the
+[`tcx.hir_expect_expr(n)`][expect_expr], which will extract and return the
 [`&hir::Expr`][Expr], panicking if `n` is not in fact an expression.
 
 [find]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.find
 [`Node`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/enum.Node.html
-[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/hir/map/struct.Map.html#method.expect_expr
+[expect_expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.TyCtxt.html#method.expect_expr
 [Expr]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir/hir/struct.Expr.html
 
 Finally, you can use the HIR map to find the parents of nodes, via

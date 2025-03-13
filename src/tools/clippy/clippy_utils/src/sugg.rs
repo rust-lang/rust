@@ -847,7 +847,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
             let mut start_snip = snippet_with_applicability(self.cx, start_span, "..", &mut self.applicability);
 
             // identifier referring to the variable currently triggered (i.e.: `fp`)
-            let ident_str = map.name(id).to_string();
+            let ident_str = self.cx.tcx.hir_name(id).to_string();
             // full identifier that includes projection (i.e.: `fp.field`)
             let ident_str_with_proj = snippet(self.cx, span, "..").to_string();
 
@@ -876,7 +876,7 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                         // item is used in a call
                         // i.e.: `Call`: `|x| please(x)` or `MethodCall`: `|x| [1, 2, 3].contains(x)`
                         ExprKind::Call(_, call_args) | ExprKind::MethodCall(_, _, call_args, _) => {
-                            let expr = self.cx.tcx.hir().expect_expr(cmt.hir_id);
+                            let expr = self.cx.tcx.hir_expect_expr(cmt.hir_id);
                             let arg_ty_kind = self.cx.typeck_results().expr_ty(expr).kind();
 
                             if matches!(arg_ty_kind, ty::Ref(_, _, Mutability::Not)) {

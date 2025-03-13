@@ -59,6 +59,6 @@ impl<'tcx> LateLintPass<'tcx> for DumpHir {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: hir::HirId) -> bool {
-    let attrs = cx.tcx.hir().attrs(hir_id);
+    let attrs = cx.tcx.hir_attrs(hir_id);
     get_attr(cx.sess(), attrs, "dump").count() > 0
 }
