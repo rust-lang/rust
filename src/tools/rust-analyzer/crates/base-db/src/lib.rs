@@ -212,22 +212,21 @@ pub trait RootQueryDb: SourceDatabase + salsa::Database {
 
     /// Returns the crates in topological order.
     ///
-    /// **Warning**: do not use this query in analysis! It kills incrementality across crate metadata modifications.
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
     #[salsa::input]
     fn all_crates(&self) -> Arc<Box<[Crate]>>;
 
     /// Returns an iterator over all transitive dependencies of the given crate,
     /// including the crate itself.
     ///
-    /// **Warning**: do not use this query in analysis! It kills incrementality across crate metadata modifications.
-    ///
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
     #[salsa::transparent]
     fn transitive_deps(&self, crate_id: Crate) -> FxHashSet<Crate>;
 
     /// Returns all transitive reverse dependencies of the given crate,
     /// including the crate itself.
     ///
-    /// **Warning**: Do not use this query in analysis! It kills incrementality across crate metadata modifications.
+    /// **Warning**: do not use this query in `hir-*` crates! It kills incrementality across crate metadata modifications.
     #[salsa::invoke(input::transitive_rev_deps)]
     #[salsa::transparent]
     fn transitive_rev_deps(&self, of: Crate) -> FxHashSet<Crate>;

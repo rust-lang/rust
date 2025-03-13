@@ -130,7 +130,7 @@ pub(crate) fn hover(
     let file = sema.parse_guess_edition(file_id).syntax().clone();
     let edition =
         sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
-    let display_target = sema.first_crate_or_default(file_id).to_display_target(db);
+    let display_target = sema.first_crate(file_id)?.to_display_target(db);
     let mut res = if range.is_empty() {
         hover_offset(
             sema,

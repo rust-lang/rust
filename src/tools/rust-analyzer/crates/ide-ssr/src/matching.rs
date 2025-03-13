@@ -626,11 +626,9 @@ impl<'db, 'sema> Matcher<'db, 'sema> {
                 match_error!("Failed to get receiver type for `{}`", expr.syntax().text())
             })?
             .original;
-        let krate = self
-            .sema
-            .scope(expr.syntax())
-            .map(|it| it.krate())
-            .unwrap_or_else(|| hir::Crate::from(*self.sema.db.all_crates().last().unwrap()));
+        let krate = self.sema.scope(expr.syntax()).map(|it| it.krate()).unwrap_or_else(|| {
+            hir::Crate::from(*self.sema.db.all_crates().last().expect("no crate graph present"))
+        });
         let res = code_type
             .autoderef(self.sema.db)
             .enumerate()
