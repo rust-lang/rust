@@ -115,8 +115,7 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         t!(gcc_stamp.write());
     }
 
-    // FIXME: put libgccjit.so into a lib directory in dist::Gcc
-    let libgccjit = root.join("libgccjit.so");
+    let libgccjit = root.join("lib").join("libgccjit.so");
     create_lib_alias(builder, &libgccjit);
     Some(libgccjit)
 }
