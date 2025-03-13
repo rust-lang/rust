@@ -1,4 +1,4 @@
-# `riscv32im-risc0-zkvm-elf`
+# `riscv32im-succinct-elf`
 
 **Tier: 3**
 

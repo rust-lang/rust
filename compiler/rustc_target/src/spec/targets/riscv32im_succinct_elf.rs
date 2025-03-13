@@ -23,7 +23,7 @@ pub(crate) fn target() -> Target {
             cpu: "generic-rv32".into(),
 
             // The zkvm is singlethreaded and all operations are atomic.
-            // The std-lib is compiled with lowered atomicsa and the default Succinct build tools
+            // The std-lib is compiled with lowered atomics and the default Succinct build tools
             // enforce this on programs.
             max_atomic_width: Some(64),
             atomic_cas: true,
