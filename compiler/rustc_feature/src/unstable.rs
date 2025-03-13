@@ -598,8 +598,10 @@ declare_features! (
     (incomplete, pin_ergonomics, "1.83.0", Some(130494)),
     /// Allows postfix match `expr.match { ... }`
     (unstable, postfix_match, "1.79.0", Some(121618)),
-    /// Allows `use<..>` precise capturign on impl Trait in traits.
+    /// Allows `use<..>` precise capturing on impl Trait in traits.
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
+    /// Allows `use<..>` precise capturing to omit type and const parameters.
+    (incomplete, precise_capturing_of_types, "1.83.0", Some(130043)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
     /// Allows the use of raw-dylibs on ELF platforms

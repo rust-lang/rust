@@ -1,0 +1,12 @@
+error: `impl Trait` must mention all type parameters in scope in `use<...>`
+  --> $DIR/feature-gate-precise-capturing-of-types.rs:1:16
+   |
+LL | fn foo<T>() -> impl Sized + use<> {}
+   |        -       ^^^^^^^^^^^^^^^^^^
+   |        |
+   |        type parameter is implicitly captured by this `impl Trait`
+   |
+   = note: currently, all type parameters are required to be mentioned in the precise captures list
+
+error: aborting due to 1 previous error
+

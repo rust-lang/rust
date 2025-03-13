@@ -609,44 +609,26 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
             }
 
             match param.kind {
-                ty::GenericParamDefKind::Lifetime => {
-                    let use_span = tcx.def_span(param.def_id);
-                    let opaque_span = tcx.def_span(opaque_def_id);
-                    // Check if the lifetime param was captured but isn't named in the precise captures list.
-                    if variances[param.index as usize] == ty::Invariant {
-                        if let DefKind::OpaqueTy = tcx.def_kind(tcx.parent(param.def_id))
-                            && let Some(def_id) = tcx
-                                .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
-                                .opt_param_def_id(tcx, tcx.parent(opaque_def_id.to_def_id()))
-                        {
-                            tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                                opaque_span,
-                                use_span,
-                                param_span: tcx.def_span(def_id),
-                            });
-                        } else {
-                            if tcx.def_kind(tcx.parent(param.def_id)) == DefKind::Trait {
-                                tcx.dcx().emit_err(errors::LifetimeImplicitlyCaptured {
-                                    opaque_span,
-                                    param_span: tcx.def_span(param.def_id),
-                                });
-                            } else {
-                                // If the `use_span` is actually just the param itself, then we must
-                                // have not duplicated the lifetime but captured the original.
-                                // The "effective" `use_span` will be the span of the opaque itself,
-                                // and the param span will be the def span of the param.
-                                tcx.dcx().emit_err(errors::LifetimeNotCaptured {
-                                    opaque_span,
-                                    use_span: opaque_span,
-                                    param_span: use_span,
-                                });
-                            }
-                        }
-                        continue;
-                    }
-                }
+                ty::GenericParamDefKind::Lifetime => check_captured_arg_is_mentioned(
+                    tcx,
+                    opaque_def_id,
+                    variances,
+                    param,
+                    "lifetime",
+                ),
                 ty::GenericParamDefKind::Type { .. } => {
-                    if matches!(tcx.def_kind(param.def_id), DefKind::Trait | DefKind::TraitAlias) {
+                    if tcx.features().precise_capturing_of_types() {
+                        check_captured_arg_is_mentioned(
+                            tcx,
+                            opaque_def_id,
+                            variances,
+                            param,
+                            "type",
+                        )
+                    } else if matches!(
+                        tcx.def_kind(param.def_id),
+                        DefKind::Trait | DefKind::TraitAlias
+                    ) {
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
                         tcx.dcx().emit_err(errors::SelfTyNotCaptured {
                             trait_span: tcx.def_span(param.def_id),
@@ -654,7 +636,7 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                         });
                     } else {
                         // FIXME(precise_capturing): Structured suggestion for this would be useful
-                        tcx.dcx().emit_err(errors::ParamNotCaptured {
+                        tcx.dcx().emit_err(errors::ParamNotCapturedForced {
                             param_span: tcx.def_span(param.def_id),
                             opaque_span: tcx.def_span(opaque_def_id),
                             kind: "type",
@@ -662,13 +644,68 @@ fn check_opaque_precise_captures<'tcx>(tcx: TyCtxt<'tcx>, opaque_def_id: LocalDe
                     }
                 }
                 ty::GenericParamDefKind::Const { .. } => {
-                    // FIXME(precise_capturing): Structured suggestion for this would be useful
-                    tcx.dcx().emit_err(errors::ParamNotCaptured {
-                        param_span: tcx.def_span(param.def_id),
-                        opaque_span: tcx.def_span(opaque_def_id),
-                        kind: "const",
-                    });
+                    if tcx.features().precise_capturing_of_types() {
+                        check_captured_arg_is_mentioned(
+                            tcx,
+                            opaque_def_id,
+                            variances,
+                            param,
+                            "const",
+                        )
+                    } else {
+                        // FIXME(precise_capturing): Structured suggestion for this would be useful
+                        tcx.dcx().emit_err(errors::ParamNotCapturedForced {
+                            param_span: tcx.def_span(param.def_id),
+                            opaque_span: tcx.def_span(opaque_def_id),
+                            kind: "const",
+                        });
+                    }
                 }
+            }
+        }
+    }
+}
+
+fn check_captured_arg_is_mentioned<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    opaque_def_id: LocalDefId,
+    variances: &[ty::Variance],
+    param: &ty::GenericParamDef,
+    kind: &'static str,
+) {
+    let use_span = tcx.def_span(param.def_id);
+    let opaque_span = tcx.def_span(opaque_def_id);
+    // Check if the lifetime param was captured but isn't named in the precise captures list.
+    if variances[param.index as usize] == ty::Invariant {
+        if let DefKind::OpaqueTy = tcx.def_kind(tcx.parent(param.def_id))
+            && let Some(def_id) = tcx
+                .map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local())
+                .opt_param_def_id(tcx, tcx.parent(opaque_def_id.to_def_id()))
+        {
+            tcx.dcx().emit_err(errors::ParamNotCaptured {
+                opaque_span,
+                use_span,
+                param_span: tcx.def_span(def_id),
+                kind,
+            });
+        } else {
+            if tcx.def_kind(tcx.parent(param.def_id)) == DefKind::Trait {
+                tcx.dcx().emit_err(errors::ParamImplicitlyCaptured {
+                    opaque_span,
+                    param_span: tcx.def_span(param.def_id),
+                    kind,
+                });
+            } else {
+                // If the `use_span` is actually just the param itself, then we must
+                // have not duplicated the lifetime but captured the original.
+                // The "effective" `use_span` will be the span of the opaque itself,
+                // and the param span will be the def span of the param.
+                tcx.dcx().emit_err(errors::ParamNotCaptured {
+                    opaque_span,
+                    use_span: opaque_span,
+                    param_span: use_span,
+                    kind,
+                });
             }
         }
     }
