@@ -333,7 +333,7 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<NativeLib> [TRACKED],
-        maybe_sysroot: Option<PathBuf> [UNTRACKED],
+        sysroot: PathBuf [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
 

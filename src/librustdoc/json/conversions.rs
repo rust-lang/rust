@@ -486,7 +486,18 @@ impl FromClean<clean::GenericBound> for GenericBound {
                 }
             }
             Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
-            Use(args) => GenericBound::Use(args.into_iter().map(|arg| arg.to_string()).collect()),
+            Use(args) => GenericBound::Use(
+                args.iter()
+                    .map(|arg| match arg {
+                        clean::PreciseCapturingArg::Lifetime(lt) => {
+                            PreciseCapturingArg::Lifetime(convert_lifetime(*lt))
+                        }
+                        clean::PreciseCapturingArg::Param(param) => {
+                            PreciseCapturingArg::Param(param.to_string())
+                        }
+                    })
+                    .collect(),
+            ),
         }
     }
 }

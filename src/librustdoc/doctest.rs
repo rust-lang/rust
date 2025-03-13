@@ -158,7 +158,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
 
     let sessopts = config::Options {
-        maybe_sysroot: options.maybe_sysroot.clone(),
+        sysroot: options.sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts,
