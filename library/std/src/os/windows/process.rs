@@ -531,7 +531,7 @@ impl<'a> ProcThreadAttributeListBuilder<'a> {
     ///     pub Y: i16,
     /// }
     ///
-    /// extern "system" {
+    /// unsafe extern "system" {
     ///     fn CreatePipe(
     ///         hreadpipe: *mut HANDLE,
     ///         hwritepipe: *mut HANDLE,
