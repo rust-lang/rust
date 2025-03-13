@@ -1302,6 +1302,27 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
             return;
         }
 
+        match pattern.kind {
+            hir::PatKind::TupleStruct(qpath, ..) => {
+                // Tuple struct constructors have to be checked specially.
+                self.span = qpath.span();
+                let def_id = match qpath {
+                    hir::QPath::Resolved(_, path) => path.res.opt_def_id(),
+                    hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => self
+                        .maybe_typeck_results
+                        .unwrap_or_else(|| span_bug!(self.span, "`hir::Pat` outside of a body"))
+                        .type_dependent_def_id(pattern.hir_id),
+                };
+
+                if let Some(def_id) = def_id {
+                    if self.visit(self.tcx.type_of(def_id).instantiate_identity()).is_break() {
+                        return;
+                    }
+                }
+            }
+            _ => {}
+        }
+
         intravisit::walk_pat(self, pattern);
     }
 
