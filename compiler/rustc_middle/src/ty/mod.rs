@@ -998,6 +998,20 @@ impl<'tcx> ParamEnv<'tcx> {
     pub fn and<T: TypeVisitable<TyCtxt<'tcx>>>(self, value: T) -> ParamEnvAnd<'tcx, T> {
         ParamEnvAnd { param_env: self, value }
     }
+
+    /// TODO:
+    pub fn extend(self, tcx: TyCtxt<'tcx>, assumptions: ty::Clauses<'tcx>) -> Self {
+        if assumptions.is_empty() {
+            self
+        } else if self.caller_bounds.is_empty() {
+            ParamEnv { caller_bounds: assumptions }
+        } else {
+            ParamEnv {
+                caller_bounds: tcx
+                    .mk_clauses_from_iter(self.caller_bounds.iter().chain(assumptions)),
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
