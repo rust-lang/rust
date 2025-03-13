@@ -3206,3 +3206,28 @@ impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
         }
     }
 }
+
+#[derive(LintDiagnostic)]
+#[diag(lint_hidden_lifetime_in_path)]
+pub(crate) struct HiddenLifetimeInPath {
+    #[subdiagnostic]
+    pub suggestions: HiddenLifetimeInPathSuggestion,
+}
+
+pub(crate) struct HiddenLifetimeInPathSuggestion {
+    pub suggestions: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for HiddenLifetimeInPathSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        diag.multipart_suggestion_verbose(
+            fluent::lint_hidden_lifetime_in_path_suggestion,
+            self.suggestions,
+            Applicability::MachineApplicable,
+        );
+    }
+}

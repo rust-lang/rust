@@ -247,6 +247,7 @@ late_lint_methods!(
             StaticMutRefs: StaticMutRefs,
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             LifetimeStyle: LifetimeStyle,
+            HiddenLifetimesInTypePaths: HiddenLifetimesInTypePaths::default(),
         ]
     ]
 );
