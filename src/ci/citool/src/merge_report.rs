@@ -242,7 +242,7 @@ fn report_test_changes(mut diffs: Vec<AggregatedTestDiffs>) {
             println!("  - {}: {}", test.name, format_diff(&outcome_diff));
         }
         if extra_tests > 0 {
-            println!("  - (and {extra_tests} additional {})", pluralize("tests", extra_tests));
+            println!("  - (and {extra_tests} additional {})", pluralize("test", extra_tests));
         }
     }
 
