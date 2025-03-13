@@ -6,6 +6,10 @@ if [ -n "$CI_JOB_NAME" ]; then
   echo "[CI_JOB_NAME=$CI_JOB_NAME]"
 fi
 
+if [ -n "$CI_JOB_DOC_URL" ]; then
+  echo "[CI_JOB_DOC_URL=$CI_JOB_DOC_URL]"
+fi
+
 if [ "$NO_CHANGE_USER" = "" ]; then
   if [ "$LOCAL_USER_ID" != "" ]; then
     id -u user &>/dev/null || useradd --shell /bin/bash -u $LOCAL_USER_ID -o -c "" -m user

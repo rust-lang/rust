@@ -68,6 +68,7 @@ jobs:
     timeout-minutes: 360
     env:
       CI_JOB_NAME: ${{ matrix.name }}
+      CI_JOB_DOC_URL: ${{ matrix.doc_url }}
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
