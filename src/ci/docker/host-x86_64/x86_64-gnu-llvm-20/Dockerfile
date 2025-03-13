@@ -1,4 +1,4 @@
-FROM ubuntu:25.04
+FROM debian:experimental
 
 ARG DEBIAN_FRONTEND=noninteractive
 
