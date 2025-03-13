@@ -37,7 +37,7 @@ use crate::debuginfo::metadata::apply_vcall_visibility_metadata;
 use crate::llvm::Metadata;
 use crate::type_::Type;
 use crate::value::Value;
-use crate::{attributes, coverageinfo, debuginfo, llvm, llvm_util};
+use crate::{attributes, common, coverageinfo, debuginfo, llvm, llvm_util};
 
 /// `TyCtxt` (and related cache datastructures) can't be move between threads.
 /// However, there are various cx related functions which we want to be available to the builder and
@@ -642,7 +642,18 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         llvm::set_section(g, c"llvm.metadata");
     }
 }
-
+impl<'ll> SimpleCx<'ll> {
+    pub(crate) fn get_return_type(&self, ty: &'ll Type) -> &'ll Type {
+        assert!(unsafe { llvm::LLVMRustIsFunctionTy(ty) });
+        unsafe { llvm::LLVMGetReturnType(ty) }
+    }
+    pub(crate) fn get_type_of_global(&self, val: &'ll Value) -> &'ll Type {
+        unsafe { llvm::LLVMGlobalGetValueType(val) }
+    }
+    pub(crate) fn val_ty(&self, v: &'ll Value) -> &'ll Type {
+        common::val_ty(v)
+    }
+}
 impl<'ll> SimpleCx<'ll> {
     pub(crate) fn new(
         llmod: &'ll llvm::Module,
@@ -657,6 +668,11 @@ impl<'ll> SimpleCx<'ll> {
 impl<'ll, CX: Borrow<SCx<'ll>>> GenericCx<'ll, CX> {
     pub(crate) fn get_metadata_value(&self, metadata: &'ll Metadata) -> &'ll Value {
         llvm::LLVMMetadataAsValue(self.llcx(), metadata)
+    }
+
+    pub(crate) fn get_const_i64(&self, n: u64) -> &'ll Value {
+        let ty = unsafe { llvm::LLVMInt64TypeInContext(self.llcx()) };
+        unsafe { llvm::LLVMConstInt(ty, n, llvm::False) }
     }
 
     pub(crate) fn get_function(&self, name: &str) -> Option<&'ll Value> {

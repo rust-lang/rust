@@ -1,3 +1,4 @@
+codegen_llvm_autodiff_unused_args = implementation bug, failed to match all args on llvm level
 codegen_llvm_autodiff_without_enable = using the autodiff feature requires -Z autodiff=Enable
 codegen_llvm_autodiff_without_lto = using the autodiff feature requires using fat-lto
 

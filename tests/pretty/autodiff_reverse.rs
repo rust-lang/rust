@@ -18,7 +18,7 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
 #[autodiff(df2, Reverse)]
 pub fn f2() {}
 
-#[autodiff(df3, ReverseFirst, Duplicated, Const, Active)]
+#[autodiff(df3, Reverse, Duplicated, Const, Active)]
 pub fn f3(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }

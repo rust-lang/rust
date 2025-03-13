@@ -4,7 +4,7 @@ use rustc_abi::ExternAbi;
 use rustc_ast::expand::autodiff_attrs::{
     AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
 };
-use rustc_ast::{MetaItem, MetaItemInner, attr};
+use rustc_ast::{LitKind, MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::ReprAttr::ReprAlign;
 use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_data_structures::fx::FxHashMap;
@@ -819,8 +819,8 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         return Some(AutoDiffAttrs::source());
     }
 
-    let [mode, input_activities @ .., ret_activity] = &list[..] else {
-        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode and activities");
+    let [mode, width_meta, input_activities @ .., ret_activity] = &list[..] else {
+        span_bug!(attr.span(), "rustc_autodiff attribute must contain mode, width and activities");
     };
     let mode = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = mode {
         p1.segments.first().unwrap().ident
@@ -836,6 +836,34 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
             span_bug!(mode.span, "rustc_autodiff attribute contains invalid mode");
         }
     };
+
+    let width: u32;
+    match width_meta {
+        MetaItemInner::MetaItem(MetaItem { path: p1, .. }) => {
+            let w = p1.segments.first().unwrap().ident;
+            width = match w.as_str().parse() {
+                Ok(val) => val,
+                Err(_) => {
+                    span_bug!(w.span, "rustc_autodiff width should fit u32");
+                }
+            };
+        }
+        MetaItemInner::Lit(lit) => {
+            if let LitKind::Int(val, _) = lit.kind {
+                width = match val.get().try_into() {
+                    Ok(val) => val,
+                    Err(_) => {
+                        span_bug!(lit.span, "rustc_autodiff width should fit u32");
+                    }
+                };
+            } else {
+                span_bug!(lit.span, "rustc_autodiff width should be an integer");
+            }
+        }
+        _ => {
+            span_bug!(width_meta.span(), "failed to parse rustc_autodiff width");
+        }
+    }
 
     // First read the ret symbol from the attribute
     let ret_symbol = if let MetaItemInner::MetaItem(MetaItem { path: p1, .. }) = ret_activity {
@@ -883,7 +911,7 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
         span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
     }
 
-    Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })
+    Some(AutoDiffAttrs { mode, width, ret_activity, input_activity: arg_activities })
 }
 
 pub(crate) fn provide(providers: &mut Providers) {
