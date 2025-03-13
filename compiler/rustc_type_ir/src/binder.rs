@@ -284,8 +284,7 @@ impl<I: Interner, T> Binder<I, T> {
     where
         T: TypeVisitable<I>,
     {
-        // `self.value` is equivalent to `self.skip_binder()`
-        if self.value.has_escaping_bound_vars() && self.clauses.is_empty() {
+        if self.value.has_escaping_bound_vars() || !self.clauses.is_empty() {
             None
         } else {
             Some(self.skip_binder())
