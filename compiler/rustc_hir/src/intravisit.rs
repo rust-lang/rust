@@ -533,34 +533,44 @@ pub fn walk_param<'v, V: Visitor<'v>>(visitor: &mut V, param: &'v Param<'v>) -> 
 
 pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::Result {
     try_visit!(visitor.visit_id(item.hir_id()));
-    try_visit!(visitor.visit_ident(item.ident));
     match item.kind {
-        ItemKind::ExternCrate(orig_name) => {
+        ItemKind::ExternCrate(orig_name, ident) => {
             visit_opt!(visitor, visit_name, orig_name);
+            try_visit!(visitor.visit_ident(ident));
         }
-        ItemKind::Use(ref path, _) => {
+        ItemKind::Use(ref path, kind) => {
             try_visit!(visitor.visit_use(path, item.hir_id()));
+            match kind {
+                UseKind::Single(ident) => try_visit!(visitor.visit_ident(ident)),
+                UseKind::Glob | UseKind::ListStem => {}
+            }
         }
-        ItemKind::Static(ref typ, _, body) => {
+        ItemKind::Static(ident, ref typ, _, body) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Const(ref typ, ref generics, body) => {
+        ItemKind::Const(ident, ref typ, ref generics, body) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(typ));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_nested_body(body));
         }
-        ItemKind::Fn { sig, generics, body: body_id, .. } => {
+        ItemKind::Fn { ident, sig, generics, body: body_id, .. } => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_fn(
-                FnKind::ItemFn(item.ident, generics, sig.header),
+                FnKind::ItemFn(ident, generics, sig.header),
                 sig.decl,
                 body_id,
                 item.span,
                 item.owner_id.def_id,
             ));
         }
-        ItemKind::Macro(..) => {}
-        ItemKind::Mod(ref module) => {
+        ItemKind::Macro(ident, _def, _kind) => {
+            try_visit!(visitor.visit_ident(ident));
+        }
+        ItemKind::Mod(ident, ref module) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_mod(module, item.span, item.hir_id()));
         }
         ItemKind::ForeignMod { abi: _, items } => {
@@ -573,11 +583,13 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             // typeck results set correctly.
             try_visit!(visitor.visit_nested_body(fake_body));
         }
-        ItemKind::TyAlias(ref ty, ref generics) => {
+        ItemKind::TyAlias(ident, ref ty, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_ty_unambig(ty));
             try_visit!(visitor.visit_generics(generics));
         }
-        ItemKind::Enum(ref enum_definition, ref generics) => {
+        ItemKind::Enum(ident, ref enum_definition, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_enum_def(enum_definition));
         }
@@ -597,17 +609,20 @@ pub fn walk_item<'v, V: Visitor<'v>>(visitor: &mut V, item: &'v Item<'v>) -> V::
             try_visit!(visitor.visit_ty_unambig(self_ty));
             walk_list!(visitor, visit_impl_item_ref, *items);
         }
-        ItemKind::Struct(ref struct_definition, ref generics)
-        | ItemKind::Union(ref struct_definition, ref generics) => {
+        ItemKind::Struct(ident, ref struct_definition, ref generics)
+        | ItemKind::Union(ident, ref struct_definition, ref generics) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_variant_data(struct_definition));
         }
-        ItemKind::Trait(.., ref generics, bounds, trait_item_refs) => {
+        ItemKind::Trait(_is_auto, _safety, ident, ref generics, bounds, trait_item_refs) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
             walk_list!(visitor, visit_trait_item_ref, trait_item_refs);
         }
-        ItemKind::TraitAlias(ref generics, bounds) => {
+        ItemKind::TraitAlias(ident, ref generics, bounds) => {
+            try_visit!(visitor.visit_ident(ident));
             try_visit!(visitor.visit_generics(generics));
             walk_list!(visitor, visit_param_bound, bounds);
         }

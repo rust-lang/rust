@@ -130,9 +130,9 @@ impl LateLintPass<'_> for UnnecessaryBoxReturns {
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let ItemKind::Fn { sig, .. } = &item.kind else {
+        let ItemKind::Fn { ident, sig, .. } = &item.kind else {
             return;
         };
-        self.check_fn_item(cx, sig.decl, item.owner_id.def_id, item.ident.name);
+        self.check_fn_item(cx, sig.decl, item.owner_id.def_id, ident.name);
     }
 }

@@ -99,7 +99,7 @@ impl_lint_pass!(DisallowedTypes => [DISALLOWED_TYPES]);
 
 impl<'tcx> LateLintPass<'tcx> for DisallowedTypes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
-        if let ItemKind::Use(path, UseKind::Single) = &item.kind {
+        if let ItemKind::Use(path, UseKind::Single(_)) = &item.kind {
             for res in &path.res {
                 self.check_res_emit(cx, res, item.span);
             }

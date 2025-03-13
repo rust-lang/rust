@@ -24,7 +24,7 @@ pub(super) fn is_relevant_item(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if let ItemKind::Fn { body: eid, .. } = item.kind {
         is_relevant_expr(cx, cx.tcx.typeck_body(eid), cx.tcx.hir_body(eid).value)
     } else {
-        true
+        false
     }
 }
 

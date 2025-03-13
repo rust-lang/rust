@@ -73,7 +73,8 @@ impl<'tcx> LateLintPass<'tcx> for SelfNamedConstructors {
         if let Some(self_def) = self_ty.ty_adt_def()
             && let Some(self_local_did) = self_def.did().as_local()
             && let Node::Item(x) = cx.tcx.hir_node_by_def_id(self_local_did)
-            && let type_name = x.ident.name.as_str().to_lowercase()
+            && let Some(type_ident) = x.kind.ident()
+            && let type_name = type_ident.name.as_str().to_lowercase()
             && (impl_item.ident.name.as_str() == type_name
                 || impl_item.ident.name.as_str().replace('_', "") == type_name)
         {

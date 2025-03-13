@@ -37,8 +37,8 @@ declare_lint_pass!(ErrorImplError => [ERROR_IMPL_ERROR]);
 impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         match item.kind {
-            ItemKind::TyAlias(..)
-                if item.ident.name == sym::Error
+            ItemKind::TyAlias(ident, ..)
+                if ident.name == sym::Error
                     && is_visible_outside_module(cx, item.owner_id.def_id)
                     && let ty = cx.tcx.type_of(item.owner_id).instantiate_identity()
                     && let Some(error_def_id) = cx.tcx.get_diagnostic_item(sym::Error)
@@ -47,7 +47,7 @@ impl<'tcx> LateLintPass<'tcx> for ErrorImplError {
                 span_lint(
                     cx,
                     ERROR_IMPL_ERROR,
-                    item.ident.span,
+                    ident.span,
                     "exported type alias named `Error` that implements `Error`",
                 );
             },

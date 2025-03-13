@@ -240,7 +240,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
                                 data: hir::VariantData::Tuple(_, _, _),
                                 ..
                             }) | hir::Node::Item(hir::Item {
-                                kind: hir::ItemKind::Struct(hir::VariantData::Tuple(_, _, _), _),
+                                kind: hir::ItemKind::Struct(_, hir::VariantData::Tuple(_, _, _), _),
                                 ..
                             })
                         )

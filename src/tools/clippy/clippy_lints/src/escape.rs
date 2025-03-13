@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
             }
 
             // find `self` ty for this trait if relevant
-            if let ItemKind::Trait(_, _, _, _, items) = item.kind {
+            if let ItemKind::Trait(_, _, _, _, _, items) = item.kind {
                 for trait_item in items {
                     if trait_item.id.owner_id.def_id == fn_def_id {
                         // be sure we have `self` parameter in this function
