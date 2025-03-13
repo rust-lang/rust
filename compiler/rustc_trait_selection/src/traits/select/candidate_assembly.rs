@@ -176,7 +176,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // normalization, so try to deduplicate when possible to avoid
             // unnecessary ambiguity.
             let mut distinct_normalized_bounds = FxHashSet::default();
-            self.for_each_item_bound::<!>(
+            let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
                 |selcx, bound, idx| {
                     let Some(bound) = bound.as_trait_clause() else {

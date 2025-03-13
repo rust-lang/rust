@@ -533,7 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     _ => {
-                        intravisit::walk_pat(self, p);
+                        let _ = intravisit::walk_pat(self, p);
                     }
                 }
                 ControlFlow::Continue(())
@@ -556,7 +556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method_name,
                     sugg_let: None,
                 };
-                let_visitor.visit_body(&body);
+                let _ = let_visitor.visit_body(&body);
                 if let Some(sugg_let) = let_visitor.sugg_let
                     && let Some(self_ty) = self.node_ty_opt(sugg_let.init_hir_id)
                 {
