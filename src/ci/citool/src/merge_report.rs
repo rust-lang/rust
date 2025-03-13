@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use anyhow::Context;
-use build_helper::metrics::{JsonRoot, TestOutcome};
+use build_helper::metrics::{JsonRoot, TestOutcome, TestSuiteMetadata};
 
 use crate::jobs::JobDatabase;
 use crate::metrics::get_test_suites;
@@ -177,6 +177,7 @@ struct TestSuiteData {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 struct Test {
     name: String,
+    is_doctest: bool,
 }
 
 /// Extracts all tests from the passed metrics and map them to their outcomes.
@@ -185,7 +186,10 @@ fn aggregate_tests(metrics: &JsonRoot) -> TestSuiteData {
     let test_suites = get_test_suites(&metrics);
     for suite in test_suites {
         for test in &suite.tests {
-            let test_entry = Test { name: normalize_test_name(&test.name) };
+            // Poor man's detection of doctests based on the "(line XYZ)" suffix
+            let is_doctest = matches!(suite.metadata, TestSuiteMetadata::CargoPackage { .. })
+                && test.name.contains("(line");
+            let test_entry = Test { name: normalize_test_name(&test.name), is_doctest };
             tests.insert(test_entry, test.outcome.clone());
         }
     }
@@ -198,7 +202,7 @@ fn normalize_test_name(name: &str) -> String {
 }
 
 /// Prints test changes in Markdown format to stdout.
-fn report_test_diffs(mut diff: AggregatedTestDiffs) {
+fn report_test_diffs(diff: AggregatedTestDiffs) {
     println!("## Test differences");
     if diff.diffs.is_empty() {
         println!("No test diffs found");
@@ -233,6 +237,10 @@ fn report_test_diffs(mut diff: AggregatedTestDiffs) {
         }
     }
 
+    fn format_job_group(group: u64) -> String {
+        format!("**J{group}**")
+    }
+
     // It would be quite noisy to repeat the jobs that contained the test changes after/next to
     // every test diff. At the same time, grouping the test diffs by
     // [unique set of jobs that contained them] also doesn't work well, because the test diffs
@@ -243,12 +251,20 @@ fn report_test_diffs(mut diff: AggregatedTestDiffs) {
     let mut job_list_to_group: HashMap<&[JobName], u64> = HashMap::new();
     let mut job_index: Vec<&[JobName]> = vec![];
 
-    for (_, jobs) in diff.diffs.iter_mut() {
-        jobs.sort();
-    }
+    let original_diff_count = diff.diffs.len();
+    let diffs = diff
+        .diffs
+        .into_iter()
+        .filter(|(diff, _)| !diff.test.is_doctest)
+        .map(|(diff, mut jobs)| {
+            jobs.sort();
+            (diff, jobs)
+        })
+        .collect::<Vec<_>>();
+    let doctest_count = original_diff_count.saturating_sub(diffs.len());
 
     let max_diff_count = 100;
-    for (diff, jobs) in diff.diffs.iter().take(max_diff_count) {
+    for (diff, jobs) in diffs.iter().take(max_diff_count) {
         let jobs = &*jobs;
         let job_group = match job_list_to_group.get(jobs.as_slice()) {
             Some(id) => *id,
@@ -266,18 +282,34 @@ fn report_test_diffs(mut diff: AggregatedTestDiffs) {
     grouped_diffs.sort_by(|(d1, g1), (d2, g2)| g1.cmp(&g2).then(d1.test.name.cmp(&d2.test.name)));
 
     for (diff, job_group) in grouped_diffs {
-        println!("- `{}`: {} (*J{job_group}*)", diff.test.name, format_diff(&diff.diff));
+        println!(
+            "- `{}`: {} ({})",
+            diff.test.name,
+            format_diff(&diff.diff),
+            format_job_group(job_group)
+        );
     }
 
-    let extra_diffs = diff.diffs.len().saturating_sub(max_diff_count);
+    let extra_diffs = diffs.len().saturating_sub(max_diff_count);
     if extra_diffs > 0 {
         println!("\n(and {extra_diffs} additional {})", pluralize("test diff", extra_diffs));
     }
 
-    // Now print the job index
-    println!("\n**Job index**\n");
+    if doctest_count > 0 {
+        println!(
+            "\nAdditionally, {doctest_count} doctest {} were found.",
+            pluralize("diff", doctest_count)
+        );
+    }
+
+    // Now print the job group index
+    println!("\n**Job group index**\n");
     for (group, jobs) in job_index.into_iter().enumerate() {
-        println!("- J{group}: `{}`", jobs.join(", "));
+        println!(
+            "- {}: {}",
+            format_job_group(group as u64),
+            jobs.iter().map(|j| format!("`{j}`")).collect::<Vec<_>>().join(", ")
+        );
     }
 }
 
