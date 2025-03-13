@@ -550,6 +550,8 @@ pub trait ParamEnv<I: Interner>: Copy + Debug + Hash + Eq + TypeFoldable<I> {
 }
 
 pub trait Features<I: Interner>: Copy {
+    fn min_generic_const_args(self) -> bool;
+
     fn generic_const_exprs(self) -> bool;
 
     fn coroutine_clone(self) -> bool;

@@ -773,6 +773,10 @@ impl<'tcx> rustc_type_ir::inherent::Safety<TyCtxt<'tcx>> for hir::Safety {
 }
 
 impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_feature::Features {
+    fn min_generic_const_args(self) -> bool {
+        self.min_generic_const_args()
+    }
+
     fn generic_const_exprs(self) -> bool {
         self.generic_const_exprs()
     }
