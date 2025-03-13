@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
+use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
 use clippy_utils::{
@@ -440,14 +440,14 @@ declare_lint_pass!(StringToString => [STRING_TO_STRING]);
 
 fn is_parent_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
     if let Some(parent_expr) = get_parent_expr(cx, expr)
-        && let ExprKind::MethodCall(name, ..) = parent_expr.kind
+        && let ExprKind::MethodCall(name, _, _, parent_span) = parent_expr.kind
         && name.ident.name == sym::map
         && let Some(caller_def_id) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
         && (clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Result)
             || clippy_utils::is_diag_item_method(cx, caller_def_id, sym::Option)
             || clippy_utils::is_diag_trait_item(cx, caller_def_id, sym::Iterator))
     {
-        Some(parent_expr.span)
+        Some(parent_span)
     } else {
         None
     }
@@ -464,13 +464,14 @@ fn is_called_from_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rust
 }
 
 fn suggest_cloned_string_to_string(cx: &LateContext<'_>, span: rustc_span::Span) {
-    span_lint_and_help(
+    span_lint_and_sugg(
         cx,
         STRING_TO_STRING,
         span,
         "`to_string()` called on a `String`",
-        None,
-        "consider using `.cloned()`",
+        "try",
+        "cloned()".to_string(),
+        Applicability::MachineApplicable,
     );
 }
 

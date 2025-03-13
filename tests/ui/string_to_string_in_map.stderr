@@ -1,10 +1,9 @@
 error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:8:13
+  --> tests/ui/string_to_string_in_map.rs:8:23
    |
 LL |     let _ = variable2.map(String::to_string);
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                       ^^^^^^^^^^^^^^^^^^^^^^ help: try: `cloned()`
    |
-   = help: consider using `.cloned()`
 note: the lint level is defined here
   --> tests/ui/string_to_string_in_map.rs:1:9
    |
@@ -12,44 +11,22 @@ LL | #![deny(clippy::string_to_string)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:12:9
-   |
-LL |         x.to_string()
-   |         ^^^^^^^^^^^^^
-   |
-   = help: consider using `.clone()`
-
-error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:15:13
+  --> tests/ui/string_to_string_in_map.rs:10:23
    |
 LL |     let _ = variable2.map(|x| x.to_string());
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `.cloned()`
+   |                       ^^^^^^^^^^^^^^^^^^^^^^ help: try: `cloned()`
 
 error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:18:33
-   |
-LL |     let _ = x.unwrap_or_else(|| v.to_string());
-   |                                 ^^^^^^^^^^^^^
-   |
-   = help: consider using `.clone()`
-
-error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:21:13
+  --> tests/ui/string_to_string_in_map.rs:13:40
    |
 LL |     let _ = vec![String::new()].iter().map(String::to_string).collect::<Vec<_>>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `.cloned()`
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^ help: try: `cloned()`
 
 error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string_in_map.rs:23:13
+  --> tests/ui/string_to_string_in_map.rs:15:40
    |
 LL |     let _ = vec![String::new()].iter().map(|x| x.to_string()).collect::<Vec<_>>();
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using `.cloned()`
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^ help: try: `cloned()`
 
-error: aborting due to 6 previous errors
+error: aborting due to 4 previous errors
 
