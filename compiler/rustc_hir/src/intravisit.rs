@@ -1186,10 +1186,12 @@ pub fn walk_where_predicate<'v, V: Visitor<'v>>(
             ref bounded_ty,
             bounds,
             bound_generic_params,
+            bound_assumptions,
             origin: _,
         }) => {
             try_visit!(visitor.visit_ty_unambig(bounded_ty));
             walk_list!(visitor, visit_param_bound, bounds);
+            walk_list!(visitor, visit_where_predicate, bound_assumptions);
             walk_list!(visitor, visit_generic_param, bound_generic_params);
         }
         WherePredicateKind::RegionPredicate(WhereRegionPredicate {
@@ -1392,8 +1394,10 @@ pub fn walk_poly_trait_ref<'v, V: Visitor<'v>>(
     visitor: &mut V,
     trait_ref: &'v PolyTraitRef<'v>,
 ) -> V::Result {
-    let PolyTraitRef { bound_generic_params, modifiers: _, trait_ref, span: _ } = trait_ref;
+    let PolyTraitRef { bound_generic_params, bound_assumptions, modifiers: _, trait_ref, span: _ } =
+        trait_ref;
     walk_list!(visitor, visit_generic_param, *bound_generic_params);
+    walk_list!(visitor, visit_where_predicate, *bound_assumptions);
     visitor.visit_trait_ref(trait_ref)
 }
 

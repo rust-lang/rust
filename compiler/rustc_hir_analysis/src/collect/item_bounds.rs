@@ -44,6 +44,7 @@ fn associated_type_bounds<'tcx>(
             hir_bounds,
             &mut bounds,
             ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
             filter,
             OverlappingAsssocItemConstraints::Allowed,
         );
@@ -373,6 +374,7 @@ fn opaque_type_bounds<'tcx>(
             hir_bounds,
             &mut bounds,
             ty::List::empty(),
+            ty::ListWithCachedTypeInfo::empty(),
             filter,
             OverlappingAsssocItemConstraints::Allowed,
         );

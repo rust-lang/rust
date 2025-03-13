@@ -955,8 +955,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             modifiers: hir::TraitBoundModifiers { constness, polarity },
             trait_ref,
             span,
+            ..
         }: &hir::PolyTraitRef<'tcx>,
         self_ty: Ty<'tcx>,
+        bound_assumptions: ty::Clauses<'tcx>,
         bounds: &mut Vec<(ty::Clause<'tcx>, Span)>,
         predicate_filter: PredicateFilter,
         overlapping_assoc_item_constraints: OverlappingAsssocItemConstraints,
@@ -1029,9 +1031,10 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         let bound_vars = tcx.late_bound_vars(trait_ref.hir_ref_id);
         debug!(?bound_vars);
 
-        let poly_trait_ref = ty::Binder::bind_with_vars(
+        let poly_trait_ref = ty::Binder::bind_with_vars_and_clauses(
             ty::TraitRef::new_from_args(tcx, trait_def_id, generic_args),
             bound_vars,
+            bound_assumptions,
         );
 
         debug!(?poly_trait_ref);
@@ -3089,6 +3092,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     hir_bounds.iter(),
                     &mut bounds,
                     ty::List::empty(),
+                    ty::ListWithCachedTypeInfo::empty(),
                     PredicateFilter::All,
                     OverlappingAsssocItemConstraints::Allowed,
                 );
