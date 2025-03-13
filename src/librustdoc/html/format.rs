@@ -11,6 +11,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{self, Display, Write};
 use std::iter::{self, once};
+use std::slice;
 
 use itertools::Either;
 use rustc_abi::ExternAbi;
@@ -650,33 +651,35 @@ pub(crate) fn href_relative_parts<'fqp>(
     }
 }
 
-pub(crate) fn link_tooltip(did: DefId, fragment: &Option<UrlFragment>, cx: &Context<'_>) -> String {
-    let cache = cx.cache();
-    let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
-    else {
-        return String::new();
-    };
-    let mut buf = String::new();
-    let fqp = if *shortty == ItemType::Primitive {
-        // primitives are documented in a crate, but not actually part of it
-        &fqp[fqp.len() - 1..]
-    } else {
-        fqp
-    };
-    if let &Some(UrlFragment::Item(id)) = fragment {
-        write_str(&mut buf, format_args!("{} ", cx.tcx().def_descr(id)));
-        for component in fqp {
-            write_str(&mut buf, format_args!("{component}::"));
+pub(crate) fn link_tooltip(
+    did: DefId,
+    fragment: &Option<UrlFragment>,
+    cx: &Context<'_>,
+) -> impl fmt::Display {
+    fmt::from_fn(move |f| {
+        let cache = cx.cache();
+        let Some((fqp, shortty)) = cache.paths.get(&did).or_else(|| cache.external_paths.get(&did))
+        else {
+            return Ok(());
+        };
+        let fqp = if *shortty == ItemType::Primitive {
+            // primitives are documented in a crate, but not actually part of it
+            slice::from_ref(fqp.last().unwrap())
+        } else {
+            fqp
+        };
+        if let &Some(UrlFragment::Item(id)) = fragment {
+            write!(f, "{} ", cx.tcx().def_descr(id))?;
+            for component in fqp {
+                write!(f, "{component}::")?;
+            }
+            write!(f, "{}", cx.tcx().item_name(id))?;
+        } else if !fqp.is_empty() {
+            write!(f, "{shortty} ")?;
+            fqp.iter().joined("::", f)?;
         }
-        write_str(&mut buf, format_args!("{}", cx.tcx().item_name(id)));
-    } else if !fqp.is_empty() {
-        let mut fqp_it = fqp.iter();
-        write_str(&mut buf, format_args!("{shortty} {}", fqp_it.next().unwrap()));
-        for component in fqp_it {
-            write_str(&mut buf, format_args!("::{component}"));
-        }
-    }
-    buf
+        Ok(())
+    })
 }
 
 /// Used to render a [`clean::Path`].
