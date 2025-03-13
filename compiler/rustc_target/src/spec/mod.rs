@@ -2079,6 +2079,8 @@ supported_targets! {
     ("riscv64gc-unknown-nuttx-elf", riscv64gc_unknown_nuttx_elf),
 
     ("x86_64-pc-cygwin", x86_64_pc_cygwin),
+
+    ("x86_64-unknown-hobkey", x86_64_unknown_hobkey),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>

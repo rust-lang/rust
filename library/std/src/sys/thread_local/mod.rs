@@ -28,6 +28,7 @@ cfg_if::cfg_if! {
         all(target_family = "wasm", not(target_feature = "atomics")),
         target_os = "uefi",
         target_os = "zkvm",
+        target_os = "hobkey"
     ))] {
         mod statik;
         pub use statik::{EagerStorage, LazyStorage, thread_local_inner};

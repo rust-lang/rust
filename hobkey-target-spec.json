@@ -1,0 +1,20 @@
+{
+  "arch": "x86_64",
+  "code-model": "kernel",
+  "cpu": "x86-64",
+  "data-layout": "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128",
+  "linker": "rust-lld",
+  "linker-flavor": "gnu-lld",
+  "llvm-target": "x86_64-unknown-none-elf",
+  "max-atomic-width": 64,
+  "metadata": {
+    "description": "Rustc for hobkey44",
+    "host_tools": false,
+    "std": true,
+    "tier": 1
+  },
+  "plt-by-default": false,
+  "position-independent-executables": true,
+  "static-position-independent-executables": true,
+  "target-pointer-width": "64"
+}

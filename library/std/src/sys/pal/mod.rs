@@ -23,8 +23,10 @@
 #![allow(missing_debug_implementations)]
 
 pub mod common;
+mod hobkey;
 
 cfg_if::cfg_if! {
+    
     if #[cfg(unix)] {
         mod unix;
         pub use self::unix::*;
@@ -61,7 +63,13 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "zkvm")] {
         mod zkvm;
         pub use self::zkvm::*;
-    } else {
+    } 
+    else if #[cfg(target_os = "hobkey")]{
+        mod hobkey;
+        pub use self::hobkey::*;
+    }
+    else { 
+        
         mod unsupported;
         pub use self::unsupported::*;
     }

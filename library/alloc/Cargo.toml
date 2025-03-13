@@ -37,4 +37,6 @@ check-cfg = [
     'cfg(no_rc)',
     'cfg(no_sync)',
     'cfg(randomized_layouts)',
+    # #[cfg(bootstrap)] hobkey
+    'cfg(target_os, values("hobkey"))',
 ]

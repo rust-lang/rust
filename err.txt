@@ -1,0 +1,319 @@
+Building bootstrap
+    Finished `dev` profile [unoptimized] target(s) in 0.04s
+   Compiling std v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/std)
+   Compiling rustc-std-workspace-std v1.99.0 (/home/rei/git-repos/hobkey-stdlib/library/rustc-std-workspace-std)
+   Compiling proc_macro v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/proc_macro)
+   Compiling unicode-width v0.1.14
+   Compiling getopts v0.2.21
+   Compiling test v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/test)
+   Compiling sysroot v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/sysroot)
+    Finished `release` profile [optimized + debuginfo] target(s) in 2.47s
+   Compiling stable_deref_trait v1.2.0
+   Compiling memchr v2.7.4
+   Compiling once_cell v1.20.2
+   Compiling bitflags v2.8.0
+   Compiling log v0.4.25
+   Compiling rustc-hash v1.1.0
+   Compiling indexmap v2.7.0
+   Compiling rustc-stable-hash v0.1.1
+   Compiling getrandom v0.2.15
+   Compiling parking_lot_core v0.9.10
+   Compiling crossbeam-utils v0.8.21
+   Compiling crypto-common v0.1.6
+   Compiling thin-vec v0.2.13
+   Compiling num_cpus v1.16.0
+   Compiling either v1.13.0
+   Compiling memmap2 v0.2.3
+   Compiling yoke v0.7.5
+   Compiling perf-event-open-sys v3.0.0
+   Compiling rustc_hashes v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_hashes)
+   Compiling tracing-core v0.1.30
+   Compiling digest v0.10.7
+   Compiling parking_lot v0.12.3
+   Compiling zerovec v0.10.4
+   Compiling rustix v0.38.43
+   Compiling fastrand v2.3.0
+   Compiling ena v0.14.3
+   Compiling elsa v1.11.0
+   Compiling stacker v0.1.18
+   Compiling jobserver v0.1.32
+   Compiling rustc_arena v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_arena)
+   Compiling rustc_graphviz v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_graphviz)
+   Compiling rustc-hash v2.1.1
+   Compiling scoped-tls v1.0.1
+   Compiling blake3 v1.5.5
+   Compiling measureme v11.0.1
+   Compiling sha2 v0.10.8
+   Compiling md-5 v0.10.6
+   Compiling sha1 v0.10.6
+   Compiling rand_core v0.6.4
+   Compiling serde v1.0.217
+   Compiling tracing v0.1.37
+   Compiling crossbeam-epoch v0.9.18
+   Compiling rustc_serialize v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_serialize)
+   Compiling crossbeam-channel v0.5.14
+   Compiling rand_chacha v0.3.1
+   Compiling crossbeam-deque v0.8.6
+   Compiling rustc_index v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_index)
+   Compiling crc32fast v1.4.2
+   Compiling rand v0.8.5
+   Compiling rustc_lexer v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_lexer)
+   Compiling flate2 v1.0.35
+   Compiling wasmparser v0.222.0
+   Compiling rand_xoshiro v0.6.0
+   Compiling thiserror v1.0.69
+   Compiling regex-automata v0.2.0
+   Compiling itertools v0.12.1
+   Compiling type-map v0.5.0
+   Compiling fluent-syntax v0.11.1
+   Compiling tinystr v0.7.6
+   Compiling rustc-rayon-core v0.5.0
+   Compiling rustc_fs_util v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_fs_util)
+   Compiling odht v0.3.1
+   Compiling anstyle v1.0.10
+   Compiling unic-langid-impl v0.9.5
+   Compiling icu_locid v1.5.0
+   Compiling termize v0.1.1
+   Compiling rustc_error_codes v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_error_codes)
+   Compiling termcolor v1.4.1
+   Compiling getopts v0.2.21
+   Compiling datafrog v2.0.1
+   Compiling rustc_apfloat v0.2.2+llvm-462a31f5a5ab
+   Compiling twox-hash v1.6.3
+   Compiling annotate-snippets v0.11.5
+   Compiling rustc_parse_format v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_parse_format)
+   Compiling unic-langid-macros v0.9.5
+   Compiling unic-langid v0.9.5
+   Compiling polonius-engine v0.13.0
+   Compiling fluent-langneg v0.13.0
+   Compiling intl_pluralrules v7.0.2
+   Compiling tempfile v3.15.0
+   Compiling ruzstd v0.7.3
+   Compiling rustc-rayon v0.5.1
+   Compiling intl-memoizer v0.5.2
+   Compiling icu_provider v1.5.0
+   Compiling unicode-normalization v0.1.24
+   Compiling fluent-bundle v0.15.3
+   Compiling aho-corasick v1.1.3
+   Compiling icu_locid_transform v1.5.0
+   Compiling regex-syntax v0.8.5
+   Compiling ahash v0.8.11
+   Compiling unicode-security v0.1.2
+   Compiling libloading v0.8.6
+   Compiling punycode v0.4.1
+   Compiling regex-syntax v0.6.29
+   Compiling object v0.36.7
+   Compiling serde_json v1.0.135
+   Compiling gsgdt v0.1.2
+   Compiling gimli v0.30.0
+   Compiling icu_list v1.5.0
+   Compiling icu_provider_adapters v1.5.0
+   Compiling hashbrown v0.14.5
+   Compiling shlex v1.3.0
+   Compiling leb128 v0.2.5
+   Compiling lazy_static v1.5.0
+   Compiling overload v0.1.1
+   Compiling nu-ansi-term v0.46.0
+   Compiling sharded-slab v0.1.7
+   Compiling cc v1.2.16
+   Compiling wasm-encoder v0.219.1
+   Compiling rustc_data_structures v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_data_structures)
+   Compiling rustc_baked_icu_data v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_baked_icu_data)
+   Compiling regex-automata v0.4.9
+   Compiling regex-automata v0.1.10
+   Compiling thread_local v1.1.8
+   Compiling pulldown-cmark-escape v0.11.0
+   Compiling pathdiff v0.2.3
+   Compiling pulldown-cmark v0.11.3
+   Compiling rustc_llvm v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_llvm)
+   Compiling tracing-log v0.2.0
+   Compiling nu-ansi-term v0.50.1
+   Compiling deranged v0.3.11
+   Compiling nix v0.29.0
+   Compiling rustc_span v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_span)
+   Compiling stable_mir v0.1.0-preview (/home/rei/git-repos/hobkey-stdlib/compiler/stable_mir)
+   Compiling matchers v0.1.0
+   Compiling time v0.3.37
+   Compiling rustc_ast_ir v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ast_ir)
+   Compiling rustc_abi v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_abi)
+   Compiling rustc_ast v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ast)
+   Compiling rustc_type_ir v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_type_ir)
+   Compiling rustc_error_messages v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_error_messages)
+   Compiling rustc_feature v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_feature)
+   Compiling ctrlc v3.4.5
+   Compiling rustc_ast_pretty v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ast_pretty)
+   Compiling rustc_next_trait_solver v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_next_trait_solver)
+   Compiling rustc_attr_data_structures v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_attr_data_structures)
+   Compiling regex v1.11.1
+   Compiling rustc_target v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_target)
+   Compiling ar_archive_writer v0.4.2
+   Compiling thorin-dwp v0.8.0
+   Compiling bstr v1.11.3
+   Compiling tracing-subscriber v0.3.18
+   Compiling rustc_hir v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_hir)
+   Compiling tracing-tree v0.3.1
+   Compiling rustc_log v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_log)
+   Compiling rustc_lint_defs v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_lint_defs)
+   Compiling rustc_errors v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_errors)
+   Compiling rustc_session v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_session)
+   Compiling rustc_attr_parsing v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_attr_parsing)
+   Compiling rustc_query_system v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_query_system)
+   Compiling rustc_parse v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_parse)
+   Compiling rustc_hir_pretty v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_hir_pretty)
+   Compiling rustc_middle v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_middle)
+   Compiling rustc_ast_passes v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ast_passes)
+   Compiling rustc_expand v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_expand)
+   Compiling rustc_builtin_macros v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_builtin_macros)
+   Compiling rustc_transmute v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_transmute)
+   Compiling rustc_infer v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_infer)
+   Compiling rustc_metadata v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_metadata)
+   Compiling rustc_mir_dataflow v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_mir_dataflow)
+   Compiling rustc_symbol_mangling v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_symbol_mangling)
+   Compiling rustc_incremental v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_incremental)
+   Compiling rustc_pattern_analysis v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_pattern_analysis)
+   Compiling rustc_ast_lowering v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ast_lowering)
+   Compiling rustc_query_impl v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_query_impl)
+   Compiling rustc_smir v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_smir)
+   Compiling rustc_monomorphize v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_monomorphize)
+   Compiling rustc_trait_selection v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_trait_selection)
+   Compiling rustc_resolve v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_resolve)
+   Compiling rustc_lint v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_lint)
+   Compiling rustc_ty_utils v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_ty_utils)
+   Compiling rustc_hir_analysis v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_hir_analysis)
+   Compiling rustc_codegen_ssa v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_codegen_ssa)
+   Compiling rustc_const_eval v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_const_eval)
+   Compiling rustc_sanitizers v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_sanitizers)
+   Compiling rustc_traits v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_traits)
+   Compiling rustc_borrowck v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_borrowck)
+   Compiling rustc_privacy v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_privacy)
+   Compiling rustc_passes v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_passes)
+   Compiling rustc_codegen_llvm v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_codegen_llvm)
+   Compiling rustc_mir_build v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_mir_build)
+   Compiling rustc_hir_typeck v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_hir_typeck)
+   Compiling rustc_mir_transform v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_mir_transform)
+   Compiling rustc_interface v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_interface)
+   Compiling rustc_driver_impl v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_driver_impl)
+   Compiling rustc_driver v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc_driver)
+   Compiling rustc-main v0.0.0 (/home/rei/git-repos/hobkey-stdlib/compiler/rustc)
+    Finished `release` profile [optimized + debuginfo] target(s) in 39.71s
+   Compiling lld-wrapper v0.1.0 (/home/rei/git-repos/hobkey-stdlib/src/tools/lld-wrapper)
+    Finished `release` profile [optimized + debuginfo] target(s) in 0.60s
+   Compiling compiler_builtins v0.1.151
+   Compiling core v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/core)
+   Compiling libc v0.2.170
+   Compiling object v0.36.7
+   Compiling std v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/std)
+   Compiling rustc-std-workspace-core v1.99.0 (/home/rei/git-repos/hobkey-stdlib/library/rustc-std-workspace-core)
+   Compiling alloc v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/alloc)
+   Compiling cfg-if v1.0.0
+   Compiling adler2 v2.0.0
+   Compiling memchr v2.7.4
+   Compiling rustc-demangle v0.1.24
+   Compiling unwind v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/unwind)
+   Compiling rustc-std-workspace-alloc v1.99.0 (/home/rei/git-repos/hobkey-stdlib/library/rustc-std-workspace-alloc)
+   Compiling panic_unwind v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/panic_unwind)
+   Compiling panic_abort v0.0.0 (/home/rei/git-repos/hobkey-stdlib/library/panic_abort)
+   Compiling gimli v0.31.1
+   Compiling miniz_oxide v0.8.3
+   Compiling std_detect v0.1.5 (/home/rei/git-repos/hobkey-stdlib/library/stdarch/crates/std_detect)
+   Compiling hashbrown v0.15.2
+   Compiling addr2line v0.24.2
+warning: dropping unsupported crate type `dylib` for target `x86_64-unknown-hobkey`
+
+error[E0432]: unresolved imports `crate::sys::thread_local::key::LazyKey`, `crate::sys::thread_local::key::set`
+ --> library/std/src/sys/thread_local/guard/key.rs:6:37
+  |
+6 | use crate::sys::thread_local::key::{LazyKey, set};
+  |                                     ^^^^^^^  ^^^ no `set` in `sys::thread_local::key`
+  |                                     |
+  |                                     no `LazyKey` in `sys::thread_local::key`
+  |
+note: module `crate::collections::hash::set` exists but is inaccessible
+ --> library/std/src/collections/hash/mod.rs:4:1
+  |
+4 | pub mod set;
+  | ^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `init` in module `sys`
+   --> library/std/src/rt.rs:107:14
+    |
+107 |         sys::init(argc, argv, sigpipe)
+    |              ^^^^ not found in `sys`
+    |
+note: function `crate::sys::pal::hobkey::common::init` exists but is inaccessible
+   --> library/std/src/sys/pal/hobkey/../unsupported/common.rs:5:1
+    |
+5   | pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `cleanup` in module `sys`
+   --> library/std/src/rt.rs:138:14
+    |
+138 |         sys::cleanup();
+    |              ^^^^^^^ not found in `sys`
+    |
+help: consider importing one of these functions
+    |
+19  + use crate::io::cleanup;
+    |
+19  + use crate::rt::cleanup;
+    |
+help: if you import `cleanup`, refer to it directly
+    |
+138 -         sys::cleanup();
+138 +         cleanup();
+    |
+
+error[E0425]: cannot find function `decode_error_kind` in module `sys`
+   --> library/std/src/io/error.rs:994:41
+    |
+994 |             ErrorData::Os(code) => sys::decode_error_kind(code),
+    |                                         ^^^^^^^^^^^^^^^^^ not found in `sys`
+    |
+note: function `crate::sys::pal::hobkey::common::decode_error_kind` exists but is inaccessible
+   --> library/std/src/sys/pal/hobkey/../unsupported/common.rs:23:1
+    |
+23  | pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `is_interrupted` in module `sys`
+    --> library/std/src/io/error.rs:1004:41
+     |
+1004 |             ErrorData::Os(code) => sys::is_interrupted(code),
+     |                                         ^^^^^^^^^^^^^^ not found in `sys`
+     |
+note: function `crate::sys::pal::hobkey::common::is_interrupted` exists but is inaccessible
+    --> library/std/src/sys/pal/hobkey/../unsupported/common.rs:19:1
+     |
+19   | pub fn is_interrupted(_code: i32) -> bool {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `decode_error_kind` in module `sys`
+    --> library/std/src/io/error.rs:1018:38
+     |
+1018 |                 .field("kind", &sys::decode_error_kind(code))
+     |                                      ^^^^^^^^^^^^^^^^^ not found in `sys`
+     |
+note: function `crate::sys::pal::hobkey::common::decode_error_kind` exists but is inaccessible
+    --> library/std/src/sys/pal/hobkey/../unsupported/common.rs:23:1
+     |
+23   | pub fn decode_error_kind(_code: i32) -> crate::io::ErrorKind {
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ not accessible
+
+error[E0425]: cannot find function `fill_bytes` in module `sys`
+  --> library/std/src/random.rs:67:14
+   |
+67 |         sys::fill_bytes(bytes)
+   |              ^^^^^^^^^^ not found in `sys`
+
+error[E0425]: cannot find function `fill_bytes` in this scope
+  --> library/std/src/sys/random/mod.rs:94:5
+   |
+94 |     fill_bytes(&mut buf);
+   |     ^^^^^^^^^^ not found in this scope
+
+Some errors have detailed explanations: E0425, E0432.
+For more information about an error, try `rustc --explain E0425`.
+warning: `std` (lib) generated 1 warning
+error: could not compile `std` (lib) due to 8 previous errors; 1 warning emitted
+Build completed unsuccessfully in 0:01:46
