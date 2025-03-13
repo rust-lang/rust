@@ -140,10 +140,12 @@ impl<'a> PostExpansionVisitor<'a> {
             }
         }
 
-        for param in params {
-            if !param.bounds.is_empty() {
-                let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+        if !self.features.non_lifetime_binders() {
+            for param in params {
+                if !param.bounds.is_empty() {
+                    let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                    self.sess.dcx().emit_err(errors::ForbiddenBound { spans });
+                }
             }
         }
     }
