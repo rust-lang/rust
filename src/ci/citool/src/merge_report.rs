@@ -1,5 +1,6 @@
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 use anyhow::Context;
 use build_helper::metrics::{JsonRoot, TestOutcome};
@@ -56,7 +57,16 @@ Maybe it was newly added?"#,
     Ok(jobs)
 }
 
+/// Downloads job metrics of the given job for the given commit.
+/// Caches the result on the local disk.
 fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoot> {
+    let cache_path = PathBuf::from(".citool-cache").join(sha).join(job_name).join("metrics.json");
+    if let Some(cache_entry) =
+        std::fs::read_to_string(&cache_path).ok().and_then(|data| serde_json::from_str(&data).ok())
+    {
+        return Ok(cache_entry);
+    }
+
     let url = get_metrics_url(job_name, sha);
     let mut response = ureq::get(&url).call()?;
     if !response.status().is_success() {
@@ -70,6 +80,13 @@ fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoot> {
         .body_mut()
         .read_json()
         .with_context(|| anyhow::anyhow!("cannot deserialize metrics from {url}"))?;
+
+    // Ignore errors if cache cannot be created
+    if std::fs::create_dir_all(cache_path.parent().unwrap()).is_ok() {
+        if let Ok(serialized) = serde_json::to_string(&data) {
+            let _ = std::fs::write(&cache_path, &serialized);
+        }
+    }
     Ok(data)
 }
 
