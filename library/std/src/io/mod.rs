@@ -3086,14 +3086,13 @@ impl<T: Seek> Seek for Take<T> {
         };
         while new_position != self.position() {
             if let Some(offset) = new_position.checked_signed_diff(self.position()) {
-                self.seek_relative(offset)?;
+                self.inner.seek_relative(offset)?;
+                self.limit = self.limit.wrapping_sub(offset as u64);
                 break;
             }
-            if new_position > self.position() {
-                self.seek_relative(i64::MAX)?;
-            } else {
-                self.seek_relative(i64::MIN)?;
-            }
+            let offset = if new_position > self.position() { i64::MAX } else { i64::MIN };
+            self.inner.seek_relative(offset)?;
+            self.limit = self.limit.wrapping_sub(offset as u64);
         }
         Ok(new_position)
     }
