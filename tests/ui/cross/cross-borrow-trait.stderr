@@ -8,6 +8,10 @@ LL |     let _y: &dyn Trait = x;
    |
    = note: expected reference `&dyn Trait`
                  found struct `Box<dyn Trait>`
+help: consider borrowing here
+   |
+LL |     let _y: &dyn Trait = &x;
+   |                          +
 
 error: aborting due to 1 previous error
 

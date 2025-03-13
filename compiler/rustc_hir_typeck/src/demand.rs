@@ -268,6 +268,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e,
         };
 
+        if let Some(guar) =
+            self.emit_specialized_coerce_unsize_error(expr.span, checked_ty, expected)
+        {
+            return Ok(Ty::new_error(self.tcx, guar));
+        }
+
         self.adjust_expr_for_assert_eq_macro(&mut expr, &mut expected_ty_expr);
 
         self.set_tainted_by_errors(self.dcx().span_delayed_bug(

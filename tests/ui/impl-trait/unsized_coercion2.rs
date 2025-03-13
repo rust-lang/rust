@@ -3,7 +3,7 @@
 
 //@ revisions: next old
 //@[next] compile-flags: -Znext-solver
-//@[next] check-pass
+//@ check-pass
 
 trait Trait {}
 
@@ -13,7 +13,6 @@ fn hello() -> Box<impl Trait + ?Sized> {
     if true {
         let x = hello();
         let y: Box<dyn Trait> = x;
-        //[old]~^ ERROR: the size for values of type `impl Trait + ?Sized` cannot be know
     }
     Box::new(1u32)
 }

@@ -13,6 +13,7 @@ pub struct AABB<K: Debug> {
     //~^ ERROR the trait bound `K: Copy` is not satisfied
     //~| ERROR the trait bound `K: Copy` is not satisfied
     pub size: Vector2<K>, //~ ERROR the trait bound `K: Copy` is not satisfied
+    //~^ ERROR the trait bound `K: Copy` is not satisfied
 }
 
 fn main() {}

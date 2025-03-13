@@ -1237,6 +1237,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                 &obligation.cause,
                             );
 
+                            let pointer_like_goal = normalize_with_depth_to(
+                                self,
+                                obligation.param_env,
+                                obligation.cause.clone(),
+                                obligation.recursion_depth,
+                                pointer_like_goal,
+                                &mut nested,
+                            );
+
                             nested.push(predicate_to_obligation(pointer_like_goal.upcast(tcx)));
                         }
                     }

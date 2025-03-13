@@ -1,3 +1,5 @@
+//~ ERROR mismatched types
+
 //@ aux-build:example_runner.rs
 //@ compile-flags:--test
 #![feature(custom_test_frameworks)]

@@ -17,6 +17,7 @@ pub struct AABB<K> {
     pub size: Vector2<K>,
     //~^ ERROR doesn't implement `Debug`
     //~| ERROR `K: Copy` is not satisfied
+    //~| ERROR `K: Copy` is not satisfied
 }
 
 fn main() {}

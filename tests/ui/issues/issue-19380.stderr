@@ -47,6 +47,15 @@ help: alternatively, consider constraining `qiz` so it does not apply to trait o
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
 
+error[E0308]: mismatched types
+  --> $DIR/issue-19380.rs:16:31
+   |
+LL | const BAR : Bar = Bar { foos: &[&FOO]};
+   |                               ^^^^^^^ expected `&[&dyn Qiz]`, found `&[!; 1]`
+   |
+   = note: expected reference `&'static [&'static (dyn Qiz + 'static)]`
+              found reference `&[!; 1]`
+
 error[E0038]: the trait `Qiz` is not dyn compatible
   --> $DIR/issue-19380.rs:16:31
    |
@@ -71,6 +80,7 @@ help: alternatively, consider constraining `qiz` so it does not apply to trait o
 LL |   fn qiz() where Self: Sized;
    |            +++++++++++++++++
 
-error: aborting due to 3 previous errors
+error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0038`.
+Some errors have detailed explanations: E0038, E0308.
+For more information about an error, try `rustc --explain E0038`.

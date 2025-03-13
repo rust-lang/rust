@@ -50,7 +50,7 @@ fn main()
 
     let _ = 42usize as *const [u8]; //~ ERROR cannot cast `usize` to a pointer that is wide
     let _ = v as *const [u8]; //~ ERROR cannot cast
-    let _ = fat_v as *const dyn Foo; //~ ERROR the size for values of type
+    let _ = fat_v as *const dyn Foo; //~ ERROR casting
     let _ = foo as *const str; //~ ERROR is invalid
     let _ = foo as *mut str; //~ ERROR is invalid
     let _ = main as *mut str; //~ ERROR is invalid
@@ -59,7 +59,7 @@ fn main()
     let _ = fat_sv as usize; //~ ERROR is invalid
 
     let a : *const str = "hello";
-    let _ = a as *const dyn Foo; //~ ERROR the size for values of type
+    let _ = a as *const dyn Foo; //~ ERROR casting
 
     // check no error cascade
     let _ = main.f as *const u32; //~ ERROR no field

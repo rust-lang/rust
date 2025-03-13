@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `TestDescAndFn: Testable` is not satisfied
-  --> $DIR/mismatch.rs:9:1
+  --> $DIR/mismatch.rs:11:1
    |
 LL | #[test]
    | ------- in this procedural macro expansion
@@ -9,6 +9,17 @@ LL | fn wrong_kind(){}
    = note: required for the cast from `&TestDescAndFn` to `&dyn Testable`
    = note: this error originates in the attribute macro `test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 1 previous error
+error[E0308]: mismatched types
+   |
+   = note: expected reference `&[&dyn Testable]`
+              found reference `&[!; 1]`
+note: function defined here
+  --> $DIR/auxiliary/example_runner.rs:6:8
+   |
+LL | pub fn runner(tests: &[&dyn Testable]) {
+   |        ^^^^^^
 
-For more information about this error, try `rustc --explain E0277`.
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

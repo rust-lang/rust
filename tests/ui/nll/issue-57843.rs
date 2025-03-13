@@ -22,5 +22,5 @@ where
 struct Foo(Box<dyn for<'a> ClonableFn<&'a bool>>);
 
 fn main() {
-    Foo(Box::new(|_| ())); //~ ERROR implementation of `FnOnce` is not general enough
+    Foo(Box::new(|_| ())); //~ ERROR mismatched types
 }
