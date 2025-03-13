@@ -40,6 +40,7 @@ mod span_map;
 mod type_layout;
 mod write_shared;
 
+use std::borrow::Cow;
 use std::collections::VecDeque;
 use std::fmt::{self, Display as _, Write};
 use std::iter::Peekable;
@@ -97,6 +98,19 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display {
 enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
+}
+
+impl AssocItemRender<'_> {
+    fn render_mode(&self) -> RenderMode {
+        match self {
+            Self::All => RenderMode::Normal,
+            &Self::DerefFor { deref_mut_, .. } => RenderMode::ForDeref { mut_: deref_mut_ },
+        }
+    }
+
+    fn class(&self) -> Option<&'static str> {
+        if let Self::DerefFor { .. } = self { Some("impl-items") } else { None }
+    }
 }
 
 /// For different handling of associated items from the Deref target of a type rather than the type
@@ -1211,7 +1225,7 @@ impl<'a> AssocItemLink<'a> {
 }
 
 fn write_section_heading(
-    title: &str,
+    title: impl fmt::Display,
     id: &str,
     extra_class: Option<&str>,
     extra: impl fmt::Display,
@@ -1231,7 +1245,7 @@ fn write_section_heading(
     })
 }
 
-fn write_impl_section_heading(title: &str, id: &str) -> impl fmt::Display {
+fn write_impl_section_heading(title: impl fmt::Display, id: &str) -> impl fmt::Display {
     write_section_heading(title, id, None, "")
 }
 
@@ -1308,20 +1322,17 @@ fn render_assoc_items_inner(
     let (mut non_trait, traits): (Vec<_>, _) =
         v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
-        let mut close_tags = <Vec<&str>>::with_capacity(1);
-        let mut tmp_buf = String::new();
-        let (render_mode, id, class_html) = match what {
-            AssocItemRender::All => {
-                write_str(
-                    &mut tmp_buf,
-                    format_args!(
-                        "{}",
-                        write_impl_section_heading("Implementations", "implementations")
-                    ),
-                );
-                (RenderMode::Normal, "implementations-list".to_owned(), "")
-            }
-            AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
+        let render_mode = what.render_mode();
+        let class_html = what
+            .class()
+            .map(|class| fmt::from_fn(move |f| write!(f, r#" class="{class}""#)))
+            .maybe_display();
+        let (section_heading, id) = match what {
+            AssocItemRender::All => (
+                Either::Left(write_impl_section_heading("Implementations", "implementations")),
+                Cow::Borrowed("implementations-list"),
+            ),
+            AssocItemRender::DerefFor { trait_, type_, .. } => {
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
                 // the `impls.get` above only looks at the outermost type,
@@ -1335,25 +1346,27 @@ fn render_assoc_items_inner(
                     type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
                 });
                 let derived_id = cx.derive_id(&id);
-                close_tags.push("</details>");
-                write_str(
-                    &mut tmp_buf,
-                    format_args!(
-                        "<details class=\"toggle big-toggle\" open><summary>{}</summary>",
-                        write_impl_section_heading(
-                            &format!(
-                                "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
-                                trait_ = trait_.print(cx),
-                                type_ = type_.print(cx),
-                            ),
-                            &id,
-                        )
-                    ),
-                );
                 if let Some(def_id) = type_.def_id(cx.cache()) {
-                    cx.deref_id_map.borrow_mut().insert(def_id, id);
+                    cx.deref_id_map.borrow_mut().insert(def_id, id.clone());
                 }
-                (RenderMode::ForDeref { mut_: deref_mut_ }, derived_id, r#" class="impl-items""#)
+                (
+                    Either::Right(fmt::from_fn(move |f| {
+                        write!(
+                            f,
+                            "<details class=\"toggle big-toggle\" open><summary>{}</summary>",
+                            write_impl_section_heading(
+                                fmt::from_fn(|f| write!(
+                                    f,
+                                    "<span>Methods from {trait_}&lt;Target = {type_}&gt;</span>",
+                                    trait_ = trait_.print(cx),
+                                    type_ = type_.print(cx),
+                                )),
+                                &id,
+                            )
+                        )
+                    })),
+                    Cow::Owned(derived_id),
+                )
             }
         };
         let mut impls_buf = String::new();
@@ -1381,10 +1394,14 @@ fn render_assoc_items_inner(
             );
         }
         if !impls_buf.is_empty() {
-            write!(w, "{tmp_buf}<div id=\"{id}\"{class_html}>{impls_buf}</div>").unwrap();
-            for tag in close_tags.into_iter().rev() {
-                w.write_str(tag).unwrap();
-            }
+            write!(
+                w,
+                "{section_heading}<div id=\"{id}\"{class_html}>{impls_buf}</div>{}",
+                matches!(what, AssocItemRender::DerefFor { .. })
+                    .then_some("</details>")
+                    .maybe_display(),
+            )
+            .unwrap();
         }
     }
 
