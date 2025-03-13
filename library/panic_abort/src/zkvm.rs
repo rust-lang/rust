@@ -1,8 +1,7 @@
 use alloc::string::String;
 use core::panic::PanicPayload;
 
-// Forward the abort message to zkVM's sys_panic. This is implemented by RISC Zero's
-// platform crate which exposes system calls specifically for the zkVM.
+/// Note this function works with both `zkvm` and `succinct-zkvm`.
 pub(crate) unsafe fn zkvm_set_abort_message(payload: &mut dyn PanicPayload) {
     let payload = payload.get();
     let msg = match payload.downcast_ref::<&'static str>() {

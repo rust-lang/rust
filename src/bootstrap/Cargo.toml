@@ -39,7 +39,11 @@ test = false
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
 #
 # Do not upgrade this crate unless https://github.com/rust-lang/cc-rs/issues/1317 is fixed.
-cc = "=1.1.22"
+#
+# todo(succinct): remove this change that was explicity against the rules.
+# This just happens to work, and ideally cc-rs will fix the target parsing issue before our target is merged.
+cc = "=1.2.0"
+# cc = "=1.1.22"
 cmake = "=0.1.48"
 
 build_helper = { path = "../build_helper" }
@@ -72,6 +76,9 @@ tracing = { version = "0.1", optional = true, features = ["attributes"] }
 tracing-chrome = { version = "0.7", optional = true }
 tracing-subscriber = { version = "0.3", optional = true, features = ["env-filter", "fmt", "registry", "std"] }
 tracing-tree = { version = "0.4.0", optional = true }
+
+[patch.crates-io]
+cc = { git = "https://github.com/nhtyy/cc-rs", branch = "n/add-succinct-target" }
 
 [target.'cfg(windows)'.dependencies.junction]
 version = "1.0.0"

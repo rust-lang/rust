@@ -48,6 +48,7 @@ use crate::sys::random as sys;
 /// VxWorks                | `randABytes` after waiting for `randSecure` to become ready
 /// WASI                   | [`random_get`](https://github.com/WebAssembly/WASI/blob/main/legacy/preview1/docs.md#-random_getbuf-pointeru8-buf_len-size---result-errno)
 /// ZKVM                   | `sys_rand`
+/// SUCCINCT-ZKVM          | `sys_rand` 
 ///
 /// Note that the sources used might change over time.
 ///

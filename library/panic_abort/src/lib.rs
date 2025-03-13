@@ -20,7 +20,7 @@
 #[cfg(target_os = "android")]
 mod android;
 
-#[cfg(target_os = "zkvm")]
+#[cfg(any(target_os = "zkvm", target_os = "succinct-zkvm"))]
 mod zkvm;
 
 use core::any::Any;
@@ -40,7 +40,7 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
     unsafe {
         android::android_set_abort_message(_payload);
     }
-    #[cfg(target_os = "zkvm")]
+    #[cfg(any(target_os = "zkvm", target_os = "succinct-zkvm"))]
     unsafe {
         zkvm::zkvm_set_abort_message(_payload);
     }

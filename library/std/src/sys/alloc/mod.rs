@@ -7,7 +7,7 @@ use crate::ptr;
 // add fast paths for low alignment values.
 #[allow(dead_code)]
 const MIN_ALIGN: usize = if cfg!(any(
-    all(target_arch = "riscv32", any(target_os = "espidf", target_os = "zkvm")),
+    all(target_arch = "riscv32", any(target_os = "espidf", target_os = "zkvm", target_os = "succinct-zkvm")),
     all(target_arch = "xtensa", target_os = "espidf"),
 )) {
     // The allocator on the esp-idf and zkvm platforms guarantees 4 byte alignment.
@@ -88,7 +88,7 @@ cfg_if::cfg_if! {
         mod wasm;
     } else if #[cfg(target_os = "xous")] {
         mod xous;
-    } else if #[cfg(target_os = "zkvm")] {
+    } else if #[cfg(any(target_os = "zkvm", target_os = "succinct-zkvm"))] {
         mod zkvm;
     }
 }

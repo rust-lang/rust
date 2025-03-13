@@ -1,5 +1,6 @@
 use crate::sys::pal::abi;
 
+#[cfg(target_vendor = "risc0")]
 pub fn fill_bytes(bytes: &mut [u8]) {
     let (pre, words, post) = unsafe { bytes.align_to_mut::<u32>() };
     if !words.is_empty() {
@@ -18,4 +19,9 @@ pub fn fill_bytes(bytes: &mut [u8]) {
     let buf = buf.as_flattened();
     pre.copy_from_slice(&buf[..pre.len()]);
     post.copy_from_slice(&buf[pre.len()..pre.len() + post.len()]);
+}
+
+#[cfg(target_vendor = "succinct")]
+pub fn fill_bytes(bytes: &mut [u8]) {
+    unsafe { abi::sys_rand(bytes.as_mut_ptr(), bytes.len()) };
 }

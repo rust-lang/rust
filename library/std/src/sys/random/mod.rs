@@ -69,9 +69,12 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "wasi")] {
         mod wasi;
         pub use wasi::fill_bytes;
-    } else if #[cfg(target_os = "zkvm")] {
+    } else if #[cfg(any(target_os = "zkvm", target_os = "succinct-zkvm"))] {
         mod zkvm;
         pub use zkvm::fill_bytes;
+    } else if #[cfg(target_os = "succinct-zkvm")] {
+        mod succinct_zkvm;
+        pub use succinct_zkvm::fill_bytes;
     } else if #[cfg(any(
         all(target_family = "wasm", target_os = "unknown"),
         target_os = "xous",
