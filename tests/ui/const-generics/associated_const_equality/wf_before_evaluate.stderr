@@ -1,0 +1,31 @@
+error: the constant `N` is not of type `u32`
+  --> $DIR/wf_before_evaluate.rs:18:31
+   |
+LL | fn ice<const N: u64, T: Trait<C<N> = { N }>>(_: T) {}
+   |                               ^^^^^^^^^^^^ expected `u32`, found `u64`
+   |
+note: required by a const generic parameter in `Trait::C`
+  --> $DIR/wf_before_evaluate.rs:11:13
+   |
+LL |     const C<const N: u32>: u32;
+   |             ^^^^^^^^^^^^ required by this const generic parameter in `Trait::C`
+
+error[E0271]: type mismatch resolving `<() as Trait>::C<128> == 128`
+  --> $DIR/wf_before_evaluate.rs:22:19
+   |
+LL |     ice::<128, _>(());
+   |     ------------- ^^ expected `128`, found `<() as Trait>::C::<128>`
+   |     |
+   |     required by a bound introduced by this call
+   |
+   = note: expected constant `128`
+              found constant `<() as Trait>::C::<128>`
+note: required by a bound in `ice`
+  --> $DIR/wf_before_evaluate.rs:18:31
+   |
+LL | fn ice<const N: u64, T: Trait<C<N> = { N }>>(_: T) {}
+   |                               ^^^^^^^^^^^^ required by this bound in `ice`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0271`.

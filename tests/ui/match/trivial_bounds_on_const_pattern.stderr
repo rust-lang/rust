@@ -1,0 +1,15 @@
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/trivial_bounds_on_const_pattern.rs:23:10
+   |
+LL | trait Trait
+   | -----------
+...
+LL |     const ASSOC: [u8];
+   |     ----------------- constant defined here
+...
+LL |         &<u8 as Trait>::ASSOC => todo!(),
+   |          ^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0158`.

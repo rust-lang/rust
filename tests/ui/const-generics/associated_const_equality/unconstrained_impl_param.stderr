@@ -1,0 +1,39 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/unconstrained_impl_param.rs:15:45
+   |
+LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
+   |                                             ^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0207]: the type parameter `U` is not constrained by the impl trait, self type, or predicates
+  --> $DIR/unconstrained_impl_param.rs:15:6
+   |
+LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
+   |      ^ unconstrained type parameter
+
+error[E0271]: type mismatch resolving `<(_,) as AssocConst>::A == 0`
+  --> $DIR/unconstrained_impl_param.rs:21:5
+   |
+LL |     (): Trait,
+   |     ^^^^^^^^^ expected `0`, found `<(_,) as AssocConst>::A`
+   |
+   = note: expected constant `0`
+              found constant `<(_,) as AssocConst>::A`
+note: required for `()` to implement `Trait`
+  --> $DIR/unconstrained_impl_param.rs:15:9
+   |
+LL | impl<U> Trait for () where (U,): AssocConst<A = { 0 }> {}
+   |         ^^^^^     ^^                        --------- unsatisfied trait bound introduced here
+   = help: see issue #48214
+help: add `#![feature(trivial_bounds)]` to the crate attributes to enable
+   |
+LL + #![feature(trivial_bounds)]
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0207, E0271, E0658.
+For more information about an error, try `rustc --explain E0207`.

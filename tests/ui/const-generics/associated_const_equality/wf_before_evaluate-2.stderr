@@ -1,0 +1,58 @@
+error[E0277]: the trait bound `(dyn Sized + 'static): ConstDefault` is not satisfied
+  --> $DIR/wf_before_evaluate-2.rs:14:14
+   |
+LL | fn user() -> impl Owner<dyn Sized, C = 0> {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `ConstDefault` is not implemented for `(dyn Sized + 'static)`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/wf_before_evaluate-2.rs:10:1
+   |
+LL | trait ConstDefault {
+   | ^^^^^^^^^^^^^^^^^^
+note: required for `()` to implement `Owner<(dyn Sized + 'static)>`
+  --> $DIR/wf_before_evaluate-2.rs:6:23
+   |
+LL | impl<K: ConstDefault> Owner<K> for () {
+   |         ------------  ^^^^^^^^     ^^
+   |         |
+   |         unsatisfied trait bound introduced here
+
+error[E0277]: the size for values of type `(dyn Sized + 'static)` cannot be known at compilation time
+  --> $DIR/wf_before_evaluate-2.rs:14:14
+   |
+LL | fn user() -> impl Owner<dyn Sized, C = 0> {}
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `(dyn Sized + 'static)`
+   = help: the trait `Owner<K>` is implemented for `()`
+note: required for `()` to implement `Owner<(dyn Sized + 'static)>`
+  --> $DIR/wf_before_evaluate-2.rs:6:23
+   |
+LL | impl<K: ConstDefault> Owner<K> for () {
+   |      -                ^^^^^^^^     ^^
+   |      |
+   |      unsatisfied trait bound introduced here
+
+error[E0038]: the trait `Sized` is not dyn compatible
+  --> $DIR/wf_before_evaluate-2.rs:14:40
+   |
+LL | fn user() -> impl Owner<dyn Sized, C = 0> {}
+   |                                        ^ `Sized` is not dyn compatible
+   |
+   = note: the trait is not dyn compatible because it requires `Self: Sized`
+   = note: for a trait to be dyn compatible it needs to allow building a vtable
+           for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+
+error[E0308]: mismatched types
+  --> $DIR/wf_before_evaluate-2.rs:14:40
+   |
+LL | fn user() -> impl Owner<dyn Sized, C = 0> {}
+   |                                        ^ expected `dyn Sized`, found integer
+   |
+   = note: expected trait object `(dyn Sized + 'static)`
+                      found type `{integer}`
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0038, E0277, E0308.
+For more information about an error, try `rustc --explain E0038`.

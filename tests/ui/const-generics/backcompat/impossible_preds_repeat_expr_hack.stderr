@@ -1,5 +1,23 @@
+warning: cannot use constants which depend on trivially-false where clauses
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:25:28
+   |
+LL |     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: for more information, see issue #76200 <https://github.com/rust-lang/rust/issues/76200>
+   = note: `#[warn(const_evaluatable_unchecked)]` on by default
+
+error[E0308]: mismatched types
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:25:23
+   |
+LL |     let _a: [(); 1] = [(); <u8 as Trait<()>>::ASSOC];
+   |             -------   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected an array with a size of 1, found one with a size of <u8 as Trait<()>>::ASSOC
+   |             |
+   |             expected due to this
+
 error[E0277]: the trait bound `for<'a> (): Unimplemented<'a>` is not satisfied
-  --> $DIR/impossible_preds_repeat_expr_hack.rs:34:43
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:37:43
    |
 LL |     let _a: Foo<1> = Foo::<{ <u8 as Trait<()>>::ASSOC }>;
    |                                           ^^ the trait `for<'a> Unimplemented<'a>` is not implemented for `()`
@@ -19,7 +37,7 @@ LL |     const ASSOC: usize;
    |           ----- required by a bound in this associated constant
 
 error[E0277]: the trait bound `for<'a> (): Unimplemented<'a>` is not satisfied
-  --> $DIR/impossible_preds_repeat_expr_hack.rs:34:31
+  --> $DIR/impossible_preds_repeat_expr_hack.rs:37:31
    |
 LL |     let _a: Foo<1> = Foo::<{ <u8 as Trait<()>>::ASSOC }>;
    |                               ^^ the trait `for<'a> Unimplemented<'a>` is not implemented for `()`
@@ -38,6 +56,7 @@ LL | where
 LL |     for<'a> T: Unimplemented<'a>,
    |                ----------------- unsatisfied trait bound introduced here
 
-error: aborting due to 2 previous errors
+error: aborting due to 3 previous errors; 1 warning emitted
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

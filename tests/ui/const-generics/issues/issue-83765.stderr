@@ -1,43 +1,5 @@
-error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
-  --> $DIR/issue-83765.rs:5:5
-   |
-LL |     const DIM: usize;
-   |     ^^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
-  --> $DIR/issue-83765.rs:4:1
-   |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:50:1: 50:94>::size` is compatible with trait definition
-  --> $DIR/issue-83765.rs:51:5
-   |
-LL |     fn size(&self) -> [usize; DIM] {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
-error[E0391]: cycle detected when resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`
-  --> $DIR/issue-83765.rs:5:5
-   |
-LL |     const DIM: usize;
-   |     ^^^^^^^^^^^^^^^^
-   |
-note: ...which requires computing candidate for `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>`...
-  --> $DIR/issue-83765.rs:4:1
-   |
-LL | trait TensorDimension {
-   | ^^^^^^^^^^^^^^^^^^^^^
-   = note: ...which again requires resolving instance `<LazyUpdim<'_, T, <T as TensorDimension>::DIM, DIM> as TensorDimension>::DIM`, completing the cycle
-note: cycle used when checking assoc item `<impl at $DIR/issue-83765.rs:56:1: 56:97>::bget` is compatible with trait definition
-  --> $DIR/issue-83765.rs:58:5
-   |
-LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-83765.rs:82:5
+  --> $DIR/issue-83765.rs:47:5
    |
 LL |     fn size(&self) -> [usize; DIM] {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
@@ -46,7 +8,7 @@ LL |     fn size(&self) -> [usize; DIM] {
               found constant `DIM`
 
 error[E0308]: method not compatible with trait
-  --> $DIR/issue-83765.rs:92:5
+  --> $DIR/issue-83765.rs:55:5
    |
 LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
@@ -54,7 +16,145 @@ LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
    = note: expected constant `Self::DIM`
               found constant `DIM`
 
-error: aborting due to 4 previous errors
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:84:5
+   |
+LL |     fn size(&self) -> [usize; DIM] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
 
-Some errors have detailed explanations: E0308, E0391.
-For more information about an error, try `rustc --explain E0308`.
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:96:5
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:108:5
+   |
+LL |     fn size(&self) -> [usize; 1] {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `1`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `1`
+
+error[E0308]: method not compatible with trait
+  --> $DIR/issue-83765.rs:115:5
+   |
+LL |     fn bget(&self, index: [usize; 1]) -> Option<T> {
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Self::DIM`, found `1`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `1`
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:58:13
+   |
+LL |         if !self.inbounds(index) {
+   |             ^^^^
+   |
+note: required by a bound in `TensorSize::inbounds`
+  --> $DIR/issue-83765.rs:14:39
+   |
+LL |     fn inbounds(&self, index: [usize; Self::DIM]) -> bool {
+   |                                       ^^^^^^^^^ required by this bound in `TensorSize::inbounds`
+help: try adding a `where` bound
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> where [(); Self::DIM]: {
+   |                                                                  ++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:58:27
+   |
+LL |         if !self.inbounds(index) {
+   |                           ^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:63:25
+   |
+LL |         let size = self.size();
+   |                         ^^^^
+   |
+note: required by a bound in `TensorSize::size`
+  --> $DIR/issue-83765.rs:13:31
+   |
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
+help: try adding a `where` bound
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> where [(); Self::DIM]: {
+   |                                                                  ++++++++++++++++++++++
+
+error[E0277]: the trait bound `[usize; T::DIM]: Default` is not satisfied
+  --> $DIR/issue-83765.rs:65:41
+   |
+LL |         let newindex: [usize; T::DIM] = Default::default();
+   |                                         ^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `[usize; T::DIM]`
+   |
+help: consider introducing a `where` clause, but there might be an alternative better way to express this requirement
+   |
+LL | impl<'a, T: Broadcastable, const DIM: usize> Broadcastable for LazyUpdim<'a, T, { T::DIM }, DIM> where [usize; T::DIM]: Default {
+   |                                                                                                  ++++++++++++++++++++++++++++++
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:86:24
+   |
+LL |         self.reference.size()
+   |                        ^^^^
+   |
+note: required by a bound in `TensorSize::size`
+  --> $DIR/issue-83765.rs:13:31
+   |
+LL |     fn size(&self) -> [usize; Self::DIM];
+   |                               ^^^^^^^^^ required by this bound in `TensorSize::size`
+help: try adding a `where` bound
+   |
+LL |     fn size(&self) -> [usize; DIM] where [(); Self::DIM]: {
+   |                                    ++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:86:9
+   |
+LL |         self.reference.size()
+   |         ^^^^^^^^^^^^^^^^^^^^^ expected `DIM`, found `Self::DIM`
+   |
+   = note: expected constant `DIM`
+              found constant `Self::DIM`
+
+error: unconstrained generic constant
+  --> $DIR/issue-83765.rs:98:9
+   |
+LL |         self.reference.bget(index).map(&self.closure)
+   |         ^^^^^^^^^^^^^^
+   |
+note: required by a bound in `Broadcastable::bget`
+  --> $DIR/issue-83765.rs:21:35
+   |
+LL |     fn bget(&self, index: [usize; Self::DIM]) -> Option<Self::Element>;
+   |                                   ^^^^^^^^^ required by this bound in `Broadcastable::bget`
+help: try adding a `where` bound
+   |
+LL |     fn bget(&self, index: [usize; DIM]) -> Option<Self::Element> where [(); Self::DIM]: {
+   |                                                                  ++++++++++++++++++++++
+
+error[E0308]: mismatched types
+  --> $DIR/issue-83765.rs:98:29
+   |
+LL |         self.reference.bget(index).map(&self.closure)
+   |                             ^^^^^ expected `Self::DIM`, found `DIM`
+   |
+   = note: expected constant `Self::DIM`
+              found constant `DIM`
+
+error: aborting due to 14 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.
