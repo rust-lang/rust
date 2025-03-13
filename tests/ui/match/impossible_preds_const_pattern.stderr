@@ -1,12 +1,26 @@
-error[E0080]: evaluation of constant value failed
-  --> $DIR/impossible_preds_const_pattern.rs:27:5
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/impossible_preds_const_pattern.rs:42:9
    |
-LL | /     const ASSOC: usize = 0
-LL | |
-LL | |     where
-LL | |         for<'a> (): Unimplemented<'a>;
-   | |______________________________________^ entering unreachable code
+LL | trait Trait<T>
+   | --------------
+...
+LL |     const ASSOC: usize;
+   |     ------------------ constant defined here
+...
+LL |         <() as Trait<()>>::ASSOC => todo!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
 
-error: aborting due to 1 previous error
+error[E0158]: constant pattern cannot depend on generic parameters
+  --> $DIR/impossible_preds_const_pattern.rs:55:9
+   |
+LL | trait Global {
+   | ------------
+LL |     const ASSOC: usize
+   |     ------------------ constant defined here
+...
+LL |         <() as Global>::ASSOC => todo!(),
+   |         ^^^^^^^^^^^^^^^^^^^^^ `const` depends on a generic parameter
 
-For more information about this error, try `rustc --explain E0080`.
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0158`.

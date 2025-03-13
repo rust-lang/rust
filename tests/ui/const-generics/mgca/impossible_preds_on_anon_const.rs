@@ -26,7 +26,6 @@ impl Trait for u8 {
         for<'a> T: Unimplemented<'a>;
 
     const GLOBAL: usize = 1
-    //~^ ERROR: evaluation of constant value failed
     where
         for<'a> (): Unimplemented<'a>;
 }
@@ -38,6 +37,7 @@ where
     for<'a> (): Unimplemented<'a>,
 {
     let _: Foo<1> = Foo::<{ <u8 as Trait>::NON_GLOBAL::<()> }>;
+    //~^ ERROR: mismatched types
 }
 
 fn global()
@@ -45,6 +45,7 @@ where
     for<'a> (): Unimplemented<'a>,
 {
     let _: Foo<1> = Foo::<{ <u8 as Trait>::GLOBAL }>;
+    //~^ ERROR: mismatched types
 }
 
 fn main() {}

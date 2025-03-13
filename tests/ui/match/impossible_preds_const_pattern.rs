@@ -25,20 +25,22 @@ trait Global {
 
 impl Global for () {
     const ASSOC: usize = 0
-    //~^ ERROR: evaluation of constant value failed
     where
         for<'a> (): Unimplemented<'a>;
 }
 
-fn works(x: usize)
+fn also_errors(x: usize)
 where
     for<'a> (): Unimplemented<'a>,
 {
     // In order for match exhaustiveness to determine this match is OK, CTFE must
     // be able to evalaute `<() as Trait>::ASSOC` which depends on a trivially
     // false bound for well formedness.
+    //
+    // This used to succeed but now errors
     match x {
         <() as Trait<()>>::ASSOC => todo!(),
+        //~^ ERROR: constant pattern cannot depend on generic parameters
         1.. => todo!(),
     }
 }
@@ -47,10 +49,11 @@ fn errors(x: usize)
 where
     for<'a> (): Unimplemented<'a>,
 {
-    // This errors due to the MIR for `ASSOC` being empty due to the
-    // globally false bound.
+    // This previously would error due to the MIR for `ASSOC` being empty
+    // due to the globally false bound.
     match x {
         <() as Global>::ASSOC => todo!(),
+        //~^ ERROR: constant pattern cannot depend on generic parameters
         1.. => todo!(),
     }
 }

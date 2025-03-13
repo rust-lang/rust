@@ -8,7 +8,8 @@ struct DataHolder<T> {
 }
 
 impl<T: Copy> DataHolder<T> {
-    const ITEM_IS_COPY: [(); 1 - { //~ ERROR unconstrained generic constant
+    const ITEM_IS_COPY: [(); 1 - {
+        //~^ ERROR unconstrained generic constant
         trait NotCopy {
             const VALUE: bool = false;
         }
@@ -25,7 +26,9 @@ impl<T: Copy> DataHolder<T> {
         }
 
         <IsCopy<T>>::VALUE
-    } as usize] = []; //~ ERROR unconstrained generic constant
+    } as usize] = [];
+    //~^ ERROR unconstrained generic constant
+    //~| ERROR mismatched types
 }
 
 fn main() {}
