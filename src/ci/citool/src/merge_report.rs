@@ -14,6 +14,8 @@ type JobName = String;
 pub fn post_merge_report(job_db: JobDatabase, parent: Sha, current: Sha) -> anyhow::Result<()> {
     let jobs = download_all_metrics(&job_db, &parent, &current)?;
     let diffs = aggregate_test_diffs(&jobs)?;
+
+    println!("Comparing {parent} (base) -> {current} (this PR)\n");
     report_test_changes(diffs);
 
     Ok(())
