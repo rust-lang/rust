@@ -1106,8 +1106,6 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                     let tail = selcx.tcx().struct_tail_raw(
                         self_ty,
                         |ty| {
-                            // We throw away any obligations we get from this, since we normalize
-                            // and confirm these obligations once again during confirmation
                             normalize_with_depth(
                                 selcx,
                                 obligation.param_env,
@@ -1115,10 +1113,12 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                                 obligation.recursion_depth + 1,
                                 ty,
                             )
-                            .value
+                                .value
                         },
-                        || {},
+                        || {}, // ✅ Move closure before ObligationCause
+                        obligation.cause.clone(), // ✅ ObligationCause must be last
                     );
+
 
                     match tail.kind() {
                         ty::Bool
