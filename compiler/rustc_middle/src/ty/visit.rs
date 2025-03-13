@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_type_ir::fold::TypeFoldable;
+use rustc_type_ir::TypeFoldable;
 pub use rustc_type_ir::visit::*;
 
 use crate::ty::{self, Binder, Ty, TyCtxt, TypeFlags};

@@ -1,9 +1,9 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
-use rustc_middle::ty::fold::shift_vars;
 use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    shift_vars,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;

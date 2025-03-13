@@ -93,7 +93,7 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
                 bind.to_token_stream()
             } else {
                 quote! {
-                    ::rustc_type_ir::fold::TypeFoldable::try_fold_with(#bind, __folder)?
+                    ::rustc_type_ir::TypeFoldable::try_fold_with(#bind, __folder)?
                 }
             }
         })
@@ -105,9 +105,9 @@ fn type_foldable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Toke
     s.filter(|bi| !has_ignore_attr(&bi.ast().attrs, "type_foldable", "identity"));
     s.add_bounds(synstructure::AddBounds::Fields);
     s.bound_impl(
-        quote!(::rustc_type_ir::fold::TypeFoldable<I>),
+        quote!(::rustc_type_ir::TypeFoldable<I>),
         quote! {
-            fn try_fold_with<__F: ::rustc_type_ir::fold::FallibleTypeFolder<I>>(
+            fn try_fold_with<__F: ::rustc_type_ir::FallibleTypeFolder<I>>(
                 self,
                 __folder: &mut __F
             ) -> Result<Self, __F::Error> {

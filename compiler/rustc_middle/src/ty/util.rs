@@ -23,11 +23,10 @@ use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::query::Providers;
-use crate::ty::fold::fold_regions;
 use crate::ty::layout::{FloatExt, IntegerExt};
 use crate::ty::{
     self, Asyncness, FallibleTypeFolder, GenericArgKind, GenericArgsRef, Ty, TyCtxt, TypeFoldable,
-    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt, Upcast, fold_regions,
 };
 
 #[derive(Copy, Clone, Debug)]

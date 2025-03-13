@@ -25,7 +25,7 @@ pub mod data_structures;
 pub mod elaborate;
 pub mod error;
 pub mod fast_reject;
-pub mod fold;
+mod fold;
 #[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_inherent")]
 pub mod inherent;
 pub mod ir_print;
@@ -66,6 +66,7 @@ pub use canonical::*;
 pub use codec::*;
 pub use const_kind::*;
 pub use flags::*;
+pub use fold::*;
 pub use generic_arg::*;
 pub use infer_ctxt::*;
 pub use interner::*;

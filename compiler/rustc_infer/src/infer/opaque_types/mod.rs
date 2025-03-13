@@ -5,9 +5,9 @@ use rustc_middle::bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::solve::Goal;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::{
-    self, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
+    self, BottomUpFolder, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt,
 };
 use rustc_span::Span;
 use tracing::{debug, instrument};

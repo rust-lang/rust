@@ -859,7 +859,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             val
         } else {
-            ty::fold::shift_vars(self.cx, val, self.binders_passed)
+            ty::shift_vars(self.cx, val, self.binders_passed)
         }
     }
 
@@ -867,7 +867,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
-            ty::fold::shift_region(self.cx, region, self.binders_passed)
+            ty::shift_region(self.cx, region, self.binders_passed)
         }
     }
 }

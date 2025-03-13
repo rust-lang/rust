@@ -2,9 +2,8 @@
 //! behaves differently depending on the current `TypingMode`.
 
 use rustc_index::bit_set::GrowableBitSet;
-use rustc_type_ir::fold::fold_regions;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::{self as ty, Interner, TypingMode};
+use rustc_type_ir::{self as ty, Interner, TypingMode, fold_regions};
 
 use crate::delegate::SolverDelegate;
 use crate::solve::{Certainty, EvalCtxt, Goal, NoSolution, QueryResult, inspect};
