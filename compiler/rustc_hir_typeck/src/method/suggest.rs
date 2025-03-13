@@ -3766,7 +3766,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 {
                                     let self_first_arg = match method {
                                         hir::TraitFn::Required([ident, ..]) => {
-                                            ident.name == kw::SelfLower
+                                            matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
                                         }
                                         hir::TraitFn::Provided(body_id) => {
                                             self.tcx.hir_body(*body_id).params.first().is_some_and(

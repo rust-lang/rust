@@ -2,6 +2,7 @@
 //! the definitions in this file have equivalents in `rustc_ast_pretty`.
 
 // tidy-alphabetical-start
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 // tidy-alphabetical-end
 
@@ -898,7 +899,7 @@ impl<'a> State<'a> {
         ident: Ident,
         m: &hir::FnSig<'_>,
         generics: &hir::Generics<'_>,
-        arg_names: &[Ident],
+        arg_names: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn(m.decl, m.header, Some(ident.name), generics, arg_names, body_id);
@@ -2121,7 +2122,7 @@ impl<'a> State<'a> {
         header: hir::FnHeader,
         name: Option<Symbol>,
         generics: &hir::Generics<'_>,
-        arg_names: &[Ident],
+        arg_names: &[Option<Ident>],
         body_id: Option<hir::BodyId>,
     ) {
         self.print_fn_header_info(header);
@@ -2141,7 +2142,7 @@ impl<'a> State<'a> {
                 s.print_implicit_self(&decl.implicit_self);
             } else {
                 if let Some(arg_name) = arg_names.get(i) {
-                    if arg_name.name != kw::Empty {
+                    if let Some(arg_name) = arg_name {
                         s.word(arg_name.to_string());
                         s.word(":");
                         s.space();
@@ -2451,7 +2452,7 @@ impl<'a> State<'a> {
         decl: &hir::FnDecl<'_>,
         name: Option<Symbol>,
         generic_params: &[hir::GenericParam<'_>],
-        arg_names: &[Ident],
+        arg_names: &[Option<Ident>],
     ) {
         self.ibox(INDENT_UNIT);
         self.print_formal_generic_params(generic_params);

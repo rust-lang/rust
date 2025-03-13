@@ -1318,7 +1318,7 @@ impl<'a> CrateMetadataRef<'a> {
             .expect("argument names not encoded for a function")
             .decode((self, sess))
             .nth(0)
-            .is_some_and(|ident| ident.name == kw::SelfLower)
+            .is_some_and(|ident| matches!(ident, Some(Ident { name: kw::SelfLower, .. })))
     }
 
     fn get_associated_item_or_field_def_ids(self, id: DefIndex) -> impl Iterator<Item = DefId> {

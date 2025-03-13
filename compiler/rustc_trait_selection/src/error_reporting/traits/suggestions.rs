@@ -1992,13 +1992,12 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .iter()
                 .enumerate()
                 .map(|(i, ident)| {
-                    if ident.name.is_empty()
-                        || ident.name == kw::Underscore
-                        || ident.name == kw::SelfLower
+                    if let Some(ident) = ident
+                        && !matches!(ident, Ident { name: kw::Underscore | kw::SelfLower, .. })
                     {
-                        format!("arg{i}")
-                    } else {
                         format!("{ident}")
+                    } else {
+                        format!("arg{i}")
                     }
                 })
                 .collect();
