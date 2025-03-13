@@ -345,14 +345,16 @@ pub(crate) fn print_src(
         let current_href = context
             .href_from_span(clean::Span::new(file_span), false)
             .expect("only local crates should have sources emitted");
-        highlight::write_code(
+        write!(
             fmt,
-            s,
-            Some(highlight::HrefContext { context, file_span, root_path, current_href }),
-            Some(decoration_info),
-            Some(line_info),
-        );
-        Ok(())
+            "{}",
+            highlight::write_code(
+                s,
+                Some(&highlight::HrefContext { context, file_span, root_path, current_href }),
+                Some(decoration_info),
+                Some(line_info),
+            )
+        )
     });
     let max_nb_digits = if lines > 0 { lines.ilog(10) + 1 } else { 1 };
     match source_context {
