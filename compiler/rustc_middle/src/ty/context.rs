@@ -1725,6 +1725,7 @@ nop_list_lift! { patterns; Pattern<'a> => Pattern<'tcx> }
 nop_list_lift! {
     outlives; ty::ArgOutlivesPredicate<'a> => ty::ArgOutlivesPredicate<'tcx>
 }
+nop_list_with_cached_type_info_lift! { clauses; Clause<'a> => Clause<'tcx> }
 
 // This is the impl for `&'a GenericArgs<'a>`.
 nop_list_lift! { args; GenericArg<'a> => GenericArg<'tcx> }

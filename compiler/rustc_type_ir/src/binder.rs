@@ -31,6 +31,7 @@ use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 pub struct Binder<I: Interner, T> {
     value: T,
     bound_vars: I::BoundVarKinds,
+    clauses: I::Clauses,
 }
 
 impl<I: Interner, T: Eq> Eq for Binder<I, T> {}
@@ -88,7 +89,7 @@ where
             !value.has_escaping_bound_vars(),
             "`{value:?}` has escaping bound vars, so it cannot be wrapped in a dummy binder."
         );
-        Binder { value, bound_vars: Default::default() }
+        Binder { value, bound_vars: Default::default(), clauses: I::Clauses::empty() }
     }
 
     pub fn bind_with_vars(value: T, bound_vars: I::BoundVarKinds) -> Binder<I, T> {
@@ -96,7 +97,20 @@ where
             let mut validator = ValidateBoundVars::new(bound_vars);
             let _ = value.visit_with(&mut validator);
         }
-        Binder { value, bound_vars }
+        Binder { value, bound_vars, clauses: I::Clauses::empty() }
+    }
+
+    pub fn bind_with_vars_and_clauses(
+        value: T,
+        bound_vars: I::BoundVarKinds,
+        clauses: I::Clauses,
+    ) -> Binder<I, T> {
+        if cfg!(debug_assertions) {
+            let mut validator = ValidateBoundVars::new(bound_vars);
+            value.visit_with(&mut validator);
+            clauses.visit_with(&mut validator);
+        }
+        Binder { bound_vars, value, clauses }
     }
 }
 
@@ -121,17 +135,25 @@ impl<I: Interner, T: TypeFoldable<I>> TypeSuperFoldable<I> for Binder<I, T> {
         self,
         folder: &mut F,
     ) -> Result<Self, F::Error> {
-        self.try_map_bound(|t| t.try_fold_with(folder))
+        let Binder { bound_vars, value, clauses } = self;
+        let clauses = clauses.try_fold_with(folder)?;
+        let value = value.try_fold_with(folder)?;
+        Ok(Binder::bind_with_vars_and_clauses(value, bound_vars, clauses))
     }
 
     fn super_fold_with<F: TypeFolder<I>>(self, folder: &mut F) -> Self {
-        self.map_bound(|t| t.fold_with(folder))
+        let Binder { bound_vars, value, clauses } = self;
+        let clauses = clauses.fold_with(folder);
+        let value = value.fold_with(folder);
+        Binder::bind_with_vars_and_clauses(value, bound_vars, clauses)
     }
 }
 
 impl<I: Interner, T: TypeVisitable<I>> TypeSuperVisitable<I> for Binder<I, T> {
     fn super_visit_with<V: TypeVisitor<I>>(&self, visitor: &mut V) -> V::Result {
-        self.as_ref().skip_binder().visit_with(visitor)
+        let (value, clauses) = self.as_ref().skip_binder_with_clauses();
+        try_visit!(clauses.visit_with(visitor));
+        value.visit_with(visitor)
     }
 }
 
@@ -153,19 +175,23 @@ impl<I: Interner, T> Binder<I, T> {
         self.value
     }
 
+    pub fn skip_binder_with_clauses(self) -> (T, I::Clauses) {
+        (self.value, self.clauses)
+    }
+
     pub fn bound_vars(&self) -> I::BoundVarKinds {
         self.bound_vars
     }
 
     pub fn as_ref(&self) -> Binder<I, &T> {
-        Binder { value: &self.value, bound_vars: self.bound_vars }
+        Binder { value: &self.value, bound_vars: self.bound_vars, clauses: self.clauses }
     }
 
     pub fn as_deref(&self) -> Binder<I, &T::Target>
     where
         T: Deref,
     {
-        Binder { value: &self.value, bound_vars: self.bound_vars }
+        Binder { value: &self.value, bound_vars: self.bound_vars, clauses: self.clauses }
     }
 
     pub fn map_bound_ref<F, U: TypeVisitable<I>>(&self, f: F) -> Binder<I, U>
@@ -179,26 +205,39 @@ impl<I: Interner, T> Binder<I, T> {
     where
         F: FnOnce(T) -> U,
     {
-        let Binder { value, bound_vars } = self;
+        let Binder { value, bound_vars, clauses } = self;
         let value = f(value);
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
             let _ = value.visit_with(&mut validator);
         }
-        Binder { value, bound_vars }
+        Binder { value, bound_vars, clauses }
+    }
+
+    pub fn map_clauses<F, U: TypeVisitable<I>>(self, f: F) -> Self
+    where
+        F: FnOnce(I::Clauses) -> I::Clauses,
+    {
+        let Binder { value, bound_vars, clauses } = self;
+        let clauses = f(clauses);
+        if cfg!(debug_assertions) {
+            let mut validator = ValidateBoundVars::new(bound_vars);
+            clauses.visit_with(&mut validator);
+        }
+        Binder { value, bound_vars, clauses }
     }
 
     pub fn try_map_bound<F, U: TypeVisitable<I>, E>(self, f: F) -> Result<Binder<I, U>, E>
     where
         F: FnOnce(T) -> Result<U, E>,
     {
-        let Binder { value, bound_vars } = self;
+        let Binder { value, bound_vars, clauses } = self;
         let value = f(value)?;
         if cfg!(debug_assertions) {
             let mut validator = ValidateBoundVars::new(bound_vars);
             let _ = value.visit_with(&mut validator);
         }
-        Ok(Binder { value, bound_vars })
+        Ok(Binder { value, bound_vars, clauses })
     }
 
     /// Wraps a `value` in a binder, using the same bound variables as the
@@ -214,7 +253,7 @@ impl<I: Interner, T> Binder<I, T> {
     where
         U: TypeVisitable<I>,
     {
-        Binder::bind_with_vars(value, self.bound_vars)
+        Binder::bind_with_vars_and_clauses(value, self.bound_vars, self.clauses)
     }
 
     /// Unwraps and returns the value within, but only if it contains
@@ -238,15 +277,15 @@ impl<I: Interner, T> Binder<I, T> {
 
 impl<I: Interner, T> Binder<I, Option<T>> {
     pub fn transpose(self) -> Option<Binder<I, T>> {
-        let Binder { value, bound_vars } = self;
-        value.map(|value| Binder { value, bound_vars })
+        let Binder { value, bound_vars, clauses } = self;
+        value.map(|value| Binder { value, bound_vars, clauses })
     }
 }
 
 impl<I: Interner, T: IntoIterator> Binder<I, T> {
     pub fn iter(self) -> impl Iterator<Item = Binder<I, T::Item>> {
-        let Binder { value, bound_vars } = self;
-        value.into_iter().map(move |value| Binder { value, bound_vars })
+        let Binder { value, bound_vars, clauses } = self;
+        value.into_iter().map(move |value| Binder { value, bound_vars, clauses })
     }
 }
 

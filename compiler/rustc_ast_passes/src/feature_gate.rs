@@ -137,16 +137,18 @@ impl<'a> PostExpansionVisitor<'a> {
             }
         }
 
-        for param in params {
-            if !param.bounds.is_empty() {
-                let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
-                if param.bounds.iter().any(|bound| matches!(bound, GenericBound::Trait(_))) {
-                    // Issue #149695
-                    // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
-                    // which will cause ICEs when errors of the items visit unlowered parents.
-                    self.sess.dcx().emit_fatal(diagnostics::ForbiddenBound { spans });
-                } else {
-                    self.sess.dcx().emit_err(diagnostics::ForbiddenBound { spans });
+        if !self.features.non_lifetime_binders() {
+            for param in params {
+                if !param.bounds.is_empty() {
+                    let spans: Vec<_> = param.bounds.iter().map(|b| b.span()).collect();
+                    if param.bounds.iter().any(|bound| matches!(bound, GenericBound::Trait(_))) {
+                        // Issue #149695
+                        // Abort immediately otherwise items defined in complex bounds will be lowered into HIR,
+                        // which will cause ICEs when errors of the items visit unlowered parents.
+                        self.sess.dcx().emit_fatal(diagnostics::ForbiddenBound { spans });
+                    } else {
+                        self.sess.dcx().emit_err(diagnostics::ForbiddenBound { spans });
+                    }
                 }
             }
         }
