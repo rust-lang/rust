@@ -3213,7 +3213,7 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// * The region of memory beginning at `x` must *not* overlap with the region of memory
 ///   beginning at `y`.
 ///
-/// * The memory pointed by `x` and `y` must contain correct value of type `T`.
+/// * The memory pointed by `x` and `y` must both contain values of type `T`.
 ///
 /// [valid]: crate::ptr#safety
 #[rustc_nounwind]
