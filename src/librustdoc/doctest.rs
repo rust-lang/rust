@@ -672,18 +672,6 @@ fn run_test(
             "--extern=doctest_bundle_{edition}=",
             edition = doctest.edition
         ));
-        for extern_str in &rustdoc_options.extern_strs {
-            if let Some((_cratename, path)) = extern_str.split_once('=') {
-                // Direct dependencies of the tests themselves are
-                // indirect dependencies of the test runner.
-                // They need to be in the library search path.
-                let dir = Path::new(path)
-                    .parent()
-                    .filter(|x| x.components().count() > 0)
-                    .unwrap_or(Path::new("."));
-                runner_compiler.arg("-L").arg(dir);
-            }
-        }
         let output_bundle_file = doctest
             .test_opts
             .outdir
