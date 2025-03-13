@@ -23,7 +23,8 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
 
     bb1: {
         _0 = const Option::<u32>::None;
-        goto -> bb3;
+        StorageDead(_3);
+        return;
     }
 
     bb2: {
@@ -31,10 +32,6 @@ fn checked_shl(_1: u32, _2: u32) -> Option<u32> {
         _4 = ShlUnchecked(copy _1, copy _2);
         _0 = Option::<u32>::Some(move _4);
         StorageDead(_4);
-        goto -> bb3;
-    }
-
-    bb3: {
         StorageDead(_3);
         return;
     }

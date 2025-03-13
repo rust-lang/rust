@@ -96,7 +96,13 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     bb3: {
         _0 = const {transmute(0x0000000000000000): Option<&T>};
         StorageDead(_7);
-        goto -> bb8;
+        StorageDead(_14);
+        StorageDead(_4);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 
     bb4: {
@@ -106,7 +112,13 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
 
     bb5: {
         _0 = const {transmute(0x0000000000000000): Option<&T>};
-        goto -> bb8;
+        StorageDead(_14);
+        StorageDead(_4);
+        StorageDead(_12);
+        StorageDead(_11);
+        StorageDead(_3);
+        StorageDead(_2);
+        return;
     }
 
     bb6: {
@@ -121,10 +133,6 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
         _14 = &(*_13);
         StorageDead(_13);
         _0 = Option::<&T>::Some(copy _14);
-        goto -> bb8;
-    }
-
-    bb8: {
         StorageDead(_14);
         StorageDead(_4);
         StorageDead(_12);

@@ -19,7 +19,7 @@ pub unsafe fn asm_goto() {
 pub unsafe fn asm_goto_with_outputs() -> u64 {
     let out: u64;
     // CHECK: [[RES:%[0-9]+]] = callbr i64 asm sideeffect alignstack inteldialect "
-    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:[a-b0-9]+]]]
+    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:return]]]
     asm!("{} /* {} */", out(reg) out, label { return 1; });
     // CHECK: [[JUMPBB]]:
     // CHECK-NEXT: [[RET:%.+]] = phi i64 [ [[RES]], %[[FALLTHROUGHBB]] ], [ 1, %start ]
@@ -32,7 +32,7 @@ pub unsafe fn asm_goto_with_outputs() -> u64 {
 pub unsafe fn asm_goto_with_outputs_use_in_label() -> u64 {
     let out: u64;
     // CHECK: [[RES:%[0-9]+]] = callbr i64 asm sideeffect alignstack inteldialect "
-    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:[a-b0-9]+]]]
+    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:return]]]
     asm!("{} /* {} */", out(reg) out, label { return out; });
     // CHECK: [[JUMPBB]]:
     // CHECK-NEXT: [[RET:%.+]] = phi i64 [ 1, %[[FALLTHROUGHBB]] ], [ [[RES]], %start ]
@@ -55,7 +55,7 @@ pub unsafe fn asm_goto_noreturn() -> u64 {
 pub unsafe fn asm_goto_noreturn_with_outputs() -> u64 {
     let out: u64;
     // CHECK: [[RES:%[0-9]+]] = callbr i64 asm sideeffect alignstack inteldialect "
-    // CHECK-NEXT: to label %[[FALLTHROUGHBB:[a-b0-9]+]] [label %[[JUMPBB:[a-b0-9]+]]]
+    // CHECK-NEXT: to label %[[FALLTHROUGHBB:return]] [label %[[JUMPBB:return]]]
     asm!("mov {}, 1", "jmp {}", out(reg) out, label { return out; });
     // CHECK: [[JUMPBB]]:
     // CHECK-NEXT: ret i64 [[RES]]
