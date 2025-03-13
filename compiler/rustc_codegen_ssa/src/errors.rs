@@ -136,6 +136,110 @@ pub(crate) struct NoSavedObjectFile<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(codegen_ssa_requires_rust_abi, code = E0737)]
+pub(crate) struct RequiresRustAbi {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_null_on_export, code = E0648)]
+pub(crate) struct NullOnExport {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unsupported_instruction_set, code = E0779)]
+pub(crate) struct UnsuportedInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_instruction_set, code = E0779)]
+pub(crate) struct InvalidInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_bare_instruction_set, code = E0778)]
+pub(crate) struct BareInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_multiple_instruction_set, code = E0779)]
+pub(crate) struct MultipleInstructionSet {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_name_value_pair)]
+pub(crate) struct ExpectedNameValuePair {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_unexpected_parameter_name)]
+pub(crate) struct UnexpectedParameterName {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+    pub prefix_nops: Symbol,
+    pub entry_nops: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_literal_value)]
+pub(crate) struct InvalidLiteralValue {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_out_of_range_integer)]
+pub(crate) struct OutOfRangeInteger {
+    #[primary_span]
+    #[label]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_one_argument, code = E0534)]
+pub(crate) struct ExpectedOneArgument {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_one_argument, code = E0722)]
+pub(crate) struct ExpectedOneArgumentOptimize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_argument, code = E0535)]
+#[help]
+pub(crate) struct InvalidArgument {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_invalid_argument, code = E0722)]
+pub(crate) struct InvalidArgumentOptimize {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(codegen_ssa_copy_path_buf)]
 pub(crate) struct CopyPathBuf {
     pub source_file: PathBuf,
@@ -161,7 +265,7 @@ impl<'a> CopyPath<'a> {
 struct DebugArgPath<'a>(pub &'a Path);
 
 impl IntoDiagArg for DebugArgPath<'_> {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         DiagArgValue::Str(Cow::Owned(format!("{:?}", self.0)))
     }
 }
@@ -957,6 +1061,7 @@ pub enum InvalidMonomorphization<'tcx> {
     },
 
     #[diag(codegen_ssa_invalid_monomorphization_mask_type, code = E0511)]
+    #[note]
     MaskType {
         #[primary_span]
         span: Span,
@@ -1087,7 +1192,7 @@ pub enum ExpectedPointerMutability {
 }
 
 impl IntoDiagArg for ExpectedPointerMutability {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         match self {
             ExpectedPointerMutability::Mut => DiagArgValue::Str(Cow::Borrowed("*mut")),
             ExpectedPointerMutability::Not => DiagArgValue::Str(Cow::Borrowed("*_")),

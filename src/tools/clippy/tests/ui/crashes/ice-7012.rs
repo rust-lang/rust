@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(clippy::all)]
 
 enum _MyOption {

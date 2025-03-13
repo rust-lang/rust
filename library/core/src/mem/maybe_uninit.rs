@@ -203,7 +203,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
-/// use std::mem::{MaybeUninit, size_of, align_of};
+/// use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
 /// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
 /// ```
@@ -215,7 +215,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of};
+/// # use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
@@ -329,42 +329,6 @@ impl<T> MaybeUninit<T> {
     #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
-    }
-
-    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
-    ///
-    /// Note: in a future Rust version this method may become unnecessary
-    /// when Rust allows
-    /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
-    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
-    ///
-    /// use std::mem::MaybeUninit;
-    ///
-    /// unsafe extern "C" {
-    ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
-    /// }
-    ///
-    /// /// Returns a (possibly smaller) slice of data that was actually read
-    /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
-    ///     unsafe {
-    ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
-    ///         buf[..len].assume_init_ref()
-    ///     }
-    /// }
-    ///
-    /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
-    /// let data = read(&mut buf);
-    /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
-    #[must_use]
-    #[inline(always)]
-    pub const fn uninit_array<const N: usize>() -> [Self; N] {
-        [const { MaybeUninit::uninit() }; N]
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being

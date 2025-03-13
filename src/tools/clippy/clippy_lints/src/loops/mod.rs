@@ -747,7 +747,7 @@ pub struct Loops {
 impl Loops {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             enforce_iter_loop_reborrow: conf.enforce_iter_loop_reborrow,
         }
     }
@@ -832,8 +832,6 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             manual_while_let_some::check(cx, condition, body, span);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 impl Loops {
@@ -850,7 +848,7 @@ impl Loops {
     ) {
         let is_manual_memcpy_triggered = manual_memcpy::check(cx, pat, arg, body, expr);
         if !is_manual_memcpy_triggered {
-            manual_slice_fill::check(cx, pat, arg, body, expr, &self.msrv);
+            manual_slice_fill::check(cx, pat, arg, body, expr, self.msrv);
             needless_range_loop::check(cx, pat, arg, body, expr);
             explicit_counter_loop::check(cx, pat, arg, body, expr, label);
         }
@@ -858,8 +856,8 @@ impl Loops {
         for_kv_map::check(cx, pat, arg, body);
         mut_range_bound::check(cx, arg, body);
         single_element_loop::check(cx, pat, arg, body, expr);
-        same_item_push::check(cx, pat, arg, body, expr, &self.msrv);
-        manual_flatten::check(cx, pat, arg, body, span);
+        same_item_push::check(cx, pat, arg, body, expr, self.msrv);
+        manual_flatten::check(cx, pat, arg, body, span, self.msrv);
         manual_find::check(cx, pat, arg, body, span, expr);
         unused_enumerate_index::check(cx, pat, arg, body);
     }
@@ -868,7 +866,7 @@ impl Loops {
         if let ExprKind::MethodCall(method, self_arg, [], _) = arg.kind {
             match method.ident.as_str() {
                 "iter" | "iter_mut" => {
-                    explicit_iter_loop::check(cx, self_arg, arg, &self.msrv, self.enforce_iter_loop_reborrow);
+                    explicit_iter_loop::check(cx, self_arg, arg, self.msrv, self.enforce_iter_loop_reborrow);
                 },
                 "into_iter" => {
                     explicit_into_iter_loop::check(cx, self_arg, arg);

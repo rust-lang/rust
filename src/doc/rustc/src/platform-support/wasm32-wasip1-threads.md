@@ -100,7 +100,7 @@ This target is not a stable target. This means that there are a few engines
 which implement the `wasi-threads` feature and if they do they're likely behind a
 flag, for example:
 
-* Wasmtime - `--wasm-features=threads --wasi-modules=experimental-wasi-threads`
+* Wasmtime - `--wasi threads`
 * [WAMR](https://github.com/bytecodealliance/wasm-micro-runtime) - needs to be built with WAMR_BUILD_LIB_WASI_THREADS=1
 
 ## Building the target

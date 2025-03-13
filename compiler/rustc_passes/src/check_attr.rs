@@ -14,6 +14,7 @@ use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalModDefId;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{
@@ -51,7 +52,7 @@ fn target_from_impl_item<'tcx>(tcx: TyCtxt<'tcx>, impl_item: &hir::ImplItem<'_>)
         hir::ImplItemKind::Const(..) => Target::AssocConst,
         hir::ImplItemKind::Fn(..) => {
             let parent_def_id = tcx.hir_get_parent_item(impl_item.hir_id()).def_id;
-            let containing_item = tcx.hir().expect_item(parent_def_id);
+            let containing_item = tcx.hir_expect_item(parent_def_id);
             let containing_impl_is_for_trait = match &containing_item.kind {
                 hir::ItemKind::Impl(impl_) => impl_.of_trait.is_some(),
                 _ => bug!("parent of an ImplItem must be an Impl"),
@@ -80,13 +81,13 @@ pub(crate) enum ProcMacroKind {
 }
 
 impl IntoDiagArg for ProcMacroKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         match self {
             ProcMacroKind::Attribute => "attribute proc macro",
             ProcMacroKind::Derive => "derive proc macro",
             ProcMacroKind::FunctionLike => "function-like proc macro",
         }
-        .into_diag_arg()
+        .into_diag_arg(&mut None)
     }
 }
 
@@ -113,7 +114,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         let mut doc_aliases = FxHashMap::default();
         let mut specified_inline = None;
         let mut seen = FxHashMap::default();
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             match attr {
                 Attribute::Parsed(AttributeKind::Confusables { first_span, .. }) => {
@@ -256,6 +257,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::coroutine, ..] => {
                             self.check_coroutine(attr, target);
+                        }
+                        [sym::type_const, ..] => {
+                            self.check_type_const(hir_id,attr, target);
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent(attr.span(), span, attrs),
@@ -895,7 +899,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         if let Some(location) = match target {
             Target::AssocTy => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir().expect_item(parent_def_id);
+                let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 if Target::from_item(containing_item) == Target::Impl {
                     Some("type alias in implementation block")
                 } else {
@@ -904,7 +908,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
             Target::AssocConst => {
                 let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id;
-                let containing_item = self.tcx.hir().expect_item(parent_def_id);
+                let containing_item = self.tcx.hir_expect_item(parent_def_id);
                 // We can't link to trait impl's consts.
                 let err = "associated constant in trait implementation block";
                 match containing_item.kind {
@@ -919,7 +923,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             | Target::Arm
             | Target::ForeignMod
             | Target::Closure
-            | Target::Impl => Some(target.name()),
+            | Target::Impl
+            | Target::WherePredicate => Some(target.name()),
             Target::ExternCrate
             | Target::Use
             | Target::Static
@@ -947,7 +952,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             tcx.dcx().emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return;
         }
-        let item_name = self.tcx.hir().name(hir_id);
+        let item_name = self.tcx.hir_name(hir_id);
         if item_name == doc_alias {
             tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str });
             return;
@@ -1476,7 +1481,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         // `#[must_use]` can be applied to a trait method definition with a default body
         if let Target::Method(MethodKind::Trait { body: true }) = target
             && let parent_def_id = self.tcx.hir_get_parent_item(hir_id).def_id
-            && let containing_item = self.tcx.hir().expect_item(parent_def_id)
+            && let containing_item = self.tcx.hir_expect_item(parent_def_id)
             && let hir::ItemKind::Trait(..) = containing_item.kind
         {
             return;
@@ -1993,7 +1998,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     // catch `repr()` with no arguments, applied to an item (i.e. not `#![repr()]`)
                     if item.is_some() {
                         match target {
-                            Target::Struct | Target::Union | Target::Enum => {}
+                            Target::Struct | Target::Union | Target::Enum => continue,
                             Target::Fn | Target::Method(_) => {
                                 feature_err(
                                     &self.tcx.sess,
@@ -2518,6 +2523,23 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
+    fn check_type_const(&self, hir_id: HirId, attr: &Attribute, target: Target) {
+        let tcx = self.tcx;
+        if target == Target::AssocConst
+            && let parent = tcx.parent(hir_id.expect_owner().to_def_id())
+            && self.tcx.def_kind(parent) == DefKind::Trait
+        {
+            return;
+        } else {
+            self.dcx()
+                .struct_span_err(
+                    attr.span(),
+                    "`#[type_const]` must only be applied to trait associated constants",
+                )
+                .emit();
+        }
+    }
+
     fn check_linkage(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
             Target::Fn
@@ -2550,7 +2572,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match (target, force_inline_attr) {
             (Target::Closure, None) => {
                 let is_coro = matches!(
-                    self.tcx.hir().expect_expr(hir_id).kind,
+                    self.tcx.hir_expect_expr(hir_id).kind,
                     hir::ExprKind::Closure(hir::Closure {
                         kind: hir::ClosureKind::Coroutine(..)
                             | hir::ClosureKind::CoroutineClosure(..),
@@ -2612,6 +2634,31 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         let target = Target::from_item(item);
         self.check_attributes(item.hir_id(), item.span, target, Some(ItemLike::Item(item)));
         intravisit::walk_item(self, item)
+    }
+
+    fn visit_where_predicate(&mut self, where_predicate: &'tcx hir::WherePredicate<'tcx>) {
+        // FIXME(where_clause_attrs): Currently, as the following check shows,
+        // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
+        // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
+        // in where clauses. After that, only `self.check_attributes` should be enough.
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        let spans = self
+            .tcx
+            .hir_attrs(where_predicate.hir_id)
+            .iter()
+            .filter(|attr| !ATTRS_ALLOWED.iter().any(|&sym| attr.has_name(sym)))
+            .map(|attr| attr.span())
+            .collect::<Vec<_>>();
+        if !spans.is_empty() {
+            self.tcx.dcx().emit_err(errors::UnsupportedAttributesInWhere { span: spans.into() });
+        }
+        self.check_attributes(
+            where_predicate.hir_id,
+            where_predicate.span,
+            Target::WherePredicate,
+            None,
+        );
+        intravisit::walk_where_predicate(self, where_predicate)
     }
 
     fn visit_generic_param(&mut self, generic_param: &'tcx hir::GenericParam<'tcx>) {
@@ -2766,7 +2813,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
 }
 
 fn check_non_exported_macro_for_invalid_attrs(tcx: TyCtxt<'_>, item: &Item<'_>) {
-    let attrs = tcx.hir().attrs(item.hir_id());
+    let attrs = tcx.hir_attrs(item.hir_id());
 
     for attr in attrs {
         if attr.has_name(sym::inline) {

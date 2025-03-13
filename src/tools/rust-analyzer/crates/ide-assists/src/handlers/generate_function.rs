@@ -724,9 +724,9 @@ fn fn_generic_params(
     filter_unnecessary_bounds(&mut generic_params, &mut where_preds, necessary_params);
     filter_bounds_in_scope(&mut generic_params, &mut where_preds, ctx, target);
 
-    let generic_params: Vec<_> =
+    let generic_params: Vec<ast::GenericParam> =
         generic_params.into_iter().map(|it| it.node.clone_for_update()).collect();
-    let where_preds: Vec<_> =
+    let where_preds: Vec<ast::WherePred> =
         where_preds.into_iter().map(|it| it.node.clone_for_update()).collect();
 
     // 4. Rewrite paths
@@ -1037,7 +1037,7 @@ fn filter_bounds_in_scope(
 
 /// Makes duplicate argument names unique by appending incrementing numbers.
 ///
-/// ```
+/// ```ignore
 /// let mut names: Vec<String> =
 ///     vec!["foo".into(), "foo".into(), "bar".into(), "baz".into(), "bar".into()];
 /// deduplicate_arg_names(&mut names);
@@ -1116,9 +1116,12 @@ fn fn_arg_type(
 
         if ty.is_reference() || ty.is_mutable_reference() {
             let famous_defs = &FamousDefs(&ctx.sema, ctx.sema.scope(fn_arg.syntax())?.krate());
-            let target_edition = target_module.krate().edition(ctx.db());
             convert_reference_type(ty.strip_references(), ctx.db(), famous_defs)
-                .map(|conversion| conversion.convert_type(ctx.db(), target_edition).to_string())
+                .map(|conversion| {
+                    conversion
+                        .convert_type(ctx.db(), target_module.krate().to_display_target(ctx.db()))
+                        .to_string()
+                })
                 .or_else(|| ty.display_source_code(ctx.db(), target_module.into(), true).ok())
         } else {
             ty.display_source_code(ctx.db(), target_module.into(), true).ok()

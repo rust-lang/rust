@@ -1,5 +1,5 @@
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/hkl_forbidden2.rs:14:5
+  --> $DIR/hkl_forbidden2.rs:15:5
    |
 LL | type Opaque<'a> = impl Sized + 'a;
    |             -- this generic parameter must be used with a generic lifetime parameter

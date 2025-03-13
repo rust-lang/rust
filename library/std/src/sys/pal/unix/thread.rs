@@ -59,7 +59,7 @@ impl Thread {
             assert_eq!(
                 libc::pthread_attr_setstacksize(
                     attr.as_mut_ptr(),
-                    cmp::max(stack, min_stack_size(&attr))
+                    cmp::max(stack, min_stack_size(attr.as_ptr()))
                 ),
                 0
             );
@@ -188,6 +188,9 @@ impl Thread {
     }
 
     #[cfg(any(target_os = "solaris", target_os = "illumos", target_os = "nto"))]
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[no_sanitize(cfi)]
     pub fn set_name(name: &CStr) {
         weak! {
             fn pthread_setname_np(
@@ -372,7 +375,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                 quota = cgroups::quota().max(1);
                 let mut set: libc::cpu_set_t = unsafe { mem::zeroed() };
                 unsafe {
-                    if libc::sched_getaffinity(0, mem::size_of::<libc::cpu_set_t>(), &mut set) == 0 {
+                    if libc::sched_getaffinity(0, size_of::<libc::cpu_set_t>(), &mut set) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
                         let count = count.min(quota);
 
@@ -412,7 +415,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
                         libc::CPU_LEVEL_WHICH,
                         libc::CPU_WHICH_PID,
                         -1,
-                        mem::size_of::<libc::cpuset_t>(),
+                        size_of::<libc::cpuset_t>(),
                         &mut set,
                     ) == 0 {
                         let count = libc::CPU_COUNT(&set) as usize;
@@ -447,7 +450,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
 
             let mut cpus: libc::c_uint = 0;
-            let mut cpus_size = crate::mem::size_of_val(&cpus);
+            let mut cpus_size = size_of_val(&cpus);
 
             unsafe {
                 cpus = libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as libc::c_uint;
@@ -480,7 +483,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             unsafe {
                 use libc::_syspage_ptr;
                 if _syspage_ptr.is_null() {
-                    Err(io::const_error!(io::ErrorKind::NotFound, "No syspage available"))
+                    Err(io::const_error!(io::ErrorKind::NotFound, "no syspage available"))
                 } else {
                     let cpus = (*_syspage_ptr).num_cpu;
                     NonZero::new(cpus as usize)
@@ -520,7 +523,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             }
         } else {
             // FIXME: implement on Redox, l4re
-            Err(io::const_error!(io::ErrorKind::Unsupported, "Getting the number of hardware threads is not supported on the target platform"))
+            Err(io::const_error!(io::ErrorKind::Unsupported, "getting the number of hardware threads is not supported on the target platform"))
         }
     }
 }

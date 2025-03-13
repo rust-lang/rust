@@ -20,7 +20,7 @@ help: the return type of this call is `{integer}` due to the type of the argumen
 LL |     <F as FnOnce(&mut u8)>::call_once(f, 1)
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-^
    |                                          |
-   |                                          this argument influences the return type of `FnOnce`
+   |                                          this argument influences the return type of `call_once`
 note: method defined here
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
 

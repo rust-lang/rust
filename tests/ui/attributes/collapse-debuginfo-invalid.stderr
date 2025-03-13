@@ -176,7 +176,7 @@ LL | type AFoobar = impl Foobar;
    | --------------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:92:1
+  --> $DIR/collapse-debuginfo-invalid.rs:93:1
    |
 LL |   #[collapse_debuginfo(yes)]
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -200,7 +200,7 @@ LL |     type Bar;
    |     --------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:95:5
+  --> $DIR/collapse-debuginfo-invalid.rs:96:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -209,7 +209,7 @@ LL |     const FOO: u32 = 3;
    |     ------------------- not a macro definition
 
 error: `collapse_debuginfo` attribute should be applied to macro definitions
-  --> $DIR/collapse-debuginfo-invalid.rs:99:5
+  --> $DIR/collapse-debuginfo-invalid.rs:100:5
    |
 LL |     #[collapse_debuginfo(yes)]
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^

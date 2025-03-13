@@ -12,7 +12,7 @@ LL | |     }
    = help: to override `-D warnings` add `#[allow(clippy::needless_bool_assign)]`
 
 error: this if-then-else expression assigns a bool literal
-  --> tests/ui/needless_bool_assign.rs:18:5
+  --> tests/ui/needless_bool_assign.rs:19:5
    |
 LL | /     if random() && random() {
 LL | |         a.field = false;
@@ -22,7 +22,7 @@ LL | |     }
    | |_____^ help: you can reduce it to: `a.field = !(random() && random());`
 
 error: this if-then-else expression assigns a bool literal
-  --> tests/ui/needless_bool_assign.rs:32:5
+  --> tests/ui/needless_bool_assign.rs:34:5
    |
 LL | /     if random() {
 LL | |         a.field = true;
@@ -32,7 +32,7 @@ LL | |     }
    | |_____^ help: you can reduce it to: `random(); a.field = true;`
 
 error: this `if` has identical blocks
-  --> tests/ui/needless_bool_assign.rs:32:17
+  --> tests/ui/needless_bool_assign.rs:34:17
    |
 LL |       if random() {
    |  _________________^
@@ -41,7 +41,7 @@ LL | |     } else {
    | |_____^
    |
 note: same as this
-  --> tests/ui/needless_bool_assign.rs:34:12
+  --> tests/ui/needless_bool_assign.rs:36:12
    |
 LL |       } else {
    |  ____________^

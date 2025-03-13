@@ -19,6 +19,7 @@ type Sendable = impl Send + Duh;
 
 type Foo = impl Trait<Assoc = Sendable>;
 
+#[define_opaque(Foo)]
 fn foo() -> Foo {
     || 42
 }

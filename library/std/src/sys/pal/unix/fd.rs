@@ -251,6 +251,9 @@ impl FileDesc {
     }
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[no_sanitize(cfi)]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
         super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
 

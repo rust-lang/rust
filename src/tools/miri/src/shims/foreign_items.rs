@@ -766,6 +766,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -788,6 +796,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -827,6 +843,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     _ => bug!(),
                 };
                 let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res.to_soft(),
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -849,6 +873,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -874,7 +906,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
@@ -885,7 +922,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
 
@@ -947,20 +989,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this, link_name, abi, args, dest,
                 );
             }
-            // FIXME: Move these to an `arm` submodule.
-            "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
-                let [arg] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let arg = this.read_scalar(arg)?.to_i32()?;
-                match arg {
-                    // SY ("full system scope")
-                    15 => {
-                        this.yield_active_thread();
-                    }
-                    _ => {
-                        throw_unsup_format!("unsupported llvm.aarch64.isb argument {}", arg);
-                    }
-                }
+            name if name.starts_with("llvm.aarch64.") && this.tcx.sess.target.arch == "aarch64" => {
+                return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
             }
+            // FIXME: Move this to an `arm` submodule.
             "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
                 let [arg] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;

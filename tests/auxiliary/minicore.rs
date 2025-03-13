@@ -25,7 +25,8 @@
     naked_functions,
     f16,
     f128,
-    asm_experimental_arch
+    asm_experimental_arch,
+    unboxed_closures
 )]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 #![no_std]
@@ -61,7 +62,7 @@ pub auto trait Unpin {}
 
 impl_marker_trait!(
     Copy => [
-        bool, char,
+        char, bool,
         isize, i8, i16, i32, i64, i128,
         usize, u8, u16, u32, u64, u128,
         f16, f32, f64, f128,
@@ -102,6 +103,9 @@ pub struct UnsafeCell<T: ?Sized> {
 }
 impl<T: ?Sized> !Freeze for UnsafeCell<T> {}
 
+#[lang = "tuple_trait"]
+pub trait Tuple {}
+
 #[rustc_builtin_macro]
 pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
     /* compiler built-in */
@@ -128,4 +132,62 @@ macro_rules! stringify {
     ($($t:tt)*) => {
         /* compiler built-in */
     };
+}
+
+#[lang = "add"]
+pub trait Add<Rhs = Self> {
+    type Output;
+
+    fn add(self, _: Rhs) -> Self::Output;
+}
+
+impl Add<isize> for isize {
+    type Output = isize;
+
+    fn add(self, other: isize) -> isize {
+        7 // avoid needing to add all of the overflow handling and panic language items
+    }
+}
+
+#[lang = "sync"]
+trait Sync {}
+impl Sync for u8 {}
+
+#[lang = "drop_in_place"]
+fn drop_in_place<T>(_: *mut T) {}
+
+#[lang = "fn_once"]
+pub trait FnOnce<Args: Tuple> {
+    #[lang = "fn_once_output"]
+    type Output;
+
+    extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
+}
+
+#[lang = "fn_mut"]
+pub trait FnMut<Args: Tuple>: FnOnce<Args> {
+    extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+
+#[lang = "fn"]
+pub trait Fn<Args: Tuple>: FnMut<Args> {
+    extern "rust-call" fn call(&self, args: Args) -> Self::Output;
+}
+
+#[lang = "dispatch_from_dyn"]
+trait DispatchFromDyn<T> {}
+
+impl<'a, T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<&'a U> for &'a T {}
+
+#[lang = "unsize"]
+trait Unsize<T: ?Sized> {}
+
+#[lang = "coerce_unsized"]
+pub trait CoerceUnsized<T: ?Sized> {}
+
+impl<'a, 'b: 'a, T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<&'a U> for &'b T {}
+
+#[lang = "drop"]
+trait Drop {
+    fn drop(&mut self);
 }

@@ -1,5 +1,5 @@
 error: unneeded sub `cfg` when there is no condition
-  --> tests/ui/non_minimal_cfg2.rs:3:7
+  --> tests/ui/non_minimal_cfg2.rs:4:7
    |
 LL | #[cfg(all())]
    |       ^^^^^

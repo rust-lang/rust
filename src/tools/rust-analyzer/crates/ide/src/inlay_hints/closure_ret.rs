@@ -1,8 +1,8 @@
 //! Implementation of "closure return type" inlay hints.
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
+use hir::DisplayTarget;
 use ide_db::famous_defs::FamousDefs;
-use span::EditionedFileId;
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -14,7 +14,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
+    display_target: DisplayTarget,
     closure: ast::ClosureExpr,
 ) -> Option<()> {
     if config.closure_return_type_hints == ClosureReturnTypeHints::Never {
@@ -43,7 +43,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
+    let mut label = label_of_ty(famous_defs, config, &ty, display_target)?;
 
     if arrow.is_none() {
         label.prepend_str(" -> ");

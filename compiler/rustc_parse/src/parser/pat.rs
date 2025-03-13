@@ -2,7 +2,8 @@ use std::ops::Bound;
 
 use rustc_ast::mut_visit::{self, MutVisitor};
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token};
+use rustc_ast::token::NtPatKind::*;
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, MetaVarKind, Token};
 use rustc_ast::util::parser::ExprPrecedence;
 use rustc_ast::visit::{self, Visitor};
 use rustc_ast::{
@@ -30,7 +31,7 @@ use crate::errors::{
     UnexpectedVertVertInPattern, WrapInParens,
 };
 use crate::parser::expr::{DestructuredFloat, could_be_unclosed_char_literal};
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Expected {
@@ -357,7 +358,7 @@ impl<'a> Parser<'a> {
             )
         });
         match (is_end_ahead, &self.token.kind) {
-            (true, token::BinOp(token::Or) | token::OrOr) => {
+            (true, token::Or | token::OrOr) => {
                 // A `|` or possibly `||` token shouldn't be here. Ban it.
                 self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
@@ -431,7 +432,11 @@ impl<'a> Parser<'a> {
         // `[` is included for indexing operations,
         // `[]` is excluded as `a[]` isn't an expression and should be recovered as `a, []` (cf. `tests/ui/parser/pat-lt-bracket-7.rs`),
         // `as` is included for type casts
-        let has_trailing_operator = matches!(self.token.kind, token::BinOp(op) if op != BinOpToken::Or)
+        let has_trailing_operator = matches!(
+                self.token.kind,
+                token::Plus | token::Minus | token::Star | token::Slash | token::Percent
+                | token::Caret | token::And | token::Shl | token::Shr // excludes `Or`
+            )
             || self.token == token::Question
             || (self.token == token::OpenDelim(Delimiter::Bracket)
                 && self.look_ahead(1, |t| *t != token::CloseDelim(Delimiter::Bracket))) // excludes `[]`
@@ -689,6 +694,27 @@ impl<'a> Parser<'a> {
         PatVisitor { parser: self, stmt, arm: None, field: None }.visit_stmt(stmt);
     }
 
+    fn eat_metavar_pat(&mut self) -> Option<P<Pat>> {
+        // Must try both kinds of pattern nonterminals.
+        if let Some(pat) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Pat(PatParam { .. })),
+            |this| this.parse_pat_no_top_alt(None, None),
+        ) {
+            Some(pat)
+        } else if let Some(pat) = self.eat_metavar_seq(MetaVarKind::Pat(PatWithOr), |this| {
+            this.parse_pat_no_top_guard(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )
+        }) {
+            Some(pat)
+        } else {
+            None
+        }
+    }
+
     /// Parses a pattern, with a setting whether modern range patterns (e.g., `a..=b`, `a..b` are
     /// allowed).
     fn parse_pat_with_range_pat(
@@ -698,7 +724,10 @@ impl<'a> Parser<'a> {
         syntax_loc: Option<PatternLocation>,
     ) -> PResult<'a, P<Pat>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
-        maybe_whole!(self, NtPat, |pat| pat);
+
+        if let Some(pat) = self.eat_metavar_pat() {
+            return Ok(pat);
+        }
 
         let mut lo = self.token.span;
 
@@ -738,7 +767,7 @@ impl<'a> Parser<'a> {
             self.recover_dotdotdot_rest_pat(lo)
         } else if let Some(form) = self.parse_range_end() {
             self.parse_pat_range_to(form)? // `..=X`, `...X`, or `..X`.
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             // Parse `!`
             self.psess.gated_spans.gate(sym::never_patterns, self.prev_token.span);
             PatKind::Never
@@ -794,7 +823,7 @@ impl<'a> Parser<'a> {
             };
             let span = lo.to(self.prev_token.span);
 
-            if qself.is_none() && self.check(exp!(Not)) {
+            if qself.is_none() && self.check(exp!(Bang)) {
                 self.parse_pat_mac_invoc(path)?
             } else if let Some(form) = self.parse_range_end() {
                 let begin = self.mk_expr(span, ExprKind::Path(qself, path));
@@ -1043,10 +1072,8 @@ impl<'a> Parser<'a> {
         self.recover_additional_muts();
 
         // Make sure we don't allow e.g. `let mut $p;` where `$p:pat`.
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtPat(..) = &**nt {
-                self.expected_ident_found_err().emit();
-            }
+        if let Some(MetaVarKind::Pat(_)) = self.token.is_metavar_seq() {
+            self.expected_ident_found_err().emit();
         }
 
         // Parse the pattern we hope to be an identifier.
@@ -1232,7 +1259,7 @@ impl<'a> Parser<'a> {
             || self.look_ahead(dist, |t| {
                 t.is_path_start() // e.g. `MY_CONST`;
                 || *t == token::Dot // e.g. `.5` for recovery;
-                || matches!(t.kind, token::Literal(..) | token::BinOp(token::Minus))
+                || matches!(t.kind, token::Literal(..) | token::Minus)
                 || t.is_bool_lit()
                 || t.is_whole_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
@@ -1308,7 +1335,7 @@ impl<'a> Parser<'a> {
             | token::OpenDelim(Delimiter::Brace) // A struct pattern.
             | token::DotDotDot | token::DotDotEq | token::DotDot // A range pattern.
             | token::PathSep // A tuple / struct variant pattern.
-            | token::Not)) // A macro expanding to a pattern.
+            | token::Bang)) // A macro expanding to a pattern.
     }
 
     /// Parses `ident` or `ident @ pat`.

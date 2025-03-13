@@ -11,7 +11,7 @@
 //! Ideally, we should use a proper "model selection" to directly compare
 //! quadratic and linear models, but that sounds rather complicated:
 //!
-//!     https://stats.stackexchange.com/questions/21844/selecting-best-model-based-on-linear-quadratic-and-cubic-fit-of-data
+//! > https://stats.stackexchange.com/questions/21844/selecting-best-model-based-on-linear-quadratic-and-cubic-fit-of-data
 //!
 //! We might get false positives on a VM, but never false negatives. So, if the
 //! first round fails, we repeat the ordeal three more times and fail only if

@@ -3,20 +3,19 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
+use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{AttrStyle, DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
-use rustc_attr_parsing::{AttributeKind, PrintAttribute};
+use rustc_attr_data_structures::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
     HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
@@ -118,9 +117,9 @@ impl<'a> State<'a> {
                 self.hardbreak()
             }
             hir::Attribute::Parsed(pa) => {
-                self.word("#[attr=\"");
+                self.word("#[attr = ");
                 pa.print_attribute(self);
-                self.word("\")]");
+                self.word("]");
                 self.hardbreak()
             }
         }
@@ -553,24 +552,6 @@ impl<'a> State<'a> {
         self.word(";")
     }
 
-    fn print_item_type(
-        &mut self,
-        item: &hir::Item<'_>,
-        generics: &hir::Generics<'_>,
-        inner: impl Fn(&mut Self),
-    ) {
-        self.head("type");
-        self.print_ident(item.ident);
-        self.print_generic_params(generics.params);
-        self.end(); // end the inner ibox
-
-        self.print_where_clause(generics);
-        self.space();
-        inner(self);
-        self.word(";");
-        self.end(); // end the outer ibox
-    }
-
     fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
@@ -683,10 +664,17 @@ impl<'a> State<'a> {
                 self.end()
             }
             hir::ItemKind::TyAlias(ty, generics) => {
-                self.print_item_type(item, generics, |state| {
-                    state.word_space("=");
-                    state.print_type(ty);
-                });
+                self.head("type");
+                self.print_ident(item.ident);
+                self.print_generic_params(generics.params);
+                self.end(); // end the inner ibox
+
+                self.print_where_clause(generics);
+                self.space();
+                self.word_space("=");
+                self.print_type(ty);
+                self.word(";");
+                self.end(); // end the outer ibox
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident.name, item.span);
@@ -1296,12 +1284,11 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = AssocOp::from_ast_binop(op.node);
-        let binop_prec = assoc_op.precedence();
+        let binop_prec = op.node.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.node.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
@@ -1414,7 +1401,8 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Const { ref anon_const } => {
                     s.word("const");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    // Not using `print_inline_const` to avoid additional `const { ... }`
+                    s.ann.nested(s, Nested::Body(anon_const.body))
                 }
                 hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");
@@ -1469,6 +1457,10 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.print_expr_method_call(segment, receiver, args);
+            }
+            hir::ExprKind::Use(expr, _) => {
+                self.print_expr(expr);
+                self.word(".use");
             }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -1869,17 +1861,10 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.kind {
-            TyPatKind::Range(begin, end, end_kind) => {
-                if let Some(expr) = begin {
-                    self.print_const_arg(expr);
-                }
-                match end_kind {
-                    RangeEnd::Included => self.word("..."),
-                    RangeEnd::Excluded => self.word(".."),
-                }
-                if let Some(expr) = end {
-                    self.print_const_arg(expr);
-                }
+            TyPatKind::Range(begin, end) => {
+                self.print_const_arg(begin);
+                self.word("..=");
+                self.print_const_arg(end);
             }
             TyPatKind::Err(_) => {
                 self.popen();
@@ -2227,6 +2212,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
             hir::CaptureBy::Value { .. } => self.word_space("move"),
+            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
         }
     }
@@ -2386,6 +2372,7 @@ impl<'a> State<'a> {
     }
 
     fn print_where_predicate(&mut self, predicate: &hir::WherePredicate<'_>) {
+        self.print_attrs_as_outer(self.attrs(predicate.hir_id));
         match *predicate.kind {
             hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params,

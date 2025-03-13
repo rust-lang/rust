@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/lazy_subtyping_of_opaques.rs:11:5
+  --> $DIR/lazy_subtyping_of_opaques.rs:12:5
    |
 LL | fn reify_as_tait() -> Thunk<Tait> {
    |                       ----------- expected `Thunk<_>` because of return type
@@ -11,7 +11,7 @@ LL |     Thunk::new(|cont| cont)
            found unit type `()`
 
 error[E0277]: expected a `FnOnce()` closure, found `()`
-  --> $DIR/lazy_subtyping_of_opaques.rs:11:23
+  --> $DIR/lazy_subtyping_of_opaques.rs:12:23
    |
 LL |     Thunk::new(|cont| cont)
    |                       ^^^^ expected an `FnOnce()` closure, found `()`
@@ -20,7 +20,7 @@ LL |     Thunk::new(|cont| cont)
    = note: wrap the `()` in a closure with no arguments: `|| { /* code */ }`
 
 error[E0277]: expected a `FnOnce()` closure, found `()`
-  --> $DIR/lazy_subtyping_of_opaques.rs:9:23
+  --> $DIR/lazy_subtyping_of_opaques.rs:10:23
    |
 LL | fn reify_as_tait() -> Thunk<Tait> {
    |                       ^^^^^^^^^^^ expected an `FnOnce()` closure, found `()`

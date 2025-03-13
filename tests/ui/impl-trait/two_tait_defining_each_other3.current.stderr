@@ -1,5 +1,5 @@
 error: opaque type's hidden type cannot be another opaque type from the same scope
-  --> $DIR/two_tait_defining_each_other3.rs:14:16
+  --> $DIR/two_tait_defining_each_other3.rs:15:16
    |
 LL |         return x;  // B's hidden type is A (opaquely)
    |                ^ one of the two opaque types used here has to be outside its defining scope

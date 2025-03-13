@@ -725,6 +725,12 @@ passes_target_feature_on_statement =
     .warn = {-passes_previously_accepted}
     .label = {passes_should_be_applied_to_fn.label}
 
+passes_trait_impl_const_stability_mismatch = const stability on the impl does not match the const stability on the trait
+passes_trait_impl_const_stability_mismatch_impl_stable = this impl is (implicitly) stable...
+passes_trait_impl_const_stability_mismatch_impl_unstable = this impl is unstable...
+passes_trait_impl_const_stability_mismatch_trait_stable = ...but the trait is stable
+passes_trait_impl_const_stability_mismatch_trait_unstable = ...but the trait is unstable
+
 passes_trait_impl_const_stable =
     trait implementations cannot be const stable yet
     .note = see issue #67792 <https://github.com/rust-lang/rust/issues/67792> for more information
@@ -772,6 +778,10 @@ passes_unstable_attr_for_already_stable_feature =
     .label = this feature is already stable
     .item = the stability attribute annotates this item
     .help = consider removing the attribute
+
+passes_unsupported_attributes_in_where =
+    most attributes are not supported in `where` clauses
+    .help = only `#[cfg]` and `#[cfg_attr]` are supported
 
 passes_unused =
     unused attribute

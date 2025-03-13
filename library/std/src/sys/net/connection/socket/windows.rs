@@ -381,7 +381,7 @@ impl Socket {
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
         let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
-        let mut addrlen = mem::size_of_val(&storage) as netc::socklen_t;
+        let mut addrlen = size_of_val(&storage) as netc::socklen_t;
         let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
@@ -514,13 +514,13 @@ impl Socket {
 
     // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> c::SOCKET {
-        debug_assert_eq!(mem::size_of::<c::SOCKET>(), mem::size_of::<RawSocket>());
-        debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
+        debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
+        debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
         self.as_inner().as_raw_socket() as c::SOCKET
     }
     pub unsafe fn from_raw(raw: c::SOCKET) -> Self {
-        debug_assert_eq!(mem::size_of::<c::SOCKET>(), mem::size_of::<RawSocket>());
-        debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
+        debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
+        debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
         unsafe { Self::from_raw_socket(raw as RawSocket) }
     }
 }

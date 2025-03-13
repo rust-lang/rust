@@ -39,7 +39,7 @@ pub use crate::format::*;
 use crate::ptr::P;
 use crate::token::{self, CommentKind, Delimiter};
 use crate::tokenstream::{DelimSpan, LazyAttrTokenStream, TokenStream};
-use crate::util::parser::{AssocOp, ExprPrecedence};
+use crate::util::parser::{ExprPrecedence, Fixity};
 
 /// A "Label" is an identifier of some point in sources,
 /// e.g. in the following code:
@@ -124,10 +124,19 @@ impl Path {
         self.segments.first().is_some_and(|segment| segment.ident.name == kw::PathRoot)
     }
 
-    /// If this path is a single identifier with no arguments, does not ensure
-    /// that the path resolves to a const param, the caller should check this.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
-        matches!(self.segments[..], [PathSegment { args: None, .. }])
+    /// Check if this path is potentially a trivial const arg, i.e., one that can _potentially_
+    /// be represented without an anon const in the HIR.
+    ///
+    /// If `allow_mgca_arg` is true (as should be the case in most situations when
+    /// `#![feature(min_generic_const_args)]` is enabled), then this always returns true
+    /// because all paths are valid.
+    ///
+    /// Otherwise, it returns true iff the path has exactly one segment, and it has no generic args
+    /// (i.e., it is _potentially_ a const parameter).
+    #[tracing::instrument(level = "debug", ret)]
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
+        allow_mgca_arg
+            || self.segments.len() == 1 && self.segments.iter().all(|seg| seg.args.is_none())
     }
 }
 
@@ -417,9 +426,11 @@ impl WhereClause {
 /// A single predicate in a where-clause.
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct WherePredicate {
+    pub attrs: AttrVec,
     pub kind: WherePredicateKind,
     pub id: NodeId,
     pub span: Span,
+    pub is_placeholder: bool,
 }
 
 /// Predicate kind in where-clause.
@@ -937,8 +948,37 @@ impl BinOpKind {
         matches!(self, BinOpKind::And | BinOpKind::Or)
     }
 
+    pub fn precedence(&self) -> ExprPrecedence {
+        use BinOpKind::*;
+        match *self {
+            Mul | Div | Rem => ExprPrecedence::Product,
+            Add | Sub => ExprPrecedence::Sum,
+            Shl | Shr => ExprPrecedence::Shift,
+            BitAnd => ExprPrecedence::BitAnd,
+            BitXor => ExprPrecedence::BitXor,
+            BitOr => ExprPrecedence::BitOr,
+            Lt | Gt | Le | Ge | Eq | Ne => ExprPrecedence::Compare,
+            And => ExprPrecedence::LAnd,
+            Or => ExprPrecedence::LOr,
+        }
+    }
+
+    pub fn fixity(&self) -> Fixity {
+        use BinOpKind::*;
+        match self {
+            Eq | Ne | Lt | Le | Gt | Ge => Fixity::None,
+            Add | Sub | Mul | Div | Rem | And | Or | BitXor | BitAnd | BitOr | Shl | Shr => {
+                Fixity::Left
+            }
+        }
+    }
+
     pub fn is_comparison(self) -> bool {
-        crate::util::parser::AssocOp::from_ast_binop(self).is_comparison()
+        use BinOpKind::*;
+        match self {
+            Eq | Ne | Lt | Le | Gt | Ge => true,
+            Add | Sub | Mul | Div | Rem | And | Or | BitXor | BitAnd | BitOr | Shl | Shr => false,
+        }
     }
 
     /// Returns `true` if the binary operator takes its arguments by value.
@@ -1177,22 +1217,31 @@ pub struct Expr {
 }
 
 impl Expr {
-    /// Could this expr be either `N`, or `{ N }`, where `N` is a const parameter.
+    /// Check if this expression is potentially a trivial const arg, i.e., one that can _potentially_
+    /// be represented without an anon const in the HIR.
     ///
-    /// If this is not the case, name resolution does not resolve `N` when using
-    /// `min_const_generics` as more complex expressions are not supported.
+    /// This will unwrap at most one block level (curly braces). After that, if the expression
+    /// is a path, it mostly dispatches to [`Path::is_potential_trivial_const_arg`].
+    /// See there for more info about `allow_mgca_arg`.
     ///
-    /// Does not ensure that the path resolves to a const param, the caller should check this.
+    /// The only additional thing to note is that when `allow_mgca_arg` is false, this function
+    /// will only allow paths with no qself, before dispatching to the `Path` function of
+    /// the same name.
+    ///
+    /// Does not ensure that the path resolves to a const param/item, the caller should check this.
     /// This also does not consider macros, so it's only correct after macro-expansion.
-    pub fn is_potential_trivial_const_arg(&self) -> bool {
+    pub fn is_potential_trivial_const_arg(&self, allow_mgca_arg: bool) -> bool {
         let this = self.maybe_unwrap_block();
-
-        if let ExprKind::Path(None, path) = &this.kind
-            && path.is_potential_trivial_const_arg()
-        {
-            true
+        if allow_mgca_arg {
+            matches!(this.kind, ExprKind::Path(..))
         } else {
-            false
+            if let ExprKind::Path(None, path) = &this.kind
+                && path.is_potential_trivial_const_arg(allow_mgca_arg)
+            {
+                true
+            } else {
+                false
+            }
         }
     }
 
@@ -1332,7 +1381,7 @@ impl Expr {
             ExprKind::Range(..) => ExprPrecedence::Range,
 
             // Binop-like expr kinds, handled by `AssocOp`.
-            ExprKind::Binary(op, ..) => AssocOp::from_ast_binop(op.node).precedence(),
+            ExprKind::Binary(op, ..) => op.node.precedence(),
             ExprKind::Cast(..) => ExprPrecedence::Cast,
 
             ExprKind::Assign(..) |
@@ -1350,6 +1399,7 @@ impl Expr {
             // Never need parens
             ExprKind::Array(_)
             | ExprKind::Await(..)
+            | ExprKind::Use(..)
             | ExprKind::Block(..)
             | ExprKind::Call(..)
             | ExprKind::ConstBlock(_)
@@ -1422,6 +1472,15 @@ pub enum RangeLimits {
     HalfOpen,
     /// Inclusive at the beginning and end.
     Closed,
+}
+
+impl RangeLimits {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            RangeLimits::HalfOpen => "..",
+            RangeLimits::Closed => "..=",
+        }
+    }
 }
 
 /// A method call (e.g. `x.foo::<Bar, Baz>(a, b, c)`).
@@ -1530,6 +1589,8 @@ pub enum ExprKind {
     Gen(CaptureBy, P<Block>, GenBlockKind, Span),
     /// An await expression (`my_future.await`). Span is of await keyword.
     Await(P<Expr>, Span),
+    /// A use expression (`x.use`). Span is of use keyword.
+    Use(P<Expr>, Span),
 
     /// A try block (`try { ... }`).
     TryBlock(P<Block>),
@@ -1699,8 +1760,17 @@ pub enum CaptureBy {
         /// The span of the `move` keyword.
         move_kw: Span,
     },
-    /// `move` keyword was not specified.
+    /// `move` or `use` keywords were not specified.
     Ref,
+    /// `use |x| y + x`.
+    ///
+    /// Note that if you have a regular closure like `|| x.use`, this will *not* result
+    /// in a `Use` capture. Instead, the `ExprUseVisitor` will look at the type
+    /// of `x` and treat `x.use` as either a copy/clone/move as appropriate.
+    Use {
+        /// The span of the `use` keyword.
+        use_kw: Span,
+    },
 }
 
 /// Closure lifetime binder, `for<'a, 'b>` in `for<'a, 'b> |_: &'a (), _: &'b ()|`.
@@ -2583,6 +2653,8 @@ pub enum SelfKind {
     Value(Mutability),
     /// `&'lt self`, `&'lt mut self`
     Region(Option<Lifetime>, Mutability),
+    /// `&'lt pin const self`, `&'lt pin mut self`
+    Pinned(Option<Lifetime>, Mutability),
     /// `self: TYPE`, `mut self: TYPE`
     Explicit(P<Ty>, Mutability),
 }
@@ -2592,6 +2664,8 @@ impl SelfKind {
         match self {
             SelfKind::Region(None, mutbl) => mutbl.ref_prefix_str().to_string(),
             SelfKind::Region(Some(lt), mutbl) => format!("&{lt} {}", mutbl.prefix_str()),
+            SelfKind::Pinned(None, mutbl) => format!("&pin {}", mutbl.ptr_str()),
+            SelfKind::Pinned(Some(lt), mutbl) => format!("&{lt} pin {}", mutbl.ptr_str()),
             SelfKind::Value(_) | SelfKind::Explicit(_, _) => {
                 unreachable!("if we had an explicit self, we wouldn't be here")
             }
@@ -2608,11 +2682,13 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Ref(lt, MutTy { ref ty, mutbl })
-                    | TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                    }
+                    TyKind::PinnedRef(lt, MutTy { ref ty, mutbl })
                         if ty.kind.is_implicit_self() =>
                     {
-                        Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
+                        Some(respan(self.pat.span, SelfKind::Pinned(lt, mutbl)))
                     }
                     _ => Some(respan(
                         self.pat.span.to(self.ty.span),
@@ -2650,6 +2726,15 @@ impl Param {
                 P(Ty {
                     id: DUMMY_NODE_ID,
                     kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
+                    span,
+                    tokens: None,
+                }),
+            ),
+            SelfKind::Pinned(lt, mutbl) => (
+                mutbl,
+                P(Ty {
+                    id: DUMMY_NODE_ID,
+                    kind: TyKind::PinnedRef(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
                     tokens: None,
                 }),
@@ -3381,6 +3466,7 @@ pub struct Fn {
     pub generics: Generics,
     pub sig: FnSig,
     pub contract: Option<P<FnContract>>,
+    pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
     pub body: Option<P<Block>>,
 }
 
@@ -3678,7 +3764,7 @@ mod size_asserts {
     static_assert_size!(Block, 32);
     static_assert_size!(Expr, 72);
     static_assert_size!(ExprKind, 40);
-    static_assert_size!(Fn, 168);
+    static_assert_size!(Fn, 176);
     static_assert_size!(ForeignItem, 88);
     static_assert_size!(ForeignItemKind, 16);
     static_assert_size!(GenericArg, 24);

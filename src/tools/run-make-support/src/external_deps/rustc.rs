@@ -5,7 +5,7 @@ use std::str::FromStr as _;
 use crate::command::Command;
 use crate::env::env_var;
 use crate::path_helpers::cwd;
-use crate::util::set_host_rpath;
+use crate::util::set_host_compiler_dylib_path;
 use crate::{is_aix, is_darwin, is_msvc, is_windows, uname};
 
 /// Construct a new `rustc` invocation. This will automatically set the library
@@ -15,8 +15,8 @@ pub fn rustc() -> Rustc {
     Rustc::new()
 }
 
-/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_rpath`]
-/// still presets the environment variable `HOST_RPATH_DIR` by default.
+/// Construct a plain `rustc` invocation with no flags set. Note that [`set_host_compiler_dylib_path`]
+/// still presets the environment variable `HOST_RUSTC_DYLIB_PATH` by default.
 #[track_caller]
 pub fn bare_rustc() -> Rustc {
     Rustc::bare()
@@ -44,7 +44,7 @@ pub fn rustc_path() -> String {
 #[track_caller]
 fn setup_common() -> Command {
     let mut cmd = Command::new(rustc_path());
-    set_host_rpath(&mut cmd);
+    set_host_compiler_dylib_path(&mut cmd);
     cmd
 }
 
@@ -365,31 +365,6 @@ impl Rustc {
 
     /// `EXTRARSCXXFLAGS`
     pub fn extra_rs_cxx_flags(&mut self) -> &mut Self {
-        // Adapted from tools.mk (trimmed):
-        //
-        // ```makefile
-        // ifdef IS_WINDOWS
-        //     ifdef IS_MSVC
-        //     else
-        //         EXTRARSCXXFLAGS := -lstatic:-bundle=stdc++
-        //     endif
-        // else
-        //     ifeq ($(UNAME),Darwin)
-        //         EXTRARSCXXFLAGS := -lc++
-        //     else
-        //         ifeq ($(UNAME),FreeBSD)
-        //         else
-        //             ifeq ($(UNAME),SunOS)
-        //             else
-        //                 ifeq ($(UNAME),OpenBSD)
-        //                 else
-        //                     EXTRARSCXXFLAGS := -lstdc++
-        //                 endif
-        //             endif
-        //         endif
-        //     endif
-        // endif
-        // ```
         if is_windows() {
             // So this is a bit hacky: we can't use the DLL version of libstdc++ because
             // it pulls in the DLL version of libgcc, which means that we end up with 2

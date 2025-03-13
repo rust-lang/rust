@@ -489,6 +489,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(dyn_star, "`dyn*` trait objects are experimental");
     gate_all!(const_closures, "const closures are experimental");
     gate_all!(builtin_syntax, "`builtin #` syntax is unstable");
+    gate_all!(ergonomic_clones, "ergonomic clones are experimental");
     gate_all!(explicit_tail_calls, "`become` expression is experimental");
     gate_all!(generic_const_items, "generic const items are experimental");
     gate_all!(guard_patterns, "guard patterns are experimental", "consider using match arm guards");
@@ -503,6 +504,7 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session, features: &Features) {
     gate_all!(unsafe_binders, "unsafe binder types are experimental");
     gate_all!(contracts, "contracts are incomplete");
     gate_all!(contracts_internals, "contract internal machinery is for internal use only");
+    gate_all!(where_clause_attrs, "attributes in `where` clause are unstable");
 
     if !visitor.features.never_patterns() {
         if let Some(spans) = spans.get(&sym::never_patterns) {

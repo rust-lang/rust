@@ -12,8 +12,8 @@ use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, Norma
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
-use rustc_span::symbol::{Ident, kw};
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol};
+use rustc_span::symbol::{Ident, kw, sym};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 pub struct SegmentIterator<'a> {
     offset: usize,
@@ -127,7 +127,7 @@ impl<'a> ArgParser<'a> {
             }
             AttrArgs::Eq { eq_span, expr } => Self::NameValue(NameValueParser {
                 eq_span: *eq_span,
-                value: expr_to_lit(dcx, &expr),
+                value: expr_to_lit(dcx, &expr, *eq_span),
                 value_span: expr.span,
             }),
         }
@@ -348,7 +348,7 @@ impl NameValueParser {
     }
 }
 
-fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr) -> MetaItemLit {
+fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit {
     // In valid code the value always ends up as a single literal. Otherwise, a dummy
     // literal suffices because the error is handled elsewhere.
     if let ExprKind::Lit(token_lit) = expr.kind
@@ -356,8 +356,11 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr) -> MetaItemLit {
     {
         lit
     } else {
-        let guar = dcx.has_errors().unwrap();
-        MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span: DUMMY_SP }
+        let guar = dcx.span_delayed_bug(
+            span,
+            "expr in place where literal is expected (builtin attr parsing)",
+        );
+        MetaItemLit { symbol: sym::dummy, suffix: None, kind: LitKind::Err(guar), span }
     }
 }
 
@@ -470,45 +473,34 @@ impl<'a> MetaItemListParserContext<'a> {
         {
             self.inside_delimiters.next();
             return Some(MetaItemOrLitParser::Lit(lit));
+        } else if let Some(TokenTree::Delimited(.., Delimiter::Invisible(_), inner_tokens)) =
+            self.inside_delimiters.peek()
+        {
+            self.inside_delimiters.next();
+            return MetaItemListParserContext {
+                inside_delimiters: inner_tokens.iter().peekable(),
+                dcx: self.dcx,
+            }
+            .next();
         }
 
         // or a path.
         let path =
-            if let Some(TokenTree::Token(Token { kind: token::Interpolated(nt), span, .. }, _)) =
+            if let Some(TokenTree::Token(Token { kind: token::Interpolated(_), span, .. }, _)) =
                 self.inside_delimiters.peek()
             {
-                match &**nt {
-                    // or maybe a full nt meta including the path but we return immediately
-                    token::Nonterminal::NtMeta(item) => {
-                        self.inside_delimiters.next();
+                self.inside_delimiters.next();
+                // We go into this path if an expr ended up in an attribute that
+                // expansion did not turn into a literal. Say, `#[repr(align(macro!()))]`
+                // where the macro didn't expand to a literal. An error is already given
+                // for this at this point, and then we do continue. This makes this path
+                // reachable...
+                let e = self.dcx.span_delayed_bug(
+                    *span,
+                    "expr in place where literal is expected (builtin attr parsing)",
+                );
 
-                        return Some(MetaItemOrLitParser::MetaItemParser(MetaItemParser {
-                            path: PathParser::Ast(&item.path),
-                            args: ArgParser::from_attr_args(&item.args, self.dcx),
-                        }));
-                    }
-                    // an already interpolated path from a macro expansion is a path, no need to parse
-                    // one from tokens
-                    token::Nonterminal::NtPath(path) => {
-                        self.inside_delimiters.next();
-
-                        AttrPath::from_ast(path)
-                    }
-                    _ => {
-                        self.inside_delimiters.next();
-                        // we go into this path if an expr ended up in an attribute that
-                        // expansion did not turn into a literal. Say, `#[repr(align(macro!()))]`
-                        // where the macro didn't expand to a literal. An error is already given
-                        // for this at this point, and then we do continue. This makes this path
-                        // reachable...
-                        let e = self.dcx.span_delayed_bug(
-                            *span,
-                            "expr in place where literal is expected (builtin attr parsing)",
-                        );
-
-                        return Some(MetaItemOrLitParser::Err(*span, e));
-                    }
-                }
+                return Some(MetaItemOrLitParser::Err(*span, e));
             } else {
                 self.next_path()?
             };

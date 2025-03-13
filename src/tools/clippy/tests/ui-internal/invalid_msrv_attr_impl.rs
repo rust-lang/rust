@@ -9,7 +9,7 @@ extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
 use clippy_utils::extract_msrv_attr;
-use clippy_utils::msrvs::Msrv;
+use clippy_utils::msrvs::MsrvStack;
 use rustc_hir::Expr;
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
 
@@ -20,14 +20,10 @@ declare_lint! {
 }
 
 struct Pass {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl_lint_pass!(Pass => [TEST_LINT]);
-
-impl LateLintPass<'_> for Pass {
-    fn check_expr(&mut self, _: &LateContext<'_>, _: &Expr<'_>) {}
-}
 
 impl EarlyLintPass for Pass {
     fn check_expr(&mut self, _: &EarlyContext<'_>, _: &rustc_ast::Expr) {}

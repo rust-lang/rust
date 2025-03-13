@@ -50,7 +50,7 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = ty::tls::with(|tcx| tcx.hir().name(self.var_path.hir_id));
+        let name = ty::tls::with(|tcx| tcx.hir_name(self.var_path.hir_id));
         write!(f, "UpvarId({:?};`{}`;{:?})", self.var_path.hir_id, name, self.closure_expr_id)
     }
 }
@@ -284,6 +284,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
+    rustc_hir::RangeEnd,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,

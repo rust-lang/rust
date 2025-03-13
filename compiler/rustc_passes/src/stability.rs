@@ -118,7 +118,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
     ) where
         F: FnOnce(&mut Self),
     {
-        let attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
+        let attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         debug!("annotate(id = {:?}, attrs = {:?})", def_id, attrs);
 
         let depr = attr::find_attr!(attrs, AttributeKind::Deprecation{deprecation, span} => (*deprecation, *span));
@@ -313,7 +313,7 @@ impl<'a, 'tcx> Annotator<'a, 'tcx> {
             .map(|(stab, _span)| ConstStability::from_partial(stab, const_stability_indirect));
 
         // If this is a const fn but not annotated with stability markers, see if we can inherit regular stability.
-        if fn_sig.is_some_and(|s| s.header.is_const())  && const_stab.is_none() &&
+        if fn_sig.is_some_and(|s| s.header.is_const()) && const_stab.is_none() &&
             // We only ever inherit unstable features.
             let Some(inherit_regular_stab) =
                 final_stab.filter(|s| s.is_unstable())
@@ -795,7 +795,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
             }) => {
                 let features = self.tcx.features();
                 if features.staged_api() {
-                    let attrs = self.tcx.hir().attrs(item.hir_id());
+                    let attrs = self.tcx.hir_attrs(item.hir_id());
                     let stab = attr::find_attr!(attrs, AttributeKind::Stability{stability, span} => (*stability, *span));
 
                     // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
@@ -826,24 +826,56 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                         }
                     }
 
-                    // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
-                    // needs to have an error emitted.
                     if features.const_trait_impl()
-                        && self.tcx.is_const_trait_impl(item.owner_id.to_def_id())
-                        && const_stab.is_some_and(|stab| stab.is_const_stable())
+                        && let hir::Constness::Const = constness
                     {
-                        self.tcx.dcx().emit_err(errors::TraitImplConstStable { span: item.span });
+                        let stable_or_implied_stable = match const_stab {
+                            None => true,
+                            Some(stab) if stab.is_const_stable() => {
+                                // `#![feature(const_trait_impl)]` is unstable, so any impl declared stable
+                                // needs to have an error emitted.
+                                // Note: Remove this error once `const_trait_impl` is stabilized
+                                self.tcx
+                                    .dcx()
+                                    .emit_err(errors::TraitImplConstStable { span: item.span });
+                                true
+                            }
+                            Some(_) => false,
+                        };
+
+                        if let Some(trait_id) = t.trait_def_id()
+                            && let Some(const_stab) = self.tcx.lookup_const_stability(trait_id)
+                        {
+                            // the const stability of a trait impl must match the const stability on the trait.
+                            if const_stab.is_const_stable() != stable_or_implied_stable {
+                                let trait_span = self.tcx.def_ident_span(trait_id).unwrap();
+
+                                let impl_stability = if stable_or_implied_stable {
+                                    errors::ImplConstStability::Stable { span: item.span }
+                                } else {
+                                    errors::ImplConstStability::Unstable { span: item.span }
+                                };
+                                let trait_stability = if const_stab.is_const_stable() {
+                                    errors::TraitConstStability::Stable { span: trait_span }
+                                } else {
+                                    errors::TraitConstStability::Unstable { span: trait_span }
+                                };
+
+                                self.tcx.dcx().emit_err(errors::TraitImplConstStabilityMismatch {
+                                    span: item.span,
+                                    impl_stability,
+                                    trait_stability,
+                                });
+                            }
+                        }
                     }
                 }
 
-                match constness {
-                    rustc_hir::Constness::Const => {
-                        if let Some(def_id) = t.trait_def_id() {
-                            // FIXME(const_trait_impl): Improve the span here.
-                            self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
-                        }
-                    }
-                    rustc_hir::Constness::NotConst => {}
+                if let hir::Constness::Const = constness
+                    && let Some(def_id) = t.trait_def_id()
+                {
+                    // FIXME(const_trait_impl): Improve the span here.
+                    self.tcx.check_const_stability(def_id, t.path.span, t.path.span);
                 }
 
                 for impl_item_ref in *items {
@@ -1002,7 +1034,7 @@ fn is_unstable_reexport(tcx: TyCtxt<'_>, id: hir::HirId) -> bool {
     }
 
     // If this is a path that isn't a use, we don't need to do anything special
-    if !matches!(tcx.hir().expect_item(def_id).kind, ItemKind::Use(..)) {
+    if !matches!(tcx.hir_expect_item(def_id).kind, ItemKind::Use(..)) {
         return false;
     }
 

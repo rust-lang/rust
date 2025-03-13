@@ -576,6 +576,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
     ),
 
+    // Probably temporary component of min_generic_const_args.
+    // `#[type_const] const ASSOC: usize;`
+    gated!(
+        type_const, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -1011,7 +1018,7 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
     ),
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
-        "#![rustc_force_inline] forces a free function to be inlined"
+        "#[rustc_force_inline] forces a free function to be inlined"
     ),
 
     // ==========================================================================

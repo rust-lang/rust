@@ -12,41 +12,40 @@ use std::autodiff::autodiff;
 // We can't use Duplicated on scalars
 #[autodiff(df1, Reverse, Duplicated)]
 pub fn f1(x: f64) {
-//~^ ERROR     Duplicated can not be used for this type
+    //~^ ERROR     Duplicated can not be used for this type
     unimplemented!()
 }
 
 // Too many activities
 #[autodiff(df3, Reverse, Duplicated, Const)]
 pub fn f3(x: f64) {
-//~^^ ERROR     expected 1 activities, but found 2
+    //~^^ ERROR     expected 1 activities, but found 2
     unimplemented!()
 }
 
 // To few activities
 #[autodiff(df4, Reverse)]
 pub fn f4(x: f64) {
-//~^^ ERROR     expected 1 activities, but found 0
+    //~^^ ERROR     expected 1 activities, but found 0
     unimplemented!()
 }
 
 // We can't use Dual in Reverse mode
 #[autodiff(df5, Reverse, Dual)]
 pub fn f5(x: f64) {
-//~^^ ERROR     Dual can not be used in Reverse Mode
+    //~^^ ERROR     Dual can not be used in Reverse Mode
     unimplemented!()
 }
 
 // We can't use Duplicated in Forward mode
 #[autodiff(df6, Forward, Duplicated)]
 pub fn f6(x: f64) {
-//~^^ ERROR Duplicated can not be used in Forward Mode
-//~^^ ERROR Duplicated can not be used for this type
+    //~^^ ERROR Duplicated can not be used in Forward Mode
+    //~^^ ERROR Duplicated can not be used for this type
     unimplemented!()
 }
 
 fn dummy() {
-
     #[autodiff(df7, Forward, Dual)]
     let mut x = 5;
     //~^ ERROR autodiff must be applied to function
@@ -64,21 +63,21 @@ fn dummy() {
 // Malformed, where args?
 #[autodiff]
 pub fn f7(x: f64) {
-//~^ ERROR autodiff must be applied to function
+    //~^ ERROR autodiff must be applied to function
     unimplemented!()
 }
 
 // Malformed, where args?
 #[autodiff()]
 pub fn f8(x: f64) {
-//~^ ERROR autodiff requires at least a name and mode
+    //~^ ERROR autodiff requires at least a name and mode
     unimplemented!()
 }
 
 // Invalid attribute syntax
 #[autodiff = ""]
 pub fn f9(x: f64) {
-//~^ ERROR autodiff must be applied to function
+    //~^ ERROR autodiff must be applied to function
     unimplemented!()
 }
 
@@ -87,21 +86,21 @@ fn fn_exists() {}
 // We colide with an already existing function
 #[autodiff(fn_exists, Reverse, Active)]
 pub fn f10(x: f64) {
-//~^^ ERROR the name `fn_exists` is defined multiple times [E0428]
+    //~^^ ERROR the name `fn_exists` is defined multiple times [E0428]
     unimplemented!()
 }
 
 // Malformed, missing a mode
 #[autodiff(df11)]
 pub fn f11() {
-//~^ ERROR autodiff requires at least a name and mode
+    //~^ ERROR autodiff requires at least a name and mode
     unimplemented!()
 }
 
 // Invalid Mode
 #[autodiff(df12, Debug)]
 pub fn f12() {
-//~^^ ERROR unknown Mode: `Debug`. Use `Forward` or `Reverse`
+    //~^^ ERROR unknown Mode: `Debug`. Use `Forward` or `Reverse`
     unimplemented!()
 }
 
@@ -109,7 +108,7 @@ pub fn f12() {
 // or use two autodiff macros.
 #[autodiff(df13, Forward, Reverse)]
 pub fn f13() {
-//~^^ ERROR did not recognize Activity: `Reverse`
+    //~^^ ERROR did not recognize Activity: `Reverse`
     unimplemented!()
 }
 
@@ -130,7 +129,7 @@ type MyFloat = f32;
 // like THIR which has type information available.
 #[autodiff(df15, Reverse, Active, Active)]
 fn f15(x: MyFloat) -> f32 {
-//~^^ ERROR failed to resolve: use of undeclared type `MyFloat` [E0433]
+    //~^^ ERROR failed to resolve: use of undeclared type `MyFloat` [E0433]
     unimplemented!()
 }
 
@@ -141,7 +140,9 @@ fn f16(x: f32) -> MyFloat {
 }
 
 #[repr(transparent)]
-struct F64Trans { inner: f64 }
+struct F64Trans {
+    inner: f64,
+}
 
 // We would like to support `#[repr(transparent)]` f32/f64 wrapper in return type in the future
 #[autodiff(df17, Reverse, Active, Active)]
@@ -156,5 +157,24 @@ fn f18(x: F64Trans) -> f64 {
     unimplemented!()
 }
 
+// Invalid return activity
+#[autodiff(df19, Forward, Dual, Active)]
+fn f19(x: f32) -> f32 {
+    //~^^ ERROR invalid return activity Active in Forward Mode
+    unimplemented!()
+}
+
+#[autodiff(df20, Reverse, Active, Dual)]
+fn f20(x: f32) -> f32 {
+    //~^^ ERROR invalid return activity Dual in Reverse Mode
+    unimplemented!()
+}
+
+// Duplicated cannot be used as return activity
+#[autodiff(df21, Reverse, Active, Duplicated)]
+fn f21(x: f32) -> f32 {
+    //~^^ ERROR invalid return activity Duplicated in Reverse Mode
+    unimplemented!()
+}
 
 fn main() {}

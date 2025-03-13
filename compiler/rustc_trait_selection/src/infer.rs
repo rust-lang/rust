@@ -53,6 +53,16 @@ impl<'tcx> InferCtxt<'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, clone_def_id)
     }
 
+    fn type_is_use_cloned_modulo_regions(
+        &self,
+        param_env: ty::ParamEnv<'tcx>,
+        ty: Ty<'tcx>,
+    ) -> bool {
+        let ty = self.resolve_vars_if_possible(ty);
+        let use_cloned_def_id = self.tcx.require_lang_item(LangItem::UseCloned, None);
+        traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, use_cloned_def_id)
+    }
+
     fn type_is_sized_modulo_regions(&self, param_env: ty::ParamEnv<'tcx>, ty: Ty<'tcx>) -> bool {
         let lang_item = self.tcx.require_lang_item(LangItem::Sized, None);
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item)

@@ -102,6 +102,10 @@ Default:
 
  List of cfg options to enable with the given values.
 
+To enable a name without a value, use `"key"`.
+To enable a name with a value, use `"key=value"`.
+To disable, prefix the entry with a `!`.
+
 
  **rust-analyzer.cargo.extraArgs** (default: [])
 
@@ -557,6 +561,11 @@ also need to add the folders to Code's `files.watcherExclude`.
 
  Whether to show keyword hover popups. Only applies when
 `#rust-analyzer.hover.documentation.enable#` is set.
+
+
+**rust-analyzer.hover.dropGlue.enable** (default: true)
+
+ Whether to show drop glue information on hover.
 
 
 **rust-analyzer.hover.links.enable** (default: true)

@@ -1,8 +1,8 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::{span_lint, span_lint_and_then};
-use clippy_utils::msrvs::Msrv;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::visitors::for_each_expr;
-use clippy_utils::{def_path_def_ids, fn_def_id, path_def_id};
+use clippy_utils::{def_path_def_ids, fn_def_id, is_no_std_crate, path_def_id};
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::Applicability;
 use rustc_hir::def::{DefKind, Res};
@@ -75,7 +75,7 @@ impl NonStdLazyStatic {
     #[must_use]
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             lazy_static_lazy_static: Vec::new(),
             once_cell_crate: Vec::new(),
             once_cell_sync_lazy: Vec::new(),
@@ -89,23 +89,12 @@ impl NonStdLazyStatic {
 
 impl_lint_pass!(NonStdLazyStatic => [NON_STD_LAZY_STATICS]);
 
-/// Return if current MSRV does not meet the requirement for `lazy_cell` feature,
-/// or current context has `no_std` attribute.
-macro_rules! ensure_prerequisite {
-    ($msrv:expr, $cx:ident) => {
-        if !$msrv.meets(clippy_utils::msrvs::LAZY_CELL) || clippy_utils::is_no_std_crate($cx) {
-            return;
-        }
-    };
+fn can_use_lazy_cell(cx: &LateContext<'_>, msrv: Msrv) -> bool {
+    msrv.meets(cx, msrvs::LAZY_CELL) && !is_no_std_crate(cx)
 }
 
 impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
-    extract_msrv_attr!(LateContext);
-
     fn check_crate(&mut self, cx: &LateContext<'hir>) {
-        // Do not lint if current crate does not support `LazyLock`.
-        ensure_prerequisite!(self.msrv, cx);
-
         // Fetch def_ids for external paths
         self.lazy_static_lazy_static = def_path_def_ids(cx.tcx, &["lazy_static", "lazy_static"]).collect();
         self.once_cell_sync_lazy = def_path_def_ids(cx.tcx, &["once_cell", "sync", "Lazy"]).collect();
@@ -123,11 +112,10 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
     }
 
     fn check_item(&mut self, cx: &LateContext<'hir>, item: &Item<'hir>) {
-        ensure_prerequisite!(self.msrv, cx);
-
         if let ItemKind::Static(..) = item.kind
             && let Some(macro_call) = clippy_utils::macros::root_macro_call(item.span)
             && self.lazy_static_lazy_static.contains(&macro_call.def_id)
+            && can_use_lazy_cell(cx, self.msrv)
         {
             span_lint(
                 cx,
@@ -142,14 +130,14 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
             return;
         }
 
-        if let Some(lazy_info) = LazyInfo::from_item(self, cx, item) {
+        if let Some(lazy_info) = LazyInfo::from_item(self, cx, item)
+            && can_use_lazy_cell(cx, self.msrv)
+        {
             self.lazy_type_defs.insert(item.owner_id.to_def_id(), lazy_info);
         }
     }
 
     fn check_expr(&mut self, cx: &LateContext<'hir>, expr: &Expr<'hir>) {
-        ensure_prerequisite!(self.msrv, cx);
-
         // All functions in the `FUNCTION_REPLACEMENTS` have only one args
         if let ExprKind::Call(callee, [arg]) = expr.kind
             && let Some(call_def_id) = fn_def_id(cx, expr)
@@ -163,8 +151,6 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
     }
 
     fn check_ty(&mut self, cx: &LateContext<'hir>, ty: &'hir rustc_hir::Ty<'hir, rustc_hir::AmbigArg>) {
-        ensure_prerequisite!(self.msrv, cx);
-
         // Record if types from `once_cell` besides `sync::Lazy` are used.
         if let rustc_hir::TyKind::Path(qpath) = ty.peel_refs().kind
             && let Some(ty_def_id) = cx.qpath_res(&qpath, ty.hir_id).opt_def_id()
@@ -178,8 +164,6 @@ impl<'hir> LateLintPass<'hir> for NonStdLazyStatic {
     }
 
     fn check_crate_post(&mut self, cx: &LateContext<'hir>) {
-        ensure_prerequisite!(self.msrv, cx);
-
         if !self.uses_other_once_cell_types {
             for (_, lazy_info) in &self.lazy_type_defs {
                 lazy_info.lint(cx, &self.sugg_map);

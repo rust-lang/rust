@@ -18,6 +18,7 @@ impl Foo for () {
 
     type Baz<T> = impl Sized;
     //~^ ERROR type `Baz` has 1 type parameter but its trait declaration has 0 type parameters
+    //~| ERROR: unconstrained opaque type
 
     fn test<'a>() -> Self::Bar<'a> {
         &()

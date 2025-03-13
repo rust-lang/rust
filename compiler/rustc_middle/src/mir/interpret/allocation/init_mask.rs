@@ -223,8 +223,8 @@ impl<D: TyDecoder> Decodable<D> for InitMaskMaterialized {
 // large.
 impl hash::Hash for InitMaskMaterialized {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
-        const MAX_BLOCKS_TO_HASH: usize = super::MAX_BYTES_TO_HASH / std::mem::size_of::<Block>();
-        const MAX_BLOCKS_LEN: usize = super::MAX_HASHED_BUFFER_LEN / std::mem::size_of::<Block>();
+        const MAX_BLOCKS_TO_HASH: usize = super::MAX_BYTES_TO_HASH / size_of::<Block>();
+        const MAX_BLOCKS_LEN: usize = super::MAX_HASHED_BUFFER_LEN / size_of::<Block>();
 
         // Partially hash the `blocks` buffer when it is large. To limit collisions with common
         // prefixes and suffixes, we hash the length and some slices of the buffer.

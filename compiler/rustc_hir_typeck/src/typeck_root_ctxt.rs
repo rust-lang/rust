@@ -62,6 +62,9 @@ pub(crate) struct TypeckRootCtxt<'tcx> {
 
     pub(super) deferred_coroutine_interiors: RefCell<Vec<(LocalDefId, hir::BodyId, Ty<'tcx>)>>,
 
+    pub(super) deferred_repeat_expr_checks:
+        RefCell<Vec<(&'tcx hir::Expr<'tcx>, Ty<'tcx>, ty::Const<'tcx>)>>,
+
     /// Whenever we introduce an adjustment from `!` into a type variable,
     /// we record that type variable here. This is later used to inform
     /// fallback. See the `fallback` module for details.
@@ -96,6 +99,7 @@ impl<'tcx> TypeckRootCtxt<'tcx> {
             deferred_transmute_checks: RefCell::new(Vec::new()),
             deferred_asm_checks: RefCell::new(Vec::new()),
             deferred_coroutine_interiors: RefCell::new(Vec::new()),
+            deferred_repeat_expr_checks: RefCell::new(Vec::new()),
             diverging_type_vars: RefCell::new(Default::default()),
             infer_var_info: RefCell::new(Default::default()),
         }

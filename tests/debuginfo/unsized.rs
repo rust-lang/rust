@@ -18,12 +18,6 @@
 // gdb-command:print _box
 // gdb-check:$4 = alloc::boxed::Box<unsized::Foo<dyn core::fmt::Debug>, alloc::alloc::Global> {pointer: [...], vtable: [...]}
 
-// gdb-command:print tuple_slice
-// gdb-check:$5 = &(i32, i32, [i32]) {data_ptr: [...], length: 2}
-
-// gdb-command:print tuple_dyn
-// gdb-check:$6 = &(i32, i32, dyn core::fmt::Debug) {pointer: [...], vtable: [...]}
-
 // === CDB TESTS ===================================================================================
 
 // cdb-command: g
@@ -48,17 +42,6 @@
 // cdb-check:[+0x000] pointer          : 0x[...] [Type: unsized::Foo<dyn$<core::fmt::Debug> > *]
 // cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
 
-// cdb-command:dx tuple_slice
-// cdb-check:tuple_slice      [Type: ref$<tuple$<i32,i32,slice2$<i32> > >]
-// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: tuple$<i32,i32,slice2$<i32> > *]
-// cdb-check:    [...] length           : 0x2 [Type: unsigned [...]int[...]
-
-// cdb-command:dx tuple_dyn
-// cdb-check:tuple_dyn        [Type: ref$<tuple$<i32,i32,dyn$<core::fmt::Debug> > >]
-// cdb-check:    [+0x000] pointer          : 0x[...] [Type: tuple$<i32,i32,dyn$<core::fmt::Debug> > *]
-// cdb-check:    [...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[4]]
-
-#![feature(unsized_tuple_coercion)]
 #![feature(omit_gdb_pretty_printer_section)]
 #![omit_gdb_pretty_printer_section]
 
@@ -76,10 +59,6 @@ fn main() {
     let b: &Foo<Foo<[u8]>> = &foo;
     let c: &Foo<dyn std::fmt::Debug> = &Foo { value: 7i32 };
     let _box: Box<Foo<dyn std::fmt::Debug>> = Box::new(Foo { value: 8i32 });
-
-    // Also check unsized tuples
-    let tuple_slice: &(i32, i32, [i32]) = &(0, 1, [2, 3]);
-    let tuple_dyn: &(i32, i32, dyn std::fmt::Debug) = &(0, 1, &3u64);
 
     zzz(); // #break
 }

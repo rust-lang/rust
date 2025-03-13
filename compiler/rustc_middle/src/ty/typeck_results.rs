@@ -310,7 +310,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -394,8 +394,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
-        self.pat_binding_modes().get(id).copied().or_else(|| {
+    /// Returns the computed binding mode for a `PatKind::Binding` pattern
+    /// (after match ergonomics adjustments).
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
+        self.pat_binding_modes().get(id).copied().unwrap_or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
@@ -552,7 +554,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });

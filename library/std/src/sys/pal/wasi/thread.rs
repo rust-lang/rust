@@ -13,16 +13,15 @@ cfg_if::cfg_if! {
         // Add a few symbols not in upstream `libc` just yet.
         mod libc {
             pub use crate::ffi;
-            pub use crate::mem;
             pub use libc::*;
 
             // defined in wasi-libc
             // https://github.com/WebAssembly/wasi-libc/blob/a6f871343313220b76009827ed0153586361c0d5/libc-top-half/musl/include/alltypes.h.in#L108
             #[repr(C)]
             union pthread_attr_union {
-                __i: [ffi::c_int; if mem::size_of::<ffi::c_long>() == 8 { 14 } else { 9 }],
-                __vi: [ffi::c_int; if mem::size_of::<ffi::c_long>() == 8 { 14 } else { 9 }],
-                __s: [ffi::c_ulong; if mem::size_of::<ffi::c_long>() == 8 { 7 } else { 9 }],
+                __i: [ffi::c_int; if size_of::<ffi::c_long>() == 8 { 14 } else { 9 }],
+                __vi: [ffi::c_int; if size_of::<ffi::c_long>() == 8 { 14 } else { 9 }],
+                __s: [ffi::c_ulong; if size_of::<ffi::c_long>() == 8 { 7 } else { 9 }],
             }
 
             #[repr(C)]

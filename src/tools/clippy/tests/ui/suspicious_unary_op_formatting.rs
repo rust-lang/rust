@@ -7,18 +7,22 @@ fn main() {
     let a = 42;
 
     if a >- 30 {}
-    //~^ ERROR: by not having a space between `>` and `-` it looks like `>-` is a single o
+    //~^ suspicious_unary_op_formatting
+
     if a >=- 30 {}
-    //~^ ERROR: by not having a space between `>=` and `-` it looks like `>=-` is a single
+    //~^ suspicious_unary_op_formatting
+
 
     let b = true;
     let c = false;
 
     if b &&! c {}
-    //~^ ERROR: by not having a space between `&&` and `!` it looks like `&&!` is a single
+    //~^ suspicious_unary_op_formatting
+
 
     if a >-   30 {}
-    //~^ ERROR: by not having a space between `>` and `-` it looks like `>-` is a single o
+    //~^ suspicious_unary_op_formatting
+
 
     // those are ok:
     if a >-30 {}

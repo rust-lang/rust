@@ -18,20 +18,20 @@ type TwoLifetimes<'a, 'b> = impl Debug;
 
 type TwoConsts<const X: usize, const Y: usize> = impl Debug;
 
+#[define_opaque(TwoTys)]
 fn one_ty<T: Debug>(t: T) -> TwoTys<T, T> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
     //~^ ERROR non-defining opaque type use in defining scope
 }
 
+#[define_opaque(TwoLifetimes)]
 fn one_lifetime<'a>(t: &'a u32) -> TwoLifetimes<'a, 'a> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
     //~^ ERROR non-defining opaque type use in defining scope
 }
 
+#[define_opaque(TwoConsts)]
 fn one_const<const N: usize>(t: *mut [u8; N]) -> TwoConsts<N, N> {
-    //~^ ERROR non-defining opaque type use in defining scope
     t
     //~^ ERROR non-defining opaque type use in defining scope
 }

@@ -39,7 +39,7 @@ use std::{
 };
 
 use arrayvec::ArrayVec;
-use base_db::{CrateDisplayName, CrateId, CrateOrigin};
+use base_db::{CrateDisplayName, CrateId, CrateOrigin, LangCrateOrigin};
 use either::Either;
 use hir_def::{
     data::{adt::VariantData, TraitFlags},
@@ -139,20 +139,21 @@ pub use {
         },
         hygiene::{marks_rev, SyntaxContextExt},
         inert_attr_macro::AttributeTemplate,
+        mod_path::tool_path,
         name::Name,
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
-        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt,
+        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt, MacroKind,
     },
     hir_ty::{
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
-        display::{ClosureStyle, HirDisplay, HirDisplayError, HirWrite},
+        display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
         dyn_compatibility::{DynCompatibilityViolation, MethodViolationCode},
         layout::LayoutError,
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
-        CastError, FnAbi, PointerCast, Safety, Variance,
+        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
     },
     // FIXME: Properly encapsulate mir
     hir_ty::{mir, Interner as ChalkTyInterner},
@@ -282,6 +283,21 @@ impl Crate {
         let data = &db.crate_graph()[self.id];
         data.potential_cfg_options.clone().unwrap_or_else(|| data.cfg_options.clone())
     }
+
+    pub fn to_display_target(self, db: &dyn HirDatabase) -> DisplayTarget {
+        DisplayTarget::from_crate(db, self.id)
+    }
+
+    fn core(db: &dyn HirDatabase) -> Option<Crate> {
+        let crate_graph = db.crate_graph();
+        let result = crate_graph
+            .iter()
+            .find(|&krate| {
+                matches!(crate_graph[krate].origin, CrateOrigin::Lang(LangCrateOrigin::Core))
+            })
+            .map(Crate::from);
+        result
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -296,6 +312,7 @@ pub enum ModuleDef {
     Function(Function),
     Adt(Adt),
     // Can't be directly declared, but can be imported.
+    // FIXME: Rename to `EnumVariant`
     Variant(Variant),
     Const(Const),
     Static(Static),
@@ -466,6 +483,17 @@ impl ModuleDef {
             ModuleDef::Macro(it) => it.attrs(db),
             ModuleDef::BuiltinType(_) => return None,
         })
+    }
+}
+
+impl HasCrate for ModuleDef {
+    fn krate(&self, db: &dyn HirDatabase) -> Crate {
+        match self.module(db) {
+            Some(module) => module.krate(),
+            None => Crate::core(db).unwrap_or_else(|| {
+                (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+            }),
+        }
     }
 }
 
@@ -699,7 +727,10 @@ impl Module {
             let source_map = tree_source_maps.impl_(loc.id.value).item();
             let node = &tree[loc.id.value];
             let file_id = loc.id.file_id();
-            if file_id.macro_file().is_some_and(|it| it.is_builtin_derive(db.upcast())) {
+            if file_id
+                .macro_file()
+                .is_some_and(|it| it.kind(db.upcast()) == MacroKind::DeriveBuiltIn)
+            {
                 // these expansion come from us, diagnosing them is a waste of resources
                 // FIXME: Once we diagnose the inputs to builtin derives, we should at least extract those diagnostics somehow
                 continue;
@@ -1391,6 +1422,10 @@ impl Struct {
         Type::from_def(db, self.id)
     }
 
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
+    }
+
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_value_def(db, self.id)
     }
@@ -1434,6 +1469,10 @@ impl Union {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     pub fn constructor_ty(self, db: &dyn HirDatabase) -> Type {
@@ -1488,6 +1527,10 @@ impl Enum {
 
     pub fn ty(self, db: &dyn HirDatabase) -> Type {
         Type::from_def(db, self.id)
+    }
+
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
     }
 
     /// The type of the enum variant bodies.
@@ -1549,6 +1592,7 @@ impl From<&Variant> for DefWithBodyId {
     }
 }
 
+// FIXME: Rename to `EnumVariant`
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Variant {
     pub(crate) id: EnumVariantId,
@@ -1848,7 +1892,7 @@ impl DefWithBody {
     pub fn debug_mir(self, db: &dyn HirDatabase) -> String {
         let body = db.mir_body(self.id());
         match body {
-            Ok(body) => body.pretty_print(db),
+            Ok(body) => body.pretty_print(db, self.module(db).krate().to_display_target(db)),
             Err(e) => format!("error:\n{e:?}"),
         }
     }
@@ -2434,8 +2478,6 @@ impl Function {
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
     ) -> Result<String, ConstEvalError> {
-        let krate = HasModule::krate(&self.id, db.upcast());
-        let edition = db.crate_graph()[krate].edition;
         let body = db.monomorphized_mir_body(
             self.id.into(),
             Substitution::empty(Interner),
@@ -2446,7 +2488,12 @@ impl Function {
             Ok(_) => "pass".to_owned(),
             Err(e) => {
                 let mut r = String::new();
-                _ = e.pretty_print(&mut r, db, &span_formatter, edition);
+                _ = e.pretty_print(
+                    &mut r,
+                    db,
+                    &span_formatter,
+                    self.krate(db).to_display_target(db),
+                );
                 r
             }
         };
@@ -2710,8 +2757,8 @@ pub struct EvaluatedConst {
 }
 
 impl EvaluatedConst {
-    pub fn render(&self, db: &dyn HirDatabase, edition: Edition) -> String {
-        format!("{}", self.const_.display(db, edition))
+    pub fn render(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
+        format!("{}", self.const_.display(db, display_target))
     }
 
     pub fn render_debug(&self, db: &dyn HirDatabase) -> Result<String, MirEvalError> {
@@ -2929,6 +2976,10 @@ impl TypeAlias {
         Type::from_def(db, self.id)
     }
 
+    pub fn ty_placeholders(self, db: &dyn HirDatabase) -> Type {
+        Type::from_def_placeholders(db, self.id)
+    }
+
     pub fn name(self, db: &dyn HirDatabase) -> Name {
         db.type_alias_data(self.id).name.clone()
     }
@@ -3034,20 +3085,6 @@ impl BuiltinType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum MacroKind {
-    /// `macro_rules!` or Macros 2.0 macro.
-    Declarative,
-    /// A built-in or custom derive.
-    Derive,
-    /// A built-in function-like macro.
-    BuiltIn,
-    /// A procedural attribute macro.
-    Attr,
-    /// A function-like procedural macro.
-    ProcMacro,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Macro {
     pub(crate) id: MacroId,
 }
@@ -3077,15 +3114,19 @@ impl Macro {
         match self.id {
             MacroId::Macro2Id(it) => match it.lookup(db.upcast()).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
-                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
-                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
+                    MacroKind::DeclarativeBuiltIn
+                }
+                MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
+                MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
             MacroId::MacroRulesId(it) => match it.lookup(db.upcast()).expander {
                 MacroExpander::Declarative => MacroKind::Declarative,
-                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => MacroKind::BuiltIn,
-                MacroExpander::BuiltInAttr(_) => MacroKind::Attr,
-                MacroExpander::BuiltInDerive(_) => MacroKind::Derive,
+                MacroExpander::BuiltIn(_) | MacroExpander::BuiltInEager(_) => {
+                    MacroKind::DeclarativeBuiltIn
+                }
+                MacroExpander::BuiltInAttr(_) => MacroKind::AttrBuiltIn,
+                MacroExpander::BuiltInDerive(_) => MacroKind::DeriveBuiltIn,
             },
             MacroId::ProcMacroId(it) => match it.lookup(db.upcast()).kind {
                 ProcMacroKind::CustomDerive => MacroKind::Derive,
@@ -3096,10 +3137,10 @@ impl Macro {
     }
 
     pub fn is_fn_like(&self, db: &dyn HirDatabase) -> bool {
-        match self.kind(db) {
-            MacroKind::Declarative | MacroKind::BuiltIn | MacroKind::ProcMacro => true,
-            MacroKind::Attr | MacroKind::Derive => false,
-        }
+        matches!(
+            self.kind(db),
+            MacroKind::Declarative | MacroKind::DeclarativeBuiltIn | MacroKind::ProcMacro
+        )
     }
 
     pub fn is_builtin_derive(&self, db: &dyn HirDatabase) -> bool {
@@ -3139,11 +3180,11 @@ impl Macro {
     }
 
     pub fn is_attr(&self, db: &dyn HirDatabase) -> bool {
-        matches!(self.kind(db), MacroKind::Attr)
+        matches!(self.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn)
     }
 
     pub fn is_derive(&self, db: &dyn HirDatabase) -> bool {
-        matches!(self.kind(db), MacroKind::Derive)
+        matches!(self.kind(db), MacroKind::Derive | MacroKind::DeriveBuiltIn)
     }
 }
 
@@ -4186,9 +4227,13 @@ impl ConstParam {
         Type::new(db, self.id.parent(), db.const_param_ty(self.id))
     }
 
-    pub fn default(self, db: &dyn HirDatabase, edition: Edition) -> Option<ast::ConstArg> {
+    pub fn default(
+        self,
+        db: &dyn HirDatabase,
+        display_target: DisplayTarget,
+    ) -> Option<ast::ConstArg> {
         let arg = generic_arg_from_param(db, self.id.into())?;
-        known_const_to_ast(arg.constant(Interner)?, db, edition)
+        known_const_to_ast(arg.constant(Interner)?, db, display_target)
     }
 }
 
@@ -4496,18 +4541,18 @@ impl Closure {
         TyKind::Closure(self.id, self.subst).intern(Interner)
     }
 
-    pub fn display_with_id(&self, db: &dyn HirDatabase, edition: Edition) -> String {
+    pub fn display_with_id(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         self.clone()
             .as_ty()
-            .display(db, edition)
+            .display(db, display_target)
             .with_closure_style(ClosureStyle::ClosureWithId)
             .to_string()
     }
 
-    pub fn display_with_impl(&self, db: &dyn HirDatabase, edition: Edition) -> String {
+    pub fn display_with_impl(&self, db: &dyn HirDatabase, display_target: DisplayTarget) -> String {
         self.clone()
             .as_ty()
-            .display(db, edition)
+            .display(db, display_target)
             .with_closure_style(ClosureStyle::ImplFn)
             .to_string()
     }
@@ -4698,6 +4743,19 @@ impl Type {
     fn from_def(db: &dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Type {
         let ty = db.ty(def.into());
         let substs = TyBuilder::unknown_subst(
+            db,
+            match def.into() {
+                TyDefId::AdtId(it) => GenericDefId::AdtId(it),
+                TyDefId::TypeAliasId(it) => GenericDefId::TypeAliasId(it),
+                TyDefId::BuiltinType(_) => return Type::new(db, def, ty.skip_binders().clone()),
+            },
+        );
+        Type::new(db, def, ty.substitute(Interner, &substs))
+    }
+
+    fn from_def_placeholders(db: &dyn HirDatabase, def: impl Into<TyDefId> + HasResolver) -> Type {
+        let ty = db.ty(def.into());
+        let substs = TyBuilder::placeholder_subst(
             db,
             match def.into() {
                 TyDefId::AdtId(it) => GenericDefId::AdtId(it),
@@ -5299,7 +5357,7 @@ impl Type {
     pub fn type_and_const_arguments<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> impl Iterator<Item = SmolStr> + 'a {
         self.ty
             .strip_references()
@@ -5309,10 +5367,10 @@ impl Type {
             .filter_map(move |arg| {
                 // arg can be either a `Ty` or `constant`
                 if let Some(ty) = arg.ty(Interner) {
-                    Some(format_smolstr!("{}", ty.display(db, edition)))
+                    Some(format_smolstr!("{}", ty.display(db, display_target)))
                 } else {
                     arg.constant(Interner)
-                        .map(|const_| format_smolstr!("{}", const_.display(db, edition)))
+                        .map(|const_| format_smolstr!("{}", const_.display(db, display_target)))
                 }
             })
     }
@@ -5321,7 +5379,7 @@ impl Type {
     pub fn generic_parameters<'a>(
         &'a self,
         db: &'a dyn HirDatabase,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> impl Iterator<Item = SmolStr> + 'a {
         // iterate the lifetime
         self.as_adt()
@@ -5331,7 +5389,7 @@ impl Type {
             })
             .into_iter()
             // add the type and const parameters
-            .chain(self.type_and_const_arguments(db, edition))
+            .chain(self.type_and_const_arguments(db, display_target))
     }
 
     pub fn iterate_method_candidates_with_traits<T>(
@@ -5736,6 +5794,10 @@ impl Type {
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
         db.layout_of_ty(self.ty.clone(), self.env.clone())
             .map(|layout| Layout(layout, db.target_data_layout(self.env.krate).unwrap()))
+    }
+
+    pub fn drop_glue(&self, db: &dyn HirDatabase) -> DropGlue {
+        db.has_drop_glue(self.ty.clone(), self.env.clone())
     }
 }
 

@@ -128,18 +128,21 @@ pub fn from_utf8() {
 }
 
 pub fn from_utf8_with_indirections() {
-    let mut a = [99, 108, 130, 105, 112, 112, 121];
-    std::str::from_utf8_mut(&mut a);
-    //~^ WARN calls to `std::str::from_utf8_mut`
-    str::from_utf8_mut(&mut a);
-    //~^ WARN calls to `str::from_utf8_mut`
-    let mut b = &mut a;
-    let mut c = b;
-    std::str::from_utf8_mut(c);
-    //~^ WARN calls to `std::str::from_utf8_mut`
-    str::from_utf8_mut(c);
-    //~^ WARN calls to `str::from_utf8_mut`
-    let mut c = &[99, 108, 130, 105, 112, 112, 121];
+    // NOTE: We used to lint on the patterns below, but due to the
+    // binding being mutable it could be changed between the
+    // declaration and the call and that would have created a
+    // false-positive, so until we can reliably avoid those false
+    // postive we don't lint on them. Example of FP below.
+    //
+    // let mut a = [99, 108, 130, 105, 112, 112, 121];
+    // std::str::from_utf8_mut(&mut a);
+    // str::from_utf8_mut(&mut a);
+    // let mut b = &mut a;
+    // let mut c = b;
+    // std::str::from_utf8_mut(c);
+    // str::from_utf8_mut(c);
+
+    let c = &[99, 108, 130, 105, 112, 112, 121];
     std::str::from_utf8(c);
     //~^ WARN calls to `std::str::from_utf8`
     str::from_utf8(c);
@@ -164,6 +167,20 @@ pub fn from_utf8_with_indirections() {
     //~^ WARN calls to `std::str::from_utf8`
     str::from_utf8(INVALID_4);
     //~^ WARN calls to `str::from_utf8`
+
+    let mut a = [99, 108, 130, 105, 112, 112, 121]; // invalid
+    loop {
+        a = [99, 108, 130, 105, 112, 112, 121]; // still invalid, but too complex
+        break;
+    }
+    std::str::from_utf8_mut(&mut a);
+
+    let mut a = [99, 108, 130, 105, 112, 112]; // invalid
+    loop {
+        a = *b"clippy"; // valid
+        break;
+    }
+    std::str::from_utf8_mut(&mut a);
 }
 
 fn main() {}

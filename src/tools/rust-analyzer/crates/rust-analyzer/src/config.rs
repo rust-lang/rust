@@ -18,7 +18,7 @@ use ide_db::{
     imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
 };
-use itertools::Itertools;
+use itertools::{Either, Itertools};
 use paths::{Utf8Path, Utf8PathBuf};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectJsonFromCommand,
@@ -128,6 +128,8 @@ config_data! {
         /// Whether to show keyword hover popups. Only applies when
         /// `#rust-analyzer.hover.documentation.enable#` is set.
         hover_documentation_keywords_enable: bool  = true,
+        /// Whether to show drop glue information on hover.
+        hover_dropGlue_enable: bool                = true,
         /// Use markdown syntax for links on hover.
         hover_links_enable: bool = true,
         /// Whether to show what types are used as generic arguments in calls etc. on hover, and what is their max length to show such types, beyond it they will be shown with ellipsis.
@@ -587,6 +589,10 @@ config_data! {
         /// avoid checking unnecessary things.
         cargo_buildScripts_useRustcWrapper: bool = true,
         /// List of cfg options to enable with the given values.
+        ///
+        /// To enable a name without a value, use `"key"`.
+        /// To enable a name with a value, use `"key=value"`.
+        /// To disable, prefix the entry with a `!`.
         cargo_cfgs: Vec<String> = {
             vec!["debug_assertions".into(), "miri".into()]
         },
@@ -1631,6 +1637,7 @@ impl Config {
                 Some(MaxSubstitutionLength::Limit(limit)) => ide::SubstTyLen::LimitTo(*limit),
                 None => ide::SubstTyLen::Unlimited,
             },
+            show_drop_glue: *self.hover_dropGlue_enable(),
         }
     }
 
@@ -1977,27 +1984,35 @@ impl Config {
             rustc_source,
             extra_includes,
             cfg_overrides: project_model::CfgOverrides {
-                global: CfgDiff::new(
-                    self.cargo_cfgs(source_root)
-                        .iter()
-                        // parse any cfg setting formatted as key=value or just key (without value)
-                        .filter_map(|s| {
-                            let mut sp = s.splitn(2, "=");
-                            let key = sp.next();
-                            let val = sp.next();
-                            key.map(|key| (key, val))
-                        })
-                        .map(|(key, val)| match val {
-                            Some(val) => CfgAtom::KeyValue {
-                                key: Symbol::intern(key),
-                                value: Symbol::intern(val),
-                            },
-                            None => CfgAtom::Flag(Symbol::intern(key)),
-                        })
-                        .collect(),
-                    vec![],
-                )
-                .unwrap(),
+                global: {
+                    let (enabled, disabled): (Vec<_>, Vec<_>) =
+                        self.cargo_cfgs(source_root).iter().partition_map(|s| {
+                            s.strip_prefix("!").map_or(Either::Left(s), Either::Right)
+                        });
+                    CfgDiff::new(
+                        enabled
+                            .into_iter()
+                            // parse any cfg setting formatted as key=value or just key (without value)
+                            .map(|s| match s.split_once("=") {
+                                Some((key, val)) => CfgAtom::KeyValue {
+                                    key: Symbol::intern(key),
+                                    value: Symbol::intern(val),
+                                },
+                                None => CfgAtom::Flag(Symbol::intern(s)),
+                            })
+                            .collect(),
+                        disabled
+                            .into_iter()
+                            .map(|s| match s.split_once("=") {
+                                Some((key, val)) => CfgAtom::KeyValue {
+                                    key: Symbol::intern(key),
+                                    value: Symbol::intern(val),
+                                },
+                                None => CfgAtom::Flag(Symbol::intern(s)),
+                            })
+                            .collect(),
+                    )
+                },
                 selective: Default::default(),
             },
             wrap_rustc_in_build_scripts: *self.cargo_buildScripts_useRustcWrapper(source_root),

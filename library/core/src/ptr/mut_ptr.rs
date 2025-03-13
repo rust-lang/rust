@@ -1,7 +1,7 @@
 use super::*;
 use crate::cmp::Ordering::{Equal, Greater, Less};
 use crate::intrinsics::const_eval_select;
-use crate::mem::SizedTypeProperties;
+use crate::mem::{self, SizedTypeProperties};
 use crate::slice::{self, SliceIndex};
 
 impl<T: ?Sized> *mut T {
@@ -769,9 +769,9 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Calculates the distance between two pointers within the same allocation. The returned value is in
-    /// units of T: the distance in bytes divided by `mem::size_of::<T>()`.
+    /// units of T: the distance in bytes divided by `size_of::<T>()`.
     ///
-    /// This is equivalent to `(self as isize - origin as isize) / (mem::size_of::<T>() as isize)`,
+    /// This is equivalent to `(self as isize - origin as isize) / (size_of::<T>() as isize)`,
     /// except that it has a lot more opportunities for UB, in exchange for the compiler
     /// better understanding what you are doing.
     ///
@@ -807,7 +807,7 @@ impl<T: ?Sized> *mut T {
     /// objects is not known at compile-time. However, the requirement also exists at
     /// runtime and may be exploited by optimizations. If you wish to compute the difference between
     /// pointers that are not guaranteed to be from the same allocation, use `(self as isize -
-    /// origin as isize) / mem::size_of::<T>()`.
+    /// origin as isize) / size_of::<T>()`.
     // FIXME: recommend `addr()` instead of `as usize` once that is stable.
     ///
     /// [`add`]: #method.add
@@ -881,7 +881,7 @@ impl<T: ?Sized> *mut T {
 
     /// Calculates the distance between two pointers within the same allocation, *where it's known that
     /// `self` is equal to or greater than `origin`*. The returned value is in
-    /// units of T: the distance in bytes is divided by `mem::size_of::<T>()`.
+    /// units of T: the distance in bytes is divided by `size_of::<T>()`.
     ///
     /// This computes the same value that [`offset_from`](#method.offset_from)
     /// would compute, but with the added precondition that the offset is
@@ -1397,7 +1397,7 @@ impl<T: ?Sized> *mut T {
         unsafe { read_unaligned(self) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// Copies `count * size_of::<T>()` bytes from `self` to `dest`. The source
     /// and destination may overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy`].
@@ -1417,7 +1417,7 @@ impl<T: ?Sized> *mut T {
         unsafe { copy(self, dest, count) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `self` to `dest`. The source
+    /// Copies `count * size_of::<T>()` bytes from `self` to `dest`. The source
     /// and destination may *not* overlap.
     ///
     /// NOTE: this has the *same* argument order as [`ptr::copy_nonoverlapping`].
@@ -1437,7 +1437,7 @@ impl<T: ?Sized> *mut T {
         unsafe { copy_nonoverlapping(self, dest, count) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// Copies `count * size_of::<T>()` bytes from `src` to `self`. The source
     /// and destination may overlap.
     ///
     /// NOTE: this has the *opposite* argument order of [`ptr::copy`].
@@ -1457,7 +1457,7 @@ impl<T: ?Sized> *mut T {
         unsafe { copy(src, self, count) }
     }
 
-    /// Copies `count * size_of<T>` bytes from `src` to `self`. The source
+    /// Copies `count * size_of::<T>()` bytes from `src` to `self`. The source
     /// and destination may *not* overlap.
     ///
     /// NOTE: this has the *opposite* argument order of [`ptr::copy_nonoverlapping`].
@@ -1623,8 +1623,6 @@ impl<T: ?Sized> *mut T {
     /// Accessing adjacent `u8` as `u16`
     ///
     /// ```
-    /// use std::mem::align_of;
-    ///
     /// # unsafe {
     /// let mut x = [5_u8, 6, 7, 8, 9];
     /// let ptr = x.as_mut_ptr();
@@ -1689,7 +1687,7 @@ impl<T: ?Sized> *mut T {
     where
         T: Sized,
     {
-        self.is_aligned_to(mem::align_of::<T>())
+        self.is_aligned_to(align_of::<T>())
     }
 
     /// Returns whether the pointer is aligned to `align`.
@@ -1950,7 +1948,7 @@ impl<T> *mut [T] {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
-    /// * The pointer must be [valid] for reads for `ptr.len() * mem::size_of::<T>()` many bytes,
+    /// * The pointer must be [valid] for reads for `ptr.len() * size_of::<T>()` many bytes,
     ///   and it must be properly aligned. This means in particular:
     ///
     ///     * The entire memory range of this slice must be contained within a single [allocated object]!
@@ -1962,7 +1960,7 @@ impl<T> *mut [T] {
     ///       them from other data. You can obtain a pointer that is usable as `data`
     ///       for zero-length slices using [`NonNull::dangling()`].
     ///
-    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+    /// * The total size `ptr.len() * size_of::<T>()` of the slice must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is
@@ -2008,7 +2006,7 @@ impl<T> *mut [T] {
     /// When calling this method, you have to ensure that *either* the pointer is null *or*
     /// all of the following is true:
     ///
-    /// * The pointer must be [valid] for reads and writes for `ptr.len() * mem::size_of::<T>()`
+    /// * The pointer must be [valid] for reads and writes for `ptr.len() * size_of::<T>()`
     ///   many bytes, and it must be properly aligned. This means in particular:
     ///
     ///     * The entire memory range of this slice must be contained within a single [allocated object]!
@@ -2020,7 +2018,7 @@ impl<T> *mut [T] {
     ///       them from other data. You can obtain a pointer that is usable as `data`
     ///       for zero-length slices using [`NonNull::dangling()`].
     ///
-    /// * The total size `ptr.len() * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`.
+    /// * The total size `ptr.len() * size_of::<T>()` of the slice must be no larger than `isize::MAX`.
     ///   See the safety documentation of [`pointer::offset`].
     ///
     /// * You must enforce Rust's aliasing rules, since the returned lifetime `'a` is

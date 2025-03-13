@@ -4,4 +4,5 @@
 fn main() {
     let s = std::ptr::null::<()>;
     s().cast::<()>();
+    //~^ ptr_as_ptr
 }

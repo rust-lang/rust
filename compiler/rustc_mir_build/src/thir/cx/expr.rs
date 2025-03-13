@@ -464,6 +464,10 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             }
 
+            hir::ExprKind::Use(expr, span) => {
+                ExprKind::ByUse { expr: self.mirror_expr(expr), span }
+            }
+
             hir::ExprKind::AddrOf(hir::BorrowKind::Ref, mutbl, arg) => {
                 ExprKind::Borrow { borrow_kind: mutbl.to_borrow_kind(), arg: self.mirror_expr(arg) }
             }
@@ -648,7 +652,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                 }
             },
 
-            hir::ExprKind::Closure { .. } => {
+            hir::ExprKind::Closure(hir::Closure { .. }) => {
                 let closure_ty = self.typeck_results.expr_ty(expr);
                 let (def_id, args, movability) = match *closure_ty.kind() {
                     ty::Closure(def_id, args) => (def_id, UpvarArgs::Closure(args), None),
@@ -730,12 +734,20 @@ impl<'tcx> ThirBuildCx<'tcx> {
                             }
                         }
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let value =
-                                mir::Const::from_unevaluated(tcx, anon_const.def_id.to_def_id())
-                                    .instantiate_identity();
-                            let span = tcx.def_span(anon_const.def_id);
+                            let ty = self.typeck_results.node_type(anon_const.hir_id);
+                            let did = anon_const.def_id.to_def_id();
+                            let typeck_root_def_id = tcx.typeck_root_def_id(did);
+                            let parent_args = tcx.erase_regions(GenericArgs::identity_for_item(
+                                tcx,
+                                typeck_root_def_id,
+                            ));
+                            let args =
+                                InlineConstArgs::new(tcx, InlineConstArgsParts { parent_args, ty })
+                                    .args;
 
-                            InlineAsmOperand::Const { value, span }
+                            let uneval = mir::UnevaluatedConst::new(did, args);
+                            let value = mir::Const::Unevaluated(uneval, ty);
+                            InlineAsmOperand::Const { value, span: tcx.def_span(did) }
                         }
                         hir::InlineAsmOperand::SymFn { expr } => {
                             InlineAsmOperand::SymFn { value: self.mirror_expr(expr) }
@@ -1029,7 +1041,7 @@ impl<'tcx> ThirBuildCx<'tcx> {
                         "Should have already errored about late bound consts: {def_id:?}"
                     );
                 };
-                let name = self.tcx.hir().name(hir_id);
+                let name = self.tcx.hir_name(hir_id);
                 let param = ty::ParamConst::new(index, name);
 
                 ExprKind::ConstParam { param, def_id }
@@ -1240,6 +1252,17 @@ impl<'tcx> ThirBuildCx<'tcx> {
 
         match upvar_capture {
             ty::UpvarCapture::ByValue => captured_place_expr,
+            ty::UpvarCapture::ByUse => {
+                let span = captured_place_expr.span;
+                let expr_id = self.thir.exprs.push(captured_place_expr);
+
+                Expr {
+                    temp_lifetime: TempLifetime { temp_lifetime, backwards_incompatible },
+                    ty: upvar_ty,
+                    span: closure_expr.span,
+                    kind: ExprKind::ByUse { expr: expr_id, span },
+                }
+            }
             ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let borrow_kind = match upvar_borrow {
                     ty::BorrowKind::Immutable => BorrowKind::Shared,

@@ -222,7 +222,7 @@ impl AllocError {
 }
 
 /// The information that makes up a memory access: offset and size.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone)]
 pub struct AllocRange {
     pub start: Size,
     pub size: Size,
@@ -470,7 +470,7 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
             // Find the provenance.
             let (offset, _prov) = self
                 .provenance
-                .range_get_ptrs(range, cx)
+                .range_ptrs_get(range, cx)
                 .first()
                 .copied()
                 .expect("there must be provenance somewhere here");
@@ -678,6 +678,11 @@ impl<Prov: Provenance, Extra, Bytes: AllocBytes> Allocation<Prov, Extra, Bytes> 
 
         // Set provenance of all bytes to wildcard.
         self.provenance.write_wildcards(self.len());
+
+        // Also expose the provenance of the interpreter-level allocation, so it can
+        // be written by FFI. The `black_box` is defensive programming as LLVM likes
+        // to (incorrectly) optimize away ptr2int casts whose result is unused.
+        std::hint::black_box(self.get_bytes_unchecked_raw_mut().expose_provenance());
 
         Ok(())
     }

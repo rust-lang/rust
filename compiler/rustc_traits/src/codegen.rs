@@ -70,7 +70,7 @@ pub(crate) fn codegen_select_candidate<'tcx>(
                 infcx.err_ctxt().report_overflow_obligation_cycle(&cycle);
             }
         }
-        return Err(CodegenObligationError::FulfillmentError);
+        return Err(CodegenObligationError::Unimplemented);
     }
 
     let impl_source = infcx.resolve_vars_if_possible(impl_source);

@@ -421,7 +421,7 @@ impl<D: SolverDelegate<Interner = I>, I: Interner> ProofTreeBuilder<D> {
         self.add_goal(
             delegate,
             max_input_universe,
-            GoalSource::Misc,
+            GoalSource::TypeRelating,
             goal.with(delegate.cx(), goal.predicate),
         );
     }

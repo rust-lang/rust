@@ -426,7 +426,7 @@ mod imp {
             use crate::sys::weak::dlsym;
             dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
             let mut guard: usize = 0;
-            let mut size = mem::size_of_val(&guard);
+            let mut size = size_of_val(&guard);
             let oid = c"security.bsd.stack_guard_page";
             match sysctlbyname.get() {
                 Some(fcn) if unsafe {

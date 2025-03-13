@@ -9,7 +9,7 @@ LL |     x[index];
    = help: to override `-D warnings` add `#[allow(clippy::indexing_slicing)]`
 
 error: indexing may panic
-  --> tests/ui-toml/suppress_lint_in_const/test.rs:42:5
+  --> tests/ui-toml/suppress_lint_in_const/test.rs:43:5
    |
 LL |     v[0];
    |     ^^^^
@@ -17,7 +17,7 @@ LL |     v[0];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> tests/ui-toml/suppress_lint_in_const/test.rs:43:5
+  --> tests/ui-toml/suppress_lint_in_const/test.rs:45:5
    |
 LL |     v[10];
    |     ^^^^^
@@ -25,7 +25,7 @@ LL |     v[10];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> tests/ui-toml/suppress_lint_in_const/test.rs:44:5
+  --> tests/ui-toml/suppress_lint_in_const/test.rs:47:5
    |
 LL |     v[1 << 3];
    |     ^^^^^^^^^
@@ -33,7 +33,7 @@ LL |     v[1 << 3];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> tests/ui-toml/suppress_lint_in_const/test.rs:50:5
+  --> tests/ui-toml/suppress_lint_in_const/test.rs:54:5
    |
 LL |     v[N];
    |     ^^^^
@@ -41,7 +41,7 @@ LL |     v[N];
    = help: consider using `.get(n)` or `.get_mut(n)` instead
 
 error: indexing may panic
-  --> tests/ui-toml/suppress_lint_in_const/test.rs:51:5
+  --> tests/ui-toml/suppress_lint_in_const/test.rs:56:5
    |
 LL |     v[M];
    |     ^^^^

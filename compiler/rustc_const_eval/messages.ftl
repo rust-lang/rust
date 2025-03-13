@@ -109,6 +109,8 @@ const_eval_frame_note_inner = inside {$where_ ->
     *[other] {""}
 }
 
+const_eval_frame_note_last = the failure occurred here
+
 const_eval_in_bounds_test = out-of-bounds pointer use
 const_eval_incompatible_calling_conventions =
     calling a function with calling convention {$callee_conv} using calling convention {$caller_conv}
@@ -300,8 +302,7 @@ const_eval_overflow_arith =
 const_eval_overflow_shift =
     overflowing shift by {$shift_amount} in `{$intrinsic}`
 
-const_eval_panic =
-    the evaluated program panicked at '{$msg}', {$file}:{$line}:{$col}
+const_eval_panic = evaluation panicked: {$msg}
 
 const_eval_panic_non_str = argument to `panic!()` in a const context must have type `&str`
 

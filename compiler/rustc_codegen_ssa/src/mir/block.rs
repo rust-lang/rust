@@ -3,6 +3,7 @@ use std::cmp;
 use rustc_abi::{BackendRepr, ExternAbi, HasDataLayout, Reg, WrappingRange};
 use rustc_ast as ast;
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
+use rustc_data_structures::packed::Pu128;
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::mir::{self, AssertKind, InlineAsmMacro, SwitchTargets, UnwindTerminateReason};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, ValidityRequirement};
@@ -406,6 +407,39 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr_value, llval);
                 bx.cond_br_with_expect(cmp, lltarget, llotherwise, expect);
             }
+        } else if target_iter.len() == 2
+            && self.mir[targets.otherwise()].is_empty_unreachable()
+            && targets.all_values().contains(&Pu128(0))
+            && targets.all_values().contains(&Pu128(1))
+        {
+            // This is the really common case for `bool`, `Option`, etc.
+            // By using `trunc nuw` we communicate that other values are
+            // impossible without needing `switch` or `assume`s.
+            let true_bb = targets.target_for_value(1);
+            let false_bb = targets.target_for_value(0);
+            let true_ll = helper.llbb_with_cleanup(self, true_bb);
+            let false_ll = helper.llbb_with_cleanup(self, false_bb);
+
+            let expected_cond_value = if self.cx.sess().opts.optimize == OptLevel::No {
+                None
+            } else {
+                match (self.cold_blocks[true_bb], self.cold_blocks[false_bb]) {
+                    // Same coldness, no expectation
+                    (true, true) | (false, false) => None,
+                    // Different coldness, expect the non-cold one
+                    (true, false) => Some(false),
+                    (false, true) => Some(true),
+                }
+            };
+
+            let bool_ty = bx.tcx().types.bool;
+            let cond = if switch_ty == bool_ty {
+                discr_value
+            } else {
+                let bool_llty = bx.immediate_backend_type(bx.layout_of(bool_ty));
+                bx.unchecked_utrunc(discr_value, bool_llty)
+            };
+            bx.cond_br_with_expect(cond, true_ll, false_ll, expected_cond_value);
         } else if self.cx.sess().opts.optimize == OptLevel::No
             && target_iter.len() == 2
             && self.mir[targets.otherwise()].is_empty_unreachable()

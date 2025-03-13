@@ -6,10 +6,14 @@ use std::io::Read;
 fn main() {
     let slice: &[u32] = &[0];
     let _ = &slice[..]; // Redundant slice
+    //
+    //~^^ redundant_slicing
 
     let v = vec![0];
     let _ = &v[..]; // Ok, results in `&[_]`
     let _ = &(&*v)[..]; // Outer borrow is redundant
+    //
+    //~^^ redundant_slicing
 
     static S: &[u8] = &[0, 1, 2];
     let _ = &mut &S[..]; // Ok, re-borrows slice
@@ -27,6 +31,7 @@ fn main() {
         };
     }
     let _ = &m!(slice)[..];
+    //~^ redundant_slicing
 
     macro_rules! m2 {
         ($e:expr) => {

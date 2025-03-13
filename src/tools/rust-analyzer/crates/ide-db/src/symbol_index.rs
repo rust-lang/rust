@@ -24,7 +24,6 @@ use std::{
     cmp::Ordering,
     fmt,
     hash::{Hash, Hasher},
-    mem,
     ops::ControlFlow,
 };
 
@@ -299,7 +298,7 @@ impl SymbolIndex {
     }
 
     pub fn memory_size(&self) -> usize {
-        self.map.as_fst().size() + self.symbols.len() * mem::size_of::<FileSymbol>()
+        self.map.as_fst().size() + self.symbols.len() * size_of::<FileSymbol>()
     }
 
     fn range_to_map_value(start: usize, end: usize) -> u64 {

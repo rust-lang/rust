@@ -21,7 +21,21 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,ignore
     /// #[macro_use]
-    /// use some_macro;
+    /// extern crate some_crate;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```rust,ignore
+    /// use some_crate::some_macro;
+    ///
+    /// fn main() {
+    ///     some_macro!();
+    /// }
     /// ```
     #[clippy::version = "1.44.0"]
     pub MACRO_USE_IMPORTS,
@@ -84,7 +98,7 @@ impl LateLintPass<'_> for MacroUseImports {
         if cx.sess().opts.edition >= Edition::Edition2018
             && let hir::ItemKind::Use(path, _kind) = &item.kind
             && let hir_id = item.hir_id()
-            && let attrs = cx.tcx.hir().attrs(hir_id)
+            && let attrs = cx.tcx.hir_attrs(hir_id)
             && let Some(mac_attr) = attrs.iter().find(|attr| attr.has_name(sym::macro_use))
             && let Some(id) = path.res.iter().find_map(|res| match res {
                 Res::Def(DefKind::Mod, id) => Some(id),
@@ -101,11 +115,6 @@ impl LateLintPass<'_> for MacroUseImports {
             }
         } else if item.span.from_expansion() {
             self.push_unique_macro_pat_ty(cx, item.span);
-        }
-    }
-    fn check_attribute(&mut self, cx: &LateContext<'_>, attr: &hir::Attribute) {
-        if attr.span().from_expansion() {
-            self.push_unique_macro(cx, attr.span());
         }
     }
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {

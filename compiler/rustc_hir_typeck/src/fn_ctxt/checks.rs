@@ -3,9 +3,7 @@ use std::{fmt, iter, mem};
 use itertools::Itertools;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::codes::*;
-use rustc_errors::{
-    Applicability, Diag, ErrorGuaranteed, MultiSpan, StashKey, a_or_an, listify, pluralize,
-};
+use rustc_errors::{Applicability, Diag, ErrorGuaranteed, MultiSpan, a_or_an, listify, pluralize};
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -101,17 +99,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         debug!("FnCtxt::check_asm: {} deferred checks", deferred_asm_checks.len());
         for (asm, hir_id) in deferred_asm_checks.drain(..) {
             let enclosing_id = self.tcx.hir_enclosing_body_owner(hir_id);
-            let expr_ty = |expr: &hir::Expr<'tcx>| {
-                let ty = self.typeck_results.borrow().expr_ty_adjusted(expr);
-                let ty = self.resolve_vars_if_possible(ty);
-                if ty.has_non_region_infer() {
-                    Ty::new_misc_error(self.tcx)
-                } else {
-                    self.tcx.erase_regions(ty)
-                }
-            };
-            InlineAsmCtxt::new(self.tcx, enclosing_id, self.typing_env(self.param_env), expr_ty)
-                .check_asm(asm);
+            InlineAsmCtxt::new(
+                enclosing_id,
+                &self.infcx,
+                self.typing_env(self.param_env),
+                &*self.typeck_results.borrow(),
+            )
+            .check_asm(asm);
+        }
+    }
+
+    pub(in super::super) fn check_repeat_exprs(&self) {
+        let mut deferred_repeat_expr_checks = self.deferred_repeat_expr_checks.borrow_mut();
+        debug!("FnCtxt::check_repeat_exprs: {} deferred checks", deferred_repeat_expr_checks.len());
+        for (element, element_ty, count) in deferred_repeat_expr_checks.drain(..) {
+            // We want to emit an error if the const is not structurally resolveable as otherwise
+            // we can find up conservatively proving `Copy` which may infer the repeat expr count
+            // to something that never required `Copy` in the first place.
+            let count =
+                self.structurally_resolve_const(element.span, self.normalize(element.span, count));
+
+            // Avoid run on "`NotCopy: Copy` is not implemented" errors when the repeat expr count
+            // is erroneous/unknown. The user might wind up specifying a repeat count of 0/1.
+            if count.references_error() {
+                continue;
+            }
+
+            // If the length is 0, we don't create any elements, so we don't copy any.
+            // If the length is 1, we don't copy that one element, we move it. Only check
+            // for `Copy` if the length is larger.
+            if count.try_to_target_usize(self.tcx).is_none_or(|x| x > 1) {
+                self.enforce_repeat_element_needs_copy_bound(element, element_ty);
+            }
         }
     }
 
@@ -1617,7 +1636,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ast::LitKind::Char(_) => tcx.types.char,
             ast::LitKind::Int(_, ast::LitIntType::Signed(t)) => Ty::new_int(tcx, ty::int_ty(t)),
             ast::LitKind::Int(_, ast::LitIntType::Unsigned(t)) => Ty::new_uint(tcx, ty::uint_ty(t)),
-            ast::LitKind::Int(_, ast::LitIntType::Unsuffixed) => {
+            ast::LitKind::Int(i, ast::LitIntType::Unsuffixed) => {
                 let opt_ty = expected.to_option(self).and_then(|ty| match ty.kind() {
                     ty::Int(_) | ty::Uint(_) => Some(ty),
                     // These exist to direct casts like `0x61 as char` to use
@@ -1626,6 +1645,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ty::Char => Some(tcx.types.u8),
                     ty::RawPtr(..) => Some(tcx.types.usize),
                     ty::FnDef(..) | ty::FnPtr(..) => Some(tcx.types.usize),
+                    &ty::Pat(base, _) if base.is_integral() => {
+                        let layout = tcx
+                            .layout_of(self.typing_env(self.param_env).as_query_input(ty))
+                            .ok()?;
+                        assert!(!layout.uninhabited);
+
+                        match layout.backend_repr {
+                            rustc_abi::BackendRepr::Scalar(scalar) => {
+                                scalar.valid_range(&tcx).contains(u128::from(i.get())).then_some(ty)
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
                     _ => None,
                 });
                 opt_ty.unwrap_or_else(|| self.next_int_var())
@@ -2142,7 +2174,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let result = self
                     .lowerer()
-                    .lower_assoc_path(hir_id, path_span, ty.raw, qself, segment, true);
+                    .lower_assoc_path_ty(hir_id, path_span, ty.raw, qself, segment, true);
                 let ty = result
                     .map(|(ty, _, _)| ty)
                     .unwrap_or_else(|guar| Ty::new_error(self.tcx(), guar));
@@ -2158,62 +2190,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let (res, ty) = self.resolve_lang_item_path(lang_item, span, hir_id);
                 (res, LoweredTy::from_raw(self, path_span, ty))
             }
-        }
-    }
-
-    pub(super) fn collect_unused_stmts_for_coerce_return_ty(
-        &self,
-        errors_causecode: Vec<(Span, ObligationCauseCode<'tcx>)>,
-    ) {
-        for (span, code) in errors_causecode {
-            self.dcx().try_steal_modify_and_emit_err(span, StashKey::MaybeForgetReturn, |err| {
-                if let Some(fn_sig) = self.body_fn_sig()
-                    && let ObligationCauseCode::WhereClauseInExpr(_, _, binding_hir_id, ..) = code
-                    && !fn_sig.output().is_unit()
-                {
-                    let mut block_num = 0;
-                    let mut found_semi = false;
-                    for (hir_id, node) in self.tcx.hir_parent_iter(binding_hir_id) {
-                        // Don't proceed into parent bodies
-                        if hir_id.owner != binding_hir_id.owner {
-                            break;
-                        }
-                        match node {
-                            hir::Node::Stmt(stmt) => {
-                                if let hir::StmtKind::Semi(expr) = stmt.kind {
-                                    let expr_ty = self.typeck_results.borrow().expr_ty(expr);
-                                    let return_ty = fn_sig.output();
-                                    if !matches!(expr.kind, hir::ExprKind::Ret(..))
-                                        && self.may_coerce(expr_ty, return_ty)
-                                    {
-                                        found_semi = true;
-                                    }
-                                }
-                            }
-                            hir::Node::Block(_block) => {
-                                if found_semi {
-                                    block_num += 1;
-                                }
-                            }
-                            hir::Node::Item(item) => {
-                                if let hir::ItemKind::Fn { .. } = item.kind {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                    }
-                    if block_num > 1 && found_semi {
-                        err.span_suggestion_verbose(
-                            // use the span of the *whole* expr
-                            self.tcx.hir().span(binding_hir_id).shrink_to_lo(),
-                            "you might have meant to return this to infer its type parameters",
-                            "return ",
-                            Applicability::MaybeIncorrect,
-                        );
-                    }
-                }
-            });
         }
     }
 

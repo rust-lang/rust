@@ -63,7 +63,7 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>, set_reuse: &dyn Fn(&mut CguReuseTr
             },
         };
 
-        for attr in tcx.hir().attrs(rustc_hir::CRATE_HIR_ID) {
+        for attr in tcx.hir_attrs(rustc_hir::CRATE_HIR_ID) {
             ams.check_attr(attr);
         }
 
@@ -211,7 +211,7 @@ impl fmt::Display for CguReuse {
 }
 
 impl IntoDiagArg for CguReuse {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Owned(self.to_string()))
     }
 }

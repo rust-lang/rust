@@ -9,7 +9,6 @@ use rustc_errors::{DiagCtxtHandle, Diagnostic};
 use rustc_feature::Features;
 use rustc_hir::{AttrArgs, AttrItem, AttrPath, Attribute, HashIgnoredAttrId};
 use rustc_session::Session;
-use rustc_span::symbol::kw;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 
 use crate::attributes::allow_unstable::{AllowConstFnUnstableParser, AllowInternalUnstableParser};
@@ -333,9 +332,12 @@ impl<'sess> AttributeParser<'sess> {
                 {
                     lit
                 } else {
-                    let guar = self.dcx().has_errors().unwrap();
+                    let guar = self.dcx().span_delayed_bug(
+                        args.span().unwrap_or(DUMMY_SP),
+                        "expr in place where literal is expected (builtin attr parsing)",
+                    );
                     ast::MetaItemLit {
-                        symbol: kw::Empty,
+                        symbol: sym::dummy,
                         suffix: None,
                         kind: ast::LitKind::Err(guar),
                         span: DUMMY_SP,

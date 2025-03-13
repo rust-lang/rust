@@ -22,7 +22,6 @@ use rustc_hir::{
     expr_needs_parens, is_range_literal,
 };
 use rustc_infer::infer::{BoundRegionConversionTime, DefineOpaqueTypes, InferCtxt, InferOk};
-use rustc_middle::hir::map;
 use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
@@ -93,7 +92,7 @@ impl<'a, 'tcx> CoroutineData<'a, 'tcx> {
     fn get_from_await_ty<F>(
         &self,
         visitor: AwaitsVisitor,
-        hir: map::Map<'tcx>,
+        tcx: TyCtxt<'tcx>,
         ty_matches: F,
     ) -> Option<Span>
     where
@@ -102,7 +101,7 @@ impl<'a, 'tcx> CoroutineData<'a, 'tcx> {
         visitor
             .awaits
             .into_iter()
-            .map(|id| hir.expect_expr(id))
+            .map(|id| tcx.hir_expect_expr(id))
             .find(|await_expr| ty_matches(ty::Binder::dummy(self.0.expr_ty_adjusted(await_expr))))
             .map(|expr| expr.span)
     }
@@ -136,7 +135,10 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
 ) {
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
-        || projection.is_some_and(|projection| tcx.is_impl_trait_in_trait(projection.def_id))
+        || projection.is_some_and(|projection| {
+            tcx.is_impl_trait_in_trait(projection.def_id)
+                || tcx.lookup_stability(projection.def_id).is_some_and(|stab| stab.is_unstable())
+        })
     {
         return;
     }
@@ -2177,8 +2179,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         err: &mut Diag<'_, G>,
         obligation: &PredicateObligation<'tcx>,
     ) -> bool {
-        let hir = self.tcx.hir();
-
         // Attempt to detect an async-await error by looking at the obligation causes, looking
         // for a coroutine to be present.
         //
@@ -2347,7 +2347,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         let mut interior_or_upvar_span = None;
 
-        let from_awaited_ty = coroutine_data.get_from_await_ty(visitor, hir, ty_matches);
+        let from_awaited_ty = coroutine_data.get_from_await_ty(visitor, self.tcx, ty_matches);
         debug!(?from_awaited_ty);
 
         // Avoid disclosing internal information to downstream crates.
@@ -2425,7 +2425,6 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
         // Special case the primary error message when send or sync is the trait that was
         // not implemented.
-        let hir = self.tcx.hir();
         let trait_explanation = if let Some(name @ (sym::Send | sym::Sync)) =
             self.tcx.get_diagnostic_name(trait_pred.def_id())
         {
@@ -2452,7 +2451,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             .parent(coroutine_did)
                             .as_local()
                             .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
-                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .and_then(|parent_hir_id| self.tcx.hir_opt_name(parent_hir_id))
                             .map(|name| {
                                 format!("future returned by `{name}` is not {trait_name}")
                             })?,
@@ -2476,7 +2475,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                             .parent(coroutine_did)
                             .as_local()
                             .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
-                            .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                            .and_then(|parent_hir_id| self.tcx.hir_opt_name(parent_hir_id))
                             .map(|name| {
                                 format!("async iterator returned by `{name}` is not {trait_name}")
                             })?,
@@ -2499,7 +2498,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                                 .parent(coroutine_did)
                                 .as_local()
                                 .map(|parent_did| self.tcx.local_def_id_to_hir_id(parent_did))
-                                .and_then(|parent_hir_id| hir.opt_name(parent_hir_id))
+                                .and_then(|parent_hir_id| self.tcx.hir_opt_name(parent_hir_id))
                                 .map(|name| {
                                     format!("iterator returned by `{name}` is not {trait_name}")
                                 })?
@@ -2692,7 +2691,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             | ObligationCauseCode::LetElse
             | ObligationCauseCode::BinOp { .. }
             | ObligationCauseCode::AscribeUserTypeProvePredicate(..)
-            | ObligationCauseCode::DropImpl
+            | ObligationCauseCode::AlwaysApplicableImpl
             | ObligationCauseCode::ConstParam(_)
             | ObligationCauseCode::ReferenceOutlivesReferent(..)
             | ObligationCauseCode::ObjectTypeBound(..) => {}
@@ -3123,8 +3122,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     Applicability::MachineApplicable,
                 );
             }
-            ObligationCauseCode::ConstSized => {
-                err.note("constant expressions must have a statically known size");
+            ObligationCauseCode::SizedConstOrStatic => {
+                err.note("statics and constants must have a statically known size");
             }
             ObligationCauseCode::InlineAsmSized => {
                 err.note("all inline asm arguments must have a statically known size");
@@ -3188,7 +3187,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     false
                 };
 
-                if !is_upvar_tys_infer_tuple {
+                let is_builtin_async_fn_trait =
+                    tcx.async_fn_trait_kind_from_def_id(data.parent_trait_pred.def_id()).is_some();
+
+                if !is_upvar_tys_infer_tuple && !is_builtin_async_fn_trait {
                     let ty_str = tcx.short_string(ty, err.long_ty_path());
                     let msg = format!("required because it appears within the type `{ty_str}`");
                     match ty.kind() {
@@ -3563,7 +3565,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ObligationCauseCode::OpaqueReturnType(expr_info) => {
                 let (expr_ty, expr) = if let Some((expr_ty, hir_id)) = expr_info {
                     let expr_ty = tcx.short_string(expr_ty, err.long_ty_path());
-                    let expr = tcx.hir().expect_expr(hir_id);
+                    let expr = tcx.hir_expect_expr(hir_id);
                     (expr_ty, expr)
                 } else if let Some(body_id) = tcx.hir_node_by_def_id(body_id).body_id()
                     && let body = tcx.hir_body(body_id)
@@ -4910,6 +4912,53 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             ),
         );
         true
+    }
+    pub(crate) fn suggest_swapping_lhs_and_rhs<T>(
+        &self,
+        err: &mut Diag<'_>,
+        predicate: T,
+        param_env: ty::ParamEnv<'tcx>,
+        cause_code: &ObligationCauseCode<'tcx>,
+    ) where
+        T: Upcast<TyCtxt<'tcx>, ty::Predicate<'tcx>>,
+    {
+        let tcx = self.tcx;
+        let predicate = predicate.upcast(tcx);
+        match *cause_code {
+            ObligationCauseCode::BinOp {
+                lhs_hir_id,
+                rhs_hir_id: Some(rhs_hir_id),
+                rhs_span: Some(rhs_span),
+                ..
+            } if let Some(typeck_results) = &self.typeck_results
+                && let hir::Node::Expr(lhs) = tcx.hir_node(lhs_hir_id)
+                && let hir::Node::Expr(rhs) = tcx.hir_node(rhs_hir_id)
+                && let Some(lhs_ty) = typeck_results.expr_ty_opt(lhs)
+                && let Some(rhs_ty) = typeck_results.expr_ty_opt(rhs) =>
+            {
+                if let Some(pred) = predicate.as_trait_clause()
+                    && tcx.is_lang_item(pred.def_id(), LangItem::PartialEq)
+                    && self
+                        .infcx
+                        .type_implements_trait(pred.def_id(), [rhs_ty, lhs_ty], param_env)
+                        .must_apply_modulo_regions()
+                {
+                    let lhs_span = tcx.hir().span(lhs_hir_id);
+                    let sm = tcx.sess.source_map();
+                    if let Ok(rhs_snippet) = sm.span_to_snippet(rhs_span)
+                        && let Ok(lhs_snippet) = sm.span_to_snippet(lhs_span)
+                    {
+                        err.note(format!("`{rhs_ty}` implements `PartialEq<{lhs_ty}>`"));
+                        err.multipart_suggestion(
+                            "consider swapping the equality",
+                            vec![(lhs_span, rhs_snippet), (rhs_span, lhs_snippet)],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
 

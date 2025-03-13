@@ -3,12 +3,12 @@ use std::assert_matches::assert_matches;
 use arrayvec::ArrayVec;
 use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -93,8 +93,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // If `v` is an integer constant whose value is just a single byte repeated N times,
-                // emit a `memset` filling the entire `dest` with that byte.
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
@@ -119,33 +117,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     false
                 };
 
-                trace!(?cg_elem.val);
                 match cg_elem.val {
                     OperandValue::Immediate(v) => {
                         if try_init_all_same(bx, v) {
                             return;
                         }
                     }
-                    OperandValue::Pair(a, b) => {
-                        let a_is_undef = bx.cx().is_undef(a);
-                        match (a_is_undef, bx.cx().is_undef(b)) {
-                            // Can happen for uninit unions
-                            (true, true) => {
-                                // FIXME: can we produce better output here?
-                            }
-                            (false, true) | (true, false) => {
-                                let val = if a_is_undef { b } else { a };
-                                if try_init_all_same(bx, val) {
-                                    return;
-                                }
-                            }
-                            (false, false) => {
-                                // FIXME: if both are the same value, use try_init_all_same
-                            }
-                        }
-                    }
-                    OperandValue::ZeroSized => unreachable!("checked above"),
-                    OperandValue::Ref(..) => {}
+                    _ => (),
                 }
 
                 let count = self
@@ -385,6 +363,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
         assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
+
+        // While optimizations will remove no-op transmutes, they might still be
+        // there in debug or things that aren't no-op in MIR because they change
+        // the Rust type but not the underlying layout/niche.
+        if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+            return imm;
+        }
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
@@ -878,7 +863,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let ty = cg_place.layout.ty;
         assert!(
-            if bx.cx().type_has_metadata(ty) {
+            if bx.cx().tcx().type_has_metadata(ty, bx.cx().typing_env()) {
                 matches!(val, OperandValue::Pair(..))
             } else {
                 matches!(val, OperandValue::Immediate(..))
@@ -1190,7 +1175,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.backend_repr {
                 abi::BackendRepr::Scalar(s) => s,
-                abi::BackendRepr::Vector { element, .. } => element,
+                abi::BackendRepr::SimdVector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {

@@ -41,7 +41,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -143,11 +143,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
     /// we will have to assume that any change means that you need to be recompiled.
     /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
-    /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
+    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
+    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
@@ -198,7 +198,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
+    query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
         feedable
     }
@@ -748,6 +748,15 @@ rustc_queries! {
         }
     }
 
+    /// Compute the conditions that need to hold for a conditionally-const item to be const.
+    /// That is, compute the set of `~const` where clauses for a given item.
+    ///
+    /// This can be thought of as the `~const` equivalent of `predicates_of`. These are the
+    /// predicates that need to be proven at usage sites, and can be assumed at definition.
+    ///
+    /// This query also computes the `~const` where clauses for associated types, which are
+    /// not "const", but which have item bounds which may be `~const`. These must hold for
+    /// the `~const` item bound to hold.
     query const_conditions(
         key: DefId
     ) -> ty::ConstConditions<'tcx> {
@@ -757,6 +766,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Compute the const bounds that are implied for a conditionally-const item.
+    ///
+    /// This can be though of as the `~const` equivalent of `explicit_item_bounds`. These
+    /// are the predicates that need to proven at definition sites, and can be assumed at
+    /// usage sites.
     query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
@@ -983,12 +997,6 @@ rustc_queries! {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
-    }
-
-    query self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
-        key: DefId
-    ) -> Option<ty::EarlyBinder<'tcx, ty::Ty<'tcx>>> {
-        desc { |tcx| "computing self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
     /// Maps a `DefId` of a type to a list of its inherent impls.
@@ -1518,6 +1526,11 @@ rustc_queries! {
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
     query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
+    }
+    /// Trait selection queries. These are best used by invoking `ty.is_use_cloned_modulo_regions()`,
+    /// `ty.is_use_cloned()`, etc, since that will prune the environment where possible.
+    query is_use_cloned_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `UseCloned`", env.value }
     }
     /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
@@ -2248,22 +2261,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
-    query implied_outlives_bounds_compat(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
-        NoSolution,
-    > {
-        desc { "computing implied outlives bounds for `{}`", goal.canonical.value.value.ty }
-    }
-
     query implied_outlives_bounds(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
+        key: (CanonicalImpliedOutlivesBoundsGoal<'tcx>, bool)
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds v2 for `{}`", goal.canonical.value.value.ty }
+        desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
     }
 
     /// Do not call this query directly:

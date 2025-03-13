@@ -1,45 +1,33 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-   = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
-   |
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `_READ`
   --> $DIR/out_of_bounds_read.rs:10:33
    |
 LL |     const _READ: u32 = unsafe { ptr::read(PAST_END_PTR) };
-   |                                 ^^^^^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-   = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+   |                                 ^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
    |
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::const_ptr::<impl *const u32>::read`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `_CONST_READ`
+
+error[E0080]: evaluation of constant value failed
   --> $DIR/out_of_bounds_read.rs:11:39
    |
 LL |     const _CONST_READ: u32 = unsafe { PAST_END_PTR.read() };
-   |                                       ^^^^^^^^^^^^^^^^^^^
-
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
+   |                                       ^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
    |
-   = note: memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
-   |
+note: inside `std::ptr::const_ptr::<impl *const u32>::read`
+  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
 note: inside `std::ptr::read::<u32>`
   --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-note: inside `std::ptr::mut_ptr::<impl *mut u32>::read`
-  --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
-note: inside `_MUT_READ`
+
+error[E0080]: evaluation of constant value failed
   --> $DIR/out_of_bounds_read.rs:12:37
    |
 LL |     const _MUT_READ: u32 = unsafe { (PAST_END_PTR as *mut u32).read() };
-   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ memory access failed: expected a pointer to 4 bytes of memory, but got ALLOC0+0x4 which is at or beyond the end of the allocation of size 4 bytes
+   |
+note: inside `std::ptr::mut_ptr::<impl *mut u32>::read`
+  --> $SRC_DIR/core/src/ptr/mut_ptr.rs:LL:COL
+note: inside `std::ptr::read::<u32>`
+  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error: aborting due to 3 previous errors
 

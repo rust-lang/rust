@@ -1,8 +1,8 @@
 error[E0045]: C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`
-  --> $DIR/variadic-ffi-2.rs:5:11
+  --> $DIR/variadic-ffi-2.rs:3:11
    |
-LL | fn baz(f: extern "stdcall" fn(usize, ...)) {
-   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
+LL | fn baz(f: extern "Rust" fn(usize, ...)) {
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ C-variadic function must have a compatible calling convention
 
 error: aborting due to 1 previous error
 

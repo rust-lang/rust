@@ -13,7 +13,7 @@ LL +     { unit_fn_block() };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> tests/ui/semicolon_outside_block.rs:42:5
+  --> tests/ui/semicolon_outside_block.rs:43:5
    |
 LL |     unsafe { unit_fn_block(); }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,9 +25,10 @@ LL +     unsafe { unit_fn_block() };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> tests/ui/semicolon_outside_block.rs:51:5
+  --> tests/ui/semicolon_outside_block.rs:53:5
    |
 LL | /     {
+LL | |
 LL | |         unit_fn_block();
 LL | |         unit_fn_block();
 LL | |     }
@@ -40,7 +41,7 @@ LL ~     };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> tests/ui/semicolon_outside_block.rs:61:5
+  --> tests/ui/semicolon_outside_block.rs:64:5
    |
 LL |     { m!(()); }
    |     ^^^^^^^^^^^
@@ -52,9 +53,10 @@ LL +     { m!(()) };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> tests/ui/semicolon_outside_block.rs:83:5
+  --> tests/ui/semicolon_outside_block.rs:87:5
    |
 LL | /     unsafe {
+LL | |
 LL | |         std::arch::asm!("");
 LL | |     }
    | |_____^
@@ -66,9 +68,10 @@ LL ~     };
    |
 
 error: consider moving the `;` outside the block for consistent formatting
-  --> tests/ui/semicolon_outside_block.rs:87:5
+  --> tests/ui/semicolon_outside_block.rs:92:5
    |
 LL | /     {
+LL | |
 LL | |         line!();
 LL | |     }
    | |_____^

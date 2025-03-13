@@ -9,23 +9,33 @@ use itertools::Itertools;
 fn main() {
     let _ = "key=value".splitn(2, '=').nth(2);
     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+    //~^ manual_split_once
     let _ = "key=value".splitn(2, '=').skip(1).next().unwrap();
+    //~^ manual_split_once
     let (_, _) = "key=value".splitn(2, '=').next_tuple().unwrap();
+    //~^ manual_split_once
 
     let s = String::from("key=value");
     let _ = s.splitn(2, '=').nth(1).unwrap();
+    //~^ manual_split_once
 
     let s = Box::<str>::from("key=value");
     let _ = s.splitn(2, '=').nth(1).unwrap();
+    //~^ manual_split_once
 
     let s = &"key=value";
     let _ = s.splitn(2, '=').skip(1).next().unwrap();
+    //~^ manual_split_once
 
     fn _f(s: &str) -> Option<&str> {
         let _ = s.splitn(2, '=').nth(1)?;
+        //~^ manual_split_once
         let _ = s.splitn(2, '=').skip(1).next()?;
+        //~^ manual_split_once
         let _ = s.rsplitn(2, '=').nth(1)?;
+        //~^ manual_split_once
         let _ = s.rsplitn(2, '=').skip(1).next()?;
+        //~^ manual_split_once
         None
     }
 
@@ -34,24 +44,31 @@ fn main() {
 
     // `rsplitn` gives the results in the reverse order of `rsplit_once`
     let _ = "key=value".rsplitn(2, '=').nth(1).unwrap();
+    //~^ manual_split_once
     let (_, _) = "key=value".rsplitn(2, '=').next_tuple().unwrap();
+    //~^ manual_split_once
     let _ = s.rsplitn(2, '=').nth(1);
+    //~^ manual_split_once
 }
 
 fn indirect() -> Option<()> {
     let mut iter = "a.b.c".splitn(2, '.');
+    //~^ manual_split_once
     let l = iter.next().unwrap();
     let r = iter.next().unwrap();
 
     let mut iter = "a.b.c".splitn(2, '.');
+    //~^ manual_split_once
     let l = iter.next()?;
     let r = iter.next()?;
 
     let mut iter = "a.b.c".rsplitn(2, '.');
+    //~^ manual_split_once
     let r = iter.next().unwrap();
     let l = iter.next().unwrap();
 
     let mut iter = "a.b.c".rsplitn(2, '.');
+    //~^ manual_split_once
     let r = iter.next()?;
     let l = iter.next()?;
 
@@ -137,8 +154,10 @@ fn _msrv_1_51() {
 #[clippy::msrv = "1.52"]
 fn _msrv_1_52() {
     let _ = "key=value".splitn(2, '=').nth(1).unwrap();
+    //~^ manual_split_once
 
     let mut iter = "a.b.c".splitn(2, '.');
+    //~^ manual_split_once
     let a = iter.next().unwrap();
     let b = iter.next().unwrap();
 }

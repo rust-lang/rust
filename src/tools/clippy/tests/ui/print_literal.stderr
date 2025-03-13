@@ -25,7 +25,7 @@ LL +     println!("Hello {} world", world);
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:32:26
+  --> tests/ui/print_literal.rs:33:26
    |
 LL |     println!("Hello {}", "world");
    |                          ^^^^^^^
@@ -37,7 +37,7 @@ LL +     println!("Hello world");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:34:26
+  --> tests/ui/print_literal.rs:36:26
    |
 LL |     println!("{} {:.4}", "a literal", 5);
    |                          ^^^^^^^^^^^
@@ -49,7 +49,7 @@ LL +     println!("a literal {:.4}", 5);
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:40:25
+  --> tests/ui/print_literal.rs:42:25
    |
 LL |     println!("{0} {1}", "hello", "world");
    |                         ^^^^^^^^^^^^^^^^
@@ -61,7 +61,7 @@ LL +     println!("hello world");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:42:25
+  --> tests/ui/print_literal.rs:45:25
    |
 LL |     println!("{1} {0}", "hello", "world");
    |                         ^^^^^^^^^^^^^^^^
@@ -73,7 +73,7 @@ LL +     println!("world hello");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:46:35
+  --> tests/ui/print_literal.rs:49:35
    |
 LL |     println!("{foo} {bar}", foo = "hello", bar = "world");
    |                                   ^^^^^^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL +     println!("hello world");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:48:35
+  --> tests/ui/print_literal.rs:52:35
    |
 LL |     println!("{bar} {foo}", foo = "hello", bar = "world");
    |                                   ^^^^^^^^^^^^^^^^^^^^^^
@@ -97,7 +97,7 @@ LL +     println!("world hello");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:56:20
+  --> tests/ui/print_literal.rs:60:20
    |
 LL |     println!("{}", "{} \x00 \u{ab123} \\\u{ab123} {:?}");
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -109,7 +109,7 @@ LL +     println!("{{}} \x00 \u{ab123} \\\u{ab123} {{:?}}");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:57:20
+  --> tests/ui/print_literal.rs:62:20
    |
 LL |     println!("{}", "\\\u{1234}");
    |                    ^^^^^^^^^^^^
@@ -121,7 +121,7 @@ LL +     println!("\\\u{1234}");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:61:20
+  --> tests/ui/print_literal.rs:67:20
    |
 LL |     println!("{}", r"\u{ab123} \u{{");
    |                    ^^^^^^^^^^^^^^^^^
@@ -133,7 +133,7 @@ LL +     println!("\\u{{ab123}} \\u{{{{");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:62:21
+  --> tests/ui/print_literal.rs:69:21
    |
 LL |     println!(r"{}", r"\u{ab123} \u{{");
    |                     ^^^^^^^^^^^^^^^^^
@@ -145,7 +145,7 @@ LL +     println!(r"\u{{ab123}} \u{{{{");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:63:20
+  --> tests/ui/print_literal.rs:71:20
    |
 LL |     println!("{}", r"\{ab123} \u{{");
    |                    ^^^^^^^^^^^^^^^^
@@ -157,7 +157,7 @@ LL +     println!("\\{{ab123}} \\u{{{{");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:64:20
+  --> tests/ui/print_literal.rs:73:20
    |
 LL |     println!("{}", "\\u{ab123}");
    |                    ^^^^^^^^^^^^
@@ -169,7 +169,7 @@ LL +     println!("\\u{{ab123}}");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:65:20
+  --> tests/ui/print_literal.rs:75:20
    |
 LL |     println!("{}", "\\\\u{1234}");
    |                    ^^^^^^^^^^^^^
@@ -181,7 +181,7 @@ LL +     println!("\\\\u{{1234}}");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:67:35
+  --> tests/ui/print_literal.rs:78:35
    |
 LL |     println!("mixed: {} {world}", "{hello}");
    |                                   ^^^^^^^^^
@@ -193,7 +193,7 @@ LL +     println!("mixed: {{hello}} {world}");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:71:20
+  --> tests/ui/print_literal.rs:83:20
    |
 LL |     println!("{}", r#"""#);
    |                    ^^^^^^
@@ -205,12 +205,12 @@ LL +     println!("\"");
    |
 
 error: literal with an empty format string
-  --> tests/ui/print_literal.rs:74:9
+  --> tests/ui/print_literal.rs:87:9
    |
 LL | /         r#"
+LL | |
 LL | |         foo
 LL | |         \
-LL | |         \\
 ...  |
 LL | |         bar
 LL | | "#
@@ -219,6 +219,7 @@ LL | | "#
 help: try
    |
 LL ~         "
+LL +
 LL +         foo
 LL +         \\
 LL +         \\\\

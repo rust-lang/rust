@@ -190,7 +190,8 @@ fn make_format_args(
                                 && let [stmt] = block.stmts.as_slice()
                                 && let StmtKind::Expr(expr) = &stmt.kind
                                 && let ExprKind::Path(None, path) = &expr.kind
-                                && path.is_potential_trivial_const_arg()
+                                && path.segments.len() == 1
+                                && path.segments[0].args.is_none()
                             {
                                 err.multipart_suggestion(
                                     "quote your inlined format argument to use as string literal",
@@ -710,11 +711,9 @@ fn report_missing_placeholders(
                     };
 
                     let pos = sub.position();
-                    let sub = String::from(sub.as_str());
-                    if explained.contains(&sub) {
+                    if !explained.insert(sub.to_string()) {
                         continue;
                     }
-                    explained.insert(sub);
 
                     if !found_foreign {
                         found_foreign = true;
