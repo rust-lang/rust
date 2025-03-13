@@ -263,9 +263,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        // We have set things up so we don't need to call `adjust_from_tcx` here,
-        // so we avoid copying the entire allocation contents.
-        let extra = M::init_alloc_extra(self, id, kind, alloc.size(), alloc.align)?;
+        // This cannot be merged with the `adjust_global_allocation` code path
+        // since here we have an allocation that already uses `M::Bytes`.
+        let extra = M::init_local_allocation(self, id, kind, alloc.size(), alloc.align)?;
         let alloc = alloc.with_extra(extra);
         self.memory.alloc_map.insert(id, (kind, alloc));
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
