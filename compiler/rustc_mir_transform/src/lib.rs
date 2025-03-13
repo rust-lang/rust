@@ -128,6 +128,7 @@ declare_passes! {
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod cleanup_post_borrowck : CleanupPostBorrowck;
 
+    mod copy_args : CopyArgs;
     mod copy_prop : CopyProp;
     mod coroutine : StateTransform;
     mod coverage : InstrumentCoverage;
@@ -726,6 +727,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &large_enums::EnumSizeOpt { discrepancy: 128 },
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
+            &copy_args::CopyArgs,
             // Cleanup for human readability, off by default.
             &prettify::ReorderBasicBlocks,
             &prettify::ReorderLocals,
