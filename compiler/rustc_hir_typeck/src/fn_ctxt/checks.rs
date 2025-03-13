@@ -2712,11 +2712,12 @@ enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
     Name(&'hir Ident),
 }
+
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
-            Self::Param(x) => x.span,
-            Self::Name(x) => x.span,
+            Self::Param(param) => param.span,
+            Self::Name(ident) => ident.span,
         }
     }
 
@@ -2724,15 +2725,23 @@ impl FnParam<'_> {
         struct D<'a>(FnParam<'a>, usize);
         impl fmt::Display for D<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let name = match self.0 {
-                    FnParam::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
+                // A "unique" param name is one that (a) exists, and (b) is guaranteed to be unique
+                // among the parameters, i.e. `_` does not count.
+                let unique_name = match self.0 {
+                    FnParam::Param(param)
+                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind =>
+                    {
                         Some(ident.name)
                     }
-                    FnParam::Name(x) if x.name != kw::Empty => Some(x.name),
+                    FnParam::Name(ident)
+                        if ident.name != kw::Empty && ident.name != kw::Underscore =>
+                    {
+                        Some(ident.name)
+                    }
                     _ => None,
                 };
-                if let Some(name) = name {
-                    write!(f, "`{name}`")
+                if let Some(unique_name) = unique_name {
+                    write!(f, "`{unique_name}`")
                 } else {
                     write!(f, "parameter #{}", self.1 + 1)
                 }

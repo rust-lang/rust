@@ -281,8 +281,9 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> {
-        self.hir_body(id).params.iter().map(|arg| match arg.pat.kind {
+        self.hir_body(id).params.iter().map(|param| match param.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
+            PatKind::Wild => Ident::new(kw::Underscore, param.pat.span),
             _ => Ident::empty(),
         })
     }

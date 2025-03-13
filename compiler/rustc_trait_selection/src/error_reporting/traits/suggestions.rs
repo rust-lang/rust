@@ -1998,7 +1998,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .iter()
                 .enumerate()
                 .map(|(i, ident)| {
-                    if ident.name.is_empty() || ident.name == kw::SelfLower {
+                    if ident.name.is_empty()
+                        || ident.name == kw::Underscore
+                        || ident.name == kw::SelfLower
+                    {
                         format!("arg{i}")
                     } else {
                         format!("{ident}")
