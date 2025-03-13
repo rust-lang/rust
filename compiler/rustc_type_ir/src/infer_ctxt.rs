@@ -155,10 +155,22 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
+    fn instantiate_binder_with_infer_and_goals<T: TypeFoldable<Self::Interner> + Copy>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+    ) -> (T, <Self::Interner as Interner>::Clauses);
+
     fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
+    ) -> U;
+
+    fn enter_forall_with_assumptions<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        f: impl FnOnce(T, <Self::Interner as Interner>::ParamEnv) -> U,
     ) -> U;
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);

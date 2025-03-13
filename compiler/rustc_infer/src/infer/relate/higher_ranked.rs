@@ -57,6 +57,49 @@ impl<'tcx> InferCtxt<'tcx> {
         self.tcx.replace_bound_vars_uncached(binder, delegate)
     }
 
+    pub fn enter_forall_with_assumptions_and_leak_universe<T>(
+        &self,
+        binder: ty::Binder<'tcx, T>,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> (T, ty::ParamEnv<'tcx>)
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        if !binder.as_ref().skip_binder_with_clauses().has_escaping_bound_vars() {
+            let (value, assumptions) = binder.skip_binder_with_clauses();
+            return (value, param_env.extend(self.tcx, assumptions));
+        }
+
+        let next_universe = self.create_next_universe();
+
+        // TODO: Deduplicate this with above.
+        let delegate = FnMutDelegate {
+            regions: &mut |br: ty::BoundRegion| {
+                ty::Region::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderRegion { universe: next_universe, bound: br },
+                )
+            },
+            types: &mut |bound_ty: ty::BoundTy| {
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType { universe: next_universe, bound: bound_ty },
+                )
+            },
+            consts: &mut |bound_var: ty::BoundVar| {
+                ty::Const::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderConst { universe: next_universe, bound: bound_var },
+                )
+            },
+        };
+
+        debug!(?next_universe);
+        let (value, assumptions) =
+            self.tcx.replace_bound_vars_uncached_with_clauses(binder, delegate);
+        (value, param_env.extend(self.tcx, assumptions))
+    }
+
     /// Replaces all bound variables (lifetimes, types, and constants) bound by
     /// `binder` with placeholder variables in a new universe and then calls the
     /// closure `f` with the instantiated value. The new placeholders can only be
@@ -80,6 +123,26 @@ impl<'tcx> InferCtxt<'tcx> {
         let value = self.enter_forall_and_leak_universe(forall);
         debug!(?value);
         f(value)
+    }
+
+    #[instrument(level = "debug", skip(self, f))]
+    pub fn enter_forall_with_assumptions<T, U>(
+        &self,
+        forall: ty::Binder<'tcx, T>,
+        param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce(T, ty::ParamEnv<'tcx>) -> U,
+    ) -> U
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        // FIXME: currently we do nothing to prevent placeholders with the new universe being
+        // used after exiting `f`. For example region subtyping can result in outlives constraints
+        // that name placeholders created in this function. Nested goals from type relations can
+        // also contain placeholders created by this function.
+        let (value, param_env) =
+            self.enter_forall_with_assumptions_and_leak_universe(forall, param_env);
+        debug!(?value);
+        f(value, param_env)
     }
 
     /// See [RegionConstraintCollector::leak_check][1]. We only check placeholder
