@@ -1,5 +1,4 @@
-use std::cmp::Reverse;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -14,10 +13,10 @@ type JobName = String;
 /// Computes a post merge CI analysis report between the `parent` and `current` commits.
 pub fn post_merge_report(job_db: JobDatabase, parent: Sha, current: Sha) -> anyhow::Result<()> {
     let jobs = download_all_metrics(&job_db, &parent, &current)?;
-    let diffs = aggregate_test_diffs(&jobs)?;
+    let aggregated_test_diffs = aggregate_test_diffs(&jobs)?;
 
     println!("Comparing {parent} (base) -> {current} (this PR)\n");
-    report_test_changes(diffs);
+    report_test_diffs(aggregated_test_diffs);
 
     Ok(())
 }
@@ -95,72 +94,30 @@ fn get_metrics_url(job_name: &str, sha: &str) -> String {
     format!("https://ci-artifacts.rust-lang.org/rustc-builds{suffix}/{sha}/metrics-{job_name}.json")
 }
 
+/// Represents a difference in the outcome of tests between a base and a current commit.
+/// Maps test diffs to jobs that contained them.
+#[derive(Debug)]
+struct AggregatedTestDiffs {
+    diffs: HashMap<TestDiff, Vec<JobName>>,
+}
+
 fn aggregate_test_diffs(
     jobs: &HashMap<JobName, JobMetrics>,
-) -> anyhow::Result<Vec<AggregatedTestDiffs>> {
-    let mut job_diffs = vec![];
+) -> anyhow::Result<AggregatedTestDiffs> {
+    let mut diffs: HashMap<TestDiff, Vec<JobName>> = HashMap::new();
 
     // Aggregate test suites
     for (name, metrics) in jobs {
         if let Some(parent) = &metrics.parent {
             let tests_parent = aggregate_tests(parent);
             let tests_current = aggregate_tests(&metrics.current);
-            let test_diffs = calculate_test_diffs(tests_parent, tests_current);
-            if !test_diffs.is_empty() {
-                job_diffs.push((name.clone(), test_diffs));
+            for diff in calculate_test_diffs(tests_parent, tests_current) {
+                diffs.entry(diff).or_default().push(name.to_string());
             }
         }
     }
 
-    // Aggregate jobs with the same diff, as often the same diff will appear in many jobs
-    let job_diffs: HashMap<Vec<(Test, TestOutcomeDiff)>, Vec<String>> =
-        job_diffs.into_iter().fold(HashMap::new(), |mut acc, (job, diffs)| {
-            acc.entry(diffs).or_default().push(job);
-            acc
-        });
-
-    Ok(job_diffs
-        .into_iter()
-        .map(|(test_diffs, jobs)| AggregatedTestDiffs { jobs, test_diffs })
-        .collect())
-}
-
-fn calculate_test_diffs(
-    reference: TestSuiteData,
-    current: TestSuiteData,
-) -> Vec<(Test, TestOutcomeDiff)> {
-    let mut diffs = vec![];
-    for (test, outcome) in &current.tests {
-        match reference.tests.get(test) {
-            Some(before) => {
-                if before != outcome {
-                    diffs.push((
-                        test.clone(),
-                        TestOutcomeDiff::ChangeOutcome {
-                            before: before.clone(),
-                            after: outcome.clone(),
-                        },
-                    ));
-                }
-            }
-            None => diffs.push((test.clone(), TestOutcomeDiff::Added(outcome.clone()))),
-        }
-    }
-    for (test, outcome) in &reference.tests {
-        if !current.tests.contains_key(test) {
-            diffs.push((test.clone(), TestOutcomeDiff::Missing { before: outcome.clone() }));
-        }
-    }
-
-    diffs
-}
-
-/// Represents a difference in the outcome of tests between a base and a current commit.
-#[derive(Debug)]
-struct AggregatedTestDiffs {
-    /// All jobs that had the exact same test diffs.
-    jobs: Vec<String>,
-    test_diffs: Vec<(Test, TestOutcomeDiff)>,
+    Ok(AggregatedTestDiffs { diffs })
 }
 
 #[derive(Eq, PartialEq, Hash, Debug)]
@@ -168,6 +125,47 @@ enum TestOutcomeDiff {
     ChangeOutcome { before: TestOutcome, after: TestOutcome },
     Missing { before: TestOutcome },
     Added(TestOutcome),
+}
+
+#[derive(Eq, PartialEq, Hash, Debug)]
+struct TestDiff {
+    test: Test,
+    diff: TestOutcomeDiff,
+}
+
+fn calculate_test_diffs(parent: TestSuiteData, current: TestSuiteData) -> HashSet<TestDiff> {
+    let mut diffs = HashSet::new();
+    for (test, outcome) in &current.tests {
+        match parent.tests.get(test) {
+            Some(before) => {
+                if before != outcome {
+                    diffs.insert(TestDiff {
+                        test: test.clone(),
+                        diff: TestOutcomeDiff::ChangeOutcome {
+                            before: before.clone(),
+                            after: outcome.clone(),
+                        },
+                    });
+                }
+            }
+            None => {
+                diffs.insert(TestDiff {
+                    test: test.clone(),
+                    diff: TestOutcomeDiff::Added(outcome.clone()),
+                });
+            }
+        }
+    }
+    for (test, outcome) in &parent.tests {
+        if !current.tests.contains_key(test) {
+            diffs.insert(TestDiff {
+                test: test.clone(),
+                diff: TestOutcomeDiff::Missing { before: outcome.clone() },
+            });
+        }
+    }
+
+    diffs
 }
 
 /// Aggregates test suite executions from all bootstrap invocations in a given CI job.
@@ -200,15 +198,12 @@ fn normalize_test_name(name: &str) -> String {
 }
 
 /// Prints test changes in Markdown format to stdout.
-fn report_test_changes(mut diffs: Vec<AggregatedTestDiffs>) {
+fn report_test_diffs(mut diff: AggregatedTestDiffs) {
     println!("## Test differences");
-    if diffs.is_empty() {
+    if diff.diffs.is_empty() {
         println!("No test diffs found");
         return;
     }
-
-    // Sort diffs in decreasing order by diff count
-    diffs.sort_by_key(|entry| Reverse(entry.test_diffs.len()));
 
     fn format_outcome(outcome: &TestOutcome) -> String {
         match outcome {
@@ -238,36 +233,51 @@ fn report_test_changes(mut diffs: Vec<AggregatedTestDiffs>) {
         }
     }
 
-    let max_diff_count = 10;
-    let max_job_count = 5;
-    let max_test_count = 10;
+    // It would be quite noisy to repeat the jobs that contained the test changes after/next to
+    // every test diff. At the same time, grouping the test diffs by
+    // [unique set of jobs that contained them] also doesn't work well, because the test diffs
+    // would have to be duplicated several times.
+    // Instead, we create a set of unique job groups, and then print a job group after each test.
+    // We then print the job groups at the end, as a sort of index.
+    let mut grouped_diffs: Vec<(&TestDiff, u64)> = vec![];
+    let mut job_list_to_group: HashMap<&[JobName], u64> = HashMap::new();
+    let mut job_index: Vec<&[JobName]> = vec![];
 
-    for diff in diffs.iter().take(max_diff_count) {
-        let mut jobs = diff.jobs.clone();
+    for (_, jobs) in diff.diffs.iter_mut() {
         jobs.sort();
-
-        let jobs = jobs.iter().take(max_job_count).map(|j| format!("`{j}`")).collect::<Vec<_>>();
-
-        let extra_jobs = diff.jobs.len().saturating_sub(max_job_count);
-        let suffix = if extra_jobs > 0 {
-            format!(" (and {extra_jobs} {})", pluralize("other", extra_jobs))
-        } else {
-            String::new()
-        };
-        println!("- {}{suffix}", jobs.join(","));
-
-        let extra_tests = diff.test_diffs.len().saturating_sub(max_test_count);
-        for (test, outcome_diff) in diff.test_diffs.iter().take(max_test_count) {
-            println!("  - {}: {}", test.name, format_diff(&outcome_diff));
-        }
-        if extra_tests > 0 {
-            println!("  - (and {extra_tests} additional {})", pluralize("test", extra_tests));
-        }
     }
 
-    let extra_diffs = diffs.len().saturating_sub(max_diff_count);
+    let max_diff_count = 100;
+    for (diff, jobs) in diff.diffs.iter().take(max_diff_count) {
+        let jobs = &*jobs;
+        let job_group = match job_list_to_group.get(jobs.as_slice()) {
+            Some(id) => *id,
+            None => {
+                let id = job_index.len() as u64;
+                job_index.push(jobs);
+                job_list_to_group.insert(jobs, id);
+                id
+            }
+        };
+        grouped_diffs.push((diff, job_group));
+    }
+
+    // Sort diffs by job group and test name
+    grouped_diffs.sort_by(|(d1, g1), (d2, g2)| g1.cmp(&g2).then(d1.test.name.cmp(&d2.test.name)));
+
+    for (diff, job_group) in grouped_diffs {
+        println!("- `{}`: {} (*J{job_group}*)", diff.test.name, format_diff(&diff.diff));
+    }
+
+    let extra_diffs = diff.diffs.len().saturating_sub(max_diff_count);
     if extra_diffs > 0 {
-        println!("\n(and {extra_diffs} additional {})", pluralize("diff", extra_diffs));
+        println!("\n(and {extra_diffs} additional {})", pluralize("test diff", extra_diffs));
+    }
+
+    // Now print the job index
+    println!("\n**Job index**\n");
+    for (group, jobs) in job_index.into_iter().enumerate() {
+        println!("- J{group}: `{}`", jobs.join(", "));
     }
 }
 
