@@ -211,7 +211,10 @@ fn hints(
     file_id: EditionedFileId,
     node: SyntaxNode,
 ) {
-    let display_target = sema.first_crate_or_default(file_id.file_id()).to_display_target(sema.db);
+    let Some(krate) = sema.first_crate(file_id.file_id()) else {
+        return;
+    };
+    let display_target = krate.to_display_target(sema.db);
     closing_brace::hints(hints, sema, config, file_id, display_target, node.clone());
     if let Some(any_has_generic_args) = ast::AnyHasGenericArgs::cast(node.clone()) {
         generic_param::hints(hints, famous_defs, config, any_has_generic_args);

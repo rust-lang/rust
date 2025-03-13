@@ -77,7 +77,10 @@ impl<'a> SymbolCollector<'a> {
             symbols: Default::default(),
             work: Default::default(),
             current_container_name: None,
-            display_target: DisplayTarget::from_crate(db, *db.all_crates().last().unwrap()),
+            display_target: DisplayTarget::from_crate(
+                db,
+                *db.all_crates().last().expect("no crate graph present"),
+            ),
         }
     }
 

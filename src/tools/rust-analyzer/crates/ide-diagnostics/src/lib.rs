@@ -389,9 +389,17 @@ pub fn semantic_diagnostics(
         module.and_then(|m| db.toolchain_channel(m.krate().into())),
         Some(ReleaseChannel::Nightly) | None
     );
-    let krate = module
-        .map(|module| module.krate())
-        .unwrap_or_else(|| (*db.all_crates().last().unwrap()).into());
+
+    let krate = match module {
+        Some(module) => module.krate(),
+        None => {
+            match db.all_crates().last() {
+                Some(last) => (*last).into(),
+                // short-circuit, return an empty vec of diagnostics
+                None => return vec![],
+            }
+        }
+    };
     let display_target = krate.to_display_target(db);
     let ctx = DiagnosticsContext { config, sema, resolve, edition, is_nightly, display_target };
 

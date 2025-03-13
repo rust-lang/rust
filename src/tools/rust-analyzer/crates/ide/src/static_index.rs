@@ -119,7 +119,9 @@ fn documentation_for_definition(
         sema.db,
         famous_defs.as_ref(),
         def.krate(sema.db)
-            .unwrap_or_else(|| (*sema.db.all_crates().last().unwrap()).into())
+            .unwrap_or_else(|| {
+                (*sema.db.all_crates().last().expect("no crate graph present")).into()
+            })
             .to_display_target(sema.db),
     )
 }
@@ -175,7 +177,10 @@ impl StaticIndex<'_> {
         let root = sema.parse_guess_edition(file_id).syntax().clone();
         let edition =
             sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
-        let display_target = sema.first_crate_or_default(file_id).to_display_target(self.db);
+        let display_target = match sema.first_crate(file_id) {
+            Some(krate) => krate.to_display_target(sema.db),
+            None => return,
+        };
         let tokens = root.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),

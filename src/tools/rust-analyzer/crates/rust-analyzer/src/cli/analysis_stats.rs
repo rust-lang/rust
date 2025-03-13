@@ -384,8 +384,10 @@ impl flags::AnalysisStats {
 
         for &file_id in &file_ids {
             let sema = hir::Semantics::new(db);
-            let display_target =
-                sema.first_crate_or_default(file_id.file_id()).to_display_target(db);
+            let display_target = match sema.first_crate(file_id.file_id()) {
+                Some(krate) => krate.to_display_target(sema.db),
+                None => continue,
+            };
 
             let parse = sema.parse_guess_edition(file_id.into());
             let file_txt = db.file_text(file_id.into());

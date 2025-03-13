@@ -314,11 +314,11 @@ impl<'db> SemanticsImpl<'db> {
         tree
     }
 
-    /// If not crate is found for the file, returns the last crate in topological order.
-    pub fn first_crate_or_default(&self, file: FileId) -> Crate {
+    /// If not crate is found for the file, try to return the last crate in topological order.
+    pub fn first_crate(&self, file: FileId) -> Option<Crate> {
         match self.file_to_module_defs(file).next() {
-            Some(module) => module.krate(),
-            None => (*self.db.all_crates().last().unwrap()).into(),
+            Some(module) => Some(module.krate()),
+            None => self.db.all_crates().last().copied().map(Into::into),
         }
     }
 
