@@ -48,7 +48,6 @@ pub(super) fn hints(
     if arrow.is_none() {
         label.prepend_str(" -> ");
     }
-    // FIXME?: We could provide text edit to insert braces for closures with non-block body.
     let text_edit = if has_block_body {
         ty_to_text_edit(
             sema,
