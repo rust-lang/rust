@@ -17,8 +17,6 @@ use std::hash::Hash;
 use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
 
 // These modules are `pub` since they are not glob-imported.
-#[cfg(feature = "nightly")]
-pub mod codec;
 pub mod data_structures;
 pub mod elaborate;
 pub mod error;
@@ -61,8 +59,6 @@ pub use TyKind::*;
 pub use Variance::*;
 pub use binder::*;
 pub use canonical::*;
-#[cfg(feature = "nightly")]
-pub use codec::*;
 pub use const_kind::*;
 pub use flags::*;
 pub use fold::*;

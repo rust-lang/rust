@@ -57,7 +57,7 @@ where
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
+            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
             where
                 $t: rustc_serialize::Encodable<E>,
                 I::BoundVarKinds: rustc_serialize::Encodable<E>,
@@ -67,7 +67,7 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,

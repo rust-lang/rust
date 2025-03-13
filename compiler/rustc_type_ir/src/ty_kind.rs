@@ -1037,7 +1037,8 @@ impl<I: Interner> Deref for UnsafeBinderInner<I> {
 }
 
 #[cfg(feature = "nightly")]
-impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for UnsafeBinderInner<I>
+impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E>
+    for UnsafeBinderInner<I>
 where
     I::Ty: rustc_serialize::Encodable<E>,
     I::BoundVarKinds: rustc_serialize::Encodable<E>,
@@ -1049,7 +1050,8 @@ where
 }
 
 #[cfg(feature = "nightly")]
-impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for UnsafeBinderInner<I>
+impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D>
+    for UnsafeBinderInner<I>
 where
     I::Ty: TypeVisitable<I> + rustc_serialize::Decodable<D>,
     I::BoundVarKinds: rustc_serialize::Decodable<D>,
