@@ -4,6 +4,7 @@ use rustc_errors::struct_span_code_err;
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_lint_defs::builtin::UNUSED_ASSOCIATED_TYPE_BOUNDS;
+use rustc_middle::ty::elaborate::ClauseWithSupertraitSpan;
 use rustc_middle::ty::{
     self, BottomUpFolder, DynKind, ExistentialPredicateStableCmpExt as _, Ty, TyCtxt, TypeFoldable,
     TypeVisitableExt, Upcast,
@@ -11,7 +12,6 @@ use rustc_middle::ty::{
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::error_reporting::traits::report_dyn_incompatibility;
 use rustc_trait_selection::traits::{self, hir_ty_lowering_dyn_compatibility_violations};
-use rustc_type_ir::elaborate::ClauseWithSupertraitSpan;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 

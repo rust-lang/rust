@@ -14,6 +14,7 @@ use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk, TyCtxtInferExt};
 use rustc_infer::traits::ObligationCauseCode;
 use rustc_middle::middle::stability;
 use rustc_middle::query::Providers;
+use rustc_middle::ty::elaborate::supertrait_def_ids;
 use rustc_middle::ty::fast_reject::{TreatParams, simplify_type};
 use rustc_middle::ty::{
     self, AssocItem, AssocItemContainer, GenericArgs, GenericArgsRef, GenericParamDefKind,
@@ -34,7 +35,6 @@ use rustc_trait_selection::traits::query::method_autoderef::{
     CandidateStep, MethodAutoderefBadTy, MethodAutoderefStepsResult,
 };
 use rustc_trait_selection::traits::{self, ObligationCause, ObligationCtxt};
-use rustc_type_ir::elaborate::supertrait_def_ids;
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
 

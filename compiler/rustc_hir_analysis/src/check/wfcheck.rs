@@ -16,10 +16,12 @@ use rustc_lint_defs::builtin::SUPERTRAIT_ITEM_SHADOWING_DEFINITION;
 use rustc_macros::LintDiagnostic;
 use rustc_middle::mir::interpret::ErrorHandled;
 use rustc_middle::query::Providers;
+use rustc_middle::traits::solve::NoSolution;
 use rustc_middle::ty::trait_def::TraitSpecializationKind;
 use rustc_middle::ty::{
-    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
-    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode, Upcast,
+    self, AdtKind, GenericArgKind, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFlags,
+    TypeFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, TypingMode,
+    Upcast,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -34,8 +36,6 @@ use rustc_trait_selection::traits::{
     self, FulfillmentError, Obligation, ObligationCause, ObligationCauseCode, ObligationCtxt,
     WellFormedLoc,
 };
-use rustc_type_ir::TypeFlags;
-use rustc_type_ir::solve::NoSolution;
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
