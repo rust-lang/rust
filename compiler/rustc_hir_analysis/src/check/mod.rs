@@ -84,6 +84,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -240,11 +241,11 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label
