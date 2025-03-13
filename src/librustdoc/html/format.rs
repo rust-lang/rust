@@ -283,7 +283,7 @@ impl clean::GenericBound {
                 } else {
                     f.write_str("use&lt;")?;
                 }
-                args.iter().joined(", ", f)?;
+                args.iter().map(|arg| arg.name()).joined(", ", f)?;
                 if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
             }
         })
