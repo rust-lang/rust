@@ -1660,7 +1660,7 @@ pub unsafe fn volatile_copy_memory<T>(_dst: *mut T, _src: *const T, _count: usiz
 /// # Safety
 ///
 /// The safety requirements are consistent with [`write_bytes`] while the write behavior is volatile,
-/// which means it will not be optimized out unless size is equal to zero.
+/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
 ///
 /// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
