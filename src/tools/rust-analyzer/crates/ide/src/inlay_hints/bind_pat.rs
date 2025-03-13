@@ -1140,12 +1140,11 @@ fn test() {
 
     #[test]
     fn no_edit_for_closure_return_without_body_block() {
-        // We can lift this limitation; see FIXME in closure_ret module.
         let config = InlayHintsConfig {
             closure_return_type_hints: ClosureReturnTypeHints::Always,
             ..TEST_CONFIG
         };
-        check_no_edit(
+        check_edit(
             config,
             r#"
 struct S<T>(T);
@@ -1154,6 +1153,13 @@ fn test() {
     let f = |a: S<usize>| S(a);
 }
 "#,
+            expect![[r#"
+            struct S<T>(T);
+            fn test() {
+                let f = || -> i32 { 3 };
+                let f = |a: S<usize>| -> S<S<usize>> { S(a) };
+            }
+            "#]],
         );
     }
 
