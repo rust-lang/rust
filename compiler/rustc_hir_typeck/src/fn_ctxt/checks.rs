@@ -19,7 +19,7 @@ use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -2720,21 +2720,18 @@ impl FnParam<'_> {
         }
     }
 
-    fn name(&self) -> Option<Symbol> {
-        match self {
-            Self::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
-                Some(ident.name)
-            }
-            Self::Name(x) if x.name != kw::Empty => Some(x.name),
-            _ => None,
-        }
-    }
-
     fn display(&self, idx: usize) -> impl '_ + fmt::Display {
         struct D<'a>(FnParam<'a>, usize);
         impl fmt::Display for D<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                if let Some(name) = self.0.name() {
+                let name = match self.0 {
+                    FnParam::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
+                        Some(ident.name)
+                    }
+                    FnParam::Name(x) if x.name != kw::Empty => Some(x.name),
+                    _ => None,
+                };
+                if let Some(name) = name {
                     write!(f, "`{name}`")
                 } else {
                     write!(f, "parameter #{}", self.1 + 1)
