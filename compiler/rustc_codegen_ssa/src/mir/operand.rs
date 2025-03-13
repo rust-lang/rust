@@ -428,9 +428,14 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         let dl = &bx.tcx().data_layout;
         let cast_to_layout = bx.cx().layout_of(cast_to);
         let cast_to = bx.cx().immediate_backend_type(cast_to_layout);
+
+        // We check uninhabitedness separately because a type like
+        // `enum Foo { Bar(i32, !) }` is still reported as `Variants::Single`,
+        // *not* as `Variants::Empty`.
         if self.layout.is_uninhabited() {
             return bx.cx().const_poison(cast_to);
         }
+
         let (tag_scalar, tag_encoding, tag_field) = match self.layout.variants {
             Variants::Empty => unreachable!("we already handled uninhabited types"),
             Variants::Single { index } => {
@@ -438,7 +443,11 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
                     if let Some(discr) = self.layout.ty.discriminant_for_variant(bx.tcx(), index) {
                         discr.val
                     } else {
+                        // This arm is for types which are neither enums nor coroutines,
+                        // and thus for which the only possible "variant" should be the first one.
                         assert_eq!(index, FIRST_VARIANT);
+                        // There's thus no actual discriminant to return, so we return
+                        // what it would have been if this was a single-variant enum.
                         0
                     };
                 return bx.cx().const_uint_big(cast_to, discr_val);
