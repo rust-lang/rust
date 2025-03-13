@@ -1635,7 +1635,7 @@ pub fn ptr_mask<T>(_ptr: *const T, _mask: usize) -> *const T;
 ///
 /// The safety requirements are consistent with [`copy_nonoverlapping`]
 /// while the read and write behaviors are volatile,
-/// which means it will not be optimized out unless size is equal to zero.
+/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
 ///
 /// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
 #[rustc_intrinsic]
