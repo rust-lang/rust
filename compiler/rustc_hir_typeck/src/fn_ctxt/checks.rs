@@ -2679,7 +2679,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
-                    fn_inputs.zip(params.iter().map(|param| FnParam::Name(param))).collect(),
+                    fn_inputs.zip(params.iter().map(|&param| FnParam::Name(param))).collect(),
                     generics,
                 ))
             }
@@ -2710,7 +2710,7 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Name(&'hir Ident),
+    Name(Ident),
 }
 
 impl FnParam<'_> {
