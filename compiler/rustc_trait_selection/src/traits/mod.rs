@@ -32,10 +32,9 @@ pub use rustc_infer::traits::*;
 use rustc_middle::query::Providers;
 use rustc_middle::span_bug;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::visit::{TypeVisitable, TypeVisitableExt};
 use rustc_middle::ty::{
     self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
-    TypeSuperVisitable, TypingMode, Upcast,
+    TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span};

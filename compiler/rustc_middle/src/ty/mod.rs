@@ -98,7 +98,7 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
@@ -116,7 +116,6 @@ pub mod codec;
 pub mod error;
 pub mod fast_reject;
 pub mod flags;
-mod fold;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
@@ -126,7 +125,6 @@ pub mod relate;
 pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
-pub mod visit;
 pub mod vtable;
 pub mod walk;
 
@@ -138,6 +136,7 @@ mod context;
 mod diagnostics;
 mod elaborate_impl;
 mod erase_regions;
+mod fold;
 mod generic_args;
 mod generics;
 mod impls_ty;
@@ -154,6 +153,7 @@ mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
+mod visit;
 
 // Data types
 
@@ -442,7 +442,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
@@ -938,7 +938,7 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
 
 pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
 
-impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     fn flags(&self) -> TypeFlags {
         (**self).flags()
     }

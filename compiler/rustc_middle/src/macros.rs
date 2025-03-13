@@ -76,14 +76,14 @@ macro_rules! TrivialTypeTraversalImpls {
                 }
             }
 
-            impl<'tcx> $crate::ty::visit::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
+            impl<'tcx> $crate::ty::TypeVisitable<$crate::ty::TyCtxt<'tcx>> for $ty {
                 #[inline]
-                fn visit_with<F: $crate::ty::visit::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
+                fn visit_with<F: $crate::ty::TypeVisitor<$crate::ty::TyCtxt<'tcx>>>(
                     &self,
                     _: &mut F)
                     -> F::Result
                 {
-                    <F::Result as ::rustc_middle::ty::visit::VisitorResult>::output()
+                    <F::Result as ::rustc_middle::ty::VisitorResult>::output()
                 }
             }
         )+

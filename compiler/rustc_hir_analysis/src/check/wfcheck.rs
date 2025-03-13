@@ -1520,7 +1520,7 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
             struct CountParams {
                 params: FxHashSet<u32>,
             }
-            impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for CountParams {
+            impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for CountParams {
                 type Result = ControlFlow<()>;
                 fn visit_ty(&mut self, t: Ty<'tcx>) -> Self::Result {
                     if let ty::Param(param) = t.kind() {

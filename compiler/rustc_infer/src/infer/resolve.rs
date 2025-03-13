@@ -1,8 +1,7 @@
 use rustc_middle::bug;
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, Const, FallibleTypeFolder, InferConst, Ty, TyCtxt, TypeFoldable, TypeFolder,
-    TypeSuperFoldable,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_type_ir::data_structures::DelayedMap;
 

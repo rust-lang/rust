@@ -4,10 +4,9 @@
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::span_bug;
-use rustc_middle::ty::visit::{VisitorResult, try_visit};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt, VisitorResult, try_visit};
 use rustc_span::Span;
-use rustc_type_ir::visit::TypeVisitable;
+use rustc_type_ir::TypeVisitable;
 use tracing::{instrument, trace};
 
 pub trait SpannedTypeVisitor<'tcx> {

@@ -45,12 +45,12 @@ fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Tok
     s.add_bounds(synstructure::AddBounds::Fields);
     let body_visit = s.each(|bind| {
         quote! {
-            match ::rustc_type_ir::visit::VisitorResult::branch(
-                ::rustc_type_ir::visit::TypeVisitable::visit_with(#bind, __visitor)
+            match ::rustc_type_ir::VisitorResult::branch(
+                ::rustc_type_ir::TypeVisitable::visit_with(#bind, __visitor)
             ) {
                 ::core::ops::ControlFlow::Continue(()) => {},
                 ::core::ops::ControlFlow::Break(r) => {
-                    return ::rustc_type_ir::visit::VisitorResult::from_residual(r);
+                    return ::rustc_type_ir::VisitorResult::from_residual(r);
                 },
             }
         }
@@ -58,14 +58,14 @@ fn type_visitable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::Tok
     s.bind_with(|_| synstructure::BindStyle::Move);
 
     s.bound_impl(
-        quote!(::rustc_type_ir::visit::TypeVisitable<I>),
+        quote!(::rustc_type_ir::TypeVisitable<I>),
         quote! {
-            fn visit_with<__V: ::rustc_type_ir::visit::TypeVisitor<I>>(
+            fn visit_with<__V: ::rustc_type_ir::TypeVisitor<I>>(
                 &self,
                 __visitor: &mut __V
             ) -> __V::Result {
                 match *self { #body_visit }
-                <__V::Result as ::rustc_type_ir::visit::VisitorResult>::output()
+                <__V::Result as ::rustc_type_ir::VisitorResult>::output()
             }
         },
     )
