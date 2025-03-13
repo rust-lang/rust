@@ -15,7 +15,7 @@ pub(super) fn type_decodable_derive(
         quote! {}
     };
 
-    s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_type_ir::codec::TyDecoder #bound });
+    s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_middle::ty::codec::TyDecoder #bound });
     s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
@@ -45,12 +45,12 @@ pub(super) fn decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro
     decodable_body(s, decoder_ty)
 }
 
-pub(super) fn decodable_generic_derive(
+pub(super) fn decodable_nocontext_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
     s.add_impl_generic(parse_quote! { #decoder_ty: ::rustc_serialize::Decoder });
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
     decodable_body(s, decoder_ty)
@@ -141,7 +141,7 @@ pub(super) fn type_encodable_derive(
     };
 
     let encoder_ty = quote! { __E };
-    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_type_ir::codec::TyEncoder #bound });
+    s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_middle::ty::codec::TyEncoder #bound });
     s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
@@ -171,12 +171,12 @@ pub(super) fn encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro
     encodable_body(s, encoder_ty, false)
 }
 
-pub(super) fn encodable_generic_derive(
+pub(super) fn encodable_nocontext_derive(
     mut s: synstructure::Structure<'_>,
 ) -> proc_macro2::TokenStream {
     let encoder_ty = quote! { __E };
     s.add_impl_generic(parse_quote! { #encoder_ty: ::rustc_serialize::Encoder });
-    s.add_bounds(synstructure::AddBounds::Generics);
+    s.add_bounds(synstructure::AddBounds::Fields);
     s.underscore_const(true);
 
     encodable_body(s, encoder_ty, false)

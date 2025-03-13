@@ -13,7 +13,7 @@ pub const SHORTHAND_OFFSET: usize = 0x80;
 /// This is a separate trait from `Decodable` so that we can implement it for
 /// upstream types, such as `FxHashSet`.
 ///
-/// The `TyDecodable` derive macro will use this trait for fields that are
+/// The `Decodable_NoContext` derive macro will use this trait for fields that are
 /// references (and don't use a type alias to hide that).
 ///
 /// `Decodable` can still be implemented in cases where `Decodable` is required
