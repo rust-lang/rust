@@ -50,6 +50,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 hir::BoundConstness::Never,
                 hir::BoundPolarity::Positive,
                 dummy_self,
+                ty::ListWithCachedTypeInfo::empty(),
                 &mut user_written_bounds,
                 PredicateFilter::SelfOnly,
             ) {
