@@ -166,7 +166,8 @@ impl Command {
         // [1]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa
         // [2]: https://devblogs.microsoft.com/oldnewthing/?p=41553
 
-        let estimated_command_line_len = self.args.iter().map(|a| a.len()).sum::<usize>();
+        let estimated_command_line_len =
+            self.args.iter().fold(0usize, |acc, a| acc.saturating_add(a.as_encoded_bytes().len()));
         estimated_command_line_len > 1024 * 6
     }
 }
