@@ -5,7 +5,7 @@ use rustc_hir::hir_id::OwnerId;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ImplItemRef, ItemKind, Node, TraitRef};
 use rustc_lint::LateContext;
 use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, kw};
+use rustc_span::symbol::{Ident, kw};
 
 use super::RENAMED_FUNCTION_PARAMS;
 
@@ -51,22 +51,33 @@ struct RenamedFnArgs(Vec<(Span, String)>);
 impl RenamedFnArgs {
     /// Comparing between an iterator of default names and one with current names,
     /// then collect the ones that got renamed.
-    fn new<I, T>(default_names: &mut I, current_names: &mut T) -> Self
+    fn new<I1, I2>(default_idents: &mut I1, current_idents: &mut I2) -> Self
     where
-        I: Iterator<Item = Ident>,
-        T: Iterator<Item = Ident>,
+        I1: Iterator<Item = Option<Ident>>,
+        I2: Iterator<Item = Option<Ident>>,
     {
         let mut renamed: Vec<(Span, String)> = vec![];
 
-        debug_assert!(default_names.size_hint() == current_names.size_hint());
-        while let (Some(def_name), Some(cur_name)) = (default_names.next(), current_names.next()) {
-            let current_name = cur_name.name;
-            let default_name = def_name.name;
-            if is_unused_or_empty_symbol(current_name) || is_unused_or_empty_symbol(default_name) {
-                continue;
-            }
-            if current_name != default_name {
-                renamed.push((cur_name.span, default_name.to_string()));
+        debug_assert!(default_idents.size_hint() == current_idents.size_hint());
+        while let (Some(default_ident), Some(current_ident)) =
+            (default_idents.next(), current_idents.next())
+        {
+            let has_name_to_check = |ident: Option<Ident>| {
+                if let Some(ident) = ident
+                    && ident.name != kw::Underscore
+                    && !ident.name.as_str().starts_with('_')
+                {
+                    Some(ident)
+                } else {
+                    None
+                }
+            };
+
+            if let Some(default_ident) = has_name_to_check(default_ident)
+                && let Some(current_ident) = has_name_to_check(current_ident)
+                && default_ident.name != current_ident.name
+            {
+                renamed.push((current_ident.span, default_ident.to_string()));
             }
         }
 
@@ -81,14 +92,6 @@ impl RenamedFnArgs {
             .collect::<Vec<Span>>()
             .into()
     }
-}
-
-fn is_unused_or_empty_symbol(symbol: Symbol) -> bool {
-    // FIXME: `body_param_names` currently returning empty symbols for `wild` as well,
-    // so we need to check if the symbol is empty first.
-    // Therefore the check of whether it's equal to [`kw::Underscore`] has no use for now,
-    // but it would be nice to keep it here just to be future-proof.
-    symbol.is_empty() || symbol == kw::Underscore || symbol.as_str().starts_with('_')
 }
 
 /// Get the [`trait_item_def_id`](ImplItemRef::trait_item_def_id) of a relevant impl item.
