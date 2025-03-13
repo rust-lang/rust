@@ -38,6 +38,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
         if let Some(asm_arch) = asm_arch {
             // Inline assembly is currently only stable for these architectures.
+            // (See also compiletest's `has_asm_support`.)
             let is_stable = matches!(
                 asm_arch,
                 asm::InlineAsmArch::X86

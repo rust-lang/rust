@@ -481,9 +481,17 @@ impl Config {
     }
 
     pub fn has_asm_support(&self) -> bool {
+        // This should match the stable list in `LoweringContext::lower_inline_asm`.
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
-            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "x86",
+            "x86_64",
+            "arm",
+            "aarch64",
+            "arm64ec",
+            "riscv32",
             "riscv64",
+            "loongarch64",
+            "s390x",
             // These targets require an additional asm_experimental_arch feature.
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
