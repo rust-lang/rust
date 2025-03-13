@@ -4,6 +4,8 @@ use rustc_span::Span;
 use super::Expectation::*;
 use super::FnCtxt;
 
+use rustc_infer::traits::ObligationCause;
+
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
 #[derive(Copy, Clone, Debug)]
@@ -75,7 +77,8 @@ impl<'a, 'tcx> Expectation<'tcx> {
     /// for examples of where this comes up,.
     pub(super) fn rvalue_hint(fcx: &FnCtxt<'a, 'tcx>, ty: Ty<'tcx>) -> Expectation<'tcx> {
         // FIXME: This is not right, even in the old solver...
-        match fcx.tcx.struct_tail_raw(ty, |ty| ty, || {}).kind() {
+        match fcx.tcx.struct_tail_raw(ty, |ty| ty, || {}, ObligationCause::dummy()).kind()
+        {
             ty::Slice(_) | ty::Str | ty::Dynamic(..) => ExpectRvalueLikeUnsized(ty),
             _ => ExpectHasType(ty),
         }
