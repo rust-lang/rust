@@ -66,9 +66,11 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let host_clause = assumption.as_host_effect_clause().unwrap();
 
-        let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
+        let (assumption_trait_pred, goals) =
+            ecx.instantiate_binder_with_infer_and_goals(host_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;
-
+        let cx = ecx.cx();
+        ecx.add_goals(GoalSource::Misc, goals.iter().map(|clause| goal.with(cx, clause)));
         then(ecx)
     }
 
@@ -260,7 +262,7 @@ where
             structural_traits::instantiate_constituent_tys_for_copy_clone_trait(ecx, self_ty)?;
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
-            ecx.enter_forall_with_assumptions(constituent_tys, goal.param_env, |ecx, tys| {
+            ecx.enter_forall_with_assumptions(constituent_tys, goal.param_env, |ecx, tys, _| {
                 ecx.add_goals(
                     GoalSource::ImplWhereBound,
                     tys.into_iter().map(|ty| {

@@ -211,9 +211,10 @@ where
     ) -> QueryResultOrRerunNonErased<I> {
         let cx = ecx.cx();
         let projection_pred = assumption.as_projection_clause().unwrap();
-        let assumption_projection_pred = ecx.instantiate_binder_with_infer(projection_pred);
+        let (assumption_projection_pred, goals) =
+            ecx.instantiate_binder_with_infer_and_goals(projection_pred);
         ecx.eq(goal.param_env, goal.predicate.alias, assumption_projection_pred.projection_term)?;
-
+        ecx.add_goals(GoalSource::Misc, goals.iter().map(|clause| goal.with(cx, clause)));
         ecx.instantiate_normalizes_to_term(goal, assumption_projection_pred.term);
 
         // Add GAT where clauses from the trait's definition

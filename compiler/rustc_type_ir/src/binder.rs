@@ -14,7 +14,9 @@ use tracing::instrument;
 use crate::data_structures::SsoHashSet;
 use crate::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
 use crate::inherent::*;
-use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+use crate::visit::{
+    Flags, TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor, try_visit,
+};
 use crate::{self as ty, DebruijnIndex, Interner, UniverseIndex, Unnormalized};
 
 /// `Binder` is a binder for higher-ranked lifetimes or types. It is part of the
@@ -342,7 +344,7 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 
     fn visit_const(&mut self, c: I::Const) -> Self::Result {
         if c.outer_exclusive_binder() < self.binder_index {
-            return ControlFlow::Break(());
+            return;
         }
         match c.kind() {
             ty::ConstKind::Bound(debruijn, bound_const)

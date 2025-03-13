@@ -1052,6 +1052,20 @@ impl<'tcx> ParamEnv<'tcx> {
             ParamEnv::new(tcx.reveal_opaque_types_in_bounds(self.caller_bounds))
         }
     }
+
+    /// TODO:
+    pub fn extend(self, tcx: TyCtxt<'tcx>, assumptions: ty::Clauses<'tcx>) -> Self {
+        if assumptions.is_empty() {
+            self
+        } else if self.caller_bounds.is_empty() {
+            ParamEnv { caller_bounds: assumptions }
+        } else {
+            ParamEnv {
+                caller_bounds: tcx
+                    .mk_clauses_from_iter(self.caller_bounds.iter().chain(assumptions)),
+            }
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]

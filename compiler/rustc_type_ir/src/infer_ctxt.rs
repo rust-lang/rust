@@ -411,6 +411,10 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
     ) -> U;
+    fn instantiate_binder_with_infer_and_goals<T: TypeFoldable<Self::Interner> + Copy>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+    ) -> (T, <Self::Interner as Interner>::Clauses);
 
     /// FIXME(-Zassumptions-on-binders): Any usage of this method is likely wrong
     /// and should be replaced in the long term by actually taking assumptions into
@@ -419,6 +423,13 @@ pub trait InferCtxtLike: Sized {
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,
+    ) -> U;
+
+    fn enter_forall_with_assumptions<T: TypeFoldable<Self::Interner>, U>(
+        &self,
+        value: ty::Binder<Self::Interner, T>,
+        param_env: <Self::Interner as Interner>::ParamEnv,
+        f: impl FnOnce(T, <Self::Interner as Interner>::ParamEnv) -> U,
     ) -> U;
 
     fn equate_ty_vids_raw(&self, a: ty::TyVid, b: ty::TyVid);

@@ -905,8 +905,9 @@ where
         goal: Goal<I, I::Predicate>,
     ) -> QueryResultOrRerunNonErased<I> {
         let Goal { param_env, predicate } = goal;
+        debug!(?predicate);
         let kind = predicate.kind();
-        self.enter_forall_with_assumptions(kind, param_env, |ecx, kind| {
+        self.enter_forall_with_assumptions(kind, param_env, |ecx, kind, param_env| {
             Ok(match kind {
                 ty::PredicateKind::Clause(ty::ClauseKind::Trait(predicate)) => {
                     ecx.compute_trait_goal(Goal { param_env, predicate }).map(|(r, _via)| r)?
@@ -1360,6 +1361,13 @@ where
         self.delegate.instantiate_binder_with_infer(value)
     }
 
+    pub(super) fn instantiate_binder_with_infer_and_goals<T: TypeFoldable<I> + Copy>(
+        &self,
+        value: ty::Binder<I, T>,
+    ) -> (T, I::Clauses) {
+        self.delegate.instantiate_binder_with_infer_and_goals(value)
+    }
+
     /// `enter_forall_with_assumptions`, but takes `&mut self` and passes it back through
     /// the callback since it can't be aliased during the call.
     ///
@@ -1367,13 +1375,14 @@ where
     /// assumptions associated with the binder.
     ///
     /// FIXME(inherent_associated_types): fix this?
+    // (temp)self reminder: fix the doc
     pub(super) fn enter_forall_with_assumptions<T: TypeFoldable<I>, U>(
         &mut self,
         value: ty::Binder<I, T>,
         param_env: I::ParamEnv,
-        f: impl FnOnce(&mut Self, T) -> U,
+        f: impl FnOnce(&mut Self, T, I::ParamEnv) -> U,
     ) -> U {
-        self.delegate.enter_forall_without_assumptions(value, |value| {
+        self.delegate.enter_forall_with_assumptions(value, param_env, |value, param_env| {
             let u = self.delegate.universe();
             let assumptions = if self.cx().assumptions_on_binders() {
                 self.region_assumptions_for_placeholders_in_universe(value.clone(), u, param_env)
@@ -1381,7 +1390,7 @@ where
                 None
             };
             self.delegate.insert_placeholder_assumptions(u, assumptions);
-            f(self, value)
+            f(self, value, param_env)
         })
     }
 

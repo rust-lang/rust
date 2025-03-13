@@ -496,6 +496,7 @@ macro_rules! declare_lift_into {
 
 declare_lift_into! {
     BoundVarKinds,
+    Clauses,
     Const,
     DefId,
     FreeConstAliasId,
