@@ -3,6 +3,7 @@ use std::ops::{ControlFlow, Deref};
 
 use hir::intravisit::{self, Visitor};
 use rustc_abi::ExternAbi;
+use rustc_attr_parsing::{AttributeKind, find_attr};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, ErrorGuaranteed, pluralize, struct_span_code_err};
@@ -39,6 +40,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
+use super::compare_eii::compare_eii_predicate_entailment;
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};
@@ -1320,6 +1322,23 @@ fn check_item_fn(
     decl: &hir::FnDecl<'_>,
 ) -> Result<(), ErrorGuaranteed> {
     enter_wf_checking_ctxt(tcx, span, def_id, |wfcx| {
+        // does the function have an EiiImpl attribute? that contains the defid of a *macro*
+        // that was used to mark the implementation. This is a two step process.
+        if let Some(eii_macro) =
+            find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpl {eii_macro} => *eii_macro)
+        {
+            // we expect this macro to have the `EiiMacroFor` attribute, that points to a function
+            // signature that we'd like to compare the function we're currently checking with
+            if let Some(eii_extern_item) = find_attr!(tcx.get_all_attrs(eii_macro), AttributeKind::EiiMacroFor {eii_extern_item} => *eii_extern_item)
+            {
+                let _ = compare_eii_predicate_entailment(tcx, def_id, eii_extern_item);
+            } else {
+                panic!(
+                    "EII impl macro {eii_macro:?} did not have an eii macro for attribute pointing to a function"
+                )
+            }
+        }
+
         let sig = tcx.fn_sig(def_id).instantiate_identity();
         check_fn_or_method(wfcx, ident.span, sig, decl, def_id);
         Ok(())

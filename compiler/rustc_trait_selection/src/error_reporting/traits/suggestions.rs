@@ -3571,6 +3571,9 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 err.span_note(assoc_span, msg);
             }
+            ObligationCauseCode::CompareEII { .. } => {
+                panic!("trait bounds on EII not yet supported ")
+            }
             ObligationCauseCode::TrivialBound => {
                 err.help("see issue #48214");
                 tcx.disabled_nightly_features(
