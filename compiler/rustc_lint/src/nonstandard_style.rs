@@ -1,8 +1,8 @@
 use rustc_abi::ExternAbi;
-use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprAttr};
+use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprAttr, find_attr};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{AttrArgs, AttrItem, Attribute, GenericParamKind, PatExprKind, PatKind};
+use rustc_hir::{Attribute, GenericParamKind, PatExprKind, PatKind};
 use rustc_middle::ty;
 use rustc_session::config::CrateType;
 use rustc_session::{declare_lint, declare_lint_pass};
@@ -342,35 +342,27 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
         let crate_ident = if let Some(name) = &cx.tcx.sess.opts.crate_name {
             Some(Ident::from_str(name))
         } else {
-            ast::attr::find_by_name(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), sym::crate_name)
-                .and_then(|attr| {
-                    if let Attribute::Unparsed(n) = attr
-                        && let AttrItem { args: AttrArgs::Eq { eq_span: _, expr: lit }, .. } =
-                            n.as_ref()
-                        && let ast::LitKind::Str(name, ..) = lit.kind
-                    {
-                        // Discard the double quotes surrounding the literal.
-                        let sp = cx
-                            .sess()
-                            .source_map()
-                            .span_to_snippet(lit.span)
-                            .ok()
-                            .and_then(|snippet| {
-                                let left = snippet.find('"')?;
-                                let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
+            find_attr!(cx.tcx.hir().attrs(hir::CRATE_HIR_ID), AttributeKind::CrateName{name, name_span,..} => (name, name_span))
+                .and_then(|(&name, &span)| {
+                    // Discard the double quotes surrounding the literal.
+                    let sp = cx
+                        .sess()
+                        .source_map()
+                        .span_to_snippet(span)
+                        .ok()
+                        .and_then(|snippet| {
+                            let left = snippet.find('"')?;
+                            let right = snippet.rfind('"').map(|pos| snippet.len() - pos)?;
 
-                                Some(
-                                    lit.span
-                                        .with_lo(lit.span.lo() + BytePos(left as u32 + 1))
-                                        .with_hi(lit.span.hi() - BytePos(right as u32)),
-                                )
-                            })
-                            .unwrap_or(lit.span);
+                            Some(
+                                span
+                                    .with_lo(span.lo() + BytePos(left as u32 + 1))
+                                    .with_hi(span.hi() - BytePos(right as u32)),
+                            )
+                        })
+                        .unwrap_or(span);
 
-                        Some(Ident::new(name, sp))
-                    } else {
-                        None
-                    }
+                    Some(Ident::new(name, sp))
                 })
         };
 

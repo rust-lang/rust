@@ -217,7 +217,9 @@ pub fn check_builtin_meta_item(
 ) {
     // Some special attributes like `cfg` must be checked
     // before the generic check, so we skip them here.
-    let should_skip = |name| name == sym::cfg;
+    //
+    // Also, attributes that have a new-style parser don't need to be checked here anymore
+    let should_skip = |name| name == sym::cfg || name == sym::crate_name;
 
     if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
         emit_malformed_attribute(psess, style, meta.span, name, template);

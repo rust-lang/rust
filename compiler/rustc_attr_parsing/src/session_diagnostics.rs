@@ -479,3 +479,11 @@ pub(crate) struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_name_value, code = E0539)]
+pub(crate) struct ExpectedNameValue {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+}

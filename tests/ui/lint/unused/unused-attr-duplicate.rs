@@ -11,8 +11,10 @@
 // - no_main: extra setup
 #![deny(unused_attributes)]
 #![crate_name = "unused_attr_duplicate"]
-#![crate_name = "unused_attr_duplicate2"] //~ ERROR unused attribute
-//~^ WARN this was previously accepted
+#![crate_name = "unused_attr_duplicate2"] //~ ERROR multiple `crate_name` attributes
+//~^ ERROR multiple `crate_name` attributes
+// FIXME(jdonszelmann) this error is given twice now. I'll fix this in the near future redoing how
+// duplicates are checked.
 #![recursion_limit = "128"]
 #![recursion_limit = "256"] //~ ERROR unused attribute
 //~^ WARN this was previously accepted

@@ -23,6 +23,7 @@ use rustc_target::spec::Target;
 use tracing::info;
 
 use crate::errors;
+use crate::passes::parse_crate_name;
 
 /// Function pointer type that constructs a new CodegenBackend.
 type MakeBackendFn = fn() -> Box<dyn CodegenBackend>;
@@ -485,7 +486,7 @@ pub fn build_output_filenames(attrs: &[ast::Attribute], sess: &Session) -> Outpu
         .opts
         .crate_name
         .clone()
-        .or_else(|| rustc_attr_parsing::find_crate_name(attrs).map(|n| n.to_string()));
+        .or_else(|| parse_crate_name(sess, attrs, true).map(|i| i.0.to_string()));
 
     match sess.io.output_file {
         None => {
