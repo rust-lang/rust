@@ -463,28 +463,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let cause = obligation.derived_cause(ObligationCauseCode::BuiltinDerived);
 
             assert_eq!(obligation.predicate.polarity(), ty::PredicatePolarity::Positive);
-            let trait_ref =
-                self.infcx.enter_forall_and_leak_universe(obligation.predicate).trait_ref;
-            let trait_obligations = self.impl_or_trait_obligations(
-                &cause,
-                obligation.recursion_depth + 1,
-                obligation.param_env,
-                trait_def_id,
-                trait_ref.args,
-                obligation.predicate,
-            );
 
-            let mut obligations = self.collect_predicates_for_types(
+            let obligations = self.collect_predicates_for_types(
                 obligation.param_env,
                 cause,
                 obligation.recursion_depth + 1,
                 trait_def_id,
                 nested,
             );
-
-            // Adds the predicates from the trait. Note that this contains a `Self: Trait`
-            // predicate as usual. It won't have any effect since auto traits are coinductive.
-            obligations.extend(trait_obligations);
 
             debug!(?obligations, "vtable_auto_impl");
 
