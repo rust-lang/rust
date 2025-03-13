@@ -249,6 +249,7 @@ late_lint_methods!(
             UnqualifiedLocalImports: UnqualifiedLocalImports,
             CheckTransmutes: CheckTransmutes,
             LifetimeSyntax: LifetimeSyntax,
+            HiddenLifetimesInTypePaths: HiddenLifetimesInTypePaths::default(),
         ]
     ]
 );
