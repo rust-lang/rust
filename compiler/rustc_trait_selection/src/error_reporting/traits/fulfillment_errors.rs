@@ -909,8 +909,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .coroutine_kind(self.tcx.coroutine_for_closure(closure_def_id))
                 .unwrap()
             {
-                rustc_hir::CoroutineKind::Desugared(desugaring, _) => format!("{desugaring:#}"),
-                coro => format!("{coro:#}"),
+                rustc_hir::CoroutineKind::Desugared(desugaring, _) => desugaring.to_string(),
+                coro => coro.to_string(),
             };
             let mut err = self.dcx().create_err(CoroClosureNotFn {
                 span: self.tcx.def_span(closure_def_id),
