@@ -23,7 +23,7 @@ LL |     let f = |_, _| ();
 help: provide the argument
    |
 LL -     f(f);
-LL +     f(/*  */, /*  */);
+LL +     f(/* _ */, /* _ */);
    |
 
 error: aborting due to 2 previous errors
