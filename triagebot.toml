@@ -1081,6 +1081,7 @@ warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
+    "ChrisDenton",
 ]
 
 [[assign.warn_non_default_branch.exceptions]]
