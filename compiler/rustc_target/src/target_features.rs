@@ -603,13 +603,18 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature), &["f"]),
+    ("div32", Unstable(sym::loongarch_target_feature), &[]),
     ("f", Unstable(sym::loongarch_target_feature), &[]),
     ("frecipe", Unstable(sym::loongarch_target_feature), &[]),
+    ("lam-bh", Unstable(sym::loongarch_target_feature), &[]),
+    ("lamcas", Unstable(sym::loongarch_target_feature), &[]),
     ("lasx", Unstable(sym::loongarch_target_feature), &["lsx"]),
     ("lbt", Unstable(sym::loongarch_target_feature), &[]),
+    ("ld-seq-sa", Unstable(sym::loongarch_target_feature), &[]),
     ("lsx", Unstable(sym::loongarch_target_feature), &["d"]),
     ("lvz", Unstable(sym::loongarch_target_feature), &[]),
     ("relax", Unstable(sym::loongarch_target_feature), &[]),
+    ("scq", Unstable(sym::loongarch_target_feature), &[]),
     ("ual", Unstable(sym::loongarch_target_feature), &[]),
     // tidy-alphabetical-end
 ];
