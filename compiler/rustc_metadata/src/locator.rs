@@ -654,7 +654,24 @@ impl<'a> CrateLocator<'a> {
                     continue;
                 }
             }
-            *slot = Some((hash, metadata, lib.clone()));
+
+            // We error eagerly here. If we're locating a rlib, then in theory the full metadata
+            // could still be in a (later resolved) dylib. In practice, if the rlib and dylib
+            // were produced in a way where one has full metadata and the other hasn't, it would
+            // mean that they were compiled using different compiler flags and probably also have
+            // a different SVH value.
+            if metadata.get_header().is_stub {
+                // `is_stub` should never be true for .rmeta files.
+                assert_ne!(flavor, CrateFlavor::Rmeta);
+
+                // Because rmeta files are resolved before rlib/dylib files, if this is a stub and
+                // we haven't found a slot already, it means that the full metadata is missing.
+                if slot.is_none() {
+                    return Err(CrateError::FullMetadataNotFound(self.crate_name, flavor));
+                }
+            } else {
+                *slot = Some((hash, metadata, lib.clone()));
+            }
             ret = Some((lib, kind));
         }
 
@@ -916,6 +933,7 @@ pub(crate) enum CrateError {
     ExternLocationNotExist(Symbol, PathBuf),
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
+    FullMetadataNotFound(Symbol, CrateFlavor),
     SymbolConflictsCurrent(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
     DlOpen(String, String),
@@ -965,6 +983,9 @@ impl CrateError {
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
                 dcx.emit_err(errors::MultipleCandidates { span, crate_name, flavor, candidates });
+            }
+            CrateError::FullMetadataNotFound(crate_name, flavor) => {
+                dcx.emit_err(errors::FullMetadataNotFound { span, crate_name, flavor });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
                 dcx.emit_err(errors::SymbolConflictsCurrent { span, crate_name: root_name });
