@@ -1,9 +1,13 @@
+//@revisions: weak sc
 //@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
+//@[sc]compile-flags: -Zmiri-disable-weak-memory-emulation
 
 // Translated from GenMC's test "2+2W".
 //
 // The pass tests "2w2w_3sc_1rel.rs", "2w2w_4rel" and "2w2w_4sc" and the fail test "2w2w_weak.rs" are related.
 // Check "2w2w_weak.rs" for a more detailed description.
+//
+// The `sc` variant of this test checks that without weak memory emulation, only 3 instead of 4 executions are explored (like the `2w2w_4sc.rs` test).
 
 #![no_main]
 

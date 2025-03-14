@@ -18,6 +18,8 @@ pub fn run_genmc_mode<'tcx>(
     eval_entry: impl Fn(Rc<GenmcCtx>) -> Option<i32>,
     tcx: TyCtxt<'tcx>,
 ) -> Option<i32> {
+    let genmc_config = config.genmc_config.as_ref().unwrap();
+
     // There exists only one `global_state` per full run in GenMC mode.
     // It is shared by all `GenmcCtx` in this run.
     // FIXME(genmc): implement multithreading once GenMC supports it.
@@ -32,8 +34,15 @@ pub fn run_genmc_mode<'tcx>(
         genmc_ctx.prepare_next_execution();
 
         // Execute the program until completion to get the return value, or return if an error happens:
-        // FIXME(genmc): add an option to allow the user to see the GenMC output message when the verification is done.
-        let return_code = eval_entry(genmc_ctx.clone())?;
+        let Some(return_code) = eval_entry(genmc_ctx.clone()) else {
+            // If requested, print the output GenMC produced:
+            if genmc_config.print_genmc_output {
+                eprintln!("== raw GenMC output =========================");
+                eprintln!("{}", genmc_ctx.get_result_message());
+                eprintln!("== end of raw GenMC output ==================");
+            }
+            return None;
+        };
 
         // We inform GenMC that the execution is complete. If there was an error, we print it.
         if let Some(error) = genmc_ctx.handle_execution_end() {

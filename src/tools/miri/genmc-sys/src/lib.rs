@@ -53,7 +53,13 @@ impl GenmcScalar {
 
 impl Default for GenmcParams {
     fn default() -> Self {
-        Self { print_random_schedule_seed: false, do_symmetry_reduction: false }
+        Self {
+            print_random_schedule_seed: false,
+            do_symmetry_reduction: false,
+            // GenMC graphs can be quite large since Miri produces a lot of (non-atomic) events.
+            print_execution_graphs: ExecutiongraphPrinting::None,
+            disable_weak_memory_emulation: false,
+        }
     }
 }
 
@@ -91,7 +97,10 @@ mod ffi {
     struct GenmcParams {
         pub print_random_schedule_seed: bool,
         pub do_symmetry_reduction: bool,
-        // FIXME(GenMC): Add remaining parameters.
+        pub print_execution_graphs: ExecutiongraphPrinting,
+        /// Enabling this will set the memory model used by GenMC to "Sequential Consistency" (SC).
+        /// This will disable any weak memory effects, which reduces the number of program executions that will be explored.
+        pub disable_weak_memory_emulation: bool,
     }
 
     /// This is mostly equivalent to GenMC `VerbosityLevel`, but the debug log levels are always present (not conditionally compiled based on `ENABLE_GENMC_DEBUG`).
@@ -118,6 +127,19 @@ mod ffi {
         /// Also includes the previous debug log level.
         /// Downgraded to `Tip` if `GENMC_DEBUG` is not enabled.
         Debug3ReadsFrom,
+    }
+
+    #[derive(Debug)]
+    /// Setting to control which execution graphs GenMC prints after every execution.
+    enum ExecutiongraphPrinting {
+        /// Print no graphs.
+        None,
+        /// Print graphs of all fully explored executions.
+        Explored,
+        /// Print graphs of all blocked executions.
+        Blocked,
+        /// Print graphs of all executions.
+        ExploredAndBlocked,
     }
 
     /// This type corresponds to `Option<SVal>` (or `std::optional<SVal>`), where `SVal` is the type that GenMC uses for storing values.
@@ -163,7 +185,21 @@ mod ffi {
         is_coherence_order_maximal_write: bool,
     }
 
-    /**** Types shared between Miri/Rust and GenMC/C++ through cxx_bridge: ****/
+    #[must_use]
+    #[derive(Debug)]
+    struct ReadModifyWriteResult {
+        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        error: UniquePtr<CxxString>,
+        /// The value that was read by the RMW operation as the left operand.
+        old_value: GenmcScalar,
+        /// The value that was produced by the RMW operation.
+        new_value: GenmcScalar,
+        /// `true` if the write should also be reflected in Miri's memory representation.
+        is_coherence_order_maximal_write: bool,
+    }
+
+    /**** These are GenMC types that we have to copy-paste here since cxx does not support
+    "importing" externally defined C++ types. ****/
 
     #[derive(Debug)]
     /// Corresponds to GenMC's type with the same name.
@@ -188,6 +224,21 @@ mod ffi {
         SequentiallyConsistent = 6,
     }
 
+    #[derive(Debug)]
+    enum RMWBinOp {
+        Xchg = 0,
+        Add = 1,
+        Sub = 2,
+        And = 3,
+        Nand = 4,
+        Or = 5,
+        Xor = 6,
+        Max = 7,
+        Min = 8,
+        UMax = 9,
+        UMin = 10,
+    }
+
     // # Safety
     //
     // This block is unsafe to allow defining safe methods inside.
@@ -202,9 +253,12 @@ mod ffi {
         /**** Types shared between Miri/Rust and Miri/C++: ****/
         type MiriGenmcShim;
 
-        /**** Types shared between Miri/Rust and GenMC/C++: ****/
+        /**** Types shared between Miri/Rust and GenMC/C++:
+        (This tells cxx that the enums defined above are already defined on the C++ side;
+        it will emit assertions to ensure that the two definitions agree.) ****/
         type ActionKind;
         type MemOrdering;
+        type RMWBinOp;
 
         /// Set the log level for GenMC.
         ///
@@ -249,6 +303,16 @@ mod ffi {
             memory_ordering: MemOrdering,
             old_value: GenmcScalar,
         ) -> LoadResult;
+        fn handle_read_modify_write(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+            rmw_op: RMWBinOp,
+            ordering: MemOrdering,
+            rhs_value: GenmcScalar,
+            old_value: GenmcScalar,
+        ) -> ReadModifyWriteResult;
         fn handle_store(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,
@@ -258,6 +322,11 @@ mod ffi {
             old_value: GenmcScalar,
             memory_ordering: MemOrdering,
         ) -> StoreResult;
+        fn handle_fence(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            memory_ordering: MemOrdering,
+        );
 
         /**** Memory (de)allocation ****/
         fn handle_malloc(

@@ -1,11 +1,16 @@
-use genmc_sys::MemOrdering;
+use genmc_sys::{MemOrdering, RMWBinOp};
 use rustc_abi::Size;
 use rustc_const_eval::interpret::{InterpResult, interp_ok};
+use rustc_middle::mir;
 use rustc_middle::ty::ScalarInt;
 use tracing::debug;
 
 use super::GenmcScalar;
-use crate::{AtomicReadOrd, AtomicWriteOrd, MiriInterpCx, Scalar, throw_unsup_format};
+use crate::intrinsics::AtomicRmwOp;
+use crate::{
+    AtomicFenceOrd, AtomicReadOrd, AtomicRwOrd, AtomicWriteOrd, MiriInterpCx, Scalar,
+    throw_unsup_format,
+};
 
 /// Maximum size memory access in bytes that GenMC supports.
 pub(super) const MAX_ACCESS_SIZE: u64 = 8;
@@ -93,5 +98,50 @@ impl AtomicWriteOrd {
             AtomicWriteOrd::Release => MemOrdering::Release,
             AtomicWriteOrd::SeqCst => MemOrdering::SequentiallyConsistent,
         }
+    }
+}
+
+impl AtomicFenceOrd {
+    pub(super) fn to_genmc(self) -> MemOrdering {
+        match self {
+            AtomicFenceOrd::Acquire => MemOrdering::Acquire,
+            AtomicFenceOrd::Release => MemOrdering::Release,
+            AtomicFenceOrd::AcqRel => MemOrdering::AcquireRelease,
+            AtomicFenceOrd::SeqCst => MemOrdering::SequentiallyConsistent,
+        }
+    }
+}
+
+impl AtomicRwOrd {
+    pub(super) fn to_genmc(self) -> MemOrdering {
+        match self {
+            AtomicRwOrd::Relaxed => MemOrdering::Relaxed,
+            AtomicRwOrd::Acquire => MemOrdering::Acquire,
+            AtomicRwOrd::Release => MemOrdering::Release,
+            AtomicRwOrd::AcqRel => MemOrdering::AcquireRelease,
+            AtomicRwOrd::SeqCst => MemOrdering::SequentiallyConsistent,
+        }
+    }
+}
+
+/// Convert an atomic binary operation to its GenMC counterpart.
+pub(super) fn to_genmc_rmw_op(atomic_op: AtomicRmwOp, is_signed: bool) -> RMWBinOp {
+    match (atomic_op, is_signed) {
+        (AtomicRmwOp::Min, true) => RMWBinOp::Min,
+        (AtomicRmwOp::Max, true) => RMWBinOp::Max,
+        (AtomicRmwOp::Min, false) => RMWBinOp::UMin,
+        (AtomicRmwOp::Max, false) => RMWBinOp::UMax,
+        (AtomicRmwOp::MirOp { op, neg }, _is_signed) =>
+            match (op, neg) {
+                (mir::BinOp::Add, false) => RMWBinOp::Add,
+                (mir::BinOp::Sub, false) => RMWBinOp::Sub,
+                (mir::BinOp::BitXor, false) => RMWBinOp::Xor,
+                (mir::BinOp::BitAnd, false) => RMWBinOp::And,
+                (mir::BinOp::BitAnd, true) => RMWBinOp::Nand,
+                (mir::BinOp::BitOr, false) => RMWBinOp::Or,
+                _ => {
+                    panic!("unsupported atomic operation: bin_op: {op:?}, negate: {neg}");
+                }
+            },
     }
 }

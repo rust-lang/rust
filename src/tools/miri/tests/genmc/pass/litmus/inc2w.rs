@@ -1,6 +1,6 @@
 //@compile-flags: -Zmiri-genmc -Zmiri-disable-stacked-borrows
 
-// Translated from GenMC's "fr+w+w+w+reads" test.
+// Translated from GenMC's test "litmus/inc2w".
 
 #![no_main]
 
@@ -20,32 +20,24 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     X.store(0, Relaxed);
 
     unsafe {
-        let mut result = [1234; 4];
         let ids = [
             spawn_pthread_closure(|| {
-                X.store(1, Relaxed);
+                X.fetch_add(1, Relaxed);
             }),
             spawn_pthread_closure(|| {
-                X.store(2, Relaxed);
+                X.store(4, Release);
             }),
             spawn_pthread_closure(|| {
-                X.store(3, Relaxed);
-            }),
-            spawn_pthread_closure(|| {
-                result[0] = X.load(Relaxed);
-                result[1] = X.load(Relaxed);
-                result[2] = X.load(Relaxed);
-                result[3] = X.load(Relaxed);
+                X.fetch_add(2, Relaxed);
             }),
         ];
         // Join so we can read the final values.
         join_pthreads(ids);
 
         // Check that we don't get any unexpected values:
-        for val in result {
-            if !matches!(val, 0..=3) {
-                std::process::abort();
-            }
+        let x = X.load(Relaxed);
+        if !matches!(x, 4..=7) {
+            std::process::abort();
         }
 
         0

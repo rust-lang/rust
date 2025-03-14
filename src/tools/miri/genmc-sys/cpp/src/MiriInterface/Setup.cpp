@@ -63,9 +63,12 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     auto conf = std::make_shared<Config>();
 
     // Set whether GenMC should print execution graphs after every explored/blocked execution.
-    // FIXME(genmc): pass these settings from Miri.
-    conf->printExecGraphs = false;
-    conf->printBlockedExecs = false;
+    conf->printExecGraphs =
+        (params.print_execution_graphs == ExecutiongraphPrinting::Explored ||
+         params.print_execution_graphs == ExecutiongraphPrinting::ExploredAndBlocked);
+    conf->printBlockedExecs =
+        (params.print_execution_graphs == ExecutiongraphPrinting::Blocked ||
+         params.print_execution_graphs == ExecutiongraphPrinting::ExploredAndBlocked);
 
     // `1024` is the default value that GenMC uses.
     // If any thread has at least this many events, a warning/tip will be printed.
@@ -79,8 +82,8 @@ static auto to_genmc_verbosity_level(const LogLevel log_level) -> VerbosityLevel
     // Miri.
     conf->warnOnGraphSize = 1024 * 1024;
 
-    // We only support the RC11 memory model for Rust.
-    conf->model = ModelType::RC11;
+    // We only support the `RC11` memory model for Rust, and `SC` when weak memory emulation is disabled.
+    conf->model = params.disable_weak_memory_emulation ? ModelType::SC : ModelType::RC11;
 
     // This prints the seed that GenMC picks for randomized scheduling during estimation mode.
     conf->printRandomScheduleSeed = params.print_random_schedule_seed;

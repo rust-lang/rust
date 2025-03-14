@@ -94,9 +94,9 @@ impl GenmcCtx {
         _ecx: &InterpCx<'tcx, MiriMachine<'tcx>>,
         _address: Size,
         _size: Size,
+        _atomic_op: AtomicRmwOp,
         _is_signed: bool,
         _ordering: AtomicRwOrd,
-        _atomic_op: AtomicRmwOp,
         _rhs_scalar: Scalar,
         _old_value: Scalar,
     ) -> InterpResult<'tcx, (Scalar, Option<Scalar>)> {
@@ -241,5 +241,11 @@ impl GenmcConfig {
         } else {
             Err(format!("GenMC is not supported on this target"))
         }
+    }
+
+    pub fn validate_genmc_mode_settings(
+        _miri_config: &mut crate::MiriConfig,
+    ) -> Result<(), &'static str> {
+        Ok(())
     }
 }

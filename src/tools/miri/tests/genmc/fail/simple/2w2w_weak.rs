@@ -7,7 +7,7 @@
 // When using any combination of orderings except using all 4 `SeqCst`, the memory model allows the program to result in (X, Y) == (1, 1).
 // The "pass" variants only check that we get the expected number of executions (3 for all SC, 4 otherwise),
 // and a valid outcome every execution, but do not check that we get all allowed results.
-// This "fail" variant ensures we can explore the execution resulting in (1, 1), an incorrect unsafe assumption that the result (1, 1) is impossible.
+// This "fail" variant ensures we can explore the execution resulting in (1, 1), with an incorrect assumption that the result (1, 1) is impossible.
 //
 // Miri without GenMC is unable to produce this program execution and thus detect the incorrect assumption, even with `-Zmiri-many-seeds`.
 //
@@ -61,11 +61,10 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
         // Join so we can read the final values.
         join_pthreads(ids);
 
-        // We mark the result (1, 1) as unreachable, which is incorrect.
+        // We incorrectly assume that the result (1, 1) as unreachable.
         let result = (X.load(Relaxed), Y.load(Relaxed));
         if result == (1, 1) {
-            // FIXME(genmc): Use `std::process::abort()` once backtraces for that are improved (https://github.com/rust-lang/rust/pull/146118)
-            std::hint::unreachable_unchecked(); //~ ERROR: entering unreachable code
+            std::process::abort(); //~ ERROR: abnormal termination
         }
 
         0
