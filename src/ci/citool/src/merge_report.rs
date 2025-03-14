@@ -297,7 +297,7 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
 
     if doctest_count > 0 {
         println!(
-            "\nAdditionally, {doctest_count} doctest {} were found.",
+            "\nAdditionally, {doctest_count} doctest {} were found. These are ignored, as they are noisy.",
             pluralize("diff", doctest_count)
         );
     }
