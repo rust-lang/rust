@@ -239,6 +239,9 @@ jobs:
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
       - name: postprocess metrics into the summary
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
         run: |
           if [ -f build/metrics.json ]; then
             METRICS=build/metrics.json  
@@ -253,6 +256,9 @@ jobs:
               ${METRICS} ${GITHUB_STEP_SUMMARY}
 
       - name: upload job metrics to DataDog
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
         if: needs.calculate_matrix.outputs.run_type != 'pr'
         env:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
