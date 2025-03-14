@@ -40,6 +40,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for DerefChecker<'a, 'tcx> {
                         ty,
                         self.local_decls[p_ref.local].source_info.span,
                         LocalInfo::DerefTemp,
+                        false,
                     );
 
                     // We are adding current p_ref's projections to our
