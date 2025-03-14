@@ -1,10 +1,10 @@
 use rustc_hir as hir;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use rustc_middle::mir::interpret::ErrorHandled;
+use rustc_middle::mir::interpret::{ErrorHandled, Scalar};
 use rustc_middle::mir::mono::{Linkage, MonoItem, Visibility};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
-use rustc_middle::{span_bug, ty};
+use rustc_middle::{mir, span_bug, ty};
 use tracing::debug;
 
 use crate::traits::*;
@@ -48,13 +48,23 @@ impl<'a, 'tcx: 'a> MonoItemExt<'a, 'tcx> for MonoItem<'tcx> {
                                             .tcx()
                                             .typeck_body(anon_const.body)
                                             .node_type(anon_const.hir_id);
-                                        let string = common::asm_const_to_str(
-                                            cx.tcx(),
-                                            *op_sp,
-                                            const_value,
-                                            cx.layout_of(ty),
-                                        );
-                                        GlobalAsmOperandRef::Interpolate { string }
+                                        let mir::ConstValue::Scalar(scalar) = const_value else {
+                                            span_bug!(*op_sp, "expected Scalar for promoted asm const, but got {:#?}", const_value)
+                                        };
+                                        match scalar {
+                                            Scalar::Int(_) => {
+                                                let string = common::asm_const_to_str(
+                                                    cx.tcx(),
+                                                    *op_sp,
+                                                    const_value,
+                                                    cx.layout_of(ty),
+                                                );
+                                                GlobalAsmOperandRef::Interpolate { string }
+                                            }
+                                            Scalar::Ptr(value, _) => {
+                                                GlobalAsmOperandRef::ConstPointer { value, instance: Instance::mono(cx.tcx(), item_id.owner_id.to_def_id()) }
+                                            }
+                                        }
                                     }
                                     Err(ErrorHandled::Reported { .. }) => {
                                         // An error has already been reported and
