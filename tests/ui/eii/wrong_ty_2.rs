@@ -16,7 +16,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other() -> u64 {
-//~^ ERROR function `other` has a type that is incompatible with the declaration
+//~^ ERROR `other` has 0 parameters but #[foo] requires it to have
     3
 }
 

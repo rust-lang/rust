@@ -1,4 +1,5 @@
 //@ compile-flags: --crate-type rlib
+//FIXME: known ICE
 #![feature(eii)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
@@ -16,6 +17,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other<'a, 'b>(x: &'b u64) -> &'b u64 {
+//~^ ERROR lifetime parameters or bounds `other` do not match the declaration
     &0
 }
 

@@ -294,6 +294,13 @@ hir_analysis_lifetime_not_captured = `impl Trait` captures lifetime parameter, b
     .label = lifetime captured due to being mentioned in the bounds of the `impl Trait`
     .param_label = this lifetime parameter is captured
 
+hir_analysis_lifetimes_or_bounds_mismatch_on_eii =
+    lifetime parameters or bounds `{$ident}` do not match the declaration
+    .label = lifetimes do not match
+    .generics_label = lifetimes in impl do not match this signature
+    .where_label = this `where` clause might not match the one in the trait
+    .bounds_label = this bound might be missing in the implementation
+
 hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     lifetime parameters or bounds on {$item_kind} `{$ident}` do not match the trait declaration
     .label = lifetimes do not match {$item_kind} in trait
