@@ -119,8 +119,7 @@ for more details.
 These directives are used to ignore the test in some situations, which
 means the test won't be compiled or run.
 
-* `ignore-X` where `X` is a target detail or stage will ignore the test
-  accordingly (see below)
+* `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
 * `ignore-test` always ignores the test. This can be used to temporarily disable
@@ -139,8 +138,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
   matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
+- Stage: `stage1`, `stage2`
 - Binary format: `elf`
-- Stage: `stage0`, `stage1`, `stage2`
 - Channel: `stable`, `beta`
 - When cross compiling: `cross-compile`
 - When [remote testing] is used: `remote`
@@ -196,7 +195,6 @@ settings:
 
 The following directives will check LLVM support:
 
-- `no-system-llvm` — ignores if the system llvm is used
 - `exact-llvm-major-version: 19` — ignores if the llvm major version does not
   match the specified llvm major version.
 - `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given
