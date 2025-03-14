@@ -70,11 +70,6 @@ impl MyStack {
         (*dummy).next = AtomicPtr::new(std::ptr::null_mut());
         self.head = AtomicPtr::new(dummy);
         self.tail = AtomicPtr::new(dummy);
-
-        // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-        (*dummy).next.store(std::ptr::null_mut(), Relaxed);
-        self.head.store(dummy, Relaxed);
-        self.tail.store(dummy, Relaxed);
     }
 
     pub unsafe fn clear_queue(&mut self, _num_threads: usize) {
@@ -92,9 +87,6 @@ impl MyStack {
         let node = Node::alloc();
         (*node).value = value;
         (*node).next = AtomicPtr::new(std::ptr::null_mut());
-
-        // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-        (*node).next.store(std::ptr::null_mut(), Relaxed);
 
         loop {
             tail = self.tail.load(Acquire);

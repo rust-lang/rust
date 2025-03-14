@@ -58,10 +58,6 @@ fn spin_until(value: u64) {
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    unsafe { X = 0 };
-    FLAG.store(0, Relaxed);
-
     unsafe {
         let t0 = || {
             X = 42;

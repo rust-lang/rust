@@ -22,11 +22,6 @@ static Z: AtomicI64 = AtomicI64::new(0);
 
 #[unsafe(no_mangle)]
 fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
-    // FIXME(genmc,HACK): remove these initializing writes once Miri-GenMC supports mixed atomic-non-atomic accesses.
-    X.store(0, Relaxed);
-    Y.store(0, Relaxed);
-    Z.store(0, Relaxed);
-
     unsafe {
         // Make these static so we can exit the main thread while the other threads still run.
         // If these are `let mut` like the other tests, this will cause a use-after-free bug.
