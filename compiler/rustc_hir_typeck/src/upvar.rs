@@ -143,7 +143,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
         match expr.kind {
             hir::ExprKind::Closure(&hir::Closure { capture_clause, body: body_id, .. }) => {
-                let body = self.fcx.tcx.hir().body(body_id);
+                let body = self.fcx.tcx.hir_body(body_id);
                 self.visit_body(body);
                 self.fcx.analyze_closure(expr.hir_id, expr.span, body_id, body, capture_clause);
             }
@@ -154,7 +154,7 @@ impl<'a, 'tcx> Visitor<'tcx> for InferBorrowKindVisitor<'a, 'tcx> {
     }
 
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
-        let body = self.fcx.tcx.hir().body(c.body);
+        let body = self.fcx.tcx.hir_body(c.body);
         self.visit_body(body);
     }
 }
@@ -196,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let args = self.resolve_vars_if_possible(args);
         let closure_def_id = closure_def_id.expect_local();
 
-        assert_eq!(self.tcx.hir().body_owner_def_id(body.id()), closure_def_id);
+        assert_eq!(self.tcx.hir_body_owner_def_id(body.id()), closure_def_id);
         let mut delegate = InferBorrowKind {
             closure_def_id,
             capture_information: Default::default(),
@@ -288,11 +288,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     bug!();
                 };
                 let place = self.place_for_root_variable(closure_def_id, local_id);
-                delegate.capture_information.push((place, ty::CaptureInfo {
-                    capture_kind_expr_id: Some(init.hir_id),
-                    path_expr_id: Some(init.hir_id),
-                    capture_kind: UpvarCapture::ByValue,
-                }));
+                delegate.capture_information.push((
+                    place,
+                    ty::CaptureInfo {
+                        capture_kind_expr_id: Some(init.hir_id),
+                        path_expr_id: Some(init.hir_id),
+                        capture_kind: UpvarCapture::ByValue,
+                    },
+                ));
             }
         }
 
@@ -379,11 +382,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if let UpvarArgs::CoroutineClosure(args) = args
             && !args.references_error()
         {
-            let closure_env_region: ty::Region<'_> =
-                ty::Region::new_bound(self.tcx, ty::INNERMOST, ty::BoundRegion {
-                    var: ty::BoundVar::ZERO,
-                    kind: ty::BoundRegionKind::ClosureEnv,
-                });
+            let closure_env_region: ty::Region<'_> = ty::Region::new_bound(
+                self.tcx,
+                ty::INNERMOST,
+                ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::ClosureEnv },
+            );
 
             let num_args = args
                 .as_coroutine_closure()
@@ -668,6 +671,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let (place, capture_kind) = match capture_clause {
                     hir::CaptureBy::Value { .. } => adjust_for_move_closure(place, capture_kind),
+                    hir::CaptureBy::Use { .. } => adjust_for_use_closure(place, capture_kind),
                     hir::CaptureBy::Ref => adjust_for_non_move_closure(place, capture_kind),
                 };
 
@@ -777,7 +781,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 PlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                 base => bug!("Expected upvar, found={:?}", base),
             };
-            let var_ident = self.tcx.hir().ident(var_hir_id);
+            let var_ident = self.tcx.hir_ident(var_hir_id);
 
             let Some(min_cap_list) = root_var_min_capture_list.get_mut(&var_hir_id) else {
                 let mutability = self.determine_capture_mutability(&typeck_results, &place);
@@ -984,13 +988,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 UpvarMigrationInfo::CapturingPrecise { source_expr: Some(capture_expr_id), var_name: captured_name } => {
                                     let cause_span = self.tcx.hir().span(*capture_expr_id);
                                     lint.span_label(cause_span, format!("in Rust 2018, this closure captures all of `{}`, but in Rust 2021, it will only capture `{}`",
-                                        self.tcx.hir().name(*var_hir_id),
+                                        self.tcx.hir_name(*var_hir_id),
                                         captured_name,
                                     ));
                                 }
                                 UpvarMigrationInfo::CapturingNothing { use_span } => {
                                     lint.span_label(*use_span, format!("in Rust 2018, this causes the closure to capture `{}`, but in Rust 2021, it has no effect",
-                                        self.tcx.hir().name(*var_hir_id),
+                                        self.tcx.hir_name(*var_hir_id),
                                     ));
                                 }
 
@@ -1005,13 +1009,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
                                         lint.span_label(drop_location_span, format!("in Rust 2018, `{}` is dropped here, but in Rust 2021, only `{}` will be dropped here as part of the closure",
-                                            self.tcx.hir().name(*var_hir_id),
+                                            self.tcx.hir_name(*var_hir_id),
                                             captured_name,
                                         ));
                                     }
                                     UpvarMigrationInfo::CapturingNothing { use_span: _ } => {
                                         lint.span_label(drop_location_span, format!("in Rust 2018, `{v}` is dropped here along with the closure, but in Rust 2021 `{v}` is not part of the closure",
-                                            v = self.tcx.hir().name(*var_hir_id),
+                                            v = self.tcx.hir_name(*var_hir_id),
                                         ));
                                     }
                                 }
@@ -1022,7 +1026,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 // not capturing something anymore cannot cause a trait to fail to be implemented:
                                 match &lint_note.captures_info {
                                     UpvarMigrationInfo::CapturingPrecise { var_name: captured_name, .. } => {
-                                        let var_name = self.tcx.hir().name(*var_hir_id);
+                                        let var_name = self.tcx.hir_name(*var_hir_id);
                                         lint.span_label(closure_head_span, format!("\
                                         in Rust 2018, this closure implements {missing_trait} \
                                         as `{var_name}` implements {missing_trait}, but in Rust 2021, \
@@ -1162,7 +1166,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty = match closure_clause {
             hir::CaptureBy::Value { .. } => ty, // For move closure the capture kind should be by value
-            hir::CaptureBy::Ref => {
+            hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {
                 // For non move closure the capture kind is the max capture kind of all captures
                 // according to the ordering ImmBorrow < UniqueImmBorrow < MutBorrow < ByValue
                 let mut max_capture_info = root_var_min_capture_list.first().unwrap().info;
@@ -1289,7 +1293,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .insert(UpvarMigrationInfo::CapturingNothing { use_span: upvar.span });
                     return Some(diagnostics_info);
                 }
-                hir::CaptureBy::Ref => {}
+                hir::CaptureBy::Ref | hir::CaptureBy::Use { .. } => {}
             }
 
             return None;
@@ -1302,7 +1306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for captured_place in root_var_min_capture_list.iter() {
             match captured_place.info.capture_kind {
                 // Only care about captures that are moved into the closure
-                ty::UpvarCapture::ByValue => {
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
                     projections_list.push(captured_place.place.projections.as_slice());
                     diagnostics_info.insert(UpvarMigrationInfo::CapturingPrecise {
                         source_expr: captured_place.info.path_expr_id,
@@ -1686,10 +1690,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             //
             // If the data will be moved out of this place, then the place will be truncated
             // at the first Deref in `adjust_for_move_closure` and then moved into the closure.
+            //
+            // For example:
+            //
+            // struct Buffer<'a> {
+            //     x: &'a String,
+            //     y: Vec<u8>,
+            // }
+            //
+            // fn get<'a>(b: Buffer<'a>) -> impl Sized + 'a {
+            //     let c = move || b.x;
+            //     drop(b);
+            //     c
+            // }
+            //
+            // Even though the closure is declared as move, when we are capturing borrowed data (in
+            // this case, *b.x) we prefer to capture by reference.
+            // Otherwise you'd get an error in 2021 immediately because you'd be trying to take
+            // ownership of the (borrowed) String or else you'd take ownership of b, as in 2018 and
+            // before, which is also an error.
             hir::CaptureBy::Value { .. } if !place.deref_tys().any(Ty::is_ref) => {
                 ty::UpvarCapture::ByValue
             }
-            hir::CaptureBy::Value { .. } | hir::CaptureBy::Ref => {
+            hir::CaptureBy::Use { .. } if !place.deref_tys().any(Ty::is_ref) => {
+                ty::UpvarCapture::ByUse
+            }
+            hir::CaptureBy::Value { .. } | hir::CaptureBy::Use { .. } | hir::CaptureBy::Ref => {
                 ty::UpvarCapture::ByRef(BorrowKind::Immutable)
             }
         }
@@ -1924,14 +1950,14 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
     region: ty::Region<'tcx>,
 ) -> Ty<'tcx> {
     match capture_kind {
-        ty::UpvarCapture::ByValue => ty,
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => ty,
         ty::UpvarCapture::ByRef(kind) => Ty::new_ref(tcx, region, ty, kind.to_mutbl_lossy()),
     }
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
 fn drop_location_span(tcx: TyCtxt<'_>, hir_id: HirId) -> Span {
-    let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
+    let owner_id = tcx.hir_get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir_node(owner_id);
     let owner_span = match owner_node {
@@ -1988,17 +2014,18 @@ struct InferBorrowKind<'tcx> {
 impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
     fn fake_read(
         &mut self,
-        place: &PlaceWithHirId<'tcx>,
+        place_with_id: &PlaceWithHirId<'tcx>,
         cause: FakeReadCause,
         diag_expr_id: HirId,
     ) {
-        let PlaceBase::Upvar(_) = place.place.base else { return };
+        let PlaceBase::Upvar(_) = place_with_id.place.base else { return };
 
         // We need to restrict Fake Read precision to avoid fake reading unsafe code,
         // such as deref of a raw pointer.
         let dummy_capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
 
-        let (place, _) = restrict_capture_precision(place.place.clone(), dummy_capture_kind);
+        let (place, _) =
+            restrict_capture_precision(place_with_id.place.clone(), dummy_capture_kind);
 
         let (place, _) = restrict_repr_packed_field_ref_capture(place, dummy_capture_kind);
         self.fake_reads.push((place, cause, diag_expr_id));
@@ -2009,11 +2036,29 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
         let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
         assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
 
-        self.capture_information.push((place_with_id.place.clone(), ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind: ty::UpvarCapture::ByValue,
-        }));
+        self.capture_information.push((
+            place_with_id.place.clone(),
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind: ty::UpvarCapture::ByValue,
+            },
+        ));
+    }
+
+    #[instrument(skip(self), level = "debug")]
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        let PlaceBase::Upvar(upvar_id) = place_with_id.place.base else { return };
+        assert_eq!(self.closure_def_id, upvar_id.closure_expr_id);
+
+        self.capture_information.push((
+            place_with_id.place.clone(),
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind: ty::UpvarCapture::ByUse,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2036,15 +2081,18 @@ impl<'tcx> euv::Delegate<'tcx> for InferBorrowKind<'tcx> {
             restrict_repr_packed_field_ref_capture(place_with_id.place.clone(), capture_kind);
 
         // Raw pointers don't inherit mutability
-        if place_with_id.place.deref_tys().any(Ty::is_unsafe_ptr) {
+        if place_with_id.place.deref_tys().any(Ty::is_raw_ptr) {
             capture_kind = ty::UpvarCapture::ByRef(ty::BorrowKind::Immutable);
         }
 
-        self.capture_information.push((place, ty::CaptureInfo {
-            capture_kind_expr_id: Some(diag_expr_id),
-            path_expr_id: Some(diag_expr_id),
-            capture_kind,
-        }));
+        self.capture_information.push((
+            place,
+            ty::CaptureInfo {
+                capture_kind_expr_id: Some(diag_expr_id),
+                path_expr_id: Some(diag_expr_id),
+                capture_kind,
+            },
+        ));
     }
 
     #[instrument(skip(self), level = "debug")]
@@ -2084,7 +2132,7 @@ fn restrict_precision_for_unsafe(
     mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,
 ) -> (Place<'_>, ty::UpvarCapture) {
-    if place.base_ty.is_unsafe_ptr() {
+    if place.base_ty.is_raw_ptr() {
         truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
 
@@ -2093,8 +2141,8 @@ fn restrict_precision_for_unsafe(
     }
 
     for (i, proj) in place.projections.iter().enumerate() {
-        if proj.ty.is_unsafe_ptr() {
-            // Don't apply any projections on top of an unsafe ptr.
+        if proj.ty.is_raw_ptr() {
+            // Don't apply any projections on top of a raw ptr.
             truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, i + 1);
             break;
         }
@@ -2154,6 +2202,20 @@ fn adjust_for_move_closure(
     (place, ty::UpvarCapture::ByValue)
 }
 
+/// Truncate deref of any reference.
+fn adjust_for_use_closure(
+    mut place: Place<'_>,
+    mut kind: ty::UpvarCapture,
+) -> (Place<'_>, ty::UpvarCapture) {
+    let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
+
+    if let Some(idx) = first_deref {
+        truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
+    }
+
+    (place, ty::UpvarCapture::ByUse)
+}
+
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
 fn adjust_for_non_move_closure(
@@ -2164,7 +2226,7 @@ fn adjust_for_non_move_closure(
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     match kind {
-        ty::UpvarCapture::ByValue => {
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {
             if let Some(idx) = contains_deref {
                 truncate_place_to_len_and_update_capture_kind(&mut place, &mut kind, idx);
             }
@@ -2209,6 +2271,7 @@ fn construct_capture_kind_reason_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
+        ty::UpvarCapture::ByUse => "ByUse".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
 
@@ -2230,13 +2293,14 @@ fn construct_capture_info_string<'tcx>(
 
     let capture_kind_str = match capture_info.capture_kind {
         ty::UpvarCapture::ByValue => "ByValue".into(),
+        ty::UpvarCapture::ByUse => "ByUse".into(),
         ty::UpvarCapture::ByRef(kind) => format!("{kind:?}"),
     };
     format!("{place_str} -> {capture_kind_str}")
 }
 
 fn var_name(tcx: TyCtxt<'_>, var_hir_id: HirId) -> Symbol {
-    tcx.hir().name(var_hir_id)
+    tcx.hir_name(var_hir_id)
 }
 
 #[instrument(level = "debug", skip(tcx))]
@@ -2325,8 +2389,11 @@ fn determine_capture_info(
     // expressions.
     let eq_capture_kind = match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
         (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue) => true,
+        (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse) => true,
         (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => ref_a == ref_b,
-        (ty::UpvarCapture::ByValue, _) | (ty::UpvarCapture::ByRef(_), _) => false,
+        (ty::UpvarCapture::ByValue, _)
+        | (ty::UpvarCapture::ByUse, _)
+        | (ty::UpvarCapture::ByRef(_), _) => false,
     };
 
     if eq_capture_kind {
@@ -2336,10 +2403,20 @@ fn determine_capture_info(
         }
     } else {
         // We select the CaptureKind which ranks higher based the following priority order:
-        // ByValue > MutBorrow > UniqueImmBorrow > ImmBorrow
+        // (ByUse | ByValue) > MutBorrow > UniqueImmBorrow > ImmBorrow
         match (capture_info_a.capture_kind, capture_info_b.capture_kind) {
-            (ty::UpvarCapture::ByValue, _) => capture_info_a,
-            (_, ty::UpvarCapture::ByValue) => capture_info_b,
+            (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByUse) => {
+                bug!("Same capture can't be ByUse and ByValue at the same time")
+            }
+            (ty::UpvarCapture::ByValue, ty::UpvarCapture::ByValue)
+            | (ty::UpvarCapture::ByUse, ty::UpvarCapture::ByUse)
+            | (ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse, ty::UpvarCapture::ByRef(_)) => {
+                capture_info_a
+            }
+            (ty::UpvarCapture::ByRef(_), ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse) => {
+                capture_info_b
+            }
             (ty::UpvarCapture::ByRef(ref_a), ty::UpvarCapture::ByRef(ref_b)) => {
                 match (ref_a, ref_b) {
                     // Take LHS:
@@ -2391,7 +2468,7 @@ fn truncate_place_to_len_and_update_capture_kind<'tcx>(
         }
 
         ty::UpvarCapture::ByRef(..) => {}
-        ty::UpvarCapture::ByValue => {}
+        ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
     }
 
     place.projections.truncate(len);

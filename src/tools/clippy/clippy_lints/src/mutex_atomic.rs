@@ -18,11 +18,14 @@ declare_clippy_lint! {
     ///
     /// On the other hand, `Mutex`es are, in general, easier to
     /// verify correctness. An atomic does not behave the same as
-    /// an equivalent mutex. See [this issue](https://github.com/rust-lang/rust-clippy/issues/4295)'s commentary for more details.
+    /// an equivalent mutex. See [this issue](https://github.com/rust-lang/rust-clippy/issues/4295)'s
+    /// commentary for more details.
     ///
     /// ### Known problems
-    /// This lint cannot detect if the mutex is actually used
-    /// for waiting before a critical section.
+    /// * This lint cannot detect if the mutex is actually used
+    ///   for waiting before a critical section.
+    /// * This lint has a false positive that warns without considering the case
+    ///   where `Mutex` is used together with `Condvar`.
     ///
     /// ### Example
     /// ```no_run
@@ -48,14 +51,23 @@ declare_clippy_lint! {
     /// Checks for usage of `Mutex<X>` where `X` is an integral
     /// type.
     ///
-    /// ### Why is this bad?
+    /// ### Why restrict this?
     /// Using a mutex just to make access to a plain integer
     /// sequential is
     /// shooting flies with cannons. `std::sync::atomic::AtomicUsize` is leaner and faster.
     ///
+    /// On the other hand, `Mutex`es are, in general, easier to
+    /// verify correctness. An atomic does not behave the same as
+    /// an equivalent mutex. See [this issue](https://github.com/rust-lang/rust-clippy/issues/4295)'s
+    /// commentary for more details.
+    ///
     /// ### Known problems
-    /// This lint cannot detect if the mutex is actually used
-    /// for waiting before a critical section.
+    /// * This lint cannot detect if the mutex is actually used
+    ///   for waiting before a critical section.
+    /// * This lint has a false positive that warns without considering the case
+    ///   where `Mutex` is used together with `Condvar`.
+    /// * This lint suggest using `AtomicU64` instead of `Mutex<u64>`, but
+    ///   `AtomicU64` is not available on some 32-bit platforms.
     ///
     /// ### Example
     /// ```no_run
@@ -70,7 +82,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MUTEX_INTEGER,
-    nursery,
+    restriction,
     "using a mutex for an integer type"
 }
 
@@ -108,7 +120,7 @@ fn get_atomic_name(ty: Ty<'_>) -> Option<&'static str> {
                 UintTy::U32 => Some("AtomicU32"),
                 UintTy::U64 => Some("AtomicU64"),
                 UintTy::Usize => Some("AtomicUsize"),
-                // There's no `AtomicU128`.
+                // `AtomicU128` is unstable and only available on a few platforms: https://github.com/rust-lang/rust/issues/99069
                 UintTy::U128 => None,
             }
         },
@@ -119,7 +131,7 @@ fn get_atomic_name(ty: Ty<'_>) -> Option<&'static str> {
                 IntTy::I32 => Some("AtomicI32"),
                 IntTy::I64 => Some("AtomicI64"),
                 IntTy::Isize => Some("AtomicIsize"),
-                // There's no `AtomicI128`.
+                // `AtomicU128` is unstable and only available on a few platforms: https://github.com/rust-lang/rust/issues/99069
                 IntTy::I128 => None,
             }
         },

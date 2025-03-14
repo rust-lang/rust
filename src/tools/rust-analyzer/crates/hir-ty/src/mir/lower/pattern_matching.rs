@@ -1,6 +1,6 @@
 //! MIR lowering for patterns
 
-use hir_def::{hir::LiteralOrConst, AssocItemId};
+use hir_def::{hir::ExprId, AssocItemId};
 
 use crate::{
     mir::{
@@ -207,7 +207,7 @@ impl MirLowerCtx<'_> {
                 )?
             }
             Pat::Range { start, end } => {
-                let mut add_check = |l: &LiteralOrConst, binop| -> Result<()> {
+                let mut add_check = |l: &ExprId, binop| -> Result<()> {
                     let lv =
                         self.lower_literal_or_const_to_operand(self.infer[pattern].clone(), l)?;
                     let else_target = *current_else.get_or_insert_with(|| self.new_basic_block());
@@ -350,7 +350,12 @@ impl MirLowerCtx<'_> {
                 )?,
                 None => {
                     let unresolved_name = || {
-                        MirLowerError::unresolved_path(self.db, p, self.edition(), &self.body.types)
+                        MirLowerError::unresolved_path(
+                            self.db,
+                            p,
+                            self.display_target(),
+                            &self.body.types,
+                        )
                     };
                     let hygiene = self.body.pat_path_hygiene(pattern);
                     let pr = self

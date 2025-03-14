@@ -9,7 +9,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Memory {
+                           backend_repr: Memory {
                                sized: true,
                            },
                            fields: Arbitrary {
@@ -17,6 +17,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                                memory_index: [],
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -48,7 +49,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -56,6 +57,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -71,7 +73,7 @@ error: fn_abi_of(pass_zst) = FnAbi {
            conv: C,
            can_unwind: false,
        }
-  --> $DIR/c-zst.rs:63:1
+  --> $DIR/c-zst.rs:64:1
    |
 LL | extern "C" fn pass_zst(_: ()) {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

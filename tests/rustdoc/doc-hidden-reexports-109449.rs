@@ -26,21 +26,21 @@ pub mod single_reexport {
     //@ has 'foo/single_reexport/index.html'
 
     // First we check that we have 4 type aliases.
-    //@ count - '//*[@id="main-content"]/*[@class="item-table reexports"]//code' 4
+    //@ count - '//*[@id="main-content"]/*[@class="item-table reexports"]//code' 0
 
     // Then we check that we have the correct link for each re-export.
 
     //@ !has - '//*[@href="struct.Foo.html"]' 'Foo'
-    //@ has - '//*[@id="reexport.Foo"]/code' 'pub use crate::private_module::Public as Foo;'
+    //@ !has - '//*[@id="reexport.Foo"]/code' 'pub use crate::private_module::Public as Foo;'
     pub use crate::private_module::Public as Foo;
     //@ !has - '//*[@href="type.Foo2.html"]' 'Foo2'
-    //@ has - '//*[@id="reexport.Foo2"]/code' 'pub use crate::private_module::Bar as Foo2;'
+    //@ !has - '//*[@id="reexport.Foo2"]/code' 'pub use crate::private_module::Bar as Foo2;'
     pub use crate::private_module::Bar as Foo2;
     //@ !has - '//*[@href="type.Yo.html"]' 'Yo'
-    //@ has - '//*[@id="reexport.Yo"]/code' 'pub use crate::Bar3 as Yo;'
+    //@ !has - '//*[@id="reexport.Yo"]/code' 'pub use crate::Bar3 as Yo;'
     pub use crate::Bar3 as Yo;
     //@ !has - '//*[@href="struct.Yo2.html"]' 'Yo2'
-    //@ has - '//*[@id="reexport.Yo2"]/code' 'pub use crate::FooFoo as Yo2;'
+    //@ !has - '//*[@id="reexport.Yo2"]/code' 'pub use crate::FooFoo as Yo2;'
     pub use crate::FooFoo as Yo2;
 
     // Checking that each file is also created as expected.
@@ -70,19 +70,19 @@ pub mod single_reexport_no_inline {
     //@ has - '//*[@id="main-content"]/*[@class="section-header"]' 'Re-exports'
 
     // Now we check that we don't have links to the items, just `pub use`.
-    //@ has - '//*[@id="main-content"]//*' 'pub use crate::private_module::Public as XFoo;'
+    //@ !has - '//*[@id="main-content"]//*' 'pub use crate::private_module::Public as XFoo;'
     //@ !has - '//*[@id="main-content"]//a' 'XFoo'
     #[doc(no_inline)]
     pub use crate::private_module::Public as XFoo;
-    //@ has - '//*[@id="main-content"]//*' 'pub use crate::private_module::Bar as Foo2;'
+    //@ !has - '//*[@id="main-content"]//*' 'pub use crate::private_module::Bar as Foo2;'
     //@ !has - '//*[@id="main-content"]//a' 'Foo2'
     #[doc(no_inline)]
     pub use crate::private_module::Bar as Foo2;
-    //@ has - '//*[@id="main-content"]//*' 'pub use crate::Bar3 as Yo;'
+    //@ !has - '//*[@id="main-content"]//*' 'pub use crate::Bar3 as Yo;'
     //@ !has - '//*[@id="main-content"]//a' 'Yo'
     #[doc(no_inline)]
     pub use crate::Bar3 as Yo;
-    //@ has - '//*[@id="main-content"]//*' 'pub use crate::FooFoo as Yo2;'
+    //@ !has - '//*[@id="main-content"]//*' 'pub use crate::FooFoo as Yo2;'
     //@ !has - '//*[@id="main-content"]//a' 'Yo2'
     #[doc(no_inline)]
     pub use crate::FooFoo as Yo2;

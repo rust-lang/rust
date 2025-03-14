@@ -31,7 +31,7 @@ use crate::{mem, ptr};
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
-            extern "C" {
+            unsafe extern "C" {
                 #[linkage = "extern_weak"]
                 static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
             }
@@ -123,7 +123,7 @@ impl<F> DlsymWeak<F> {
     // Cold because it should only happen during first-time initialization.
     #[cold]
     unsafe fn initialize(&self) -> Option<F> {
-        assert_eq!(mem::size_of::<F>(), mem::size_of::<*mut libc::c_void>());
+        assert_eq!(size_of::<F>(), size_of::<*mut libc::c_void>());
 
         let val = fetch(self.name);
         // This synchronizes with the acquire fence in `get`.
@@ -144,6 +144,9 @@ unsafe fn fetch(name: &str) -> *mut libc::c_void {
 #[cfg(not(any(target_os = "linux", target_os = "android")))]
 pub(crate) macro syscall {
     (fn $name:ident($($arg_name:ident: $t:ty),*) -> $ret:ty) => (
+        // FIXME(#115199): Rust currently omits weak function definitions
+        // and its metadata from LLVM IR.
+        #[no_sanitize(cfi)]
         unsafe fn $name($($arg_name: $t),*) -> $ret {
             weak! { fn $name($($t),*) -> $ret }
 

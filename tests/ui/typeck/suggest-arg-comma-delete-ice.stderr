@@ -6,8 +6,9 @@ LL |     main(rahh）;
    |
 help: Unicode character '）' (Fullwidth Right Parenthesis) looks like ')' (Right Parenthesis), but it is not
    |
-LL |     main(rahh);
-   |              ~
+LL -     main(rahh）;
+LL +     main(rahh);
+   |
 
 error[E0425]: cannot find value `rahh` in this scope
   --> $DIR/suggest-arg-comma-delete-ice.rs:15:10

@@ -10,7 +10,6 @@ use rustc_hir::def::Res;
 use rustc_hir::{MatchSource, Node};
 use rustc_middle::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
-    StatementAsExpression,
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -26,8 +25,14 @@ use crate::errors::{
     SuggestTuplePatternMany, SuggestTuplePatternOne, TypeErrorAdditionalDiags,
 };
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+enum StatementAsExpression {
+    CorrectType,
+    NeedsBoxing,
+}
+
 #[derive(Clone, Copy)]
-pub enum SuggestAsRefKind {
+enum SuggestAsRefKind {
     Option,
     Result,
 }
@@ -232,7 +237,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     Some(ConsiderAddingAwait::FutureSugg { span: then_span.shrink_to_hi() })
                 }
                 ObligationCauseCode::MatchExpressionArm(box MatchExpressionArmCause {
-                    ref prior_non_diverging_arms,
+                    prior_non_diverging_arms,
                     ..
                 }) => Some({
                     ConsiderAddingAwait::FutureSuggMultiple {
@@ -382,7 +387,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub fn suggest_function_pointers_impl(
+    pub(crate) fn suggest_function_pointers_impl(
         &self,
         span: Option<Span>,
         exp_found: &ty::error::ExpectedFound<Ty<'tcx>>,
@@ -518,7 +523,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         }
     }
 
-    pub fn should_suggest_as_ref_kind(
+    fn should_suggest_as_ref_kind(
         &self,
         expected: Ty<'tcx>,
         found: Ty<'tcx>,
@@ -588,8 +593,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) -> Option<TypeErrorAdditionalDiags> {
         /// Find the if expression with given span
         struct IfVisitor {
-            pub found_if: bool,
-            pub err_span: Span,
+            found_if: bool,
+            err_span: Span,
         }
 
         impl<'v> Visitor<'v> for IfVisitor {
@@ -624,7 +629,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             }
         }
 
-        self.tcx.hir().maybe_body_owned_by(cause.body_id).and_then(|body| {
+        self.tcx.hir_maybe_body_owned_by(cause.body_id).and_then(|body| {
             IfVisitor { err_span: span, found_if: false }
                 .visit_body(&body)
                 .is_break()
@@ -649,7 +654,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         else {
             return;
         };
-        let hir::Body { params, .. } = self.tcx.hir().body(*body);
+        let hir::Body { params, .. } = self.tcx.hir_body(*body);
 
         // 1. Get the args of the closure.
         // 2. Assume exp_found is FnOnce / FnMut / Fn, we can extract function parameters from [1].
@@ -736,7 +741,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     /// Be helpful when the user wrote `{... expr; }` and taking the `;` off
     /// is enough to fix the error.
-    pub fn could_remove_semicolon(
+    fn could_remove_semicolon(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -773,8 +778,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 let exp_local_id = exp_def_id.as_local()?;
 
                 match (
-                    &self.tcx.hir().expect_opaque_ty(last_local_id),
-                    &self.tcx.hir().expect_opaque_ty(exp_local_id),
+                    &self.tcx.hir_expect_opaque_ty(last_local_id),
+                    &self.tcx.hir_expect_opaque_ty(exp_local_id),
                 ) {
                     (
                         hir::OpaqueTy { bounds: last_bounds, .. },
@@ -816,7 +821,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
     /// Suggest returning a local binding with a compatible type if the block
     /// has no return expression.
-    pub fn consider_returning_binding_diag(
+    fn consider_returning_binding_diag(
         &self,
         blk: &'tcx hir::Block<'tcx>,
         expected_ty: Ty<'tcx>,
@@ -846,7 +851,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             true
         };
 
-        let hir = self.tcx.hir();
         for stmt in blk.stmts.iter().rev() {
             let hir::StmtKind::Let(local) = &stmt.kind else {
                 continue;
@@ -871,7 +875,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
                     ..
                 }) => {
-                    for param in hir.body(*body).params {
+                    for param in self.tcx.hir_body(*body).params {
                         param.pat.walk(&mut find_compatible_candidates);
                     }
                 }

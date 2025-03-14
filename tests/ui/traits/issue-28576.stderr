@@ -38,8 +38,9 @@ LL | pub trait Bar: Foo<Assoc=()> {
    |           this trait is not dyn compatible...
 help: consider using an opaque type instead
    |
-LL |            impl Bar
-   |            ~~~~
+LL -            dyn Bar
+LL +            impl Bar
+   |
 
 error[E0277]: the size for values of type `Self` cannot be known at compilation time
   --> $DIR/issue-28576.rs:5:16

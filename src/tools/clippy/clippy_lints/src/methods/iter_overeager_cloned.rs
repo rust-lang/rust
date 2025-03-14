@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
             let ExprKind::Closure(closure) = expr.kind else {
                 return;
             };
-            let body @ Body { params: [p], .. } = cx.tcx.hir().body(closure.body) else {
+            let body @ Body { params: [p], .. } = cx.tcx.hir_body(closure.body) else {
                 return;
             };
             let mut delegate = MoveDelegate {
@@ -146,6 +146,8 @@ impl<'tcx> Delegate<'tcx> for MoveDelegate {
             self.used_move.insert(l);
         }
     }
+
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId, _: BorrowKind) {}
 

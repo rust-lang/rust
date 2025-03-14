@@ -20,16 +20,19 @@ LL |     let Foo { #[cfg(any())] present: () } = foo;
    |
 help: include the missing field in the pattern
    |
-LL |     let Foo { present } = foo;
-   |             ~~~~~~~~~~~
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { present } = foo;
+   |
 help: if you don't care about this missing field, you can explicitly ignore it
    |
-LL |     let Foo { present: _ } = foo;
-   |             ~~~~~~~~~~~~~~
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { present: _ } = foo;
+   |
 help: or always ignore missing fields here
    |
-LL |     let Foo { .. } = foo;
-   |             ~~~~~~
+LL -     let Foo { #[cfg(any())] present: () } = foo;
+LL +     let Foo { .. } = foo;
+   |
 
 error[E0026]: struct `Foo` does not have a field named `absent`
   --> $DIR/struct-field-cfg.rs:16:42

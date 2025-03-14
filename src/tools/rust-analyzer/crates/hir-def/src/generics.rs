@@ -433,7 +433,7 @@ impl GenericParams {
             GenericDefId::TraitAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::TypeAliasId(id) => id_to_generics(db, id, enabled_params),
             GenericDefId::ImplId(id) => id_to_generics(db, id, enabled_params),
-            GenericDefId::ConstId(_) => (
+            GenericDefId::ConstId(_) | GenericDefId::StaticId(_) => (
                 Arc::new(GenericParams {
                     type_or_consts: Default::default(),
                     lifetimes: Default::default(),

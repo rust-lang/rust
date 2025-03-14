@@ -9,6 +9,7 @@ fn id(s: &str) -> &str {
 
 type Opaque<'a> = impl Sized + 'a;
 
+#[define_opaque(Opaque)]
 fn test(s: &str) -> (impl Fn(&str) -> Opaque<'_>, impl Fn(&str) -> Opaque<'_>) {
     (id, id) //~ ERROR: expected generic lifetime parameter, found `'_`
 }

@@ -21,12 +21,14 @@ use lsp_types::{
     notification::DidOpenTextDocument,
     request::{
         CodeActionRequest, Completion, Formatting, GotoTypeDefinition, HoverRequest,
-        InlayHintRequest, InlayHintResolveRequest, WillRenameFiles, WorkspaceSymbolRequest,
+        InlayHintRequest, InlayHintResolveRequest, RangeFormatting, WillRenameFiles,
+        WorkspaceSymbolRequest,
     },
     CodeActionContext, CodeActionParams, CompletionParams, DidOpenTextDocumentParams,
-    DocumentFormattingParams, FileRename, FormattingOptions, GotoDefinitionParams, HoverParams,
-    InlayHint, InlayHintLabel, InlayHintParams, PartialResultParams, Position, Range,
-    RenameFilesParams, TextDocumentItem, TextDocumentPositionParams, WorkDoneProgressParams,
+    DocumentFormattingParams, DocumentRangeFormattingParams, FileRename, FormattingOptions,
+    GotoDefinitionParams, HoverParams, InlayHint, InlayHintLabel, InlayHintParams,
+    PartialResultParams, Position, Range, RenameFilesParams, TextDocumentItem,
+    TextDocumentPositionParams, WorkDoneProgressParams,
 };
 use rust_analyzer::lsp::ext::{OnEnter, Runnables, RunnablesParams};
 use serde_json::json;
@@ -661,6 +663,70 @@ fn main() {}
 }
 
 #[test]
+fn test_format_document_range() {
+    if skip_slow_tests() {
+        return;
+    }
+
+    let server = Project::with_fixture(
+        r#"
+//- /Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /src/lib.rs
+fn main() {
+    let unit_offsets_cache = collect(dwarf.units  ())  ?;
+}
+"#,
+    )
+    .with_config(serde_json::json!({
+        "rustfmt": {
+            "overrideCommand": [ "rustfmt", "+nightly", ],
+            "rangeFormatting": { "enable": true }
+        },
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<RangeFormatting>(
+        DocumentRangeFormattingParams {
+            range: Range {
+                end: Position { line: 1, character: 0 },
+                start: Position { line: 1, character: 0 },
+            },
+            text_document: server.doc_id("src/lib.rs"),
+            options: FormattingOptions {
+                tab_size: 4,
+                insert_spaces: false,
+                insert_final_newline: None,
+                trim_final_newlines: None,
+                trim_trailing_whitespace: None,
+                properties: HashMap::new(),
+            },
+            work_done_progress_params: WorkDoneProgressParams::default(),
+        },
+        json!([
+            {
+                "newText": "",
+                "range": {
+                    "start": { "character": 48, "line": 1 },
+                    "end": { "character": 50, "line": 1 },
+                },
+            },
+            {
+                "newText": "",
+                "range": {
+                    "start": { "character": 53, "line": 1 },
+                    "end": { "character": 55, "line": 1 },
+                },
+            }
+        ]),
+    );
+}
+
+#[test]
 fn test_missing_module_code_action() {
     if skip_slow_tests() {
         return;
@@ -1086,7 +1152,11 @@ fn resolve_proc_macro() {
         &AbsPathBuf::assert_utf8(std::env::current_dir().unwrap()),
         &Default::default(),
     );
-    sysroot.load_workspace(&project_model::SysrootSourceWorkspaceConfig::default_cargo());
+    let loaded_sysroot =
+        sysroot.load_workspace(&project_model::RustSourceWorkspaceConfig::default_cargo());
+    if let Some(loaded_sysroot) = loaded_sysroot {
+        sysroot.set_workspace(loaded_sysroot);
+    }
 
     let proc_macro_server_path = sysroot.discover_proc_macro_srv().unwrap();
 
@@ -1372,6 +1442,40 @@ pub fn foo() {}
 name = "bar"
 version = "0.0.0"
 
+[dependencies]
+foo = { path = "../foo" }
+
+//- /bar/src/lib.rs
+"#,
+    )
+    .root("foo")
+    .root("bar")
+    .root("baz")
+    .with_config(json!({
+       "files": {
+           "exclude": ["foo"]
+        }
+    }))
+    .server()
+    .wait_until_workspace_is_loaded();
+
+    server.request::<WorkspaceSymbolRequest>(Default::default(), json!([]));
+
+    let server = Project::with_fixture(
+        r#"
+//- /foo/Cargo.toml
+[package]
+name = "foo"
+version = "0.0.0"
+
+//- /foo/src/lib.rs
+pub fn foo() {}
+
+//- /bar/Cargo.toml
+[package]
+name = "bar"
+version = "0.0.0"
+
 //- /bar/src/lib.rs
 pub fn bar() {}
 
@@ -1388,7 +1492,7 @@ version = "0.0.0"
     .root("baz")
     .with_config(json!({
        "files": {
-           "excludeDirs": ["foo", "bar"]
+           "exclude": ["foo", "bar"]
         }
     }))
     .server()

@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
             if is_lint_ref_type(cx, ty) {
                 check_invalid_clippy_version_attribute(cx, item);
 
-                let expr = &cx.tcx.hir().body(body_id).value;
+                let expr = &cx.tcx.hir_body(body_id).value;
                 let fields = if let ExprKind::AddrOf(_, _, inner_exp) = expr.kind
                     && let ExprKind::Struct(_, struct_fields, _) = inner_exp.kind
                 {
@@ -156,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
                     output: &mut self.registered_lints,
                     cx,
                 };
-                let body = cx.tcx.hir().body_owned_by(
+                let body = cx.tcx.hir_body_owned_by(
                     impl_item_refs
                         .iter()
                         .find(|iiref| iiref.ident.as_str() == "lint_vec")
@@ -247,9 +247,9 @@ fn check_invalid_clippy_version_attribute(cx: &LateContext<'_>, item: &'_ Item<'
 /// This function extracts the version value of a `clippy::version` attribute if the given value has
 /// one
 pub(super) fn extract_clippy_version_value(cx: &LateContext<'_>, item: &'_ Item<'_>) -> Option<Symbol> {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     attrs.iter().find_map(|attr| {
-        if let hir::AttrKind::Normal(attr_kind) = &attr.kind
+        if let hir::Attribute::Unparsed(attr_kind) = &attr
             // Identify attribute
             && let [tool_name, attr_name] = &attr_kind.path.segments[..]
             && tool_name.name == sym::clippy
@@ -277,7 +277,7 @@ impl<'tcx> Visitor<'tcx> for LintCollector<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

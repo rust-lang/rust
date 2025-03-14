@@ -24,14 +24,16 @@ Otherwise, have a great day =^.^=
     <link id="styleNight" rel="stylesheet" href="https://rust-lang.github.io/mdBook/tomorrow-night.css" disabled="true"> {# #}
     <link id="styleAyu" rel="stylesheet" href="https://rust-lang.github.io/mdBook/ayu-highlight.css" disabled="true"> {# #}
     <link rel="stylesheet" href="style.css"> {# #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js" defer></script> {# #}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js" defer></script> {# #}
+    <script src="script.js" defer></script> {# #}
 </head> {# #}
 <body> {# #}
-    <script src="theme.js"></script> {# #}
     <div id="settings-dropdown"> {# #}
         <button class="settings-icon" tabindex="-1"></button> {# #}
         <div class="settings-menu" tabindex="-1"> {# #}
             <div class="setting-radio-name">Theme</div> {# #}
-            <select id="theme-choice" onchange="setTheme(this.value, true)"> {# #}
+            <select id="theme-choice"> {# #}
                 <option value="ayu">Ayu</option> {# #}
                 <option value="coal">Coal</option> {# #}
                 <option value="light">Light</option> {# #}
@@ -39,11 +41,12 @@ Otherwise, have a great day =^.^=
                 <option value="rust">Rust</option> {# #}
             </select> {# #}
             <label> {# #}
-                <input type="checkbox" id="disable-shortcuts" onchange="changeSetting(this)"> {#+ #}
+                <input type="checkbox" id="disable-shortcuts"> {#+ #}
                 <span>Disable keyboard shortcuts</span> {# #}
             </label> {# #}
         </div> {# #}
     </div> {# #}
+    <script src="theme.js"></script> {# #}
 
     <div class="container"> {# #}
         <div class="page-header"> {# #}
@@ -133,10 +136,10 @@ Otherwise, have a great day =^.^=
                         </div> {# #}
                     </div> {# #}
                     <div class="col-12 col-md-2 btn-group expansion-group"> {# #}
-                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" onclick="toggleExpansion(false)"> {# #}
+                        <button title="Collapse All" class="btn btn-default expansion-control" type="button" id="collapse-all"> {# #}
                             <span class="glyphicon glyphicon-collapse-up"></span> {# #}
                         </button> {# #}
-                        <button title="Expand All" class="btn btn-default expansion-control" type="button" onclick="toggleExpansion(true)"> {# #}
+                        <button title="Expand All" class="btn btn-default expansion-control" type="button" id="expand-all"> {# #}
                             <span class="glyphicon glyphicon-collapse-down"></span> {# #}
                         </button> {# #}
                     </div> {# #}
@@ -145,13 +148,13 @@ Otherwise, have a great day =^.^=
             {% for lint in lints %}
                 <article class="panel panel-default" id="{{lint.id}}"> {# #}
                     <input id="label-{{lint.id}}" type="checkbox"> {# #}
-                    <label for="label-{{lint.id}}" onclick="highlightIfNeeded('{{lint.id}}')"> {# #}
+                    <label for="label-{{lint.id}}"> {# #}
                         <header class="panel-heading"> {# #}
                             <h2 class="panel-title"> {# #}
                                 <div class="panel-title-name" id="lint-{{lint.id}}"> {# #}
                                     <span>{{lint.id}}</span> {#+ #}
-                                    <a href="#{{lint.id}}" onclick="lintAnchor(event)" class="anchor label label-default">&para;</a> {#+ #}
-                                    <a href="" class="anchor label label-default" onclick="copyToClipboard(event)"> {# #}
+                                    <a href="#{{lint.id}}" class="lint-anchor anchor label label-default">&para;</a> {#+ #}
+                                    <a href="" class="copy-to-clipboard anchor label label-default"> {# #}
                                         &#128203; {# #}
                                     </a> {# #}
                                 </div> {# #}
@@ -227,9 +230,5 @@ Otherwise, have a great day =^.^=
             ></path> {# #}
         </svg> {# #}
     </a> {# #}
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/highlight.min.js"></script> {# #}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.6.0/languages/rust.min.js"></script> {# #}
-    <script src="script.js"></script> {# #}
 </body> {# #}
 </html> {# #}

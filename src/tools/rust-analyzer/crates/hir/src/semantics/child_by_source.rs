@@ -74,6 +74,9 @@ impl ChildBySource for ItemScope {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
         self.declarations().for_each(|item| add_module_def(db, res, file_id, item));
         self.impls().for_each(|imp| insert_item_loc(db, res, file_id, imp, keys::IMPL));
+        self.extern_blocks().for_each(|extern_block| {
+            insert_item_loc(db, res, file_id, extern_block, keys::EXTERN_BLOCK)
+        });
         self.extern_crate_decls()
             .for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::EXTERN_CRATE));
         self.use_decls().for_each(|ext| insert_item_loc(db, res, file_id, ext, keys::USE));

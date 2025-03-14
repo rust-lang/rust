@@ -2,8 +2,8 @@
 
 use std::fmt::{self, Debug, Formatter};
 
-use rustc_index::IndexVec;
-use rustc_index::bit_set::DenseBitSet;
+use rustc_data_structures::fx::FxIndexMap;
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Span;
 
@@ -103,23 +103,12 @@ pub enum CoverageKind {
     /// Should be erased before codegen (at some point after `InstrumentCoverage`).
     BlockMarker { id: BlockMarkerId },
 
-    /// Marks the point in MIR control flow represented by a coverage counter.
+    /// Marks its enclosing basic block with the ID of the coverage graph node
+    /// that it was part of during the `InstrumentCoverage` MIR pass.
     ///
-    /// This is eventually lowered to `llvm.instrprof.increment` in LLVM IR.
-    ///
-    /// If this statement does not survive MIR optimizations, any mappings that
-    /// refer to this counter can have those references simplified to zero.
-    CounterIncrement { id: CounterId },
-
-    /// Marks the point in MIR control-flow represented by a coverage expression.
-    ///
-    /// If this statement does not survive MIR optimizations, any mappings that
-    /// refer to this expression can have those references simplified to zero.
-    ///
-    /// (This is only inserted for expression IDs that are directly used by
-    /// mappings. Intermediate expressions with no direct mappings are
-    /// retained/zeroed based on whether they are transitively used.)
-    ExpressionUsed { id: ExpressionId },
+    /// During codegen, this might be lowered to `llvm.instrprof.increment` or
+    /// to a no-op, depending on the outcome of counter-creation.
+    VirtualCounter { bcb: BasicCoverageBlock },
 
     /// Marks the point in MIR control flow represented by a evaluated condition.
     ///
@@ -138,8 +127,7 @@ impl Debug for CoverageKind {
         match self {
             SpanMarker => write!(fmt, "SpanMarker"),
             BlockMarker { id } => write!(fmt, "BlockMarker({:?})", id.index()),
-            CounterIncrement { id } => write!(fmt, "CounterIncrement({:?})", id.index()),
-            ExpressionUsed { id } => write!(fmt, "ExpressionUsed({:?})", id.index()),
+            VirtualCounter { bcb } => write!(fmt, "VirtualCounter({bcb:?})"),
             CondBitmapUpdate { index, decision_depth } => {
                 write!(fmt, "CondBitmapUpdate(index={:?}, depth={:?})", index, decision_depth)
             }
@@ -179,32 +167,17 @@ pub struct Expression {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub enum MappingKind {
     /// Associates a normal region of code with a counter/expression/zero.
-    Code(CovTerm),
+    Code { bcb: BasicCoverageBlock },
     /// Associates a branch region with separate counters for true and false.
-    Branch { true_term: CovTerm, false_term: CovTerm },
+    Branch { true_bcb: BasicCoverageBlock, false_bcb: BasicCoverageBlock },
     /// Associates a branch region with separate counters for true and false.
-    MCDCBranch { true_term: CovTerm, false_term: CovTerm, mcdc_params: ConditionInfo },
+    MCDCBranch {
+        true_bcb: BasicCoverageBlock,
+        false_bcb: BasicCoverageBlock,
+        mcdc_params: ConditionInfo,
+    },
     /// Associates a decision region with a bitmap and number of conditions.
     MCDCDecision(DecisionInfo),
-}
-
-impl MappingKind {
-    /// Returns a copy of this mapping kind, in which all coverage terms have
-    /// been replaced with ones returned by the given function.
-    pub fn map_terms(&self, map_fn: impl Fn(CovTerm) -> CovTerm) -> Self {
-        match *self {
-            Self::Code(term) => Self::Code(map_fn(term)),
-            Self::Branch { true_term, false_term } => {
-                Self::Branch { true_term: map_fn(true_term), false_term: map_fn(false_term) }
-            }
-            Self::MCDCBranch { true_term, false_term, mcdc_params } => Self::MCDCBranch {
-                true_term: map_fn(true_term),
-                false_term: map_fn(false_term),
-                mcdc_params,
-            },
-            Self::MCDCDecision(param) => Self::MCDCDecision(param),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -222,10 +195,15 @@ pub struct Mapping {
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
     pub body_span: Span,
-    pub num_counters: usize,
-    pub mcdc_bitmap_bits: usize,
-    pub expressions: IndexVec<ExpressionId, Expression>,
+
+    /// Used in conjunction with `priority_list` to create physical counters
+    /// and counter expressions, after MIR optimizations.
+    pub node_flow_data: NodeFlowData<BasicCoverageBlock>,
+    pub priority_list: Vec<BasicCoverageBlock>,
+
     pub mappings: Vec<Mapping>,
+
+    pub mcdc_bitmap_bits: usize,
     /// The depth of the deepest decision is used to know how many
     /// temp condbitmaps should be allocated for the function.
     pub mcdc_num_condition_bitmaps: usize,
@@ -292,40 +270,55 @@ pub struct MCDCDecisionSpan {
     pub num_conditions: usize,
 }
 
-/// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-/// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-/// have had a chance to potentially remove some of them.
+/// Contains information needed during codegen, obtained by inspecting the
+/// function's MIR after MIR optimizations.
 ///
-/// Used by the `coverage_ids_info` query.
+/// Returned by the `coverage_ids_info` query.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageIdsInfo {
-    pub counters_seen: DenseBitSet<CounterId>,
-    pub zero_expressions: DenseBitSet<ExpressionId>,
+    pub num_counters: u32,
+    pub phys_counter_for_node: FxIndexMap<BasicCoverageBlock, CounterId>,
+    pub term_for_bcb: IndexVec<BasicCoverageBlock, Option<CovTerm>>,
+    pub expressions: IndexVec<ExpressionId, Expression>,
 }
 
-impl CoverageIdsInfo {
-    /// Coverage codegen needs to know how many coverage counters are ever
-    /// incremented within a function, so that it can set the `num-counters`
-    /// argument of the `llvm.instrprof.increment` intrinsic.
+rustc_index::newtype_index! {
+    /// During the `InstrumentCoverage` MIR pass, a BCB is a node in the
+    /// "coverage graph", which is a refinement of the MIR control-flow graph
+    /// that merges or omits some blocks that aren't relevant to coverage.
     ///
-    /// This may be less than the highest counter ID emitted by the
-    /// InstrumentCoverage MIR pass, if the highest-numbered counter increments
-    /// were removed by MIR optimizations.
-    pub fn num_counters_after_mir_opts(&self) -> u32 {
-        // FIXME(Zalathar): Currently this treats an unused counter as "used"
-        // if its ID is less than that of the highest counter that really is
-        // used. Fixing this would require adding a renumbering step somewhere.
-        self.counters_seen.last_set_in(..).map_or(0, |max| max.as_u32() + 1)
+    /// After that pass is complete, the coverage graph no longer exists, so a
+    /// BCB is effectively an opaque ID.
+    #[derive(HashStable)]
+    #[encodable]
+    #[orderable]
+    #[debug_format = "bcb{}"]
+    pub struct BasicCoverageBlock {
+        const START_BCB = 0;
     }
+}
 
-    /// Returns `true` if the given term is known to have a value of zero, taking
-    /// into account knowledge of which counters are unused and which expressions
-    /// are always zero.
-    pub fn is_zero_term(&self, term: CovTerm) -> bool {
-        match term {
-            CovTerm::Zero => true,
-            CovTerm::Counter(id) => !self.counters_seen.contains(id),
-            CovTerm::Expression(id) => self.zero_expressions.contains(id),
-        }
-    }
+/// Data representing a view of some underlying graph, in which each node's
+/// successors have been merged into a single "supernode".
+///
+/// The resulting supernodes have no obvious meaning on their own.
+/// However, merging successor nodes means that a node's out-edges can all
+/// be combined into a single out-edge, whose flow is the same as the flow
+/// (execution count) of its corresponding node in the original graph.
+///
+/// With all node flows now in the original graph now represented as edge flows
+/// in the merged graph, it becomes possible to analyze the original node flows
+/// using techniques for analyzing edge flows.
+#[derive(Clone, Debug)]
+#[derive(TyEncodable, TyDecodable, Hash, HashStable)]
+pub struct NodeFlowData<Node: Idx> {
+    /// Maps each node to the supernode that contains it, indicated by some
+    /// arbitrary "root" node that is part of that supernode.
+    pub supernodes: IndexVec<Node, Node>,
+    /// For each node, stores the single supernode that all of its successors
+    /// have been merged into.
+    ///
+    /// (Note that each node in a supernode can potentially have a _different_
+    /// successor supernode from its peers.)
+    pub succ_supernodes: IndexVec<Node, Node>,
 }

@@ -399,15 +399,18 @@ impl<I: Interner> CoroutineClosureSignature<I> {
         coroutine_def_id: I::DefId,
         tupled_upvars_ty: I::Ty,
     ) -> I::Ty {
-        let coroutine_args = ty::CoroutineArgs::new(cx, ty::CoroutineArgsParts {
-            parent_args,
-            kind_ty: coroutine_kind_ty,
-            resume_ty: self.resume_ty,
-            yield_ty: self.yield_ty,
-            return_ty: self.return_ty,
-            witness: self.interior,
-            tupled_upvars_ty,
-        });
+        let coroutine_args = ty::CoroutineArgs::new(
+            cx,
+            ty::CoroutineArgsParts {
+                parent_args,
+                kind_ty: coroutine_kind_ty,
+                resume_ty: self.resume_ty,
+                yield_ty: self.yield_ty,
+                return_ty: self.return_ty,
+                witness: self.interior,
+                tupled_upvars_ty,
+            },
+        );
 
         Ty::new_coroutine(cx, coroutine_def_id, coroutine_args.args)
     }

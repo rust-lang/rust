@@ -2,10 +2,11 @@
 
 fn main() {
     eprintln!("Hello");
-    //~^ ERROR: use of `eprintln!`
-    //~| NOTE: `-D clippy::print-stderr` implied by `-D warnings`
+    //~^ print_stderr
+
     println!("This should not do anything");
     eprint!("World");
-    //~^ ERROR: use of `eprint!`
+    //~^ print_stderr
+
     print!("Nor should this");
 }

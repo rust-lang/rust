@@ -1,13 +1,14 @@
 // Trusty OS target for X86_64.
 
 use crate::spec::{
-    LinkSelfContainedDefault, PanicStrategy, RelroLevel, StackProbeType, Target, TargetOptions,
+    LinkSelfContainedDefault, PanicStrategy, RelroLevel, StackProbeType, Target, TargetMetadata,
+    TargetOptions,
 };
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "x86_64-unknown-unknown-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("x86_64 Trusty".into()),
             tier: Some(3),
             host_tools: Some(false),

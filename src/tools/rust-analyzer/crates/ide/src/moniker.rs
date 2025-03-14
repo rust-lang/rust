@@ -11,7 +11,6 @@ use ide_db::{
     FilePosition, RootDatabase,
 };
 use itertools::Itertools;
-use span::Edition;
 use syntax::{AstNode, SyntaxKind::*, T};
 
 use crate::{doc_links::token_as_doc_comment, parent_module::crates_for, RangeInfo};
@@ -184,11 +183,11 @@ pub(crate) fn def_to_kind(db: &RootDatabase, def: Definition) -> SymbolInformati
 
     match def {
         Definition::Macro(it) => match it.kind(db) {
-            MacroKind::Declarative => Macro,
-            MacroKind::Derive => Attribute,
-            MacroKind::BuiltIn => Macro,
-            MacroKind::Attr => Attribute,
-            MacroKind::ProcMacro => Macro,
+            MacroKind::Derive
+            | MacroKind::DeriveBuiltIn
+            | MacroKind::AttrBuiltIn
+            | MacroKind::Attr => Attribute,
+            MacroKind::Declarative | MacroKind::DeclarativeBuiltIn | MacroKind::ProcMacro => Macro,
         },
         Definition::Field(..) | Definition::TupleField(..) => Field,
         Definition::Module(..) | Definition::Crate(..) => Module,
@@ -289,7 +288,10 @@ fn def_to_non_local_moniker(
     definition: Definition,
     from_crate: Crate,
 ) -> Option<Moniker> {
-    let module = definition.module(db)?;
+    let module = match definition {
+        Definition::Module(module) if module.is_crate_root() => module,
+        _ => definition.module(db)?,
+    };
     let krate = module.krate();
     let edition = krate.edition(db);
 
@@ -302,13 +304,13 @@ fn def_to_non_local_moniker(
                 if let Some(trait_ref) = impl_.trait_ref(db) {
                     // Trait impls use the trait type for the 2nd parameter.
                     reverse_description.push(MonikerDescriptor {
-                        name: display(db, edition, module, trait_ref),
+                        name: display(db, module, trait_ref),
                         desc: MonikerDescriptorKind::TypeParameter,
                     });
                 }
                 // Both inherent and trait impls use the self type for the first parameter.
                 reverse_description.push(MonikerDescriptor {
-                    name: display(db, edition, module, impl_.self_ty(db)),
+                    name: display(db, module, impl_.self_ty(db)),
                     desc: MonikerDescriptorKind::TypeParameter,
                 });
                 reverse_description.push(MonikerDescriptor {
@@ -322,12 +324,18 @@ fn def_to_non_local_moniker(
                         name: name.display(db, edition).to_string(),
                         desc: def_to_kind(db, def).into(),
                     });
-                } else if reverse_description.is_empty() {
-                    // Don't allow the last descriptor to be absent.
-                    return None;
                 } else {
                     match def {
-                        Definition::Module(module) if module.is_crate_root() => {}
+                        Definition::Module(module) if module.is_crate_root() => {
+                            // only include `crate` namespace by itself because we prefer
+                            // `rust-analyzer cargo foo . bar/` over `rust-analyzer cargo foo . crate/bar/`
+                            if reverse_description.is_empty() {
+                                reverse_description.push(MonikerDescriptor {
+                                    name: "crate".to_owned(),
+                                    desc: MonikerDescriptorKind::Namespace,
+                                });
+                            }
+                        }
                         _ => {
                             tracing::error!(?def, "Encountered enclosing definition with no name");
                         }
@@ -339,6 +347,9 @@ fn def_to_non_local_moniker(
             break;
         };
         def = next_def;
+    }
+    if reverse_description.is_empty() {
+        return None;
     }
     reverse_description.reverse();
     let description = reverse_description;
@@ -378,17 +389,12 @@ fn def_to_non_local_moniker(
     })
 }
 
-fn display<T: HirDisplay>(
-    db: &RootDatabase,
-    edition: Edition,
-    module: hir::Module,
-    it: T,
-) -> String {
+fn display<T: HirDisplay>(db: &RootDatabase, module: hir::Module, it: T) -> String {
     match it.display_source_code(db, module.into(), true) {
         Ok(result) => result,
         // Fallback on display variant that always succeeds
         Err(_) => {
-            let fallback_result = it.display(db, edition).to_string();
+            let fallback_result = it.display(db, module.krate().to_display_target(db)).to_string();
             tracing::error!(
                 display = %fallback_result, "`display_source_code` failed; falling back to using display"
             );

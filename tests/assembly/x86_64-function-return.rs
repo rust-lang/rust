@@ -3,7 +3,7 @@
 
 //@ revisions: unset keep thunk-extern keep-thunk-extern thunk-extern-keep
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ [keep] compile-flags: -Zfunction-return=keep
 //@ [thunk-extern] compile-flags: -Zfunction-return=thunk-extern
 //@ [keep-thunk-extern] compile-flags: -Zfunction-return=keep -Zfunction-return=thunk-extern

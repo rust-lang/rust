@@ -14,21 +14,22 @@ LL |     fn ne(&self, rhs: &Self) -> bool {
    |                  ^^^ help: consider using the default name: `other`
 
 error: renamed function parameter of trait impl
-  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:55:31
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:57:31
    |
 LL |     fn hash<H: Hasher>(&self, states: &mut H) {
    |                               ^^^^^^ help: consider using the default name: `state`
 
 error: renamed function parameters of trait impl
-  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:59:30
+  --> tests/ui-toml/renamed_function_params/renamed_function_params.rs:61:30
    |
 LL |     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
    |                              ^^^^           ^^^^^^
    |
 help: consider using the default names
    |
-LL |     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
-   |                              ~~~~           ~~~~~
+LL -     fn hash_slice<H: Hasher>(date: &[Self], states: &mut H) {
+LL +     fn hash_slice<H: Hasher>(data: &[Self], state: &mut H) {
+   |
 
 error: aborting due to 4 previous errors
 

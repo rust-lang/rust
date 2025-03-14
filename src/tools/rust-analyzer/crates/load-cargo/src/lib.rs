@@ -45,10 +45,18 @@ pub fn load_workspace_at(
 ) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
+    let manifest_path = root.manifest_path().clone();
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
     if load_config.load_out_dirs_from_check {
         let build_scripts = workspace.run_build_scripts(cargo_config, progress)?;
+        if let Some(error) = build_scripts.error() {
+            tracing::debug!(
+                "Errors occurred while running build scripts for {}: {}",
+                manifest_path,
+                error
+            );
+        }
         workspace.set_build_scripts(build_scripts)
     }
 
@@ -94,7 +102,9 @@ pub fn load_workspace(
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
             vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
+            vfs.file_id(&path).and_then(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
         },
         extra_env,
     );
@@ -454,7 +464,6 @@ fn load_crate_graph(
     let ws_data = crate_graph
         .iter()
         .zip(iter::repeat(From::from(CrateWorkspaceData {
-            proc_macro_cwd: None,
             data_layout: target_layout.clone(),
             toolchain: toolchain.clone(),
         })))

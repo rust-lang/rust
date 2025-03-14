@@ -72,10 +72,10 @@ impl OverlapMode {
                     .as_local()
                     .into_iter()
                     .flat_map(|local_def_id| {
-                        tcx.hir().attrs(tcx.local_def_id_to_hir_id(local_def_id))
+                        tcx.hir_attrs(tcx.local_def_id_to_hir_id(local_def_id))
                     })
                     .find(|attr| attr.has_name(sym::rustc_strict_coherence))
-                    .map(|attr| attr.span);
+                    .map(|attr| attr.span());
                 tcx.dcx().emit_err(StrictCoherenceNeedsNegativeCoherence {
                     span: tcx.def_span(trait_id),
                     attr_span,

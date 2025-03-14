@@ -40,10 +40,10 @@ pub(crate) enum BorrowCheckMode {
 ///   success and fail the check otherwise.
 /// This utility will insert a terminator block that asserts on the condition
 /// and panics on failure.
-pub(crate) fn check_pointers<'a, 'tcx, F>(
+pub(crate) fn check_pointers<'tcx, F>(
     tcx: TyCtxt<'tcx>,
     body: &mut Body<'tcx>,
-    excluded_pointees: &'a [Ty<'tcx>],
+    excluded_pointees: &[Ty<'tcx>],
     on_finding: F,
     borrow_check_mode: BorrowCheckMode,
 ) where
@@ -51,6 +51,7 @@ pub(crate) fn check_pointers<'a, 'tcx, F>(
         /* tcx: */ TyCtxt<'tcx>,
         /* pointer: */ Place<'tcx>,
         /* pointee_ty: */ Ty<'tcx>,
+        /* context: */ PlaceContext,
         /* local_decls: */ &mut IndexVec<Local, LocalDecl<'tcx>>,
         /* stmts: */ &mut Vec<Statement<'tcx>>,
         /* source_info: */ SourceInfo,
@@ -70,8 +71,7 @@ pub(crate) fn check_pointers<'a, 'tcx, F>(
     // statements/blocks after. Iterating or visiting the MIR in order would require updating
     // our current location after every insertion. By iterating backwards, we dodge this issue:
     // The only Locations that an insertion changes have already been handled.
-    for block in (0..basic_blocks.len()).rev() {
-        let block = block.into();
+    for block in basic_blocks.indices().rev() {
         for statement_index in (0..basic_blocks[block].statements.len()).rev() {
             let location = Location { block, statement_index };
             let statement = &basic_blocks[block].statements[statement_index];
@@ -86,7 +86,7 @@ pub(crate) fn check_pointers<'a, 'tcx, F>(
             );
             finder.visit_statement(statement, location);
 
-            for (local, ty) in finder.into_found_pointers() {
+            for (local, ty, context) in finder.into_found_pointers() {
                 debug!("Inserting check for {:?}", ty);
                 let new_block = split_block(basic_blocks, location);
 
@@ -98,6 +98,7 @@ pub(crate) fn check_pointers<'a, 'tcx, F>(
                     tcx,
                     local,
                     ty,
+                    context,
                     local_decls,
                     &mut block_data.statements,
                     source_info,
@@ -125,7 +126,7 @@ struct PointerFinder<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
     local_decls: &'a mut LocalDecls<'tcx>,
     typing_env: ty::TypingEnv<'tcx>,
-    pointers: Vec<(Place<'tcx>, Ty<'tcx>)>,
+    pointers: Vec<(Place<'tcx>, Ty<'tcx>, PlaceContext)>,
     excluded_pointees: &'a [Ty<'tcx>],
     borrow_check_mode: BorrowCheckMode,
 }
@@ -148,7 +149,7 @@ impl<'a, 'tcx> PointerFinder<'a, 'tcx> {
         }
     }
 
-    fn into_found_pointers(self) -> Vec<(Place<'tcx>, Ty<'tcx>)> {
+    fn into_found_pointers(self) -> Vec<(Place<'tcx>, Ty<'tcx>, PlaceContext)> {
         self.pointers
     }
 
@@ -188,7 +189,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
         let pointer_ty = self.local_decls[place.local].ty;
 
         // We only want to check places based on raw pointers
-        if !pointer_ty.is_unsafe_ptr() {
+        if !pointer_ty.is_raw_ptr() {
             trace!("Indirect, but not based on an raw ptr, not checking {:?}", place);
             return;
         }
@@ -211,7 +212,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
             return;
         }
 
-        self.pointers.push((pointer, pointee_ty));
+        self.pointers.push((pointer, pointee_ty, context));
 
         self.super_place(place, context, location);
     }

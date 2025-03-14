@@ -47,10 +47,10 @@ fn whitespace_behavior() {
 fn genius_quotes() {
     chk(r#"EXE "" """#, &["EXE", "", ""]);
     chk(r#"EXE "" """"#, &["EXE", "", r#"""#]);
-    chk(r#"EXE "this is """all""" in the same argument""#, &[
-        "EXE",
-        r#"this is "all" in the same argument"#,
-    ]);
+    chk(
+        r#"EXE "this is """all""" in the same argument""#,
+        &["EXE", r#"this is "all" in the same argument"#],
+    );
     chk(r#"EXE "a"""#, &["EXE", r#"a""#]);
     chk(r#"EXE "a"" a"#, &["EXE", r#"a" a"#]);
     // quotes cannot be escaped in command names

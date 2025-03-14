@@ -71,14 +71,14 @@ fn test_bool() {
 #[test]
 pub fn test_bool_not() {
     if !false {
-        assert!((true));
+        assert!(true);
     } else {
-        assert!((false));
+        assert!(false);
     }
     if !true {
-        assert!((false));
+        assert!(false);
     } else {
-        assert!((true));
+        assert!(true);
     }
 }
 

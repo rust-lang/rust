@@ -357,7 +357,7 @@ fn path_applicable_imports(
                 let mod_path = mod_path(item)?;
                 Some(LocatedImport::new(mod_path, item, item))
             })
-            .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
+            .take(DEFAULT_QUERY_SEARCH_LIMIT)
             .collect()
         }
         // we have some unresolved qualifier that we search an import for
@@ -383,7 +383,7 @@ fn path_applicable_imports(
                 qualifier_rest,
             )
         })
-        .take(DEFAULT_QUERY_SEARCH_LIMIT.inner())
+        .take(DEFAULT_QUERY_SEARCH_LIMIT)
         .collect(),
     }
 }

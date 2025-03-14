@@ -354,6 +354,7 @@ impl Definition {
                 hir::GenericDef::TypeAlias(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Impl(it) => it.source(db).map(|src| src.syntax().cloned()),
                 hir::GenericDef::Const(it) => it.source(db).map(|src| src.syntax().cloned()),
+                hir::GenericDef::Static(it) => it.source(db).map(|src| src.syntax().cloned()),
             };
             return match def {
                 Some(def) => SearchScope::file_range(
@@ -372,7 +373,9 @@ impl Definition {
                         SearchScope::krate(db, module.krate())
                     }
                 }
-                hir::MacroKind::BuiltIn => SearchScope::crate_graph(db),
+                hir::MacroKind::AttrBuiltIn
+                | hir::MacroKind::DeriveBuiltIn
+                | hir::MacroKind::DeclarativeBuiltIn => SearchScope::crate_graph(db),
                 hir::MacroKind::Derive | hir::MacroKind::Attr | hir::MacroKind::ProcMacro => {
                     SearchScope::reverse_dependencies(db, module.krate())
                 }

@@ -2,18 +2,17 @@
     "extends": "@tsconfig/strictest/tsconfig.json",
     "compilerOptions": {
         "esModuleInterop": false,
-        "module": "Node16",
-        "moduleResolution": "Node16",
-        "target": "ES2021",
+        "module": "NodeNext",
+        "moduleResolution": "nodenext",
+        "target": "ES2024",
         "outDir": "out",
-        "lib": ["ES2021"],
+        "lib": ["ES2024"],
         "sourceMap": true,
         "rootDir": ".",
         "newLine": "lf",
-
         // FIXME: https://github.com/rust-lang/rust-analyzer/issues/15253
         "exactOptionalPropertyTypes": false
     },
-    "exclude": ["node_modules", ".vscode-test"],
+    "exclude": ["node_modules", ".vscode-test", "out"],
     "include": ["src", "tests"]
 }

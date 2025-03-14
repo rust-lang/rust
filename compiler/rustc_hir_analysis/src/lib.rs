@@ -59,6 +59,7 @@ This API is completely unstable and subject to change.
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -73,14 +74,12 @@ This API is completely unstable and subject to change.
 #![feature(slice_partition_dedup)]
 #![feature(try_blocks)]
 #![feature(unwrap_infallible)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // These are used by Clippy.
 pub mod check;
 
 pub mod autoderef;
-mod bounds;
 mod check_unused;
 mod coherence;
 mod collect;
@@ -93,6 +92,7 @@ mod impl_wf_check;
 mod outlives;
 mod variance;
 
+pub use errors::NoVariantNamed;
 use rustc_abi::ExternAbi;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -100,6 +100,8 @@ use rustc_middle::middle;
 use rustc_middle::mir::interpret::GlobalId;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, Const, Ty, TyCtxt};
+use rustc_session::parse::feature_err;
+use rustc_span::symbol::sym;
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::traits;
 
@@ -114,9 +116,48 @@ fn require_c_abi_if_c_variadic(
     abi: ExternAbi,
     span: Span,
 ) {
-    if decl.c_variadic && !abi.supports_varargs() {
-        tcx.dcx().emit_err(errors::VariadicFunctionCompatibleConvention { span });
+    const CONVENTIONS_UNSTABLE: &str =
+        "`C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi`";
+    const CONVENTIONS_STABLE: &str = "`C` or `cdecl`";
+    const UNSTABLE_EXPLAIN: &str =
+        "using calling conventions other than `C` or `cdecl` for varargs functions is unstable";
+
+    // ABIs which can stably use varargs
+    if !decl.c_variadic || matches!(abi, ExternAbi::C { .. } | ExternAbi::Cdecl { .. }) {
+        return;
     }
+
+    // ABIs with feature-gated stability
+    let extended_abi_support = tcx.features().extended_varargs_abi_support();
+    let extern_system_varargs = tcx.features().extern_system_varargs();
+
+    // If the feature gate has been enabled, we can stop here
+    if extern_system_varargs && let ExternAbi::System { .. } = abi {
+        return;
+    };
+    if extended_abi_support && abi.supports_varargs() {
+        return;
+    };
+
+    // Looks like we need to pick an error to emit.
+    // Is there any feature which we could have enabled to make this work?
+    match abi {
+        ExternAbi::System { .. } => {
+            feature_err(&tcx.sess, sym::extern_system_varargs, span, UNSTABLE_EXPLAIN)
+        }
+        abi if abi.supports_varargs() => {
+            feature_err(&tcx.sess, sym::extended_varargs_abi_support, span, UNSTABLE_EXPLAIN)
+        }
+        _ => tcx.dcx().create_err(errors::VariadicFunctionCompatibleConvention {
+            span,
+            conventions: if tcx.sess.opts.unstable_features.is_nightly_build() {
+                CONVENTIONS_UNSTABLE
+            } else {
+                CONVENTIONS_STABLE
+            },
+        }),
+    }
+    .emit();
 }
 
 pub fn provide(providers: &mut Providers) {
@@ -143,7 +184,7 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         // what we are intending to discard, to help future type-based refactoring.
         type R = Result<(), ErrorGuaranteed>;
 
-        tcx.hir().par_for_each_module(|module| {
+        tcx.par_hir_for_each_module(|module| {
             let _: R = tcx.ensure_ok().check_mod_type_wf(module);
         });
 
@@ -168,10 +209,13 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
 
     // Make sure we evaluate all static and (non-associated) const items, even if unused.
     // If any of these fail to evaluate, we do not want this crate to pass compilation.
-    tcx.hir().par_body_owners(|item_def_id| {
+    tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
         match def_kind {
-            DefKind::Static { .. } => tcx.ensure_ok().eval_static_initializer(item_def_id),
+            DefKind::Static { .. } => {
+                tcx.ensure_ok().eval_static_initializer(item_def_id);
+                check::maybe_check_static_with_link_section(tcx, item_def_id);
+            }
             DefKind::Const if tcx.generics_of(item_def_id).is_empty() => {
                 let instance = ty::Instance::new(item_def_id.into(), ty::GenericArgs::empty());
                 let cid = GlobalId { instance, promoted: None };
@@ -182,12 +226,9 @@ pub fn check_crate(tcx: TyCtxt<'_>) {
         }
     });
 
-    // FIXME: Remove this when we implement creating `DefId`s
-    // for anon constants during their parents' typeck.
-    // Typeck all body owners in parallel will produce queries
-    // cycle errors because it may typeck on anon constants directly.
-    tcx.hir().par_body_owners(|item_def_id| {
+    tcx.par_hir_body_owners(|item_def_id| {
         let def_kind = tcx.def_kind(item_def_id);
+        // Skip `AnonConst`s because we feed their `type_of`.
         if !matches!(def_kind, DefKind::AnonConst) {
             tcx.ensure_ok().typeck(item_def_id);
         }
@@ -210,7 +251,7 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     // In case there are any projections, etc., find the "environment"
     // def-ID that will be used to determine the traits/predicates in
     // scope. This is derived from the enclosing item-like thing.
-    let env_def_id = tcx.hir().get_parent_item(hir_ty.hir_id);
+    let env_def_id = tcx.hir_get_parent_item(hir_ty.hir_id);
     collect::ItemCtxt::new(tcx, env_def_id.def_id).lower_ty(hir_ty)
 }
 
@@ -219,8 +260,8 @@ pub fn lower_ty<'tcx>(tcx: TyCtxt<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
 pub fn lower_const_arg_for_rustdoc<'tcx>(
     tcx: TyCtxt<'tcx>,
     hir_ct: &hir::ConstArg<'tcx>,
-    feed: FeedConstTy,
+    feed: FeedConstTy<'_, 'tcx>,
 ) -> Const<'tcx> {
-    let env_def_id = tcx.hir().get_parent_item(hir_ct.hir_id);
+    let env_def_id = tcx.hir_get_parent_item(hir_ct.hir_id);
     collect::ItemCtxt::new(tcx, env_def_id.def_id).lowerer().lower_const_arg(hir_ct, feed)
 }

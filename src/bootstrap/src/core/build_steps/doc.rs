@@ -572,14 +572,15 @@ impl Step for Std {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        run.crate_or_deps("sysroot")
-            .path("library")
-            .alias("core")
-            .default_condition(builder.config.docs)
+        run.crate_or_deps("sysroot").path("library").default_condition(builder.config.docs)
     }
 
     fn make_run(run: RunConfig<'_>) {
         let crates = compile::std_crates_for_run_make(&run);
+        let target_is_no_std = run.builder.no_std(run.target).unwrap_or(false);
+        if crates.is_empty() && target_is_no_std {
+            return;
+        }
         run.builder.ensure(Std {
             stage: run.builder.top_stage,
             target: run.target,
@@ -830,7 +831,8 @@ impl Step for Rustc {
         cargo.rustdocflag("--show-type-layout");
         // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
         // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
-        // cargo.rustdocflag("--generate-link-to-definition");
+        // If there is any bug, please comment out the next line.
+        cargo.rustdocflag("--generate-link-to-definition");
 
         compile::rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
         cargo.arg("-Zskip-rustdoc-fingerprint");
@@ -985,9 +987,7 @@ macro_rules! tool_doc {
                 cargo.rustdocflag("-Arustdoc::private-intra-doc-links");
                 cargo.rustdocflag("--enable-index-page");
                 cargo.rustdocflag("--show-type-layout");
-                // FIXME: `--generate-link-to-definition` tries to resolve cfged out code
-                // see https://github.com/rust-lang/rust/pull/122066#issuecomment-1983049222
-                // cargo.rustdocflag("--generate-link-to-definition");
+                cargo.rustdocflag("--generate-link-to-definition");
 
                 let out_dir = builder.stage_out(compiler, Mode::ToolRustc).join(target).join("doc");
                 $(for krate in $crates {

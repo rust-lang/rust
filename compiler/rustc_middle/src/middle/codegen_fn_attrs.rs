@@ -1,6 +1,6 @@
 use rustc_abi::Align;
 use rustc_ast::expand::autodiff_attrs::AutoDiffAttrs;
-use rustc_attr_parsing::{InlineAttr, InstructionSetAttr, OptimizeAttr};
+use rustc_attr_data_structures::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable};
 use rustc_span::Symbol;
 use rustc_target::spec::SanitizerSet;
@@ -178,7 +178,7 @@ impl CodegenFnAttrs {
             || match self.linkage {
                 // These are private, so make sure we don't try to consider
                 // them external.
-                None | Some(Linkage::Internal | Linkage::Private) => false,
+                None | Some(Linkage::Internal) => false,
                 Some(_) => true,
             }
     }

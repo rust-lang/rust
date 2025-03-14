@@ -1,7 +1,7 @@
 [package]
 name = "rustc_errors"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
@@ -10,10 +10,12 @@ derive_setters = "0.1.6"
 rustc_abi = { path = "../rustc_abi" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
+rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_error_codes = { path = "../rustc_error_codes" }
 rustc_error_messages = { path = "../rustc_error_messages" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hashes = { path = "../rustc_hashes" }
 rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }

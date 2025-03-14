@@ -1,7 +1,5 @@
 //@ build-pass
 
-#![feature(trait_upcasting)]
-
 trait Supertrait<T> {
     fn method(&self) {}
 }

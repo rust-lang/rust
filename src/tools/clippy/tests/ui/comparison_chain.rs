@@ -13,7 +13,8 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if x < y {
         b()
@@ -27,7 +28,8 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if x < y {
         b()
@@ -36,7 +38,8 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if y > x {
         b()
@@ -45,7 +48,8 @@ fn f(x: u8, y: u8, z: u8) {
     }
 
     if x > 1 {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if x < 1 {
         b()
@@ -120,14 +124,16 @@ fn g(x: f64, y: f64, z: f64) {
 
 fn h<T: Ord>(x: T, y: T, z: T) {
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if x < y {
         b()
     }
 
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if x < y {
         b()
@@ -136,7 +142,8 @@ fn h<T: Ord>(x: T, y: T, z: T) {
     }
 
     if x > y {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         a()
     } else if y > x {
         b()
@@ -242,7 +249,8 @@ const fn sign_i8(n: i8) -> Sign {
 fn needs_parens() -> &'static str {
     let (x, y) = (1, 2);
     if x + 1 > y * 2 {
-        //~^ ERROR: `if` chain can be rewritten with `match`
+        //~^ comparison_chain
+
         "aa"
     } else if x + 1 < y * 2 {
         "bb"

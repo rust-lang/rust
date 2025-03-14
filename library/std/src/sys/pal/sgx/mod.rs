@@ -12,17 +12,12 @@ pub mod abi;
 pub mod args;
 pub mod env;
 pub mod fd;
-#[path = "../unsupported/fs.rs"]
-pub mod fs;
-#[path = "../unsupported/io.rs"]
-pub mod io;
 mod libunwind_integration;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod thread_parking;
 pub mod time;
@@ -125,7 +120,7 @@ pub fn abort_internal() -> ! {
 // This function is needed by the panic runtime. The symbol is named in
 // pre-link args for the target specification, so keep that in sync.
 #[cfg(not(test))]
-#[no_mangle]
+#[unsafe(no_mangle)]
 // NB. used by both libunwind and libpanic_abort
 pub extern "C" fn __rust_abort() {
     abort_internal();

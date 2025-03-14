@@ -51,8 +51,9 @@ LL |     let c: fn(u32) -> u32 = &foo;
                found reference `&fn(_) -> _ {foo}`
 help: consider removing the reference
    |
-LL |     let c: fn(u32) -> u32 = foo;
-   |                             ~~~
+LL -     let c: fn(u32) -> u32 = &foo;
+LL +     let c: fn(u32) -> u32 = foo;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/fn-pointer-mismatch.rs:42:30
@@ -82,8 +83,9 @@ LL |     let e: &fn(u32) -> u32 = &foo;
    = note: fn items are distinct from fn pointers
 help: consider casting to a fn pointer
    |
-LL |     let e: &fn(u32) -> u32 = &(foo as fn(u32) -> u32);
-   |                              ~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     let e: &fn(u32) -> u32 = &foo;
+LL +     let e: &fn(u32) -> u32 = &(foo as fn(u32) -> u32);
+   |
 
 error: aborting due to 6 previous errors
 

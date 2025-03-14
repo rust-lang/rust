@@ -103,6 +103,8 @@ pub(crate) struct Options {
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
+    pub(crate) sysroot: PathBuf,
+    /// Has the same value as `sysroot` except is `None` when the user didn't pass `---sysroot`.
     pub(crate) maybe_sysroot: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
@@ -202,6 +204,7 @@ impl fmt::Debug for Options {
             .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
+            .field("sysroot", &self.sysroot)
             .field("maybe_sysroot", &self.maybe_sysroot)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
@@ -315,23 +318,30 @@ pub(crate) enum ModuleSorting {
     Alphabetical,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum EmitType {
     Unversioned,
     Toolchain,
     InvocationSpecific,
+    DepInfo(Option<PathBuf>),
 }
 
 impl FromStr for EmitType {
     type Err = ();
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        use EmitType::*;
         match s {
-            "unversioned-shared-resources" => Ok(Unversioned),
-            "toolchain-shared-resources" => Ok(Toolchain),
-            "invocation-specific" => Ok(InvocationSpecific),
-            _ => Err(()),
+            "unversioned-shared-resources" => Ok(Self::Unversioned),
+            "toolchain-shared-resources" => Ok(Self::Toolchain),
+            "invocation-specific" => Ok(Self::InvocationSpecific),
+            "dep-info" => Ok(Self::DepInfo(None)),
+            option => {
+                if let Some(file) = option.strip_prefix("dep-info=") {
+                    Ok(Self::DepInfo(Some(Path::new(file).into())))
+                } else {
+                    Err(())
+                }
+            }
         }
     }
 }
@@ -339,6 +349,15 @@ impl FromStr for EmitType {
 impl RenderOptions {
     pub(crate) fn should_emit_crate(&self) -> bool {
         self.emit.is_empty() || self.emit.contains(&EmitType::InvocationSpecific)
+    }
+
+    pub(crate) fn dep_info(&self) -> Option<Option<&Path>> {
+        for emit in &self.emit {
+            if let EmitType::DepInfo(file) = emit {
+                return Some(file.as_deref());
+            }
+        }
+        None
     }
 }
 
@@ -629,10 +648,10 @@ impl Options {
 
         let extension_css = matches.opt_str("e").map(|s| PathBuf::from(&s));
 
-        if let Some(ref p) = extension_css {
-            if !p.is_file() {
-                dcx.fatal("option --extend-css argument must be a file");
-            }
+        if let Some(ref p) = extension_css
+            && !p.is_file()
+        {
+            dcx.fatal("option --extend-css argument must be a file");
         }
 
         let mut themes = Vec::new();
@@ -704,21 +723,16 @@ impl Options {
         }
 
         let index_page = matches.opt_str("index-page").map(|s| PathBuf::from(&s));
-        if let Some(ref index_page) = index_page {
-            if !index_page.is_file() {
-                dcx.fatal("option `--index-page` argument must be a file");
-            }
+        if let Some(ref index_page) = index_page
+            && !index_page.is_file()
+        {
+            dcx.fatal("option `--index-page` argument must be a file");
         }
 
         let target = parse_target_triple(early_dcx, matches);
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
-        let sysroot = match &maybe_sysroot {
-            Some(s) => s.clone(),
-            None => {
-                rustc_session::filesearch::get_or_default_sysroot().expect("Failed finding sysroot")
-            }
-        };
+        let sysroot = rustc_session::filesearch::materialize_sysroot(maybe_sysroot.clone());
 
         let libs = matches
             .opt_strs("L")
@@ -818,6 +832,7 @@ impl Options {
             unstable_opts_strs,
             target,
             edition,
+            sysroot,
             maybe_sysroot,
             lint_opts,
             describe_lints,

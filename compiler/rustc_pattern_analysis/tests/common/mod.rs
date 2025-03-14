@@ -2,10 +2,10 @@ use rustc_pattern_analysis::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
 use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
-use rustc_pattern_analysis::{Captures, MatchArm, PatCx, PrivateUninhabitedField};
+use rustc_pattern_analysis::{MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
-pub fn init_tracing() {
+fn init_tracing() {
     use tracing_subscriber::Layer;
     use tracing_subscriber::layer::SubscriberExt;
     use tracing_subscriber::util::SubscriberInitExt;
@@ -24,7 +24,7 @@ pub fn init_tracing() {
 /// A simple set of types.
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum Ty {
+pub(super) enum Ty {
     /// Booleans
     Bool,
     /// 8-bit unsigned integers
@@ -41,7 +41,7 @@ pub enum Ty {
 
 /// The important logic.
 impl Ty {
-    pub fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
+    pub(super) fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
         use Constructor::*;
         match (ctor, *self) {
             (Struct, Ty::Tuple(tys)) => tys.iter().copied().collect(),
@@ -63,7 +63,7 @@ impl Ty {
         }
     }
 
-    pub fn ctor_set(&self) -> ConstructorSet<Cx> {
+    fn ctor_set(&self) -> ConstructorSet<Cx> {
         match *self {
             Ty::Bool => ConstructorSet::Bool,
             Ty::U8 => ConstructorSet::Integers {
@@ -104,7 +104,7 @@ impl Ty {
         }
     }
 
-    pub fn write_variant_name(
+    fn write_variant_name(
         &self,
         f: &mut std::fmt::Formatter<'_>,
         ctor: &Constructor<Cx>,
@@ -120,11 +120,11 @@ impl Ty {
 }
 
 /// Compute usefulness in our simple context (and set up tracing for easier debugging).
-pub fn compute_match_usefulness<'p>(
+pub(super) fn compute_match_usefulness<'p>(
     arms: &[MatchArm<'p, Cx>],
     ty: Ty,
     scrut_validity: PlaceValidity,
-    complexity_limit: Option<usize>,
+    complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, ()> {
     init_tracing();
     rustc_pattern_analysis::usefulness::compute_match_usefulness(
@@ -137,7 +137,7 @@ pub fn compute_match_usefulness<'p>(
 }
 
 #[derive(Debug)]
-pub struct Cx;
+pub(super) struct Cx;
 
 /// The context for pattern analysis. Forwards anything interesting to `Ty` methods.
 impl PatCx for Cx {
@@ -156,12 +156,11 @@ impl PatCx for Cx {
         ty.sub_tys(ctor).len()
     }
 
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator + Captures<'a>
-    {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl Iterator<Item = (Self::Ty, PrivateUninhabitedField)> + ExactSizeIterator {
         ty.sub_tys(ctor).into_iter().map(|ty| (ty, PrivateUninhabitedField(false)))
     }
 

@@ -26,8 +26,9 @@ LL |     const { &x };
    |
 help: consider using `const` instead of `let`
    |
-LL |     const x: /* Type */ = 1;
-   |     ~~~~~  ++++++++++++
+LL -     let x = 1;
+LL +     const x: /* Type */ = 1;
+   |
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
   --> $DIR/cross-const-control-flow-125846.rs:35:22

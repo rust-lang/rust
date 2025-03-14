@@ -1,15 +1,14 @@
+use rustc_abi as abi;
 use rustc_middle::mir::interpret::{ConstAllocation, Scalar};
-use rustc_target::abi;
 
 use super::BackendTypes;
 
-pub trait ConstCodegenMethods<'tcx>: BackendTypes {
+pub trait ConstCodegenMethods: BackendTypes {
     // Constant constructors
     fn const_null(&self, t: Self::Type) -> Self::Value;
     /// Generate an uninitialized value (matching uninitialized memory in MIR).
     /// Whether memory is initialized or not is tracked byte-for-byte.
     fn const_undef(&self, t: Self::Type) -> Self::Value;
-    fn is_undef(&self, v: Self::Value) -> bool;
     /// Generate a fake value. Poison always affects the entire value, even if just a single byte is
     /// poison. This can only be used in codepaths that are already UB, i.e., UB-free Rust code
     /// (including code that e.g. copies uninit memory with `MaybeUninit`) can never encounter a
@@ -38,7 +37,7 @@ pub trait ConstCodegenMethods<'tcx>: BackendTypes {
     fn const_to_opt_uint(&self, v: Self::Value) -> Option<u64>;
     fn const_to_opt_u128(&self, v: Self::Value, sign_ext: bool) -> Option<u128>;
 
-    fn const_data_from_alloc(&self, alloc: ConstAllocation<'tcx>) -> Self::Value;
+    fn const_data_from_alloc(&self, alloc: ConstAllocation<'_>) -> Self::Value;
 
     fn scalar_to_backend(&self, cv: Scalar, layout: abi::Scalar, llty: Self::Type) -> Self::Value;
 

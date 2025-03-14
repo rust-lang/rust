@@ -8,7 +8,7 @@ use rustc_middle::ty::{Instance, Ty, TyCtxt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::WasmCAbi;
+use rustc_target::spec::{BinaryFormat, WasmCAbi};
 
 use crate::common;
 use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
@@ -104,27 +104,6 @@ fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
-enum AsmBinaryFormat {
-    Elf,
-    Macho,
-    Coff,
-    Wasm,
-}
-
-impl AsmBinaryFormat {
-    fn from_target(target: &rustc_target::spec::Target) -> Self {
-        if target.is_like_windows {
-            Self::Coff
-        } else if target.is_like_osx {
-            Self::Macho
-        } else if target.is_like_wasm {
-            Self::Wasm
-        } else {
-            Self::Elf
-        }
-    }
-}
-
 fn prefix_and_suffix<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
@@ -134,7 +113,7 @@ fn prefix_and_suffix<'tcx>(
 ) -> (String, String) {
     use std::fmt::Write;
 
-    let asm_binary_format = AsmBinaryFormat::from_target(&tcx.sess.target);
+    let asm_binary_format = &tcx.sess.target.binary_format;
 
     let is_arm = tcx.sess.target.arch == "arm";
     let is_thumb = tcx.sess.unstable_target_features.contains(&sym::thumb_mode);
@@ -146,7 +125,8 @@ fn prefix_and_suffix<'tcx>(
     // the alignment from a `#[repr(align(<n>))]` is used if it specifies a higher alignment.
     // if no alignment is specified, an alignment of 4 bytes is used.
     let min_function_alignment = tcx.sess.opts.unstable_opts.min_function_alignment;
-    let align = Ord::max(min_function_alignment, attrs.alignment).map(|a| a.bytes()).unwrap_or(4);
+    let align_bytes =
+        Ord::max(min_function_alignment, attrs.alignment).map(|a| a.bytes()).unwrap_or(4);
 
     // In particular, `.arm` can also be written `.code 32` and `.thumb` as `.code 16`.
     let (arch_prefix, arch_suffix) = if is_arm {
@@ -178,19 +158,25 @@ fn prefix_and_suffix<'tcx>(
             }
             Linkage::LinkOnceAny | Linkage::LinkOnceODR | Linkage::WeakAny | Linkage::WeakODR => {
                 match asm_binary_format {
-                    AsmBinaryFormat::Elf | AsmBinaryFormat::Coff | AsmBinaryFormat::Wasm => {
+                    BinaryFormat::Elf | BinaryFormat::Coff | BinaryFormat::Wasm => {
                         writeln!(w, ".weak {asm_name}")?;
                     }
-                    AsmBinaryFormat::Macho => {
+                    BinaryFormat::Xcoff => {
+                        // FIXME: there is currently no way of defining a weak symbol in inline assembly
+                        // for AIX. See https://github.com/llvm/llvm-project/issues/130269
+                        emit_fatal(
+                            "cannot create weak symbols from inline assembly for this target",
+                        )
+                    }
+                    BinaryFormat::MachO => {
                         writeln!(w, ".globl {asm_name}")?;
                         writeln!(w, ".weak_definition {asm_name}")?;
                     }
                 }
             }
-            Linkage::Internal | Linkage::Private => {
+            Linkage::Internal => {
                 // write nothing
             }
-            Linkage::Appending => emit_fatal("Only global variables can have appending linkage!"),
             Linkage::Common => emit_fatal("Functions may not have common linkage"),
             Linkage::AvailableExternally => {
                 // this would make the function equal an extern definition
@@ -208,7 +194,7 @@ fn prefix_and_suffix<'tcx>(
     let mut begin = String::new();
     let mut end = String::new();
     match asm_binary_format {
-        AsmBinaryFormat::Elf => {
+        BinaryFormat::Elf => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
 
             let progbits = match is_arm {
@@ -222,7 +208,7 @@ fn prefix_and_suffix<'tcx>(
             };
 
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".hidden {asm_name}").unwrap();
@@ -240,10 +226,10 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Macho => {
+        BinaryFormat::MachO => {
             let section = link_section.unwrap_or("__TEXT,__text".to_string());
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             if let Visibility::Hidden = item_data.visibility {
                 writeln!(begin, ".private_extern {asm_name}").unwrap();
@@ -256,15 +242,15 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Coff => {
+        BinaryFormat::Coff => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
             writeln!(begin, ".pushsection {},\"xr\"", section).unwrap();
-            writeln!(begin, ".balign {align}").unwrap();
+            writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
             writeln!(begin, ".def {asm_name}").unwrap();
             writeln!(begin, ".scl 2").unwrap();
             writeln!(begin, ".type 32").unwrap();
-            writeln!(begin, ".endef {asm_name}").unwrap();
+            writeln!(begin, ".endef").unwrap();
             writeln!(begin, "{asm_name}:").unwrap();
 
             writeln!(end).unwrap();
@@ -273,7 +259,7 @@ fn prefix_and_suffix<'tcx>(
                 writeln!(end, "{}", arch_suffix).unwrap();
             }
         }
-        AsmBinaryFormat::Wasm => {
+        BinaryFormat::Wasm => {
             let section = link_section.unwrap_or(format!(".text.{asm_name}"));
 
             writeln!(begin, ".section {section},\"\",@").unwrap();
@@ -297,6 +283,33 @@ fn prefix_and_suffix<'tcx>(
             writeln!(end).unwrap();
             // .size is ignored for function symbols, so we can skip it
             writeln!(end, "end_function").unwrap();
+        }
+        BinaryFormat::Xcoff => {
+            // the LLVM XCOFFAsmParser is extremely incomplete and does not implement many of the
+            // documented directives.
+            //
+            // - https://github.com/llvm/llvm-project/blob/1b25c0c4da968fe78921ce77736e5baef4db75e3/llvm/lib/MC/MCParser/XCOFFAsmParser.cpp
+            // - https://www.ibm.com/docs/en/ssw_aix_71/assembler/assembler_pdf.pdf
+            //
+            // Consequently, we try our best here but cannot do as good a job as for other binary
+            // formats.
+
+            // FIXME: start a section. `.csect` is not currently implemented in LLVM
+
+            // fun fact: according to the assembler documentation, .align takes an exponent,
+            // but LLVM only accepts powers of 2 (but does emit the exponent)
+            // so when we hand `.align 32` to LLVM, the assembly output will contain `.align 5`
+            writeln!(begin, ".align {}", align_bytes).unwrap();
+
+            write_linkage(&mut begin).unwrap();
+            if let Visibility::Hidden = item_data.visibility {
+                // FIXME apparently `.globl {asm_name}, hidden` is valid
+                // but due to limitations with `.weak` (see above) we can't really use that in general yet
+            }
+            writeln!(begin, "{asm_name}:").unwrap();
+
+            writeln!(end).unwrap();
+            // FIXME: end the section?
         }
     }
 
@@ -368,7 +381,7 @@ fn wasm_type<'tcx>(
         PassMode::Direct(_) => {
             let direct_type = match arg_abi.layout.backend_repr {
                 BackendRepr::Scalar(scalar) => wasm_primitive(scalar.primitive(), ptr_type),
-                BackendRepr::Vector { .. } => "v128",
+                BackendRepr::SimdVector { .. } => "v128",
                 BackendRepr::Memory { .. } => {
                     // FIXME: remove this branch once the wasm32-unknown-unknown ABI is fixed
                     let _ = WasmCAbi::Legacy;

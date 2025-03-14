@@ -16,7 +16,7 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'_>,
     cast_expr: &'tcx Expr<'_>,
     cast_to: &'tcx Ty<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     if matches!(cast_to.kind, TyKind::Ptr(_))
         && let ExprKind::AddrOf(BorrowKind::Ref, mutability, e) = cast_expr.kind
@@ -34,7 +34,7 @@ pub(super) fn check<'tcx>(
             return false;
         }
 
-        let (suggestion, span) = if msrv.meets(msrvs::RAW_REF_OP) {
+        let (suggestion, span) = if msrv.meets(cx, msrvs::RAW_REF_OP) {
             let operator_kind = match mutability {
                 Mutability::Not => "const",
                 Mutability::Mut => "mut",

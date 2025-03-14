@@ -60,7 +60,7 @@ impl LanguageItems {
         self.reverse_items.get(&def_id).copied()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = (LangItem, DefId)> {
         self.items
             .iter()
             .enumerate()
@@ -171,6 +171,7 @@ language_item_table! {
     Copy,                    sym::copy,                copy_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     Clone,                   sym::clone,               clone_trait,                Target::Trait,          GenericRequirement::None;
     CloneFn,                 sym::clone_fn,            clone_fn,                   Target::Method(MethodKind::Trait { body: false }), GenericRequirement::None;
+    UseCloned,               sym::use_cloned,          use_cloned_trait,           Target::Trait,          GenericRequirement::None;
     Sync,                    sym::sync,                sync_trait,                 Target::Trait,          GenericRequirement::Exact(0);
     DiscriminantKind,        sym::discriminant_kind,   discriminant_kind_trait,    Target::Trait,          GenericRequirement::None;
     /// The associated item of the `DiscriminantKind` trait.
@@ -351,6 +352,7 @@ language_item_table! {
     PhantomData,             sym::phantom_data,        phantom_data,               Target::Struct,         GenericRequirement::Exact(1);
 
     ManuallyDrop,            sym::manually_drop,       manually_drop,              Target::Struct,         GenericRequirement::None;
+    BikeshedGuaranteedNoDrop, sym::bikeshed_guaranteed_no_drop, bikeshed_guaranteed_no_drop, Target::Trait, GenericRequirement::Exact(0);
 
     MaybeUninit,             sym::maybe_uninit,        maybe_uninit,               Target::Union,          GenericRequirement::None;
 
@@ -369,6 +371,8 @@ language_item_table! {
     TryTraitFromYeet,        sym::from_yeet,           from_yeet_fn,               Target::Fn,             GenericRequirement::None;
 
     PointerLike,             sym::pointer_like,        pointer_like,               Target::Trait,          GenericRequirement::Exact(0);
+
+    CoercePointeeValidated, sym::coerce_pointee_validated, coerce_pointee_validated_trait, Target::Trait,     GenericRequirement::Exact(0);
 
     ConstParamTy,            sym::const_param_ty,      const_param_ty_trait,       Target::Trait,          GenericRequirement::Exact(0);
     UnsizedConstParamTy,     sym::unsized_const_param_ty, unsized_const_param_ty_trait, Target::Trait, GenericRequirement::Exact(0);
@@ -415,6 +419,9 @@ language_item_table! {
     Range,                   sym::Range,               range_struct,               Target::Struct,         GenericRequirement::None;
     RangeToInclusive,        sym::RangeToInclusive,    range_to_inclusive_struct,  Target::Struct,         GenericRequirement::None;
     RangeTo,                 sym::RangeTo,             range_to_struct,            Target::Struct,         GenericRequirement::None;
+    RangeMax,                sym::RangeMax,            range_max,                  Target::AssocConst,     GenericRequirement::Exact(0);
+    RangeMin,                sym::RangeMin,            range_min,                  Target::AssocConst,     GenericRequirement::Exact(0);
+    RangeSub,                sym::RangeSub,            range_sub,                  Target::Method(MethodKind::Trait { body: false }),     GenericRequirement::Exact(0);
 
     // `new_range` types that are `Copy + IntoIterator`
     RangeFromCopy,           sym::RangeFromCopy,       range_from_copy_struct,     Target::Struct,         GenericRequirement::None;
@@ -429,9 +436,13 @@ language_item_table! {
     ContractCheckRequires,     sym::contract_check_requires,      contract_check_requires_fn,      Target::Fn, GenericRequirement::None;
 }
 
+/// The requirement imposed on the generics of a lang item
 pub enum GenericRequirement {
+    /// No restriction on the generics
     None,
+    /// A minimum number of generics that is demanded on a lang item
     Minimum(usize),
+    /// The number of generics must match precisely as stipulated
     Exact(usize),
 }
 

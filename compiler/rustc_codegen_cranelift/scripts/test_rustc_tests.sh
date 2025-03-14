@@ -83,7 +83,6 @@ rm tests/ui/match/match-float.rs
 # ==================
 rm tests/ui/codegen/issue-28950.rs # depends on stack size optimizations
 rm tests/ui/codegen/init-large-type.rs # same
-rm tests/ui/issues/issue-40883.rs # same
 rm -r tests/run-make/fmt-write-bloat/ # tests an optimization
 rm tests/ui/statics/const_generics.rs # same
 
@@ -91,13 +90,11 @@ rm tests/ui/statics/const_generics.rs # same
 # ======================
 rm tests/incremental/thinlto/cgu_invalidated_when_import_{added,removed}.rs # requires LLVM
 rm -r tests/run-make/cross-lang-lto # same
-rm -r tests/run-make/sepcomp-inlining # same
-rm -r tests/run-make/sepcomp-separate # same
-rm -r tests/run-make/sepcomp-cci-copies # same
 rm -r tests/run-make/volatile-intrinsics # same
 rm -r tests/run-make/llvm-ident # same
 rm -r tests/run-make/no-builtins-attribute # same
 rm -r tests/run-make/pgo-gen-no-imp-symbols # same
+rm -r tests/run-make/llvm-location-discriminator-limit-dummy-span # same
 rm tests/ui/abi/stack-protector.rs # requires stack protector support
 rm -r tests/run-make/emit-stack-sizes # requires support for -Z emit-stack-sizes
 rm -r tests/run-make/optimization-remarks-dir # remarks are LLVM specific
@@ -130,6 +127,7 @@ rm tests/ui/abi/large-byval-align.rs # exceeds implementation limit of Cranelift
 rm -r tests/run-make/remap-path-prefix-dwarf # requires llvm-dwarfdump
 rm -r tests/run-make/strip # same
 rm -r tests/run-make/compiler-builtins # Expects lib/rustlib/src/rust to contains the standard library source
+rm -r tests/run-make/translation # same
 rm -r tests/run-make/missing-unstable-trait-bound # This disables support for unstable features, but running cg_clif needs some unstable features
 rm -r tests/run-make/const-trait-stable-toolchain # same
 rm -r tests/run-make/incr-add-rust-src-component
@@ -156,8 +154,6 @@ cp $(../dist/rustc-clif --print target-libdir)/libstd-*.so ../dist/lib/
 
 # prevent $(RUSTDOC) from picking up the sysroot built by x.py. It conflicts with the one used by
 # rustdoc-clif
-# FIXME remove the bootstrap changes once it is no longer necessary to revert rust-lang/rust#130642
-# to avoid building rustc when testing stage0 run-make.
 cat <<EOF | git apply -
 diff --git a/tests/run-make/tools.mk b/tests/run-make/tools.mk
 index ea06b620c4c..b969d0009c6 100644
@@ -196,6 +192,20 @@ index e7ae773ffa1d3..04bc2d7787da7 100644
              // Provide necessary library search paths for rustc.
              .env(dylib_env_var(), &env::join_paths(host_dylib_search_paths).unwrap());
 
+diff --git a/tests/run-make/linker-warning/rmake.rs b/tests/run-make/linker-warning/rmake.rs
+index 30387af428c..f7895b12961 100644
+--- a/tests/run-make/linker-warning/rmake.rs
++++ b/tests/run-make/linker-warning/rmake.rs
+@@ -57,7 +57,8 @@ fn main() {
+             .actual_text("(linker error)", out.stderr())
+-            .normalize(r#"/rustc[^/]*/"#, "/rustc/")
++            .normalize(r#"/tmp/rustc[^/]*/"#, "/tmp/rustc/")
++            .normalize("libpanic_abort", "libpanic_unwind")
+             .normalize(
+                 regex::escape(run_make_support::build_root().to_str().unwrap()),
+                 "/build-root",
+             )
+             .run();
 EOF
 
 echo "[TEST] rustc test suite"

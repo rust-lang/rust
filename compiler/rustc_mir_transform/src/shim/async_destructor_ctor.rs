@@ -447,17 +447,19 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn combine_sync_surface(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropSurfaceDropInPlace, &[self
-            .self_ty
-            .unwrap()
-            .into()])
+        self.apply_combinator(
+            1,
+            LangItem::AsyncDropSurfaceDropInPlace,
+            &[self.self_ty.unwrap().into()],
+        )
     }
 
     fn combine_deferred_drop_in_place(&mut self) -> Ty<'tcx> {
-        self.apply_combinator(1, LangItem::AsyncDropDeferredDropInPlace, &[self
-            .self_ty
-            .unwrap()
-            .into()])
+        self.apply_combinator(
+            1,
+            LangItem::AsyncDropDeferredDropInPlace,
+            &[self.self_ty.unwrap().into()],
+        )
     }
 
     fn combine_fuse(&mut self, inner_future_ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -477,11 +479,11 @@ impl<'tcx> AsyncDestructorCtorShimBuilder<'tcx> {
     }
 
     fn combine_either(&mut self, other: Ty<'tcx>, matched: Ty<'tcx>) -> Ty<'tcx> {
-        self.apply_combinator(4, LangItem::AsyncDropEither, &[
-            other.into(),
-            matched.into(),
-            self.self_ty.unwrap().into(),
-        ])
+        self.apply_combinator(
+            4,
+            LangItem::AsyncDropEither,
+            &[other.into(), matched.into(), self.self_ty.unwrap().into()],
+        )
     }
 
     fn return_(mut self) -> Body<'tcx> {

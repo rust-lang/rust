@@ -20,9 +20,9 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,  // .iter().map(|(_, v_| v))
     recv: &'tcx Expr<'tcx>,  // hashmap
     m_arg: &'tcx Expr<'tcx>, // |(_, v)| v
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if map_type == "into_iter" && !msrv.meets(msrvs::INTO_KEYS) {
+    if map_type == "into_iter" && !msrv.meets(cx, msrvs::INTO_KEYS) {
         return;
     }
     if !expr.span.from_expansion()
@@ -30,7 +30,7 @@ pub(super) fn check<'tcx>(
         && let Body {
             params: [p],
             value: body_expr,
-        } = cx.tcx.hir().body(c.body)
+        } = cx.tcx.hir_body(c.body)
         && let PatKind::Tuple([key_pat, val_pat], _) = p.pat.kind
         && let (replacement_kind, annotation, bound_ident) = match (&key_pat.kind, &val_pat.kind) {
             (key, PatKind::Binding(ann, _, value, _)) if pat_is_wild(cx, key, m_arg) => ("value", ann, value),

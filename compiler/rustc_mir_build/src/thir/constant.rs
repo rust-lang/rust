@@ -48,7 +48,7 @@ pub(crate) fn lit_to_const<'tcx>(
             ty::ValTree::from_raw_bytes(tcx, bytes)
         }
         (ast::LitKind::Byte(n), ty::Uint(ty::UintTy::U8)) => {
-            ty::ValTree::from_scalar_int((*n).into())
+            ty::ValTree::from_scalar_int(tcx, (*n).into())
         }
         (ast::LitKind::CStr(data, _), ty::Ref(_, inner_ty, _)) if matches!(inner_ty.kind(), ty::Adt(def, _) if tcx.is_lang_item(def.did(), LangItem::CStr)) =>
         {
@@ -57,23 +57,23 @@ pub(crate) fn lit_to_const<'tcx>(
         }
         (ast::LitKind::Int(n, _), ty::Uint(ui)) if !neg => {
             let scalar_int = trunc(n.get(), *ui);
-            ty::ValTree::from_scalar_int(scalar_int)
+            ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
         (ast::LitKind::Int(n, _), ty::Int(i)) => {
             let scalar_int = trunc(
                 if neg { (n.get() as i128).overflowing_neg().0 as u128 } else { n.get() },
                 i.to_unsigned(),
             );
-            ty::ValTree::from_scalar_int(scalar_int)
+            ty::ValTree::from_scalar_int(tcx, scalar_int)
         }
-        (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int((*b).into()),
+        (ast::LitKind::Bool(b), ty::Bool) => ty::ValTree::from_scalar_int(tcx, (*b).into()),
         (ast::LitKind::Float(n, _), ty::Float(fty)) => {
             let bits = parse_float_into_scalar(*n, *fty, neg).unwrap_or_else(|| {
                 tcx.dcx().bug(format!("couldn't parse float literal: {:?}", lit_input.lit))
             });
-            ty::ValTree::from_scalar_int(bits)
+            ty::ValTree::from_scalar_int(tcx, bits)
         }
-        (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int((*c).into()),
+        (ast::LitKind::Char(c), ty::Char) => ty::ValTree::from_scalar_int(tcx, (*c).into()),
         (ast::LitKind::Err(guar), _) => return ty::Const::new_error(tcx, *guar),
         _ => return ty::Const::new_misc_error(tcx),
     };

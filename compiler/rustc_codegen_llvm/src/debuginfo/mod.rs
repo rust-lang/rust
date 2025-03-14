@@ -22,6 +22,7 @@ use rustc_session::config::{self, DebugInfo};
 use rustc_span::{
     BytePos, Pos, SourceFile, SourceFileAndLine, SourceFileHash, Span, StableSourceFileId, Symbol,
 };
+use rustc_target::callconv::FnAbi;
 use rustc_target::spec::DebuginfoKind;
 use smallvec::SmallVec;
 use tracing::debug;
@@ -29,7 +30,6 @@ use tracing::debug;
 use self::metadata::{UNKNOWN_COLUMN_NUMBER, UNKNOWN_LINE_NUMBER, file_metadata, type_di_node};
 use self::namespace::mangled_name_of_instance;
 use self::utils::{DIB, create_DIArray, is_node_local_to_unit};
-use crate::abi::FnAbi;
 use crate::builder::Builder;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::llvm;
@@ -97,7 +97,11 @@ impl<'ll, 'tcx> CodegenUnitDebugContext<'ll, 'tcx> {
                 // Android has the same issue (#22398)
                 llvm::add_module_flag_u32(
                     self.llmod,
-                    llvm::ModuleFlagMergeBehavior::Warning,
+                    // In the case where multiple CGUs with different dwarf version
+                    // values are being merged together, such as with cross-crate
+                    // LTO, then we want to use the highest version of dwarf
+                    // we can. This matches Clang's behavior as well.
+                    llvm::ModuleFlagMergeBehavior::Max,
                     "Dwarf Version",
                     sess.dwarf_version(),
                 );
@@ -544,14 +548,17 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 }
             }
 
-            let scope = namespace::item_namespace(cx, DefId {
-                krate: instance.def_id().krate,
-                index: cx
-                    .tcx
-                    .def_key(instance.def_id())
-                    .parent
-                    .expect("get_containing_scope: missing parent?"),
-            });
+            let scope = namespace::item_namespace(
+                cx,
+                DefId {
+                    krate: instance.def_id().krate,
+                    index: cx
+                        .tcx
+                        .def_key(instance.def_id())
+                        .parent
+                        .expect("get_containing_scope: missing parent?"),
+                },
+            );
             (scope, false)
         }
     }
@@ -633,7 +640,7 @@ impl<'ll, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 true,
                 DIFlags::FlagZero,
                 argument_index,
-                align.bytes() as u32,
+                align.bits() as u32,
             )
         }
     }

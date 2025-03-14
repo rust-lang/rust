@@ -6,5 +6,6 @@ fn main() {
     let ptr: *const u16 = std::ptr::null();
     unsafe {
         let _ = *ptr;
+        let _ = &raw const *ptr;
     }
 }

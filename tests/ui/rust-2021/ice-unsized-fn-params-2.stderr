@@ -7,8 +7,9 @@ LL | fn guard(_s: Copy) -> bool {
    = note: `Copy` it is dyn-incompatible, so it can't be `dyn`
 help: use a new generic type parameter, constrained by `Copy`
    |
-LL | fn guard<T: Copy>(_s: T) -> bool {
-   |         +++++++++     ~
+LL - fn guard(_s: Copy) -> bool {
+LL + fn guard<T: Copy>(_s: T) -> bool {
+   |
 help: you can also use an opaque type, but users won't be able to specify the type parameter when calling the `fn`, having to rely exclusively on type inference
    |
 LL | fn guard(_s: impl Copy) -> bool {

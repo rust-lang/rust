@@ -69,7 +69,7 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
         cause: data,
     });
     let exception_param = Box::into_raw(exception) as *mut uw::_Unwind_Exception;
-    return uw::_Unwind_RaiseException(exception_param) as u32;
+    return unsafe { uw::_Unwind_RaiseException(exception_param) as u32 };
 
     extern "C" fn exception_cleanup(
         _unwind_code: uw::_Unwind_Reason_Code,
@@ -83,26 +83,28 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
 }
 
 pub(crate) unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
-    let exception = ptr as *mut uw::_Unwind_Exception;
-    if (*exception).exception_class != RUST_EXCEPTION_CLASS {
-        uw::_Unwind_DeleteException(exception);
-        super::__rust_foreign_exception();
-    }
+    unsafe {
+        let exception = ptr as *mut uw::_Unwind_Exception;
+        if (*exception).exception_class != RUST_EXCEPTION_CLASS {
+            uw::_Unwind_DeleteException(exception);
+            super::__rust_foreign_exception();
+        }
 
-    let exception = exception.cast::<Exception>();
-    // Just access the canary field, avoid accessing the entire `Exception` as
-    // it can be a foreign Rust exception.
-    let canary = (&raw const (*exception).canary).read();
-    if !ptr::eq(canary, &CANARY) {
-        // A foreign Rust exception, treat it slightly differently from other
-        // foreign exceptions, because call into `_Unwind_DeleteException` will
-        // call into `__rust_drop_panic` which produces a confusing
-        // "Rust panic must be rethrown" message.
-        super::__rust_foreign_exception();
-    }
+        let exception = exception.cast::<Exception>();
+        // Just access the canary field, avoid accessing the entire `Exception` as
+        // it can be a foreign Rust exception.
+        let canary = (&raw const (*exception).canary).read();
+        if !ptr::eq(canary, &CANARY) {
+            // A foreign Rust exception, treat it slightly differently from other
+            // foreign exceptions, because call into `_Unwind_DeleteException` will
+            // call into `__rust_drop_panic` which produces a confusing
+            // "Rust panic must be rethrown" message.
+            super::__rust_foreign_exception();
+        }
 
-    let exception = Box::from_raw(exception as *mut Exception);
-    exception.cause
+        let exception = Box::from_raw(exception as *mut Exception);
+        exception.cause
+    }
 }
 
 // Rust's exception class identifier.  This is used by personality routines to

@@ -3,8 +3,10 @@
 fn main() {
     fn with_to_string(x: &str) {
         x != "foo";
+        //~^ cmp_owned
 
         "foo" != x;
+        //~^ cmp_owned
     }
 
     let x = "oh";
@@ -12,14 +14,18 @@ fn main() {
     with_to_string(x);
 
     x != "foo";
+    //~^ cmp_owned
 
     x != "foo";
+    //~^ cmp_owned
 
     42.to_string() == "42";
 
     Foo == Foo;
+    //~^ cmp_owned
 
     "abc".chars().filter(|c| *c != 'X');
+    //~^ cmp_owned
 
     "abc".chars().filter(|c| *c != 'X');
 }

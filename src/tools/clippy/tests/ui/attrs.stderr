@@ -1,5 +1,5 @@
 error: the since field must contain a semver-compliant version
-  --> tests/ui/attrs.rs:27:14
+  --> tests/ui/attrs.rs:26:14
    |
 LL | #[deprecated(since = "forever")]
    |              ^^^^^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | #[deprecated(since = "forever")]
    = help: to override `-D warnings` add `#[allow(clippy::deprecated_semver)]`
 
 error: the since field must contain a semver-compliant version
-  --> tests/ui/attrs.rs:32:14
+  --> tests/ui/attrs.rs:30:14
    |
 LL | #[deprecated(since = "1")]
    |              ^^^^^^^^^^^

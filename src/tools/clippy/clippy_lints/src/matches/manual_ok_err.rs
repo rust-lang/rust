@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::option_arg_ty;
-use clippy_utils::{is_res_lang_ctor, path_res, peel_blocks, span_contains_comment};
+use clippy_utils::{get_parent_expr, is_res_lang_ctor, path_res, peel_blocks, span_contains_comment};
 use rustc_ast::BindingMode;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr};
@@ -132,13 +133,23 @@ fn apply_lint(cx: &LateContext<'_>, expr: &Expr<'_>, scrutinee: &Expr<'_>, is_ok
         Applicability::MachineApplicable
     };
     let scrut = Sugg::hir_with_applicability(cx, scrutinee, "..", &mut app).maybe_par();
+    let sugg = format!("{scrut}.{method}()");
+    // If the expression being expanded is the `if …` part of an `else if …`, it must be blockified.
+    let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr)
+        && let ExprKind::If(_, _, Some(else_part)) = parent_expr.kind
+        && else_part.hir_id == expr.hir_id
+    {
+        reindent_multiline(&format!("{{\n    {sugg}\n}}"), true, indent_of(cx, parent_expr.span))
+    } else {
+        sugg
+    };
     span_lint_and_sugg(
         cx,
         MANUAL_OK_ERR,
         expr.span,
         format!("manual implementation of `{method}`"),
         "replace with",
-        format!("{scrut}.{method}()"),
+        sugg,
         app,
     );
 }

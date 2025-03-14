@@ -58,9 +58,7 @@ pub struct FromOverInto {
 
 impl FromOverInto {
     pub fn new(conf: &'static Conf) -> Self {
-        FromOverInto {
-            msrv: conf.msrv.clone(),
-        }
+        FromOverInto { msrv: conf.msrv }
     }
 }
 
@@ -77,12 +75,12 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE)
             && span_is_local(item.span)
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
-                                                  .map(ty::EarlyBinder::instantiate_identity)
+            .map(ty::EarlyBinder::instantiate_identity)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
             && !matches!(middle_trait_ref.args.type_at(1).kind(), ty::Alias(ty::Opaque, _))
+            && self.msrv.meets(cx, msrvs::RE_REBALANCING_COHERENCE)
         {
             span_lint_and_then(
                 cx,
@@ -114,8 +112,6 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Finds the occurrences of `Self` and `self`
@@ -134,8 +130,8 @@ impl<'tcx> Visitor<'tcx> for SelfFinder<'_, 'tcx> {
     type Result = ControlFlow<()>;
     type NestedFilter = OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 
     fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) -> Self::Result {
@@ -175,11 +171,11 @@ fn convert_to_from(
         // bad suggestion/fix.
         return None;
     }
-    let impl_item = cx.tcx.hir().impl_item(impl_item_ref.id);
+    let impl_item = cx.tcx.hir_impl_item(impl_item_ref.id);
     let ImplItemKind::Fn(ref sig, body_id) = impl_item.kind else {
         return None;
     };
-    let body = cx.tcx.hir().body(body_id);
+    let body = cx.tcx.hir_body(body_id);
     let [input] = body.params else { return None };
     let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
         return None;

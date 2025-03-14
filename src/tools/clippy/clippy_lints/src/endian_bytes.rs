@@ -6,6 +6,7 @@ use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty::Ty;
 use rustc_session::declare_lint_pass;
 use rustc_span::Symbol;
+use std::fmt::Write;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -183,7 +184,7 @@ fn maybe_lint_endian_bytes(cx: &LateContext<'_>, expr: &Expr<'_>, prefix: Prefix
                     help_str.push_str("either of ");
                 }
 
-                help_str.push_str(&format!("`{ty}::{}` ", lint.as_name(prefix)));
+                write!(help_str, "`{ty}::{}` ", lint.as_name(prefix)).unwrap();
 
                 if i != len && !only_one {
                     help_str.push_str("or ");

@@ -5,7 +5,7 @@
 //@ revisions: bit32 bit64
 //@[bit32] only-32bit
 //@[bit64] only-64bit
-//@ compile-flags: -O -C no-prepopulate-passes
+//@ compile-flags: -Copt-level=3 -C no-prepopulate-passes
 //@ min-llvm-version: 19
 
 #![crate_type = "lib"]

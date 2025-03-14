@@ -616,9 +616,9 @@ impl<T> Sender<T> {
     #[unstable(feature = "mpmc_channel", issue = "126840")]
     pub fn same_channel(&self, other: &Sender<T>) -> bool {
         match (&self.flavor, &other.flavor) {
-            (SenderFlavor::Array(ref a), SenderFlavor::Array(ref b)) => a == b,
-            (SenderFlavor::List(ref a), SenderFlavor::List(ref b)) => a == b,
-            (SenderFlavor::Zero(ref a), SenderFlavor::Zero(ref b)) => a == b,
+            (SenderFlavor::Array(a), SenderFlavor::Array(b)) => a == b,
+            (SenderFlavor::List(a), SenderFlavor::List(b)) => a == b,
+            (SenderFlavor::Zero(a), SenderFlavor::Zero(b)) => a == b,
             _ => false,
         }
     }
@@ -1382,3 +1382,6 @@ impl<T> fmt::Debug for Receiver<T> {
         f.pad("Receiver { .. }")
     }
 }
+
+#[cfg(test)]
+mod tests;

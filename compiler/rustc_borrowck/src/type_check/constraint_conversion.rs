@@ -1,18 +1,15 @@
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_infer::infer::outlives::env::RegionBoundPairs;
 use rustc_infer::infer::outlives::obligations::{TypeOutlives, TypeOutlivesDelegate};
 use rustc_infer::infer::region_constraints::{GenericKind, VerifyBound};
 use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
+use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::traits::query::NoSolution;
 use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
-use rustc_trait_selection::traits::ScrubbedTraitError;
-use rustc_trait_selection::traits::query::type_op::custom::CustomTypeOp;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument};
 
@@ -91,7 +88,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
     pub(crate) fn apply_closure_requirements(
         &mut self,
         closure_requirements: &ClosureRegionRequirements<'tcx>,
-        closure_def_id: DefId,
+        closure_def_id: LocalDefId,
         closure_args: ty::GenericArgsRef<'tcx>,
     ) {
         // Extract the values of the free regions in `closure_args`
@@ -101,7 +98,7 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             self.tcx,
             closure_args,
             closure_requirements.num_external_vids,
-            closure_def_id.expect_local(),
+            closure_def_id,
         );
         debug!(?closure_mapping);
 
@@ -270,20 +267,8 @@ impl<'a, 'tcx> ConstraintConversion<'a, 'tcx> {
             ConstraintCategory<'tcx>,
         )>,
     ) -> Ty<'tcx> {
-        let result = CustomTypeOp::new(
-            |ocx| {
-                ocx.deeply_normalize(
-                    &ObligationCause::dummy_with_span(self.span),
-                    self.param_env,
-                    ty,
-                )
-                .map_err(|_: Vec<ScrubbedTraitError<'tcx>>| NoSolution)
-            },
-            "normalize type outlives obligation",
-        )
-        .fully_perform(self.infcx, self.span);
-
-        match result {
+        match self.param_env.and(DeeplyNormalize { value: ty }).fully_perform(self.infcx, self.span)
+        {
             Ok(TypeOpOutput { output: ty, constraints, .. }) => {
                 if let Some(QueryRegionConstraints { outlives }) = constraints {
                     next_outlives_predicates.extend(outlives.iter().copied());

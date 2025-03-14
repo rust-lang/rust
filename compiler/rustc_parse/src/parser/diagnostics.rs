@@ -1,17 +1,15 @@
 use std::mem::take;
 use std::ops::{Deref, DerefMut};
-use std::sync::Arc;
 
 use ast::token::IdentIsRaw;
 use rustc_ast as ast;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Lit, LitKind, Token, TokenKind};
-use rustc_ast::tokenstream::AttrTokenTree;
 use rustc_ast::util::parser::AssocOp;
 use rustc_ast::{
     AngleBracketedArg, AngleBracketedArgs, AnonConst, AttrVec, BinOpKind, BindingMode, Block,
-    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, HasTokens, Item, ItemKind, Param, Pat,
-    PatKind, Path, PathSegment, QSelf, Recovered, Ty, TyKind,
+    BlockCheckMode, Expr, ExprKind, GenericArg, Generics, Item, ItemKind, Param, Pat, PatKind,
+    Path, PathSegment, QSelf, Recovered, Ty, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -33,15 +31,15 @@ use super::{
     SeqSep, TokenType,
 };
 use crate::errors::{
-    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AttributeOnParamType, AwaitSuggestion,
-    BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi, ComparisonOperatorsCannotBeChained,
-    ComparisonOperatorsCannotBeChainedSugg, ConstGenericWithoutBraces,
-    ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything, DocCommentOnParamType,
-    DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
+    AddParen, AmbiguousPlus, AsyncMoveBlockIn2015, AsyncUseBlockIn2015, AttributeOnParamType,
+    AwaitSuggestion, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
+    ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
+    ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentDoesNotDocumentAnything,
+    DocCommentOnParamType, DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
     GenericParamsWithoutAngleBrackets, GenericParamsWithoutAngleBracketsSugg,
     HelpIdentifierStartsWithNumber, HelpUseLatestEdition, InInTypo, IncorrectAwait,
-    IncorrectSemicolon, IncorrectUseOfAwait, PatternMethodParamWithoutBody, QuestionMarkInType,
-    QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
+    IncorrectSemicolon, IncorrectUseOfAwait, IncorrectUseOfUse, PatternMethodParamWithoutBody,
+    QuestionMarkInType, QuestionMarkInTypeSugg, SelfParamNotFirst, StructLiteralBodyWithoutPath,
     StructLiteralBodyWithoutPathSugg, StructLiteralNeedingParens, StructLiteralNeedingParensSugg,
     SuggAddMissingLetStmt, SuggEscapeIdentifier, SuggRemoveComma, TernaryOperator,
     UnexpectedConstInGenericParam, UnexpectedConstParamDeclaration,
@@ -301,13 +299,6 @@ impl<'a> Parser<'a> {
         &mut self,
         recover: bool,
     ) -> PResult<'a, (Ident, IdentIsRaw)> {
-        if let TokenKind::DocComment(..) = self.prev_token.kind {
-            return Err(self.dcx().create_err(DocCommentDoesNotDocumentAnything {
-                span: self.prev_token.span,
-                missing_comma: None,
-            }));
-        }
-
         let valid_follow = &[
             TokenKind::Eq,
             TokenKind::Colon,
@@ -319,6 +310,15 @@ impl<'a> Parser<'a> {
             TokenKind::CloseDelim(Delimiter::Brace),
             TokenKind::CloseDelim(Delimiter::Parenthesis),
         ];
+        if let TokenKind::DocComment(..) = self.prev_token.kind
+            && valid_follow.contains(&self.token.kind)
+        {
+            let err = self.dcx().create_err(DocCommentDoesNotDocumentAnything {
+                span: self.prev_token.span,
+                missing_comma: None,
+            });
+            return Err(err);
+        }
 
         let mut recovered_ident = None;
         // we take this here so that the correct original token is retained in
@@ -572,10 +572,17 @@ impl<'a> Parser<'a> {
             return Err(self.dcx().create_err(UseEqInstead { span: self.token.span }));
         }
 
-        if self.token.is_keyword(kw::Move) && self.prev_token.is_keyword(kw::Async) {
-            // The 2015 edition is in use because parsing of `async move` has failed.
+        if (self.token.is_keyword(kw::Move) || self.token.is_keyword(kw::Use))
+            && self.prev_token.is_keyword(kw::Async)
+        {
+            // The 2015 edition is in use because parsing of `async move` or `async use` has failed.
             let span = self.prev_token.span.to(self.token.span);
-            return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            if self.token.is_keyword(kw::Move) {
+                return Err(self.dcx().create_err(AsyncMoveBlockIn2015 { span }));
+            } else {
+                // kw::Use
+                return Err(self.dcx().create_err(AsyncUseBlockIn2015 { span }));
+            }
         }
 
         let expect = tokens_to_string(&expected);
@@ -684,12 +691,15 @@ impl<'a> Parser<'a> {
             let span = self.token.span.with_lo(pos).with_hi(pos);
             err.span_suggestion_verbose(
                 span,
-                format!("add a space before {} to write a regular comment", match (kind, style) {
-                    (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
-                    (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
-                    (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
-                    (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
-                },),
+                format!(
+                    "add a space before {} to write a regular comment",
+                    match (kind, style) {
+                        (token::CommentKind::Line, ast::AttrStyle::Inner) => "`!`",
+                        (token::CommentKind::Block, ast::AttrStyle::Inner) => "`!`",
+                        (token::CommentKind::Line, ast::AttrStyle::Outer) => "the last `/`",
+                        (token::CommentKind::Block, ast::AttrStyle::Outer) => "the last `*`",
+                    },
+                ),
                 " ".to_string(),
                 Applicability::MachineApplicable,
             );
@@ -1164,7 +1174,7 @@ impl<'a> Parser<'a> {
         let mut number_of_gt = 0;
         while self.look_ahead(position, |t| {
             trace!("check_trailing_angle_brackets: t={:?}", t);
-            if *t == token::BinOp(token::BinOpToken::Shr) {
+            if *t == token::Shr {
                 number_of_shr += 1;
                 true
             } else if *t == token::Gt {
@@ -1219,7 +1229,7 @@ impl<'a> Parser<'a> {
                     let span = lo.to(self.prev_token.span);
                     // Detect trailing `>` like in `x.collect::Vec<_>>()`.
                     let mut trailing_span = self.prev_token.span.shrink_to_hi();
-                    while self.token == token::BinOp(token::Shr) || self.token == token::Gt {
+                    while self.token == token::Shr || self.token == token::Gt {
                         trailing_span = trailing_span.to(self.token.span);
                         self.bump();
                     }
@@ -1345,13 +1355,13 @@ impl<'a> Parser<'a> {
             }
             return match (op.node, &outer_op.node) {
                 // `x == y == z`
-                (BinOpKind::Eq, AssocOp::Equal) |
+                (BinOpKind::Eq, AssocOp::Binary(BinOpKind::Eq)) |
                 // `x < y < z` and friends.
-                (BinOpKind::Lt, AssocOp::Less | AssocOp::LessEqual) |
-                (BinOpKind::Le, AssocOp::LessEqual | AssocOp::Less) |
+                (BinOpKind::Lt, AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le)) |
+                (BinOpKind::Le, AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le)) |
                 // `x > y > z` and friends.
-                (BinOpKind::Gt, AssocOp::Greater | AssocOp::GreaterEqual) |
-                (BinOpKind::Ge, AssocOp::GreaterEqual | AssocOp::Greater) => {
+                (BinOpKind::Gt, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) |
+                (BinOpKind::Ge, AssocOp::Binary(BinOpKind::Gt | BinOpKind::Ge)) => {
                     let expr_to_str = |e: &Expr| {
                         self.span_to_snippet(e.span)
                             .unwrap_or_else(|_| pprust::expr_to_string(e))
@@ -1363,7 +1373,10 @@ impl<'a> Parser<'a> {
                     false // Keep the current parse behavior, where the AST is `(x < y) < z`.
                 }
                 // `x == y < z`
-                (BinOpKind::Eq, AssocOp::Less | AssocOp::LessEqual | AssocOp::Greater | AssocOp::GreaterEqual) => {
+                (
+                    BinOpKind::Eq,
+                    AssocOp::Binary(BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge)
+                ) => {
                     // Consume `z`/outer-op-rhs.
                     let snapshot = self.create_snapshot_for_diagnostic();
                     match self.parse_expr() {
@@ -1384,7 +1397,10 @@ impl<'a> Parser<'a> {
                     }
                 }
                 // `x > y == z`
-                (BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge, AssocOp::Equal) => {
+                (
+                    BinOpKind::Lt | BinOpKind::Le | BinOpKind::Gt | BinOpKind::Ge,
+                    AssocOp::Binary(BinOpKind::Eq)
+                ) => {
                     let snapshot = self.create_snapshot_for_diagnostic();
                     // At this point it is always valid to enclose the lhs in parentheses, no
                     // further checks are necessary.
@@ -1452,15 +1468,14 @@ impl<'a> Parser<'a> {
 
                 // Include `<` to provide this recommendation even in a case like
                 // `Foo<Bar<Baz<Qux, ()>>>`
-                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Less
-                    || outer_op.node == AssocOp::Greater
+                if op.node == BinOpKind::Lt && outer_op.node == AssocOp::Binary(BinOpKind::Lt)
+                    || outer_op.node == AssocOp::Binary(BinOpKind::Gt)
                 {
-                    if outer_op.node == AssocOp::Less {
+                    if outer_op.node == AssocOp::Binary(BinOpKind::Lt) {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         self.bump();
                         // So far we have parsed `foo<bar<`, consume the rest of the type args.
-                        let modifiers =
-                            [(token::Lt, 1), (token::Gt, -1), (token::BinOp(token::Shr), -2)];
+                        let modifiers = [(token::Lt, 1), (token::Gt, -1), (token::Shr, -2)];
                         self.consume_tts(1, &modifiers);
 
                         if !&[token::OpenDelim(Delimiter::Parenthesis), token::PathSep]
@@ -1894,13 +1909,14 @@ impl<'a> Parser<'a> {
             (token::Eof, None) => (self.prev_token.span, self.token.span),
             _ => (self.prev_token.span.shrink_to_hi(), self.token.span),
         };
-        let msg = format!("expected `{}`, found {}", token_str, match (
-            &self.token.kind,
-            self.subparser_name
-        ) {
-            (token::Eof, Some(origin)) => format!("end of {origin}"),
-            _ => this_token_str,
-        },);
+        let msg = format!(
+            "expected `{}`, found {}",
+            token_str,
+            match (&self.token.kind, self.subparser_name) {
+                (token::Eof, Some(origin)) => format!("end of {origin}"),
+                _ => this_token_str,
+            },
+        );
         let mut err = self.dcx().struct_span_err(sp, msg);
         let label_exp = format!("expected `{token_str}`");
         let sm = self.psess.source_map();
@@ -1952,7 +1968,7 @@ impl<'a> Parser<'a> {
         &mut self,
         await_sp: Span,
     ) -> PResult<'a, P<Expr>> {
-        let (hi, expr, is_question) = if self.token == token::Not {
+        let (hi, expr, is_question) = if self.token == token::Bang {
             // Handle `await!(<expr>)`.
             self.recover_await_macro()?
         } else {
@@ -1964,7 +1980,7 @@ impl<'a> Parser<'a> {
     }
 
     fn recover_await_macro(&mut self) -> PResult<'a, (Span, P<Expr>, bool)> {
-        self.expect(exp!(Not))?;
+        self.expect(exp!(Bang))?;
         self.expect(exp!(OpenParen))?;
         let expr = self.parse_expr()?;
         self.expect(exp!(CloseParen))?;
@@ -1982,7 +1998,7 @@ impl<'a> Parser<'a> {
             self.parse_expr()
         }
         .map_err(|mut err| {
-            err.span_label(await_sp, "while parsing this incorrect await expression");
+            err.span_label(await_sp, format!("while parsing this incorrect await expression"));
             err
         })?;
         Ok((expr.span, expr, is_question))
@@ -2021,10 +2037,25 @@ impl<'a> Parser<'a> {
             self.dcx().emit_err(IncorrectUseOfAwait { span });
         }
     }
+    ///
+    /// If encountering `x.use()`, consumes and emits an error.
+    pub(super) fn recover_from_use(&mut self) {
+        if self.token == token::OpenDelim(Delimiter::Parenthesis)
+            && self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+        {
+            // var.use()
+            let lo = self.token.span;
+            self.bump(); // (
+            let span = lo.to(self.token.span);
+            self.bump(); // )
+
+            self.dcx().emit_err(IncorrectUseOfUse { span });
+        }
+    }
 
     pub(super) fn try_macro_suggestion(&mut self) -> PResult<'a, P<Expr>> {
         let is_try = self.token.is_keyword(kw::Try);
-        let is_questionmark = self.look_ahead(1, |t| t == &token::Not); //check for !
+        let is_questionmark = self.look_ahead(1, |t| t == &token::Bang); //check for !
         let is_open = self.look_ahead(2, |t| t == &token::OpenDelim(Delimiter::Parenthesis)); //check for (
 
         if is_try && is_questionmark && is_open {
@@ -2076,7 +2107,7 @@ impl<'a> Parser<'a> {
                     ast::GenericBound::Trait(poly) => Some(poly),
                     _ => None,
                 })
-                .last()
+                .next_back()
         {
             err.span_suggestion_verbose(
                 poly.span.shrink_to_hi(),
@@ -2394,52 +2425,6 @@ impl<'a> Parser<'a> {
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
         }
         err.span_label(span, "expected expression");
-
-        // Walk the chain of macro expansions for the current token to point at how the original
-        // code was interpreted. This helps the user realize when a macro argument of one type is
-        // later reinterpreted as a different type, like `$x:expr` being reinterpreted as `$x:pat`
-        // in a subsequent macro invocation (#71039).
-        let mut tok = self.token.clone();
-        let mut labels = vec![];
-        while let TokenKind::Interpolated(nt) = &tok.kind {
-            let tokens = nt.tokens();
-            labels.push(Arc::clone(nt));
-            if let Some(tokens) = tokens
-                && let tokens = tokens.to_attr_token_stream()
-                && let tokens = tokens.0.deref()
-                && let [AttrTokenTree::Token(token, _)] = &tokens[..]
-            {
-                tok = token.clone();
-            } else {
-                break;
-            }
-        }
-        let mut iter = labels.into_iter().peekable();
-        let mut show_link = false;
-        while let Some(nt) = iter.next() {
-            let descr = nt.descr();
-            if let Some(next) = iter.peek() {
-                let next_descr = next.descr();
-                if next_descr != descr {
-                    err.span_label(next.use_span(), format!("this is expected to be {next_descr}"));
-                    err.span_label(
-                        nt.use_span(),
-                        format!(
-                            "this is interpreted as {}, but it is expected to be {}",
-                            next_descr, descr,
-                        ),
-                    );
-                    show_link = true;
-                }
-            }
-        }
-        if show_link {
-            err.note(
-                "when forwarding a matched fragment to another macro-by-example, matchers in the \
-                 second macro will see an opaque AST of the fragment type, not the underlying \
-                 tokens",
-            );
-        }
         err
     }
 
@@ -2629,10 +2614,12 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, GenericArg> {
         let is_op_or_dot = AssocOp::from_token(&self.token)
             .and_then(|op| {
-                if let AssocOp::Greater
-                | AssocOp::Less
-                | AssocOp::ShiftRight
-                | AssocOp::GreaterEqual
+                if let AssocOp::Binary(
+                    BinOpKind::Gt
+                    | BinOpKind::Lt
+                    | BinOpKind::Shr
+                    | BinOpKind::Ge
+                )
                 // Don't recover from `foo::<bar = baz>`, because this could be an attempt to
                 // assign a value to a defaulted generic parameter.
                 | AssocOp::Assign
@@ -2647,8 +2634,7 @@ impl<'a> Parser<'a> {
             || self.token == TokenKind::Dot;
         // This will be true when a trait object type `Foo +` or a path which was a `const fn` with
         // type params has been parsed.
-        let was_op =
-            matches!(self.prev_token.kind, token::BinOp(token::Plus | token::Shr) | token::Gt);
+        let was_op = matches!(self.prev_token.kind, token::Plus | token::Shr | token::Gt);
         if !is_op_or_dot && !was_op {
             // We perform these checks and early return to avoid taking a snapshot unnecessarily.
             return Err(err);
@@ -2826,25 +2812,27 @@ impl<'a> Parser<'a> {
                             PatKind::Ident(BindingMode::NONE, ident, None) => {
                                 match &first_pat.kind {
                                     PatKind::Ident(_, old_ident, _) => {
-                                        let path = PatKind::Path(None, Path {
-                                            span: new_span,
-                                            segments: thin_vec![
-                                                PathSegment::from_ident(*old_ident),
-                                                PathSegment::from_ident(*ident),
-                                            ],
-                                            tokens: None,
-                                        });
+                                        let path = PatKind::Path(
+                                            None,
+                                            Path {
+                                                span: new_span,
+                                                segments: thin_vec![
+                                                    PathSegment::from_ident(*old_ident),
+                                                    PathSegment::from_ident(*ident),
+                                                ],
+                                                tokens: None,
+                                            },
+                                        );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
                                     }
                                     PatKind::Path(old_qself, old_path) => {
                                         let mut segments = old_path.segments.clone();
                                         segments.push(PathSegment::from_ident(*ident));
-                                        let path = PatKind::Path(old_qself.clone(), Path {
-                                            span: new_span,
-                                            segments,
-                                            tokens: None,
-                                        });
+                                        let path = PatKind::Path(
+                                            old_qself.clone(),
+                                            Path { span: new_span, segments, tokens: None },
+                                        );
                                         first_pat = self.mk_pat(new_span, path);
                                         show_sugg = true;
                                     }
@@ -3024,8 +3012,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn recover_vcs_conflict_marker(&mut self) {
         // <<<<<<<
-        let Some(start) = self.conflict_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt)
-        else {
+        let Some(start) = self.conflict_marker(&TokenKind::Shl, &TokenKind::Lt) else {
             return;
         };
         let mut spans = Vec::with_capacity(3);
@@ -3040,15 +3027,13 @@ impl<'a> Parser<'a> {
             if self.token == TokenKind::Eof {
                 break;
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or))
-            {
+            if let Some(span) = self.conflict_marker(&TokenKind::OrOr, &TokenKind::Or) {
                 middlediff3 = Some(span);
             }
             if let Some(span) = self.conflict_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
             }
-            if let Some(span) = self.conflict_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt)
-            {
+            if let Some(span) = self.conflict_marker(&TokenKind::Shr, &TokenKind::Gt) {
                 spans.push(span);
                 end = Some(span);
                 break;

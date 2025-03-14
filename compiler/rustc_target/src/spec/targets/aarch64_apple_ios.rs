@@ -1,11 +1,11 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{FramePointer, SanitizerSet, Target, TargetOptions};
+use crate::spec::{FramePointer, SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (opts, llvm_target, arch) = base("ios", Arch::Arm64, TargetAbi::Normal);
     Target {
         llvm_target,
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("ARM64 Apple iOS".into()),
             tier: Some(2),
             host_tools: Some(false),

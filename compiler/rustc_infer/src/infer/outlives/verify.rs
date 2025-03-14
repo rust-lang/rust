@@ -102,12 +102,11 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
 
     #[instrument(level = "debug", skip(self))]
     pub(crate) fn alias_bound(&self, alias_ty: ty::AliasTy<'tcx>) -> VerifyBound<'tcx> {
-        let alias_ty_as_ty = alias_ty.to_ty(self.tcx);
-
         // Search the env for where clauses like `P: 'a`.
         let env_bounds = self.approx_declared_bounds_from_env(alias_ty).into_iter().map(|binder| {
             if let Some(ty::OutlivesPredicate(ty, r)) = binder.no_bound_vars()
-                && ty == alias_ty_as_ty
+                && let ty::Alias(_, alias_ty_from_bound) = *ty.kind()
+                && alias_ty_from_bound == alias_ty
             {
                 // Micro-optimize if this is an exact match (this
                 // occurs often when there are no region variables
@@ -127,7 +126,8 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // see the extensive comment in projection_must_outlive
         let recursive_bound = {
             let mut components = smallvec![];
-            compute_alias_components_recursive(self.tcx, alias_ty_as_ty, &mut components);
+            let kind = alias_ty.kind(self.tcx);
+            compute_alias_components_recursive(self.tcx, kind, alias_ty, &mut components);
             self.bound_from_components(&components)
         };
 

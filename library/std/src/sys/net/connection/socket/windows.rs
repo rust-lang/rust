@@ -2,6 +2,7 @@
 
 use core::ffi::{c_int, c_long, c_ulong, c_ushort};
 
+use super::{getsockopt, setsockopt, socket_addr_from_c, socket_addr_to_c};
 use crate::io::{self, BorrowedBuf, BorrowedCursor, IoSlice, IoSliceMut, Read};
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
@@ -16,7 +17,7 @@ use crate::{cmp, mem, ptr, sys};
 #[allow(non_camel_case_types)]
 pub type wrlen_t = i32;
 
-pub mod netc {
+pub(super) mod netc {
     //! BSD socket compatibility shim
     //!
     //! Some Windows API types are not quite what's expected by our cross-platform
@@ -225,7 +226,7 @@ impl Socket {
     }
 
     pub fn connect(&self, addr: &SocketAddr) -> io::Result<()> {
-        let (addr, len) = addr.into_inner();
+        let (addr, len) = socket_addr_to_c(addr);
         let result = unsafe { c::connect(self.as_raw(), addr.as_ptr(), len) };
         cvt(result).map(drop)
     }
@@ -380,7 +381,7 @@ impl Socket {
         flags: c_int,
     ) -> io::Result<(usize, SocketAddr)> {
         let mut storage = unsafe { mem::zeroed::<c::SOCKADDR_STORAGE>() };
-        let mut addrlen = mem::size_of_val(&storage) as netc::socklen_t;
+        let mut addrlen = size_of_val(&storage) as netc::socklen_t;
         let length = cmp::min(buf.len(), <wrlen_t>::MAX as usize) as wrlen_t;
 
         // On unix when a socket is shut down all further reads return 0, so we
@@ -401,12 +402,12 @@ impl Socket {
                 let error = unsafe { c::WSAGetLastError() };
 
                 if error == c::WSAESHUTDOWN {
-                    Ok((0, super::sockaddr_to_addr(&storage, addrlen as usize)?))
+                    Ok((0, unsafe { socket_addr_from_c(&storage, addrlen as usize)? }))
                 } else {
                     Err(io::Error::from_raw_os_error(error))
                 }
             }
-            _ => Ok((result as usize, super::sockaddr_to_addr(&storage, addrlen as usize)?)),
+            _ => Ok((result as usize, unsafe { socket_addr_from_c(&storage, addrlen as usize)? })),
         }
     }
 
@@ -451,11 +452,11 @@ impl Socket {
             }
             None => 0,
         };
-        super::setsockopt(self, c::SOL_SOCKET, kind, timeout)
+        setsockopt(self, c::SOL_SOCKET, kind, timeout)
     }
 
     pub fn timeout(&self, kind: c_int) -> io::Result<Option<Duration>> {
-        let raw: u32 = super::getsockopt(self, c::SOL_SOCKET, kind)?;
+        let raw: u32 = getsockopt(self, c::SOL_SOCKET, kind)?;
         if raw == 0 {
             Ok(None)
         } else {
@@ -488,38 +489,38 @@ impl Socket {
             l_linger: linger.unwrap_or_default().as_secs() as c_ushort,
         };
 
-        super::setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
+        setsockopt(self, c::SOL_SOCKET, c::SO_LINGER, linger)
     }
 
     pub fn linger(&self) -> io::Result<Option<Duration>> {
-        let val: c::LINGER = super::getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
+        let val: c::LINGER = getsockopt(self, c::SOL_SOCKET, c::SO_LINGER)?;
 
         Ok((val.l_onoff != 0).then(|| Duration::from_secs(val.l_linger as u64)))
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        super::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
+        setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BOOL = super::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
+        let raw: c::BOOL = getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
-        let raw: c_int = super::getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
+        let raw: c_int = getsockopt(self, c::SOL_SOCKET, c::SO_ERROR)?;
         if raw == 0 { Ok(None) } else { Ok(Some(io::Error::from_raw_os_error(raw as i32))) }
     }
 
     // This is used by sys_common code to abstract over Windows and Unix.
     pub fn as_raw(&self) -> c::SOCKET {
-        debug_assert_eq!(mem::size_of::<c::SOCKET>(), mem::size_of::<RawSocket>());
-        debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
+        debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
+        debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
         self.as_inner().as_raw_socket() as c::SOCKET
     }
     pub unsafe fn from_raw(raw: c::SOCKET) -> Self {
-        debug_assert_eq!(mem::size_of::<c::SOCKET>(), mem::size_of::<RawSocket>());
-        debug_assert_eq!(mem::align_of::<c::SOCKET>(), mem::align_of::<RawSocket>());
+        debug_assert_eq!(size_of::<c::SOCKET>(), size_of::<RawSocket>());
+        debug_assert_eq!(align_of::<c::SOCKET>(), align_of::<RawSocket>());
         unsafe { Self::from_raw_socket(raw as RawSocket) }
     }
 }

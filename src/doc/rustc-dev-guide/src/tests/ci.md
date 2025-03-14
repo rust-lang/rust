@@ -28,7 +28,7 @@ Our CI is primarily executed on [GitHub Actions], with a single workflow defined
 in [`.github/workflows/ci.yml`], which contains a bunch of steps that are
 unified for all CI jobs that we execute. When a commit is pushed to a
 corresponding branch or a PR, the workflow executes the
-[`src/ci/github-actions/ci.py`] script, which dynamically generates the specific CI
+[`src/ci/citool`] crate, which dynamically generates the specific CI
 jobs that should be executed. This script uses the [`jobs.yml`] file as an
 input, which contains a declarative configuration of all our CI jobs.
 
@@ -133,29 +133,37 @@ There are several use-cases for try builds:
   Again, a working compiler build is needed for this, which can be produced by
   the [dist-x86_64-linux] CI job.
 - Run a specific CI job (e.g. Windows tests) on a PR, to quickly test if it
-  passes the test suite executed by that job. You can select which CI jobs will
-  be executed in the try build by adding up to 10 lines containing `try-job:
-  <name of job>` to the PR description. All such specified jobs will be executed
-  in the try build once the `@bors try` command is used on the PR. If no try
-  jobs are specified in this way, the jobs defined in the `try` section of
-  [`jobs.yml`] will be executed by default.
+  passes the test suite executed by that job.
+
+You can select which CI jobs will
+be executed in the try build by adding lines containing `try-job:
+<job pattern>` to the PR description. All such specified jobs will be executed
+in the try build once the `@bors try` command is used on the PR. If no try
+jobs are specified in this way, the jobs defined in the `try` section of
+[`jobs.yml`] will be executed by default.
+
+Each pattern can either be an exact name of a job or a glob pattern that matches multiple jobs,
+for example `*msvc*` or `*-alt`. You can start at most 20 jobs in a single try build. When using
+glob patterns, you might want to wrap them in backticks (`` ` ``) to avoid GitHub rendering
+the pattern as Markdown.
 
 > **Using `try-job` PR description directives**
 >
-> 1. Identify which set of try-jobs (max 10) you would like to exercise. You can
+> 1. Identify which set of try-jobs you would like to exercise. You can
 >    find the name of the CI jobs in [`jobs.yml`].
 >
-> 2. Amend PR description to include (usually at the end of the PR description)
->    e.g.
+> 2. Amend PR description to include a set of patterns (usually at the end
+>    of the PR description), for example:
 >
 >    ```text
 >    This PR fixes #123456.
 >
 >    try-job: x86_64-msvc
 >    try-job: test-various
+>    try-job: `*-alt`
 >    ```
 >
->    Each `try-job` directive must be on its own line.
+>    Each `try-job` pattern must be on its own line.
 >
 > 3. Run the prescribed try jobs with `@bors try`. As aforementioned, this
 >    requires the user to either (1) have `try` permissions or (2) be delegated
@@ -299,7 +307,7 @@ platform’s custom [Docker container]. This has a lot of advantages for us:
 - We can avoid reinstalling tools (like QEMU or the Android emulator) every time
   thanks to Docker image caching.
 - Users can run the same tests in the same environment locally by just running
-  `python3 src/ci/github-actions/ci.py run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
+  `cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>`, which is awesome to debug failures. Note that there are only linux docker images available locally due to licensing and
   other restrictions.
 
 The docker images prefixed with `dist-` are used for building artifacts while
@@ -322,7 +330,7 @@ Our CI workflow uses various caching mechanisms, mainly for two things:
 ### Docker images caching
 
 The Docker images we use to run most of the Linux-based builders take a *long*
-time to fully build. To speed up the build, we cache it using [Docker registry
+time to fully build. To speed up the build, we cache them using [Docker registry
 caching], with the intermediate artifacts being stored on [ghcr.io]. We also
 push the built Docker images to ghcr, so that they can be reused by other tools
 (rustup) or by developers running the Docker build locally (to speed up their
@@ -334,6 +342,13 @@ override the cache for the others. Instead, we store the images under different
 tags, identifying them with a custom hash made from the contents of all the
 Dockerfiles and related scripts.
 
+The CI calculates a hash key, so that the cache of a Docker image is
+invalidated if one of the following changes:
+
+- Dockerfile
+- Files copied into the Docker image in the Dockerfile
+- The architecture of the GitHub runner (x86 or ARM)
+
 [ghcr.io]: https://github.com/rust-lang-ci/rust/pkgs/container/rust-ci
 [Docker registry caching]: https://docs.docker.com/build/cache/backends/registry/
 
@@ -341,9 +356,18 @@ Dockerfiles and related scripts.
 
 We build some C/C++ stuff in various CI jobs, and we rely on [sccache] to cache
 the intermediate LLVM artifacts. Sccache is a distributed ccache developed by
-Mozilla, which can use an object storage bucket as the storage backend. In our
-case, the artefacts are uploaded to an S3 bucket that we control
-(`rust-lang-ci-sccache2`).
+Mozilla, which can use an object storage bucket as the storage backend.
+
+With sccache there's no need to calculate the hash key ourselves. Sccache
+invalidates the cache automatically when it detects changes to relevant inputs,
+such as the source code, the version of the compiler, and important environment
+variables.
+So we just pass the sccache wrapper on top of cargo and sccache does the rest.
+
+We store the persistent artifacts on the S3 bucket `rust-lang-ci-sccache2`. So
+when the CI runs, if sccache sees that LLVM is being compiled with the same C/C++
+compiler and the LLVM source code is the same, sccache retrieves the individual
+compiled translation units from S3.
 
 [sccache]: https://github.com/mozilla/sccache
 
@@ -427,7 +451,7 @@ this:
 [GitHub Actions]: https://github.com/rust-lang/rust/actions
 [`jobs.yml`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/jobs.yml
 [`.github/workflows/ci.yml`]: https://github.com/rust-lang/rust/blob/master/.github/workflows/ci.yml
-[`src/ci/github-actions/ci.py`]: https://github.com/rust-lang/rust/blob/master/src/ci/github-actions/ci.py
+[`src/ci/citool`]: https://github.com/rust-lang/rust/blob/master/src/ci/citool
 [rust-lang-ci]: https://github.com/rust-lang-ci/rust/actions
 [bors]: https://github.com/bors
 [homu]: https://github.com/rust-lang/homu

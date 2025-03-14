@@ -40,7 +40,7 @@ requirements of impls and functions as explicit predicates.
 ### using implicit implied bounds as assumptions
 
 These bounds are not added to the `ParamEnv` of the affected item itself. For lexical
-region resolution they are added using [`fn OutlivesEnvironment::new`].
+region resolution they are added using [`fn OutlivesEnvironment::from_normalized_bounds`].
 Similarly, during MIR borrowck we add them using
 [`fn UniversalRegionRelationsBuilder::add_implied_bounds`].
 
@@ -55,7 +55,7 @@ The assumed outlives constraints for implicit bounds are computed using the
 MIR borrowck adds the outlives constraints for both the normalized and unnormalized types,
 lexical region resolution [only uses the unnormalized types][notnorm].
 
-[`fn OutlivesEnvironment::new`]: TODO
+[`fn OutlivesEnvironment::from_normalized_bounds`]: https://github.com/rust-lang/rust/blob/8239a37f9c0951a037cfc51763ea52a20e71e6bd/compiler/rustc_infer/src/infer/outlives/env.rs#L50-L55
 [`fn UniversalRegionRelationsBuilder::add_implied_bounds`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_borrowck/src/type_check/free_region_relations.rs#L316
 [mir]: https://github.com/rust-lang/rust/blob/91cae1dcdcf1a31bd8a92e4a63793d65cfe289bb/compiler/rustc_borrowck/src/type_check/free_region_relations.rs#L258-L332
 [`fn assumed_wf_types`]: https://github.com/rust-lang/rust/blob/5b8bc568d28b2e922290c9a966b3231d0ce9398b/compiler/rustc_ty_utils/src/implied_bounds.rs#L21

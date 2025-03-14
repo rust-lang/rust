@@ -62,7 +62,7 @@ fn check_fold_with_op(
 ) {
     if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = acc.kind
         // Extract the body of the closure passed to fold
-        && let closure_body = cx.tcx.hir().body(body)
+        && let closure_body = cx.tcx.hir_body(body)
         && let closure_expr = peel_blocks(closure_body.value)
 
         // Check if the closure body is of the form `acc <op> some_expr(x)`
@@ -123,32 +123,60 @@ pub(super) fn check(
     if let hir::ExprKind::Lit(lit) = init.kind {
         match lit.node {
             ast::LitKind::Bool(false) => {
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Or, Replacement {
-                    method_name: "any",
-                    has_args: true,
-                    has_generic_return: false,
-                });
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::Or,
+                    Replacement {
+                        method_name: "any",
+                        has_args: true,
+                        has_generic_return: false,
+                    },
+                );
             },
             ast::LitKind::Bool(true) => {
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::And, Replacement {
-                    method_name: "all",
-                    has_args: true,
-                    has_generic_return: false,
-                });
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::And,
+                    Replacement {
+                        method_name: "all",
+                        has_args: true,
+                        has_generic_return: false,
+                    },
+                );
             },
             ast::LitKind::Int(Pu128(0), _) => {
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Add, Replacement {
-                    method_name: "sum",
-                    has_args: false,
-                    has_generic_return: needs_turbofish(cx, expr),
-                });
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::Add,
+                    Replacement {
+                        method_name: "sum",
+                        has_args: false,
+                        has_generic_return: needs_turbofish(cx, expr),
+                    },
+                );
             },
             ast::LitKind::Int(Pu128(1), _) => {
-                check_fold_with_op(cx, expr, acc, fold_span, hir::BinOpKind::Mul, Replacement {
-                    method_name: "product",
-                    has_args: false,
-                    has_generic_return: needs_turbofish(cx, expr),
-                });
+                check_fold_with_op(
+                    cx,
+                    expr,
+                    acc,
+                    fold_span,
+                    hir::BinOpKind::Mul,
+                    Replacement {
+                        method_name: "product",
+                        has_args: false,
+                        has_generic_return: needs_turbofish(cx, expr),
+                    },
+                );
             },
             _ => (),
         }

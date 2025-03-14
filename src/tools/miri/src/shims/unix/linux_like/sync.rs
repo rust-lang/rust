@@ -13,14 +13,6 @@ pub fn futex<'tcx>(
     varargs: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    // The amount of arguments used depends on the type of futex operation.
-    // The full futex syscall takes six arguments (excluding the syscall
-    // number), which is also the maximum amount of arguments a linux syscall
-    // can take on most architectures.
-    // However, not all futex operations use all six arguments. The unused ones
-    // may or may not be left out from the `syscall()` call.
-    // Therefore we don't use `check_arg_count` here, but only check for the
-    // number of arguments to fall within a range.
     let [addr, op, val] = check_min_vararg_count("`syscall(SYS_futex, ...)`", varargs)?;
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:

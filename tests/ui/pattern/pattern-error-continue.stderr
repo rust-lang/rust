@@ -12,12 +12,14 @@ LL |         A::D(_) => (),
    |
 help: use this syntax instead
    |
-LL |         A::D => (),
-   |         ~~~~
+LL -         A::D(_) => (),
+LL +         A::D => (),
+   |
 help: a tuple variant with a similar name exists
    |
-LL |         A::B(_) => (),
-   |            ~
+LL -         A::D(_) => (),
+LL +         A::B(_) => (),
+   |
 
 error[E0023]: this pattern has 3 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pattern-error-continue.rs:17:14

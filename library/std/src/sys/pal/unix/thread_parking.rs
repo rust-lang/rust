@@ -8,7 +8,7 @@ use crate::ffi::{c_int, c_void};
 use crate::ptr;
 use crate::time::Duration;
 
-extern "C" {
+unsafe extern "C" {
     fn ___lwp_park60(
         clock_id: clockid_t,
         flags: c_int,

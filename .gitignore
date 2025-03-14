@@ -53,7 +53,10 @@ no_llvm_build
 /target
 /library/target
 /src/bootstrap/target
+/src/ci/citool/target
 /src/tools/x/target
+# Created by `x vendor`
+/vendor
 # Created by default with `src/ci/docker/run.sh`
 /obj/
 # Created by nix dev shell / .envrc

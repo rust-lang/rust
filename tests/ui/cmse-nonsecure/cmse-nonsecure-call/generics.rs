@@ -1,12 +1,11 @@
+//@ add-core-stubs
 //@ compile-flags: --target thumbv8m.main-none-eabi --crate-type lib
 //@ needs-llvm-components: arm
 #![feature(abi_c_cmse_nonsecure_call, no_core, lang_items)]
 #![no_core]
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-impl Copy for u32 {}
+
+extern crate minicore;
+use minicore::*;
 
 #[repr(C)]
 struct Wrapper<T>(T);
@@ -39,4 +38,4 @@ type WithTransparentTraitObject =
 //~^ ERROR return value of `"C-cmse-nonsecure-call"` function too large to pass via registers [E0798]
 
 type WithVarArgs = extern "C-cmse-nonsecure-call" fn(u32, ...);
-//~^ ERROR C-variadic function must have a compatible calling convention, like `C`, `cdecl`, `system`, `aapcs`, `win64`, `sysv64` or `efiapi` [E0045]
+//~^ ERROR C-variadic function must have a compatible calling convention, like `C`

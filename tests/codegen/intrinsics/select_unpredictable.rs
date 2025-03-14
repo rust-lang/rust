@@ -1,4 +1,4 @@
-//@ compile-flags: -O -Zmerge-functions=disabled
+//@ compile-flags: -Copt-level=3 -Zmerge-functions=disabled
 
 #![feature(core_intrinsics)]
 #![feature(select_unpredictable)]

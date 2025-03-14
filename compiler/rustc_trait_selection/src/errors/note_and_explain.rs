@@ -26,7 +26,7 @@ impl<'a> DescriptionCtx<'a> {
                     .parent(tcx.generics_of(generic_param_scope).region_param(br, tcx).def_id)
                     .expect_local();
                 let span = if let Some(param) =
-                    tcx.hir().get_generics(scope).and_then(|generics| generics.get_named(br.name))
+                    tcx.hir_get_generics(scope).and_then(|generics| generics.get_named(br.name))
                 {
                     param.span
                 } else {
@@ -48,8 +48,7 @@ impl<'a> DescriptionCtx<'a> {
                     match fr.kind {
                         ty::LateParamRegionKind::Named(_, name) => {
                             let span = if let Some(param) = tcx
-                                .hir()
-                                .get_generics(scope)
+                                .hir_get_generics(scope)
                                 .and_then(|generics| generics.get_named(name))
                             {
                                 param.span
@@ -106,7 +105,7 @@ pub enum SuffixKind {
 }
 
 impl IntoDiagArg for PrefixKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::RefValidFor => "ref_valid_for",
@@ -128,7 +127,7 @@ impl IntoDiagArg for PrefixKind {
 }
 
 impl IntoDiagArg for SuffixKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Empty => "empty",
             Self::Continues => "continues",

@@ -4,7 +4,7 @@ use core::mem;
 use core::ops::{Bound, ControlFlow};
 
 use ast::mut_visit::{self, MutVisitor};
-use ast::token::IdentIsRaw;
+use ast::token::{IdentIsRaw, MetaVarKind};
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
                 break;
             }
             // Check for deprecated `...` syntax
-            if self.token == token::DotDotDot && op.node == AssocOp::DotDotEq {
+            if self.token == token::DotDotDot && op.node == AssocOp::Range(RangeLimits::Closed) {
                 self.err_dotdotdot_syntax(self.token.span);
             }
 
@@ -188,17 +188,12 @@ impl<'a> Parser<'a> {
             }
 
             // Look for JS' `===` and `!==` and recover
-            if (op.node == AssocOp::Equal || op.node == AssocOp::NotEqual)
+            if let AssocOp::Binary(bop @ BinOpKind::Eq | bop @ BinOpKind::Ne) = op.node
                 && self.token == token::Eq
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
                 let sp = op.span.to(self.token.span);
-                let sugg = match op.node {
-                    AssocOp::Equal => "==",
-                    AssocOp::NotEqual => "!=",
-                    _ => unreachable!(),
-                }
-                .into();
+                let sugg = bop.as_str().into();
                 let invalid = format!("{sugg}=");
                 self.dcx().emit_err(errors::InvalidComparisonOperator {
                     span: sp,
@@ -213,7 +208,7 @@ impl<'a> Parser<'a> {
             }
 
             // Look for PHP's `<>` and recover
-            if op.node == AssocOp::Less
+            if op.node == AssocOp::Binary(BinOpKind::Lt)
                 && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
@@ -231,7 +226,7 @@ impl<'a> Parser<'a> {
             }
 
             // Look for C++'s `<=>` and recover
-            if op.node == AssocOp::LessEqual
+            if op.node == AssocOp::Binary(BinOpKind::Le)
                 && self.token == token::Gt
                 && self.prev_token.span.hi() == self.token.span.lo()
             {
@@ -244,8 +239,8 @@ impl<'a> Parser<'a> {
                 self.bump();
             }
 
-            if self.prev_token == token::BinOp(token::Plus)
-                && self.token == token::BinOp(token::Plus)
+            if self.prev_token == token::Plus
+                && self.token == token::Plus
                 && self.prev_token.span.between(self.token.span).is_empty()
             {
                 let op_span = self.prev_token.span.to(self.token.span);
@@ -255,8 +250,8 @@ impl<'a> Parser<'a> {
                 continue;
             }
 
-            if self.prev_token == token::BinOp(token::Minus)
-                && self.token == token::BinOp(token::Minus)
+            if self.prev_token == token::Minus
+                && self.token == token::Minus
                 && self.prev_token.span.between(self.token.span).is_empty()
                 && !self.look_ahead(1, |tok| tok.can_begin_expr())
             {
@@ -269,13 +264,13 @@ impl<'a> Parser<'a> {
 
             let op = op.node;
             // Special cases:
-            if op == AssocOp::As {
+            if op == AssocOp::Cast {
                 lhs = self.parse_assoc_op_cast(lhs, lhs_span, ExprKind::Cast)?;
                 continue;
-            } else if op == AssocOp::DotDot || op == AssocOp::DotDotEq {
+            } else if let AssocOp::Range(limits) = op {
                 // If we didn't have to handle `x..`/`x..=`, it would be pretty easy to
                 // generalise it to the Fixity::None code.
-                lhs = self.parse_expr_range(prec, lhs, op, cur_op_span)?;
+                lhs = self.parse_expr_range(prec, lhs, limits, cur_op_span)?;
                 break;
             }
 
@@ -290,46 +285,16 @@ impl<'a> Parser<'a> {
 
             let span = self.mk_expr_sp(&lhs, lhs_span, rhs.span);
             lhs = match op {
-                AssocOp::Add
-                | AssocOp::Subtract
-                | AssocOp::Multiply
-                | AssocOp::Divide
-                | AssocOp::Modulus
-                | AssocOp::LAnd
-                | AssocOp::LOr
-                | AssocOp::BitXor
-                | AssocOp::BitAnd
-                | AssocOp::BitOr
-                | AssocOp::ShiftLeft
-                | AssocOp::ShiftRight
-                | AssocOp::Equal
-                | AssocOp::Less
-                | AssocOp::LessEqual
-                | AssocOp::NotEqual
-                | AssocOp::Greater
-                | AssocOp::GreaterEqual => {
-                    let ast_op = op.to_ast_binop().unwrap();
+                AssocOp::Binary(ast_op) => {
                     let binary = self.mk_binary(source_map::respan(cur_op_span, ast_op), lhs, rhs);
                     self.mk_expr(span, binary)
                 }
                 AssocOp::Assign => self.mk_expr(span, ExprKind::Assign(lhs, rhs, cur_op_span)),
-                AssocOp::AssignOp(k) => {
-                    let aop = match k {
-                        token::Plus => BinOpKind::Add,
-                        token::Minus => BinOpKind::Sub,
-                        token::Star => BinOpKind::Mul,
-                        token::Slash => BinOpKind::Div,
-                        token::Percent => BinOpKind::Rem,
-                        token::Caret => BinOpKind::BitXor,
-                        token::And => BinOpKind::BitAnd,
-                        token::Or => BinOpKind::BitOr,
-                        token::Shl => BinOpKind::Shl,
-                        token::Shr => BinOpKind::Shr,
-                    };
+                AssocOp::AssignOp(aop) => {
                     let aopexpr = self.mk_assign_op(source_map::respan(cur_op_span, aop), lhs, rhs);
                     self.mk_expr(span, aopexpr)
                 }
-                AssocOp::As | AssocOp::DotDot | AssocOp::DotDotEq => {
+                AssocOp::Cast | AssocOp::Range(_) => {
                     self.dcx().span_bug(span, "AssocOp should have been handled by special case")
                 }
             };
@@ -347,13 +312,14 @@ impl<'a> Parser<'a> {
             // An exhaustive check is done in the following block, but these are checked first
             // because they *are* ambiguous but also reasonable looking incorrect syntax, so we
             // want to keep their span info to improve diagnostics in these cases in a later stage.
-            (true, Some(AssocOp::Multiply)) | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
-            (true, Some(AssocOp::Subtract)) | // `{ 42 } -5`
-            (true, Some(AssocOp::Add)) | // `{ 42 } + 42` (unary plus)
-            (true, Some(AssocOp::LAnd)) | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
-            (true, Some(AssocOp::LOr)) | // `{ 42 } || 42` ("logical or" or closure)
-            (true, Some(AssocOp::BitOr)) // `{ 42 } | 42` or `{ 42 } |x| 42`
-            => {
+            (true, Some(AssocOp::Binary(
+                BinOpKind::Mul | // `{ 42 } *foo = bar;` or `{ 42 } * 3`
+                BinOpKind::Sub | // `{ 42 } -5`
+                BinOpKind::Add | // `{ 42 } + 42` (unary plus)
+                BinOpKind::And | // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
+                BinOpKind::Or | // `{ 42 } || 42` ("logical or" or closure)
+                BinOpKind::BitOr // `{ 42 } | 42` or `{ 42 } |x| 42`
+            ))) => {
                 // These cases are ambiguous and can't be identified in the parser alone.
                 //
                 // Bitwise AND is left out because guessing intent is hard. We can make
@@ -392,23 +358,21 @@ impl<'a> Parser<'a> {
             // When parsing const expressions, stop parsing when encountering `>`.
             (
                 Some(
-                    AssocOp::ShiftRight
-                    | AssocOp::Greater
-                    | AssocOp::GreaterEqual
-                    | AssocOp::AssignOp(token::BinOpToken::Shr),
+                    AssocOp::Binary(BinOpKind::Shr | BinOpKind::Gt | BinOpKind::Ge)
+                    | AssocOp::AssignOp(BinOpKind::Shr),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::CONST_EXPR) => {
                 return None;
             }
-            // When recovering patterns as expressions, stop parsing when encountering an assignment `=`, an alternative `|`, or a range `..`.
+            // When recovering patterns as expressions, stop parsing when encountering an
+            // assignment `=`, an alternative `|`, or a range `..`.
             (
                 Some(
                     AssocOp::Assign
                     | AssocOp::AssignOp(_)
-                    | AssocOp::BitOr
-                    | AssocOp::DotDot
-                    | AssocOp::DotDotEq,
+                    | AssocOp::Binary(BinOpKind::BitOr)
+                    | AssocOp::Range(_),
                 ),
                 _,
             ) if self.restrictions.contains(Restrictions::IS_PAT) => {
@@ -423,7 +387,7 @@ impl<'a> Parser<'a> {
                     incorrect: "and".into(),
                     sub: errors::InvalidLogicalOperatorSub::Conjunction(self.token.span),
                 });
-                (AssocOp::LAnd, span)
+                (AssocOp::Binary(BinOpKind::And), span)
             }
             (None, Some((Ident { name: sym::or, span }, IdentIsRaw::No))) if self.may_recover() => {
                 self.dcx().emit_err(errors::InvalidLogicalOperator {
@@ -431,7 +395,7 @@ impl<'a> Parser<'a> {
                     incorrect: "or".into(),
                     sub: errors::InvalidLogicalOperatorSub::Disjunction(self.token.span),
                 });
-                (AssocOp::LOr, span)
+                (AssocOp::Binary(BinOpKind::Or), span)
             }
             _ => return None,
         };
@@ -449,7 +413,7 @@ impl<'a> Parser<'a> {
         &mut self,
         prec: ExprPrecedence,
         lhs: P<Expr>,
-        op: AssocOp,
+        limits: RangeLimits,
         cur_op_span: Span,
     ) -> PResult<'a, P<Expr>> {
         let rhs = if self.is_at_start_of_range_notation_rhs() {
@@ -465,8 +429,6 @@ impl<'a> Parser<'a> {
         };
         let rhs_span = rhs.as_ref().map_or(cur_op_span, |x| x.span);
         let span = self.mk_expr_sp(&lhs, lhs.span, rhs_span);
-        let limits =
-            if op == AssocOp::DotDot { RangeLimits::HalfOpen } else { RangeLimits::Closed };
         let range = self.mk_range(Some(lhs), rhs, limits);
         Ok(self.mk_expr(span, range))
     }
@@ -543,23 +505,23 @@ impl<'a> Parser<'a> {
         // Note: when adding new unary operators, don't forget to adjust TokenKind::can_begin_expr()
         match this.token.uninterpolate().kind {
             // `!expr`
-            token::Not => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
+            token::Bang => make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Not)),
             // `~expr`
             token::Tilde => make_it!(this, attrs, |this, _| this.recover_tilde_expr(lo)),
             // `-expr`
-            token::BinOp(token::Minus) => {
+            token::Minus => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Neg))
             }
             // `*expr`
-            token::BinOp(token::Star) => {
+            token::Star => {
                 make_it!(this, attrs, |this, _| this.parse_expr_unary(lo, UnOp::Deref))
             }
             // `&expr` and `&&expr`
-            token::BinOp(token::And) | token::AndAnd => {
+            token::And | token::AndAnd => {
                 make_it!(this, attrs, |this, _| this.parse_expr_borrow(lo))
             }
             // `+lit`
-            token::BinOp(token::Plus) if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
+            token::Plus if this.look_ahead(1, |tok| tok.is_numeric_lit()) => {
                 let mut err = errors::LeadingPlusNotSupported {
                     span: lo,
                     remove_plus: None,
@@ -579,9 +541,7 @@ impl<'a> Parser<'a> {
                 this.parse_expr_prefix(attrs)
             }
             // Recover from `++x`:
-            token::BinOp(token::Plus)
-                if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
-            {
+            token::Plus if this.look_ahead(1, |t| *t == token::Plus) => {
                 let starts_stmt = this.prev_token == token::Semi
                     || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
@@ -605,7 +565,11 @@ impl<'a> Parser<'a> {
     fn parse_expr_prefix_common(&mut self, lo: Span) -> PResult<'a, (Span, P<Expr>)> {
         self.bump();
         let attrs = self.parse_outer_attributes()?;
-        let expr = self.parse_expr_prefix(attrs)?;
+        let expr = if self.token.is_range_separator() {
+            self.parse_expr_prefix_range(attrs)
+        } else {
+            self.parse_expr_prefix(attrs)
+        }?;
         let span = self.interpolated_or_expr_span(&expr);
         Ok((lo.to(span), expr))
     }
@@ -761,14 +725,12 @@ impl<'a> Parser<'a> {
                                     suggestion,
                                 })
                             }
-                            token::BinOp(token::Shl) => {
-                                self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
-                                    shift: self.token.span,
-                                    r#type: path,
-                                    args: args_span,
-                                    suggestion,
-                                })
-                            }
+                            token::Shl => self.dcx().emit_err(errors::ShiftInterpretedAsGeneric {
+                                shift: self.token.span,
+                                r#type: path,
+                                args: args_span,
+                                suggestion,
+                            }),
                             _ => {
                                 // We can end up here even without `<` being the next token, for
                                 // example because `parse_ty_no_plus` returns `Err` on keywords,
@@ -807,17 +769,21 @@ impl<'a> Parser<'a> {
         // Check if an illegal postfix operator has been added after the cast.
         // If the resulting expression is not a cast, it is an illegal postfix operator.
         if !matches!(with_postfix.kind, ExprKind::Cast(_, _)) {
-            let msg = format!("cast cannot be followed by {}", match with_postfix.kind {
-                ExprKind::Index(..) => "indexing",
-                ExprKind::Try(_) => "`?`",
-                ExprKind::Field(_, _) => "a field access",
-                ExprKind::MethodCall(_) => "a method call",
-                ExprKind::Call(_, _) => "a function call",
-                ExprKind::Await(_, _) => "`.await`",
-                ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
-                ExprKind::Err(_) => return Ok(with_postfix),
-                _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
-            });
+            let msg = format!(
+                "cast cannot be followed by {}",
+                match with_postfix.kind {
+                    ExprKind::Index(..) => "indexing",
+                    ExprKind::Try(_) => "`?`",
+                    ExprKind::Field(_, _) => "a field access",
+                    ExprKind::MethodCall(_) => "a method call",
+                    ExprKind::Call(_, _) => "a function call",
+                    ExprKind::Await(_, _) => "`.await`",
+                    ExprKind::Use(_, _) => "`.use`",
+                    ExprKind::Match(_, _, MatchKind::Postfix) => "a postfix match",
+                    ExprKind::Err(_) => return Ok(with_postfix),
+                    _ => unreachable!("parse_dot_or_call_expr_with_ shouldn't produce this"),
+                }
+            );
             let mut err = self.dcx().struct_span_err(span, msg);
 
             let suggest_parens = |err: &mut Diag<'_>| {
@@ -1331,6 +1297,12 @@ impl<'a> Parser<'a> {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
+        if self.eat_keyword(exp!(Use)) {
+            let use_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_span);
+            return Ok(self.mk_use_expr(self_arg, lo));
+        }
+
         // Post-fix match
         if self.eat_keyword(exp!(Match)) {
             let match_span = self.prev_token.span;
@@ -1379,6 +1351,7 @@ impl<'a> Parser<'a> {
     fn parse_expr_bottom(&mut self) -> PResult<'a, P<Expr>> {
         maybe_recover_from_interpolated_ty_qpath!(self, true);
 
+        let span = self.token.span;
         if let token::Interpolated(nt) = &self.token.kind {
             match &**nt {
                 token::NtExpr(e) | token::NtLiteral(e) => {
@@ -1386,18 +1359,16 @@ impl<'a> Parser<'a> {
                     self.bump();
                     return Ok(e);
                 }
-                token::NtPath(path) => {
-                    let path = (**path).clone();
-                    self.bump();
-                    return Ok(self.mk_expr(self.prev_token.span, ExprKind::Path(None, path)));
-                }
                 token::NtBlock(block) => {
                     let block = block.clone();
                     self.bump();
                     return Ok(self.mk_expr(self.prev_token.span, ExprKind::Block(block, None)));
                 }
-                _ => {}
             };
+        } else if let Some(path) = self.eat_metavar_seq(MetaVarKind::Path, |this| {
+            this.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))
+        }) {
+            return Ok(self.mk_expr(span, ExprKind::Path(None, path)));
         }
 
         // Outer attributes are already parsed and will be
@@ -1432,6 +1403,7 @@ impl<'a> Parser<'a> {
             } else if this.check_path() {
                 this.parse_expr_path_start()
             } else if this.check_keyword(exp!(Move))
+                || this.check_keyword(exp!(Use))
                 || this.check_keyword(exp!(Static))
                 || this.check_const_closure()
             {
@@ -1609,7 +1581,7 @@ impl<'a> Parser<'a> {
         };
 
         // `!`, as an operator, is prefix, so we know this isn't that.
-        let (span, kind) = if self.eat(exp!(Not)) {
+        let (span, kind) = if self.eat(exp!(Bang)) {
             // MACRO INVOCATION expression
             if qself.is_some() {
                 self.dcx().emit_err(errors::MacroInvocationWithQualifiedPath(path.span));
@@ -2423,7 +2395,7 @@ impl<'a> Parser<'a> {
         Ok(closure)
     }
 
-    /// Parses an optional `move` prefix to a closure-like construct.
+    /// Parses an optional `move` or `use` prefix to a closure-like construct.
     fn parse_capture_clause(&mut self) -> PResult<'a, CaptureBy> {
         if self.eat_keyword(exp!(Move)) {
             let move_kw_span = self.prev_token.span;
@@ -2435,6 +2407,16 @@ impl<'a> Parser<'a> {
                     .create_err(errors::AsyncMoveOrderIncorrect { span: move_async_span }))
             } else {
                 Ok(CaptureBy::Value { move_kw: move_kw_span })
+            }
+        } else if self.eat_keyword(exp!(Use)) {
+            let use_kw_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::ergonomic_clones, use_kw_span);
+            // Check for `use async` and recover
+            if self.check_keyword(exp!(Async)) {
+                let use_async_span = self.token.span.with_lo(self.prev_token.span.data().lo);
+                Err(self.dcx().create_err(errors::AsyncUseOrderIncorrect { span: use_async_span }))
+            } else {
+                Ok(CaptureBy::Use { use_kw: use_kw_span })
             }
         } else {
             Ok(CaptureBy::Ref)
@@ -2630,7 +2612,7 @@ impl<'a> Parser<'a> {
                 missing_let: None,
                 comparison: None,
             };
-            if self.prev_token == token::BinOp(token::Or) {
+            if self.prev_token == token::Or {
                 // This was part of a closure, the that part of the parser recover.
                 return Err(self.dcx().create_err(err));
             } else {
@@ -2862,13 +2844,10 @@ impl<'a> Parser<'a> {
                 .emit_err(errors::MissingExpressionInForLoop { span: expr.span.shrink_to_lo() });
             let err_expr = self.mk_expr(expr.span, ExprKind::Err(guar));
             let block = self.mk_block(thin_vec![], BlockCheckMode::Default, self.prev_token.span);
-            return Ok(self.mk_expr(lo.to(self.prev_token.span), ExprKind::ForLoop {
-                pat,
-                iter: err_expr,
-                body: block,
-                label: opt_label,
-                kind,
-            }));
+            return Ok(self.mk_expr(
+                lo.to(self.prev_token.span),
+                ExprKind::ForLoop { pat, iter: err_expr, body: block, label: opt_label, kind },
+            ));
         }
 
         let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
@@ -3084,7 +3063,7 @@ impl<'a> Parser<'a> {
             }
 
             self.restore_snapshot(pre_pat_snapshot);
-            match self.parse_stmt_without_recovery(true, ForceCollect::No) {
+            match self.parse_stmt_without_recovery(true, ForceCollect::No, false) {
                 // Consume statements for as long as possible.
                 Ok(Some(stmt)) => {
                     stmts.push(stmt);
@@ -3125,10 +3104,11 @@ impl<'a> Parser<'a> {
             let mut result = if armless {
                 // A pattern without a body, allowed for never patterns.
                 arm_body = None;
+                let span = lo.to(this.prev_token.span);
                 this.expect_one_of(&[exp!(Comma)], &[exp!(CloseBrace)]).map(|x| {
                     // Don't gate twice
                     if !pat.contains_never_pattern() {
-                        this.psess.gated_spans.gate(sym::never_patterns, pat.span);
+                        this.psess.gated_spans.gate(sym::never_patterns, span);
                     }
                     x
                 })
@@ -3452,7 +3432,7 @@ impl<'a> Parser<'a> {
         self.is_keyword_ahead(lookahead, &[kw])
             && ((
                 // `async move {`
-                self.is_keyword_ahead(lookahead + 1, &[kw::Move])
+                self.is_keyword_ahead(lookahead + 1, &[kw::Move, kw::Use])
                     && self.look_ahead(lookahead + 2, |t| {
                         *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block()
                     })
@@ -3855,6 +3835,13 @@ impl<'a> Parser<'a> {
         await_expr
     }
 
+    fn mk_use_expr(&mut self, self_arg: P<Expr>, lo: Span) -> P<Expr> {
+        let span = lo.to(self.prev_token.span);
+        let use_expr = self.mk_expr(span, ExprKind::Use(self_arg, self.prev_token.span));
+        self.recover_from_use();
+        use_expr
+    }
+
     pub(crate) fn mk_expr_with_attrs(&self, span: Span, kind: ExprKind, attrs: AttrVec) -> P<Expr> {
         P(Expr { kind, span, attrs, id: DUMMY_NODE_ID, tokens: None })
     }
@@ -4003,6 +3990,7 @@ impl MutVisitor for CondChecker<'_> {
             }
             ExprKind::Unary(_, _)
             | ExprKind::Await(_, _)
+            | ExprKind::Use(_, _)
             | ExprKind::AssignOp(_, _, _)
             | ExprKind::Range(_, _, _)
             | ExprKind::Try(_)

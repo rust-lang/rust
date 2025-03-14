@@ -11,12 +11,6 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, Stab
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
-use rustc_middle::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
-use rustc_middle::mir::interpret::{AllocDecodingSession, AllocDecodingState};
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::mir::{self, interpret};
-use rustc_middle::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
-use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_query_system::query::QuerySideEffects;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -29,6 +23,13 @@ use rustc_span::{
     BytePos, CachingSourceMapView, ExpnData, ExpnHash, Pos, RelativeBytePos, SourceFile, Span,
     SpanDecoder, SpanEncoder, StableSourceFileId, Symbol,
 };
+
+use crate::dep_graph::{DepNodeIndex, SerializedDepNodeIndex};
+use crate::mir::interpret::{AllocDecodingSession, AllocDecodingState};
+use crate::mir::mono::MonoItem;
+use crate::mir::{self, interpret};
+use crate::ty::codec::{RefDecodable, TyDecoder, TyEncoder};
+use crate::ty::{self, Ty, TyCtxt};
 
 const TAG_FILE_FOOTER: u128 = 0xC0FFEE_C0FFEE_C0FFEE_C0FFEE_C0FFEE;
 
@@ -327,15 +328,18 @@ impl OnDiskCache {
 
             // Encode the file footer.
             let footer_pos = encoder.position() as u64;
-            encoder.encode_tagged(TAG_FILE_FOOTER, &Footer {
-                file_index_to_stable_id,
-                query_result_index,
-                side_effects_index,
-                interpret_alloc_index,
-                syntax_contexts,
-                expn_data,
-                foreign_expn_data,
-            });
+            encoder.encode_tagged(
+                TAG_FILE_FOOTER,
+                &Footer {
+                    file_index_to_stable_id,
+                    query_result_index,
+                    side_effects_index,
+                    interpret_alloc_index,
+                    syntax_contexts,
+                    expn_data,
+                    foreign_expn_data,
+                },
+            );
 
             // Encode the position of the footer as the last 8 bytes of the
             // file so we know where to look for it.
@@ -560,7 +564,7 @@ impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
     }
 }
 
-rustc_middle::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
+crate::implement_ty_decoder!(CacheDecoder<'a, 'tcx>);
 
 // This ensures that the `Decodable<opaque::Decoder>::decode` specialization for `Vec<u8>` is used
 // when a `CacheDecoder` is passed to `Decodable::decode`. Unfortunately, we have to manually opt

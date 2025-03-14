@@ -900,8 +900,8 @@ fn codegen_stmt<'tcx>(
                     };
                     let data = codegen_operand(fx, data);
                     let meta = codegen_operand(fx, meta);
-                    assert!(data.layout().ty.is_unsafe_ptr());
-                    assert!(layout.ty.is_unsafe_ptr());
+                    assert!(data.layout().ty.is_raw_ptr());
+                    assert!(layout.ty.is_raw_ptr());
                     let ptr_val = if meta.layout().is_zst() {
                         data.cast_pointer_to(layout)
                     } else {

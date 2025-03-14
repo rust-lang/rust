@@ -290,8 +290,13 @@ fn run_rustfmt(context: &FmtContext) -> Result<(), Error> {
         .filter_map(|entry| {
             let entry = entry.expect("failed to find tests");
             let path = entry.path();
-
-            if path.extension() != Some("rs".as_ref()) || entry.file_name() == "ice-3891.rs" {
+            if path.extension() != Some("rs".as_ref())
+                || path
+                    .components()
+                    .nth_back(1)
+                    .is_some_and(|c| c.as_os_str() == "syntax-error-recovery")
+                || entry.file_name() == "ice-3891.rs"
+            {
                 None
             } else {
                 Some(entry.into_path().into_os_string())

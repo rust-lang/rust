@@ -1,7 +1,5 @@
 //@ run-pass
 
-#![feature(trait_upcasting)]
-
 trait Super<U> {
     fn call(&self)
     where

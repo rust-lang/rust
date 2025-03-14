@@ -45,6 +45,7 @@ impl<R: Read + ?Sized> Read for &mut R {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
+
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
@@ -78,6 +79,11 @@ impl<W: Write + ?Sized> Write for &mut W {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (**self).write_all_vectored(bufs)
+    }
+
+    #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
@@ -90,8 +96,23 @@ impl<S: Seek + ?Sized> Seek for &mut S {
     }
 
     #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        (**self).rewind()
+    }
+
+    #[inline]
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (**self).stream_len()
+    }
+
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         (**self).stream_position()
+    }
+
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -107,8 +128,18 @@ impl<B: BufRead + ?Sized> BufRead for &mut B {
     }
 
     #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        (**self).has_data_left()
+    }
+
+    #[inline]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, byte: u8) -> io::Result<usize> {
+        (**self).skip_until(byte)
     }
 
     #[inline]
@@ -153,6 +184,7 @@ impl<R: Read + ?Sized> Read for Box<R> {
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         (**self).read_exact(buf)
     }
+
     #[inline]
     fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
         (**self).read_buf_exact(cursor)
@@ -186,6 +218,11 @@ impl<W: Write + ?Sized> Write for Box<W> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        (**self).write_all_vectored(bufs)
+    }
+
+    #[inline]
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
         (**self).write_fmt(fmt)
     }
@@ -198,8 +235,23 @@ impl<S: Seek + ?Sized> Seek for Box<S> {
     }
 
     #[inline]
+    fn rewind(&mut self) -> io::Result<()> {
+        (**self).rewind()
+    }
+
+    #[inline]
+    fn stream_len(&mut self) -> io::Result<u64> {
+        (**self).stream_len()
+    }
+
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         (**self).stream_position()
+    }
+
+    #[inline]
+    fn seek_relative(&mut self, offset: i64) -> io::Result<()> {
+        (**self).seek_relative(offset)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -215,8 +267,18 @@ impl<B: BufRead + ?Sized> BufRead for Box<B> {
     }
 
     #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        (**self).has_data_left()
+    }
+
+    #[inline]
     fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<usize> {
         (**self).read_until(byte, buf)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, byte: u8) -> io::Result<usize> {
+        (**self).skip_until(byte)
     }
 
     #[inline]
@@ -393,7 +455,17 @@ impl Write for &mut [u8] {
 
     #[inline]
     fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
-        if self.write(data)? == data.len() { Ok(()) } else { Err(io::Error::WRITE_ALL_EOF) }
+        if self.write(data)? < data.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        for buf in bufs {
+            if self.write(buf)? < buf.len() {
+                return Err(io::Error::WRITE_ALL_EOF);
+            }
+        }
+        Ok(())
     }
 
     #[inline]
@@ -434,6 +506,12 @@ impl<A: Allocator> Write for Vec<u8, A> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.write_vectored(bufs)?;
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -453,6 +531,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(n)
     }
 
+    #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         let (front, back) = self.as_slices();
 
@@ -485,6 +564,7 @@ impl<A: Allocator> Read for VecDeque<u8, A> {
         Ok(())
     }
 
+    #[inline]
     fn read_buf_exact(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
         let len = cursor.capacity();
         let (front, back) = self.as_slices();
@@ -577,6 +657,12 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
     }
 
     #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        self.write_vectored(bufs)?;
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -584,10 +670,44 @@ impl<A: Allocator> Write for VecDeque<u8, A> {
 
 #[unstable(feature = "read_buf", issue = "78485")]
 impl<'a> io::Write for core::io::BorrowedCursor<'a> {
+    #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         let amt = cmp::min(buf.len(), self.capacity());
         self.append(&buf[..amt]);
         Ok(amt)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let mut nwritten = 0;
+        for buf in bufs {
+            let n = self.write(buf)?;
+            nwritten += n;
+            if n < buf.len() {
+                break;
+            }
+        }
+        Ok(nwritten)
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        if self.write(buf)? < buf.len() { Err(io::Error::WRITE_ALL_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        for buf in bufs {
+            if self.write(buf)? < buf.len() {
+                return Err(io::Error::WRITE_ALL_EOF);
+            }
+        }
+        Ok(())
     }
 
     #[inline]

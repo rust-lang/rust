@@ -8,7 +8,7 @@ LL |     test_debug.err().expect("Testing debug type");
    = help: to override `-D warnings` add `#[allow(clippy::err_expect)]`
 
 error: called `.err().expect()` on a `Result` value
-  --> tests/ui/err_expect.rs:25:7
+  --> tests/ui/err_expect.rs:26:7
    |
 LL |     x.err().expect("17");
    |       ^^^^^^^^^^^^ help: try: `expect_err`

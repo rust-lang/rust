@@ -2,18 +2,17 @@
 
 mod check_match;
 mod const_to_pat;
+mod migration;
 
 use std::cmp::Ordering;
 use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer};
-use rustc_errors::MultiSpan;
 use rustc_errors::codes::*;
 use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
-use rustc_hir::{self as hir, ByRef, Mutability, RangeEnd};
+use rustc_hir::{self as hir, RangeEnd};
 use rustc_index::Idx;
-use rustc_lint as lint;
 use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
@@ -26,8 +25,8 @@ use rustc_span::{ErrorGuaranteed, Span};
 use tracing::{debug, instrument};
 
 pub(crate) use self::check_match::check_match;
+use self::migration::PatMigration;
 use crate::errors::*;
-use crate::fluent_generated as fluent;
 
 struct PatCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -35,7 +34,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration_suggestion: Option<Rust2024IncompatiblePatSugg<'a>>,
+    rust_2024_migration: Option<PatMigration<'a>>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -48,48 +47,32 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
         tcx,
         typing_env,
         typeck_results,
-        rust_2024_migration_suggestion: typeck_results
+        rust_2024_migration: typeck_results
             .rust_2024_migration_desugared_pats()
             .get(pat.hir_id)
-            .map(|labels| Rust2024IncompatiblePatSugg {
-                suggestion: Vec::new(),
-                ref_pattern_count: 0,
-                binding_mode_count: 0,
-                labels: labels.as_slice(),
-            }),
+            .map(PatMigration::new),
     };
     let result = pcx.lower_pattern(pat);
     debug!("pat_from_hir({:?}) = {:?}", pat, result);
-    if let Some(sugg) = pcx.rust_2024_migration_suggestion {
-        let mut spans = MultiSpan::from_spans(sugg.labels.iter().map(|(span, _)| *span).collect());
-        for (span, label) in sugg.labels {
-            spans.push_span_label(*span, label.clone());
-        }
-        // If a relevant span is from at least edition 2024, this is a hard error.
-        let is_hard_error = spans.primary_spans().iter().any(|span| span.at_least_rust_2024());
-        if is_hard_error {
-            let mut err =
-                tcx.dcx().struct_span_err(spans, fluent::mir_build_rust_2024_incompatible_pat);
-            if let Some(info) = lint::builtin::RUST_2024_INCOMPATIBLE_PAT.future_incompatible {
-                // provide the same reference link as the lint
-                err.note(format!("for more information, see {}", info.reference));
-            }
-            err.subdiagnostic(sugg);
-            err.emit();
-        } else {
-            tcx.emit_node_span_lint(
-                lint::builtin::RUST_2024_INCOMPATIBLE_PAT,
-                pat.hir_id,
-                spans,
-                Rust2024IncompatiblePat { sugg },
-            );
-        }
+    if let Some(m) = pcx.rust_2024_migration {
+        m.emit(tcx, pat.hir_id);
     }
     result
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
+        let adjustments: &[Ty<'tcx>] =
+            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
+
+        // Track the default binding mode for the Rust 2024 migration suggestion.
+        let mut opt_old_mode_span = None;
+        if let Some(s) = &mut self.rust_2024_migration
+            && !adjustments.is_empty()
+        {
+            opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
+        }
+
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -118,8 +101,6 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => self.lower_pattern_unadjusted(pat),
         };
 
-        let adjustments: &[Ty<'tcx>] =
-            self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
             Box::new(Pat {
@@ -129,25 +110,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             })
         });
 
-        if let Some(s) = &mut self.rust_2024_migration_suggestion
+        if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            let suggestion_str: String = adjustments
-                .iter()
-                .map(|ref_ty| {
-                    let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                        span_bug!(pat.span, "pattern implicitly dereferences a non-ref type");
-                    };
-
-                    match mutbl {
-                        ty::Mutability::Not => "&",
-                        ty::Mutability::Mut => "&mut ",
-                    }
-                })
-                .collect();
-            s.suggestion.push((pat.span.shrink_to_lo(), suggestion_str));
-            s.ref_pattern_count += adjustments.len();
-        };
+            s.leave_ref(opt_old_mode_span);
+        }
 
         adjusted_pat
     }
@@ -163,7 +130,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Lower the endpoint into a temporary `PatKind` that will then be
         // deconstructed to obtain the constant value and other data.
-        let mut kind: PatKind<'tcx> = self.lower_lit(expr);
+        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr);
 
         // Unpeel any ascription or inline-const wrapper nodes.
         loop {
@@ -327,7 +294,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Expr(value) => self.lower_lit(value),
+            hir::PatKind::Expr(value) => self.lower_pat_expr(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -340,7 +307,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
-            hir::PatKind::Ref(subpattern, _) | hir::PatKind::Box(subpattern) => {
+            hir::PatKind::Ref(subpattern, _) => {
+                // Track the default binding mode for the Rust 2024 migration suggestion.
+                let opt_old_mode_span =
+                    self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
+                let subpattern = self.lower_pattern(subpattern);
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.leave_ref(opt_old_mode_span);
+                }
+                PatKind::Deref { subpattern }
+            }
+            hir::PatKind::Box(subpattern) => {
                 PatKind::Deref { subpattern: self.lower_pattern(subpattern) }
             }
 
@@ -367,19 +344,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let Some(s) = &mut self.rust_2024_migration_suggestion
-                    && explicit_ba.0 == ByRef::No
-                    && let ByRef::Yes(mutbl) = mode.0
-                {
-                    let sugg_str = match mutbl {
-                        Mutability::Not => "ref ",
-                        Mutability::Mut => "ref mut ",
-                    };
-                    s.suggestion.push((
-                        pat.span.with_lo(ident.span.lo()).shrink_to_lo(),
-                        sugg_str.to_owned(),
-                    ));
-                    s.binding_mode_count += 1;
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.visit_binding(pat.span, mode, explicit_ba, ident);
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
@@ -573,7 +539,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &self,
         hir_id: hir::HirId,
     ) -> Option<ty::CanonicalUserType<'tcx>> {
-        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.tcx, self.typeck_results, hir_id)
     }
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
@@ -584,54 +550,57 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let pat_from_kind = |kind| Box::new(Pat { span, ty, kind });
+        let (def_id, user_ty) = match res {
+            Res::Def(DefKind::Const, def_id) => (def_id, None),
+            Res::Def(DefKind::AssocConst, def_id) => {
+                (def_id, self.typeck_results.user_provided_types().get(id))
+            }
 
-        let (def_id, is_associated_const) = match res {
-            Res::Def(DefKind::Const, def_id) => (def_id, false),
-            Res::Def(DefKind::AssocConst, def_id) => (def_id, true),
-
-            _ => return pat_from_kind(self.lower_variant_or_leaf(res, id, span, ty, vec![])),
+            _ => {
+                // The path isn't the name of a constant, so it must actually
+                // be a unit struct or unit variant (e.g. `Option::None`).
+                let kind = self.lower_variant_or_leaf(res, id, span, ty, vec![]);
+                return Box::new(Pat { span, ty, kind });
+            }
         };
 
+        // Lower the named constant to a THIR pattern.
         let args = self.typeck_results.node_args(id);
         let c = ty::Const::new_unevaluated(self.tcx, ty::UnevaluatedConst { def: def_id, args });
         let subpattern = self.const_to_pat(c, ty, id, span);
-        let pattern = Box::new(Pat {
-            span,
-            ty,
-            kind: PatKind::ExpandedConstant { subpattern, def_id, is_inline: false },
-        });
 
-        if !is_associated_const {
-            return pattern;
-        }
+        // Wrap the pattern in a marker node to indicate that it is the result
+        // of lowering a named constant. This marker is used for improved
+        // diagnostics in some situations, but has no effect at runtime.
+        let mut pattern = {
+            let kind = PatKind::ExpandedConstant { subpattern, def_id, is_inline: false };
+            Box::new(Pat { span, ty, kind })
+        };
 
-        let user_provided_types = self.typeck_results.user_provided_types();
-        if let Some(&user_ty) = user_provided_types.get(id) {
+        // If this is an associated constant with an explicit user-written
+        // type, add an ascription node (e.g. `<Foo<'a> as MyTrait>::CONST`).
+        if let Some(&user_ty) = user_ty {
             let annotation = CanonicalUserTypeAnnotation {
                 user_ty: Box::new(user_ty),
                 span,
                 inferred_ty: self.typeck_results.node_type(id),
             };
-            Box::new(Pat {
-                span,
-                kind: PatKind::AscribeUserType {
-                    subpattern: pattern,
-                    ascription: Ascription {
-                        annotation,
-                        // Note that use `Contravariant` here. See the
-                        // `variance` field documentation for details.
-                        variance: ty::Contravariant,
-                    },
+            let kind = PatKind::AscribeUserType {
+                subpattern: pattern,
+                ascription: Ascription {
+                    annotation,
+                    // Note that we use `Contravariant` here. See the
+                    // `variance` field documentation for details.
+                    variance: ty::Contravariant,
                 },
-                ty,
-            })
-        } else {
-            pattern
+            };
+            pattern = Box::new(Pat { span, kind, ty });
         }
+
+        pattern
     }
 
-    /// Converts inline const patterns.
+    /// Lowers an inline const block (e.g. `const { 1 + 1 }`) to a pattern.
     fn lower_inline_const(
         &mut self,
         block: &'tcx hir::ConstBlock,
@@ -651,14 +620,17 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let ct = ty::UnevaluatedConst { def: def_id.to_def_id(), args };
         let subpattern = self.const_to_pat(ty::Const::new_unevaluated(self.tcx, ct), ty, id, span);
+
+        // Wrap the pattern in a marker node to indicate that it is the result
+        // of lowering an inline const block.
         PatKind::ExpandedConstant { subpattern, def_id: def_id.to_def_id(), is_inline: true }
     }
 
-    /// Converts literals, paths and negation of literals to patterns.
-    /// The special case for negation exists to allow things like `-128_i8`
-    /// which would overflow if we tried to evaluate `128_i8` and then negate
-    /// afterwards.
-    fn lower_lit(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
+    /// Lowers the kinds of "expression" that can appear in a HIR pattern:
+    /// - Paths (e.g. `FOO`, `foo::BAR`, `Option::None`)
+    /// - Inline const blocks (e.g. `const { 1 + 1 }`)
+    /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
+    fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
         let (lit, neg) = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;

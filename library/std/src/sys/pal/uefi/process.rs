@@ -154,8 +154,8 @@ impl Command {
         if let Some(e) = &env {
             for (k, (_, v)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }
@@ -166,8 +166,8 @@ impl Command {
         if let Some(e) = env {
             for (k, (v, _)) in e {
                 match v {
-                    Some(v) => crate::env::set_var(k, v),
-                    None => crate::env::remove_var(k),
+                    Some(v) => unsafe { crate::env::set_var(k, v) },
+                    None => unsafe { crate::env::remove_var(k) },
                 }
             }
         }
@@ -388,7 +388,7 @@ mod uefi_command_internal {
             }
         }
 
-        pub fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
+        pub(crate) fn start_image(&mut self) -> io::Result<r_efi::efi::Status> {
             self.update_st_crc32()?;
 
             // Use our system table instead of the default one
@@ -490,7 +490,7 @@ mod uefi_command_internal {
                 helpers::open_protocol(self.handle, loaded_image::PROTOCOL_GUID).unwrap();
 
             let len = args.len();
-            let args_size: u32 = (len * crate::mem::size_of::<u16>()).try_into().unwrap();
+            let args_size: u32 = (len * size_of::<u16>()).try_into().unwrap();
             let ptr = Box::into_raw(args).as_mut_ptr();
 
             unsafe {
@@ -613,7 +613,7 @@ mod uefi_command_internal {
             OsString::from_wide(&self._buffer)
                 .into_string()
                 .map(Into::into)
-                .map_err(|_| const_error!(io::ErrorKind::Other, "utf8 conversion failed"))
+                .map_err(|_| const_error!(io::ErrorKind::Other, "UTF-8 conversion failed"))
         }
 
         extern "efiapi" fn reset(
@@ -757,7 +757,7 @@ mod uefi_command_internal {
 }
 
 /// Create a map of environment variable changes. Allows efficient setting and rolling back of
-/// enviroment variable changes.
+/// environment variable changes.
 ///
 /// Entry: (Old Value, New Value)
 fn env_changes(env: &CommandEnv) -> Option<BTreeMap<EnvKey, (Option<OsString>, Option<OsString>)>> {

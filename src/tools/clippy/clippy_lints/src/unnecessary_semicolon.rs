@@ -37,7 +37,7 @@ declare_clippy_lint! {
 
 #[derive(Default)]
 pub struct UnnecessarySemicolon {
-    last_statements: Vec<HirId>,
+    last_statements: Vec<(HirId, bool)>,
 }
 
 impl_lint_pass!(UnnecessarySemicolon => [UNNECESSARY_SEMICOLON]);
@@ -45,27 +45,25 @@ impl_lint_pass!(UnnecessarySemicolon => [UNNECESSARY_SEMICOLON]);
 impl UnnecessarySemicolon {
     /// Enter or leave a block, remembering the last statement of the block.
     fn handle_block(&mut self, cx: &LateContext<'_>, block: &Block<'_>, enter: bool) {
-        // Up to edition 2021, removing the semicolon of the last statement of a block
-        // may result in the scrutinee temporary values to live longer than the block
-        // variables. To avoid this problem, we do not lint the last statement of an
-        // expressionless block.
-        if cx.tcx.sess.edition() <= Edition2021
-            && block.expr.is_none()
+        // The last statement of an expressionless block deserves a special treatment.
+        if block.expr.is_none()
             && let Some(last_stmt) = block.stmts.last()
         {
             if enter {
-                self.last_statements.push(last_stmt.hir_id);
+                let block_ty = cx.typeck_results().node_type(block.hir_id);
+                self.last_statements.push((last_stmt.hir_id, block_ty.is_unit()));
             } else {
                 self.last_statements.pop();
             }
         }
     }
 
-    /// Checks if `stmt` is the last statement in an expressionless block for edition ≤ 2021.
-    fn is_last_in_block(&self, stmt: &Stmt<'_>) -> bool {
+    /// Checks if `stmt` is the last statement in an expressionless block. In this case,
+    /// return `Some` with a boolean which is `true` if the block type is `()`.
+    fn is_last_in_block(&self, stmt: &Stmt<'_>) -> Option<bool> {
         self.last_statements
             .last()
-            .is_some_and(|last_stmt_id| last_stmt_id == &stmt.hir_id)
+            .and_then(|&(stmt_id, is_unit)| (stmt_id == stmt.hir_id).then_some(is_unit))
     }
 }
 
@@ -90,8 +88,22 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessarySemicolon {
             )
             && cx.typeck_results().expr_ty(expr) == cx.tcx.types.unit
         {
-            if self.is_last_in_block(stmt) && leaks_droppable_temporary_with_limited_lifetime(cx, expr) {
-                return;
+            if let Some(block_is_unit) = self.is_last_in_block(stmt) {
+                if cx.tcx.sess.edition() <= Edition2021 && leaks_droppable_temporary_with_limited_lifetime(cx, expr) {
+                    // The expression contains temporaries with limited lifetimes in edition lower than 2024. Those may
+                    // survive until after the end of the current scope instead of until the end of the statement, so do
+                    // not lint this situation.
+                    return;
+                }
+
+                if !block_is_unit {
+                    // Although the expression returns `()`, the block doesn't. This may happen if the expression
+                    // returns early in all code paths, such as a `return value` in the condition of an `if` statement,
+                    // in which case the block type would be `!`. Do not lint in this case, as the statement would
+                    // become the block expression; the block type would become `()` and this may not type correctly
+                    // if the expected type for the block is not `()`.
+                    return;
+                }
             }
 
             let semi_span = expr.span.shrink_to_hi().to(stmt.span.shrink_to_hi());

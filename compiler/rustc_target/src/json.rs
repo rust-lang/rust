@@ -92,7 +92,7 @@ impl<A: ToJson> ToJson for Option<A> {
     }
 }
 
-impl ToJson for crate::abi::call::Conv {
+impl ToJson for crate::callconv::Conv {
     fn to_json(&self) -> Json {
         let buf: String;
         let s = match self {
@@ -105,7 +105,6 @@ impl ToJson for crate::abi::call::Conv {
             Self::CCmseNonSecureCall => "CCmseNonSecureCall",
             Self::CCmseNonSecureEntry => "CCmseNonSecureEntry",
             Self::Msp430Intr => "Msp430Intr",
-            Self::PtxKernel => "PtxKernel",
             Self::X86Fastcall => "X86Fastcall",
             Self::X86Intr => "X86Intr",
             Self::X86Stdcall => "X86Stdcall",

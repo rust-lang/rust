@@ -162,7 +162,9 @@ macro_rules! early_lint_methods {
                 c: rustc_span::Span,
                 d_: rustc_ast::NodeId);
             fn check_trait_item(a: &rustc_ast::AssocItem);
+            fn check_trait_item_post(a: &rustc_ast::AssocItem);
             fn check_impl_item(a: &rustc_ast::AssocItem);
+            fn check_impl_item_post(a: &rustc_ast::AssocItem);
             fn check_variant(a: &rustc_ast::Variant);
             fn check_attribute(a: &rustc_ast::Attribute);
             fn check_attributes(a: &[rustc_ast::Attribute]);

@@ -11,7 +11,9 @@ use rustc_codegen_ssa::traits::*;
 use rustc_hir::def::{CtorKind, DefKind};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{
+    HasTypingEnv, LayoutOf, TyAndLayout, WIDE_PTR_ADDR, WIDE_PTR_EXTRA,
+};
 use rustc_middle::ty::{
     self, AdtKind, CoroutineArgsExt, ExistentialTraitRef, Instance, Ty, TyCtxt, Visibility,
 };
@@ -34,12 +36,12 @@ use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::dwarf_const;
 use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
+use crate::llvm;
 use crate::llvm::debuginfo::{
     DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
     DebugNameTableKind,
 };
 use crate::value::Value;
-use crate::{abi, llvm};
 
 impl PartialEq for llvm::Metadata {
     fn eq(&self, other: &Self) -> bool {
@@ -211,16 +213,16 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                     };
 
                     let layout = cx.layout_of(layout_type);
-                    let addr_field = layout.field(cx, abi::WIDE_PTR_ADDR);
-                    let extra_field = layout.field(cx, abi::WIDE_PTR_EXTRA);
+                    let addr_field = layout.field(cx, WIDE_PTR_ADDR);
+                    let extra_field = layout.field(cx, WIDE_PTR_EXTRA);
 
                     let (addr_field_name, extra_field_name) = match wide_pointer_kind {
                         WidePtrKind::Dyn => ("pointer", "vtable"),
                         WidePtrKind::Slice => ("data_ptr", "length"),
                     };
 
-                    assert_eq!(abi::WIDE_PTR_ADDR, 0);
-                    assert_eq!(abi::WIDE_PTR_EXTRA, 1);
+                    assert_eq!(WIDE_PTR_ADDR, 0);
+                    assert_eq!(WIDE_PTR_EXTRA, 1);
 
                     // The data pointer type is a regular, thin pointer, regardless of whether this
                     // is a slice or a trait object.
@@ -242,7 +244,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             owner,
                             addr_field_name,
                             (addr_field.size, addr_field.align.abi),
-                            layout.fields.offset(abi::WIDE_PTR_ADDR),
+                            layout.fields.offset(WIDE_PTR_ADDR),
                             DIFlags::FlagZero,
                             data_ptr_type_di_node,
                             None,
@@ -252,7 +254,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             owner,
                             extra_field_name,
                             (extra_field.size, extra_field.align.abi),
-                            layout.fields.offset(abi::WIDE_PTR_EXTRA),
+                            layout.fields.offset(WIDE_PTR_EXTRA),
                             DIFlags::FlagZero,
                             type_di_node(cx, extra_field.ty),
                             None,
@@ -319,19 +321,16 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
     let (size, align) = match fn_ty.kind() {
-        ty::FnDef(..) => (0, 1),
-        ty::FnPtr(..) => (
-            cx.tcx.data_layout.pointer_size.bits(),
-            cx.tcx.data_layout.pointer_align.abi.bits() as u32,
-        ),
+        ty::FnDef(..) => (Size::ZERO, Align::ONE),
+        ty::FnPtr(..) => (cx.tcx.data_layout.pointer_size, cx.tcx.data_layout.pointer_align.abi),
         _ => unreachable!(),
     };
     let di_node = unsafe {
         llvm::LLVMRustDIBuilderCreatePointerType(
             DIB(cx),
             fn_di_node,
-            size,
-            align,
+            size.bits(),
+            align.bits() as u32,
             0, // Ignore DWARF address space.
             name.as_c_char_ptr(),
             name.len(),

@@ -36,8 +36,8 @@ index 8402833..84592e0 100644
  #[cfg(not(miri))] // unused in Miri
  macro_rules! empty_max_mut {
 @@ -2485,6 +2486,7 @@ take_tests! {
-     (take_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
-     (take_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
+     (split_off_mut_oob_max_range_to_inclusive, (..=usize::MAX), None, empty_max_mut!()),
+     (split_off_mut_in_bounds_max_range_from, (usize::MAX..), Some(&mut [] as _), empty_max_mut!()),
  }
 +*/
  

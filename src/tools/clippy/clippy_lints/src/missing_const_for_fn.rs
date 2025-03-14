@@ -3,6 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::qualify_min_const_fn::is_min_const_fn;
 use clippy_utils::{fn_has_unsatisfiable_preds, is_entrypoint_fn, is_from_proc_macro, is_in_test, trait_ref_of_method};
+use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::CRATE_DEF_ID;
 use rustc_hir::intravisit::FnKind;
@@ -12,7 +13,6 @@ use rustc_middle::ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 use rustc_span::def_id::LocalDefId;
-use rustc_target::spec::abi::Abi;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -80,9 +80,7 @@ pub struct MissingConstForFn {
 
 impl MissingConstForFn {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -98,10 +96,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
     ) {
         let hir_id = cx.tcx.local_def_id_to_hir_id(def_id);
         if is_in_test(cx.tcx, hir_id) {
-            return;
-        }
-
-        if !self.msrv.meets(msrvs::CONST_IF_MATCH) {
             return;
         }
 
@@ -123,7 +117,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
                     .iter()
                     .any(|param| matches!(param.kind, GenericParamKind::Const { .. }));
 
-                if already_const(header) || has_const_generic_params || !could_be_const_with_abi(&self.msrv, header.abi)
+                if already_const(header)
+                    || has_const_generic_params
+                    || !could_be_const_with_abi(cx, self.msrv, header.abi)
                 {
                     return;
                 }
@@ -142,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
 
         // Const fns are not allowed as methods in a trait.
         {
-            let parent = cx.tcx.hir().get_parent_item(hir_id).def_id;
+            let parent = cx.tcx.hir_get_parent_item(hir_id).def_id;
             if parent != CRATE_DEF_ID {
                 if let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(parent) {
                     if let hir::ItemKind::Trait(..) = &item.kind {
@@ -152,13 +148,17 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             }
         }
 
+        if !self.msrv.meets(cx, msrvs::CONST_IF_MATCH) {
+            return;
+        }
+
         if is_from_proc_macro(cx, &(&kind, body, hir_id, span)) {
             return;
         }
 
         let mir = cx.tcx.optimized_mir(def_id);
 
-        if let Ok(()) = is_min_const_fn(cx.tcx, mir, &self.msrv)
+        if let Ok(()) = is_min_const_fn(cx, mir, self.msrv)
             && let hir::Node::Item(hir::Item { vis_span, .. }) | hir::Node::ImplItem(hir::ImplItem { vis_span, .. }) =
                 cx.tcx.hir_node_by_def_id(def_id)
         {
@@ -173,8 +173,6 @@ impl<'tcx> LateLintPass<'tcx> for MissingConstForFn {
             });
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 // We don't have to lint on something that's already `const`
@@ -183,13 +181,13 @@ fn already_const(header: hir::FnHeader) -> bool {
     header.constness == Constness::Const
 }
 
-fn could_be_const_with_abi(msrv: &Msrv, abi: Abi) -> bool {
+fn could_be_const_with_abi(cx: &LateContext<'_>, msrv: Msrv, abi: ExternAbi) -> bool {
     match abi {
-        Abi::Rust => true,
+        ExternAbi::Rust => true,
         // `const extern "C"` was stabilized after 1.62.0
-        Abi::C { unwind: false } => msrv.meets(msrvs::CONST_EXTERN_C_FN),
+        ExternAbi::C { unwind: false } => msrv.meets(cx, msrvs::CONST_EXTERN_C_FN),
         // Rest ABIs are still unstable and need the `const_extern_fn` feature enabled.
-        _ => msrv.meets(msrvs::CONST_EXTERN_FN),
+        _ => msrv.meets(cx, msrvs::CONST_EXTERN_FN),
     }
 }
 

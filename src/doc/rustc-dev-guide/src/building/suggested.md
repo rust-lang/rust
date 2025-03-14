@@ -120,10 +120,35 @@ create a `.vim/coc-settings.json`. The settings can be edited with
 [`src/etc/rust_analyzer_settings.json`].
 
 Another way is without a plugin, and creating your own logic in your
-configuration. To do this you must translate the JSON to Lua yourself. The
-translation is 1:1 and fairly straight-forward. It must be put in the
-`["rust-analyzer"]` key of the setup table, which is [shown
-here](https://github.com/neovim/nvim-lspconfig/blob/master/doc/server_configurations.md#rust_analyzer).
+configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
+
+```lua
+lspconfig.rust_analyzer.setup {
+    root_dir = function()
+        local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
+        -- the default root detection uses the cargo workspace root.
+        -- but for rust-lang/rust, the standard library is in its own workspace.
+        -- use the git root instead.
+        local compiler_config = vim.fs.joinpath(default, "../src/bootstrap/defaults/config.compiler.toml")
+        if vim.fs.basename(default) == "library" and vim.uv.fs_stat(compiler_config) then
+            return vim.fs.dirname(default)
+        end
+        return default
+    end,
+    on_init = function(client)
+        local path = client.workspace_folders[1].name
+        local config = vim.fs.joinpath(path, "src/etc/rust_analyzer_zed.json")
+        if vim.uv.fs_stat(config) then
+            -- load rust-lang/rust settings
+            local file = io.open(config)
+            local json = vim.json.decode(file:read("*a"))
+            client.config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
+            client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
+        end
+        return true
+    end
+}
+```
 
 If you would like to use the build task that is described above, you may either
 make your own command in your config, or you can install a plugin such as
@@ -135,24 +160,34 @@ and follow the same instructions as above.
 ### Emacs
 
 Emacs provides support for rust-analyzer with project-local configuration
-through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).  
+through [Eglot](https://www.gnu.org/software/emacs/manual/html_node/eglot/).
 Steps for setting up Eglot with rust-analyzer can be [found
-here](https://rust-analyzer.github.io/manual.html#eglot).  
+here](https://rust-analyzer.github.io/manual.html#eglot).
 Having set up Emacs & Eglot for Rust development in general, you can run
 `./x setup editor` and select `emacs`, which will prompt you to create
 `.dir-locals.el` with the recommended configuration for Eglot.
-The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].  
+The recommended settings live at [`src/etc/rust_analyzer_eglot.el`].
 For more information on project-specific Eglot configuration, consult [the
 manual](https://www.gnu.org/software/emacs/manual/html_node/eglot/Project_002dspecific-configuration.html).
 
 ### Helix
 
-Helix comes with built-in LSP and rust-analyzer support.  
+Helix comes with built-in LSP and rust-analyzer support.
 It can be configured through `languages.toml`, as described
-[here](https://docs.helix-editor.com/languages.html).  
+[here](https://docs.helix-editor.com/languages.html).
 You can run `./x setup editor` and select `helix`, which will prompt you to
 create `languages.toml` with the recommended configuration for Helix. The
-recommended settings live at [`src/etc/rust_analyzer_helix.toml`].  
+recommended settings live at [`src/etc/rust_analyzer_helix.toml`].
+
+### Zed
+
+Zed comes with built-in LSP and rust-analyzer support.
+It can be configured through `.zed/settings.json`, as described
+[here](https://zed.dev/docs/configuring-languages). Selecting `zed`
+in `./x setup editor` will prompt you to create a `.zed/settings.json`
+file which will configure Zed with the recommended configuration. The
+recommended `rust-analyzer` settings live
+at [`src/etc/rust_analyzer_zed.json`].
 
 ## Check, check, and check again
 
@@ -181,7 +216,7 @@ example, running `tidy` and `linkchecker` is useful when editing Markdown files,
 whereas UI tests are much less likely to be helpful. While `x suggest` is a
 useful tool, it does not guarantee perfect coverage (just as PR CI isn't a
 substitute for bors). See the [dedicated chapter](../tests/suggest-tests.md) for
-more information and contribution instructions. 
+more information and contribution instructions.
 
 Please note that `x suggest` is in a beta state currently and the tests that it
 will suggest are limited.
@@ -332,28 +367,21 @@ git worktree add -b my-feature ../rust2 master
 You can then use that rust2 folder as a separate workspace for modifying and
 building `rustc`!
 
-## Using nix-shell
+## Working with nix
 
-If you're using nix, you can use the following nix-shell to work on Rust:
+Several nix configurations are defined in `src/tools/nix-dev-shell`.
 
-```nix
-{ pkgs ? import <nixpkgs> {} }:
-pkgs.mkShell {
-  name = "rustc";
-  nativeBuildInputs = with pkgs; [
-    binutils cmake ninja pkg-config python3 git curl cacert patchelf nix
-  ];
-  buildInputs = with pkgs; [
-    openssl glibc.out glibc.static
-  ];
-  # Avoid creating text files for ICEs.
-  RUSTC_ICE = "0";
-  # Provide `libstdc++.so.6` for the self-contained lld.
-  LD_LIBRARY_PATH = "${with pkgs; lib.makeLibraryPath [
-    stdenv.cc.cc.lib
-  ]}";
-}
+If you're using direnv, you can create a symbol link to `src/tools/nix-dev-shell/envrc-flake` or `src/tools/nix-dev-shell/envrc-shell`
+
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-flake ./.envrc # Use flake
 ```
+or
+```bash
+ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
+```
+
+### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
 **`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect
@@ -388,4 +416,5 @@ load this completion.
 [`src/etc/rust_analyzer_settings.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_settings.json
 [`src/etc/rust_analyzer_eglot.el`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_eglot.el
 [`src/etc/rust_analyzer_helix.toml`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_helix.toml
+[`src/etc/rust_analyzer_zed.json`]: https://github.com/rust-lang/rust/blob/master/src/etc/rust_analyzer_zed.json
 [`src/etc/pre-push.sh`]: https://github.com/rust-lang/rust/blob/master/src/etc/pre-push.sh

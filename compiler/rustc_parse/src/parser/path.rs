@@ -2,7 +2,7 @@ use std::mem;
 
 use ast::token::IdentIsRaw;
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, MetaVarKind, Token, TokenKind};
 use rustc_ast::{
     self as ast, AngleBracketedArg, AngleBracketedArgs, AnonConst, AssocItemConstraint,
     AssocItemConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
@@ -15,9 +15,9 @@ use tracing::debug;
 
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
-use crate::errors::{PathSingleColon, PathTripleColon};
+use crate::errors::{self, PathSingleColon, PathTripleColon};
+use crate::exp;
 use crate::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
-use crate::{errors, exp, maybe_whole};
 
 /// Specifies how to parse a path.
 #[derive(Copy, Clone, PartialEq)]
@@ -106,11 +106,10 @@ impl<'a> Parser<'a> {
             self.parse_path_segments(&mut path.segments, style, None)?;
         }
 
-        Ok((qself, Path {
-            segments: path.segments,
-            span: lo.to(self.prev_token.span),
-            tokens: None,
-        }))
+        Ok((
+            qself,
+            Path { segments: path.segments, span: lo.to(self.prev_token.span), tokens: None },
+        ))
     }
 
     /// Recover from an invalid single colon, when the user likely meant a qualified path.
@@ -195,16 +194,18 @@ impl<'a> Parser<'a> {
             }
         };
 
-        maybe_whole!(self, NtPath, |path| reject_generics_if_mod_style(self, path.into_inner()));
+        if let Some(path) =
+            self.eat_metavar_seq(MetaVarKind::Path, |this| this.parse_path(PathStyle::Type))
+        {
+            return Ok(reject_generics_if_mod_style(self, path));
+        }
 
-        if let token::Interpolated(nt) = &self.token.kind {
-            if let token::NtTy(ty) = &**nt {
-                if let ast::TyKind::Path(None, path) = &ty.kind {
-                    let path = path.clone();
-                    self.bump();
-                    return Ok(reject_generics_if_mod_style(self, path));
-                }
-            }
+        // If we have a `ty` metavar in the form of a path, reparse it directly as a path, instead
+        // of reparsing it as a `ty` and then extracting the path.
+        if let Some(path) = self.eat_metavar_seq(MetaVarKind::Ty { is_path: true }, |this| {
+            this.parse_path(PathStyle::Type)
+        }) {
+            return Ok(reject_generics_if_mod_style(self, path));
         }
 
         let lo = self.token.span;
@@ -247,8 +248,19 @@ impl<'a> Parser<'a> {
             segments.push(segment);
 
             if self.is_import_coupler() || !self.eat_path_sep() {
-                if style == PathStyle::Expr
-                    && self.may_recover()
+                let ok_for_recovery = self.may_recover()
+                    && match style {
+                        PathStyle::Expr => true,
+                        PathStyle::Type if let Some((ident, _)) = self.prev_token.ident() => {
+                            self.token == token::Colon
+                                && ident.as_str().chars().all(|c| c.is_lowercase())
+                                && self.token.span.lo() == self.prev_token.span.hi()
+                                && self
+                                    .look_ahead(1, |token| self.token.span.hi() == token.span.lo())
+                        }
+                        _ => false,
+                    };
+                if ok_for_recovery
                     && self.token == token::Colon
                     && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
                 {
@@ -293,10 +305,7 @@ impl<'a> Parser<'a> {
         let is_args_start = |token: &Token| {
             matches!(
                 token.kind,
-                token::Lt
-                    | token::BinOp(token::Shl)
-                    | token::OpenDelim(Delimiter::Parenthesis)
-                    | token::LArrow
+                token::Lt | token::Shl | token::OpenDelim(Delimiter::Parenthesis) | token::LArrow
             )
         };
         let check_args_start = |this: &mut Self| {
@@ -370,11 +379,14 @@ impl<'a> Parser<'a> {
 
                     self.psess.gated_spans.gate(sym::return_type_notation, span);
 
+                    let prev_lo = self.prev_token.span.shrink_to_hi();
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;
                         let ty = self.parse_ty()?;
+                        let span = lo.to(ty.span);
+                        let suggestion = prev_lo.to(ty.span);
                         self.dcx()
-                            .emit_err(errors::BadReturnTypeNotationOutput { span: lo.to(ty.span) });
+                            .emit_err(errors::BadReturnTypeNotationOutput { span, suggestion });
                     }
 
                     P(ast::GenericArgs::ParenthesizedElided(span))
@@ -485,13 +497,16 @@ impl<'a> Parser<'a> {
 
         error.span_suggestion_verbose(
             prev_token_before_parsing.span,
-            format!("consider removing the `::` here to {}", match style {
-                PathStyle::Expr => "call the expression",
-                PathStyle::Pat => "turn this into a tuple struct pattern",
-                _ => {
-                    return;
+            format!(
+                "consider removing the `::` here to {}",
+                match style {
+                    PathStyle::Expr => "call the expression",
+                    PathStyle::Pat => "turn this into a tuple struct pattern",
+                    _ => {
+                        return;
+                    }
                 }
-            }),
+            ),
             "",
             Applicability::MaybeIncorrect,
         );

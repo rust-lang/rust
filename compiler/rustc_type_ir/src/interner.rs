@@ -141,6 +141,12 @@ pub trait Interner:
     type VariancesOf: Copy + Debug + SliceLike<Item = ty::Variance>;
     fn variances_of(self, def_id: Self::DefId) -> Self::VariancesOf;
 
+    fn opt_alias_variances(
+        self,
+        kind: impl Into<ty::AliasTermKind>,
+        def_id: Self::DefId,
+    ) -> Option<Self::VariancesOf>;
+
     fn type_of(self, def_id: Self::DefId) -> ty::EarlyBinder<Self, Self::Ty>;
 
     type AdtDef: AdtDef<Self>;
@@ -183,10 +189,10 @@ pub trait Interner:
     type Features: Features<Self>;
     fn features(self) -> Self::Features;
 
-    fn bound_coroutine_hidden_types(
+    fn coroutine_hidden_types(
         self,
         def_id: Self::DefId,
-    ) -> impl IntoIterator<Item = ty::EarlyBinder<Self, ty::Binder<Self, Self::Ty>>>;
+    ) -> ty::EarlyBinder<Self, ty::Binder<Self, Self::Tys>>;
 
     fn fn_sig(
         self,
@@ -272,6 +278,8 @@ pub trait Interner:
     fn impl_polarity(self, impl_def_id: Self::DefId) -> ty::ImplPolarity;
 
     fn trait_is_auto(self, trait_def_id: Self::DefId) -> bool;
+
+    fn trait_is_coinductive(self, trait_def_id: Self::DefId) -> bool;
 
     fn trait_is_alias(self, trait_def_id: Self::DefId) -> bool;
 

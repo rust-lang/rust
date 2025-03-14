@@ -14,13 +14,13 @@ use rustc_hir::{
 };
 use rustc_index::IndexVec;
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
-use rustc_middle::mir::FakeReadCause;
 use rustc_session::Session;
 use rustc_span::Span;
 
 use super::RvalueScopes;
 use crate::hir::place::Place as HirPlace;
 use crate::infer::canonical::Canonical;
+use crate::mir::FakeReadCause;
 use crate::traits::ObligationCause;
 use crate::ty::{
     self, BoundVar, CanonicalPolyFnSig, ClosureSizeProfileData, GenericArgKind, GenericArgs,
@@ -73,9 +73,9 @@ pub struct TypeckResults<'tcx> {
     /// Stores the actual binding mode for all instances of [`BindingMode`].
     pat_binding_modes: ItemLocalMap<BindingMode>,
 
-    /// Top-level patterns whose match ergonomics need to be desugared by the Rust 2021 -> 2024
-    /// migration lint. Problematic subpatterns are stored in the `Vec` for the lint to highlight.
-    rust_2024_migration_desugared_pats: ItemLocalMap<Vec<(Span, String)>>,
+    /// Top-level patterns incompatible with Rust 2024's match ergonomics. These will be translated
+    /// to a form valid in all Editions, either as a lint diagnostic or hard error.
+    rust_2024_migration_desugared_pats: ItemLocalMap<Rust2024IncompatiblePatInfo>,
 
     /// Stores the types which were implicitly dereferenced in pattern binding modes
     /// for later usage in THIR lowering. For example,
@@ -147,9 +147,7 @@ pub struct TypeckResults<'tcx> {
     coercion_casts: ItemLocalSet,
 
     /// Set of trait imports actually used in the method resolution.
-    /// This is used for warning unused imports. During type
-    /// checking, this `Arc` should not be cloned: it must have a ref-count
-    /// of 1 so that we can insert things into the set mutably.
+    /// This is used for warning unused imports.
     pub used_trait_imports: UnordSet<LocalDefId>,
 
     /// If any errors occurred while type-checking this body,
@@ -312,7 +310,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn node_type(&self, id: HirId) -> Ty<'tcx> {
         self.node_type_opt(id).unwrap_or_else(|| {
-            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir().node_to_string(id)))
+            bug!("node_type: no type for node {}", tls::with(|tcx| tcx.hir_id_to_string(id)))
         })
     }
 
@@ -396,8 +394,10 @@ impl<'tcx> TypeckResults<'tcx> {
         matches!(self.type_dependent_defs().get(expr.hir_id), Some(Ok((DefKind::AssocFn, _))))
     }
 
-    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> Option<BindingMode> {
-        self.pat_binding_modes().get(id).copied().or_else(|| {
+    /// Returns the computed binding mode for a `PatKind::Binding` pattern
+    /// (after match ergonomics adjustments).
+    pub fn extract_binding_mode(&self, s: &Session, id: HirId, sp: Span) -> BindingMode {
+        self.pat_binding_modes().get(id).copied().unwrap_or_else(|| {
             s.dcx().span_bug(sp, "missing binding mode");
         })
     }
@@ -420,7 +420,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn rust_2024_migration_desugared_pats(
         &self,
-    ) -> LocalTableInContext<'_, Vec<(Span, String)>> {
+    ) -> LocalTableInContext<'_, Rust2024IncompatiblePatInfo> {
         LocalTableInContext {
             hir_owner: self.hir_owner,
             data: &self.rust_2024_migration_desugared_pats,
@@ -429,7 +429,7 @@ impl<'tcx> TypeckResults<'tcx> {
 
     pub fn rust_2024_migration_desugared_pats_mut(
         &mut self,
-    ) -> LocalTableInContextMut<'_, Vec<(Span, String)>> {
+    ) -> LocalTableInContextMut<'_, Rust2024IncompatiblePatInfo> {
         LocalTableInContextMut {
             hir_owner: self.hir_owner,
             data: &mut self.rust_2024_migration_desugared_pats,
@@ -554,7 +554,7 @@ fn invalid_hir_id_for_typeck_results(hir_owner: OwnerId, hir_id: HirId) {
     ty::tls::with(|tcx| {
         bug!(
             "node {} cannot be placed in TypeckResults with hir_owner {:?}",
-            tcx.hir().node_to_string(hir_id),
+            tcx.hir_id_to_string(hir_id),
             hir_owner
         )
     });
@@ -577,7 +577,7 @@ impl<'a, V> LocalTableInContext<'a, V> {
     }
 
     pub fn items(
-        &'a self,
+        &self,
     ) -> UnordItems<(hir::ItemLocalId, &'a V), impl Iterator<Item = (hir::ItemLocalId, &'a V)>>
     {
         self.data.items().map(|(id, value)| (*id, value))
@@ -810,4 +810,18 @@ impl<'tcx> std::fmt::Display for UserTypeKind<'tcx> {
             Self::TypeOf(arg0, arg1) => write!(f, "TypeOf({:?}, {:?})", arg0, arg1),
         }
     }
+}
+
+/// Information on a pattern incompatible with Rust 2024, for use by the error/migration diagnostic
+/// emitted during THIR construction.
+#[derive(TyEncodable, TyDecodable, Debug, HashStable)]
+pub struct Rust2024IncompatiblePatInfo {
+    /// Labeled spans for `&`s, `&mut`s, and binding modifiers incompatible with Rust 2024.
+    pub primary_labels: Vec<(Span, String)>,
+    /// Whether any binding modifiers occur under a non-`move` default binding mode.
+    pub bad_modifiers: bool,
+    /// Whether any `&` or `&mut` patterns occur under a non-`move` default binding mode.
+    pub bad_ref_pats: bool,
+    /// If `true`, we can give a simpler suggestion solely by eliding explicit binding modifiers.
+    pub suggest_eliding_modes: bool,
 }

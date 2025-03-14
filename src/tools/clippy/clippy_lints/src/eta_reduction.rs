@@ -1,13 +1,14 @@
 use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::higher::VecArgs;
-use clippy_utils::source::snippet_opt;
+use clippy_utils::source::{snippet_opt, snippet_with_applicability};
 use clippy_utils::ty::get_type_diagnostic_name;
 use clippy_utils::usage::{local_used_after_expr, local_used_in};
 use clippy_utils::{
     get_path_from_caller_to_method_type, is_adjusted, is_no_std_crate, path_to_local, path_to_local_id,
 };
+use rustc_abi::ExternAbi;
 use rustc_errors::Applicability;
-use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, Param, PatKind, QPath, Safety, TyKind};
+use rustc_hir::{BindingMode, Expr, ExprKind, FnRetTy, GenericArgs, Param, PatKind, QPath, Safety, TyKind};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::{
@@ -15,7 +16,6 @@ use rustc_middle::ty::{
 };
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::sym;
-use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt as _;
 
 declare_clippy_lint! {
@@ -97,7 +97,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
         && matches!(c.fn_decl.output, FnRetTy::DefaultReturn(_))
         && !expr.span.from_expansion()
     {
-        cx.tcx.hir().body(c.body)
+        cx.tcx.hir_body(c.body)
     } else {
         return;
     };
@@ -172,7 +172,7 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                         && let output = typeck.expr_ty(body.value)
                         && let ty::Tuple(tys) = *subs.type_at(1).kind()
                     {
-                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, Abi::Rust)
+                        cx.tcx.mk_fn_sig(tys, output, false, Safety::Safe, ExternAbi::Rust)
                     } else {
                         return;
                     }
@@ -239,6 +239,11 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                 && !cx.tcx.has_attr(method_def_id, sym::track_caller)
                 && check_sig(closure_sig, cx.tcx.fn_sig(method_def_id).skip_binder().skip_binder())
             {
+                let mut app = Applicability::MachineApplicable;
+                let generic_args = match path.args.and_then(GenericArgs::span_ext) {
+                    Some(span) => format!("::{}", snippet_with_applicability(cx, span, "<..>", &mut app)),
+                    None => String::new(),
+                };
                 span_lint_and_then(
                     cx,
                     REDUNDANT_CLOSURE_FOR_METHOD_CALLS,
@@ -251,8 +256,8 @@ fn check_closure<'tcx>(cx: &LateContext<'tcx>, outer_receiver: Option<&Expr<'tcx
                         diag.span_suggestion(
                             expr.span,
                             "replace the closure with the method itself",
-                            format!("{}::{}", type_name, path.ident.name),
-                            Applicability::MachineApplicable,
+                            format!("{}::{}{}", type_name, path.ident.name, generic_args),
+                            app,
                         );
                     },
                 );

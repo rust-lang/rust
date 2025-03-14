@@ -24,7 +24,6 @@
 #![feature(dropck_eyepatch)]
 #![feature(extend_one)]
 #![feature(file_buffered)]
-#![feature(hash_raw_entry)]
 #![feature(macro_metavar_expr)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -48,7 +47,6 @@ pub use rustc_index::static_assert_size;
 pub mod aligned;
 pub mod base_n;
 pub mod binary_search_util;
-pub mod captures;
 pub mod fingerprint;
 pub mod flat_map_in_place;
 pub mod flock;
@@ -84,7 +82,6 @@ pub mod vec_cache;
 pub mod work_queue;
 
 mod atomic_ref;
-mod hashes;
 
 /// This calls the passed function while ensuring it won't be inlined into the caller.
 #[inline(never)]

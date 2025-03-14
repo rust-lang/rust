@@ -31,8 +31,9 @@ LL |     let _v: Vec<_> = FromIterator::from_iter(&[1]);
    = note: 'std::iter::FromIterator' is included in the prelude starting in Edition 2021
 help: a trait with a similar name exists
    |
-LL |     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
-   |                      ~~~~~~~~~~~~
+LL -     let _v: Vec<_> = FromIterator::from_iter(&[1]);
+LL +     let _v: Vec<_> = IntoIterator::from_iter(&[1]);
+   |
 help: consider importing this trait
    |
 LL + use std::iter::FromIterator;
@@ -55,8 +56,9 @@ LL + use std::convert::TryInto;
    |
 help: there is a method `into` with a similar name
    |
-LL |     let _i: i16 = 0_i32.into().unwrap();
-   |                         ~~~~
+LL -     let _i: i16 = 0_i32.try_into().unwrap();
+LL +     let _i: i16 = 0_i32.into().unwrap();
+   |
 
 error: aborting due to 4 previous errors
 

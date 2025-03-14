@@ -19,8 +19,6 @@ use crate::{fmt, io, ptr};
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
-    } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &CStr = c"null:";
     } else if #[cfg(target_os = "vxworks")] {
         const DEV_NULL: &CStr = c"/null";
     } else {
@@ -43,10 +41,7 @@ cfg_if::cfg_if! {
 
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::{
-                mem::{align_of, size_of},
-                slice,
-            };
+            use crate::slice;
             use libc::{c_ulong, sigset_t};
 
             // The implementations from bionic (android libc) type pun `sigset_t` as an

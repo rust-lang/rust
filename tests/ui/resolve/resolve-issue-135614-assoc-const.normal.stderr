@@ -22,7 +22,7 @@ LL |     const DEFAULT: u32 = 0;
 help: introduce a variable instead
    |
 LL |     let DEFAULT_var: u32 = 0;
-   |         ~~~~~~~~~~~
+   |                ++++
 
 error: aborting due to 2 previous errors
 

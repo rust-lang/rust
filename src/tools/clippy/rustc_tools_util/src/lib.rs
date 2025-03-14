@@ -28,9 +28,8 @@ macro_rules! get_version_info {
     }};
 }
 
-/// This macro can be used in `build.rs` to automatically set the needed
-/// environment values, namely `GIT_HASH`, `COMMIT_DATE` and
-/// `RUSTC_RELEASE_CHANNEL`
+/// This macro can be used in `build.rs` to automatically set the needed environment values, namely
+/// `GIT_HASH`, `COMMIT_DATE`  and `RUSTC_RELEASE_CHANNEL`
 #[macro_export]
 macro_rules! setup_version_info {
     () => {{
@@ -43,7 +42,11 @@ macro_rules! setup_version_info {
             "cargo:rustc-env=COMMIT_DATE={}",
             $crate::get_commit_date().unwrap_or_default()
         );
-        println!("cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}", $crate::get_channel());
+        let compiler_version = $crate::get_compiler_version();
+        println!(
+            "cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}",
+            $crate::get_channel(compiler_version)
+        );
     }};
 }
 
@@ -87,16 +90,17 @@ impl std::fmt::Debug for VersionInfo {
             "VersionInfo {{ crate_name: \"{}\", major: {}, minor: {}, patch: {}",
             self.crate_name, self.major, self.minor, self.patch,
         )?;
-        if self.commit_hash.is_some() {
-            write!(
-                f,
-                ", commit_hash: \"{}\", commit_date: \"{}\" }}",
-                self.commit_hash.clone().unwrap_or_default().trim(),
-                self.commit_date.clone().unwrap_or_default().trim()
-            )?;
-        } else {
-            write!(f, " }}")?;
+        if let Some(ref commit_hash) = self.commit_hash {
+            write!(f, ", commit_hash: \"{}\"", commit_hash.trim(),)?;
         }
+        if let Some(ref commit_date) = self.commit_date {
+            write!(f, ", commit_date: \"{}\"", commit_date.trim())?;
+        }
+        if let Some(ref host_compiler) = self.host_compiler {
+            write!(f, ", host_compiler: \"{}\"", host_compiler.trim())?;
+        }
+
+        write!(f, " }}")?;
 
         Ok(())
     }
@@ -152,22 +156,27 @@ pub fn get_commit_date() -> Option<String> {
 }
 
 #[must_use]
-pub fn get_channel() -> String {
+pub fn get_compiler_version() -> Option<String> {
+    get_output("rustc", &["-V"])
+}
+
+#[must_use]
+pub fn get_channel(compiler_version: Option<String>) -> String {
     if let Ok(channel) = std::env::var("CFG_RELEASE_CHANNEL") {
         return channel;
     }
 
     // if that failed, try to ask rustc -V, do some parsing and find out
-    if let Some(rustc_output) = get_output("rustc", &["-V"]) {
+    if let Some(rustc_output) = compiler_version {
         if rustc_output.contains("beta") {
             return String::from("beta");
-        } else if rustc_output.contains("stable") {
-            return String::from("stable");
+        } else if rustc_output.contains("nightly") {
+            return String::from("nightly");
         }
     }
 
-    // default to nightly
-    String::from("nightly")
+    // default to stable
+    String::from("stable")
 }
 
 #[cfg(test)]
@@ -179,17 +188,19 @@ mod test {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
         assert_eq!(vi.minor, 4);
-        assert_eq!(vi.patch, 0);
+        assert_eq!(vi.patch, 2);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
         assert!(vi.commit_date.is_none());
+
+        assert!(vi.host_compiler.is_none());
     }
 
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.0");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.4.2");
     }
 
     #[test]
@@ -198,7 +209,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 0 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 4, patch: 2 }"
         );
     }
 }

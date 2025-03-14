@@ -1,6 +1,7 @@
+//@ add-core-stubs
 //@ revisions: elfv1-be elfv2-be elfv2-le aix
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@[elfv1-be] compile-flags: --target powerpc64-unknown-linux-gnu
 //@[elfv1-be] needs-llvm-components: powerpc
 //@[elfv2-be] compile-flags: --target powerpc64-unknown-linux-musl
@@ -20,21 +21,9 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
-#[lang = "copy"]
-trait Copy {}
-
-#[lang = "freeze"]
-trait Freeze {}
-
-#[lang = "unpin"]
-trait Unpin {}
-
-impl Copy for u8 {}
-impl Copy for u16 {}
-impl Copy for u32 {}
 impl Copy for FiveU32s {}
 impl Copy for FiveU16s {}
 impl Copy for ThreeU8s {}

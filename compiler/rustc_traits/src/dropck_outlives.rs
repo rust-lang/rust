@@ -30,10 +30,7 @@ fn dropck_outlives<'tcx>(
 }
 
 /// Calculates the dtorck constraint for a type.
-pub(crate) fn adt_dtorck_constraint(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> Result<&DropckConstraint<'_>, NoSolution> {
+pub(crate) fn adt_dtorck_constraint(tcx: TyCtxt<'_>, def_id: DefId) -> &DropckConstraint<'_> {
     let def = tcx.adt_def(def_id);
     let span = tcx.def_span(def_id);
     let typing_env = ty::TypingEnv::non_body_analysis(tcx, def_id);
@@ -52,20 +49,20 @@ pub(crate) fn adt_dtorck_constraint(
             overflows: vec![],
         };
         debug!("dtorck_constraint: {:?} => {:?}", def, result);
-        return Ok(tcx.arena.alloc(result));
+        return tcx.arena.alloc(result);
     }
 
     let mut result = DropckConstraint::empty();
     for field in def.all_fields() {
         let fty = tcx.type_of(field.did).instantiate_identity();
-        dtorck_constraint_for_ty_inner(tcx, typing_env, span, 0, fty, &mut result)?;
+        dtorck_constraint_for_ty_inner(tcx, typing_env, span, 0, fty, &mut result);
     }
     result.outlives.extend(tcx.destructor_constraints(def));
     dedup_dtorck_constraint(&mut result);
 
     debug!("dtorck_constraint: {:?} => {:?}", def, result);
 
-    Ok(tcx.arena.alloc(result))
+    tcx.arena.alloc(result)
 }
 
 fn dedup_dtorck_constraint(c: &mut DropckConstraint<'_>) {

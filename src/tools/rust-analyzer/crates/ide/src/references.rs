@@ -43,13 +43,11 @@ pub struct Declaration {
 //
 // Shows all references of the item at the cursor location
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Shift+Alt+F12</kbd> |
 //
-// | VS Code | kbd:[Shift+Alt+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif[]
+// ![Find All References](https://user-images.githubusercontent.com/48062697/113020670-b7c34f00-917a-11eb-8003-370ac5f2b3cb.gif)
 pub(crate) fn find_all_refs(
     sema: &Semantics<'_, RootDatabase>,
     position: FilePosition,

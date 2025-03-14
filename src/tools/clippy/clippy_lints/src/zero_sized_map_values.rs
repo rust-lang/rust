@@ -1,10 +1,9 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
+use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item, ty_from_hir_ty};
 use rustc_hir::{self as hir, AmbigArg, HirId, ItemKind, Node};
-use rustc_hir_analysis::lower_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, TypeVisitableExt};
 use rustc_session::declare_lint_pass;
 use rustc_span::sym;
 
@@ -73,24 +72,12 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
 }
 
 fn in_trait_impl(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let parent_id = cx.tcx.hir().get_parent_item(hir_id);
-    let second_parent_id = cx.tcx.hir().get_parent_item(parent_id.into()).def_id;
+    let parent_id = cx.tcx.hir_get_parent_item(hir_id);
+    let second_parent_id = cx.tcx.hir_get_parent_item(parent_id.into()).def_id;
     if let Node::Item(item) = cx.tcx.hir_node_by_def_id(second_parent_id) {
         if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
             return true;
         }
     }
     false
-}
-
-fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
-    cx.maybe_typeck_results()
-        .and_then(|results| {
-            if results.hir_owner == hir_ty.hir_id.owner {
-                results.node_type_opt(hir_ty.hir_id)
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(|| lower_ty(cx.tcx, hir_ty))
 }

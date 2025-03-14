@@ -1,11 +1,11 @@
 use crate::spec::base::apple::{Arch, TargetAbi, base};
-use crate::spec::{SanitizerSet, Target, TargetOptions};
+use crate::spec::{SanitizerSet, Target, TargetMetadata, TargetOptions};
 
 pub(crate) fn target() -> Target {
     let (opts, llvm_target, arch) = base("ios", Arch::X86_64, TargetAbi::MacCatalyst);
     Target {
         llvm_target,
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("x86_64 Apple Mac Catalyst".into()),
             tier: Some(2),
             host_tools: Some(false),

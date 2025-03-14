@@ -8,7 +8,7 @@
 
 use crate::spec::{
     Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, StackProbeType, Target,
-    TargetOptions, cvs,
+    TargetMetadata, TargetOptions, cvs,
 };
 
 pub(crate) fn target() -> Target {
@@ -16,9 +16,10 @@ pub(crate) fn target() -> Target {
         linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         // Enable the Cortex-A53 errata 843419 mitigation by default
-        pre_link_args: TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-            "--fix-cortex-a53-843419",
-        ]),
+        pre_link_args: TargetOptions::link_args(
+            LinkerFlavor::Gnu(Cc::No, Lld::No),
+            &["--fix-cortex-a53-843419"],
+        ),
         features: "+v8a,+strict-align,+neon,+fp-armv8".into(),
         supported_sanitizers: SanitizerSet::KCFI | SanitizerSet::KERNELADDRESS,
         relocation_model: RelocModel::Static,
@@ -32,7 +33,7 @@ pub(crate) fn target() -> Target {
     };
     Target {
         llvm_target: "aarch64-unknown-none".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("AArch64 NuttX".into()),
             tier: Some(3),
             host_tools: Some(false),

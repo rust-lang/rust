@@ -3,11 +3,10 @@
 //! fn f(a: i32, b: i32) -> i32 { a + b }
 //! let _x /* i32 */= f(4, 4);
 //! ```
-use hir::Semantics;
+use hir::{DisplayTarget, Semantics};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
-use span::EditionedFileId;
 use syntax::{
     ast::{self, AstNode, HasGenericArgs, HasName},
     match_ast,
@@ -22,7 +21,7 @@ pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
-    file_id: EditionedFileId,
+    display_target: DisplayTarget,
     pat: &ast::IdentPat,
 ) -> Option<()> {
     if !config.type_hints {
@@ -34,6 +33,9 @@ pub(super) fn hints(
         match parent {
             ast::Param(it) => {
                 if it.ty().is_some() {
+                    return None;
+                }
+                if config.hide_closure_parameter_hints && it.syntax().ancestors().nth(2).is_none_or(|n| matches!(ast::Expr::cast(n), Some(ast::Expr::ClosureExpr(_)))) {
                     return None;
                 }
                 Some(it.colon_token())
@@ -67,7 +69,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let mut label = label_of_ty(famous_defs, config, &ty, file_id.edition())?;
+    let mut label = label_of_ty(famous_defs, config, &ty, display_target)?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()
@@ -944,6 +946,36 @@ fn foo(f: impl FnOnce(u8) -> u8) {}
 
 fn bar(f: impl FnOnce(u8) -> u8) -> impl FnOnce(u8) -> u8 {
     move |x: u8| f(x) * 2
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn skip_closure_parameter_hints() {
+        check_with_config(
+            InlayHintsConfig {
+                type_hints: true,
+                hide_closure_parameter_hints: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+//- minicore: fn
+struct Foo;
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+fn main() {
+    let closure = |x, y| x + y;
+    //  ^^^^^^^ impl Fn(i32, i32) -> {unknown}
+    closure(2, 3);
+    let point = (10, 20);
+    //  ^^^^^ (i32, i32)
+    let (x,      y) = point;
+      // ^ i32   ^ i32
+    Foo::foo(Foo);
+    Foo::bar(&Foo);
 }
 "#,
         );

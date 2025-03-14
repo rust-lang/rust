@@ -88,7 +88,7 @@ pub(crate) fn render_union_literal(
             f(&format_args!(
                 "{}: {}",
                 field.name(ctx.db()).display(ctx.db(), ctx.completion.edition),
-                field.ty(ctx.db()).display(ctx.db(), ctx.completion.edition)
+                field.ty(ctx.db()).display(ctx.db(), ctx.completion.display_target)
             ))
         }),
         if fields_omitted { ", .." } else { "" }

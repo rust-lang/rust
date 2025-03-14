@@ -3,7 +3,7 @@
 
 use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
 use ide_db::{
-    base_db::{SourceRootDatabase, VfsPath},
+    base_db::{SourceDatabase, SourceRootDatabase, VfsPath},
     defs::Definition,
     documentation::Documentation,
     famous_defs::FamousDefs,
@@ -118,7 +118,11 @@ fn documentation_for_definition(
     def.docs(
         sema.db,
         famous_defs.as_ref(),
-        def.krate(sema.db).map(|it| it.edition(sema.db)).unwrap_or(Edition::CURRENT),
+        def.krate(sema.db)
+            .unwrap_or_else(|| {
+                (*sema.db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+            })
+            .to_display_target(sema.db),
     )
 }
 
@@ -154,6 +158,7 @@ impl StaticIndex<'_> {
                     implicit_drop_hints: false,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     param_names_for_lifetime_elision_hints: false,
                     binding_mode_hints: false,
@@ -169,10 +174,11 @@ impl StaticIndex<'_> {
             .unwrap();
         // hovers
         let sema = hir::Semantics::new(self.db);
-        let tokens_or_nodes = sema.parse_guess_edition(file_id).syntax().clone();
+        let root = sema.parse_guess_edition(file_id).syntax().clone();
         let edition =
             sema.attach_first_edition(file_id).map(|it| it.edition()).unwrap_or(Edition::CURRENT);
-        let tokens = tokens_or_nodes.descendants_with_tokens().filter_map(|it| match it {
+        let display_target = sema.first_crate_or_default(file_id).to_display_target(self.db);
+        let tokens = root.descendants_with_tokens().filter_map(|it| match it {
             syntax::NodeOrToken::Node(_) => None,
             syntax::NodeOrToken::Token(it) => Some(it),
         });
@@ -186,6 +192,7 @@ impl StaticIndex<'_> {
             max_fields_count: Some(5),
             max_enum_variants_count: Some(5),
             max_subst_ty_len: SubstTyLen::Unlimited,
+            show_drop_glue: true,
         };
         let tokens = tokens.filter(|token| {
             matches!(
@@ -194,28 +201,24 @@ impl StaticIndex<'_> {
             )
         });
         let mut result = StaticIndexedFile { file_id, inlay_hints, folds, tokens: vec![] };
-        for token in tokens {
-            let range = token.text_range();
-            let node = token.parent().unwrap();
-            let def = match get_definition(&sema, token.clone()) {
-                Some(it) => it,
-                None => continue,
-            };
+
+        let mut add_token = |def: Definition, range: TextRange, scope_node: &SyntaxNode| {
             let id = if let Some(it) = self.def_map.get(&def) {
                 *it
             } else {
                 let it = self.tokens.insert(TokenStaticData {
-                    documentation: documentation_for_definition(&sema, def, &node),
+                    documentation: documentation_for_definition(&sema, def, scope_node),
                     hover: Some(hover_for_definition(
                         &sema,
                         file_id,
                         def,
                         None,
-                        &node,
+                        scope_node,
                         None,
                         false,
                         &hover_config,
                         edition,
+                        display_target,
                     )),
                     definition: def.try_to_nav(self.db).map(UpmappingResult::call_site).map(|it| {
                         FileRange { file_id: it.file_id, range: it.focus_or_full_range() }
@@ -225,7 +228,7 @@ impl StaticIndex<'_> {
                     display_name: def
                         .name(self.db)
                         .map(|name| name.display(self.db, edition).to_string()),
-                    signature: Some(def.label(self.db, edition)),
+                    signature: Some(def.label(self.db, display_target)),
                     kind: def_to_kind(self.db, def),
                 });
                 self.def_map.insert(def, it);
@@ -240,6 +243,22 @@ impl StaticIndex<'_> {
                 },
             });
             result.tokens.push((range, id));
+        };
+
+        if let Some(module) = sema.file_to_module_def(file_id) {
+            let def = Definition::Module(module);
+            let range = root.text_range();
+            add_token(def, range, &root);
+        }
+
+        for token in tokens {
+            let range = token.text_range();
+            let node = token.parent().unwrap();
+            let def = match get_definition(&sema, token.clone()) {
+                Some(it) => it,
+                None => continue,
+            };
+            add_token(def, range, &node);
         }
         self.files.push(result);
     }
@@ -300,6 +319,10 @@ mod tests {
         let mut range_set: FxHashSet<_> = ranges.iter().map(|it| it.0).collect();
         for f in s.files {
             for (range, _) in f.tokens {
+                if range.start() == TextSize::from(0) {
+                    // ignore whole file range corresponding to module definition
+                    continue;
+                }
                 let it = FileRange { file_id: f.file_id, range };
                 if !range_set.contains(&it) {
                     panic!("additional range {it:?}");

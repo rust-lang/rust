@@ -98,7 +98,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 ///
 /// unsafe fn make_vec(out: *mut Vec<i32>) {
 ///     // `write` does not drop the old contents, which is important.
-///     out.write(vec![1, 2, 3]);
+///     unsafe { out.write(vec![1, 2, 3]); }
 /// }
 ///
 /// let mut v = MaybeUninit::uninit();
@@ -203,7 +203,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// `MaybeUninit<T>` is guaranteed to have the same size, alignment, and ABI as `T`:
 ///
 /// ```rust
-/// use std::mem::{MaybeUninit, size_of, align_of};
+/// use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<MaybeUninit<u64>>(), size_of::<u64>());
 /// assert_eq!(align_of::<MaybeUninit<u64>>(), align_of::<u64>());
 /// ```
@@ -215,7 +215,7 @@ use crate::{fmt, intrinsics, ptr, slice};
 /// optimizations, potentially resulting in a larger size:
 ///
 /// ```rust
-/// # use std::mem::{MaybeUninit, size_of};
+/// # use std::mem::MaybeUninit;
 /// assert_eq!(size_of::<Option<bool>>(), 1);
 /// assert_eq!(size_of::<Option<MaybeUninit<bool>>>(), 2);
 /// ```
@@ -329,42 +329,6 @@ impl<T> MaybeUninit<T> {
     #[rustc_diagnostic_item = "maybe_uninit_uninit"]
     pub const fn uninit() -> MaybeUninit<T> {
         MaybeUninit { uninit: () }
-    }
-
-    /// Creates a new array of `MaybeUninit<T>` items, in an uninitialized state.
-    ///
-    /// Note: in a future Rust version this method may become unnecessary
-    /// when Rust allows
-    /// [inline const expressions](https://github.com/rust-lang/rust/issues/76001).
-    /// The example below could then use `let mut buf = [const { MaybeUninit::<u8>::uninit() }; 32];`.
-    ///
-    /// # Examples
-    ///
-    /// ```no_run
-    /// #![feature(maybe_uninit_uninit_array, maybe_uninit_slice)]
-    ///
-    /// use std::mem::MaybeUninit;
-    ///
-    /// extern "C" {
-    ///     fn read_into_buffer(ptr: *mut u8, max_len: usize) -> usize;
-    /// }
-    ///
-    /// /// Returns a (possibly smaller) slice of data that was actually read
-    /// fn read(buf: &mut [MaybeUninit<u8>]) -> &[u8] {
-    ///     unsafe {
-    ///         let len = read_into_buffer(buf.as_mut_ptr() as *mut u8, buf.len());
-    ///         buf[..len].assume_init_ref()
-    ///     }
-    /// }
-    ///
-    /// let mut buf: [MaybeUninit<u8>; 32] = MaybeUninit::uninit_array();
-    /// let data = read(&mut buf);
-    /// ```
-    #[unstable(feature = "maybe_uninit_uninit_array", issue = "96097")]
-    #[must_use]
-    #[inline(always)]
-    pub const fn uninit_array<const N: usize>() -> [Self; N] {
-        [const { MaybeUninit::uninit() }; N]
     }
 
     /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
@@ -844,7 +808,7 @@ impl<T> MaybeUninit<T> {
     /// # #![allow(unexpected_cfgs)]
     /// use std::mem::MaybeUninit;
     ///
-    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { *buf = [0; 1024] }
+    /// # unsafe extern "C" fn initialize_buffer(buf: *mut [u8; 1024]) { unsafe { *buf = [0; 1024] } }
     /// # #[cfg(FALSE)]
     /// extern "C" {
     ///     /// Initializes *all* the bytes of the input buffer.
@@ -1041,7 +1005,6 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_ref`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[deprecated(
         note = "replaced by inherent assume_init_ref method; will eventually be removed",
         since = "1.83.0"
@@ -1053,7 +1016,6 @@ impl<T> MaybeUninit<T> {
 
     /// Deprecated version of [`slice::assume_init_mut`].
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
-    #[rustc_const_unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[deprecated(
         note = "replaced by inherent assume_init_mut method; will eventually be removed",
         since = "1.83.0"
@@ -1326,7 +1288,6 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// [`write_clone_of_slice`]: slice::write_clone_of_slice
     #[unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
-    #[rustc_const_unstable(feature = "maybe_uninit_write_slice", issue = "79995")]
     pub const fn write_copy_of_slice(&mut self, src: &[T]) -> &mut [T]
     where
         T: Copy,

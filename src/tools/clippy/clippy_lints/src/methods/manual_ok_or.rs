@@ -27,7 +27,7 @@ pub(super) fn check<'tcx>(
         && let Some(err_arg_snippet) = err_arg.span.get_source_text(cx)
         && let Some(indent) = indent_of(cx, expr.span)
     {
-        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str().into(), true, Some(indent + 4));
+        let reindented_err_arg_snippet = reindent_multiline(err_arg_snippet.as_str(), true, Some(indent + 4));
         span_lint_and_sugg(
             cx,
             MANUAL_OK_OR,
@@ -44,7 +44,7 @@ fn is_ok_wrapping(cx: &LateContext<'_>, map_expr: &Expr<'_>) -> bool {
     match map_expr.kind {
         ExprKind::Path(ref qpath) if is_res_lang_ctor(cx, cx.qpath_res(qpath, map_expr.hir_id), ResultOk) => true,
         ExprKind::Closure(closure) => {
-            let body = cx.tcx.hir().body(closure.body);
+            let body = cx.tcx.hir_body(closure.body);
             if let PatKind::Binding(_, param_id, ..) = body.params[0].pat.kind
                 && let ExprKind::Call(callee, [ok_arg]) = body.value.kind
                 && is_res_lang_ctor(cx, path_res(cx, callee), ResultOk)

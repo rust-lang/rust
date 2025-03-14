@@ -3,7 +3,7 @@
 
 pub auto trait AnAutoTrait {}
 
-pub struct Foo<T> { field: T }
+pub struct Foo<T: Clone + Sync> { field: T }
 
 //@ has impl_parts/struct.Foo.html '//*[@class="impl"]//h3[@class="code-header"]' \
 //     "impl<T> !AnAutoTrait for Foo<T>where T: Sync + Clone,"

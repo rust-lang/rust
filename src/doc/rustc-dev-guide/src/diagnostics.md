@@ -601,8 +601,8 @@ The trait implementation allows you to check certain syntactic constructs
 as the linter walks the AST. You can then choose to emit lints in a
 very similar way to compile errors.
 
-You also declare the metadata of a particular lint via the `declare_lint!`
-macro. [This macro](https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/macro.declare_lint.html) includes the name, the default level, a short description, and some
+You also declare the metadata of a particular lint via the [`declare_lint!`]
+macro. This macro includes the name, the default level, a short description, and some
 more details.
 
 Note that the lint and the lint pass must be registered with the compiler.
@@ -670,6 +670,8 @@ impl EarlyLintPass for WhileTrue {
 example-use-loop = denote infinite loops with `loop {"{"} ... {"}"}`
   .suggestion = use `loop`
 ```
+
+[`declare_lint!`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint_defs/macro.declare_lint.html
 
 ### Edition-gated lints
 

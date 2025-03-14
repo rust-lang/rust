@@ -1,10 +1,16 @@
 //@ assembly-output: emit-asm
-//@ compile-flags: -O
-//@ only-windows
-//@ only-x86_64
+//@ compile-flags: -Copt-level=3
+//@ compile-flags: --target x86_64-pc-windows-msvc
+//@ needs-llvm-components: x86
+//@ add-core-stubs
 
 #![feature(f16, f128)]
+#![feature(no_core)]
+#![no_core]
 #![crate_type = "lib"]
+
+extern crate minicore;
+use minicore::*;
 
 // CHECK-LABEL: second_f16
 // CHECK: movaps %xmm1, %xmm0

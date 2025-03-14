@@ -4,7 +4,15 @@ error: layout_of(Univariant) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Uninhabited,
+           backend_repr: Scalar(
+               Initialized {
+                   value: Int(
+                       I32,
+                       false,
+                   ),
+                   valid_range: 0..=0,
+               },
+           ),
            fields: Arbitrary {
                offsets: [
                    Size(0 bytes),
@@ -23,6 +31,7 @@ error: layout_of(Univariant) = Layout {
                    valid_range: 0..=0,
                },
            ),
+           uninhabited: true,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -40,7 +49,15 @@ error: layout_of(Univariant) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       backend_repr: Scalar(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 0..=0,
+                           },
+                       ),
                        fields: Arbitrary {
                            offsets: [
                                Size(4 bytes),
@@ -50,6 +67,7 @@ error: layout_of(Univariant) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 0,
                        },
@@ -63,7 +81,7 @@ error: layout_of(Univariant) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:39:1
+  --> $DIR/repr-c-dead-variants.rs:43:1
    |
 LL | enum Univariant {
    | ^^^^^^^^^^^^^^^
@@ -74,7 +92,7 @@ error: layout_of(TwoVariants) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I32,
@@ -107,6 +125,7 @@ error: layout_of(TwoVariants) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -119,35 +138,12 @@ error: layout_of(TwoVariants) = Layout {
                tag_field: 0,
                variants: [
                    Layout {
-                       size: Size(4 bytes),
-                       align: AbiAndPrefAlign {
-                           abi: Align(4 bytes),
-                           pref: $SOME_ALIGN,
-                       },
-                       abi: Uninhabited,
-                       fields: Arbitrary {
-                           offsets: [
-                               Size(4 bytes),
-                           ],
-                           memory_index: [
-                               0,
-                           ],
-                       },
-                       largest_niche: None,
-                       variants: Single {
-                           index: 0,
-                       },
-                       max_repr_align: None,
-                       unadjusted_abi_align: Align(4 bytes),
-                       randomization_seed: $SEED,
-                   },
-                   Layout {
                        size: Size(8 bytes),
                        align: AbiAndPrefAlign {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I32,
@@ -171,6 +167,45 @@ error: layout_of(TwoVariants) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
+                       variants: Single {
+                           index: 0,
+                       },
+                       max_repr_align: None,
+                       unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
+                   },
+                   Layout {
+                       size: Size(8 bytes),
+                       align: AbiAndPrefAlign {
+                           abi: Align(4 bytes),
+                           pref: $SOME_ALIGN,
+                       },
+                       backend_repr: ScalarPair(
+                           Initialized {
+                               value: Int(
+                                   I32,
+                                   false,
+                               ),
+                               valid_range: 0..=1,
+                           },
+                           Union {
+                               value: Int(
+                                   I8,
+                                   false,
+                               ),
+                           },
+                       ),
+                       fields: Arbitrary {
+                           offsets: [
+                               Size(4 bytes),
+                           ],
+                           memory_index: [
+                               0,
+                           ],
+                       },
+                       largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -184,7 +219,7 @@ error: layout_of(TwoVariants) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:46:1
+  --> $DIR/repr-c-dead-variants.rs:50:1
    |
 LL | enum TwoVariants {
    | ^^^^^^^^^^^^^^^^
@@ -195,7 +230,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                abi: Align(8 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -216,6 +251,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -233,7 +269,9 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            abi: Align(8 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       backend_repr: Memory {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [
                                Size(8 bytes),
@@ -245,6 +283,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 0,
                        },
@@ -260,7 +299,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            abi: Align(8 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -272,6 +311,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -287,7 +327,7 @@ error: layout_of(DeadBranchHasOtherField) = Layout {
            unadjusted_abi_align: Align(8 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/repr-c-dead-variants.rs:58:1
+  --> $DIR/repr-c-dead-variants.rs:62:1
    |
 LL | enum DeadBranchHasOtherField {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^

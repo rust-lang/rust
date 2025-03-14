@@ -6,6 +6,7 @@
 use std::cell::Cell;
 use std::slice;
 
+use rustc_ast::BindingMode;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::sync;
 use rustc_data_structures::unord::UnordMap;
@@ -14,6 +15,7 @@ use rustc_feature::Features;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+use rustc_hir::{Pat, PatKind};
 use rustc_middle::bug;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
@@ -139,9 +141,7 @@ impl LintStore {
         &self.lints
     }
 
-    pub fn get_lint_groups<'t>(
-        &'t self,
-    ) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> + 't {
+    pub fn get_lint_groups(&self) -> impl Iterator<Item = (&'static str, Vec<LintId>, bool)> {
         self.lint_groups
             .iter()
             .filter(|(_, LintGroup { depr, .. })| {
@@ -233,11 +233,14 @@ impl LintStore {
     }
 
     pub fn register_group_alias(&mut self, lint_name: &'static str, alias: &'static str) {
-        self.lint_groups.insert(alias, LintGroup {
-            lint_ids: vec![],
-            is_externally_loaded: false,
-            depr: Some(LintAlias { name: lint_name, silent: true }),
-        });
+        self.lint_groups.insert(
+            alias,
+            LintGroup {
+                lint_ids: vec![],
+                is_externally_loaded: false,
+                depr: Some(LintAlias { name: lint_name, silent: true }),
+            },
+        );
     }
 
     pub fn register_group(
@@ -252,11 +255,14 @@ impl LintStore {
             .insert(name, LintGroup { lint_ids: to, is_externally_loaded, depr: None })
             .is_none();
         if let Some(deprecated) = deprecated_name {
-            self.lint_groups.insert(deprecated, LintGroup {
-                lint_ids: vec![],
-                is_externally_loaded,
-                depr: Some(LintAlias { name, silent: false }),
-            });
+            self.lint_groups.insert(
+                deprecated,
+                LintGroup {
+                    lint_ids: vec![],
+                    is_externally_loaded,
+                    depr: Some(LintAlias { name, silent: false }),
+                },
+            );
         }
 
         if !new {
@@ -679,6 +685,10 @@ impl<'tcx> LateContext<'tcx> {
         self.tcx.type_is_copy_modulo_regions(self.typing_env(), ty)
     }
 
+    pub fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.tcx.type_is_use_cloned_modulo_regions(self.typing_env(), ty)
+    }
+
     /// Gets the type-checking results for the current body,
     /// or `None` if outside a body.
     pub fn maybe_typeck_results(&self) -> Option<&'tcx ty::TypeckResults<'tcx>> {
@@ -882,7 +892,12 @@ impl<'tcx> LateContext<'tcx> {
             }
             && let Some(init) = match parent_node {
                 hir::Node::Expr(expr) => Some(expr),
-                hir::Node::LetStmt(hir::LetStmt { init, .. }) => *init,
+                hir::Node::LetStmt(hir::LetStmt {
+                    init,
+                    // Binding is immutable, init cannot be re-assigned
+                    pat: Pat { kind: PatKind::Binding(BindingMode::NONE, ..), .. },
+                    ..
+                }) => *init,
                 _ => None,
             }
         {
@@ -922,15 +937,20 @@ impl<'tcx> LateContext<'tcx> {
         while let hir::ExprKind::Path(ref qpath) = expr.kind
             && let Some(parent_node) = match self.qpath_res(qpath, expr.hir_id) {
                 Res::Local(hir_id) => Some(self.tcx.parent_hir_node(hir_id)),
-                Res::Def(_, def_id) => self.tcx.hir().get_if_local(def_id),
+                Res::Def(_, def_id) => self.tcx.hir_get_if_local(def_id),
                 _ => None,
             }
             && let Some(init) = match parent_node {
                 hir::Node::Expr(expr) => Some(expr),
-                hir::Node::LetStmt(hir::LetStmt { init, .. }) => *init,
+                hir::Node::LetStmt(hir::LetStmt {
+                    init,
+                    // Binding is immutable, init cannot be re-assigned
+                    pat: Pat { kind: PatKind::Binding(BindingMode::NONE, ..), .. },
+                    ..
+                }) => *init,
                 hir::Node::Item(item) => match item.kind {
                     hir::ItemKind::Const(.., body_id) | hir::ItemKind::Static(.., body_id) => {
-                        Some(self.tcx.hir().body(body_id).value)
+                        Some(self.tcx.hir_body(body_id).value)
                     }
                     _ => None,
                 },

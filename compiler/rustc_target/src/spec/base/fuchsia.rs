@@ -7,20 +7,27 @@ pub(crate) fn opts() -> TargetOptions {
     // now. When using clang as the linker it will supply these options for us,
     // so we only list them for ld/lld.
     //
-    // https://github.com/llvm/llvm-project/blob/db9322b2066c55254e7691efeab863f43bfcc084/clang/lib/Driver/ToolChains/Fuchsia.cpp#L31
-    let pre_link_args = TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), &[
-        "--build-id",
-        "--hash-style=gnu",
-        "-z",
-        "max-page-size=4096",
-        "-z",
-        "now",
-        "-z",
-        "rodynamic",
-        "-z",
-        "separate-loadable-segments",
-        "--pack-dyn-relocs=relr",
-    ]);
+    // https://github.com/llvm/llvm-project/blob/0419db6b95e246fe9dc90b5795beb77c393eb2ce/clang/lib/Driver/ToolChains/Fuchsia.cpp#L32
+    let pre_link_args = TargetOptions::link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &[
+            "--build-id",
+            "--hash-style=gnu",
+            "-z",
+            "max-page-size=4096",
+            "-z",
+            "now",
+            "-z",
+            "start-stop-visibility=hidden",
+            "-z",
+            "rodynamic",
+            "-z",
+            "separate-loadable-segments",
+            "-z",
+            "rel",
+            "--pack-dyn-relocs=relr",
+        ],
+    );
 
     TargetOptions {
         os: "fuchsia".into(),

@@ -43,6 +43,7 @@ mod handlers {
     pub(crate) mod mutability_errors;
     pub(crate) mod no_such_field;
     pub(crate) mod non_exhaustive_let;
+    pub(crate) mod parenthesized_generic_args_without_fn_trait;
     pub(crate) mod private_assoc_item;
     pub(crate) mod private_field;
     pub(crate) mod remove_trailing_return;
@@ -80,7 +81,10 @@ mod tests;
 use std::{collections::hash_map, iter, sync::LazyLock};
 
 use either::Either;
-use hir::{db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, HirFileId, InFile, Semantics};
+use hir::{
+    db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, DisplayTarget, HirFileId, InFile,
+    Semantics,
+};
 use ide_db::{
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::{ReleaseChannel, SourceDatabase},
@@ -276,6 +280,7 @@ struct DiagnosticsContext<'a> {
     sema: Semantics<'a, RootDatabase>,
     resolve: &'a AssistResolveStrategy,
     edition: Edition,
+    display_target: DisplayTarget,
     is_nightly: bool,
 }
 
@@ -373,7 +378,18 @@ pub fn semantic_diagnostics(
         module.and_then(|m| db.toolchain_channel(m.krate().into())),
         Some(ReleaseChannel::Nightly) | None
     );
-    let ctx = DiagnosticsContext { config, sema, resolve, edition: file_id.edition(), is_nightly };
+    let krate = module.map(|module| module.krate()).unwrap_or_else(|| {
+        (*db.crate_graph().crates_in_topological_order().last().unwrap()).into()
+    });
+    let display_target = krate.to_display_target(db);
+    let ctx = DiagnosticsContext {
+        config,
+        sema,
+        resolve,
+        edition: file_id.edition(),
+        is_nightly,
+        display_target,
+    };
 
     let mut diags = Vec::new();
     match module {
@@ -466,7 +482,12 @@ pub fn semantic_diagnostics(
                 Some(it) => it,
                 None => continue,
             },
-            AnyDiagnostic::GenericArgsProhibited(d) => handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
+            AnyDiagnostic::GenericArgsProhibited(d) => {
+                handlers::generic_args_prohibited::generic_args_prohibited(&ctx, &d)
+            }
+            AnyDiagnostic::ParenthesizedGenericArgsWithoutFnTrait(d) => {
+                handlers::parenthesized_generic_args_without_fn_trait::parenthesized_generic_args_without_fn_trait(&ctx, &d)
+            }
         };
         res.push(d)
     }
@@ -691,7 +712,7 @@ struct SeverityAttr {
     /// #[warn(non_snake_case)]
     /// mod foo {
     ///     #[allow(nonstandard_style)]
-    ///     mod bar;
+    ///     mod bar {}
     /// }
     /// ```
     /// We want to not warn on non snake case inside `bar`. If we are traversing this for the first

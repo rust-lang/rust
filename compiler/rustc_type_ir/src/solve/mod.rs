@@ -8,6 +8,7 @@ use derive_where::derive_where;
 use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
+use crate::search_graph::PathKind;
 use crate::{self as ty, Canonical, CanonicalVarValues, Interner, Upcast};
 
 pub type CanonicalInput<I, T = <I as Interner>::Predicate> =
@@ -57,20 +58,24 @@ impl<I: Interner, P> Goal<I, P> {
 /// Why a specific goal has to be proven.
 ///
 /// This is necessary as we treat nested goals different depending on
-/// their source. This is currently mostly used by proof tree visitors
-/// but will be used by cycle handling in the future.
+/// their source. This is used to decide whether a cycle is coinductive.
+/// See the documentation of `EvalCtxt::step_kind_for_source` for more details
+/// about this.
+///
+/// It is also used by proof tree visitors, e.g. for diagnostics purposes.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "nightly", derive(HashStable_NoContext))]
 pub enum GoalSource {
     Misc,
-    /// We're proving a where-bound of an impl.
+    /// A nested goal required to prove that types are equal/subtypes.
+    /// This is always an unproductive step.
     ///
-    /// FIXME(-Znext-solver=coinductive): Explain how and why this
-    /// changes whether cycles are coinductive.
+    /// This is also used for all `NormalizesTo` goals as we they are used
+    /// to relate types in `AliasRelate`.
+    TypeRelating,
+    /// We're proving a where-bound of an impl.
     ImplWhereBound,
     /// Const conditions that need to hold for `~const` alias bounds to hold.
-    ///
-    /// FIXME(-Znext-solver=coinductive): Are these even coinductive?
     AliasBoundConstCondition,
     /// Instantiating a higher-ranked goal and re-proving it.
     InstantiateHigherRanked,
@@ -78,6 +83,12 @@ pub enum GoalSource {
     /// This is used in two places: projecting to an opaque whose hidden type
     /// is already registered in the opaque type storage, and for rigid projections.
     AliasWellFormed,
+    /// In case normalizing aliases in nested goals cycles, eagerly normalizing these
+    /// aliases in the context of the parent may incorrectly change the cycle kind.
+    /// Normalizing aliases in goals therefore tracks the original path kind for this
+    /// nested goal. See the comment of the `ReplaceAliasWithInfer` visitor for more
+    /// details.
+    NormalizeGoal(PathKind),
 }
 
 #[derive_where(Clone; I: Interner, Goal<I, P>: Clone)]
@@ -179,15 +190,8 @@ pub enum BuiltinImplSource {
     Object(usize),
     /// A built-in implementation of `Upcast` for trait objects to other trait objects.
     ///
-    /// This can be removed when `feature(dyn_upcasting)` is stabilized, since we only
-    /// use it to detect when upcasting traits in hir typeck. The index is only used
-    /// for winnowing.
+    /// The index is only used for winnowing.
     TraitUpcasting(usize),
-    /// Unsizing a tuple like `(A, B, ..., X)` to `(A, B, ..., Y)` if `X` unsizes to `Y`.
-    ///
-    /// This can be removed when `feature(tuple_unsizing)` is stabilized, since we only
-    /// use it to detect when unsizing tuples in hir typeck.
-    TupleUnsizing,
 }
 
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]

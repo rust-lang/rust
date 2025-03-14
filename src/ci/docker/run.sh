@@ -236,9 +236,15 @@ args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_BUCKET"
     args="$args --env SCCACHE_REGION"
-    args="$args --env AWS_ACCESS_KEY_ID"
-    args="$args --env AWS_SECRET_ACCESS_KEY"
     args="$args --env AWS_REGION"
+
+    # Disable S3 authentication for PR builds, because the access keys are missing
+    if [ "$PR_CI_JOB" != "" ]; then
+      args="$args --env SCCACHE_S3_NO_CREDENTIALS=1"
+    else
+      args="$args --env AWS_ACCESS_KEY_ID"
+      args="$args --env AWS_SECRET_ACCESS_KEY"
+    fi
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -355,6 +361,7 @@ docker \
   --env TOOLSTATE_PUBLISH \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \

@@ -4,7 +4,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -25,6 +25,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -42,7 +43,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -54,6 +55,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -67,7 +69,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -88,6 +90,7 @@ error: layout_of(Result<[u32; 0], bool>) = Layout {
                                valid_range: 0..=1,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -112,7 +115,7 @@ error: layout_of(MultipleAlignments) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -133,6 +136,7 @@ error: layout_of(MultipleAlignments) = Layout {
                    valid_range: 0..=2,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -150,7 +154,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(2 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -162,6 +166,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -175,7 +180,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -187,6 +192,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -200,7 +206,7 @@ error: layout_of(MultipleAlignments) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -221,6 +227,7 @@ error: layout_of(MultipleAlignments) = Layout {
                                valid_range: 0..=1,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 2,
                        },
@@ -245,7 +252,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -266,6 +273,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -283,7 +291,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -295,6 +303,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -308,7 +317,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -329,6 +338,7 @@ error: layout_of(Result<[u32; 0], Packed<NonZero<u16>>>) = Layout {
                                valid_range: 1..=65535,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
@@ -353,7 +363,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                abi: Align(4 bytes),
                pref: $PREF_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -374,6 +384,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -395,7 +406,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            abi: Align(4 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -407,6 +418,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -420,7 +432,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                            abi: Align(1 bytes),
                            pref: $PREF_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -441,6 +453,7 @@ error: layout_of(Result<[u32; 0], Packed<U16IsZero>>) = Layout {
                                valid_range: 0..=0,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },

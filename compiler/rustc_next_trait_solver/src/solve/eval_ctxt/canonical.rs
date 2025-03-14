@@ -21,7 +21,7 @@ use tracing::{debug, instrument, trace};
 use crate::canonicalizer::Canonicalizer;
 use crate::delegate::SolverDelegate;
 use crate::resolve::EagerResolver;
-use crate::solve::eval_ctxt::NestedGoals;
+use crate::solve::eval_ctxt::{CurrentGoalKind, NestedGoals};
 use crate::solve::{
     CanonicalInput, CanonicalResponse, Certainty, EvalCtxt, ExternalConstraintsData, Goal,
     MaybeCause, NestedNormalizationGoals, NoSolution, PredefinedOpaquesData, QueryInput,
@@ -60,13 +60,16 @@ where
             (goal, opaque_types).fold_with(&mut EagerResolver::new(self.delegate));
 
         let mut orig_values = Default::default();
-        let canonical =
-            Canonicalizer::canonicalize_input(self.delegate, &mut orig_values, QueryInput {
+        let canonical = Canonicalizer::canonicalize_input(
+            self.delegate,
+            &mut orig_values,
+            QueryInput {
                 goal,
                 predefined_opaques_in_body: self
                     .cx()
                     .mk_predefined_opaques_in_body(PredefinedOpaquesData { opaque_types }),
-            });
+            },
+        );
         let query_input = ty::CanonicalQueryInput { canonical, typing_mode: self.typing_mode() };
         (orig_values, query_input)
     }
@@ -106,18 +109,22 @@ where
         //
         // As we return all ambiguous nested goals, we can ignore the certainty returned
         // by `try_evaluate_added_goals()`.
-        let (certainty, normalization_nested_goals) = if self.is_normalizes_to_goal {
-            let NestedGoals { normalizes_to_goals, goals } = std::mem::take(&mut self.nested_goals);
-            if cfg!(debug_assertions) {
-                assert!(normalizes_to_goals.is_empty());
-                if goals.is_empty() {
-                    assert!(matches!(goals_certainty, Certainty::Yes));
+        let (certainty, normalization_nested_goals) = match self.current_goal_kind {
+            CurrentGoalKind::NormalizesTo => {
+                let NestedGoals { normalizes_to_goals, goals } =
+                    std::mem::take(&mut self.nested_goals);
+                if cfg!(debug_assertions) {
+                    assert!(normalizes_to_goals.is_empty());
+                    if goals.is_empty() {
+                        assert!(matches!(goals_certainty, Certainty::Yes));
+                    }
                 }
+                (certainty, NestedNormalizationGoals(goals))
             }
-            (certainty, NestedNormalizationGoals(goals))
-        } else {
-            let certainty = certainty.unify_with(goals_certainty);
-            (certainty, NestedNormalizationGoals::empty())
+            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
+                let certainty = certainty.unify_with(goals_certainty);
+                (certainty, NestedNormalizationGoals::empty())
+            }
         };
 
         if let Certainty::Maybe(cause @ MaybeCause::Overflow { .. }) = certainty {
@@ -142,7 +149,7 @@ where
         // Remove any trivial region constraints once we've resolved regions
         external_constraints
             .region_constraints
-            .retain(|outlives| outlives.0.as_region().map_or(true, |re| re != outlives.1));
+            .retain(|outlives| outlives.0.as_region().is_none_or(|re| re != outlives.1));
 
         let canonical = Canonicalizer::canonicalize_response(
             self.delegate,
@@ -160,19 +167,24 @@ where
         // ambiguous alias types which get replaced with fresh inference variables
         // during generalization. This prevents hangs caused by an exponential blowup,
         // see tests/ui/traits/next-solver/coherence-alias-hang.rs.
-        //
-        // We don't do so for `NormalizesTo` goals as we erased the expected term and
-        // bailing with overflow here would prevent us from detecting a type-mismatch,
-        // causing a coherence error in diesel, see #131969. We still bail with overflow
-        // when later returning from the parent AliasRelate goal.
-        if !self.is_normalizes_to_goal {
-            let num_non_region_vars =
-                canonical.variables.iter().filter(|c| !c.is_region() && c.is_existential()).count();
-            if num_non_region_vars > self.cx().recursion_limit() {
-                debug!(?num_non_region_vars, "too many inference variables -> overflow");
-                return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
-                    suggest_increasing_limit: true,
-                }));
+        match self.current_goal_kind {
+            // We don't do so for `NormalizesTo` goals as we erased the expected term and
+            // bailing with overflow here would prevent us from detecting a type-mismatch,
+            // causing a coherence error in diesel, see #131969. We still bail with overflow
+            // when later returning from the parent AliasRelate goal.
+            CurrentGoalKind::NormalizesTo => {}
+            CurrentGoalKind::Misc | CurrentGoalKind::CoinductiveTrait => {
+                let num_non_region_vars = canonical
+                    .variables
+                    .iter()
+                    .filter(|c| !c.is_region() && c.is_existential())
+                    .count();
+                if num_non_region_vars > self.cx().recursion_limit() {
+                    debug!(?num_non_region_vars, "too many inference variables -> overflow");
+                    return Ok(self.make_ambiguous_response_no_constraints(MaybeCause::Overflow {
+                        suggest_increasing_limit: true,
+                    }));
+                }
             }
         }
 
@@ -453,13 +465,11 @@ where
 {
     // In case any fresh inference variables have been created between `state`
     // and the previous instantiation, extend `orig_values` for it.
-    assert!(orig_values.len() <= state.value.var_values.len());
-    for &arg in &state.value.var_values.var_values.as_slice()
-        [orig_values.len()..state.value.var_values.len()]
-    {
-        let unconstrained = delegate.fresh_var_for_kind_with_span(arg, span);
-        orig_values.push(unconstrained);
-    }
+    orig_values.extend(
+        state.value.var_values.var_values.as_slice()[orig_values.len()..]
+            .iter()
+            .map(|&arg| delegate.fresh_var_for_kind_with_span(arg, span)),
+    );
 
     let instantiation =
         EvalCtxt::compute_query_response_instantiation_values(delegate, orig_values, &state, span);

@@ -96,14 +96,11 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
             end_span: pat.span.between(arg.span),
         };
 
-        cx.emit_span_lint(FOR_LOOPS_OVER_FALLIBLES, arg.span, ForLoopsOverFalliblesDiag {
-            article,
-            ref_prefix,
-            ty,
-            sub,
-            question_mark,
-            suggestion,
-        });
+        cx.emit_span_lint(
+            FOR_LOOPS_OVER_FALLIBLES,
+            arg.span,
+            ForLoopsOverFalliblesDiag { article, ref_prefix, ty, sub, question_mark, suggestion },
+        );
     }
 }
 
@@ -158,7 +155,7 @@ fn suggest_question_mark<'tcx>(
     // Check that the function/closure/constant we are in has a `Result` type.
     // Otherwise suggesting using `?` may not be a good idea.
     {
-        let ty = cx.typeck_results().expr_ty(cx.tcx.hir().body(body_id).value);
+        let ty = cx.typeck_results().expr_ty(cx.tcx.hir_body(body_id).value);
         let ty::Adt(ret_adt, ..) = ty.kind() else { return false };
         if !cx.tcx.is_diagnostic_item(sym::Result, ret_adt.did()) {
             return false;
@@ -169,7 +166,7 @@ fn suggest_question_mark<'tcx>(
     let (infcx, param_env) = cx.tcx.infer_ctxt().build_with_typing_env(cx.typing_env());
     let ocx = ObligationCtxt::new(&infcx);
 
-    let body_def_id = cx.tcx.hir().body_owner_def_id(body_id);
+    let body_def_id = cx.tcx.hir_body_owner_def_id(body_id);
     let cause =
         ObligationCause::new(span, body_def_id, rustc_infer::traits::ObligationCauseCode::Misc);
 

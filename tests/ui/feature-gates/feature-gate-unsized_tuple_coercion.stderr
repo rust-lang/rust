@@ -1,13 +1,14 @@
-error[E0658]: unsized tuple coercion is not stable enough for use and is subject to change
+error[E0308]: mismatched types
   --> $DIR/feature-gate-unsized_tuple_coercion.rs:2:28
    |
 LL |     let _ : &(dyn Send,) = &((),);
-   |                            ^^^^^^
+   |             ------------   ^^^^^^ expected `&(dyn Send,)`, found `&((),)`
+   |             |
+   |             expected due to this
    |
-   = note: see issue #42877 <https://github.com/rust-lang/rust/issues/42877> for more information
-   = help: add `#![feature(unsized_tuple_coercion)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+   = note: expected reference `&(dyn Send,)`
+              found reference `&((),)`
 
 error: aborting due to 1 previous error
 
-For more information about this error, try `rustc --explain E0658`.
+For more information about this error, try `rustc --explain E0308`.

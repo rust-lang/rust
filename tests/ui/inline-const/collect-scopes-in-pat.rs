@@ -1,4 +1,4 @@
-// @compile-flags: -Zlint-mir
+//@ compile-flags: -Zlint-mir
 //@ check-pass
 
 #![feature(inline_const_pat)]

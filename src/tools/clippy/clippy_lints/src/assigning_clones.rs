@@ -59,9 +59,7 @@ pub struct AssigningClones {
 
 impl AssigningClones {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -90,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
                 sym::clone if is_diag_trait_item(cx, fn_id, sym::Clone) => CloneTrait::Clone,
                 _ if fn_name.as_str() == "to_owned"
                     && is_diag_trait_item(cx, fn_id, sym::ToOwned)
-                    && self.msrv.meets(msrvs::CLONE_INTO) =>
+                    && self.msrv.meets(cx, msrvs::CLONE_INTO) =>
                 {
                     CloneTrait::ToOwned
                 },
@@ -107,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             && !cx.tcx.is_builtin_derived(resolved_impl)
             // Don't suggest calling a function we're implementing.
             && resolved_impl.as_local().is_none_or(|block_id| {
-                cx.tcx.hir().parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
+                cx.tcx.hir_parent_owner_iter(e.hir_id).all(|(id, _)| id.def_id != block_id)
             })
             && let resolved_assoc_items = cx.tcx.associated_items(resolved_impl)
             // Only suggest if `clone_from`/`clone_into` is explicitly implemented
@@ -143,8 +141,6 @@ impl<'tcx> LateLintPass<'tcx> for AssigningClones {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Checks if the data being cloned borrows from the place that is being assigned to:

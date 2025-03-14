@@ -11,7 +11,7 @@ use crate::{array, ptr, ub_checks};
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be non-null, [valid] for reads for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for reads for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
@@ -28,7 +28,7 @@ use crate::{array, ptr, ub_checks};
 /// * The memory referenced by the returned slice must not be mutated for the duration
 ///   of lifetime `'a`, except inside an `UnsafeCell`.
 ///
-/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
+/// * The total size `len * size_of::<T>()` of the slice must be no larger than `isize::MAX`,
 ///   and adding that size to `data` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
@@ -146,7 +146,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///
 /// Behavior is undefined if any of the following conditions are violated:
 ///
-/// * `data` must be non-null, [valid] for both reads and writes for `len * mem::size_of::<T>()` many bytes,
+/// * `data` must be non-null, [valid] for both reads and writes for `len * size_of::<T>()` many bytes,
 ///   and it must be properly aligned. This means in particular:
 ///
 ///     * The entire memory range of this slice must be contained within a single allocated object!
@@ -163,7 +163,7 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 ///   (not derived from the return value) for the duration of lifetime `'a`.
 ///   Both read and write accesses are forbidden.
 ///
-/// * The total size `len * mem::size_of::<T>()` of the slice must be no larger than `isize::MAX`,
+/// * The total size `len * size_of::<T>()` of the slice must be no larger than `isize::MAX`,
 ///   and adding that size to `data` must not "wrap around" the address space.
 ///   See the safety documentation of [`pointer::offset`].
 ///
@@ -272,7 +272,7 @@ pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
 #[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
 pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
     // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
-    unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
+    unsafe { from_raw_parts(range.start, range.end.offset_from_unsigned(range.start)) }
 }
 
 /// Forms a mutable slice from a pointer range.
@@ -342,5 +342,5 @@ pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
 #[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
 pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
     // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
-    unsafe { from_raw_parts_mut(range.start, range.end.sub_ptr(range.start)) }
+    unsafe { from_raw_parts_mut(range.start, range.end.offset_from_unsigned(range.start)) }
 }

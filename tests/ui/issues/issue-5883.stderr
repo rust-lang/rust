@@ -22,8 +22,9 @@ LL |     r: dyn A + 'static
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL |     r: impl A + 'static
-   |        ~~~~
+LL -     r: dyn A + 'static
+LL +     r: impl A + 'static
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL |     r: &dyn A + 'static

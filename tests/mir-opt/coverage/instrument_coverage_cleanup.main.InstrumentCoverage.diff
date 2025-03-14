@@ -8,15 +8,14 @@
       coverage branch { true: BlockMarkerId(0), false: BlockMarkerId(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0)
   
 +     coverage body span: $DIR/instrument_coverage_cleanup.rs:13:11: 15:2 (#0)
-+     coverage ExpressionId(0) => Expression { lhs: Counter(0), op: Subtract, rhs: Counter(1) };
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:13:1: 14:36 (#0);
-+     coverage Code(Expression(0)) => $DIR/instrument_coverage_cleanup.rs:14:37: 14:39 (#0);
-+     coverage Code(Counter(1)) => $DIR/instrument_coverage_cleanup.rs:14:39: 14:39 (#0);
-+     coverage Code(Counter(0)) => $DIR/instrument_coverage_cleanup.rs:15:2: 15:2 (#0);
-+     coverage Branch { true_term: Expression(0), false_term: Counter(1) } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage_cleanup.rs:13:1: 14:36 (#0);
++     coverage Code { bcb: bcb3 } => $DIR/instrument_coverage_cleanup.rs:14:37: 14:39 (#0);
++     coverage Code { bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:39: 14:39 (#0);
++     coverage Code { bcb: bcb2 } => $DIR/instrument_coverage_cleanup.rs:15:2: 15:2 (#0);
++     coverage Branch { true_bcb: bcb3, false_bcb: bcb1 } => $DIR/instrument_coverage_cleanup.rs:14:8: 14:36 (#0);
 + 
       bb0: {
-+         Coverage::CounterIncrement(0);
++         Coverage::VirtualCounter(bcb0);
           Coverage::SpanMarker;
           StorageLive(_1);
           _1 = std::hint::black_box::<bool>(const true) -> [return: bb1, unwind: bb5];
@@ -27,20 +26,21 @@
       }
   
       bb2: {
-+         Coverage::CounterIncrement(1);
++         Coverage::VirtualCounter(bcb1);
           Coverage::BlockMarker(1);
           _0 = const ();
           goto -> bb4;
       }
   
       bb3: {
-+         Coverage::ExpressionUsed(0);
++         Coverage::VirtualCounter(bcb3);
           Coverage::BlockMarker(0);
           _0 = const ();
           goto -> bb4;
       }
   
       bb4: {
++         Coverage::VirtualCounter(bcb2);
           StorageDead(_1);
           return;
       }

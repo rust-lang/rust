@@ -13,7 +13,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [[bin]]
 name = "rust-analyzer"
@@ -37,7 +36,7 @@ rustc-hash.workspace = true
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde.workspace = true
 serde_derive.workspace = true
-tenthash = "0.4.0"
+tenthash = "1.0.0"
 num_cpus = "1.15.0"
 mimalloc = { version = "0.1.30", default-features = false, optional = true }
 lsp-server.workspace = true
@@ -94,7 +93,7 @@ syntax-bridge.workspace = true
 
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
-force-always-assert = ["always-assert/force"]
+force-always-assert = ["stdx/force-always-assert"]
 sysroot-abi = []
 in-rust-tree = [
   "sysroot-abi",

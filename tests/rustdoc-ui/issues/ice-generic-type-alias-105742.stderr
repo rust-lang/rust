@@ -319,8 +319,9 @@ LL | |  > {
    | |__^ ...because it uses `Self` as a type parameter
 help: consider using an opaque type instead
    |
-LL | pub fn next<'a, T>(s: &'a mut impl SVec<Item = T, Output = T>) {
-   |                               ~~~~
+LL - pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
+LL + pub fn next<'a, T>(s: &'a mut impl SVec<Item = T, Output = T>) {
+   |
 
 error[E0107]: missing generics for associated type `SVec::Item`
   --> $DIR/ice-generic-type-alias-105742.rs:16:21

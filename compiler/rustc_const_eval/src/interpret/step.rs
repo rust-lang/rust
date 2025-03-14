@@ -14,7 +14,7 @@ use tracing::{info, instrument, trace};
 
 use super::{
     FnArg, FnVal, ImmTy, Immediate, InterpCx, InterpResult, Machine, MemPlaceMeta, PlaceTy,
-    Projectable, Scalar, interp_ok, throw_ub,
+    Projectable, Scalar, interp_ok, throw_ub, throw_unsup_format,
 };
 use crate::util;
 
@@ -241,7 +241,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 // Figure out whether this is an addr_of of an already raw place.
                 let place_base_raw = if place.is_indirect_first_projection() {
                     let ty = self.frame().body.local_decls[place.local].ty;
-                    ty.is_unsafe_ptr()
+                    ty.is_raw_ptr()
                 } else {
                     // Not a deref, and thus not raw.
                     false
@@ -590,8 +590,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 terminator.kind
             ),
 
-            InlineAsm { template, ref operands, options, ref targets, .. } => {
-                M::eval_inline_asm(self, template, operands, options, targets)?;
+            InlineAsm { .. } => {
+                throw_unsup_format!("inline assembly is not supported");
             }
         }
 

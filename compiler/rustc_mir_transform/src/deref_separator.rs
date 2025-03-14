@@ -1,8 +1,9 @@
-use rustc_middle::mir::patch::MirPatch;
 use rustc_middle::mir::visit::NonUseContext::VarDebugInfo;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext};
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
+
+use crate::patch::MirPatch;
 
 pub(super) struct Derefer;
 

@@ -405,10 +405,11 @@ impl<'tcx> Stable<'tcx> for ty::Pattern<'tcx> {
 
     fn stable(&self, tables: &mut Tables<'_>) -> Self::T {
         match **self {
-            ty::PatternKind::Range { start, end, include_end } => stable_mir::ty::Pattern::Range {
-                start: start.stable(tables),
-                end: end.stable(tables),
-                include_end,
+            ty::PatternKind::Range { start, end } => stable_mir::ty::Pattern::Range {
+                // FIXME(SMIR): update data structures to not have an Option here anymore
+                start: Some(start.stable(tables)),
+                end: Some(end.stable(tables)),
+                include_end: true,
             },
         }
     }
@@ -771,12 +772,10 @@ impl<'tcx> Stable<'tcx> for ty::RegionKind<'tcx> {
                 index: early_reg.index,
                 name: early_reg.name.to_string(),
             }),
-            ty::ReBound(db_index, bound_reg) => {
-                RegionKind::ReBound(db_index.as_u32(), BoundRegion {
-                    var: bound_reg.var.as_u32(),
-                    kind: bound_reg.kind.stable(tables),
-                })
-            }
+            ty::ReBound(db_index, bound_reg) => RegionKind::ReBound(
+                db_index.as_u32(),
+                BoundRegion { var: bound_reg.var.as_u32(), kind: bound_reg.kind.stable(tables) },
+            ),
             ty::ReStatic => RegionKind::ReStatic,
             ty::RePlaceholder(place_holder) => {
                 RegionKind::RePlaceholder(stable_mir::ty::Placeholder {

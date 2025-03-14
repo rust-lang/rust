@@ -2,12 +2,9 @@
 
 use core::intrinsics;
 use std::marker::PhantomData;
-use std::mem;
 use std::num::NonZero;
 use std::ptr::NonNull;
 
-use rustc_ast_ir::visit::VisitorResult;
-use rustc_ast_ir::walk_visitable_list;
 use rustc_data_structures::intern::Interned;
 use rustc_errors::{DiagArgValue, IntoDiagArg};
 use rustc_hir::def_id::DefId;
@@ -18,7 +15,7 @@ use smallvec::SmallVec;
 
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::fold::{FallibleTypeFolder, TypeFoldable};
-use crate::ty::visit::{TypeVisitable, TypeVisitor};
+use crate::ty::visit::{TypeVisitable, TypeVisitor, VisitorResult, walk_visitable_list};
 use crate::ty::{
     self, ClosureArgs, CoroutineArgs, CoroutineClosureArgs, InlineConstArgs, Lift, List, Ty, TyCtxt,
 };
@@ -161,8 +158,8 @@ unsafe impl<'tcx> Sync for GenericArg<'tcx> where
 }
 
 impl<'tcx> IntoDiagArg for GenericArg<'tcx> {
-    fn into_diag_arg(self) -> DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
@@ -178,17 +175,17 @@ impl<'tcx> GenericArgKind<'tcx> {
         let (tag, ptr) = match self {
             GenericArgKind::Lifetime(lt) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*lt.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*lt.0.0) & TAG_MASK, 0);
                 (REGION_TAG, NonNull::from(lt.0.0).cast())
             }
             GenericArgKind::Type(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
@@ -481,25 +478,23 @@ impl<'tcx> GenericArgs<'tcx> {
     }
 
     #[inline]
-    pub fn types(&'tcx self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> + 'tcx {
+    pub fn types(&self) -> impl DoubleEndedIterator<Item = Ty<'tcx>> {
         self.iter().filter_map(|k| k.as_type())
     }
 
     #[inline]
-    pub fn regions(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> + 'tcx {
+    pub fn regions(&self) -> impl DoubleEndedIterator<Item = ty::Region<'tcx>> {
         self.iter().filter_map(|k| k.as_region())
     }
 
     #[inline]
-    pub fn consts(&'tcx self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> + 'tcx {
+    pub fn consts(&self) -> impl DoubleEndedIterator<Item = ty::Const<'tcx>> {
         self.iter().filter_map(|k| k.as_const())
     }
 
-    /// Returns generic arguments that are not lifetimes or host effect params.
+    /// Returns generic arguments that are not lifetimes.
     #[inline]
-    pub fn non_erasable_generics(
-        &'tcx self,
-    ) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> + 'tcx {
+    pub fn non_erasable_generics(&self) -> impl DoubleEndedIterator<Item = GenericArgKind<'tcx>> {
         self.iter().filter_map(|k| match k.unpack() {
             ty::GenericArgKind::Lifetime(_) => None,
             generic => Some(generic),

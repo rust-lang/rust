@@ -228,7 +228,7 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data",);
+            return io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data");
         }
 
         match self.setup_io(default, true) {
@@ -410,6 +410,7 @@ impl Command {
 
     #[cfg(not(any(
         target_os = "freebsd",
+        target_os = "illumos",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
@@ -427,11 +428,15 @@ impl Command {
     // directly.
     #[cfg(any(
         target_os = "freebsd",
+        target_os = "illumos",
         all(target_os = "linux", target_env = "gnu"),
         all(target_os = "linux", target_env = "musl"),
         target_os = "nto",
         target_vendor = "apple",
     ))]
+    // FIXME(#115199): Rust currently omits weak function definitions
+    // and its metadata from LLVM IR.
+    #[cfg_attr(target_os = "linux", no_sanitize(cfi))]
     fn posix_spawn(
         &mut self,
         stdio: &ChildPipes,
@@ -584,6 +589,10 @@ impl Command {
         fn get_posix_spawn_addchdir() -> Option<PosixSpawnAddChdirFn> {
             use crate::sys::weak::weak;
 
+            // POSIX.1-2024 standardizes this function:
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_addchdir.html.
+            // The _np version is more widely available, though, so try that first.
+
             weak! {
                 fn posix_spawn_file_actions_addchdir_np(
                     *mut libc::posix_spawn_file_actions_t,
@@ -591,7 +600,16 @@ impl Command {
                 ) -> libc::c_int
             }
 
-            posix_spawn_file_actions_addchdir_np.get()
+            weak! {
+                fn posix_spawn_file_actions_addchdir(
+                    *mut libc::posix_spawn_file_actions_t,
+                    *const libc::c_char
+                ) -> libc::c_int
+            }
+
+            posix_spawn_file_actions_addchdir_np
+                .get()
+                .or_else(|| posix_spawn_file_actions_addchdir.get())
         }
 
         /// Get the function pointer for adding a chdir action to a
@@ -799,7 +817,7 @@ impl Command {
 
             let fds: [c_int; 1] = [pidfd as RawFd];
 
-            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+            const SCM_MSG_LEN: usize = size_of::<[c_int; 1]>();
 
             #[repr(C)]
             union Cmsg {
@@ -818,7 +836,7 @@ impl Command {
 
             // only attach cmsg if we successfully acquired the pidfd
             if pidfd >= 0 {
-                msg.msg_controllen = mem::size_of_val(&cmsg.buf) as _;
+                msg.msg_controllen = size_of_val(&cmsg.buf) as _;
                 msg.msg_control = (&raw mut cmsg.buf) as *mut _;
 
                 let hdr = CMSG_FIRSTHDR((&raw mut msg) as *mut _);
@@ -850,7 +868,7 @@ impl Command {
         use crate::sys::cvt_r;
 
         unsafe {
-            const SCM_MSG_LEN: usize = mem::size_of::<[c_int; 1]>();
+            const SCM_MSG_LEN: usize = size_of::<[c_int; 1]>();
 
             #[repr(C)]
             union Cmsg {
@@ -865,7 +883,7 @@ impl Command {
 
             msg.msg_iov = (&raw mut iov) as *mut _;
             msg.msg_iovlen = 1;
-            msg.msg_controllen = mem::size_of::<Cmsg>() as _;
+            msg.msg_controllen = size_of::<Cmsg>() as _;
             msg.msg_control = (&raw mut cmsg) as *mut _;
 
             match cvt_r(|| libc::recvmsg(sock.as_raw(), &mut msg, libc::MSG_CMSG_CLOEXEC)) {
@@ -1228,7 +1246,7 @@ mod linux_child_ext {
                 .as_ref()
                 // SAFETY: The os type is a transparent wrapper, therefore we can transmute references
                 .map(|fd| unsafe { mem::transmute::<&imp::PidFd, &os::PidFd>(fd) })
-                .ok_or_else(|| io::Error::new(ErrorKind::Uncategorized, "No pidfd was created."))
+                .ok_or_else(|| io::const_error!(ErrorKind::Uncategorized, "no pidfd was created."))
         }
 
         fn into_pidfd(mut self) -> Result<os::PidFd, Self> {

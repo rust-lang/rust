@@ -6,8 +6,9 @@ LL |     i++;
    |
 help: use `+= 1` instead
    |
-LL |     i += 1;
-   |       ~~~~
+LL -     i++;
+LL +     i += 1;
+   |
 
 error: Rust has no postfix increment operator
   --> $DIR/issue-104867-inc-dec.rs:12:8
@@ -17,8 +18,9 @@ LL |     s.x++;
    |
 help: use `+= 1` instead
    |
-LL |     s.x += 1;
-   |         ~~~~
+LL -     s.x++;
+LL +     s.x += 1;
+   |
 
 error: Rust has no postfix increment operator
   --> $DIR/issue-104867-inc-dec.rs:17:9
@@ -28,8 +30,9 @@ LL |     if i++ == 1 {}
    |
 help: use `+= 1` instead
    |
-LL |     if { let tmp = i; i += 1; tmp } == 1 {}
-   |        +++++++++++  ~~~~~~~~~~~~~~~
+LL -     if i++ == 1 {}
+LL +     if { let tmp = i; i += 1; tmp } == 1 {}
+   |
 
 error: Rust has no prefix increment operator
   --> $DIR/issue-104867-inc-dec.rs:22:5
@@ -51,8 +54,9 @@ LL |     if ++i == 1 { }
    |
 help: use `+= 1` instead
    |
-LL |     if { i += 1; i } == 1 { }
-   |        ~   +++++++++
+LL -     if ++i == 1 { }
+LL +     if { i += 1; i } == 1 { }
+   |
 
 error: Rust has no postfix increment operator
   --> $DIR/issue-104867-inc-dec.rs:33:6
@@ -62,8 +66,9 @@ LL |     i++;
    |
 help: use `+= 1` instead
    |
-LL |     i += 1;
-   |       ~~~~
+LL -     i++;
+LL +     i += 1;
+   |
 
 error: Rust has no prefix increment operator
   --> $DIR/issue-104867-inc-dec.rs:41:5

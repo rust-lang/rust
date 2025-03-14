@@ -41,10 +41,10 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ParamIndexRemapper<'tcx> {
         if let ty::ReEarlyParam(param) = r.kind()
             && let Some(index) = self.remap_table.get(&param.index).copied()
         {
-            return ty::Region::new_early_param(self.tcx, ty::EarlyParamRegion {
-                index,
-                name: param.name,
-            });
+            return ty::Region::new_early_param(
+                self.tcx,
+                ty::EarlyParamRegion { index, name: param.name },
+            );
         }
         r
     }
@@ -404,9 +404,14 @@ fn check_constraints<'tcx>(
     };
 
     if let Some(local_sig_id) = sig_id.as_local()
-        && tcx.hir().opt_delegation_sig_id(local_sig_id).is_some()
+        && tcx.hir_opt_delegation_sig_id(local_sig_id).is_some()
     {
         emit("recursive delegation is not supported yet");
+    }
+
+    if tcx.fn_sig(sig_id).skip_binder().skip_binder().c_variadic {
+        // See issue #127443 for explanation.
+        emit("delegation to C-variadic functions is not allowed");
     }
 
     ret
@@ -416,7 +421,7 @@ pub(crate) fn inherit_sig_for_delegation_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> &'tcx [Ty<'tcx>] {
-    let sig_id = tcx.hir().opt_delegation_sig_id(def_id).unwrap();
+    let sig_id = tcx.hir_opt_delegation_sig_id(def_id).unwrap();
     let caller_sig = tcx.fn_sig(sig_id);
     if let Err(err) = check_constraints(tcx, def_id, sig_id) {
         let sig_len = caller_sig.instantiate_identity().skip_binder().inputs().len() + 1;

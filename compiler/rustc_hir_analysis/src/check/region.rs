@@ -424,7 +424,7 @@ fn resolve_expr<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, expr: &'tcx hi
         // that share the parent environment. We handle const blocks in
         // `visit_inline_const`.
         hir::ExprKind::Closure(&hir::Closure { body, .. }) => {
-            let body = visitor.tcx.hir().body(body);
+            let body = visitor.tcx.hir_body(body);
             visitor.visit_body(body);
         }
         hir::ExprKind::AssignOp(_, left_expr, right_expr) => {
@@ -844,7 +844,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
 
     fn visit_body(&mut self, body: &hir::Body<'tcx>) {
         let body_id = body.id();
-        let owner_id = self.tcx.hir().body_owner_def_id(body_id);
+        let owner_id = self.tcx.hir_body_owner_def_id(body_id);
 
         debug!(
             "visit_body(id={:?}, span={:?}, body.id={:?}, cx.parent={:?})",
@@ -855,7 +855,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         );
 
         self.enter_body(body.value.hir_id, |this| {
-            if this.tcx.hir().body_owner_kind(owner_id).is_fn_or_closure() {
+            if this.tcx.hir_body_owner_kind(owner_id).is_fn_or_closure() {
                 // The arguments and `self` are parented to the fn.
                 this.cx.var_parent = this.cx.parent.take();
                 for param in body.params {
@@ -906,7 +906,7 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         resolve_local(self, Some(l.pat), l.init)
     }
     fn visit_inline_const(&mut self, c: &'tcx hir::ConstBlock) {
-        let body = self.tcx.hir().body(c.body);
+        let body = self.tcx.hir_body(c.body);
         self.visit_body(body);
     }
 }
@@ -924,7 +924,7 @@ pub(crate) fn region_scope_tree(tcx: TyCtxt<'_>, def_id: DefId) -> &ScopeTree {
         return tcx.region_scope_tree(typeck_root_def_id);
     }
 
-    let scope_tree = if let Some(body) = tcx.hir().maybe_body_owned_by(def_id.expect_local()) {
+    let scope_tree = if let Some(body) = tcx.hir_maybe_body_owned_by(def_id.expect_local()) {
         let mut visitor = ScopeResolutionVisitor {
             tcx,
             scope_tree: ScopeTree::default(),

@@ -188,12 +188,14 @@ impl Qualif for NeedsNonConstDrop {
             ObligationCause::misc(cx.body.span, cx.def_id()),
             param_env,
             ty::Binder::dummy(ty::TraitRef::new(cx.tcx, destruct_def_id, [ty]))
-                .to_host_effect_clause(cx.tcx, match cx.const_kind() {
-                    rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
-                    rustc_hir::ConstContext::Static(_) | rustc_hir::ConstContext::Const { .. } => {
-                        ty::BoundConstness::Const
-                    }
-                }),
+                .to_host_effect_clause(
+                    cx.tcx,
+                    match cx.const_kind() {
+                        rustc_hir::ConstContext::ConstFn => ty::BoundConstness::Maybe,
+                        rustc_hir::ConstContext::Static(_)
+                        | rustc_hir::ConstContext::Const { .. } => ty::BoundConstness::Const,
+                    },
+                ),
         ));
         !ocx.select_all_or_error().is_empty()
     }

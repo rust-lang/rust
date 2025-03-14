@@ -2,7 +2,7 @@ error[E0080]: evaluation of constant value failed
   --> $DIR/panic-assoc-never-type.rs:9:21
    |
 LL |     const VOID: ! = panic!();
-   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:9:21
+   |                     ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

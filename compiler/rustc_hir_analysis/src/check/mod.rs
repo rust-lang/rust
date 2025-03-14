@@ -62,9 +62,9 @@ a type parameter).
 
 */
 
+pub mod always_applicable;
 mod check;
 mod compare_impl_item;
-pub mod dropck;
 mod entry;
 pub mod intrinsic;
 pub mod intrinsicck;
@@ -84,6 +84,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -113,11 +114,11 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_dtor(def_id.to_def_id(), always_applicable::check_drop_impl)
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_async_dtor(def_id.to_def_id(), always_applicable::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -127,9 +128,9 @@ fn get_owner_return_paths(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
+    let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
     tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
         (parent_id, visitor)
@@ -145,7 +146,7 @@ pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
@@ -240,11 +241,11 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label

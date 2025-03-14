@@ -7,6 +7,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(decl_macro)]
@@ -16,7 +17,6 @@
 #![feature(result_flattening)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cmp::max;
@@ -89,10 +89,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
-#[cfg(all(unix, any(target_env = "gnu", target_os = "macos")))]
+#[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 
-#[cfg(not(all(unix, any(target_env = "gnu", target_os = "macos"))))]
+#[cfg(not(all(not(miri), unix, any(target_env = "gnu", target_os = "macos"))))]
 mod signal_handler {
     /// On platforms which don't support our signal handler's requirements,
     /// simply use the default signal handler provided by std.
@@ -667,11 +667,12 @@ fn print_crate_info(
                     return Compilation::Continue;
                 };
                 let t_outputs = rustc_interface::util::build_output_filenames(attrs, sess);
-                let id = rustc_session::output::find_crate_name(sess, attrs);
+                let crate_name = passes::get_crate_name(sess, attrs);
                 let crate_types = collect_crate_types(sess, attrs);
                 for &style in &crate_types {
-                    let fname =
-                        rustc_session::output::filename_for_input(sess, style, id, &t_outputs);
+                    let fname = rustc_session::output::filename_for_input(
+                        sess, style, crate_name, &t_outputs,
+                    );
                     println_info!("{}", fname.as_path().file_name().unwrap().to_string_lossy());
                 }
             }
@@ -680,8 +681,7 @@ fn print_crate_info(
                     // no crate attributes, print out an error and exit
                     return Compilation::Continue;
                 };
-                let id = rustc_session::output::find_crate_name(sess, attrs);
-                println_info!("{id}");
+                println_info!("{}", passes::get_crate_name(sess, attrs));
             }
             Cfg => {
                 let mut cfgs = sess
@@ -747,8 +747,7 @@ fn print_crate_info(
                 }
             }
             CallingConventions => {
-                let mut calling_conventions = rustc_target::spec::abi::all_names();
-                calling_conventions.sort_unstable();
+                let calling_conventions = rustc_abi::all_names();
                 println_info!("{}", calling_conventions.join("\n"));
             }
             RelocationModels
@@ -1024,7 +1023,7 @@ pub fn describe_flag_categories(early_dcx: &EarlyDiagCtxt, matches: &Matches) ->
     let wall = matches.opt_strs("W");
     if wall.iter().any(|x| *x == "all") {
         print_wall_help();
-        rustc_errors::FatalError.raise();
+        return true;
     }
 
     // Don't handle -W help here, because we might first load additional lints.
@@ -1474,7 +1473,7 @@ pub fn init_logger(early_dcx: &EarlyDiagCtxt, cfg: rustc_log::LoggerConfig) {
 /// Install our usual `ctrlc` handler, which sets [`rustc_const_eval::CTRL_C_RECEIVED`].
 /// Making this handler optional lets tools can install a different handler, if they wish.
 pub fn install_ctrlc_handler() {
-    #[cfg(not(target_family = "wasm"))]
+    #[cfg(all(not(miri), not(target_family = "wasm")))]
     ctrlc::set_handler(move || {
         // Indicate that we have been signaled to stop, then give the rest of the compiler a bit of
         // time to check CTRL_C_RECEIVED and run its own shutdown logic, but after a short amount

@@ -3,7 +3,7 @@
 use base_db::{ra_salsa::Cycle, CrateId};
 use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
 use hir_def::{
-    body::{Body, HygieneId},
+    expr_store::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
@@ -15,9 +15,10 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, generics::Generics, infer::InferenceContext, lower::ParamLoweringMode,
-    mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue,
-    GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder,
+    db::HirDatabase, display::DisplayTarget, generics::Generics, infer::InferenceContext,
+    lower::ParamLoweringMode, mir::monomorphize_mir_body_bad, to_placeholder_idx, Const, ConstData,
+    ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution, TraitEnvironment, Ty,
+    TyBuilder,
 };
 
 use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
@@ -62,11 +63,15 @@ impl ConstEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(span::FileId, span::TextRange) -> String,
-        edition: span::Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         match self {
-            ConstEvalError::MirLowerError(e) => e.pretty_print(f, db, span_formatter, edition),
-            ConstEvalError::MirEvalError(e) => e.pretty_print(f, db, span_formatter, edition),
+            ConstEvalError::MirLowerError(e) => {
+                e.pretty_print(f, db, span_formatter, display_target)
+            }
+            ConstEvalError::MirEvalError(e) => {
+                e.pretty_print(f, db, span_formatter, display_target)
+            }
         }
     }
 }
@@ -124,6 +129,7 @@ pub(crate) fn path_to_const<'g>(
             ConstScalar::UnevaluatedConst(c.into(), Substitution::empty(Interner)),
             expected_ty,
         )),
+        // FIXME: With feature(adt_const_params), we also need to consider other things here, e.g. struct constructors.
         _ => None,
     }
 }

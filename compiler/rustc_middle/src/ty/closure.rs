@@ -1,6 +1,5 @@
 use std::fmt::Write;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir as hir;
 use rustc_hir::HirId;
@@ -51,6 +50,9 @@ pub enum UpvarCapture {
     /// closure is labeled `move`, but can also be true in other cases
     /// depending on inference.
     ByValue,
+
+    /// Upvar is captured by use. This is true when the closure is labeled `use`.
+    ByUse,
 
     /// Upvar is captured by reference.
     ByRef(BorrowKind),
@@ -179,7 +181,7 @@ impl<'tcx> CapturedPlace<'tcx> {
 
     pub fn is_by_ref(&self) -> bool {
         match self.info.capture_kind {
-            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => false,
             ty::UpvarCapture::ByRef(..) => true,
         }
     }
@@ -215,7 +217,7 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn closure_captures(self, def_id: LocalDefId) -> &'tcx [&'tcx ty::CapturedPlace<'tcx>] {
         if !self.is_closure_like(def_id.to_def_id()) {
             return &[];
-        };
+        }
         self.closure_typeinfo(def_id).captures
     }
 }
@@ -294,7 +296,7 @@ pub struct CaptureInfo {
 
 pub fn place_to_string_for_capture<'tcx>(tcx: TyCtxt<'tcx>, place: &HirPlace<'tcx>) -> String {
     let mut curr_string: String = match place.base {
-        HirPlaceBase::Upvar(upvar_id) => tcx.hir().name(upvar_id.var_path.hir_id).to_string(),
+        HirPlaceBase::Upvar(upvar_id) => tcx.hir_name(upvar_id.var_path.hir_id).to_string(),
         _ => bug!("Capture_information should only contain upvars"),
     };
 
@@ -415,7 +417,7 @@ pub fn analyze_coroutine_closure_captures<'a, 'tcx: 'a, T>(
     parent_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     child_captures: impl IntoIterator<Item = &'a CapturedPlace<'tcx>>,
     mut for_each: impl FnMut((usize, &'a CapturedPlace<'tcx>), (usize, &'a CapturedPlace<'tcx>)) -> T,
-) -> impl Iterator<Item = T> + Captures<'a> + Captures<'tcx> {
+) -> impl Iterator<Item = T> {
     std::iter::from_coroutine(
         #[coroutine]
         move || {

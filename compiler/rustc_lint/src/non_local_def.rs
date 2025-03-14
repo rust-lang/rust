@@ -222,17 +222,21 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                         None
                     };
 
-                cx.emit_span_lint(NON_LOCAL_DEFINITIONS, ms, NonLocalDefinitionsDiag::Impl {
-                    depth: self.body_depth,
-                    body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
-                    body_name: parent_opt_item_name
-                        .map(|s| s.to_ident_string())
-                        .unwrap_or_else(|| "<unnameable>".to_string()),
-                    cargo_update: cargo_update(),
-                    const_anon,
-                    doctest,
-                    macro_to_change,
-                })
+                cx.emit_span_lint(
+                    NON_LOCAL_DEFINITIONS,
+                    ms,
+                    NonLocalDefinitionsDiag::Impl {
+                        depth: self.body_depth,
+                        body_kind_descr: cx.tcx.def_kind_descr(parent_def_kind, parent),
+                        body_name: parent_opt_item_name
+                            .map(|s| s.to_ident_string())
+                            .unwrap_or_else(|| "<unnameable>".to_string()),
+                        cargo_update: cargo_update(),
+                        const_anon,
+                        doctest,
+                        macro_to_change,
+                    },
+                )
             }
             ItemKind::Macro(_macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>

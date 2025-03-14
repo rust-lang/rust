@@ -1,4 +1,4 @@
-error[E0658]: intrinsics are subject to change
+error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
   --> $DIR/feature-gate-intrinsics.rs:1:8
    |
 LL | extern "rust-intrinsic" {
@@ -7,7 +7,7 @@ LL | extern "rust-intrinsic" {
    = help: add `#![feature(intrinsics)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error[E0658]: intrinsics are subject to change
+error[E0658]: the extern "rust-intrinsic" ABI is an implementation detail and perma-unstable
   --> $DIR/feature-gate-intrinsics.rs:5:8
    |
 LL | extern "rust-intrinsic" fn baz() {}

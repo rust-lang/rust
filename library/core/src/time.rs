@@ -1168,6 +1168,7 @@ impl Div<u32> for Duration {
     type Output = Duration;
 
     #[inline]
+    #[track_caller]
     fn div(self, rhs: u32) -> Duration {
         self.checked_div(rhs).expect("divide by zero error when dividing duration by scalar")
     }
@@ -1176,6 +1177,7 @@ impl Div<u32> for Duration {
 #[stable(feature = "time_augmented_assignment", since = "1.9.0")]
 impl DivAssign<u32> for Duration {
     #[inline]
+    #[track_caller]
     fn div_assign(&mut self, rhs: u32) {
         *self = *self / rhs;
     }
@@ -1375,7 +1377,8 @@ impl fmt::Debug for Duration {
                     } else {
                         // We need to add padding. Use the `Formatter::padding` helper function.
                         let default_align = fmt::Alignment::Left;
-                        let post_padding = f.padding(requested_w - actual_w, default_align)?;
+                        let post_padding =
+                            f.padding((requested_w - actual_w) as u16, default_align)?;
                         emit_without_padding(f)?;
                         post_padding.write(f)
                     }

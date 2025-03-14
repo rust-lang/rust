@@ -70,7 +70,7 @@ fn generic_arg_mismatch_err(
             }
             Res::Def(DefKind::TyParam, src_def_id) => {
                 if let Some(param_local_id) = param.def_id.as_local() {
-                    let param_name = tcx.hir().ty_param_name(param_local_id);
+                    let param_name = tcx.hir_ty_param_name(param_local_id);
                     let param_type = tcx.type_of(param.def_id).instantiate_identity();
                     if param_type.is_suggestable(tcx, false) {
                         err.span_suggestion(
@@ -110,12 +110,12 @@ fn generic_arg_mismatch_err(
                 err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                 err.help("function item types cannot be named directly");
             } else if let hir::ConstArgKind::Anon(anon) = cnst.kind
-                && let body = tcx.hir().body(anon.body)
+                && let body = tcx.hir_body(anon.body)
                 && let rustc_hir::ExprKind::Path(rustc_hir::QPath::Resolved(_, path)) =
                     body.value.kind
                 && let Res::Def(DefKind::Fn { .. }, id) = path.res
             {
-                // FIXME(min_generic_const_args): this branch is dead once new const path lowering
+                // FIXME(mgca): this branch is dead once new const path lowering
                 // (for single-segment paths) is no longer gated
                 err.help(format!("`{}` is a function item, not a type", tcx.item_name(id)));
                 err.help("function item types cannot be named directly");
@@ -273,7 +273,7 @@ pub fn lower_generic_args<'tcx: 'a, 'a>(
 
                             // We lower to an infer even when the feature gate is not enabled
                             // as it is useful for diagnostics to be able to see a `ConstKind::Infer`
-                            args.push(ctx.provided_kind(param, arg));
+                            args.push(ctx.provided_kind(&args, param, arg));
                             args_iter.next();
                             params.next();
                         }
@@ -542,8 +542,7 @@ pub(crate) fn check_generic_arg_count(
             // ```
             let parent_is_impl_block = cx
                 .tcx()
-                .hir()
-                .parent_owner_iter(seg.hir_id)
+                .hir_parent_owner_iter(seg.hir_id)
                 .next()
                 .is_some_and(|(_, owner_node)| owner_node.is_impl_block());
             if parent_is_impl_block {

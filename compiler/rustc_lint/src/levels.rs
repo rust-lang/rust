@@ -144,7 +144,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
 
     let mut visitor = LintLevelMaximum { tcx, dont_need_to_run };
     visitor.process_opts();
-    tcx.hir().walk_attributes(&mut visitor);
+    tcx.hir_walk_attributes(&mut visitor);
 
     visitor.dont_need_to_run
 }
@@ -152,7 +152,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx.sess);
-    let attrs = tcx.hir_attrs(owner);
+    let attrs = tcx.hir_attr_map(owner);
 
     let mut levels = LintLevelsBuilder {
         sess: tcx.sess,
@@ -270,8 +270,8 @@ impl<'tcx> LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
 impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.provider.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.provider.tcx
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
@@ -297,6 +297,11 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.add_id(e.hir_id);
         intravisit::walk_expr(self, e);
+    }
+
+    fn visit_pat_field(&mut self, f: &'tcx hir::PatField<'tcx>) -> Self::Result {
+        self.add_id(f.hir_id);
+        intravisit::walk_pat_field(self, f);
     }
 
     fn visit_expr_field(&mut self, f: &'tcx hir::ExprField<'tcx>) {
@@ -365,8 +370,8 @@ impl<'tcx> LintLevelMaximum<'tcx> {
 impl<'tcx> Visitor<'tcx> for LintLevelMaximum<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     /// FIXME(blyxyas): In a future revision, we should also graph #![allow]s,

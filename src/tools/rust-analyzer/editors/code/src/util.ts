@@ -90,6 +90,10 @@ export function isRustEditor(editor: vscode.TextEditor): editor is RustEditor {
     return isRustDocument(editor.document);
 }
 
+export function isCargoTomlEditor(editor: vscode.TextEditor): editor is RustEditor {
+    return isCargoTomlDocument(editor.document);
+}
+
 export function isDocumentInWorkspace(document: RustDocument): boolean {
     const workspaceFolders = vscode.workspace.workspaceFolders;
     if (!workspaceFolders) {
@@ -104,6 +108,7 @@ export function isDocumentInWorkspace(document: RustDocument): boolean {
 }
 
 /** Sets ['when'](https://code.visualstudio.com/docs/getstarted/keybindings#_when-clause-contexts) clause contexts */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function setContextValue(key: string, value: any): Thenable<void> {
     return vscode.commands.executeCommand("setContext", key, value);
 }
@@ -167,27 +172,35 @@ export class LazyOutputChannel implements vscode.OutputChannel {
     append(value: string): void {
         this.channel.append(value);
     }
+
     appendLine(value: string): void {
         this.channel.appendLine(value);
     }
+
     replace(value: string): void {
         this.channel.replace(value);
     }
+
     clear(): void {
         if (this._channel) {
             this._channel.clear();
         }
     }
-    show(preserveFocus?: boolean): void;
-    show(column?: vscode.ViewColumn, preserveFocus?: boolean): void;
-    show(column?: any, preserveFocus?: any): void {
-        this.channel.show(column, preserveFocus);
+
+    show(columnOrPreserveFocus?: vscode.ViewColumn | boolean, preserveFocus?: boolean): void {
+        if (typeof columnOrPreserveFocus === "boolean") {
+            this.channel.show(columnOrPreserveFocus);
+        } else {
+            this.channel.show(columnOrPreserveFocus, preserveFocus);
+        }
     }
+
     hide(): void {
         if (this._channel) {
             this._channel.hide();
         }
     }
+
     dispose(): void {
         if (this._channel) {
             this._channel.dispose();
@@ -276,6 +289,7 @@ export async function spawnAsync(
             stderr: res.stderr,
             status: res.status,
         };
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (e: any) {
         return {
             stdout: e.stdout,

@@ -6,7 +6,6 @@
 #![deny(rustdoc::invalid_codeblock_attributes)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // This higher-order macro defines the error codes that are in use. It is used
@@ -545,6 +544,9 @@ E0798: 0798,
 E0799: 0799,
 E0800: 0800,
 E0801: 0801,
+E0802: 0802,
+E0803: 0803,
+E0804: 0804,
         );
     )
 }

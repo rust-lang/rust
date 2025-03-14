@@ -78,15 +78,18 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
 
         if self_ty.span.edition().at_least_rust_2021() {
-            let msg = "expected a type, found a trait";
-            let label = "you can add the `dyn` keyword if you want a trait object";
-            let mut diag =
-                rustc_errors::struct_span_code_err!(self.dcx(), self_ty.span, E0782, "{}", msg);
+            let mut diag = rustc_errors::struct_span_code_err!(
+                self.dcx(),
+                self_ty.span,
+                E0782,
+                "{}",
+                "expected a type, found a trait"
+            );
             if self_ty.span.can_be_used_for_suggestions()
                 && !self.maybe_suggest_impl_trait(self_ty, &mut diag)
+                && !self.maybe_suggest_dyn_trait(self_ty, sugg, &mut diag)
             {
-                // FIXME: Only emit this suggestion if the trait is dyn-compatible.
-                diag.multipart_suggestion_verbose(label, sugg, Applicability::MachineApplicable);
+                self.maybe_suggest_add_generic_impl_trait(self_ty, &mut diag);
             }
             // Check if the impl trait that we are considering is an impl of a local trait.
             self.maybe_suggest_blanket_trait_impl(self_ty, &mut diag);
@@ -123,6 +126,64 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
+    /// For a struct or enum with an invalid bare trait object field, suggest turning
+    /// it into a generic type bound.
+    fn maybe_suggest_add_generic_impl_trait(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        diag: &mut Diag<'_>,
+    ) -> bool {
+        let tcx = self.tcx();
+
+        let parent_hir_id = tcx.parent_hir_id(self_ty.hir_id);
+        let parent_item = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
+
+        let generics = match tcx.hir_node_by_def_id(parent_item) {
+            hir::Node::Item(hir::Item {
+                kind: hir::ItemKind::Struct(variant, generics), ..
+            }) => {
+                if !variant.fields().iter().any(|field| field.hir_id == parent_hir_id) {
+                    return false;
+                }
+                generics
+            }
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Enum(def, generics), .. }) => {
+                if !def
+                    .variants
+                    .iter()
+                    .flat_map(|variant| variant.data.fields().iter())
+                    .any(|field| field.hir_id == parent_hir_id)
+                {
+                    return false;
+                }
+                generics
+            }
+            _ => return false,
+        };
+
+        let Ok(rendered_ty) = tcx.sess.source_map().span_to_snippet(self_ty.span) else {
+            return false;
+        };
+
+        let param = "TUV"
+            .chars()
+            .map(|c| c.to_string())
+            .chain((0..).map(|i| format!("P{i}")))
+            .find(|s| !generics.params.iter().any(|param| param.name.ident().as_str() == s))
+            .expect("we definitely can find at least one param name to generate");
+        let mut sugg = vec![(self_ty.span, param.to_string())];
+        if let Some(insertion_span) = generics.span_for_param_suggestion() {
+            sugg.push((insertion_span, format!(", {param}: {}", rendered_ty)));
+        } else {
+            sugg.push((generics.where_clause_span, format!("<{param}: {}>", rendered_ty)));
+        }
+        diag.multipart_suggestion_verbose(
+            "you might be missing a type parameter",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+        true
+    }
     /// Make sure that we are in the condition to suggest the blanket implementation.
     fn maybe_suggest_blanket_trait_impl<G: EmissionGuarantee>(
         &self,
@@ -130,7 +191,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         diag: &mut Diag<'_, G>,
     ) {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Impl(hir::Impl { self_ty: impl_self_ty, of_trait, generics, .. }),
             ..
@@ -171,6 +232,65 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
         }
     }
 
+    /// Try our best to approximate when adding `dyn` would be helpful for a bare
+    /// trait object.
+    ///
+    /// Right now, this is if the type is either directly nested in another ty,
+    /// or if it's in the tail field within a struct. This approximates what the
+    /// user would've gotten on edition 2015, except for the case where we have
+    /// an *obvious* knock-on `Sized` error.
+    fn maybe_suggest_dyn_trait(
+        &self,
+        self_ty: &hir::Ty<'_>,
+        sugg: Vec<(Span, String)>,
+        diag: &mut Diag<'_>,
+    ) -> bool {
+        let tcx = self.tcx();
+
+        // Look at the direct HIR parent, since we care about the relationship between
+        // the type and the thing that directly encloses it.
+        match tcx.parent_hir_node(self_ty.hir_id) {
+            // These are all generally ok. Namely, when a trait object is nested
+            // into another expression or ty, it's either very certain that they
+            // missed the ty (e.g. `&Trait`) or it's not really possible to tell
+            // what their intention is, so let's not give confusing suggestions and
+            // just mention `dyn`. The user can make up their mind what to do here.
+            hir::Node::Ty(_)
+            | hir::Node::Expr(_)
+            | hir::Node::PatExpr(_)
+            | hir::Node::PathSegment(_)
+            | hir::Node::AssocItemConstraint(_)
+            | hir::Node::TraitRef(_)
+            | hir::Node::Item(_)
+            | hir::Node::WherePredicate(_) => {}
+
+            hir::Node::Field(field) => {
+                // Enums can't have unsized fields, fields can only have an unsized tail field.
+                if let hir::Node::Item(hir::Item {
+                    kind: hir::ItemKind::Struct(variant, _), ..
+                }) = tcx.parent_hir_node(field.hir_id)
+                    && variant
+                        .fields()
+                        .last()
+                        .is_some_and(|tail_field| tail_field.hir_id == field.hir_id)
+                {
+                    // Ok
+                } else {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+
+        // FIXME: Only emit this suggestion if the trait is dyn-compatible.
+        diag.multipart_suggestion_verbose(
+            "you can add the `dyn` keyword if you want a trait object",
+            sugg,
+            Applicability::MachineApplicable,
+        );
+        true
+    }
+
     fn add_generic_param_suggestion(
         &self,
         generics: &hir::Generics<'_>,
@@ -191,7 +311,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     /// Make sure that we are in the condition to suggest `impl Trait`.
     fn maybe_suggest_impl_trait(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) -> bool {
         let tcx = self.tcx();
-        let parent_id = tcx.hir().get_parent_item(self_ty.hir_id).def_id;
+        let parent_id = tcx.hir_get_parent_item(self_ty.hir_id).def_id;
         // FIXME: If `type_alias_impl_trait` is enabled, also look for `Trait0<Ty = Trait1>`
         //        and suggest `Trait0<Ty = impl Trait1>`.
         // Functions are found in three different contexts.
@@ -321,7 +441,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
     }
 
     fn maybe_suggest_assoc_ty_bound(&self, self_ty: &hir::Ty<'_>, diag: &mut Diag<'_>) {
-        let mut parents = self.tcx().hir().parent_iter(self_ty.hir_id);
+        let mut parents = self.tcx().hir_parent_iter(self_ty.hir_id);
 
         if let Some((_, hir::Node::AssocItemConstraint(constraint))) = parents.next()
             && let Some(obj_ty) = constraint.ty()

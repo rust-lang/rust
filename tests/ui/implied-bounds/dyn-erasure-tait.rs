@@ -14,6 +14,7 @@ type T<'lt> = &'lt str;
 
 type F<'a, 'b> = impl 'static + Fn(T<'a>) -> T<'b>;
 
+#[define_opaque(F)]
 fn helper<'a, 'b>(_: [&'b &'a (); 0]) -> F<'a, 'b> {
     |x: T<'a>| -> T<'b> { x } // this should *not* be `: 'static`
 }

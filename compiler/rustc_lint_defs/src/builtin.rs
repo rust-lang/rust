@@ -73,14 +73,12 @@ declare_lint_pass! {
         NEVER_TYPE_FALLBACK_FLOWING_INTO_UNSAFE,
         NON_CONTIGUOUS_RANGE_ENDPOINTS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        ORDER_DEPENDENT_TRAIT_OBJECTS,
         OUT_OF_SCOPE_MACRO_CALLS,
         OVERLAPPING_RANGE_ENDPOINTS,
         PATTERNS_IN_FNS_WITHOUT_BODY,
         PRIVATE_BOUNDS,
         PRIVATE_INTERFACES,
         PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-        PTR_CAST_ADD_AUTO_TO_OBJECT,
         PTR_TO_INTEGER_TRANSMUTE_IN_CONSTS,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         REDUNDANT_IMPORTS,
@@ -101,6 +99,8 @@ declare_lint_pass! {
         SINGLE_USE_LIFETIMES,
         SOFT_UNSTABLE,
         STABLE_FEATURES,
+        SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+        SUPERTRAIT_ITEM_SHADOWING_USAGE,
         TAIL_EXPR_DROP_ORDER,
         TEST_UNSTABLE_LINT,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
@@ -1501,42 +1501,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `order_dependent_trait_objects` lint detects a trait coherency
-    /// violation that would allow creating two trait impls for the same
-    /// dynamic trait object involving marker traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// pub trait Trait {}
-    ///
-    /// impl Trait for dyn Send + Sync { }
-    /// impl Trait for dyn Sync + Send { }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// A previous bug caused the compiler to interpret traits with different
-    /// orders (such as `Send + Sync` and `Sync + Send`) as distinct types
-    /// when they were intended to be treated the same. This allowed code to
-    /// define separate trait implementations when there should be a coherence
-    /// error. This is a [future-incompatible] lint to transition this to a
-    /// hard error in the future. See [issue #56484] for more details.
-    ///
-    /// [issue #56484]: https://github.com/rust-lang/rust/issues/56484
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub ORDER_DEPENDENT_TRAIT_OBJECTS,
-    Deny,
-    "trait-object types were treated as different depending on marker-trait order",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
-    };
-}
-
-declare_lint! {
     /// The `coherence_leak_check` lint detects conflicting implementations of
     /// a trait that are only distinguished by the old leak-check code.
     ///
@@ -2709,7 +2673,7 @@ declare_lint! {
     ///
     /// ```rust
     /// const fn foo<T>() -> usize {
-    ///     if std::mem::size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
+    ///     if size_of::<*mut T>() < 8 { // size of *mut T does not depend on T
     ///         4
     ///     } else {
     ///         8
@@ -2778,7 +2742,7 @@ declare_lint! {
     ///
     /// ```rust
     /// enum Void {}
-    /// extern {
+    /// unsafe extern {
     ///     static EXTERN: Void;
     /// }
     /// ```
@@ -3780,7 +3744,7 @@ declare_lint! {
     Warn,
     "use of unsupported calling convention for function pointer",
     @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #130260 <https://github.com/rust-lang/rust/issues/130260>",
     };
 }
@@ -4009,7 +3973,7 @@ declare_lint! {
     /// ```rust
     /// #![warn(ffi_unwind_calls)]
     ///
-    /// extern "C-unwind" {
+    /// unsafe extern "C-unwind" {
     ///     fn foo();
     /// }
     ///
@@ -4753,7 +4717,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(missing_unsafe_on_extern)]
     /// #![allow(dead_code)]
     ///
@@ -4790,7 +4754,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,edition2021
     /// #![warn(unsafe_attr_outside_unsafe)]
     ///
     /// #[no_mangle]
@@ -4822,58 +4786,6 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::EditionError(Edition::Edition2024),
         reference: "<https://doc.rust-lang.org/nightly/edition-guide/rust-2024/unsafe-attributes.html>",
-    };
-}
-
-declare_lint! {
-    /// The `ptr_cast_add_auto_to_object` lint detects casts of raw pointers to trait
-    /// objects, which add auto traits.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,edition2021,compile_fail
-    /// let ptr: *const dyn core::any::Any = &();
-    /// _ = ptr as *const dyn core::any::Any + Send;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// Adding an auto trait can make the vtable invalid, potentially causing
-    /// UB in safe code afterwards. For example:
-    ///
-    /// ```ignore (causes a warning)
-    /// #![feature(arbitrary_self_types)]
-    ///
-    /// trait Trait {
-    ///     fn f(self: *const Self)
-    ///     where
-    ///         Self: Send;
-    /// }
-    ///
-    /// impl Trait for *const () {
-    ///     fn f(self: *const Self) {
-    ///         unreachable!()
-    ///     }
-    /// }
-    ///
-    /// fn main() {
-    ///     let unsend: *const () = &();
-    ///     let unsend: *const dyn Trait = &unsend;
-    ///     let send_bad: *const (dyn Trait + Send) = unsend as _;
-    ///     send_bad.f(); // this crashes, since vtable for `*const ()` does not have an entry for `f`
-    /// }
-    /// ```
-    ///
-    /// Generally you must ensure that vtable is right for the pointer's type,
-    /// before passing the pointer to safe code.
-    pub PTR_CAST_ADD_AUTO_TO_OBJECT,
-    Warn,
-    "detects `as` casts from pointers to `dyn Trait` to pointers to `dyn Trait + Auto`",
-    @future_incompatible = FutureIncompatibleInfo {
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
-        reference: "issue #127323 <https://github.com/rust-lang/rust/issues/127323>",
     };
 }
 
@@ -4914,6 +4826,87 @@ declare_lint! {
         reason: FutureIncompatibilityReason::FutureReleaseErrorDontReportInDeps,
         reference: "issue #124535 <https://github.com/rust-lang/rust/issues/124535>",
     };
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_usage` lint detects when the
+    /// usage of an item that is provided by both a subtrait and supertrait
+    /// is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_usage)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    ///
+    /// struct MyType;
+    /// MyType.hello();
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix the call sites.
+    pub SUPERTRAIT_ITEM_SHADOWING_USAGE,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the call site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
+}
+
+declare_lint! {
+    /// The `supertrait_item_shadowing_definition` lint detects when the
+    /// definition of an item that is provided by both a subtrait and
+    /// supertrait is shadowed, preferring the subtrait.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(supertrait_item_shadowing)]
+    /// #![deny(supertrait_item_shadowing_definition)]
+    ///
+    /// trait Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Upstream for T {}
+    ///
+    /// trait Downstream: Upstream {
+    ///     fn hello(&self) {}
+    /// }
+    /// impl<T> Downstream for T {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// RFC 3624 specified a heuristic in which a supertrait item would be
+    /// shadowed by a subtrait item when ambiguity occurs during item
+    /// selection. In order to mitigate side-effects of this happening
+    /// silently, this lint detects these cases when users want to deny them
+    /// or fix their trait definitions.
+    pub SUPERTRAIT_ITEM_SHADOWING_DEFINITION,
+    // FIXME(supertrait_item_shadowing): It is not decided if this should
+    // warn by default at the usage site.
+    Allow,
+    "detects when a supertrait item is shadowed by a subtrait item",
+    @feature_gate = supertrait_item_shadowing;
 }
 
 declare_lint! {

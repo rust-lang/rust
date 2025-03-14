@@ -6,9 +6,9 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
+    expr_store::HygieneId,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
@@ -24,7 +24,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileId};
+use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -32,7 +32,7 @@ use triomphe::Arc;
 use crate::{
     consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
     db::{HirDatabase, InternedClosure},
-    display::{ClosureStyle, HirDisplay},
+    display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
@@ -302,7 +302,7 @@ impl Address {
         }
     }
 
-    fn to_bytes(&self) -> [u8; mem::size_of::<usize>()] {
+    fn to_bytes(&self) -> [u8; size_of::<usize>()] {
         usize::to_le_bytes(self.to_usize())
     }
 
@@ -359,7 +359,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -372,7 +372,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast(), edition),
+                            function_name.name.display(db.upcast(), display_target.edition),
                             func
                         )?;
                     }
@@ -417,7 +417,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, display_target).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -428,12 +428,15 @@ impl MirEvalError {
                         let substs = generics.placeholder_subst(db);
                         db.impl_self_ty(impl_id)
                             .substitute(Interner, &substs)
-                            .display(db, edition)
+                            .display(db, display_target)
                             .to_string()
                     }),
-                    ItemContainerId::TraitId(it) => {
-                        Some(db.trait_data(it).name.display(db.upcast(), edition).to_string())
-                    }
+                    ItemContainerId::TraitId(it) => Some(
+                        db.trait_data(it)
+                            .name
+                            .display(db.upcast(), display_target.edition)
+                            .to_string(),
+                    ),
                     _ => None,
                 };
                 writeln!(
@@ -441,17 +444,17 @@ impl MirEvalError {
                     "MIR lowering for function `{}{}{}` ({:?}) failed due:",
                     self_.as_deref().unwrap_or_default(),
                     if self_.is_some() { "::" } else { "" },
-                    function_name.name.display(db.upcast(), edition),
+                    function_name.name.display(db.upcast(), display_target.edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter, edition)?;
+                err.pretty_print(f, db, span_formatter, display_target)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
-                    edition,
+                    display_target,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -589,7 +592,7 @@ pub fn interpret_mir(
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
-        if evaluator.ptr_size() != std::mem::size_of::<usize>() {
+        if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
         let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;
@@ -1644,14 +1647,15 @@ impl Evaluator<'_> {
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
                 let size = tag.size(&*self.target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+                let is_signed = tag.is_signed();
                 match tag_encoding {
                     TagEncoding::Direct => {
                         let tag = &bytes[offset..offset + size];
-                        Ok(i128::from_le_bytes(pad16(tag, false)))
+                        Ok(i128::from_le_bytes(pad16(tag, is_signed)))
                     }
                     TagEncoding::Niche { untagged_variant, niche_start, .. } => {
                         let tag = &bytes[offset..offset + size];
-                        let candidate_tag = i128::from_le_bytes(pad16(tag, false))
+                        let candidate_tag = i128::from_le_bytes(pad16(tag, is_signed))
                             .wrapping_sub(*niche_start as i128)
                             as usize;
                         let idx = variants
@@ -2943,10 +2947,10 @@ pub fn render_const_using_debug_impl(
     // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
     // FIXME: similarly, we should call function here, not directly working with memory.
     let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size())?;
-    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a1.to_bytes())?;
+    evaluator.write_memory(a3, &a1.to_bytes())?;
+    evaluator.write_memory(a3.offset(evaluator.ptr_size()), &[1])?;
+    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a2.to_bytes())?;
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
-    evaluator.write_memory(a3.offset(4 * evaluator.ptr_size()), &a2.to_bytes())?;
-    evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
         &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),

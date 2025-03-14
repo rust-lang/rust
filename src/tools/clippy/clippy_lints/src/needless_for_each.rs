@@ -71,7 +71,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
             && let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind
-            && let body = cx.tcx.hir().body(body)
+            && let body = cx.tcx.hir_body(body)
             // Skip the lint if the body is not safe, so as not to suggest `for … in … unsafe {}`
             // and suggesting `for … in … { unsafe { } }` is a little ugly.
             && let ExprKind::Block(Block { rules: BlockCheckMode::DefaultBlock, .. }, ..) = body.value.kind

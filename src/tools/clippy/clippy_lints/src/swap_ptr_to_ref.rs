@@ -76,7 +76,7 @@ impl LateLintPass<'_> for SwapPtrToRef {
 fn is_ptr_to_ref(cx: &LateContext<'_>, e: &Expr<'_>, ctxt: SyntaxContext) -> (bool, Option<Span>) {
     if let ExprKind::AddrOf(BorrowKind::Ref, Mutability::Mut, borrowed_expr) = e.kind
         && let ExprKind::Unary(UnOp::Deref, derefed_expr) = borrowed_expr.kind
-        && cx.typeck_results().expr_ty(derefed_expr).is_unsafe_ptr()
+        && cx.typeck_results().expr_ty(derefed_expr).is_raw_ptr()
     {
         (
             true,

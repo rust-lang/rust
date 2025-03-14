@@ -12,7 +12,8 @@ fn mk<T>() -> T {
     todo!()
 }
 
-fn a(_: Tait) {
+#[define_opaque(Tait)]
+fn a() {
     let x: Tait = mk();
     let mut array = mk();
     let mut z = IntoIterator::into_iter(array);

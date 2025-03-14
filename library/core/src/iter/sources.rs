@@ -15,7 +15,7 @@ pub use self::empty::{Empty, empty};
     issue = "43122",
     reason = "coroutines are unstable"
 )]
-pub use self::from_coroutine::from_coroutine;
+pub use self::from_coroutine::{FromCoroutine, from_coroutine};
 #[stable(feature = "iter_from_fn", since = "1.34.0")]
 pub use self::from_fn::{FromFn, from_fn};
 #[stable(feature = "iter_once", since = "1.2.0")]

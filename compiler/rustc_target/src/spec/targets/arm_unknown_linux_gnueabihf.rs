@@ -1,9 +1,9 @@
-use crate::spec::{FloatAbi, Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "arm-unknown-linux-gnueabihf".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Armv6 Linux, hardfloat (kernel 3.2, glibc 2.17)".into()),
             tier: Some(2),
             host_tools: Some(true),

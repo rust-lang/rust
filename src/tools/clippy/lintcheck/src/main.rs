@@ -116,7 +116,25 @@ impl Crate {
 
         clippy_args.extend(lint_levels_args.iter().map(String::as_str));
 
-        let mut cmd = Command::new("cargo");
+        let mut cmd;
+
+        if config.perf {
+            cmd = Command::new("perf");
+            cmd.args(&[
+                "record",
+                "-e",
+                "instructions", // Only count instructions
+                "-g",           // Enable call-graph, useful for flamegraphs and produces richer reports
+                "--quiet",      // Do not tamper with lintcheck's normal output
+                "-o",
+                "perf.data",
+                "--",
+                "cargo",
+            ]);
+        } else {
+            cmd = Command::new("cargo");
+        }
+
         cmd.arg(if config.fix { "fix" } else { "check" })
             .arg("--quiet")
             .current_dir(&self.path)
@@ -234,12 +252,22 @@ fn normalize_diag(
 }
 
 /// Builds clippy inside the repo to make sure we have a clippy executable we can use.
-fn build_clippy() -> String {
-    let output = Command::new("cargo")
-        .args(["run", "--bin=clippy-driver", "--", "--version"])
-        .stderr(Stdio::inherit())
-        .output()
-        .unwrap();
+fn build_clippy(release_build: bool) -> String {
+    let mut build_cmd = Command::new("cargo");
+    build_cmd.args([
+        "run",
+        "--bin=clippy-driver",
+        if release_build { "-r" } else { "" },
+        "--",
+        "--version",
+    ]);
+
+    if release_build {
+        build_cmd.env("CARGO_PROFILE_RELEASE_DEBUG", "true");
+    }
+
+    let output = build_cmd.stderr(Stdio::inherit()).output().unwrap();
+
     if !output.status.success() {
         eprintln!("Error: Failed to compile Clippy!");
         std::process::exit(1);
@@ -270,13 +298,18 @@ fn main() {
 
 #[allow(clippy::too_many_lines)]
 fn lintcheck(config: LintcheckConfig) {
-    let clippy_ver = build_clippy();
-    let clippy_driver_path = fs::canonicalize(format!("target/debug/clippy-driver{EXE_SUFFIX}")).unwrap();
+    let clippy_ver = build_clippy(config.perf);
+    let clippy_driver_path = fs::canonicalize(format!(
+        "target/{}/clippy-driver{EXE_SUFFIX}",
+        if config.perf { "release" } else { "debug" }
+    ))
+    .unwrap();
 
     // assert that clippy is found
     assert!(
         clippy_driver_path.is_file(),
-        "target/debug/clippy-driver binary not found! {}",
+        "target/{}/clippy-driver binary not found! {}",
+        if config.perf { "release" } else { "debug" },
         clippy_driver_path.display()
     );
 

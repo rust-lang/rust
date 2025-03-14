@@ -17,7 +17,7 @@ use syntax::{
 
 use crate::{
     assist_context::{AssistContext, Assists},
-    utils::invert_boolean_expression,
+    utils::invert_boolean_expression_legacy,
     AssistId, AssistKind,
 };
 
@@ -139,7 +139,7 @@ fn if_expr_to_guarded_return(
                     let new_expr = {
                         let then_branch =
                             make::block_expr(once(make::expr_stmt(early_expression).into()), None);
-                        let cond = invert_boolean_expression(cond_expr);
+                        let cond = invert_boolean_expression_legacy(cond_expr);
                         make::expr_if(cond, then_branch, None).indent(if_indent_level)
                     };
                     new_expr.syntax().clone_for_update()

@@ -20,10 +20,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
     ) {
         if imaginary_target != real_target {
-            self.cfg.terminate(from_block, source_info, TerminatorKind::FalseEdge {
-                real_target,
-                imaginary_target,
-            });
+            self.cfg.terminate(
+                from_block,
+                source_info,
+                TerminatorKind::FalseEdge { real_target, imaginary_target },
+            );
         } else {
             self.cfg.goto(from_block, source_info, real_target)
         }
@@ -172,14 +173,10 @@ impl<'a, 'b, 'tcx> FakeBorrowCollector<'a, 'b, 'tcx> {
             // }
             // ```
             // Hence we fake borrow using a deep borrow.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Deep);
-            }
+            self.fake_borrow(match_pair.place, FakeBorrowKind::Deep);
         } else {
             // Insert a Shallow borrow of any place that is switched on.
-            if let Some(place) = match_pair.place {
-                self.fake_borrow(place, FakeBorrowKind::Shallow);
-            }
+            self.fake_borrow(match_pair.place, FakeBorrowKind::Shallow);
 
             for subpair in &match_pair.subpairs {
                 self.visit_match_pair(subpair);

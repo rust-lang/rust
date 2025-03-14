@@ -374,6 +374,7 @@ enum PointerKind {
 
 fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<PointerKind>, ()> {
     let ty = table.resolve_ty_shallow(ty);
+    let ty = table.normalize_associated_types_in(ty);
 
     if table.is_sized(&ty) {
         return Ok(Some(PointerKind::Thin));

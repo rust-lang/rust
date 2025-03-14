@@ -13,7 +13,7 @@ fn check_expected_type_and_name(#[rust_analyzer::rust_fixture] ra_fixture: &str,
 
     let ty = completion_context
         .expected_type
-        .map(|t| t.display_test(&db).to_string())
+        .map(|t| t.display_test(&db, completion_context.krate.to_display_target(&db)).to_string())
         .unwrap_or("?".to_owned());
 
     let name =

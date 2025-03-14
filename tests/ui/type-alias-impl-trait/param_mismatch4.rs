@@ -8,6 +8,7 @@ type Opq<'a> = impl Sized;
 // Two defining uses: Opq<'{empty}> and Opq<'a>.
 // This used to ICE.
 // issue: #122782
+#[define_opaque(Opq)]
 fn build<'a>() -> Opq<'a> {
     let _: Opq<'_> = ();
     //~^ ERROR expected generic lifetime parameter, found `'_`

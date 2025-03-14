@@ -2,22 +2,16 @@
 
 set -euo pipefail
 
-LINUX_VERSION=50e57739141b41f731ab31f8380821c7969f9dc4
+LINUX_VERSION=v6.14-rc3
 
 # Build rustc, rustdoc, cargo, clippy-driver and rustfmt
 ../x.py build --stage 2 library rustdoc clippy rustfmt
 ../x.py build --stage 0 cargo
 
-# Install rustup so that we can use the built toolchain easily, and also
-# install bindgen in an easy way.
-curl --proto '=https' --tlsv1.2 -sSf -o rustup.sh https://sh.rustup.rs
-sh rustup.sh -y --default-toolchain none
+BUILD_DIR=$(realpath ./build/x86_64-unknown-linux-gnu)
 
-source /cargo/env
-
-BUILD_DIR=$(realpath ./build)
-rustup toolchain link local "${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage2
-rustup default local
+# Provide path to rustc, rustdoc, clippy-driver and rustfmt to RfL
+export PATH=${PATH}:${BUILD_DIR}/stage2/bin
 
 mkdir -p rfl
 cd rfl
@@ -28,14 +22,18 @@ rm -rf linux || true
 # Download Linux at a specific commit
 mkdir -p linux
 git -C linux init
-git -C linux remote add origin https://github.com/Darksonn/linux.git
+git -C linux remote add origin https://github.com/Rust-for-Linux/linux.git
 git -C linux fetch --depth 1 origin ${LINUX_VERSION}
 git -C linux checkout FETCH_HEAD
 
 # Install bindgen
-"${BUILD_DIR}"/x86_64-unknown-linux-gnu/stage0/bin/cargo install \
+"${BUILD_DIR}"/stage0/bin/cargo install \
   --version $(linux/scripts/min-tool-version.sh bindgen) \
+  --root ${BUILD_DIR}/bindgen \
   bindgen-cli
+
+# Provide path to bindgen to RfL
+export PATH=${PATH}:${BUILD_DIR}/bindgen/bin
 
 # Configure Rust for Linux
 cat <<EOF > linux/kernel/configs/rfl-for-rust-ci.config

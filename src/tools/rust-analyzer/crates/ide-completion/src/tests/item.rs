@@ -285,6 +285,7 @@ fn bar() {
             kw if let
             kw impl
             kw let
+            kw letm
             kw loop
             kw match
             kw mod

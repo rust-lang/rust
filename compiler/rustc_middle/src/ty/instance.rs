@@ -10,13 +10,13 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
-use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, instrument};
 
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -111,8 +111,9 @@ pub enum InstanceKind<'tcx> {
 
     /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
-    /// This `InstanceKind` does not have callable MIR. Calls to `Virtual` instances must be
-    /// codegen'd as virtual calls through the vtable.
+    /// This `InstanceKind` may have a callable MIR as the default implementation.
+    /// Calls to `Virtual` instances must be codegen'd as virtual calls through the vtable.
+    /// *This means we might not know exactly what is being called.*
     ///
     /// If this is reified to a `fn` pointer, a `ReifyShim` is used (see `ReifyShim` above for more
     /// details on that).
@@ -202,7 +203,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_parsing::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_data_structures::InlineAttr::Never
         {
             return None;
         }

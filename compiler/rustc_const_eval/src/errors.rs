@@ -6,6 +6,7 @@ use rustc_abi::WrappingRange;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, DiagMessage, Diagnostic, EmissionGuarantee, Level,
+    MultiSpan, SubdiagMessageOp, Subdiagnostic,
 };
 use rustc_hir::ConstContext;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
@@ -16,8 +17,8 @@ use rustc_middle::mir::interpret::{
 };
 use rustc_middle::ty::{self, Mutability, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_target::callconv::AdjustForForeignAbiError;
 
+use crate::fluent_generated as fluent;
 use crate::interpret::InternKind;
 
 #[derive(Diagnostic)]
@@ -279,14 +280,31 @@ pub(crate) struct NonConstImplNote {
     pub span: Span,
 }
 
-#[derive(Subdiagnostic, Clone)]
-#[note(const_eval_frame_note)]
+#[derive(Clone)]
 pub struct FrameNote {
-    #[primary_span]
     pub span: Span,
     pub times: i32,
     pub where_: &'static str,
     pub instance: String,
+    pub has_label: bool,
+}
+
+impl Subdiagnostic for FrameNote {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: &F,
+    ) {
+        diag.arg("times", self.times);
+        diag.arg("where_", self.where_);
+        diag.arg("instance", self.instance);
+        let mut span: MultiSpan = self.span.into();
+        if self.has_label && !self.span.is_dummy() {
+            span.push_span_label(self.span, fluent::const_eval_frame_note_last);
+        }
+        let msg = f(diag, fluent::const_eval_frame_note.into());
+        diag.span_note(span, msg);
+    }
 }
 
 #[derive(Subdiagnostic)]
@@ -578,10 +596,13 @@ impl<'a> ReportErrorExt for UndefinedBehaviorInfo<'a> {
             }
             ShiftOverflow { intrinsic, shift_amount } => {
                 diag.arg("intrinsic", intrinsic);
-                diag.arg("shift_amount", match shift_amount {
-                    Either::Left(v) => v.to_string(),
-                    Either::Right(v) => v.to_string(),
-                });
+                diag.arg(
+                    "shift_amount",
+                    match shift_amount {
+                        Either::Left(v) => v.to_string(),
+                        Either::Right(v) => v.to_string(),
+                    },
+                );
             }
             BoundsCheckFailed { len, index } => {
                 diag.arg("len", len);
@@ -933,9 +954,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
             InvalidProgramInfo::TooGeneric => const_eval_too_generic,
             InvalidProgramInfo::AlreadyReported(_) => const_eval_already_reported,
             InvalidProgramInfo::Layout(e) => e.diagnostic_message(),
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(_) => {
-                rustc_middle::error::middle_adjust_for_foreign_abi_error
-            }
         }
     }
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
@@ -949,12 +967,6 @@ impl<'tcx> ReportErrorExt for InvalidProgramInfo<'tcx> {
                     diag.arg(name.clone(), val.clone());
                 }
                 dummy_diag.cancel();
-            }
-            InvalidProgramInfo::FnAbiAdjustForForeignAbi(
-                AdjustForForeignAbiError::Unsupported { arch, abi },
-            ) => {
-                diag.arg("arch", arch);
-                diag.arg("abi", abi.name());
             }
         }
     }
@@ -974,7 +986,7 @@ impl ReportErrorExt for ResourceExhaustionInfo {
 }
 
 impl rustc_errors::IntoDiagArg for InternKind {
-    fn into_diag_arg(self) -> DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> DiagArgValue {
         DiagArgValue::Str(Cow::Borrowed(match self {
             InternKind::Static(Mutability::Not) => "static",
             InternKind::Static(Mutability::Mut) => "static_mut",

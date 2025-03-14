@@ -1,5 +1,5 @@
 use rustc_ast::ptr::P;
-use rustc_ast::token::{self, BinOpToken, Delimiter, IdentIsRaw, Token, TokenKind};
+use rustc_ast::token::{self, Delimiter, IdentIsRaw, MetaVarKind, Token, TokenKind};
 use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, BoundAsyncness, BoundConstness, BoundPolarity, DUMMY_NODE_ID, FnRetTy,
@@ -18,7 +18,7 @@ use crate::errors::{
     HelpUseLatestEdition, InvalidDynKeyword, LifetimeAfterMut, NeedPlusAfterTraitObjectLifetime,
     NestedCVariadicType, ReturnTypesUseThinArrow,
 };
-use crate::{exp, maybe_recover_from_interpolated_ty_qpath, maybe_whole};
+use crate::{exp, maybe_recover_from_interpolated_ty_qpath};
 
 /// Signals whether parsing a type should allow `+`.
 ///
@@ -86,7 +86,7 @@ enum AllowCVariadic {
 /// Types can also be of the form `IDENT(u8, u8) -> u8`, however this assumes
 /// that `IDENT` is not the ident of a fn trait.
 fn can_continue_type_after_non_fn_ident(t: &Token) -> bool {
-    t == &token::PathSep || t == &token::Lt || t == &token::BinOp(token::Shl)
+    t == &token::PathSep || t == &token::Lt || t == &token::Shl
 }
 
 fn can_begin_dyn_bound_in_edition_2015(t: &Token) -> bool {
@@ -183,7 +183,8 @@ impl<'a> Parser<'a> {
         )
     }
 
-    /// Parse a type without recovering `:` as `->` to avoid breaking code such as `where fn() : for<'a>`
+    /// Parse a type without recovering `:` as `->` to avoid breaking code such
+    /// as `where fn() : for<'a>`.
     pub(super) fn parse_ty_for_where_clause(&mut self) -> PResult<'a, P<Ty>> {
         self.parse_ty_common(
             AllowPlus::Yes,
@@ -247,13 +248,19 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, P<Ty>> {
         let allow_qpath_recovery = recover_qpath == RecoverQPath::Yes;
         maybe_recover_from_interpolated_ty_qpath!(self, allow_qpath_recovery);
-        maybe_whole!(self, NtTy, |ty| ty);
+
+        if let Some(ty) = self.eat_metavar_seq_with_matcher(
+            |mv_kind| matches!(mv_kind, MetaVarKind::Ty { .. }),
+            |this| this.parse_ty_no_question_mark_recover(),
+        ) {
+            return Ok(ty);
+        }
 
         let lo = self.token.span;
         let mut impl_dyn_multi = false;
         let kind = if self.check(exp!(OpenParen)) {
             self.parse_ty_tuple_or_parens(lo, allow_plus)?
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             // Never type `!`
             TyKind::Never
         } else if self.eat(exp!(Star)) {
@@ -392,7 +399,7 @@ impl<'a> Parser<'a> {
         let mut trailing_plus = false;
         let (ts, trailing) = self.parse_paren_comma_seq(|p| {
             let ty = p.parse_ty()?;
-            trailing_plus = p.prev_token == TokenKind::BinOp(token::Plus);
+            trailing_plus = p.prev_token == TokenKind::Plus;
             Ok(ty)
         })?;
 
@@ -728,7 +735,7 @@ impl<'a> Parser<'a> {
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
 
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
 
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
     }
@@ -740,11 +747,7 @@ impl<'a> Parser<'a> {
         self.expect_lt()?;
         let (args, _, _) = self.parse_seq_to_before_tokens(
             &[exp!(Gt)],
-            &[
-                &TokenKind::Ge,
-                &TokenKind::BinOp(BinOpToken::Shr),
-                &TokenKind::BinOpEq(BinOpToken::Shr),
-            ],
+            &[&TokenKind::Ge, &TokenKind::Shr, &TokenKind::Shr],
             SeqSep::trailing_allowed(exp!(Comma)),
             |self_| {
                 if self_.check_keyword(exp!(SelfUpper)) {
@@ -774,7 +777,7 @@ impl<'a> Parser<'a> {
         self.check_keyword(exp!(Dyn))
             && (self.token.uninterpolated_span().at_least_rust_2018()
                 || self.look_ahead(1, |t| {
-                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::BinOp(token::Star))
+                    (can_begin_dyn_bound_in_edition_2015(t) || *t == TokenKind::Star)
                         && !can_continue_type_after_non_fn_ident(t)
                 }))
     }
@@ -796,7 +799,7 @@ impl<'a> Parser<'a> {
 
         // Always parse bounds greedily for better error recovery.
         let bounds = self.parse_generic_bounds()?;
-        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::BinOp(token::Plus);
+        *impl_dyn_multi = bounds.len() > 1 || self.prev_token == TokenKind::Plus;
         Ok(TyKind::TraitObject(bounds, syntax))
     }
 
@@ -814,7 +817,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, TyKind> {
         // Simple path
         let path = self.parse_path_inner(PathStyle::Type, ty_generics)?;
-        if self.eat(exp!(Not)) {
+        if self.eat(exp!(Bang)) {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall { path, args: self.parse_delim_args()? })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
@@ -867,7 +870,7 @@ impl<'a> Parser<'a> {
     fn can_begin_bound(&mut self) -> bool {
         self.check_path()
             || self.check_lifetime()
-            || self.check(exp!(Not))
+            || self.check(exp!(Bang))
             || self.check(exp!(Question))
             || self.check(exp!(Tilde))
             || self.check_keyword(exp!(For))
@@ -1018,7 +1021,7 @@ impl<'a> Parser<'a> {
 
         let polarity = if self.eat(exp!(Question)) {
             BoundPolarity::Maybe(self.prev_token.span)
-        } else if self.eat(exp!(Not)) {
+        } else if self.eat(exp!(Bang)) {
             self.psess.gated_spans.gate(sym::negative_bounds, self.prev_token.span);
             BoundPolarity::Negative(self.prev_token.span)
         } else {

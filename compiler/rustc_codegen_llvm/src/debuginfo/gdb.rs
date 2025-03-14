@@ -73,7 +73,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
                 .define_global(section_var_name, llvm_type)
                 .unwrap_or_else(|| bug!("symbol `{}` is already defined", section_var_name));
             llvm::set_section(section_var, c".debug_gdb_scripts");
-            llvm::LLVMSetInitializer(section_var, cx.const_bytes(section_contents));
+            llvm::set_initializer(section_var, cx.const_bytes(section_contents));
             llvm::LLVMSetGlobalConstant(section_var, llvm::True);
             llvm::LLVMSetUnnamedAddress(section_var, llvm::UnnamedAddr::Global);
             llvm::set_linkage(section_var, llvm::Linkage::LinkOnceODRLinkage);
@@ -87,7 +87,7 @@ pub(crate) fn get_or_insert_gdb_debug_scripts_section_global<'ll>(
 
 pub(crate) fn needs_gdb_debug_scripts_section(cx: &CodegenCx<'_, '_>) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(cx.tcx.hir().krate_attrs(), sym::omit_gdb_pretty_printer_section);
+        attr::contains_name(cx.tcx.hir_krate_attrs(), sym::omit_gdb_pretty_printer_section);
 
     // To ensure the section `__rustc_debug_gdb_scripts_section__` will not create
     // ODR violations at link time, this section will not be emitted for rlibs since

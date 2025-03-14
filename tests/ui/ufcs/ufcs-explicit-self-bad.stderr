@@ -13,8 +13,9 @@ LL |     fn dummy2(&self);
               found signature `fn(&Bar<_>)`
 help: change the self-receiver type to match the trait
    |
-LL |     fn dummy2(&self) {}
-   |               ~~~~~
+LL -     fn dummy2(self: &Bar<T>) {}
+LL +     fn dummy2(&self) {}
+   |
 
 error[E0307]: invalid `self` parameter type: `isize`
   --> $DIR/ufcs-explicit-self-bad.rs:8:18

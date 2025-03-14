@@ -2,7 +2,9 @@
 #![allow(dead_code)]
 
 pub struct MyEmptyStruct {} // should trigger lint
+//~^ empty_structs_with_brackets
 struct MyEmptyTupleStruct(); // should trigger lint
+//~^ empty_structs_with_brackets
 
 // should not trigger lint
 struct MyCfgStruct {

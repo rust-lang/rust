@@ -4,6 +4,7 @@ use std::num::NonZero;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 
+use rustc_abi::Align;
 use rustc_data_structures::profiling::TimePassesFormat;
 use rustc_errors::emitter::HumanReadableErrorType;
 use rustc_errors::{ColorConfig, registry};
@@ -20,11 +21,10 @@ use rustc_session::config::{
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
-use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, filesearch, getopts};
+use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, build_session, getopts};
 use rustc_span::edition::{DEFAULT_EDITION, Edition};
 use rustc_span::source_map::{RealFileLoader, SourceMapInputs};
 use rustc_span::{FileName, SourceFileHashAlgorithm, sym};
-use rustc_target::abi::Align;
 use rustc_target::spec::{
     CodeModel, FramePointer, LinkerFlavorCli, MergeFunctions, OnBrokenPipe, PanicStrategy,
     RelocModel, RelroLevel, SanitizerSet, SplitDebuginfo, StackProtector, TlsModel, WasmCAbi,
@@ -41,7 +41,7 @@ where
 
     let matches = optgroups().parse(args).unwrap();
     let sessopts = build_session_options(&mut early_dcx, &matches);
-    let sysroot = filesearch::materialize_sysroot(sessopts.maybe_sysroot.clone());
+    let sysroot = sessopts.sysroot.clone();
     let target =
         rustc_session::config::build_target_config(&early_dcx, &sessopts.target_triple, &sysroot);
     let hash_kind = sessopts.unstable_opts.src_hash_algorithm(&target);
@@ -65,7 +65,6 @@ where
         static USING_INTERNAL_FEATURES: AtomicBool = AtomicBool::new(false);
 
         let sess = build_session(
-            early_dcx,
             sessopts,
             io,
             None,
@@ -760,7 +759,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(allow_features, Some(vec![String::from("lang_items")]));
     tracked!(always_encode_mir, true);
     tracked!(assume_incomplete_release, true);
-    tracked!(autodiff, vec![AutoDiff::Print]);
+    tracked!(autodiff, vec![AutoDiff::Enable]);
     tracked!(binary_dep_depinfo, true);
     tracked!(box_noalias, false);
     tracked!(
@@ -771,11 +770,14 @@ fn test_unstable_options_tracking_hash() {
         })
     );
     tracked!(codegen_backend, Some("abc".to_string()));
-    tracked!(coverage_options, CoverageOptions {
-        level: CoverageLevel::Mcdc,
-        no_mir_spans: true,
-        discard_all_spans_in_codegen: true
-    });
+    tracked!(
+        coverage_options,
+        CoverageOptions {
+            level: CoverageLevel::Mcdc,
+            no_mir_spans: true,
+            discard_all_spans_in_codegen: true
+        }
+    );
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(cross_crate_inline_threshold, InliningThreshold::Always);
     tracked!(debug_info_for_profiling, true);

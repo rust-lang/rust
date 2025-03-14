@@ -216,11 +216,11 @@ fn to_upvars_resolved_place_builder<'tcx>(
 /// Supports only HIR projection kinds that represent a path that might be
 /// captured by a closure or a coroutine, i.e., an `Index` or a `Subslice`
 /// projection kinds are unsupported.
-fn strip_prefix<'a, 'tcx>(
+fn strip_prefix<'tcx>(
     mut base_ty: Ty<'tcx>,
-    projections: &'a [PlaceElem<'tcx>],
+    projections: &[PlaceElem<'tcx>],
     prefix_projections: &[HirProjection<'tcx>],
-) -> impl Iterator<Item = PlaceElem<'tcx>> + 'a {
+) -> impl Iterator<Item = PlaceElem<'tcx>> {
     let mut iter = projections
         .iter()
         .copied()
@@ -484,16 +484,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         });
 
                     let place = place_builder.to_place(this);
-                    this.cfg.push(block, Statement {
-                        source_info: ty_source_info,
-                        kind: StatementKind::AscribeUserType(
-                            Box::new((place, UserTypeProjection {
-                                base: annotation_index,
-                                projs: vec![],
-                            })),
-                            Variance::Invariant,
-                        ),
-                    });
+                    this.cfg.push(
+                        block,
+                        Statement {
+                            source_info: ty_source_info,
+                            kind: StatementKind::AscribeUserType(
+                                Box::new((
+                                    place,
+                                    UserTypeProjection { base: annotation_index, projs: vec![] },
+                                )),
+                                Variance::Invariant,
+                            ),
+                        },
+                    );
                 }
                 block.and(place_builder)
             }
@@ -510,16 +513,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                             user_ty: user_ty.clone(),
                             inferred_ty: expr.ty,
                         });
-                    this.cfg.push(block, Statement {
-                        source_info: ty_source_info,
-                        kind: StatementKind::AscribeUserType(
-                            Box::new((Place::from(temp), UserTypeProjection {
-                                base: annotation_index,
-                                projs: vec![],
-                            })),
-                            Variance::Invariant,
-                        ),
-                    });
+                    this.cfg.push(
+                        block,
+                        Statement {
+                            source_info: ty_source_info,
+                            kind: StatementKind::AscribeUserType(
+                                Box::new((
+                                    Place::from(temp),
+                                    UserTypeProjection { base: annotation_index, projs: vec![] },
+                                )),
+                                Variance::Invariant,
+                            ),
+                        },
+                    );
                 }
                 block.and(PlaceBuilder::from(temp))
             }
@@ -576,6 +582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Yield { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));

@@ -55,12 +55,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Or-patterns are not tested directly; instead they are expanded into subcandidates,
             // which are then distinguished by testing whatever non-or patterns they contain.
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
-
-            TestCase::Irrefutable { .. } => span_bug!(
-                match_pair.pattern_span,
-                "simplifiable pattern found: {:?}",
-                match_pair.pattern_span
-            ),
         };
 
         Test { span: match_pair.pattern_span, kind }
@@ -327,15 +321,23 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
         // `let temp = <Ty as Deref>::deref(ref_src);`
         // or `let temp = <Ty as DerefMut>::deref_mut(ref_src);`
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func: Operand::Constant(Box::new(ConstOperand { span, user_ty: None, const_: method })),
-            args: [Spanned { node: Operand::Move(ref_src), span }].into(),
-            destination: temp,
-            target: Some(target_block),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::Misc,
-            fn_span: source_info.span,
-        });
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span,
+                    user_ty: None,
+                    const_: method,
+                })),
+                args: [Spanned { node: Operand::Move(ref_src), span }].into(),
+                destination: temp,
+                target: Some(target_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: source_info.span,
+            },
+        );
     }
 
     /// Compare using the provided built-in comparison operator
@@ -463,26 +465,33 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
         let eq_block = self.cfg.start_new_block();
-        self.cfg.terminate(block, source_info, TerminatorKind::Call {
-            func: Operand::Constant(Box::new(ConstOperand {
-                span: source_info.span,
+        self.cfg.terminate(
+            block,
+            source_info,
+            TerminatorKind::Call {
+                func: Operand::Constant(Box::new(ConstOperand {
+                    span: source_info.span,
 
-                // FIXME(#54571): This constant comes from user input (a
-                // constant in a pattern). Are there forms where users can add
-                // type annotations here?  For example, an associated constant?
-                // Need to experiment.
-                user_ty: None,
+                    // FIXME(#54571): This constant comes from user input (a
+                    // constant in a pattern). Are there forms where users can add
+                    // type annotations here?  For example, an associated constant?
+                    // Need to experiment.
+                    user_ty: None,
 
-                const_: method,
-            })),
-            args: [Spanned { node: val, span: DUMMY_SP }, Spanned { node: expect, span: DUMMY_SP }]
+                    const_: method,
+                })),
+                args: [
+                    Spanned { node: val, span: DUMMY_SP },
+                    Spanned { node: expect, span: DUMMY_SP },
+                ]
                 .into(),
-            destination: eq_result,
-            target: Some(eq_block),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::MatchCmp,
-            fn_span: source_info.span,
-        });
+                destination: eq_result,
+                target: Some(eq_block),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::MatchCmp,
+                fn_span: source_info.span,
+            },
+        );
         self.diverge_from(block);
 
         // check the result
@@ -531,11 +540,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) = candidate
-            .match_pairs
-            .iter()
-            .enumerate()
-            .find(|&(_, mp)| mp.place == Some(test_place))?;
+        let (match_pair_index, match_pair) =
+            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == test_place)?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -578,7 +584,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate
                         .match_pairs
                         .iter()
-                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
+                        .any(|mp| mp.place == test_place && is_covering_range(&mp.test_case))
                 };
                 if sorted_candidates
                     .get(&TestBranch::Failure)
@@ -754,7 +760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let match_pair = candidate.match_pairs.remove(match_pair_index);
             candidate.match_pairs.extend(match_pair.subpairs);
             // Move or-patterns to the end.
-            candidate.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+            candidate.sort_match_pairs();
         }
 
         ret

@@ -61,8 +61,8 @@ impl HasStaticRootDefId for const_eval::CompileTimeMachine<'_> {
 /// already mutable (as a sanity check).
 ///
 /// Returns an iterator over all relocations referred to by this allocation.
-fn intern_shallow<'rt, 'tcx, T, M: CompileTimeMachine<'tcx, T>>(
-    ecx: &'rt mut InterpCx<'tcx, M>,
+fn intern_shallow<'tcx, T, M: CompileTimeMachine<'tcx, T>>(
+    ecx: &mut InterpCx<'tcx, M>,
     alloc_id: AllocId,
     mutability: Mutability,
 ) -> Result<impl Iterator<Item = CtfeProvenance> + 'tcx, ()> {
@@ -102,11 +102,11 @@ fn intern_as_new_static<'tcx>(
     alloc_id: AllocId,
     alloc: ConstAllocation<'tcx>,
 ) {
-    let feed = tcx.create_def(static_id, sym::nested, DefKind::Static {
-        safety: hir::Safety::Safe,
-        mutability: alloc.0.mutability,
-        nested: true,
-    });
+    let feed = tcx.create_def(
+        static_id,
+        Some(sym::nested),
+        DefKind::Static { safety: hir::Safety::Safe, mutability: alloc.0.mutability, nested: true },
+    );
     tcx.set_nested_alloc_id_static(alloc_id, feed.def_id());
 
     if tcx.is_thread_local_static(static_id.into()) {

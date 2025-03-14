@@ -24,8 +24,8 @@ collection.
 
 The test results are cached and previously successful tests are `ignored` during
 testing. The stdout/stderr contents as well as a timestamp file for every test
-can be found under `build/<target-triple>/test/` for the given
-`<target-triple>`. To force-rerun a test (e.g. in case the test runner fails to
+can be found under `build/<target-tuple>/test/` for the given
+`<target-tuple>`. To force-rerun a test (e.g. in case the test runner fails to
 notice a change) you can use the `--force-rerun` CLI option.
 
 > **Note on requirements of external dependencies**
@@ -49,7 +49,7 @@ test suite ([`tests/ui`]):
 ./x test tests/ui
 ```
 
-This will run the `ui` test suite. Of course, the choice of test suites is
+Of course, the choice of test suites is
 somewhat arbitrary, and may not suit the task you are doing. For example, if you
 are hacking on debuginfo, you may be better off with the debuginfo test suite:
 
@@ -112,8 +112,8 @@ crates, you have to specify those explicitly.
 ./x test --stage 1 library/std
 ```
 
-By listing which test suites you want to run you avoid having to run tests for
-components you did not change at all.
+By listing which test suites you want to run,
+you avoid having to run tests for components you did not change at all.
 
 <div class="warning">
 Note that bors only runs the tests with the full stage 2 build; therefore, while
@@ -172,16 +172,18 @@ additional arguments to the compiler when building the tests.
 ## Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are making a new
-test, you can pass `--bless` to the test subcommand. E.g. if some tests in
-`tests/ui` are failing, you can run
+test, you can pass `--bless` to the test subcommand.
+
+As an example,
+if some tests in `tests/ui` are failing, you can run this command:
 
 ```text
 ./x test tests/ui --bless
 ```
 
-to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
-all tests. Of course you can also target just specific tests with the
-`--test-args your_test_name` flag, just like when running the tests.
+It automatically adjusts the `.stderr`, `.stdout`, or `.fixed` files of all `test/ui` tests.
+Of course you can also target just specific tests with the `--test-args your_test_name` flag,
+just like when running the tests without the `--bless` flag.
 
 ## Configuring test running
 
@@ -190,7 +192,7 @@ There are a few options for running tests:
 * `config.toml` has the `rust.verbose-tests` option. If `false`, each test will
   print a single dot (the default). If `true`, the name of every test will be
   printed. This is equivalent to the `--quiet` option in the [Rust test
-  harness](https://doc.rust-lang.org/rustc/tests/)
+  harness](https://doc.rust-lang.org/rustc/tests/).
 * The environment variable `RUST_TEST_THREADS` can be set to the number of
   concurrent threads to use for testing.
 
@@ -237,30 +239,6 @@ rustc +stage1 tests/ui/issue-1234.rs
 This is much faster, but doesn't always work. For example, some tests include
 directives that specify specific compiler flags, or which rely on other crates,
 and they may not run the same without those options.
-
-## Running `run-make` tests
-
-### Windows
-
-Running the `run-make` test suite on Windows is a currently bit more involved.
-There are numerous prerequisites and environmental requirements:
-
-- Install msys2: <https://www.msys2.org/>
-- Specify `MSYS2_PATH_TYPE=inherit` in `msys2.ini` in the msys2 installation directory, run the
-  following with `MSYS2 MSYS`:
-  - `pacman -Syuu`
-  - `pacman -S make`
-  - `pacman -S diffutils`
-  - `pacman -S binutils`
-  - `./x test run-make` (`./x test tests/run-make` doesn't work)
-
-There is [on-going work][port-run-make] to not rely on `Makefile`s in the
-run-make test suite. Once this work is completed, you can run the entire
-`run-make` test suite on native Windows inside `cmd` or `PowerShell` without
-needing to install and use MSYS2. As of <!--date-check --> Oct 2024, it is
-already possible to run the vast majority of the `run-make` test suite outside
-of MSYS2, but there will be failures for the tests that still use `Makefile`s
-due to not finding `make`.
 
 ## Running tests on a remote machine
 
@@ -406,4 +384,3 @@ If you encounter bugs or problems, don't hesitate to open issues on the
 repository](https://github.com/rust-lang/rustc_codegen_gcc/).
 
 [`tests/ui`]: https://github.com/rust-lang/rust/tree/master/tests/ui
-[port-run-make]: https://github.com/rust-lang/rust/issues/121876

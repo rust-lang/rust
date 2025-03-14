@@ -1,17 +1,20 @@
-use crate::spec::{SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{SanitizerSet, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::fuchsia::opts();
     base.cpu = "x86-64".into();
     base.plt_by_default = false;
-    base.max_atomic_width = Some(64);
+    // See https://fuchsia.dev/fuchsia-src/contribute/governance/rfcs/0073_x86_64_platform_requirement,
+    // which corresponds to x86-64-v2.
+    base.features = "+cx16,+sahf,+popcnt,+sse3,+sse4.1,+sse4.2,+ssse3".into();
+    base.max_atomic_width = Some(128);
     base.stack_probes = StackProbeType::Inline;
     base.supported_sanitizers = SanitizerSet::ADDRESS | SanitizerSet::CFI | SanitizerSet::LEAK;
     base.supports_xray = true;
 
     Target {
         llvm_target: "x86_64-unknown-fuchsia".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit x86 Fuchsia".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -6,8 +6,9 @@ LL |     T::method(..): Send,
    |
 help: use a fully qualified path with inferred lifetimes
    |
-LL |     <T as A<'_>>::method(..): Send,
-   |     ~~~~~~~~~~~~~~
+LL -     T::method(..): Send,
+LL +     <T as A<'_>>::method(..): Send,
+   |
 
 error[E0212]: cannot use the associated function of a trait with uninferred generic parameters
   --> $DIR/path-higher-ranked.rs:19:5
@@ -17,8 +18,9 @@ LL |     T::method(..): Send,
    |
 help: use a fully qualified path with inferred lifetimes
    |
-LL |     <T as A<'_>>::method(..): Send,
-   |     ~~~~~~~~~~~~~~
+LL -     T::method(..): Send,
+LL +     <T as A<'_>>::method(..): Send,
+   |
 
 error: aborting due to 2 previous errors
 

@@ -52,7 +52,7 @@ LL |         Self: Default + Clone;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:65:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:66:15
    |
 LL |         Self: Default;
    |               ^^^^^^^
@@ -60,7 +60,7 @@ LL |         Self: Default;
    = help: consider removing this trait bound
 
 error: this trait bound is already specified in trait declaration
-  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:101:15
+  --> tests/ui/trait_duplication_in_bounds_unfixable.rs:103:15
    |
 LL |         Self: Iterator<Item = Foo>,
    |               ^^^^^^^^^^^^^^^^^^^^

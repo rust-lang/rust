@@ -24,7 +24,7 @@ pub(super) fn check<'tcx>(
     unwrap_recv: &rustc_hir::Expr<'_>,
     unwrap_arg: &'tcx rustc_hir::Expr<'_>,
     map_span: Span,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     // lint if the caller of `map()` is an `Option`
     if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(recv), sym::Option) {
@@ -58,8 +58,7 @@ pub(super) fn check<'tcx>(
                 unwrap_or_span: unwrap_arg.span,
             };
 
-            let map = cx.tcx.hir();
-            let body = map.body_owned_by(map.enclosing_body_owner(expr.hir_id));
+            let body = cx.tcx.hir_body_owned_by(cx.tcx.hir_enclosing_body_owner(expr.hir_id));
 
             // Visit the body, and return if we've found a reference
             if reference_visitor.visit_body(body).is_break() {
@@ -72,9 +71,9 @@ pub(super) fn check<'tcx>(
         }
 
         // is_some_and is stabilised && `unwrap_or` argument is false; suggest `is_some_and` instead
-        let suggest_is_some_and = msrv.meets(msrvs::OPTION_RESULT_IS_VARIANT_AND)
-            && matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
-            if matches!(lit.node, rustc_ast::LitKind::Bool(false)));
+        let suggest_is_some_and = matches!(&unwrap_arg.kind, ExprKind::Lit(lit)
+            if matches!(lit.node, rustc_ast::LitKind::Bool(false)))
+            && msrv.meets(cx, msrvs::OPTION_RESULT_IS_VARIANT_AND);
 
         let mut applicability = Applicability::MachineApplicable;
         // get snippet for unwrap_or()
@@ -143,8 +142,8 @@ impl<'tcx> Visitor<'tcx> for UnwrapVisitor<'_, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -174,7 +173,7 @@ impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
         rustc_hir::intravisit::walk_expr(self, expr)
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }

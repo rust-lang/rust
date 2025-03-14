@@ -9,7 +9,7 @@ LL | const ATOMIC: AtomicUsize = AtomicUsize::new(5);
    = help: to override `-D warnings` add `#[allow(clippy::declare_interior_mutable_const)]`
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/others.rs:11:1
+  --> tests/ui/declare_interior_mutable_const/others.rs:12:1
    |
 LL | const CELL: Cell<usize> = Cell::new(6);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | const CELL: Cell<usize> = Cell::new(6);
    = help: consider making this `Sync` so that it can go in a static item or using a `thread_local`
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/others.rs:12:1
+  --> tests/ui/declare_interior_mutable_const/others.rs:14:1
    |
 LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], Vec::new(), 7);
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -25,7 +25,7 @@ LL | const ATOMIC_TUPLE: ([AtomicUsize; 1], Vec<AtomicUsize>, u8) = ([ATOMIC], V
    = help: consider making this a static item
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/others.rs:17:9
+  --> tests/ui/declare_interior_mutable_const/others.rs:19:9
    |
 LL |         const $name: $ty = $e;
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -36,7 +36,7 @@ LL | declare_const!(_ONCE: Once = Once::new());
    = note: this error originates in the macro `declare_const` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: a `const` item should not be interior mutable
-  --> tests/ui/declare_interior_mutable_const/others.rs:45:13
+  --> tests/ui/declare_interior_mutable_const/others.rs:47:13
    |
 LL |             const _BAZ: Cell<usize> = Cell::new(0);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -148,7 +148,7 @@ impl<'tcx> ConstToPat<'tcx> {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
                         && let ty::Param(param_ty) = ty.kind()
                     {
-                        let def_id = self.tcx.hir().enclosing_body_owner(self.id);
+                        let def_id = self.tcx.hir_enclosing_body_owner(self.id);
                         let generics = self.tcx.generics_of(def_id);
                         let param = generics.type_param(*param_ty, self.tcx);
                         let span = self.tcx.def_span(param.def_id);

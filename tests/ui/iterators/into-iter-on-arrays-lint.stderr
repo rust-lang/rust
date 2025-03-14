@@ -9,12 +9,14 @@ LL |     small.into_iter();
    = note: `#[warn(array_into_iter)]` on by default
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
-LL |     small.iter();
-   |           ~~~~
+LL -     small.into_iter();
+LL +     small.iter();
+   |
 help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
    |
-LL |     IntoIterator::into_iter(small);
-   |     ++++++++++++++++++++++++     ~
+LL -     small.into_iter();
+LL +     IntoIterator::into_iter(small);
+   |
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:14:12
@@ -26,12 +28,14 @@ LL |     [1, 2].into_iter();
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
-LL |     [1, 2].iter();
-   |            ~~~~
+LL -     [1, 2].into_iter();
+LL +     [1, 2].iter();
+   |
 help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
    |
-LL |     IntoIterator::into_iter([1, 2]);
-   |     ++++++++++++++++++++++++      ~
+LL -     [1, 2].into_iter();
+LL +     IntoIterator::into_iter([1, 2]);
+   |
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:17:9
@@ -43,12 +47,14 @@ LL |     big.into_iter();
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
-LL |     big.iter();
-   |         ~~~~
+LL -     big.into_iter();
+LL +     big.iter();
+   |
 help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
    |
-LL |     IntoIterator::into_iter(big);
-   |     ++++++++++++++++++++++++   ~
+LL -     big.into_iter();
+LL +     IntoIterator::into_iter(big);
+   |
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:20:15
@@ -60,12 +66,14 @@ LL |     [0u8; 33].into_iter();
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/IntoIterator-for-arrays.html>
 help: use `.iter()` instead of `.into_iter()` to avoid ambiguity
    |
-LL |     [0u8; 33].iter();
-   |               ~~~~
+LL -     [0u8; 33].into_iter();
+LL +     [0u8; 33].iter();
+   |
 help: or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value
    |
-LL |     IntoIterator::into_iter([0u8; 33]);
-   |     ++++++++++++++++++++++++         ~
+LL -     [0u8; 33].into_iter();
+LL +     IntoIterator::into_iter([0u8; 33]);
+   |
 
 warning: this method call resolves to `<&[T; N] as IntoIterator>::into_iter` (due to backwards compatibility), but will resolve to `<[T; N] as IntoIterator>::into_iter` in Rust 2021
   --> $DIR/into-iter-on-arrays-lint.rs:24:21

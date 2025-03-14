@@ -6,8 +6,6 @@
 // Ensure we don't have ambiguity when upcasting to two supertraits
 // that are identical modulo normalization.
 
-#![feature(trait_upcasting)]
-
 trait Supertrait<T> {
     fn method(&self) {}
 }

@@ -66,7 +66,7 @@ use core::ptr::{self, NonNull};
 use core::slice::{self, SliceIndex};
 use core::{fmt, intrinsics};
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+#[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
 pub use self::extract_if::ExtractIf;
 use crate::alloc::{Allocator, Global};
 use crate::borrow::{Cow, ToOwned};
@@ -293,7 +293,7 @@ mod spec_extend;
 /// on an empty Vec, it will not allocate memory. Similarly, if you store zero-sized
 /// types inside a `Vec`, it will not allocate space for them. *Note that in this case
 /// the `Vec` might not report a [`capacity`] of 0*. `Vec` will allocate if and only
-/// if <code>[mem::size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
+/// if <code>[size_of::\<T>]\() * [capacity]\() > 0</code>. In general, `Vec`'s allocation
 /// details are very subtle --- if you intend to allocate memory using a `Vec`
 /// and use it for something else (either to pass to unsafe code, or to build your
 /// own memory-backed collection), be sure to deallocate this memory by using
@@ -355,11 +355,20 @@ mod spec_extend;
 /// and it may prove desirable to use a non-constant growth factor. Whatever
 /// strategy is used will of course guarantee *O*(1) amortized [`push`].
 ///
-/// `vec![x; n]`, `vec![a, b, c, d]`, and
-/// [`Vec::with_capacity(n)`][`Vec::with_capacity`], will all produce a `Vec`
-/// with at least the requested capacity. If <code>[len] == [capacity]</code>,
-/// (as is the case for the [`vec!`] macro), then a `Vec<T>` can be converted to
-/// and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// It is guaranteed, in order to respect the intentions of the programmer, that
+/// all of `vec![e_1, e_2, ..., e_n]`, `vec![x; n]`, and [`Vec::with_capacity(n)`] produce a `Vec`
+/// that requests an allocation of the exact size needed for precisely `n` elements from the allocator,
+/// and no other size (such as, for example: a size rounded up to the nearest power of 2).
+/// The allocator will return an allocation that is at least as large as requested, but it may be larger.
+///
+/// It is guaranteed that the [`Vec::capacity`] method returns a value that is at least the requested capacity
+/// and not more than the allocated capacity.
+///
+/// The method [`Vec::shrink_to_fit`] will attempt to discard excess capacity an allocator has given to a `Vec`.
+/// If <code>[len] == [capacity]</code>, then a `Vec<T>` can be converted
+/// to and from a [`Box<[T]>`][owned slice] without reallocating or moving the elements.
+/// `Vec` exploits this fact as much as reasonable when implementing common conversions
+/// such as [`into_boxed_slice`].
 ///
 /// `Vec` will not specifically overwrite any data that is removed from it,
 /// but also won't specifically preserve it. Its uninitialized memory is
@@ -383,16 +392,19 @@ mod spec_extend;
 /// [`shrink_to`]: Vec::shrink_to
 /// [capacity]: Vec::capacity
 /// [`capacity`]: Vec::capacity
-/// [mem::size_of::\<T>]: core::mem::size_of
+/// [`Vec::capacity`]: Vec::capacity
+/// [size_of::\<T>]: size_of
 /// [len]: Vec::len
 /// [`len`]: Vec::len
 /// [`push`]: Vec::push
 /// [`insert`]: Vec::insert
 /// [`reserve`]: Vec::reserve
+/// [`Vec::with_capacity(n)`]: Vec::with_capacity
 /// [`MaybeUninit`]: core::mem::MaybeUninit
 /// [owned slice]: Box
+/// [`into_boxed_slice`]: Vec::into_boxed_slice
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Vec")]
+#[rustc_diagnostic_item = "Vec"]
 #[rustc_insignificant_dtor]
 pub struct Vec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> {
     buf: RawVec<T, A>,
@@ -416,7 +428,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[rustc_const_stable(feature = "const_vec_new", since = "1.39.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_new")]
+    #[rustc_diagnostic_item = "vec_new"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
     pub const fn new() -> Self {
@@ -477,7 +489,7 @@ impl<T> Vec<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_with_capacity")]
+    #[rustc_diagnostic_item = "vec_with_capacity"]
     #[track_caller]
     pub fn with_capacity(capacity: usize) -> Self {
         Self::with_capacity_in(capacity, Global)
@@ -1242,7 +1254,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn capacity(&self) -> usize {
         self.buf.capacity()
     }
@@ -1267,7 +1279,7 @@ impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[track_caller]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_reserve")]
+    #[rustc_diagnostic_item = "vec_reserve"]
     pub fn reserve(&mut self, additional: usize) {
         self.buf.reserve(self.len, additional);
     }
@@ -1556,12 +1568,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_slice")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_diagnostic_item = "vec_as_slice"]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_slice(&self) -> &[T] {
         // SAFETY: `slice::from_raw_parts` requires pointee is a contiguous, aligned buffer of size
         // `len` containing properly-initialized `T`s. Data must not be mutated for the returned
-        // lifetime. Further, `len * mem::size_of::<T>` <= `ISIZE::MAX`, and allocation does not
+        // lifetime. Further, `len * size_of::<T>` <= `isize::MAX`, and allocation does not
         // "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
@@ -1588,12 +1600,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "vec_as_slice", since = "1.7.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_as_mut_slice")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_diagnostic_item = "vec_as_mut_slice"]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn as_mut_slice(&mut self) -> &mut [T] {
         // SAFETY: `slice::from_raw_parts_mut` requires pointee is a contiguous, aligned buffer of
         // size `len` containing properly-initialized `T`s. Data must not be accessed through any
-        // other pointer for the returned lifetime. Further, `len * mem::size_of::<T>` <=
+        // other pointer for the returned lifetime. Further, `len * size_of::<T>` <=
         // `ISIZE::MAX` and allocation does not "wrap" through overflowing memory addresses.
         //
         // * Vec API guarantees that self.buf:
@@ -1661,7 +1673,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]
@@ -1724,7 +1736,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// [`as_ptr`]: Vec::as_ptr
     /// [`as_non_null`]: Vec::as_non_null
     #[stable(feature = "vec_as_ptr", since = "1.37.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_never_returns_null_ptr]
     #[rustc_as_ptr]
     #[inline]
@@ -1837,7 +1849,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # // don't use this as a starting point for a real library.
     /// # pub struct StreamWrapper { strm: *mut std::ffi::c_void }
     /// # const Z_OK: i32 = 0;
-    /// # extern "C" {
+    /// # unsafe extern "C" {
     /// #     fn deflateGetDictionary(
     /// #         strm: *mut std::ffi::c_void,
     /// #         dictionary: *mut u8,
@@ -2499,7 +2511,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Takes *O*(1) time.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_pop")]
+    #[rustc_diagnostic_item = "vec_pop"]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -2519,8 +2531,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(vec_pop_if)]
-    ///
     /// let mut vec = vec![1, 2, 3, 4];
     /// let pred = |x: &mut i32| *x % 2 == 0;
     ///
@@ -2528,7 +2538,7 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert_eq!(vec, [1, 2, 3]);
     /// assert_eq!(vec.pop_if(pred), None);
     /// ```
-    #[unstable(feature = "vec_pop_if", issue = "122741")]
+    #[stable(feature = "vec_pop_if", since = "1.86.0")]
     pub fn pop_if(&mut self, predicate: impl FnOnce(&mut T) -> bool) -> Option<T> {
         let last = self.last_mut()?;
         if predicate(last) { self.pop() } else { None }
@@ -2677,13 +2687,13 @@ impl<T, A: Allocator> Vec<T, A> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     #[rustc_confusables("length", "size")]
     pub const fn len(&self) -> usize {
         let len = self.len;
 
         // SAFETY: The maximum capacity of `Vec<T>` is `isize::MAX` bytes, so the maximum value can
-        // be returned is `usize::checked_div(mem::size_of::<T>()).unwrap_or(usize::MAX)`, which
+        // be returned is `usize::checked_div(size_of::<T>()).unwrap_or(usize::MAX)`, which
         // matches the definition of `T::MAX_SLICE_LEN`.
         unsafe { intrinsics::assume(len <= T::MAX_SLICE_LEN) };
 
@@ -2702,8 +2712,8 @@ impl<T, A: Allocator> Vec<T, A> {
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "vec_is_empty")]
-    #[rustc_const_unstable(feature = "const_vec_string_slice", issue = "129041")]
+    #[rustc_diagnostic_item = "vec_is_empty"]
+    #[rustc_const_stable(feature = "const_vec_string_slice", since = "CURRENT_RUSTC_VERSION")]
     pub const fn is_empty(&self) -> bool {
         self.len() == 0
     }
@@ -3183,7 +3193,7 @@ impl<T: PartialEq, A: Allocator> Vec<T, A> {
 #[doc(hidden)]
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "vec_from_elem")]
+#[rustc_diagnostic_item = "vec_from_elem"]
 #[track_caller]
 pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
     <T as SpecFromElem>::from_elem(elem, n, Global)
@@ -3283,21 +3293,10 @@ unsafe impl<T, A: Allocator> ops::DerefPure for Vec<T, A> {}
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone, A: Allocator + Clone> Clone for Vec<T, A> {
-    #[cfg(not(test))]
     #[track_caller]
     fn clone(&self) -> Self {
         let alloc = self.allocator().clone();
         <[T]>::to_vec_in(&**self, alloc)
-    }
-
-    // HACK(japaric): with cfg(test) the inherent `[T]::to_vec` method, which is
-    // required for this method definition, is not available. Instead use the
-    // `slice::to_vec` function which is only available with cfg(test)
-    // NB see the slice::hack module in slice.rs for more information
-    #[cfg(test)]
-    fn clone(&self) -> Self {
-        let alloc = self.allocator().clone();
-        crate::slice::to_vec(&**self, alloc)
     }
 
     /// Overwrites the contents of `self` with a clone of the contents of `source`.
@@ -3686,7 +3685,6 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Splitting an array into evens and odds, reusing the original allocation:
     ///
     /// ```
-    /// #![feature(extract_if)]
     /// let mut numbers = vec![1, 2, 3, 4, 5, 6, 8, 9, 11, 13, 14, 15];
     ///
     /// let evens = numbers.extract_if(.., |x| *x % 2 == 0).collect::<Vec<_>>();
@@ -3699,13 +3697,12 @@ impl<T, A: Allocator> Vec<T, A> {
     /// Using the range argument to only process a part of the vector:
     ///
     /// ```
-    /// #![feature(extract_if)]
     /// let mut items = vec![0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 2, 1, 2];
     /// let ones = items.extract_if(7.., |x| *x == 1).collect::<Vec<_>>();
     /// assert_eq!(items, vec![0, 0, 0, 0, 0, 0, 0, 2, 2, 2]);
     /// assert_eq!(ones.len(), 3);
     /// ```
-    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
+    #[stable(feature = "extract_if", since = "CURRENT_RUSTC_VERSION")]
     pub fn extract_if<F, R>(&mut self, range: R, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
@@ -3846,14 +3843,9 @@ impl<T: Clone> From<&[T]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&[1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: &[T]) -> Vec<T> {
         s.to_vec()
-    }
-    #[cfg(test)]
-    fn from(s: &[T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -3867,14 +3859,9 @@ impl<T: Clone> From<&mut [T]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from(&mut [1, 2, 3][..]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: &mut [T]) -> Vec<T> {
         s.to_vec()
-    }
-    #[cfg(test)]
-    fn from(s: &mut [T]) -> Vec<T> {
-        crate::slice::to_vec(s, Global)
     }
 }
 
@@ -3920,15 +3907,9 @@ impl<T, const N: usize> From<[T; N]> for Vec<T> {
     /// ```
     /// assert_eq!(Vec::from([1, 2, 3]), vec![1, 2, 3]);
     /// ```
-    #[cfg(not(test))]
     #[track_caller]
     fn from(s: [T; N]) -> Vec<T> {
         <[T]>::into_vec(Box::new(s))
-    }
-
-    #[cfg(test)]
-    fn from(s: [T; N]) -> Vec<T> {
-        crate::slice::into_vec(Box::new(s))
     }
 }
 
@@ -3958,7 +3939,6 @@ where
 }
 
 // note: test pulls in std, which causes errors here
-#[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     /// Converts a boxed slice into a vector by transferring ownership of
@@ -3977,7 +3957,6 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
 
 // note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
-#[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
 impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     /// Converts a vector into a boxed slice.

@@ -1,17 +1,20 @@
 //! Interpret intrinsics, lang items and `extern "C"` wellknown functions which their implementation
 //! is not available.
 //!
-use std::cmp;
+use std::cmp::{self, Ordering};
 
 use chalk_ir::TyKind;
 use hir_def::{
     builtin_type::{BuiltinInt, BuiltinUint},
+    lang_item::LangItemTarget,
     resolver::HasResolver,
 };
 use hir_expand::name::Name;
 use intern::{sym, Symbol};
+use stdx::never;
 
 use crate::{
+    display::DisplayTarget,
     error_lifetime,
     mir::eval::{
         pad16, Address, AdtId, Arc, BuiltinType, Evaluator, FunctionId, HasModule, HirDisplay,
@@ -19,6 +22,7 @@ use crate::{
         LangItem, Layout, Locals, Lookup, MirEvalError, MirSpan, Mutability, Result, Substitution,
         Ty, TyBuilder, TyExt,
     },
+    DropGlue,
 };
 
 mod simd;
@@ -832,8 +836,7 @@ impl Evaluator<'_> {
                     // render full paths.
                     Err(_) => {
                         let krate = locals.body.owner.krate(self.db.upcast());
-                        let edition = self.db.crate_graph()[krate].edition;
-                        ty.display(self.db, edition).to_string()
+                        ty.display(self.db, DisplayTarget::from_crate(self.db, krate)).to_string()
                     }
                 };
                 let len = ty_name.len();
@@ -852,7 +855,14 @@ impl Evaluator<'_> {
                         "size_of generic arg is not provided".into(),
                     ));
                 };
-                let result = !ty.clone().is_copy(self.db, locals.body.owner);
+                let result = match self.db.has_drop_glue(ty.clone(), self.trait_env.clone()) {
+                    DropGlue::HasDropGlue => true,
+                    DropGlue::None => false,
+                    DropGlue::DependOnParams => {
+                        never!("should be fully monomorphized now");
+                        true
+                    }
+                };
                 destination.write_from_bytes(self, &[u8::from(result)])
             }
             "ptr_guaranteed_cmp" => {
@@ -1315,6 +1325,82 @@ impl Evaluator<'_> {
                 let size = self.size_of_sized(ty, locals, "copy_nonoverlapping ptr type")?;
                 let size = count * size;
                 self.write_memory_using_ref(dst, size)?.fill(val);
+                Ok(())
+            }
+            "ptr_metadata" => {
+                let [ptr] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "ptr_metadata args are not provided".into(),
+                    ));
+                };
+                let arg = ptr.interval.get(self)?.to_owned();
+                let metadata = &arg[self.ptr_size()..];
+                destination.write_from_bytes(self, metadata)?;
+                Ok(())
+            }
+            "three_way_compare" => {
+                let [lhs, rhs] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "three_way_compare args are not provided".into(),
+                    ));
+                };
+                let Some(ty) =
+                    generic_args.as_slice(Interner).first().and_then(|it| it.ty(Interner))
+                else {
+                    return Err(MirEvalError::InternalError(
+                        "three_way_compare generic arg is not provided".into(),
+                    ));
+                };
+                let signed = match ty.as_builtin().unwrap() {
+                    BuiltinType::Int(_) => true,
+                    BuiltinType::Uint(_) => false,
+                    _ => {
+                        return Err(MirEvalError::InternalError(
+                            "three_way_compare expects an integral type".into(),
+                        ))
+                    }
+                };
+                let rhs = rhs.get(self)?;
+                let lhs = lhs.get(self)?;
+                let mut result = Ordering::Equal;
+                for (l, r) in lhs.iter().zip(rhs).rev() {
+                    let it = l.cmp(r);
+                    if it != Ordering::Equal {
+                        result = it;
+                        break;
+                    }
+                }
+                if signed {
+                    if let Some((&l, &r)) = lhs.iter().zip(rhs).next_back() {
+                        if l != r {
+                            result = (l as i8).cmp(&(r as i8));
+                        }
+                    }
+                }
+                if let Some(LangItemTarget::EnumId(e)) =
+                    self.db.lang_item(self.crate_id, LangItem::Ordering)
+                {
+                    let ty = self.db.ty(e.into());
+                    let r = self
+                        .compute_discriminant(ty.skip_binders().clone(), &[result as i8 as u8])?;
+                    destination.write_from_bytes(self, &r.to_le_bytes()[0..destination.size])?;
+                    Ok(())
+                } else {
+                    Err(MirEvalError::InternalError("Ordering enum not found".into()))
+                }
+            }
+            "aggregate_raw_ptr" => {
+                let [data, meta] = args else {
+                    return Err(MirEvalError::InternalError(
+                        "aggregate_raw_ptr args are not provided".into(),
+                    ));
+                };
+                destination.write_from_interval(self, data.interval)?;
+                Interval {
+                    addr: destination.addr.offset(data.interval.size),
+                    size: destination.size - data.interval.size,
+                }
+                .write_from_interval(self, meta.interval)?;
                 Ok(())
             }
             _ if needs_override => not_supported!("intrinsic {name} is not implemented"),

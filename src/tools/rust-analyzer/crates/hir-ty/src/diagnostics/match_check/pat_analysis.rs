@@ -95,7 +95,7 @@ impl<'db> MatchCheckCtx<'db> {
 
         let place_validity = PlaceValidity::from_bool(known_valid_scrutinee.unwrap_or(true));
         // Measured to take ~100ms on modern hardware.
-        let complexity_limit = Some(500000);
+        let complexity_limit = 500000;
         compute_match_usefulness(self, arms, scrut_ty, place_validity, complexity_limit)
     }
 
@@ -361,11 +361,11 @@ impl PatCx for MatchCheckCtx<'_> {
         }
     }
 
-    fn ctor_sub_tys<'a>(
-        &'a self,
-        ctor: &'a rustc_pattern_analysis::constructor::Constructor<Self>,
-        ty: &'a Self::Ty,
-    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> + Captures<'a> {
+    fn ctor_sub_tys(
+        &self,
+        ctor: &rustc_pattern_analysis::constructor::Constructor<Self>,
+        ty: &Self::Ty,
+    ) -> impl ExactSizeIterator<Item = (Self::Ty, PrivateUninhabitedField)> {
         let single = |ty| smallvec![(ty, PrivateUninhabitedField(false))];
         let tys: SmallVec<[_; 2]> = match ctor {
             Struct | Variant(_) | UnionField => match ty.kind(Interner) {

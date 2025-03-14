@@ -17,6 +17,14 @@ note: `Fn` can't be used with `~const` because it isn't annotated with `#[const_
   --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
+error: unconstrained opaque type
+  --> $DIR/normalize-tait-in-const.rs:14:26
+   |
+LL |     pub type Alias<'a> = impl T<Item = &'a ()>;
+   |                          ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Alias` must be used in combination with a concrete type within the same crate
+
 error[E0015]: cannot call non-const closure in constant functions
   --> $DIR/normalize-tait-in-const.rs:28:5
    |
@@ -25,6 +33,26 @@ LL |     fun(filter_positive());
    |
    = note: calls in constant functions are limited to constant functions, tuple structs and tuple variants
 
-error: aborting due to 3 previous errors
+error[E0308]: mismatched types
+  --> $DIR/normalize-tait-in-const.rs:22:9
+   |
+LL |     pub type Alias<'a> = impl T<Item = &'a ()>;
+   |                          --------------------- the expected opaque type
+...
+LL |     pub const fn filter_positive<'a>() -> &'a Alias<'a> {
+   |                                           ------------- expected `&'a foo::Alias<'a>` because of return type
+LL |         &&S
+   |         ^^^ expected `&Alias<'_>`, found `&&S`
+   |
+   = note: expected reference `&'a foo::Alias<'a>`
+              found reference `&&S`
+note: this item must have a `#[define_opaque(foo::Alias)]` attribute to be able to define hidden types
+  --> $DIR/normalize-tait-in-const.rs:21:18
+   |
+LL |     pub const fn filter_positive<'a>() -> &'a Alias<'a> {
+   |                  ^^^^^^^^^^^^^^^
 
-For more information about this error, try `rustc --explain E0015`.
+error: aborting due to 5 previous errors
+
+Some errors have detailed explanations: E0015, E0308.
+For more information about an error, try `rustc --explain E0015`.

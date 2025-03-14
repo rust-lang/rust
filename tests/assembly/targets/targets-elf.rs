@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ assembly-output: emit-asm
 // ignore-tidy-linelength
 //@ revisions: aarch64_be_unknown_linux_gnu
@@ -216,9 +217,9 @@
 //@ revisions: hexagon_unknown_none_elf
 //@ [hexagon_unknown_none_elf] compile-flags: --target hexagon-unknown-none-elf
 //@ [hexagon_unknown_none_elf] needs-llvm-components: hexagon
-//@ revisions: i586_pc_nto_qnx700
-//@ [i586_pc_nto_qnx700] compile-flags: --target i586-pc-nto-qnx700
-//@ [i586_pc_nto_qnx700] needs-llvm-components: x86
+//@ revisions: i686_pc_nto_qnx700
+//@ [i686_pc_nto_qnx700] compile-flags: --target i686-pc-nto-qnx700
+//@ [i686_pc_nto_qnx700] needs-llvm-components: x86
 //@ revisions: i586_unknown_linux_gnu
 //@ [i586_unknown_linux_gnu] compile-flags: --target i586-unknown-linux-gnu
 //@ [i586_unknown_linux_gnu] needs-llvm-components: x86
@@ -228,6 +229,9 @@
 //@ revisions: i586_unknown_netbsd
 //@ [i586_unknown_netbsd] compile-flags: --target i586-unknown-netbsd
 //@ [i586_unknown_netbsd] needs-llvm-components: x86
+//@ revisions: i586_unknown_redox
+//@ [i586_unknown_redox] compile-flags: --target i586-unknown-redox
+//@ [i586_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_linux_android
 //@ [i686_linux_android] compile-flags: --target i686-linux-android
 //@ [i686_linux_android] needs-llvm-components: x86
@@ -252,9 +256,6 @@
 //@ revisions: i686_unknown_openbsd
 //@ [i686_unknown_openbsd] compile-flags: --target i686-unknown-openbsd
 //@ [i686_unknown_openbsd] needs-llvm-components: x86
-//@ revisions: i686_unknown_redox
-//@ [i686_unknown_redox] compile-flags: --target i686-unknown-redox
-//@ [i686_unknown_redox] needs-llvm-components: x86
 //@ revisions: i686_wrs_vxworks
 //@ [i686_wrs_vxworks] compile-flags: --target i686-wrs-vxworks
 //@ [i686_wrs_vxworks] needs-llvm-components: x86
@@ -558,6 +559,9 @@
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly
+//@ revisions: wasm32_wali_linux_musl
+//@ [wasm32_wali_linux_musl] compile-flags: --target wasm32-wali-linux-musl
+//@ [wasm32_wali_linux_musl] needs-llvm-components: webassembly
 //@ revisions: wasm64_unknown_unknown
 //@ [wasm64_unknown_unknown] compile-flags: --target wasm64-unknown-unknown
 //@ [wasm64_unknown_unknown] needs-llvm-components: webassembly
@@ -709,8 +713,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // Force linkage to ensure code is actually generated
 #[no_mangle]

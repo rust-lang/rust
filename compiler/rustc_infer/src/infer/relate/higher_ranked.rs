@@ -2,6 +2,7 @@
 //! the end of the file for details.
 
 use rustc_middle::ty::fold::FnMutDelegate;
+use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
 use tracing::{debug, instrument};
 
@@ -26,30 +27,31 @@ impl<'tcx> InferCtxt<'tcx> {
     where
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
-        if let Some(inner) = binder.clone().no_bound_vars() {
-            return inner;
+        // Inlined `no_bound_vars`.
+        if !binder.as_ref().skip_binder().has_escaping_bound_vars() {
+            return binder.skip_binder();
         }
 
         let next_universe = self.create_next_universe();
 
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion| {
-                ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion {
-                    universe: next_universe,
-                    bound: br,
-                })
+                ty::Region::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderRegion { universe: next_universe, bound: br },
+                )
             },
             types: &mut |bound_ty: ty::BoundTy| {
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: next_universe,
-                    bound: bound_ty,
-                })
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType { universe: next_universe, bound: bound_ty },
+                )
             },
             consts: &mut |bound_var: ty::BoundVar| {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: next_universe,
-                    bound: bound_var,
-                })
+                ty::Const::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderConst { universe: next_universe, bound: bound_var },
+                )
             },
         };
 

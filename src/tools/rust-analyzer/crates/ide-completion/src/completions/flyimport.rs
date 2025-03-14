@@ -83,19 +83,19 @@ use crate::{
 // NOTE: currently, if an assoc item comes from a trait that's not currently imported, and it also has an unresolved and/or partially-qualified path,
 // no imports will be proposed.
 //
-// .Fuzzy search details
+// #### Fuzzy search details
 //
 // To avoid an excessive amount of the results returned, completion input is checked for inclusion in the names only
 // (i.e. in `HashMap` in the `std::collections::HashMap` path).
 // For the same reasons, avoids searching for any path imports for inputs with their length less than 2 symbols
 // (but shows all associated items for any input length).
 //
-// .Import configuration
+// #### Import configuration
 //
 // It is possible to configure how use-trees are merged with the `imports.granularity.group` setting.
 // Mimics the corresponding behavior of the `Auto Import` feature.
 //
-// .LSP and performance implications
+// #### LSP and performance implications
 //
 // The feature is enabled only if the LSP client supports LSP protocol version 3.16+ and reports the `additionalTextEdits`
 // (case-sensitive) resolve client capability in its client capabilities.
@@ -103,7 +103,7 @@ use crate::{
 // For clients with no such support, all edits have to be calculated on the completion request, including the fuzzy search completion ones,
 // which might be slow ergo the feature is automatically disabled.
 //
-// .Feature toggle
+// #### Feature toggle
 //
 // The feature can be forcefully turned off in the settings with the `rust-analyzer.completion.autoimport.enable` flag.
 // Note that having this flag set to `true` does not guarantee that the feature is enabled: your client needs to have the corresponding

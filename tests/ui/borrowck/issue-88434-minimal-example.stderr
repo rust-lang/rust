@@ -1,19 +1,14 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-88434-minimal-example.rs:10:5
+  --> $DIR/issue-88434-minimal-example.rs:3:22
    |
-LL |     panic!()
-   |     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/issue-88434-minimal-example.rs:10:5
+LL | const _CONST: &() = &f(&|_| {});
+   |                      ^^^^^^^^^^ evaluation panicked: explicit panic
    |
 note: inside `f::<{closure@$DIR/issue-88434-minimal-example.rs:3:25: 3:28}>`
   --> $DIR/issue-88434-minimal-example.rs:10:5
    |
 LL |     panic!()
-   |     ^^^^^^^^
-note: inside `_CONST`
-  --> $DIR/issue-88434-minimal-example.rs:3:22
-   |
-LL | const _CONST: &() = &f(&|_| {});
-   |                      ^^^^^^^^^^
+   |     ^^^^^^^^ the failure occurred here
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered

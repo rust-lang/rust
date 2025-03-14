@@ -29,3 +29,5 @@ ec2cc761bc7067712ecc7734502f703fe3b024c8
 99cb0c6bc399fb94a0ddde7e9b38e9c00d523bad
 # reformat with rustfmt edition 2024
 c682aa162b0d41e21cc6748f4fecfe01efb69d1f
+# reformat with updated edition 2024
+1fcae03369abb4c2cc180cd5a49e1f4440a81300

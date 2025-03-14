@@ -14,8 +14,9 @@ LL | | }
    = help: to override `-D warnings` add `#[allow(clippy::large_enum_variant)]`
 help: consider boxing the large fields to reduce the total size of the enum
    |
-LL |     B(Box<[u8; 501]>),
-   |       ~~~~~~~~~~~~~~
+LL -     B([u8; 501]),
+LL +     B(Box<[u8; 501]>),
+   |
 
 error: aborting due to 1 previous error
 

@@ -489,7 +489,7 @@ impl TyKind {
     /// Returns the type and mutability of `*ty` for builtin types.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(&self, explicit: bool) -> Option<TypeAndMut> {
         match self.rigid()? {
             RigidTy::Adt(def, args) if def.is_box() => {
@@ -809,7 +809,7 @@ impl AdtDef {
     }
 
     /// Iterate over the variants in this ADT.
-    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> + '_ {
+    pub fn variants_iter(&self) -> impl Iterator<Item = VariantDef> {
         (0..self.num_variants())
             .map(|idx| VariantDef { idx: VariantIdx::to_val(idx), adt_def: *self })
     }

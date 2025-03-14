@@ -1,14 +1,14 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind, Size};
 
-use crate::abi::call::{ArgAbi, FnAbi, Reg};
-use crate::spec::HasTargetSpec;
+use crate::callconv::{ArgAbi, FnAbi, Reg};
+use crate::spec::{HasTargetSpec, RustcAbi};
 
 // Win64 ABI: https://docs.microsoft.com/en-us/cpp/build/parameter-passing
 
-pub(crate) fn compute_abi_info<Ty>(_cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
+pub(crate) fn compute_abi_info<Ty>(cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<'_, Ty>) {
     let fixup = |a: &mut ArgAbi<'_, Ty>, is_ret: bool| {
         match a.layout.backend_repr {
-            BackendRepr::Uninhabited | BackendRepr::Memory { sized: false } => {}
+            BackendRepr::Memory { sized: false } => {}
             BackendRepr::ScalarPair(..) | BackendRepr::Memory { sized: true } => {
                 match a.layout.size.bits() {
                     8 => a.cast_to(Reg::i8()),
@@ -18,16 +18,20 @@ pub(crate) fn compute_abi_info<Ty>(_cx: &impl HasTargetSpec, fn_abi: &mut FnAbi<
                     _ => a.make_indirect(),
                 }
             }
-            BackendRepr::Vector { .. } => {
+            BackendRepr::SimdVector { .. } => {
                 // FIXME(eddyb) there should be a size cap here
                 // (probably what clang calls "illegal vectors").
             }
             BackendRepr::Scalar(scalar) => {
                 if is_ret && matches!(scalar.primitive(), Primitive::Int(Integer::I128, _)) {
-                    // `i128` is returned in xmm0 by Clang and GCC
-                    // FIXME(#134288): This may change for the `-msvc` targets in the future.
-                    let reg = Reg { kind: RegKind::Vector, size: Size::from_bits(128) };
-                    a.cast_to(reg);
+                    if cx.target_spec().rustc_abi == Some(RustcAbi::X86Softfloat) {
+                        // Use the native `i128` LLVM type for the softfloat ABI -- in other words, adjust nothing.
+                    } else {
+                        // `i128` is returned in xmm0 by Clang and GCC
+                        // FIXME(#134288): This may change for the `-msvc` targets in the future.
+                        let reg = Reg { kind: RegKind::Vector, size: Size::from_bits(128) };
+                        a.cast_to(reg);
+                    }
                 } else if a.layout.size.bytes() > 8
                     && !matches!(scalar.primitive(), Primitive::Float(Float::F128))
                 {

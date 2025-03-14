@@ -583,13 +583,6 @@ pub(crate) struct NoMangle {
 }
 
 #[derive(Diagnostic)]
-#[diag(passes_repr_ident, code = E0565)]
-pub(crate) struct ReprIdent {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(passes_repr_conflicting, code = E0566)]
 pub(crate) struct ReprConflicting {
     #[primary_span]
@@ -734,31 +727,6 @@ pub(crate) struct Linkage {
     pub attr_span: Span,
     #[label]
     pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_empty_confusables)]
-pub(crate) struct EmptyConfusables {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_incorrect_meta_item, code = E0539)]
-pub(crate) struct IncorrectMetaItem {
-    #[primary_span]
-    pub span: Span,
-    #[subdiagnostic]
-    pub suggestion: IncorrectMetaItemSuggestion,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(passes_incorrect_meta_item_suggestion, applicability = "maybe-incorrect")]
-pub(crate) struct IncorrectMetaItemSuggestion {
-    #[suggestion_part(code = "\"")]
-    pub lo: Span,
-    #[suggestion_part(code = "\"")]
-    pub hi: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1037,10 +1005,10 @@ pub(crate) struct LayoutHomogeneousAggregate {
 
 #[derive(Diagnostic)]
 #[diag(passes_layout_of)]
-pub(crate) struct LayoutOf {
+pub(crate) struct LayoutOf<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub normalized_ty: String,
+    pub normalized_ty: Ty<'tcx>,
     pub ty_layout: String,
 }
 
@@ -1394,11 +1362,15 @@ pub(crate) struct DuplicateLangItem {
 impl<G: EmissionGuarantee> Diagnostic<'_, G> for DuplicateLangItem {
     #[track_caller]
     fn into_diag(self, dcx: DiagCtxtHandle<'_>, level: Level) -> Diag<'_, G> {
-        let mut diag = Diag::new(dcx, level, match self.duplicate {
-            Duplicate::Plain => fluent::passes_duplicate_lang_item,
-            Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
-            Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.duplicate {
+                Duplicate::Plain => fluent::passes_duplicate_lang_item,
+                Duplicate::Crate => fluent::passes_duplicate_lang_item_crate,
+                Duplicate::CrateDepends => fluent::passes_duplicate_lang_item_crate_depends,
+            },
+        );
         diag.code(E0152);
         diag.arg("lang_item_name", self.lang_item_name);
         diag.arg("crate_name", self.crate_name);
@@ -1469,14 +1441,6 @@ pub(crate) struct ObjectLifetimeErr {
     #[primary_span]
     pub span: Span,
     pub repr: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(passes_unrecognized_repr_hint, code = E0552)]
-#[help]
-pub(crate) struct UnrecognizedReprHint {
-    #[primary_span]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]
@@ -1586,6 +1550,45 @@ pub(crate) struct MissingConstStabAttr<'a> {
 pub(crate) struct TraitImplConstStable {
     #[primary_span]
     pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_trait_impl_const_stability_mismatch)]
+pub(crate) struct TraitImplConstStabilityMismatch {
+    #[primary_span]
+    pub span: Span,
+    #[subdiagnostic]
+    pub impl_stability: ImplConstStability,
+    #[subdiagnostic]
+    pub trait_stability: TraitConstStability,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum TraitConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_trait_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_trait_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum ImplConstStability {
+    #[note(passes_trait_impl_const_stability_mismatch_impl_stable)]
+    Stable {
+        #[primary_span]
+        span: Span,
+    },
+    #[note(passes_trait_impl_const_stability_mismatch_impl_unstable)]
+    Unstable {
+        #[primary_span]
+        span: Span,
+    },
 }
 
 #[derive(Diagnostic)]
@@ -1897,4 +1900,20 @@ pub(crate) struct NoSanitize<'a> {
     pub defn_span: Span,
     pub accepted_kind: &'a str,
     pub attr_str: &'a str,
+}
+
+// FIXME(jdonszelmann): move back to rustc_attr
+#[derive(Diagnostic)]
+#[diag(passes_rustc_const_stable_indirect_pairing)]
+pub(crate) struct RustcConstStableIndirectPairing {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_unsupported_attributes_in_where)]
+#[help]
+pub(crate) struct UnsupportedAttributesInWhere {
+    #[primary_span]
+    pub span: MultiSpan,
 }

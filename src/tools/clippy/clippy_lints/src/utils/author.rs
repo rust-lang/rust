@@ -132,8 +132,7 @@ impl<'tcx> LateLintPass<'tcx> for Author {
 }
 
 fn check_item(cx: &LateContext<'_>, hir_id: HirId) {
-    let hir = cx.tcx.hir();
-    if let Some(body) = hir.maybe_body_owned_by(hir_id.expect_owner().def_id) {
+    if let Some(body) = cx.tcx.hir_maybe_body_owned_by(hir_id.expect_owner().def_id) {
         check_node(cx, hir_id, |v| {
             v.expr(&v.bind("expr", body.value));
         });
@@ -427,6 +426,11 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
                 kind!("Tup({elements})");
                 self.slice(elements, |e| self.expr(e));
             },
+            ExprKind::Use(expr, _) => {
+                bind!(self, expr);
+                kind!("Use({expr})");
+                self.expr(expr);
+            },
             ExprKind::Binary(op, left, right) => {
                 bind!(self, op, left, right);
                 kind!("Binary({op}, {left}, {right})");
@@ -489,6 +493,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
             }) => {
                 let capture_clause = match capture_clause {
                     CaptureBy::Value { .. } => "Value { .. }",
+                    CaptureBy::Use { .. } => "Use { .. }",
                     CaptureBy::Ref => "Ref",
                 };
 
@@ -637,9 +642,9 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
     }
 
     fn body(&self, body_id: &Binding<hir::BodyId>) {
-        let expr = self.cx.tcx.hir().body(body_id.value).value;
+        let expr = self.cx.tcx.hir_body(body_id.value).value;
         bind!(self, expr);
-        chain!(self, "{expr} = &cx.tcx.hir().body({body_id}).value");
+        chain!(self, "{expr} = &cx.tcx.hir_body({body_id}).value");
         self.expr(expr);
     }
 
@@ -788,7 +793,7 @@ impl<'a, 'tcx> PrintVisitor<'a, 'tcx> {
 }
 
 fn has_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    let attrs = cx.tcx.hir().attrs(hir_id);
+    let attrs = cx.tcx.hir_attrs(hir_id);
     get_attr(cx.sess(), attrs, "author").count() > 0
 }
 

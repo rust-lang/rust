@@ -4,7 +4,8 @@ use ide_db::{
     syntax_helpers::format_string::{is_format_string, lex_format_specifiers, FormatSpecifier},
     SymbolKind,
 };
-use syntax::{ast, TextRange};
+use span::Edition;
+use syntax::{ast, AstToken};
 
 use crate::{
     syntax_highlighting::{highlight::highlight_def, highlights::Highlights},
@@ -17,14 +18,15 @@ pub(super) fn highlight_format_string(
     krate: hir::Crate,
     string: &ast::String,
     expanded_string: &ast::String,
-    range: TextRange,
+    edition: Edition,
 ) {
     if is_format_string(expanded_string) {
+        let start = string.syntax().text_range().start();
         // FIXME: Replace this with the HIR info we have now.
         lex_format_specifiers(string, &mut |piece_range, kind| {
             if let Some(highlight) = highlight_format_specifier(kind) {
                 stack.add(HlRange {
-                    range: piece_range + range.start(),
+                    range: piece_range + start,
                     highlight: highlight.into(),
                     binding_hash: None,
                 });
@@ -39,7 +41,7 @@ pub(super) fn highlight_format_string(
             if let Some(res) = res {
                 stack.add(HlRange {
                     range,
-                    highlight: highlight_def(sema, krate, Definition::from(res)),
+                    highlight: highlight_def(sema, krate, Definition::from(res), edition, true),
                     binding_hash: None,
                 })
             }

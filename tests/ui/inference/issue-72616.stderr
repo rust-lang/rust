@@ -16,8 +16,9 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
              `String` implements `PartialEq`
 help: try using a fully qualified path to specify the expected types
    |
-LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
-   |                                 +++++++++++++++++++++++++++++++   ~
+LL -         if String::from("a") == "a".try_into().unwrap() {}
+LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |
 
 error[E0283]: type annotations needed
   --> $DIR/issue-72616.rs:22:37
@@ -32,8 +33,9 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    = note: required for `&str` to implement `TryInto<_>`
 help: try using a fully qualified path to specify the expected types
    |
-LL |         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
-   |                                 +++++++++++++++++++++++++++++++   ~
+LL -         if String::from("a") == "a".try_into().unwrap() {}
+LL +         if String::from("a") == <&str as TryInto<T>>::try_into("a").unwrap() {}
+   |
 
 error: aborting due to 2 previous errors
 

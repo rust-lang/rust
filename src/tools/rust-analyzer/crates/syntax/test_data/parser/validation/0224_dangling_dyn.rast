@@ -1,0 +1,25 @@
+SOURCE_FILE@0..16
+  FN@0..16
+    FN_KW@0..2 "fn"
+    WHITESPACE@2..3 " "
+    NAME@3..4
+      IDENT@3..4 "f"
+    PARAM_LIST@4..13
+      L_PAREN@4..5 "("
+      PARAM@5..12
+        WILDCARD_PAT@5..6
+          UNDERSCORE@5..6 "_"
+        COLON@6..7 ":"
+        WHITESPACE@7..8 " "
+        REF_TYPE@8..12
+          AMP@8..9 "&"
+          DYN_TRAIT_TYPE@9..12
+            DYN_KW@9..12 "dyn"
+            TYPE_BOUND_LIST@12..12
+      R_PAREN@12..13 ")"
+    WHITESPACE@13..14 " "
+    BLOCK_EXPR@14..16
+      STMT_LIST@14..16
+        L_CURLY@14..15 "{"
+        R_CURLY@15..16 "}"
+error 9..12: At least one trait is required for an object type

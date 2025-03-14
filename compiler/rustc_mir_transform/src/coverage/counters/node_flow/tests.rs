@@ -20,29 +20,25 @@ fn make_graph<Node: Idx + Ord>(num_nodes: usize, edge_pairs: Vec<(Node, Node)>) 
 /// (Knuth & Stevenson, 1973), but with 0-based node IDs.
 #[test]
 fn example_driver() {
-    let graph = make_graph::<u32>(5, vec![
-        (0, 1),
-        (0, 3),
-        (1, 0),
-        (1, 2),
-        (2, 1),
-        (2, 4),
-        (3, 3),
-        (3, 4),
-        (4, 0),
-    ]);
+    let graph = make_graph::<u32>(
+        5,
+        vec![(0, 1), (0, 3), (1, 0), (1, 2), (2, 1), (2, 4), (3, 3), (3, 4), (4, 0)],
+    );
 
     let node_flow_data = node_flow_data(&graph);
     let counters = make_node_counters(&node_flow_data, &[3, 1, 2, 0, 4]);
 
-    assert_eq!(format_counter_expressions(&counters), &[
-        // (comment to force vertical formatting for clarity)
-        "[0]: +c0",
-        "[1]: +c0 +c2 -c4",
-        "[2]: +c2",
-        "[3]: +c3",
-        "[4]: +c4",
-    ]);
+    assert_eq!(
+        format_counter_expressions(&counters),
+        &[
+            // (comment to force vertical formatting for clarity)
+            "[0]: +c0",
+            "[1]: +c0 +c2 -c4",
+            "[2]: +c2",
+            "[3]: +c3",
+            "[4]: +c4",
+        ]
+    );
 }
 
 fn format_counter_expressions<Node: Idx>(counters: &NodeCounters<Node>) -> Vec<String> {

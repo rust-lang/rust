@@ -274,7 +274,7 @@ fn main() {
 
     assert_eq!(((|()| 42u8) as fn(()) -> u8)(()), 42);
 
-    #[cfg(not(any(jit, windows)))]
+    #[cfg(not(any(jit, target_vendor = "apple", windows)))]
     {
         extern "C" {
             #[linkage = "extern_weak"]

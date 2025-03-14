@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef, Semantics,
-    SemanticsScope, Symbol, Type, TypeInfo,
+    DisplayTarget, HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution,
+    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -249,8 +249,8 @@ pub(crate) enum Qualified {
         /// This would be None, if path is not solely made of
         /// `super` segments, e.g.
         ///
-        /// ```rust
-        ///   use super::foo;
+        /// ```ignore
+        /// use super::foo;
         /// ```
         ///
         /// Otherwise it should be Some(count of `super`)
@@ -440,8 +440,11 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) token: SyntaxToken,
     /// The crate of the current file.
     pub(crate) krate: hir::Crate,
+    pub(crate) display_target: DisplayTarget,
     /// The module of the `scope`.
     pub(crate) module: hir::Module,
+    /// The function where we're completing, if inside a function.
+    pub(crate) containing_function: Option<hir::Function>,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
     pub(crate) is_nightly: bool,
     /// The edition of the current crate
@@ -760,6 +763,7 @@ impl<'a> CompletionContext<'a> {
 
         let krate = scope.krate();
         let module = scope.module();
+        let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
@@ -864,6 +868,7 @@ impl<'a> CompletionContext<'a> {
             CompleteSemicolon::DoNotComplete
         };
 
+        let display_target = krate.to_display_target(db);
         let ctx = CompletionContext {
             sema,
             scope,
@@ -874,6 +879,7 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
+            containing_function,
             is_nightly,
             edition,
             expected_name,
@@ -884,6 +890,7 @@ impl<'a> CompletionContext<'a> {
             exclude_flyimport,
             exclude_traits,
             complete_semicolon,
+            display_target,
         };
         Some((ctx, analysis))
     }

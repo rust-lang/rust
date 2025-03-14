@@ -208,11 +208,11 @@ impl ExternalCrate {
                     .get_attrs(def_id, sym::doc)
                     .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
                 for meta in meta_items {
-                    if meta.has_name(sym::keyword) {
-                        if let Some(v) = meta.value_str() {
-                            keyword = Some(v);
-                            break;
-                        }
+                    if meta.has_name(sym::keyword)
+                        && let Some(v) = meta.value_str()
+                    {
+                        keyword = Some(v);
+                        break;
                     }
                 }
                 return keyword.map(|p| (def_id, p));
@@ -220,12 +220,11 @@ impl ExternalCrate {
             None
         };
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -266,7 +265,7 @@ impl ExternalCrate {
                     let attr_value = attr.value_str().expect("syntax should already be validated");
                     let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
                         span_bug!(
-                            attr.span,
+                            attr.span(),
                             "primitive `{attr_value}` is not a member of `PrimitiveType`"
                         );
                     };
@@ -277,12 +276,11 @@ impl ExternalCrate {
         };
 
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -504,7 +502,7 @@ impl Item {
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
         links
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
                 if let Ok((mut href, ..)) = href(*id, cx) {
                     debug!(?href);
@@ -1073,16 +1071,14 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
     // treat #[target_feature(enable = "feat")] attributes as if they were
     // #[doc(cfg(target_feature = "feat"))] attributes as well
     for attr in hir_attr_lists(attrs, sym::target_feature) {
-        if attr.has_name(sym::enable) {
-            if attr.value_str().is_some() {
-                // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-                // Unwrap is safe because `value_str` succeeded above.
-                let mut meta = attr.meta_item().unwrap().clone();
-                meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
+        if attr.has_name(sym::enable) && attr.value_str().is_some() {
+            // Clone `enable = "feat"`, change to `target_feature = "feat"`.
+            // Unwrap is safe because `value_str` succeeded above.
+            let mut meta = attr.meta_item().unwrap().clone();
+            meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                    cfg &= feat_cfg;
-                }
+            if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
+                cfg &= feat_cfg;
             }
         }
     }
@@ -1152,7 +1148,7 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
+    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> {
         hir_attr_lists(&self.other_attrs[..], name)
     }
 
@@ -1162,10 +1158,10 @@ impl Attributes {
                 continue;
             }
 
-            if let Some(items) = attr.meta_item_list() {
-                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag)) {
-                    return true;
-                }
+            if let Some(items) = attr.meta_item_list()
+                && items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag))
+            {
+                return true;
             }
         }
 
@@ -1244,7 +1240,7 @@ pub(crate) enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifiers),
     Outlives(Lifetime),
     /// `use<'a, T>` precise-capturing bound syntax
-    Use(Vec<Symbol>),
+    Use(Vec<PreciseCapturingArg>),
 }
 
 impl GenericBound {
@@ -1253,10 +1249,13 @@ impl GenericBound {
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers {
-            polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
-            constness: hir::BoundConstness::Never,
-        })
+        Self::sized_with(
+            cx,
+            hir::TraitBoundModifiers {
+                polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+                constness: hir::BoundConstness::Never,
+            },
+        )
     }
 
     fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
@@ -1302,6 +1301,21 @@ impl Lifetime {
 
     pub(crate) fn elided() -> Lifetime {
         Lifetime(kw::UnderscoreLifetime)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub(crate) enum PreciseCapturingArg {
+    Lifetime(Lifetime),
+    Param(Symbol),
+}
+
+impl PreciseCapturingArg {
+    pub(crate) fn name(self) -> Symbol {
+        match self {
+            PreciseCapturingArg::Lifetime(lt) => lt.0,
+            PreciseCapturingArg::Param(param) => param,
+        }
     }
 }
 
@@ -1863,7 +1877,7 @@ impl PrimitiveType {
             .copied()
     }
 
-    pub(crate) fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> + '_ {
+    pub(crate) fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
         Self::simplified_types()
             .values()
             .flatten()
@@ -2119,9 +2133,8 @@ impl Discriminant {
     /// Will be `None` in the case of cross-crate reexports, and may be
     /// simplified
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.expr.map(|body| {
-            rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
-        })
+        self.expr
+            .map(|body| rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body)))
     }
     pub(crate) fn value(&self, tcx: TyCtxt<'_>, with_underscores: bool) -> String {
         print_evaluated_const(tcx, self.value, with_underscores, false).unwrap()
@@ -2259,7 +2272,7 @@ impl GenericArgs {
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
         }
     }
-    pub(crate) fn constraints<'a>(&'a self) -> Box<dyn Iterator<Item = AssocItemConstraint> + 'a> {
+    pub(crate) fn constraints(&self) -> Box<dyn Iterator<Item = AssocItemConstraint> + '_> {
         match self {
             GenericArgs::AngleBracketed { constraints, .. } => {
                 Box::new(constraints.iter().cloned())
@@ -2417,9 +2430,9 @@ impl ConstantKind {
             ConstantKind::Path { ref path } => path.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
+                rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body))
             }
-            ConstantKind::Infer { .. } => "_".to_string(),
+            ConstantKind::Infer => "_".to_string(),
         }
     }
 

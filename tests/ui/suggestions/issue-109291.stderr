@@ -11,8 +11,9 @@ note: if you're trying to build a new `Backtrace` consider using one of the foll
   --> $SRC_DIR/std/src/backtrace.rs:LL:COL
 help: there is an associated function `force_capture` with a similar name
    |
-LL |     println!("Custom backtrace: {}", std::backtrace::Backtrace::force_capture());
-   |                                                                 ~~~~~~~~~~~~~
+LL -     println!("Custom backtrace: {}", std::backtrace::Backtrace::forced_capture());
+LL +     println!("Custom backtrace: {}", std::backtrace::Backtrace::force_capture());
+   |
 
 error: aborting due to 1 previous error
 

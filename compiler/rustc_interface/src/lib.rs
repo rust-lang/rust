@@ -4,12 +4,12 @@
 #![feature(iter_intersperse)]
 #![feature(let_chains)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod callbacks;
 pub mod errors;
 pub mod interface;
+mod limits;
 pub mod passes;
 mod proc_macro_decls;
 mod queries;

@@ -1,5 +1,5 @@
 error: non-binding let on a type that has a destructor
-  --> $DIR/issue-119697-extra-let.rs:15:5
+  --> $DIR/issue-119697-extra-let.rs:16:5
    |
 LL |     _ = field;
    |     ^^^^^^^^^
@@ -11,15 +11,17 @@ LL | #![deny(let_underscore_drop)]
    |         ^^^^^^^^^^^^^^^^^^^
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
-LL |     let _unused = field;
-   |     ~~~~~~~~~~~
+LL -     _ = field;
+LL +     let _unused = field;
+   |
 help: consider immediately dropping the value
    |
-LL |     drop(field);
-   |     ~~~~~     +
+LL -     _ = field;
+LL +     drop(field);
+   |
 
 error: non-binding let on a type that has a destructor
-  --> $DIR/issue-119697-extra-let.rs:17:5
+  --> $DIR/issue-119697-extra-let.rs:18:5
    |
 LL |     let _ = field;
    |     ^^^^^^^^^^^^^^
@@ -27,11 +29,12 @@ LL |     let _ = field;
 help: consider binding to an unused variable to avoid immediately dropping the value
    |
 LL |     let _unused = field;
-   |         ~~~~~~~
+   |          ++++++
 help: consider immediately dropping the value
    |
-LL |     drop(field);
-   |     ~~~~~     +
+LL -     let _ = field;
+LL +     drop(field);
+   |
 
 error: aborting due to 2 previous errors
 

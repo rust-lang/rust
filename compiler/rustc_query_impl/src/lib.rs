@@ -3,15 +3,14 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(unused_parens)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(min_specialization)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
-use field_offset::offset_of;
 use rustc_data_structures::stable_hasher::HashStable;
 use rustc_data_structures::sync::AtomicU64;
 use rustc_middle::arena::Arena;
@@ -89,7 +88,13 @@ where
     where
         QueryCtxt<'tcx>: 'a,
     {
-        self.dynamic.query_state.apply(&qcx.tcx.query_system.states)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.states as *const QueryStates<'tcx>)
+                .byte_add(self.dynamic.query_state)
+                .cast::<QueryState<Self::Key>>()
+        }
     }
 
     #[inline(always)]
@@ -97,7 +102,13 @@ where
     where
         'tcx: 'a,
     {
-        self.dynamic.query_cache.apply(&qcx.tcx.query_system.caches)
+        // Safety:
+        // This is just manually doing the subfield referencing through pointer math.
+        unsafe {
+            &*(&qcx.tcx.query_system.caches as *const QueryCaches<'tcx>)
+                .byte_add(self.dynamic.query_cache)
+                .cast::<Self::Cache>()
+        }
     }
 
     #[inline(always)]

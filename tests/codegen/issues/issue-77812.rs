@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 #![crate_type = "lib"]
 
 // Test that LLVM can eliminate the unreachable `Variant::Zero` branch.

@@ -52,8 +52,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Some more operations are possible with atomics.
             // The return value always has the provenance of the *left* operand.
             Add | Sub | BitOr | BitAnd | BitXor => {
-                assert!(left.layout.ty.is_unsafe_ptr());
-                assert!(right.layout.ty.is_unsafe_ptr());
+                assert!(left.layout.ty.is_raw_ptr());
+                assert!(right.layout.ty.is_raw_ptr());
                 let ptr = left.to_scalar().to_pointer(this)?;
                 // We do the actual operation with usize-typed scalars.
                 let left = ImmTy::from_uint(ptr.addr().bytes(), this.machine.layouts.usize);

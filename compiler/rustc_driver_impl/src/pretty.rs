@@ -164,8 +164,7 @@ impl<'tcx> pprust_hir::PpAnn for HirTypedAnn<'tcx> {
         if let pprust_hir::AnnNode::Expr(expr) = node {
             let typeck_results = self.maybe_typeck_results.get().or_else(|| {
                 self.tcx
-                    .hir()
-                    .maybe_body_owned_by(expr.hir_id.owner.def_id)
+                    .hir_maybe_body_owned_by(expr.hir_id.owner.def_id)
                     .map(|body_id| self.tcx.typeck_body(body_id.id()))
             });
 
@@ -269,11 +268,10 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             let tcx = ex.tcx();
             let f = |annotation: &dyn pprust_hir::PpAnn| {
                 let sm = sess.source_map();
-                let hir_map = tcx.hir();
-                let attrs = |id| hir_map.attrs(id);
+                let attrs = |id| tcx.hir_attrs(id);
                 pprust_hir::print_crate(
                     sm,
-                    hir_map.root_module(),
+                    tcx.hir_root_module(),
                     src_name,
                     src,
                     &attrs,
@@ -294,7 +292,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
         }
         HirTree => {
             debug!("pretty printing HIR tree");
-            format!("{:#?}", ex.tcx().hir().krate())
+            format!("{:#?}", ex.tcx().hir_crate(()))
         }
         Mir => {
             let mut out = Vec::new();
@@ -317,7 +315,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             rustc_hir_analysis::check_crate(tcx);
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR tree");
-            for did in tcx.hir().body_owners() {
+            for did in tcx.hir_body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, thir_tree(tcx, did));
             }
             out
@@ -328,7 +326,7 @@ pub fn print<'tcx>(sess: &Session, ppm: PpMode, ex: PrintExtra<'tcx>) {
             rustc_hir_analysis::check_crate(tcx);
             tcx.dcx().abort_if_errors();
             debug!("pretty printing THIR flat");
-            for did in tcx.hir().body_owners() {
+            for did in tcx.hir_body_owners() {
                 let _ = writeln!(out, "{:?}:\n{}\n", did, thir_flat(tcx, did));
             }
             out

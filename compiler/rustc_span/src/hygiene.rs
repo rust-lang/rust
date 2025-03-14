@@ -33,9 +33,10 @@ use std::sync::Arc;
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::stable_hasher::{Hash64, HashStable, HashingControls, StableHasher};
+use rustc_data_structures::stable_hasher::{HashStable, HashingControls, StableHasher};
 use rustc_data_structures::sync::{Lock, WorkerLocal};
 use rustc_data_structures::unhash::UnhashMap;
+use rustc_hashes::Hash64;
 use rustc_index::IndexVec;
 use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
@@ -172,6 +173,12 @@ pub enum Transparency {
     /// Identifier produced by an opaque expansion is always resolved at definition-site.
     /// Def-site spans in procedural macros, identifiers from `macro` by default use this.
     Opaque,
+}
+
+impl Transparency {
+    pub fn fallback(macro_rules: bool) -> Self {
+        if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque }
+    }
 }
 
 impl LocalExpnId {
@@ -1166,6 +1173,8 @@ pub enum DesugaringKind {
     BoundModifier,
     /// Calls to contract checks (`#[requires]` to precond, `#[ensures]` to postcond)
     Contract,
+    /// A pattern type range start/end
+    PatTyRange,
 }
 
 impl DesugaringKind {
@@ -1183,6 +1192,7 @@ impl DesugaringKind {
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
+            DesugaringKind::PatTyRange => "pattern type",
         }
     }
 }

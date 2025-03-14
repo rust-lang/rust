@@ -1,9 +1,9 @@
-use core::num::dec2flt::number::Number;
+use core::num::dec2flt::decimal::Decimal;
 use core::num::dec2flt::parse::parse_number;
 use core::num::dec2flt::{dec2flt, pfe_invalid};
 
-fn new_number(e: i64, m: u64) -> Number {
-    Number { exponent: e, mantissa: m, negative: false, many_digits: false }
+fn new_dec(e: i64, m: u64) -> Decimal {
+    Decimal { exponent: e, mantissa: m, negative: false, many_digits: false }
 }
 
 #[test]
@@ -31,23 +31,23 @@ fn invalid_chars() {
     }
 }
 
-fn parse_positive(s: &[u8]) -> Option<Number> {
+fn parse_positive(s: &[u8]) -> Option<Decimal> {
     parse_number(s)
 }
 
 #[test]
 fn valid() {
-    assert_eq!(parse_positive(b"123.456e789"), Some(new_number(786, 123456)));
-    assert_eq!(parse_positive(b"123.456e+789"), Some(new_number(786, 123456)));
-    assert_eq!(parse_positive(b"123.456e-789"), Some(new_number(-792, 123456)));
-    assert_eq!(parse_positive(b".050"), Some(new_number(-3, 50)));
-    assert_eq!(parse_positive(b"999"), Some(new_number(0, 999)));
-    assert_eq!(parse_positive(b"1.e300"), Some(new_number(300, 1)));
-    assert_eq!(parse_positive(b".1e300"), Some(new_number(299, 1)));
-    assert_eq!(parse_positive(b"101e-33"), Some(new_number(-33, 101)));
+    assert_eq!(parse_positive(b"123.456e789"), Some(new_dec(786, 123456)));
+    assert_eq!(parse_positive(b"123.456e+789"), Some(new_dec(786, 123456)));
+    assert_eq!(parse_positive(b"123.456e-789"), Some(new_dec(-792, 123456)));
+    assert_eq!(parse_positive(b".050"), Some(new_dec(-3, 50)));
+    assert_eq!(parse_positive(b"999"), Some(new_dec(0, 999)));
+    assert_eq!(parse_positive(b"1.e300"), Some(new_dec(300, 1)));
+    assert_eq!(parse_positive(b".1e300"), Some(new_dec(299, 1)));
+    assert_eq!(parse_positive(b"101e-33"), Some(new_dec(-33, 101)));
     let zeros = "0".repeat(25);
     let s = format!("1.5e{zeros}");
-    assert_eq!(parse_positive(s.as_bytes()), Some(new_number(-1, 15)));
+    assert_eq!(parse_positive(s.as_bytes()), Some(new_dec(-1, 15)));
 }
 
 macro_rules! assert_float_result_bits_eq {
@@ -55,6 +55,21 @@ macro_rules! assert_float_result_bits_eq {
         let p = dec2flt::<$ty>($str);
         assert_eq!(p.map(|x| x.to_bits()), Ok($bits));
     }};
+}
+
+#[test]
+fn regression() {
+    // These showed up in fuzz tests when the minimum exponent was incorrect.
+    assert_float_result_bits_eq!(
+        0x0,
+        f64,
+        "3313756768023998018398807867233977556112078681253148176737587500333136120852692315608454494981109839693784033457129423181787087843504060087613228932431e-475"
+    );
+    assert_float_result_bits_eq!(
+        0x0,
+        f64,
+        "5298127456259331337220.92759278003098321644501973966679724599271041396379712108366679824365568578569680024083293475291869842408884554511641179110778276695274832779269225510492006696321279587846006535230380114430977056662212751544508159333199129106162019382177820713609e-346"
+    );
 }
 
 #[test]

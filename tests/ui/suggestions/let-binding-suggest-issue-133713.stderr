@@ -1,0 +1,27 @@
+error[E0423]: expected value, found builtin type `u64`
+  --> $DIR/let-binding-suggest-issue-133713.rs:5:17
+   |
+LL |     let _last = u64 = 0;
+   |                 ^^^
+   |
+help: you might have meant to use `:` for type annotation
+   |
+LL -     let _last = u64 = 0;
+LL +     let _last: u64 = 0;
+   |
+
+error[E0423]: expected value, found builtin type `u64`
+  --> $DIR/let-binding-suggest-issue-133713.rs:9:16
+   |
+LL |     let _val = u64;
+   |                ^^^
+   |
+help: you might have meant to use `:` for type annotation
+   |
+LL -     let _val = u64;
+LL +     let _val: u64;
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0423`.

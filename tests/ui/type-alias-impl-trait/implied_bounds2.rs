@@ -2,12 +2,10 @@
 
 #![feature(type_alias_impl_trait)]
 
-mod helper {
-    pub type Ty<'a, A> = impl Sized + 'a;
-    fn defining<'a, A>() -> Ty<'a, A> {}
-    pub fn assert_static<T: 'static>() {}
-}
-use helper::*;
+pub type Ty<'a, A> = impl Sized + 'a;
+#[define_opaque(Ty)]
+fn defining<'a, A>() -> Ty<'a, A> {}
+pub fn assert_static<T: 'static>() {}
 fn test<'a, A>()
 where
     Ty<'a, A>: 'static,

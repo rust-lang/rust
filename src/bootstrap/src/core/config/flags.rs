@@ -9,6 +9,7 @@ use clap::{CommandFactory, Parser, ValueEnum};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
+use crate::core::build_steps::perf::PerfArgs;
 use crate::core::build_steps::setup::Profile;
 use crate::core::builder::{Builder, Kind};
 use crate::core::config::{Config, TargetSelectionList, target_selection_list};
@@ -481,28 +482,25 @@ Arguments:
         #[arg(long)]
         versioned_dirs: bool,
     },
-    /// Perform profiling and benchmarking of the compiler using the
-    /// `rustc-perf-wrapper` tool.
-    ///
-    /// You need to pass arguments after `--`, e.g.`x perf -- cachegrind`.
-    Perf {},
+    /// Perform profiling and benchmarking of the compiler using `rustc-perf`.
+    Perf(PerfArgs),
 }
 
 impl Subcommand {
     pub fn kind(&self) -> Kind {
         match self {
             Subcommand::Bench { .. } => Kind::Bench,
-            Subcommand::Build { .. } => Kind::Build,
+            Subcommand::Build => Kind::Build,
             Subcommand::Check { .. } => Kind::Check,
             Subcommand::Clippy { .. } => Kind::Clippy,
             Subcommand::Doc { .. } => Kind::Doc,
-            Subcommand::Fix { .. } => Kind::Fix,
+            Subcommand::Fix => Kind::Fix,
             Subcommand::Format { .. } => Kind::Format,
             Subcommand::Test { .. } => Kind::Test,
             Subcommand::Miri { .. } => Kind::Miri,
             Subcommand::Clean { .. } => Kind::Clean,
-            Subcommand::Dist { .. } => Kind::Dist,
-            Subcommand::Install { .. } => Kind::Install,
+            Subcommand::Dist => Kind::Dist,
+            Subcommand::Install => Kind::Install,
             Subcommand::Run { .. } => Kind::Run,
             Subcommand::Setup { .. } => Kind::Setup,
             Subcommand::Suggest { .. } => Kind::Suggest,

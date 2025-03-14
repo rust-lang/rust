@@ -40,7 +40,7 @@ pub(crate) fn mismatched_arg_count(
     Diagnostic::new(
         DiagnosticCode::RustcHardError("E0107"),
         message,
-        invalid_args_range(ctx, d.call_expr.map(AstPtr::wrap_left), d.expected, d.found),
+        invalid_args_range(ctx, d.call_expr, d.expected, d.found),
     )
 }
 

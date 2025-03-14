@@ -131,7 +131,7 @@ impl Stability {
 // Both of these are also applied transitively.
 type ImpliedFeatures = &'static [&'static str];
 
-const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("aclass", Unstable(sym::arm_target_feature), &[]),
     ("aes", Unstable(sym::arm_target_feature), &["neon"]),
@@ -145,6 +145,7 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("dotprod", Unstable(sym::arm_target_feature), &["neon"]),
     ("dsp", Unstable(sym::arm_target_feature), &[]),
     ("fp-armv8", Unstable(sym::arm_target_feature), &["vfp4"]),
+    ("fp16", Unstable(sym::arm_target_feature), &["neon"]),
     ("fpregs", Unstable(sym::arm_target_feature), &[]),
     ("i8mm", Unstable(sym::arm_target_feature), &["neon"]),
     ("mclass", Unstable(sym::arm_target_feature), &[]),
@@ -175,7 +176,7 @@ const ARM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     // FEAT_AES & FEAT_PMULL
     ("aes", Stable, &["neon"]),
@@ -341,13 +342,17 @@ const AARCH64_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("sve2p1", Unstable(sym::aarch64_unstable_target_feature), &["sve2"]),
     // FEAT_TME
     ("tme", Stable, &[]),
-    ("v8.1a", Unstable(sym::aarch64_ver_target_feature), &[
-        "crc", "lse", "rdm", "pan", "lor", "vh",
-    ]),
+    (
+        "v8.1a",
+        Unstable(sym::aarch64_ver_target_feature),
+        &["crc", "lse", "rdm", "pan", "lor", "vh"],
+    ),
     ("v8.2a", Unstable(sym::aarch64_ver_target_feature), &["v8.1a", "ras", "dpb"]),
-    ("v8.3a", Unstable(sym::aarch64_ver_target_feature), &[
-        "v8.2a", "rcpc", "paca", "pacg", "jsconv",
-    ]),
+    (
+        "v8.3a",
+        Unstable(sym::aarch64_ver_target_feature),
+        &["v8.2a", "rcpc", "paca", "pacg", "jsconv"],
+    ),
     ("v8.4a", Unstable(sym::aarch64_ver_target_feature), &["v8.3a", "dotprod", "dit", "flagm"]),
     ("v8.5a", Unstable(sym::aarch64_ver_target_feature), &["v8.4a", "ssbs", "sb", "dpb2", "bti"]),
     ("v8.6a", Unstable(sym::aarch64_ver_target_feature), &["v8.5a", "bf16", "i8mm"]),
@@ -371,7 +376,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
     &["paca", "pacg"], // Together these represent `pauth` in LLVM
 ];
 
-const X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static X86_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("adx", Stable, &[]),
     ("aes", Stable, &["sse2"]),
@@ -453,9 +458,10 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    ("msync", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -476,7 +482,7 @@ const MIPS_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("a", Stable, &["zaamo", "zalrsc"]),
     ("c", Stable, &[]),
@@ -492,9 +498,14 @@ const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &[]),
+    ("za128rs", Unstable(sym::riscv_target_feature), &[]),
+    ("za64rs", Unstable(sym::riscv_target_feature), &[]),
     ("zaamo", Unstable(sym::riscv_target_feature), &[]),
     ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
+    ("zacas", Unstable(sym::riscv_target_feature), &["zaamo"]),
     ("zalrsc", Unstable(sym::riscv_target_feature), &[]),
+    ("zama16b", Unstable(sym::riscv_target_feature), &[]),
+    ("zawrs", Unstable(sym::riscv_target_feature), &[]),
     ("zba", Stable, &[]),
     ("zbb", Stable, &[]),
     ("zbc", Stable, &[]),
@@ -521,7 +532,7 @@ const RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("atomics", Unstable(sym::wasm_target_feature), &[]),
     ("bulk-memory", Stable, &[]),
@@ -542,7 +553,7 @@ const WASM_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const BPF_FEATURES: &[(&str, Stability, ImpliedFeatures)] =
     &[("alu32", Unstable(sym::bpf_target_feature), &[])];
 
-const CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("10e60", Unstable(sym::csky_target_feature), &["7e10"]),
     ("2e3", Unstable(sym::csky_target_feature), &["e2"]),
@@ -589,7 +600,7 @@ const CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature), &["f"]),
     ("f", Unstable(sym::loongarch_target_feature), &[]),
@@ -606,7 +617,26 @@ const LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 const IBMZ_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("backchain", Unstable(sym::s390x_target_feature), &[]),
+    ("deflate-conversion", Unstable(sym::s390x_target_feature), &[]),
+    ("enhanced-sort", Unstable(sym::s390x_target_feature), &[]),
+    ("guarded-storage", Unstable(sym::s390x_target_feature), &[]),
+    ("high-word", Unstable(sym::s390x_target_feature), &[]),
+    ("nnp-assist", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("transactional-execution", Unstable(sym::s390x_target_feature), &[]),
     ("vector", Unstable(sym::s390x_target_feature), &[]),
+    ("vector-enhancements-1", Unstable(sym::s390x_target_feature), &["vector"]),
+    ("vector-enhancements-2", Unstable(sym::s390x_target_feature), &["vector-enhancements-1"]),
+    ("vector-packed-decimal", Unstable(sym::s390x_target_feature), &["vector"]),
+    (
+        "vector-packed-decimal-enhancement",
+        Unstable(sym::s390x_target_feature),
+        &["vector-packed-decimal"],
+    ),
+    (
+        "vector-packed-decimal-enhancement-2",
+        Unstable(sym::s390x_target_feature),
+        &["vector-packed-decimal-enhancement"],
+    ),
     // tidy-alphabetical-end
 ];
 
@@ -618,7 +648,7 @@ const SPARC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-end
 ];
 
-const M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
+static M68K_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("isa-68000", Unstable(sym::m68k_target_feature), &[]),
     ("isa-68010", Unstable(sym::m68k_target_feature), &["isa-68000"]),
@@ -738,17 +768,15 @@ impl Target {
         }
     }
 
-    pub fn implied_target_features<'a>(
-        &self,
-        base_features: impl Iterator<Item = &'a str>,
-    ) -> FxHashSet<&'a str> {
+    // Note: the returned set includes `base_feature`.
+    pub fn implied_target_features<'a>(&self, base_feature: &'a str) -> FxHashSet<&'a str> {
         let implied_features =
             self.rust_target_features().iter().map(|(f, _, i)| (f, i)).collect::<FxHashMap<_, _>>();
 
-        // implied target features have their own implied target features, so we traverse the
-        // map until there are no more features to add
+        // Implied target features have their own implied target features, so we traverse the
+        // map until there are no more features to add.
         let mut features = FxHashSet::default();
-        let mut new_features = base_features.collect::<Vec<&str>>();
+        let mut new_features = vec![base_feature];
         while let Some(new_feature) = new_features.pop() {
             if features.insert(new_feature) {
                 if let Some(implied_features) = implied_features.get(&new_feature) {
@@ -763,7 +791,7 @@ impl Target {
     /// the first list contains target features that must be enabled for ABI reasons,
     /// and the second list contains target feature that must be disabled for ABI reasons.
     ///
-    /// These features are automatically appended to whatever the target spec sats as default
+    /// These features are automatically appended to whatever the target spec sets as default
     /// features for the target.
     ///
     /// All features enabled/disabled via `-Ctarget-features` and `#[target_features]` are checked
@@ -784,6 +812,13 @@ impl Target {
                         // Default hardfloat ABI.
                         // x87 must be enabled, soft-float must be disabled.
                         FeatureConstraints { required: &["x87"], incompatible: &["soft-float"] }
+                    }
+                    Some(RustcAbi::X86Sse2) => {
+                        // Extended hardfloat ABI. x87 and SSE2 must be enabled, soft-float must be disabled.
+                        FeatureConstraints {
+                            required: &["x87", "sse2"],
+                            incompatible: &["soft-float"],
+                        }
                     }
                     Some(RustcAbi::X86Softfloat) => {
                         // Softfloat ABI, requires corresponding target feature. That feature trumps
@@ -812,6 +847,7 @@ impl Target {
                         // LLVM handles the rest.
                         FeatureConstraints { required: &["soft-float"], incompatible: &[] }
                     }
+                    Some(r) => panic!("invalid Rust ABI for x86_64: {r:?}"),
                 }
             }
             "arm" => {

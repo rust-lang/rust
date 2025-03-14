@@ -3,9 +3,6 @@
 //@ error-pattern: reached the recursion limit while instantiating
 //@ error-pattern: reached the recursion limit finding the struct tail
 
-// The regex below normalizes the long type file name to make it suitable for compare-modes.
-//@ normalize-stderr: "'\$TEST_BUILD_DIR/.*\.long-type.txt'" -> "'$$TEST_BUILD_DIR/$$FILE.long-type.txt'"
-
 // Regression test for #114484: This used to ICE during monomorphization, because we treated
 // `<VirtualWrapper<...> as Pointee>::Metadata` as a rigid projection after reaching the recursion
 // limit when finding the struct tail.

@@ -30,7 +30,7 @@ cfg_if::cfg_if! {
     }
 }
 
-extern "C" {
+unsafe extern "C" {
     #[cfg(not(any(target_os = "dragonfly", target_os = "vxworks", target_os = "rtems")))]
     #[cfg_attr(
         any(
@@ -82,7 +82,7 @@ pub fn errno() -> i32 {
 
 #[cfg(target_os = "rtems")]
 pub fn errno() -> i32 {
-    extern "C" {
+    unsafe extern "C" {
         #[thread_local]
         static _tls_errno: c_int;
     }
@@ -92,7 +92,7 @@ pub fn errno() -> i32 {
 
 #[cfg(target_os = "dragonfly")]
 pub fn errno() -> i32 {
-    extern "C" {
+    unsafe extern "C" {
         #[thread_local]
         static errno: c_int;
     }
@@ -103,7 +103,7 @@ pub fn errno() -> i32 {
 #[cfg(target_os = "dragonfly")]
 #[allow(dead_code)]
 pub fn set_errno(e: i32) {
-    extern "C" {
+    unsafe extern "C" {
         #[thread_local]
         static mut errno: c_int;
     }
@@ -115,7 +115,7 @@ pub fn set_errno(e: i32) {
 
 /// Gets a detailed string description for the given error number.
 pub fn error_string(errno: i32) -> String {
-    extern "C" {
+    unsafe extern "C" {
         #[cfg_attr(
             all(
                 any(target_os = "linux", target_os = "hurd", target_env = "newlib"),
@@ -260,7 +260,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     let exe_path = env::args().next().ok_or(io::const_error!(
         ErrorKind::NotFound,
-        "an executable path was not found because no arguments were provided through argv"
+        "an executable path was not found because no arguments were provided through argv",
     ))?;
     let path = PathBuf::from(exe_path);
     if path.is_absolute() {
@@ -382,9 +382,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         cvt(libc::sysctl(mib, 4, argv.as_mut_ptr() as *mut _, &mut argv_len, ptr::null_mut(), 0))?;
         argv.set_len(argv_len as usize);
         if argv[0].is_null() {
-            return Err(
-                io::const_error!(io::ErrorKind::Uncategorized, "no current exe available",),
-            );
+            return Err(io::const_error!(io::ErrorKind::Uncategorized, "no current exe available"));
         }
         let argv0 = CStr::from_ptr(argv[0]).to_bytes();
         if argv0[0] == b'.' || argv0.iter().any(|b| *b == b'/') {
@@ -477,7 +475,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         );
         if result != libc::B_OK {
             use crate::io::ErrorKind;
-            Err(io::const_error!(ErrorKind::Uncategorized, "Error getting executable path"))
+            Err(io::const_error!(ErrorKind::Uncategorized, "error getting executable path"))
         } else {
             // find_path adds the null terminator.
             let name = CStr::from_ptr(name.as_ptr()).to_bytes();
@@ -486,7 +484,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "redox", target_os = "rtems"))]
+#[cfg(target_os = "redox")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    crate::fs::read_to_string("/scheme/sys/exe").map(PathBuf::from)
+}
+
+#[cfg(target_os = "rtems")]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
@@ -494,7 +497,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::const_error!(ErrorKind::Unsupported, "Not yet implemented!"))
+    Err(io::const_error!(ErrorKind::Unsupported, "not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]
@@ -526,7 +529,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
     let exe_path = env::args().next().ok_or(io::const_error!(
         ErrorKind::Uncategorized,
-        "an executable path was not found because no arguments were provided through argv"
+        "an executable path was not found because no arguments were provided through argv",
     ))?;
     let path = PathBuf::from(exe_path);
 
@@ -610,7 +613,7 @@ pub unsafe fn environ() -> *mut *const *const c_char {
 // Use the `environ` static which is part of POSIX.
 #[cfg(not(target_vendor = "apple"))]
 pub unsafe fn environ() -> *mut *const *const c_char {
-    extern "C" {
+    unsafe extern "C" {
         static mut environ: *const *const c_char;
     }
     &raw mut environ
@@ -847,7 +850,7 @@ pub fn getppid() -> u32 {
 
 #[cfg(all(target_os = "linux", target_env = "gnu"))]
 pub fn glibc_version() -> Option<(usize, usize)> {
-    extern "C" {
+    unsafe extern "C" {
         fn gnu_get_libc_version() -> *const libc::c_char;
     }
     let version_cstr = unsafe { CStr::from_ptr(gnu_get_libc_version()) };

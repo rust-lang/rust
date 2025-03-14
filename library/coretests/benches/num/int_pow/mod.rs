@@ -15,9 +15,9 @@ macro_rules! pow_bench_template {
             // reference through black_box outside of the loop.
             let mut rng = crate::bench_rng();
             let base_array: [IntType; ITERATIONS] =
-                core::array::from_fn(|_| rng.gen_range((-MAX_BASE..=MAX_BASE)));
+                core::array::from_fn(|_| rng.random_range((-MAX_BASE..=MAX_BASE)));
             let exp_array: [u32; ITERATIONS] =
-                core::array::from_fn(|_| rng.gen_range((0..=EXPONENT_MAX)));
+                core::array::from_fn(|_| rng.random_range((0..=EXPONENT_MAX)));
 
             bench.iter(|| {
                 #[allow(unused, unused_mut)]

@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![feature(array_windows)]
 #![feature(box_patterns)]
 #![feature(if_let_guard)]
@@ -8,7 +9,6 @@
 #![feature(let_chains)]
 #![feature(never_type)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod _match;
@@ -123,7 +123,7 @@ fn typeck_with_inspect<'tcx>(
     let body_id = node.body_id().unwrap_or_else(|| {
         span_bug!(span, "can't type-check body of {:?}", def_id);
     });
-    let body = tcx.hir().body(body_id);
+    let body = tcx.hir_body(body_id);
 
     let param_env = tcx.param_env(def_id);
 
@@ -133,7 +133,12 @@ fn typeck_with_inspect<'tcx>(
     }
     let mut fcx = FnCtxt::new(&root_ctxt, param_env, def_id);
 
-    if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
+    if let hir::Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, .. }) = node {
+        // Check the fake body of a global ASM. There's not much to do here except
+        // for visit the asm expr of the body.
+        let ty = fcx.check_expr(body.value);
+        fcx.write_ty(id, ty);
+    } else if let Some(hir::FnSig { header, decl, .. }) = node.fn_sig() {
         let fn_sig = if decl.output.is_suggestable_infer_ty().is_some() {
             // In the case that we're recovering `fn() -> W<_>` or some other return
             // type that has an infer in it, lower the type directly so that it'll
@@ -193,6 +198,15 @@ fn typeck_with_inspect<'tcx>(
 
         fcx.write_ty(id, expected_type);
     };
+
+    // Whether to check repeat exprs before/after inference fallback is somewhat arbitrary of a decision
+    // as neither option is strictly more permissive than the other. However, we opt to check repeat exprs
+    // first as errors from not having inferred array lengths yet seem less confusing than errors from inference
+    // fallback arbitrarily inferring something incompatible with `Copy` inference side effects.
+    //
+    // This should also be forwards compatible with moving repeat expr checks to a custom goal kind or using
+    // marker traits in the future.
+    fcx.check_repeat_exprs();
 
     fcx.type_inference_fallback();
 
@@ -277,12 +291,9 @@ fn infer_type_if_missing<'tcx>(fcx: &FnCtxt<'_, 'tcx>, node: Node<'tcx>) -> Opti
                 Some(fcx.next_ty_var(span))
             }
             Node::Expr(&hir::Expr { kind: hir::ExprKind::InlineAsm(asm), span, .. })
-            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm(asm), span, .. }) => {
+            | Node::Item(&hir::Item { kind: hir::ItemKind::GlobalAsm { asm, .. }, span, .. }) => {
                 asm.operands.iter().find_map(|(op, _op_sp)| match op {
-                    hir::InlineAsmOperand::Const { anon_const }
-                    | hir::InlineAsmOperand::SymFn { anon_const }
-                        if anon_const.hir_id == id =>
-                    {
+                    hir::InlineAsmOperand::Const { anon_const } if anon_const.hir_id == id => {
                         Some(fcx.next_ty_var(span))
                     }
                     _ => None,

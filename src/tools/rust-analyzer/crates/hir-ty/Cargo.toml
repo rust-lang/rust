@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 cov-mark = "2.0.0-pre.1"
@@ -47,7 +46,6 @@ hir-def.workspace = true
 hir-expand.workspace = true
 base-db.workspace = true
 syntax.workspace = true
-limit.workspace = true
 span.workspace = true
 
 [dev-dependencies]

@@ -1,4 +1,5 @@
-//@ compile-flags: -O
+//@ add-core-stubs
+//@ compile-flags: -Copt-level=3
 //@revisions: with_nontemporal without_nontemporal
 //@[with_nontemporal] compile-flags: --target aarch64-unknown-linux-gnu
 //@[with_nontemporal] needs-llvm-components: aarch64
@@ -14,13 +15,8 @@
 #![no_core]
 #![crate_type = "lib"]
 
-#[lang = "sized"]
-pub trait Sized {}
-#[lang = "copy"]
-pub trait Copy {}
-
-impl Copy for u32 {}
-impl<T> Copy for *mut T {}
+extern crate minicore;
+use minicore::*;
 
 extern "rust-intrinsic" {
     pub fn nontemporal_store<T>(ptr: *mut T, val: T);

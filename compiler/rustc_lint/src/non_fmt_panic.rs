@@ -256,10 +256,14 @@ fn check_panic_str<'tcx>(
                 .map(|span| fmt_span.from_inner(InnerSpan::new(span.start, span.end)))
                 .collect(),
         };
-        cx.emit_span_lint(NON_FMT_PANICS, arg_spans, NonFmtPanicUnused {
-            count: n_arguments,
-            suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
-        });
+        cx.emit_span_lint(
+            NON_FMT_PANICS,
+            arg_spans,
+            NonFmtPanicUnused {
+                count: n_arguments,
+                suggestion: is_arg_inside_call(arg.span, span).then_some(arg.span),
+            },
+        );
     } else {
         let brace_spans: Option<Vec<_>> =
             snippet.filter(|s| s.starts_with('"') || s.starts_with("r#")).map(|s| {

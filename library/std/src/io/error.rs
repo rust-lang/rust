@@ -83,7 +83,7 @@ impl Error {
 
     pub(crate) const UNKNOWN_THREAD_COUNT: Self = const_error!(
         ErrorKind::NotFound,
-        "The number of hardware threads is not known for the target platform"
+        "the number of hardware threads is not known for the target platform",
     );
 
     pub(crate) const UNSUPPORTED_PLATFORM: Self =
@@ -373,8 +373,8 @@ pub enum ErrorKind {
     TooManyLinks,
     /// A filename was invalid.
     ///
-    /// This error can also cause if it exceeded the filename length limit.
-    #[unstable(feature = "io_error_more", issue = "86442")]
+    /// This error can also occur if a length limit for a name was exceeded.
+    #[stable(feature = "io_error_invalid_filename", since = "CURRENT_RUSTC_VERSION")]
     InvalidFilename,
     /// Program argument list too long.
     ///

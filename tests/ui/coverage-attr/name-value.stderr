@@ -6,9 +6,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -19,9 +21,11 @@ LL |     #![coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #![coverage(off)]
+LL -     #![coverage = "off"]
+LL +     #![coverage(off)]
    |
-LL |     #![coverage(on)]
+LL -     #![coverage = "off"]
+LL +     #![coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -32,9 +36,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -45,9 +51,11 @@ LL |     #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #[coverage(off)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
    |
-LL |     #[coverage(on)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -58,9 +66,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -71,9 +81,11 @@ LL |     #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #[coverage(off)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
    |
-LL |     #[coverage(on)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -84,9 +96,11 @@ LL |     #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #[coverage(off)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
    |
-LL |     #[coverage(on)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -97,9 +111,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -110,9 +126,11 @@ LL |     #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #[coverage(off)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
    |
-LL |     #[coverage(on)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -123,9 +141,11 @@ LL |     #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL |     #[coverage(off)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(off)]
    |
-LL |     #[coverage(on)]
+LL -     #[coverage = "off"]
+LL +     #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -136,9 +156,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error: malformed `coverage` attribute input
@@ -149,9 +171,11 @@ LL | #[coverage = "off"]
    |
 help: the following are the possible correct uses
    |
-LL | #[coverage(off)]
+LL - #[coverage = "off"]
+LL + #[coverage(off)]
    |
-LL | #[coverage(on)]
+LL - #[coverage = "off"]
+LL + #[coverage(on)]
    |
 
 error[E0788]: coverage attribute not allowed here

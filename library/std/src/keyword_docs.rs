@@ -398,7 +398,7 @@ mod enum_keyword {}
 /// The mirror use case of FFI is also done via the `extern` keyword:
 ///
 /// ```rust
-/// #[no_mangle]
+/// #[unsafe(no_mangle)]
 /// pub extern "C" fn callable_from_c(x: i32) -> bool {
 ///     x % 3 == 0
 /// }
@@ -651,16 +651,24 @@ mod if_keyword {}
 
 #[doc(keyword = "impl")]
 //
-/// Implement some functionality for a type.
+/// Implementations of functionality for a type, or a type implementing some functionality.
+///
+/// There are two uses of the keyword `impl`:
+///  * An `impl` block is an item that is used to implement some functionality for a type.
+///  * An `impl Trait` in a type-position can be used to designate a type that implements a trait called `Trait`.
+///
+/// # Implementing Functionality for a Type
 ///
 /// The `impl` keyword is primarily used to define implementations on types. Inherent
 /// implementations are standalone, while trait implementations are used to implement traits for
 /// types, or other traits.
 ///
-/// Functions and consts can both be defined in an implementation. A function defined in an
-/// `impl` block can be standalone, meaning it would be called like `Foo::bar()`. If the function
+/// An implementation consists of definitions of functions and consts. A function defined in an
+/// `impl` block can be standalone, meaning it would be called like `Vec::new()`. If the function
 /// takes `self`, `&self`, or `&mut self` as its first argument, it can also be called using
-/// method-call syntax, a familiar feature to any object oriented programmer, like `foo.bar()`.
+/// method-call syntax, a familiar feature to any object-oriented programmer, like `vec.len()`.
+///
+/// ## Inherent Implementations
 ///
 /// ```rust
 /// struct Example {
@@ -680,6 +688,17 @@ mod if_keyword {}
 ///         self.number
 ///     }
 /// }
+/// ```
+///
+/// It matters little where an inherent implementation is defined;
+/// its functionality is in scope wherever its implementing type is.
+///
+/// ## Trait Implementations
+///
+/// ```rust
+/// struct Example {
+///     number: i32,
+/// }
 ///
 /// trait Thingy {
 ///     fn do_thingy(&self);
@@ -692,11 +711,19 @@ mod if_keyword {}
 /// }
 /// ```
 ///
+/// It matters little where a trait implementation is defined;
+/// its functionality can be brought into scope by importing the trait it implements.
+///
 /// For more information on implementations, see the [Rust book][book1] or the [Reference].
 ///
-/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be seen as a shorthand
-/// for "a concrete type that implements this trait". Its primary use is working with closures,
-/// which have type definitions generated at compile time that can't be simply typed out.
+/// # Designating a Type that Implements Some Functionality
+///
+/// The other use of the `impl` keyword is in `impl Trait` syntax, which can be understood to mean
+/// "any (or some) concrete type that implements Trait".
+/// It can be used as the type of a variable declaration,
+/// in [argument position](https://rust-lang.github.io/rfcs/1951-expand-impl-trait.html)
+/// or in [return position](https://rust-lang.github.io/rfcs/3425-return-position-impl-trait-in-traits.html).
+/// One pertinent use case is in working with closures, which have unnameable types.
 ///
 /// ```rust
 /// fn thing_returning_closure() -> impl Fn(i32) -> bool {
@@ -1037,7 +1064,7 @@ mod move_keyword {}
 /// ```rust,compile_fail,E0502
 /// let mut v = vec![0, 1];
 /// let mut_ref_v = &mut v;
-/// ##[allow(unused)]
+/// # #[allow(unused)]
 /// let ref_v = &v;
 /// mut_ref_v.push(2);
 /// ```
@@ -1401,7 +1428,7 @@ mod self_upper_keyword {}
 ///
 /// ```rust,no_run
 /// # #![allow(dead_code)]
-/// extern "C" {
+/// unsafe extern "C" {
 ///     static mut ERROR_MESSAGE: *mut std::os::raw::c_char;
 /// }
 /// ```
@@ -1898,7 +1925,7 @@ mod type_keyword {}
 ///
 /// unsafe fn unsafe_fn() {}
 ///
-/// extern "C" {
+/// unsafe extern "C" {
 ///     fn unsafe_extern_fn();
 ///     static BAR: *mut u32;
 /// }
@@ -2094,8 +2121,8 @@ mod unsafe_keyword {}
 
 #[doc(keyword = "use")]
 //
-/// Import or rename items from other crates or modules, or specify precise capturing
-/// with `use<..>`.
+/// Import or rename items from other crates or modules, use values under ergonomic clones
+/// semantic, or specify precise capturing with `use<..>`.
 ///
 /// ## Importing items
 ///
@@ -2177,6 +2204,11 @@ mod unsafe_keyword {}
 /// `use<..>` syntax serves as an important way of opting-out of that default.
 ///
 /// For more details about precise capturing, see the [Reference][ref-impl-trait].
+///
+/// ## Ergonomic clones
+///
+/// Use a values, copying its content if the value implements `Copy`, cloning the contents if the
+/// value implements `UseCloned` or moving it otherwise.
 ///
 /// [`crate`]: keyword.crate.html
 /// [`self`]: keyword.self.html

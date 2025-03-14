@@ -40,6 +40,8 @@ pub use bstr;
 pub use gimli;
 pub use libc;
 pub use object;
+// FIXME(#137532): replace with std `anonymous_pipe` once it stabilizes and reaches beta.
+pub use os_pipe;
 pub use regex;
 pub use serde_json;
 pub use similar;
@@ -67,7 +69,7 @@ pub use llvm::{
 };
 pub use python::python_command;
 pub use rustc::{aux_build, bare_rustc, rustc, rustc_path, Rustc};
-pub use rustdoc::{bare_rustdoc, rustdoc, Rustdoc};
+pub use rustdoc::{rustdoc, Rustdoc};
 
 /// [`diff`][mod@diff] is implemented in terms of the [similar] library.
 ///
@@ -82,7 +84,7 @@ pub use run::{cmd, run, run_fail, run_with_args};
 
 /// Helpers for checking target information.
 pub use targets::{
-    apple_os, is_aix, is_darwin, is_msvc, is_windows, is_windows_gnu, llvm_components_contain,
+    apple_os, is_aix, is_darwin, is_msvc, is_windows, is_windows_gnu, is_win7, llvm_components_contain,
     target, uname,
 };
 

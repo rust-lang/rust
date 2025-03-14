@@ -13,7 +13,6 @@ use rustc_span::{DUMMY_SP, Ident, Span};
 use tracing::{debug, instrument, trace};
 
 use super::item_bounds::explicit_item_bounds_with_filter;
-use crate::bounds::Bounds;
 use crate::collect::ItemCtxt;
 use crate::constrained_generic_params as cgp;
 use crate::delegation::inherit_predicates_for_delegation_item;
@@ -178,7 +177,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
     // on a trait we must also consider the bounds that follow the trait's name,
     // like `trait Foo: A + B + C`.
     if let Some(self_bounds) = is_trait {
-        let mut bounds = Bounds::default();
+        let mut bounds = Vec::new();
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
             self_bounds,
@@ -186,7 +185,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             ty::List::empty(),
             PredicateFilter::All,
         );
-        predicates.extend(bounds.clauses());
+        predicates.extend(bounds);
     }
 
     // In default impls, we can assume that the self type implements
@@ -209,7 +208,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
             GenericParamKind::Lifetime { .. } => (),
             GenericParamKind::Type { .. } => {
                 let param_ty = icx.lowerer().lower_ty_param(param.hir_id);
-                let mut bounds = Bounds::default();
+                let mut bounds = Vec::new();
                 // Params are implicitly sized unless a `?Sized` bound is found
                 icx.lowerer().add_sized_bound(
                     &mut bounds,
@@ -219,15 +218,12 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.clauses());
+                predicates.extend(bounds);
                 trace!(?predicates);
             }
             hir::GenericParamKind::Const { .. } => {
                 let param_def_id = param.def_id.to_def_id();
-                let ct_ty = tcx
-                    .type_of(param_def_id)
-                    .no_bound_vars()
-                    .expect("const parameters cannot be generic");
+                let ct_ty = tcx.type_of(param_def_id).instantiate_identity();
                 let ct = icx.lowerer().lower_const_param(param_def_id, param.hir_id);
                 predicates
                     .insert((ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx), param.span));
@@ -264,7 +260,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     }
                 }
 
-                let mut bounds = Bounds::default();
+                let mut bounds = Vec::new();
                 icx.lowerer().lower_bounds(
                     ty,
                     bound_pred.bounds,
@@ -272,7 +268,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                     bound_vars,
                     PredicateFilter::All,
                 );
-                predicates.extend(bounds.clauses());
+                predicates.extend(bounds);
             }
 
             hir::WherePredicateKind::RegionPredicate(region_pred) => {
@@ -350,10 +346,10 @@ fn compute_bidirectional_outlives_predicates<'tcx>(
     for param in opaque_own_params {
         let orig_lifetime = tcx.map_opaque_lifetime_to_parent_lifetime(param.def_id.expect_local());
         if let ty::ReEarlyParam(..) = *orig_lifetime {
-            let dup_lifetime = ty::Region::new_early_param(tcx, ty::EarlyParamRegion {
-                index: param.index,
-                name: param.name,
-            });
+            let dup_lifetime = ty::Region::new_early_param(
+                tcx,
+                ty::EarlyParamRegion { index: param.index, name: param.name },
+            );
             let span = tcx.def_span(param.def_id);
             predicates.push((
                 ty::ClauseKind::RegionOutlives(ty::OutlivesPredicate(orig_lifetime, dup_lifetime))
@@ -383,8 +379,7 @@ fn const_evaluatable_predicates_of<'tcx>(
     fn is_const_param_default(tcx: TyCtxt<'_>, def: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def);
         let (_, parent_node) = tcx
-            .hir()
-            .parent_iter(hir_id)
+            .hir_parent_iter(hir_id)
             .skip_while(|(_, n)| matches!(n, Node::ConstArg(..)))
             .next()
             .unwrap();
@@ -436,7 +431,7 @@ fn const_evaluatable_predicates_of<'tcx>(
         self_ty.instantiate_identity().visit_with(&mut collector);
     }
 
-    if let Some(_) = tcx.hir().fn_sig_by_hir_id(hir_id) {
+    if let Some(_) = tcx.hir_fn_sig_by_hir_id(hir_id) {
         debug!("visit fn sig");
         let fn_sig = tcx.fn_sig(def_id);
         let fn_sig = fn_sig.instantiate_identity();
@@ -627,7 +622,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
     let icx = ItemCtxt::new(tcx, trait_def_id);
 
     let self_param_ty = tcx.types.self_param;
-    let mut bounds = Bounds::default();
+    let mut bounds = Vec::new();
     icx.lowerer().lower_bounds(self_param_ty, superbounds, &mut bounds, ty::List::empty(), filter);
 
     let where_bounds_that_match =
@@ -635,7 +630,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     // Combine the two lists to form the complete set of superbounds:
     let implied_bounds =
-        &*tcx.arena.alloc_from_iter(bounds.clauses().chain(where_bounds_that_match));
+        &*tcx.arena.alloc_from_iter(bounds.into_iter().chain(where_bounds_that_match));
     debug!(?implied_bounds);
 
     // Now require that immediate supertraits are lowered, which will, in
@@ -826,7 +821,7 @@ pub(super) fn type_param_predicates<'tcx>(
     // `where T: Foo`.
 
     let param_id = tcx.local_def_id_to_hir_id(def_id);
-    let param_owner = tcx.hir().ty_param_owner(def_id);
+    let param_owner = tcx.hir_ty_param_owner(def_id);
 
     // Don't look for bounds where the type parameter isn't in scope.
     let parent = if item_def_id == param_owner {
@@ -904,7 +899,7 @@ impl<'tcx> ItemCtxt<'tcx> {
         param_def_id: LocalDefId,
         filter: PredicateFilter,
     ) -> Vec<(ty::Clause<'tcx>, Span)> {
-        let mut bounds = Bounds::default();
+        let mut bounds = Vec::new();
 
         for predicate in hir_generics.predicates {
             let hir_id = predicate.hir_id;
@@ -938,16 +933,10 @@ impl<'tcx> ItemCtxt<'tcx> {
             );
         }
 
-        bounds.clauses().collect()
+        bounds
     }
 }
 
-/// Compute the conditions that need to hold for a conditionally-const item to be const.
-/// That is, compute the set of `~const` where clauses for a given item.
-///
-/// This query also computes the `~const` where clauses for associated types, which are
-/// not "const", but which have item bounds which may be `~const`. These must hold for
-/// the `~const` item bound to hold.
 pub(super) fn const_conditions<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
@@ -1007,7 +996,7 @@ pub(super) fn const_conditions<'tcx>(
     };
 
     let icx = ItemCtxt::new(tcx, def_id);
-    let mut bounds = Bounds::default();
+    let mut bounds = Vec::new();
 
     for pred in generics.predicates {
         match pred.kind {
@@ -1027,12 +1016,12 @@ pub(super) fn const_conditions<'tcx>(
     }
 
     if let Some((def_id, supertraits)) = trait_def_id_and_supertraits {
-        bounds.push_const_bound(
-            tcx,
-            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id())),
-            ty::BoundConstness::Maybe,
+        // We've checked above that the trait is conditionally const.
+        bounds.push((
+            ty::Binder::dummy(ty::TraitRef::identity(tcx, def_id.to_def_id()))
+                .to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
             DUMMY_SP,
-        );
+        ));
 
         icx.lowerer().lower_bounds(
             tcx.types.self_param,
@@ -1045,7 +1034,7 @@ pub(super) fn const_conditions<'tcx>(
 
     ty::ConstConditions {
         parent: has_parent.then(|| tcx.local_parent(def_id).to_def_id()),
-        predicates: tcx.arena.alloc_from_iter(bounds.clauses().map(|(clause, span)| {
+        predicates: tcx.arena.alloc_from_iter(bounds.into_iter().map(|(clause, span)| {
             (
                 clause.kind().map_bound(|clause| match clause {
                     ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
@@ -1065,7 +1054,9 @@ pub(super) fn explicit_implied_const_bounds<'tcx>(
     def_id: LocalDefId,
 ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
     if !tcx.is_conditionally_const(def_id) {
-        bug!("const_conditions invoked for item that is not conditionally const: {def_id:?}");
+        bug!(
+            "explicit_implied_const_bounds invoked for item that is not conditionally const: {def_id:?}"
+        );
     }
 
     let bounds = match tcx.opt_rpitit_info(def_id.to_def_id()) {

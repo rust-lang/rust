@@ -1,15 +1,15 @@
-use rustc_abi::{AddressSpace, Float, Integer};
+use rustc_abi::{AddressSpace, Float, Integer, Reg};
 use rustc_middle::bug;
+use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, TyAndLayout};
-use rustc_middle::ty::{self, Ty};
-use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi, Reg};
+use rustc_target::callconv::{ArgAbi, CastTarget, FnAbi};
 
 use super::BackendTypes;
 use super::misc::MiscCodegenMethods;
 use crate::common::TypeKind;
 use crate::mir::place::PlaceRef;
 
-pub trait BaseTypeCodegenMethods<'tcx>: BackendTypes {
+pub trait BaseTypeCodegenMethods: BackendTypes {
     fn type_i8(&self) -> Self::Type;
     fn type_i16(&self) -> Self::Type;
     fn type_i32(&self) -> Self::Type;
@@ -41,7 +41,7 @@ pub trait BaseTypeCodegenMethods<'tcx>: BackendTypes {
 }
 
 pub trait DerivedTypeCodegenMethods<'tcx>:
-    BaseTypeCodegenMethods<'tcx> + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
+    BaseTypeCodegenMethods + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
 {
     fn type_int(&self) -> Self::Type {
         match &self.sess().target.c_int_width[..] {
@@ -84,26 +84,10 @@ pub trait DerivedTypeCodegenMethods<'tcx>:
     fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
         ty.is_freeze(self.tcx(), self.typing_env())
     }
-
-    fn type_has_metadata(&self, ty: Ty<'tcx>) -> bool {
-        if ty.is_sized(self.tcx(), self.typing_env()) {
-            return false;
-        }
-
-        let tail = self.tcx().struct_tail_for_codegen(ty, self.typing_env());
-        match tail.kind() {
-            ty::Foreign(..) => false,
-            ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-            _ => bug!("unexpected unsized tail: {:?}", tail),
-        }
-    }
 }
 
 impl<'tcx, T> DerivedTypeCodegenMethods<'tcx> for T where
-    Self: BaseTypeCodegenMethods<'tcx>
-        + MiscCodegenMethods<'tcx>
-        + HasTyCtxt<'tcx>
-        + HasTypingEnv<'tcx>
+    Self: BaseTypeCodegenMethods + MiscCodegenMethods<'tcx> + HasTyCtxt<'tcx> + HasTypingEnv<'tcx>
 {
 }
 

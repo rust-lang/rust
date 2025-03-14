@@ -97,6 +97,12 @@ impl<'tcx> crate::MirPass<'tcx> for Validator {
     }
 }
 
+/// This checker covers basic properties of the control-flow graph, (dis)allowed statements and terminators.
+/// Everything checked here must be stable under substitution of generic parameters. In other words,
+/// this is about the *structure* of the MIR, not the *contents*.
+///
+/// Everything that depends on types, or otherwise can be affected by generic parameters,
+/// must be checked in `TypeChecker`.
 struct CfgChecker<'a, 'tcx> {
     when: &'a str,
     body: &'a Body<'tcx>,

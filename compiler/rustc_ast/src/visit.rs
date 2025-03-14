@@ -179,6 +179,9 @@ pub trait Visitor<'ast>: Sized {
     fn visit_ty(&mut self, t: &'ast Ty) -> Self::Result {
         walk_ty(self, t)
     }
+    fn visit_ty_pat(&mut self, t: &'ast TyPat) -> Self::Result {
+        walk_ty_pat(self, t)
+    }
     fn visit_generic_param(&mut self, param: &'ast GenericParam) -> Self::Result {
         walk_generic_param(self, param)
     }
@@ -534,7 +537,7 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         }
         TyKind::Pat(ty, pat) => {
             try_visit!(visitor.visit_ty(ty));
-            try_visit!(visitor.visit_pat(pat));
+            try_visit!(visitor.visit_ty_pat(pat));
         }
         TyKind::Array(ty, length) => {
             try_visit!(visitor.visit_ty(ty));
@@ -551,6 +554,18 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) -> V::Result {
         TyKind::Err(_guar) => {}
         TyKind::MacCall(mac) => try_visit!(visitor.visit_mac_call(mac)),
         TyKind::Never | TyKind::CVarArgs => {}
+    }
+    V::Result::output()
+}
+
+pub fn walk_ty_pat<'a, V: Visitor<'a>>(visitor: &mut V, tp: &'a TyPat) -> V::Result {
+    let TyPat { id: _, kind, span: _, tokens: _ } = tp;
+    match kind {
+        TyPatKind::Range(start, end, _include_end) => {
+            visit_opt!(visitor, visit_anon_const, start);
+            visit_opt!(visitor, visit_anon_const, end);
+        }
+        TyPatKind::Err(_) => {}
     }
     V::Result::output()
 }
@@ -582,7 +597,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
             visit_opt!(visitor, visit_ident, rename);
         }
         UseTreeKind::Glob => {}
-        UseTreeKind::Nested { ref items, span: _ } => {
+        UseTreeKind::Nested { items, span: _ } => {
             for &(ref nested_tree, nested_id) in items {
                 try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
             }
@@ -818,7 +833,8 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    let WherePredicate { kind, id: _, span: _ } = predicate;
+    let WherePredicate { attrs, kind, id: _, span: _, is_placeholder: _ } = predicate;
+    walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_where_predicate_kind(kind)
 }
 
@@ -876,7 +892,14 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, contract, body },
+            Fn {
+                defaultness: _,
+                sig: FnSig { header, decl, span: _ },
+                generics,
+                contract,
+                body,
+                define_opaque,
+            },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
@@ -884,6 +907,9 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             try_visit!(visitor.visit_fn_decl(decl));
             visit_opt!(visitor, visit_contract, contract);
             visit_opt!(visitor, visit_block, body);
+            for (id, path) in define_opaque.iter().flatten() {
+                try_visit!(visitor.visit_path(path, *id))
+            }
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
@@ -1187,7 +1213,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
                 FnKind::Closure(binder, coroutine_kind, fn_decl, body),
                 *span,
                 *id
-            ))
+            ));
         }
         ExprKind::Block(block, opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);
@@ -1195,6 +1221,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         }
         ExprKind::Gen(_capt, body, _kind, _decl_span) => try_visit!(visitor.visit_block(body)),
         ExprKind::Await(expr, _span) => try_visit!(visitor.visit_expr(expr)),
+        ExprKind::Use(expr, _span) => try_visit!(visitor.visit_expr(expr)),
         ExprKind::Assign(lhs, rhs, _span) => {
             try_visit!(visitor.visit_expr(lhs));
             try_visit!(visitor.visit_expr(rhs));

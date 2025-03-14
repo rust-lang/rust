@@ -3619,7 +3619,6 @@ ui/resolve/issue-21221-1.rs
 ui/resolve/issue-21221-2.rs
 ui/resolve/issue-21221-3.rs
 ui/resolve/issue-21221-4.rs
-ui/resolve/issue-22692.rs
 ui/resolve/issue-2330.rs
 ui/resolve/issue-23305.rs
 ui/resolve/issue-2356.rs
@@ -3828,7 +3827,6 @@ ui/suggestions/issue-103646.rs
 ui/suggestions/issue-104086-suggest-let.rs
 ui/suggestions/issue-104287.rs
 ui/suggestions/issue-104327.rs
-ui/suggestions/issue-104328.rs
 ui/suggestions/issue-104961.rs
 ui/suggestions/issue-105226.rs
 ui/suggestions/issue-105494.rs
@@ -4060,7 +4058,6 @@ ui/type-alias-enum-variants/issue-63151-dead-code-lint-fields-in-patterns.rs
 ui/type-alias-impl-trait/issue-101750.rs
 ui/type-alias-impl-trait/issue-104817.rs
 ui/type-alias-impl-trait/issue-109054.rs
-ui/type-alias-impl-trait/issue-52843-closure-constrain.rs
 ui/type-alias-impl-trait/issue-52843.rs
 ui/type-alias-impl-trait/issue-53092-2.rs
 ui/type-alias-impl-trait/issue-53092.rs

@@ -107,11 +107,10 @@ fn resolve_associated_item<'tcx>(
     let input = typing_env.as_query_input(trait_ref);
     let vtbl = match tcx.codegen_select_candidate(input) {
         Ok(vtbl) => vtbl,
-        Err(
-            CodegenObligationError::Ambiguity
-            | CodegenObligationError::Unimplemented
-            | CodegenObligationError::FulfillmentError,
-        ) => return Ok(None),
+        Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
+            return Ok(None);
+        }
+        Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 
     // Now that we know which impl is being used, we can dispatch to
@@ -380,8 +379,7 @@ fn resolve_associated_item<'tcx>(
             }
         }
         traits::ImplSource::Param(..)
-        | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-        | traits::ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => None,
+        | traits::ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => None,
     })
 }
 

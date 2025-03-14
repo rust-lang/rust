@@ -405,7 +405,7 @@ marker_impls! {
 ///
 /// [`Vec<T>`]: ../../std/vec/struct.Vec.html
 /// [`String`]: ../../std/string/struct.String.html
-/// [`size_of::<T>`]: crate::mem::size_of
+/// [`size_of::<T>`]: size_of
 /// [impls]: #implementors
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang = "copy"]
@@ -452,6 +452,27 @@ impl Copy for ! {}
 /// Shared references can be copied, but mutable references *cannot*!
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Copy for &T {}
+
+/// Marker trait for the types that are allowed in union fields and unsafe
+/// binder types.
+///
+/// Implemented for:
+/// * `&T`, `&mut T` for all `T`,
+/// * `ManuallyDrop<T>` for all `T`,
+/// * tuples and arrays whose elements implement `BikeshedGuaranteedNoDrop`,
+/// * or otherwise, all types that are `Copy`.
+///
+/// Notably, this doesn't include all trivially-destructible types for semver
+/// reasons.
+///
+/// Bikeshed name for now. This trait does not do anything other than reflect the
+/// set of types that are allowed within unions for field validity.
+#[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
+#[lang = "bikeshed_guaranteed_no_drop"]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
+#[doc(hidden)]
+pub trait BikeshedGuaranteedNoDrop {}
 
 /// Types for which it is safe to share references between threads.
 ///
@@ -714,7 +735,6 @@ impl<T: ?Sized> !Sync for *mut T {}
 /// # }
 /// # fn convert_params(_: ParamType) -> usize { 42 }
 /// use std::marker::PhantomData;
-/// use std::mem;
 ///
 /// struct ExternalResource<R> {
 ///    resource_handle: *mut (),
@@ -723,7 +743,7 @@ impl<T: ?Sized> !Sync for *mut T {}
 ///
 /// impl<R: ResType> ExternalResource<R> {
 ///     fn new() -> Self {
-///         let size_of_res = mem::size_of::<R>();
+///         let size_of_res = size_of::<R>();
 ///         Self {
 ///             resource_handle: foreign_lib::new(size_of_res),
 ///             resource_type: PhantomData,
@@ -1284,8 +1304,22 @@ pub trait FnPtr: Copy + Clone {
 /// }
 /// ```
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
-#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize)]
+#[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
+#[cfg_attr(not(test), rustc_diagnostic_item = "CoercePointee")]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
+    /* compiler built-in */
+}
+
+/// A trait that is implemented for ADTs with `derive(CoercePointee)` so that
+/// the compiler can enforce the derive impls are valid post-expansion, since
+/// the derive has stricter requirements than if the impls were written by hand.
+///
+/// This trait is not intended to be implemented by users or used other than
+/// validation, so it should never be stabilized.
+#[lang = "coerce_pointee_validated"]
+#[unstable(feature = "coerce_pointee_validated", issue = "none")]
+#[doc(hidden)]
+pub trait CoercePointeeValidated {
     /* compiler built-in */
 }

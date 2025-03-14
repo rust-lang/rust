@@ -414,10 +414,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
                     let member_path = archive_path.parent().unwrap().join(Path::new(&file_name));
                     self.entries.push((file_name.into_bytes(), ArchiveEntry::File(member_path)));
                 } else {
-                    self.entries.push((file_name.into_bytes(), ArchiveEntry::FromArchive {
-                        archive_index,
-                        file_range: entry.file_range(),
-                    }));
+                    self.entries.push((
+                        file_name.into_bytes(),
+                        ArchiveEntry::FromArchive { archive_index, file_range: entry.file_range() },
+                    ));
                 }
             }
         }

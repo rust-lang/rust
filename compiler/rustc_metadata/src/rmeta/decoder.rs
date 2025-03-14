@@ -2,17 +2,16 @@
 
 use std::iter::TrustedLen;
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::{io, iter, mem};
 
 pub(super) use cstore_impl::provide;
 use proc_macro::bridge::client::ProcMacro;
 use rustc_ast as ast;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::owned_slice::OwnedSlice;
-use rustc_data_structures::sync::{Lock, OnceLock};
+use rustc_data_structures::sync::Lock;
 use rustc_data_structures::unhash::UnhashMap;
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::proc_macro::{AttrProcMacro, BangProcMacro, DeriveProcMacro};
@@ -963,14 +962,14 @@ impl CrateRoot {
     pub(crate) fn decode_crate_deps<'a>(
         &self,
         metadata: &'a MetadataBlob,
-    ) -> impl ExactSizeIterator<Item = CrateDep> + Captures<'a> {
+    ) -> impl ExactSizeIterator<Item = CrateDep> {
         self.crate_deps.decode(metadata)
     }
 
     pub(crate) fn decode_target_modifiers<'a>(
         &self,
         metadata: &'a MetadataBlob,
-    ) -> impl ExactSizeIterator<Item = TargetModifier> + Captures<'a> {
+    ) -> impl ExactSizeIterator<Item = TargetModifier> {
         self.target_modifiers.decode(metadata)
     }
 }
@@ -1072,7 +1071,6 @@ impl<'a> CrateMetadataRef<'a> {
         let attrs: Vec<_> = self.get_item_attrs(id, sess).collect();
         SyntaxExtension::new(
             sess,
-            tcx.features(),
             kind,
             self.get_span(id, sess),
             helper_attrs,
@@ -1118,7 +1116,6 @@ impl<'a> CrateMetadataRef<'a> {
                         value: self.get_default_field(did.index),
                     })
                     .collect(),
-                adt_kind,
                 parent_did,
                 None,
                 data.is_non_exhaustive,
@@ -1276,7 +1273,7 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = ModChild> + 'a {
+    ) -> impl Iterator<Item = ModChild> {
         iter::from_coroutine(
             #[coroutine]
             move || {
@@ -1326,10 +1323,7 @@ impl<'a> CrateMetadataRef<'a> {
             .is_some_and(|ident| ident.name == kw::SelfLower)
     }
 
-    fn get_associated_item_or_field_def_ids(
-        self,
-        id: DefIndex,
-    ) -> impl Iterator<Item = DefId> + 'a {
+    fn get_associated_item_or_field_def_ids(self, id: DefIndex) -> impl Iterator<Item = DefId> {
         self.root
             .tables
             .associated_item_or_field_def_ids
@@ -1380,7 +1374,7 @@ impl<'a> CrateMetadataRef<'a> {
         self,
         id: DefIndex,
         sess: &'a Session,
-    ) -> impl Iterator<Item = hir::Attribute> + 'a {
+    ) -> impl Iterator<Item = hir::Attribute> {
         self.root
             .tables
             .attributes
@@ -1417,12 +1411,12 @@ impl<'a> CrateMetadataRef<'a> {
     }
 
     /// Decodes all traits in the crate (for rustdoc and rustc diagnostics).
-    fn get_traits(self) -> impl Iterator<Item = DefId> + 'a {
+    fn get_traits(self) -> impl Iterator<Item = DefId> {
         self.root.traits.decode(self).map(move |index| self.local_def_id(index))
     }
 
     /// Decodes all trait impls in the crate (for rustdoc).
-    fn get_trait_impls(self) -> impl Iterator<Item = DefId> + 'a {
+    fn get_trait_impls(self) -> impl Iterator<Item = DefId> {
         self.cdata.trait_impls.values().flat_map(move |impls| {
             impls.decode(self).map(move |(impl_index, _)| self.local_def_id(impl_index))
         })
@@ -1463,7 +1457,7 @@ impl<'a> CrateMetadataRef<'a> {
         }
     }
 
-    fn get_native_libraries(self, sess: &'a Session) -> impl Iterator<Item = NativeLib> + 'a {
+    fn get_native_libraries(self, sess: &'a Session) -> impl Iterator<Item = NativeLib> {
         self.root.native_libraries.decode((self, sess))
     }
 
@@ -1476,7 +1470,7 @@ impl<'a> CrateMetadataRef<'a> {
             .decode((self, sess))
     }
 
-    fn get_foreign_modules(self, sess: &'a Session) -> impl Iterator<Item = ForeignModule> + 'a {
+    fn get_foreign_modules(self, sess: &'a Session) -> impl Iterator<Item = ForeignModule> {
         self.root.foreign_modules.decode((self, sess))
     }
 
@@ -1816,7 +1810,7 @@ impl<'a> CrateMetadataRef<'a> {
             .decode(self)
     }
 
-    fn get_doc_link_traits_in_scope(self, index: DefIndex) -> impl Iterator<Item = DefId> + 'a {
+    fn get_doc_link_traits_in_scope(self, index: DefIndex) -> impl Iterator<Item = DefId> {
         self.root
             .tables
             .doc_link_traits_in_scope
@@ -1887,7 +1881,7 @@ impl CrateMetadata {
         cdata
     }
 
-    pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> + '_ {
+    pub(crate) fn dependencies(&self) -> impl Iterator<Item = CrateNum> {
         self.dependencies.iter().copied()
     }
 
@@ -1936,12 +1930,20 @@ impl CrateMetadata {
         self.root.needs_panic_runtime
     }
 
+    pub(crate) fn is_private_dep(&self) -> bool {
+        self.private_dep
+    }
+
     pub(crate) fn is_panic_runtime(&self) -> bool {
         self.root.panic_runtime
     }
 
     pub(crate) fn is_profiler_runtime(&self) -> bool {
         self.root.profiler_runtime
+    }
+
+    pub(crate) fn is_compiler_builtins(&self) -> bool {
+        self.root.compiler_builtins
     }
 
     pub(crate) fn needs_allocator(&self) -> bool {

@@ -275,14 +275,14 @@ fn test_lang_string_tokenizer() {
     case("foo", &[LangStringToken::LangToken("foo")]);
     case("foo,bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case(".foo,.bar", &[]);
-    case("{.foo,.bar}", &[
-        LangStringToken::ClassAttribute("foo"),
-        LangStringToken::ClassAttribute("bar"),
-    ]);
-    case("  {.foo,.bar}  ", &[
-        LangStringToken::ClassAttribute("foo"),
-        LangStringToken::ClassAttribute("bar"),
-    ]);
+    case(
+        "{.foo,.bar}",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
+    case(
+        "  {.foo,.bar}  ",
+        &[LangStringToken::ClassAttribute("foo"), LangStringToken::ClassAttribute("bar")],
+    );
     case("foo bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\tbar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);
     case("foo\t, bar", &[LangStringToken::LangToken("foo"), LangStringToken::LangToken("bar")]);

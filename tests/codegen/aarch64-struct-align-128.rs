@@ -1,5 +1,6 @@
 // Test that structs aligned to 128 bits are passed with the correct ABI on aarch64.
 
+//@ add-core-stubs
 //@ revisions: linux darwin win
 //@[linux] compile-flags: --target aarch64-unknown-linux-gnu
 //@[darwin] compile-flags: --target aarch64-apple-darwin
@@ -12,12 +13,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 // Passed as `[i64 x 2]`, since it's an aggregate with size <= 128 bits, align < 128 bits.
 #[repr(C)]

@@ -31,7 +31,7 @@ impl<T> pm::bridge::server::MessagePipe<T> for MessagePipe<T> {
     }
 }
 
-fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy {
+fn exec_strategy(ecx: &ExtCtxt<'_>) -> impl pm::bridge::server::ExecutionStrategy + 'static {
     pm::bridge::server::MaybeCrossThread::<MessagePipe<_>>::new(
         ecx.sess.opts.unstable_opts.proc_macro_execution_strategy
             == ProcMacroExecutionStrategy::CrossThread,
@@ -122,7 +122,7 @@ impl MultiItemModifier for DeriveProcMacro {
         // We had a lint for a long time, but now we just emit a hard error.
         // Eventually we might remove the special case hard error check
         // altogether. See #73345.
-        crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess);
+        crate::base::ann_pretty_printing_compatibility_hack(&item, &ecx.sess.psess);
         let input = item.to_tokens();
         let stream = {
             let _timer =

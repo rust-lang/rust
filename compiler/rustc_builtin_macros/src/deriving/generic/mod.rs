@@ -185,8 +185,9 @@ use rustc_ast::{
     self as ast, AnonConst, BindingMode, ByRef, EnumDef, Expr, GenericArg, GenericParamKind,
     Generics, Mutability, PatKind, VariantData,
 };
-use rustc_attr_parsing as attr;
+use rustc_attr_parsing::{AttributeKind, AttributeParser, ReprPacked};
 use rustc_expand::base::{Annotatable, ExtCtxt};
+use rustc_hir::Attribute;
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
 use thin_vec::{ThinVec, thin_vec};
 use ty::{Bounds, Path, Ref, Self_, Ty};
@@ -480,14 +481,10 @@ impl<'a> TraitDef<'a> {
     ) {
         match item {
             Annotatable::Item(item) => {
-                let is_packed = item.attrs.iter().any(|attr| {
-                    for r in attr::find_repr_attrs(cx.sess, attr) {
-                        if let attr::ReprPacked(_) = r {
-                            return true;
-                        }
-                    }
-                    false
-                });
+                let is_packed = matches!(
+                    AttributeParser::parse_limited(cx.sess, &item.attrs, sym::repr, item.span, true),
+                    Some(Attribute::Parsed(AttributeKind::Repr(r))) if r.iter().any(|(x, _)| matches!(x, ReprPacked(..)))
+                );
 
                 let newitem = match &item.kind {
                     ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
@@ -690,9 +687,11 @@ impl<'a> TraitDef<'a> {
         // and similarly for where clauses
         where_clause.predicates.extend(generics.where_clause.predicates.iter().map(|clause| {
             ast::WherePredicate {
+                attrs: clause.attrs.clone(),
                 kind: clause.kind.clone(),
                 id: ast::DUMMY_NODE_ID,
                 span: clause.span.with_ctxt(ctxt),
+                is_placeholder: false,
             }
         }));
 
@@ -747,8 +746,13 @@ impl<'a> TraitDef<'a> {
                         };
 
                         let kind = ast::WherePredicateKind::BoundPredicate(predicate);
-                        let predicate =
-                            ast::WherePredicate { kind, id: ast::DUMMY_NODE_ID, span: self.span };
+                        let predicate = ast::WherePredicate {
+                            attrs: ThinVec::new(),
+                            kind,
+                            id: ast::DUMMY_NODE_ID,
+                            span: self.span,
+                            is_placeholder: false,
+                        };
                         where_clause.predicates.push(predicate);
                     }
                 }
@@ -1036,6 +1040,7 @@ impl<'a> MethodDef<'a> {
                 generics: fn_generics,
                 contract: None,
                 body: Some(body_block),
+                define_opaque: None,
             })),
             tokens: None,
         })
@@ -1220,10 +1225,12 @@ impl<'a> MethodDef<'a> {
 
             let discr_let_stmts: ThinVec<_> = iter::zip(&discr_idents, &selflike_args)
                 .map(|(&ident, selflike_arg)| {
-                    let variant_value =
-                        deriving::call_intrinsic(cx, span, sym::discriminant_value, thin_vec![
-                            selflike_arg.clone()
-                        ]);
+                    let variant_value = deriving::call_intrinsic(
+                        cx,
+                        span,
+                        sym::discriminant_value,
+                        thin_vec![selflike_arg.clone()],
+                    );
                     cx.stmt_let(span, false, ident, variant_value)
                 })
                 .collect();

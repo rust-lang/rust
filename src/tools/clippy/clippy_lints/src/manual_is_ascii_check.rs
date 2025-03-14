@@ -64,9 +64,7 @@ pub struct ManualIsAsciiCheck {
 
 impl ManualIsAsciiCheck {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -91,11 +89,11 @@ enum CharRange {
 
 impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        if !self.msrv.meets(msrvs::IS_ASCII_DIGIT) {
+        if !self.msrv.meets(cx, msrvs::IS_ASCII_DIGIT) {
             return;
         }
 
-        if is_in_const_context(cx) && !self.msrv.meets(msrvs::IS_ASCII_DIGIT_CONST) {
+        if is_in_const_context(cx) && !self.msrv.meets(cx, msrvs::IS_ASCII_DIGIT_CONST) {
             return;
         }
 
@@ -119,8 +117,6 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             check_is_ascii(cx, expr.span, arg, &range, ty_sugg);
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 fn get_ty_sugg<'tcx>(cx: &LateContext<'tcx>, arg: &Expr<'_>) -> Option<(Span, Ty<'tcx>)> {

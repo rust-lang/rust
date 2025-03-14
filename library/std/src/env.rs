@@ -202,6 +202,9 @@ impl fmt::Debug for VarsOs {
 /// Returns [`VarError::NotUnicode`] if the variable's value is not valid
 /// Unicode. If this is not desired, consider using [`var_os`].
 ///
+/// Use [`env!`] or [`option_env!`] instead if you want to check environment
+/// variables at compile time.
+///
 /// # Examples
 ///
 /// ```
@@ -568,7 +571,7 @@ pub struct JoinPathsError {
 ///         let mut paths = env::split_paths(&path).collect::<Vec<_>>();
 ///         paths.push(PathBuf::from("/home/xyz/bin"));
 ///         let new_path = env::join_paths(paths)?;
-///         env::set_var("PATH", &new_path);
+///         unsafe { env::set_var("PATH", &new_path); }
 ///     }
 ///
 ///     Ok(())
@@ -641,11 +644,6 @@ impl Error for JoinPathsError {
 ///     None => println!("Impossible to get your home dir!"),
 /// }
 /// ```
-#[deprecated(
-    since = "1.29.0",
-    note = "This function's behavior may be unexpected on Windows. \
-            Consider using a crate from crates.io instead."
-)]
 #[must_use]
 #[stable(feature = "env", since = "1.0.0")]
 pub fn home_dir() -> Option<PathBuf> {
@@ -668,7 +666,9 @@ pub fn home_dir() -> Option<PathBuf> {
 /// On Unix, returns the value of the `TMPDIR` environment variable if it is
 /// set, otherwise the value is OS-specific:
 /// - On Android, there is no global temporary folder (it is usually allocated
-///   per-app), it returns `/data/local/tmp`.
+///   per-app), it will return the application's cache dir if the program runs
+///   in application's namespace and system version is Android 13 (or above), or
+///   `/data/local/tmp` otherwise.
 /// - On Darwin-based OSes (macOS, iOS, etc) it returns the directory provided
 ///   by `confstr(_CS_DARWIN_USER_TEMP_DIR, ...)`, as recommended by [Apple's
 ///   security guidelines][appledoc].

@@ -51,7 +51,7 @@ pub(crate) fn collect_spans_and_sources(
         let mut visitor = SpanMapVisitor { tcx, matches: FxHashMap::default() };
 
         if generate_link_to_definition {
-            tcx.hir().walk_toplevel_module(&mut visitor);
+            tcx.hir_walk_toplevel_module(&mut visitor);
         }
         let sources = sources::collect_local_sources(tcx, src_root, krate);
         (sources, visitor.matches)
@@ -95,10 +95,8 @@ impl SpanMapVisitor<'_> {
                     .unwrap_or(path.span);
                 self.matches.insert(span, link);
             }
-            Res::Local(_) => {
-                if let Some(span) = self.tcx.hir().res_span(path.res) {
-                    self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
-                }
+            Res::Local(_) if let Some(span) = self.tcx.hir().res_span(path.res) => {
+                self.matches.insert(path.span, LinkFromSrc::Local(clean::Span::new(span)));
             }
             Res::PrimTy(p) => {
                 // FIXME: Doesn't handle "path-like" primitives like arrays or tuples.
@@ -111,15 +109,15 @@ impl SpanMapVisitor<'_> {
 
     /// Used to generate links on items' definition to go to their documentation page.
     pub(crate) fn extract_info_from_hir_id(&mut self, hir_id: HirId) {
-        if let Node::Item(item) = self.tcx.hir_node(hir_id) {
-            if let Some(span) = self.tcx.def_ident_span(item.owner_id) {
-                let cspan = clean::Span::new(span);
-                // If the span isn't from the current crate, we ignore it.
-                if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
-                    return;
-                }
-                self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
+        if let Node::Item(item) = self.tcx.hir_node(hir_id)
+            && let Some(span) = self.tcx.def_ident_span(item.owner_id)
+        {
+            let cspan = clean::Span::new(span);
+            // If the span isn't from the current crate, we ignore it.
+            if cspan.inner().is_dummy() || cspan.cnum(self.tcx.sess) != LOCAL_CRATE {
+                return;
             }
+            self.matches.insert(span, LinkFromSrc::Doc(item.owner_id.to_def_id()));
         }
     }
 
@@ -173,18 +171,18 @@ impl SpanMapVisitor<'_> {
     }
 
     fn infer_id(&mut self, hir_id: HirId, expr_hir_id: Option<HirId>, span: Span) {
-        let hir = self.tcx.hir();
-        let body_id = hir.enclosing_body_owner(hir_id);
+        let tcx = self.tcx;
+        let body_id = tcx.hir_enclosing_body_owner(hir_id);
         // FIXME: this is showing error messages for parts of the code that are not
         // compiled (because of cfg)!
         //
         // See discussion in https://github.com/rust-lang/rust/issues/69426#issuecomment-1019412352
-        let typeck_results = self.tcx.typeck_body(hir.body_owned_by(body_id).id());
+        let typeck_results = tcx.typeck_body(tcx.hir_body_owned_by(body_id).id());
         // Interestingly enough, for method calls, we need the whole expression whereas for static
         // method/function calls, we need the call expression specifically.
         if let Some(def_id) = typeck_results.type_dependent_def_id(expr_hir_id.unwrap_or(hir_id)) {
             let link = if def_id.as_local().is_some() {
-                LinkFromSrc::Local(rustc_span(def_id, self.tcx))
+                LinkFromSrc::Local(rustc_span(def_id, tcx))
             } else {
                 LinkFromSrc::External(def_id)
             };
@@ -221,8 +219,8 @@ impl SpanMapVisitor<'_> {
 impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_path(&mut self, path: &rustc_hir::Path<'tcx>, _id: HirId) {
@@ -253,7 +251,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // If it's a "mod foo {}", we want to look to its documentation page.
             self.extract_info_from_hir_id(id);
         }
-        intravisit::walk_mod(self, m, id);
+        intravisit::walk_mod(self, m);
     }
 
     fn visit_expr(&mut self, expr: &'tcx rustc_hir::Expr<'tcx>) {
@@ -274,7 +272,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
 
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         match item.kind {
-            ItemKind::Static(_, _, _)
+            ItemKind::Static(..)
             | ItemKind::Const(_, _, _)
             | ItemKind::Fn { .. }
             | ItemKind::Macro(_, _)
@@ -288,7 +286,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             | ItemKind::Use(_, _)
             | ItemKind::ExternCrate(_)
             | ItemKind::ForeignMod { .. }
-            | ItemKind::GlobalAsm(_)
+            | ItemKind::GlobalAsm { .. }
             // We already have "visit_mod" above so no need to check it here.
             | ItemKind::Mod(_) => {}
         }

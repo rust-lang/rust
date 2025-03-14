@@ -11,7 +11,7 @@ declare_clippy_lint! {
     /// Detects cases where the result of a `format!` call is
     /// appended to an existing `String`.
     ///
-    /// ### Why restrict this?
+    /// ### Why is this bad?
     /// Introduces an extra, avoidable heap allocation.
     ///
     /// ### Known problems
@@ -35,7 +35,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.62.0"]
     pub FORMAT_PUSH_STRING,
-    restriction,
+    pedantic,
     "`format!(..)` appended to existing `String`"
 }
 declare_lint_pass!(FormatPushString => [FORMAT_PUSH_STRING]);

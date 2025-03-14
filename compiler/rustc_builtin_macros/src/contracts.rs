@@ -1,11 +1,9 @@
-#![allow(unused_imports, unused_variables)]
-
 use rustc_ast::token;
 use rustc_ast::tokenstream::{DelimSpacing, DelimSpan, Spacing, TokenStream, TokenTree};
 use rustc_errors::ErrorGuaranteed;
 use rustc_expand::base::{AttrProcMacro, ExtCtxt};
 use rustc_span::Span;
-use rustc_span::symbol::{Ident, Symbol, kw, sym};
+use rustc_span::symbol::{Ident, Symbol, kw};
 
 pub(crate) struct ExpandRequires;
 
@@ -121,23 +119,19 @@ fn expand_contract_clause(
         }
     }
 
-    // Record the span as a contract attribute expansion.
-    // This is used later to stop users from using the extended syntax directly
-    // which is gated via `contracts_internals`.
-    ecx.psess().contract_attribute_spans.push(attr_span);
-
     Ok(new_tts)
 }
 
 fn expand_requires_tts(
-    _ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
     annotation: TokenStream,
     annotated: TokenStream,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
+    let feature_span = ecx.with_def_site_ctxt(attr_span);
+    expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
         new_tts.push_tree(TokenTree::Token(
-            token::Token::from_ast_ident(Ident::new(kw::ContractRequires, attr_span)),
+            token::Token::from_ast_ident(Ident::new(kw::ContractRequires, feature_span)),
             Spacing::Joint,
         ));
         new_tts.push_tree(TokenTree::Token(
@@ -155,14 +149,15 @@ fn expand_requires_tts(
 }
 
 fn expand_ensures_tts(
-    _ecx: &mut ExtCtxt<'_>,
+    ecx: &mut ExtCtxt<'_>,
     attr_span: Span,
     annotation: TokenStream,
     annotated: TokenStream,
 ) -> Result<TokenStream, ErrorGuaranteed> {
-    expand_contract_clause(_ecx, attr_span, annotated, |new_tts| {
+    let feature_span = ecx.with_def_site_ctxt(attr_span);
+    expand_contract_clause(ecx, attr_span, annotated, |new_tts| {
         new_tts.push_tree(TokenTree::Token(
-            token::Token::from_ast_ident(Ident::new(kw::ContractEnsures, attr_span)),
+            token::Token::from_ast_ident(Ident::new(kw::ContractEnsures, feature_span)),
             Spacing::Joint,
         ));
         new_tts.push_tree(TokenTree::Delimited(

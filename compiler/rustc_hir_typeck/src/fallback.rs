@@ -503,7 +503,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         let unit_errors = remaining_errors_if_fallback_to(self.tcx.types.unit);
         if unit_errors.is_empty()
             && let mut never_errors = remaining_errors_if_fallback_to(self.tcx.types.never)
-            && let [ref mut never_error, ..] = never_errors.as_mut_slice()
+            && let [never_error, ..] = never_errors.as_mut_slice()
         {
             self.adjust_fulfillment_error_for_expr_obligation(never_error);
             let sugg = self.try_to_suggest_annotations(diverging_vids, coercions);
@@ -573,7 +573,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
         coercions: &VecGraph<ty::TyVid, true>,
     ) -> errors::SuggestAnnotations {
         let body =
-            self.tcx.hir().maybe_body_owned_by(self.body_id).expect("body id must have an owner");
+            self.tcx.hir_maybe_body_owned_by(self.body_id).expect("body id must have an owner");
         // For each diverging var, look through the HIR for a place to give it
         // a type annotation. We do this per var because we only really need one
         // suggestion to influence a var to be `()`.
@@ -651,6 +651,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         if let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(inf_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
+            && inf_span.can_be_used_for_suggestions()
         {
             return ControlFlow::Break(errors::SuggestAnnotation::Unit(inf_span));
         }
@@ -662,7 +663,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
         &mut self,
         qpath: &'tcx rustc_hir::QPath<'tcx>,
         id: HirId,
-        _span: Span,
+        span: Span,
     ) -> Self::Result {
         let arg_segment = match qpath {
             hir::QPath::Resolved(_, path) => {
@@ -674,13 +675,21 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             }
         };
         // Alternatively, try to turbofish `::<_, (), _>`.
-        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id() {
+        if let Some(def_id) = self.fcx.typeck_results.borrow().qpath_res(qpath, id).opt_def_id()
+            && span.can_be_used_for_suggestions()
+        {
             self.suggest_for_segment(arg_segment, def_id, id)?;
         }
         hir::intravisit::walk_qpath(self, qpath, id)
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) -> Self::Result {
+        if let hir::ExprKind::Closure(&hir::Closure { body, .. })
+        | hir::ExprKind::ConstBlock(hir::ConstBlock { body, .. }) = expr.kind
+        {
+            self.visit_body(self.fcx.tcx.hir_body(body))?;
+        }
+
         // Try to suggest adding an explicit qself `()` to a trait method path.
         // i.e. changing `Default::default()` to `<() as Default>::default()`.
         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -691,17 +700,21 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && let Some(vid) = self.fcx.root_vid(self_ty)
             && self.reachable_vids.contains(&vid)
             && let [.., trait_segment, _method_segment] = path.segments
+            && expr.span.can_be_used_for_suggestions()
         {
             let span = path.span.shrink_to_lo().to(trait_segment.ident.span);
             return ControlFlow::Break(errors::SuggestAnnotation::Path(span));
         }
+
         // Or else, try suggesting turbofishing the method args.
         if let hir::ExprKind::MethodCall(segment, ..) = expr.kind
             && let Some(def_id) =
                 self.fcx.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            && expr.span.can_be_used_for_suggestions()
         {
             self.suggest_for_segment(segment, def_id, expr.hir_id)?;
         }
+
         hir::intravisit::walk_expr(self, expr)
     }
 
@@ -712,6 +725,7 @@ impl<'tcx> Visitor<'tcx> for AnnotateUnitFallbackVisitor<'_, 'tcx> {
             && let Some(ty) = self.fcx.typeck_results.borrow().node_type_opt(local.hir_id)
             && let Some(vid) = self.fcx.root_vid(ty)
             && self.reachable_vids.contains(&vid)
+            && local.span.can_be_used_for_suggestions()
         {
             return ControlFlow::Break(errors::SuggestAnnotation::Local(
                 local.pat.span.shrink_to_hi(),
@@ -750,7 +764,7 @@ fn compute_unsafe_infer_vars<'a, 'tcx>(
     fcx: &'a FnCtxt<'a, 'tcx>,
     body_id: LocalDefId,
 ) -> UnordMap<ty::TyVid, (HirId, Span, UnsafeUseReason)> {
-    let body = fcx.tcx.hir().maybe_body_owned_by(body_id).expect("body id must have an owner");
+    let body = fcx.tcx.hir_maybe_body_owned_by(body_id).expect("body id must have an owner");
     let mut res = UnordMap::default();
 
     struct UnsafeInferVarsVisitor<'a, 'tcx> {

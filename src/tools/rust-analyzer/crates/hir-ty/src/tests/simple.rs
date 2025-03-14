@@ -3814,3 +3814,89 @@ async fn foo(a: (), b: i32) -> u32 {
         "#,
     );
 }
+
+#[test]
+fn irrefutable_slices() {
+    check_infer(
+        r#"
+//- minicore: from
+struct A;
+
+impl From<A> for [u8; 2] {
+    fn from(a: A) -> Self {
+        [0; 2]
+    }
+}
+impl From<A> for [u8; 3] {
+    fn from(a: A) -> Self {
+        [0; 3]
+    }
+}
+
+
+fn main() {
+    let a = A;
+    let [b, c] = a.into();
+}
+"#,
+        expect![[r#"
+            50..51 'a': A
+            64..86 '{     ...     }': [u8; 2]
+            74..80 '[0; 2]': [u8; 2]
+            75..76 '0': u8
+            78..79 '2': usize
+            128..129 'a': A
+            142..164 '{     ...     }': [u8; 3]
+            152..158 '[0; 3]': [u8; 3]
+            153..154 '0': u8
+            156..157 '3': usize
+            179..224 '{     ...o(); }': ()
+            189..190 'a': A
+            193..194 'A': A
+            204..210 '[b, c]': [u8; 2]
+            205..206 'b': u8
+            208..209 'c': u8
+            213..214 'a': A
+            213..221 'a.into()': [u8; 2]
+        "#]],
+    );
+}
+
+#[test]
+fn regression_19196() {
+    check_infer(
+        r#"
+//- minicore: async_fn
+fn async_closure<F: AsyncFnOnce(i32)>(f: F) {}
+fn closure<F: FnOnce(i32)>(f: F) {}
+
+fn main() {
+    async_closure(async |arg| {
+        arg;
+    });
+    closure(|arg| {
+        arg;
+    });
+}
+"#,
+        expect![[r#"
+            38..39 'f': F
+            44..46 '{}': ()
+            74..75 'f': F
+            80..82 '{}': ()
+            94..191 '{     ... }); }': ()
+            100..113 'async_closure': fn async_closure<impl AsyncFnOnce(i32) -> impl Future<Output = ()>>(impl AsyncFnOnce(i32) -> impl Future<Output = ()>)
+            100..147 'async_...    })': ()
+            114..146 'async ...     }': impl AsyncFnOnce(i32) -> impl Future<Output = ()>
+            121..124 'arg': i32
+            126..146 '{     ...     }': ()
+            136..139 'arg': i32
+            153..160 'closure': fn closure<impl FnOnce(i32)>(impl FnOnce(i32))
+            153..188 'closur...    })': ()
+            161..187 '|arg| ...     }': impl FnOnce(i32)
+            162..165 'arg': i32
+            167..187 '{     ...     }': ()
+            177..180 'arg': i32
+        "#]],
+    );
+}

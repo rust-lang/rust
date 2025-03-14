@@ -10,7 +10,11 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
 
     // Type-level uninhabitedness should always imply ABI uninhabitedness.
     if layout.ty.is_privately_uninhabited(tcx, cx.typing_env) {
-        assert!(layout.is_uninhabited());
+        assert!(
+            layout.is_uninhabited(),
+            "{:?} is type-level uninhabited but not ABI-uninhabited?",
+            layout.ty
+        );
     }
 
     if layout.size.bytes() % layout.align.abi.bytes() != 0 {
@@ -29,7 +33,7 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     fn non_zst_fields<'tcx, 'a>(
         cx: &'a LayoutCx<'tcx>,
         layout: &'a TyAndLayout<'tcx>,
-    ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> + 'a {
+    ) -> impl Iterator<Item = (Size, TyAndLayout<'tcx>)> {
         (0..layout.layout.fields().count()).filter_map(|i| {
             let field = layout.field(cx, i);
             // Also checking `align == 1` here leads to test failures in
@@ -65,31 +69,30 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
     }
 
     fn check_layout_abi<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayout<'tcx>) {
-        // Verify the ABI mandated alignment and size.
-        let align = layout.backend_repr.inherent_align(cx).map(|align| align.abi);
-        let size = layout.backend_repr.inherent_size(cx);
-        let Some((align, size)) = align.zip(size) else {
-            assert_matches!(
-                layout.layout.backend_repr(),
-                BackendRepr::Uninhabited | BackendRepr::Memory { .. },
-                "ABI unexpectedly missing alignment and/or size in {layout:#?}"
+        // Verify the ABI-mandated alignment and size for scalars.
+        let align = layout.backend_repr.scalar_align(cx);
+        let size = layout.backend_repr.scalar_size(cx);
+        if let Some(align) = align {
+            assert_eq!(
+                layout.layout.align().abi,
+                align,
+                "alignment mismatch between ABI and layout in {layout:#?}"
             );
-            return;
-        };
-        assert_eq!(
-            layout.layout.align().abi,
-            align,
-            "alignment mismatch between ABI and layout in {layout:#?}"
-        );
-        assert_eq!(
-            layout.layout.size(),
-            size,
-            "size mismatch between ABI and layout in {layout:#?}"
-        );
+        }
+        if let Some(size) = size {
+            assert_eq!(
+                layout.layout.size(),
+                size,
+                "size mismatch between ABI and layout in {layout:#?}"
+            );
+        }
 
         // Verify per-ABI invariants
         match layout.layout.backend_repr() {
             BackendRepr::Scalar(_) => {
+                // These must always be present for `Scalar` types.
+                let align = align.unwrap();
+                let size = size.unwrap();
                 // Check that this matches the underlying field.
                 let inner = skip_newtypes(cx, layout);
                 assert!(
@@ -231,11 +234,17 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     "`ScalarPair` second field with bad ABI in {inner:#?}",
                 );
             }
-            BackendRepr::Vector { element, .. } => {
-                assert!(align >= element.align(cx).abi); // just sanity-checking `vector_align`.
-                // FIXME: Do some kind of check of the inner type, like for Scalar and ScalarPair.
+            BackendRepr::SimdVector { element, count } => {
+                let align = layout.align.abi;
+                let size = layout.size;
+                let element_align = element.align(cx).abi;
+                let element_size = element.size(cx);
+                // Currently, vectors must always be aligned to at least their elements:
+                assert!(align >= element_align);
+                // And the size has to be element * count plus alignment padding, of course
+                assert!(size == (element_size * count).align_to(align));
             }
-            BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {} // Nothing to check.
+            BackendRepr::Memory { .. } => {} // Nothing to check.
         }
     }
 
@@ -291,8 +300,8 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     || variant.is_uninhabited()
                 {
                     // These are never actually accessed anyway, so we can skip the coherence check
-                    // for them. They also fail that check, since they have
-                    // `Aggregate`/`Uninhabited` ABI even when the main type is
+                    // for them. They also fail that check, since they may have
+                    // a different ABI even when the main type is
                     // `Scalar`/`ScalarPair`. (Note that sometimes, variants with fields have size
                     // 0, and sometimes, variants without fields have non-0 size.)
                     continue;
@@ -306,7 +315,6 @@ pub(super) fn layout_sanity_check<'tcx>(cx: &LayoutCx<'tcx>, layout: &TyAndLayou
                     (BackendRepr::ScalarPair(a1, b1), BackendRepr::ScalarPair(a2, b2)) => {
                         scalar_coherent(a1, a2) && scalar_coherent(b1, b2)
                     }
-                    (BackendRepr::Uninhabited, _) => true,
                     (BackendRepr::Memory { .. }, _) => true,
                     _ => false,
                 };

@@ -18,282 +18,263 @@ export async function createClient(
     config: Config,
     unlinkedFiles: vscode.Uri[],
 ): Promise<lc.LanguageClient> {
+    const raMiddleware: lc.Middleware = {
+        workspace: {
+            // HACK: This is a workaround, when the client has been disposed, VSCode
+            // continues to emit events to the client and the default one for this event
+            // attempt to restart the client for no reason
+            async didChangeWatchedFile(event, next) {
+                if (client.isRunning()) {
+                    await next(event);
+                }
+            },
+            async configuration(
+                params: lc.ConfigurationParams,
+                token: vscode.CancellationToken,
+                next: lc.ConfigurationRequest.HandlerSignature,
+            ) {
+                const resp = await next(params, token);
+                if (resp && Array.isArray(resp)) {
+                    return resp.map((val) => {
+                        return prepareVSCodeConfig(val);
+                    });
+                } else {
+                    return resp;
+                }
+            },
+        },
+        async handleDiagnostics(
+            uri: vscode.Uri,
+            diagnosticList: vscode.Diagnostic[],
+            next: lc.HandleDiagnosticsSignature,
+        ) {
+            const preview = config.previewRustcOutput;
+            const errorCode = config.useRustcErrorCode;
+            diagnosticList.forEach((diag, idx) => {
+                const value =
+                    typeof diag.code === "string" || typeof diag.code === "number"
+                        ? diag.code
+                        : diag.code?.value;
+                if (
+                    // FIXME: We currently emit this diagnostic way too early, before we have
+                    // loaded the project fully
+                    // value === "unlinked-file" &&
+                    value === "temporary-disabled" &&
+                    !unlinkedFiles.includes(uri) &&
+                    (diag.message === "file not included in crate hierarchy" ||
+                        diag.message.startsWith("This file is not included in any crates"))
+                ) {
+                    const config = vscode.workspace.getConfiguration("rust-analyzer");
+                    if (config.get("showUnlinkedFileNotification")) {
+                        unlinkedFiles.push(uri);
+                        const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
+                        if (folder) {
+                            const parentBackslash = uri.fsPath.lastIndexOf(pathSeparator + "src");
+                            const parent = uri.fsPath.substring(0, parentBackslash);
+
+                            if (parent.startsWith(folder)) {
+                                const path = vscode.Uri.file(parent + pathSeparator + "Cargo.toml");
+                                void vscode.workspace.fs.stat(path).then(async () => {
+                                    const choice = await vscode.window.showInformationMessage(
+                                        `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path.path}, do you want to add it to the linked Projects?`,
+                                        "Yes",
+                                        "No",
+                                        "Don't show this again",
+                                    );
+                                    switch (choice) {
+                                        case undefined:
+                                            break;
+                                        case "No":
+                                            break;
+                                        case "Yes": {
+                                            const pathToInsert =
+                                                "." +
+                                                parent.substring(folder.length) +
+                                                pathSeparator +
+                                                "Cargo.toml";
+                                            const value = config
+                                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                                .get<any[]>("linkedProjects")
+                                                ?.concat(pathToInsert);
+                                            await config.update("linkedProjects", value, false);
+                                            break;
+                                        }
+                                        case "Don't show this again":
+                                            await config.update(
+                                                "showUnlinkedFileNotification",
+                                                false,
+                                                false,
+                                            );
+                                            break;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                }
+
+                // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
+                // Diagnostic class, if they ever break this we are out of luck and have to go
+                // back to the worst diagnostics experience ever:)
+
+                // We encode the rendered output of a rustc diagnostic in the rendered field of
+                // the data payload of the lsp diagnostic. If that field exists, overwrite the
+                // diagnostic code such that clicking it opens the diagnostic in a readonly
+                // text editor for easy inspection
+                const rendered = (diag as unknown as { data?: { rendered?: string } }).data
+                    ?.rendered;
+                if (rendered) {
+                    if (preview) {
+                        const decolorized = anser.ansiToText(rendered);
+                        const index = decolorized.match(/^(note|help):/m)?.index || rendered.length;
+                        diag.message = decolorized
+                            .substring(0, index)
+                            .replace(/^ -->[^\n]+\n/m, "");
+                    }
+                    diag.code = {
+                        target: vscode.Uri.from({
+                            scheme: diagnostics.URI_SCHEME,
+                            path: `/diagnostic message [${idx.toString()}]`,
+                            fragment: uri.toString(),
+                            query: idx.toString(),
+                        }),
+                        value: errorCode && value ? value : "Click for full compiler diagnostic",
+                    };
+                }
+            });
+            return next(uri, diagnosticList);
+        },
+        async provideHover(
+            document: vscode.TextDocument,
+            position: vscode.Position,
+            token: vscode.CancellationToken,
+            _next: lc.ProvideHoverSignature,
+        ) {
+            const editor = vscode.window.activeTextEditor;
+            const positionOrRange = editor?.selection?.contains(position)
+                ? client.code2ProtocolConverter.asRange(editor.selection)
+                : client.code2ProtocolConverter.asPosition(position);
+            const params = {
+                textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
+                position: positionOrRange,
+            };
+            return client.sendRequest(ra.hover, params, token).then(
+                (result) => {
+                    if (!result) return null;
+                    const hover = client.protocol2CodeConverter.asHover(result);
+                    if (result.actions) {
+                        hover.contents.push(renderHoverActions(result.actions));
+                    }
+                    return hover;
+                },
+                (error) => {
+                    client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
+                    return Promise.resolve(null);
+                },
+            );
+        },
+        // Using custom handling of CodeActions to support action groups and snippet edits.
+        // Note that this means we have to re-implement lazy edit resolving ourselves as well.
+        async provideCodeActions(
+            document: vscode.TextDocument,
+            range: vscode.Range,
+            context: vscode.CodeActionContext,
+            token: vscode.CancellationToken,
+            _next: lc.ProvideCodeActionsSignature,
+        ) {
+            const params: lc.CodeActionParams = {
+                textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
+                range: client.code2ProtocolConverter.asRange(range),
+                context: await client.code2ProtocolConverter.asCodeActionContext(context, token),
+            };
+            const callback = async (
+                values: (lc.Command | lc.CodeAction)[] | null,
+            ): Promise<(vscode.Command | vscode.CodeAction)[] | undefined> => {
+                if (values === null) return undefined;
+                const result: (vscode.CodeAction | vscode.Command)[] = [];
+                const groups = new Map<string, { index: number; items: vscode.CodeAction[] }>();
+                for (const item of values) {
+                    // In our case we expect to get code edits only from diagnostics
+                    if (lc.CodeAction.is(item)) {
+                        assert(!item.command, "We don't expect to receive commands in CodeActions");
+                        const action = await client.protocol2CodeConverter.asCodeAction(
+                            item,
+                            token,
+                        );
+                        result.push(action);
+                        continue;
+                    }
+                    assert(
+                        isCodeActionWithoutEditsAndCommands(item),
+                        "We don't expect edits or commands here",
+                    );
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const kind = client.protocol2CodeConverter.asCodeActionKind((item as any).kind);
+                    const action = new vscode.CodeAction(item.title, kind);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const group = (item as any).group;
+                    action.command = {
+                        command: "rust-analyzer.resolveCodeAction",
+                        title: item.title,
+                        arguments: [item],
+                    };
+
+                    // Set a dummy edit, so that VS Code doesn't try to resolve this.
+                    action.edit = new WorkspaceEdit();
+
+                    if (group) {
+                        let entry = groups.get(group);
+                        if (!entry) {
+                            entry = { index: result.length, items: [] };
+                            groups.set(group, entry);
+                            result.push(action);
+                        }
+                        entry.items.push(action);
+                    } else {
+                        result.push(action);
+                    }
+                }
+                for (const [group, { index, items }] of groups) {
+                    if (items.length === 1) {
+                        const item = unwrapUndefinable(items[0]);
+                        result[index] = item;
+                    } else {
+                        const action = new vscode.CodeAction(group);
+                        const item = unwrapUndefinable(items[0]);
+                        action.kind = item.kind;
+                        action.command = {
+                            command: "rust-analyzer.applyActionGroup",
+                            title: "",
+                            arguments: [
+                                items.map((item) => {
+                                    return {
+                                        label: item.title,
+                                        arguments: item.command!.arguments![0],
+                                    };
+                                }),
+                            ],
+                        };
+
+                        // Set a dummy edit, so that VS Code doesn't try to resolve this.
+                        action.edit = new WorkspaceEdit();
+
+                        result[index] = action;
+                    }
+                }
+                return result;
+            };
+            return client
+                .sendRequest(lc.CodeActionRequest.type, params, token)
+                .then(callback, (_error) => undefined);
+        },
+    };
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
         initializationOptions,
         diagnosticCollectionName: "rustc",
         traceOutputChannel,
         outputChannel,
-        middleware: {
-            workspace: {
-                // HACK: This is a workaround, when the client has been disposed, VSCode
-                // continues to emit events to the client and the default one for this event
-                // attempt to restart the client for no reason
-                async didChangeWatchedFile(event, next) {
-                    if (client.isRunning()) {
-                        await next(event);
-                    }
-                },
-                async configuration(
-                    params: lc.ConfigurationParams,
-                    token: vscode.CancellationToken,
-                    next: lc.ConfigurationRequest.HandlerSignature,
-                ) {
-                    const resp = await next(params, token);
-                    if (resp && Array.isArray(resp)) {
-                        return resp.map((val) => {
-                            return prepareVSCodeConfig(val);
-                        });
-                    } else {
-                        return resp;
-                    }
-                },
-            },
-            async handleDiagnostics(
-                uri: vscode.Uri,
-                diagnosticList: vscode.Diagnostic[],
-                next: lc.HandleDiagnosticsSignature,
-            ) {
-                const preview = config.previewRustcOutput;
-                const errorCode = config.useRustcErrorCode;
-                diagnosticList.forEach((diag, idx) => {
-                    const value =
-                        typeof diag.code === "string" || typeof diag.code === "number"
-                            ? diag.code
-                            : diag.code?.value;
-                    if (
-                        // FIXME: We currently emit this diagnostic way too early, before we have
-                        // loaded the project fully
-                        // value === "unlinked-file" &&
-                        value === "temporary-disabled" &&
-                        !unlinkedFiles.includes(uri) &&
-                        (diag.message === "file not included in crate hierarchy" ||
-                            diag.message.startsWith("This file is not included in any crates"))
-                    ) {
-                        const config = vscode.workspace.getConfiguration("rust-analyzer");
-                        if (config.get("showUnlinkedFileNotification")) {
-                            unlinkedFiles.push(uri);
-                            const folder = vscode.workspace.getWorkspaceFolder(uri)?.uri.fsPath;
-                            if (folder) {
-                                const parentBackslash = uri.fsPath.lastIndexOf(
-                                    pathSeparator + "src",
-                                );
-                                const parent = uri.fsPath.substring(0, parentBackslash);
-
-                                if (parent.startsWith(folder)) {
-                                    const path = vscode.Uri.file(
-                                        parent + pathSeparator + "Cargo.toml",
-                                    );
-                                    void vscode.workspace.fs.stat(path).then(async () => {
-                                        const choice = await vscode.window.showInformationMessage(
-                                            `This rust file does not belong to a loaded cargo project. It looks like it might belong to the workspace at ${path.path}, do you want to add it to the linked Projects?`,
-                                            "Yes",
-                                            "No",
-                                            "Don't show this again",
-                                        );
-                                        switch (choice) {
-                                            case undefined:
-                                                break;
-                                            case "No":
-                                                break;
-                                            case "Yes":
-                                                const pathToInsert =
-                                                    "." +
-                                                    parent.substring(folder.length) +
-                                                    pathSeparator +
-                                                    "Cargo.toml";
-                                                await config.update(
-                                                    "linkedProjects",
-                                                    config
-                                                        .get<any[]>("linkedProjects")
-                                                        ?.concat(pathToInsert),
-                                                    false,
-                                                );
-                                                break;
-                                            case "Don't show this again":
-                                                await config.update(
-                                                    "showUnlinkedFileNotification",
-                                                    false,
-                                                    false,
-                                                );
-                                                break;
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
-                    // Diagnostic class, if they ever break this we are out of luck and have to go
-                    // back to the worst diagnostics experience ever:)
-
-                    // We encode the rendered output of a rustc diagnostic in the rendered field of
-                    // the data payload of the lsp diagnostic. If that field exists, overwrite the
-                    // diagnostic code such that clicking it opens the diagnostic in a readonly
-                    // text editor for easy inspection
-                    const rendered = (diag as unknown as { data?: { rendered?: string } }).data
-                        ?.rendered;
-                    if (rendered) {
-                        if (preview) {
-                            const decolorized = anser.ansiToText(rendered);
-                            const index =
-                                decolorized.match(/^(note|help):/m)?.index || rendered.length;
-                            diag.message = decolorized
-                                .substring(0, index)
-                                .replace(/^ -->[^\n]+\n/m, "");
-                        }
-                        diag.code = {
-                            target: vscode.Uri.from({
-                                scheme: diagnostics.URI_SCHEME,
-                                path: `/diagnostic message [${idx.toString()}]`,
-                                fragment: uri.toString(),
-                                query: idx.toString(),
-                            }),
-                            value:
-                                errorCode && value ? value : "Click for full compiler diagnostic",
-                        };
-                    }
-                });
-                return next(uri, diagnosticList);
-            },
-            async provideHover(
-                document: vscode.TextDocument,
-                position: vscode.Position,
-                token: vscode.CancellationToken,
-                _next: lc.ProvideHoverSignature,
-            ) {
-                const editor = vscode.window.activeTextEditor;
-                const positionOrRange = editor?.selection?.contains(position)
-                    ? client.code2ProtocolConverter.asRange(editor.selection)
-                    : client.code2ProtocolConverter.asPosition(position);
-                return client
-                    .sendRequest(
-                        ra.hover,
-                        {
-                            textDocument:
-                                client.code2ProtocolConverter.asTextDocumentIdentifier(document),
-                            position: positionOrRange,
-                        },
-                        token,
-                    )
-                    .then(
-                        (result) => {
-                            if (!result) return null;
-                            const hover = client.protocol2CodeConverter.asHover(result);
-                            if (!!result.actions) {
-                                hover.contents.push(renderHoverActions(result.actions));
-                            }
-                            return hover;
-                        },
-                        (error) => {
-                            client.handleFailedRequest(lc.HoverRequest.type, token, error, null);
-                            return Promise.resolve(null);
-                        },
-                    );
-            },
-            // Using custom handling of CodeActions to support action groups and snippet edits.
-            // Note that this means we have to re-implement lazy edit resolving ourselves as well.
-            async provideCodeActions(
-                document: vscode.TextDocument,
-                range: vscode.Range,
-                context: vscode.CodeActionContext,
-                token: vscode.CancellationToken,
-                _next: lc.ProvideCodeActionsSignature,
-            ) {
-                const params: lc.CodeActionParams = {
-                    textDocument: client.code2ProtocolConverter.asTextDocumentIdentifier(document),
-                    range: client.code2ProtocolConverter.asRange(range),
-                    context: await client.code2ProtocolConverter.asCodeActionContext(
-                        context,
-                        token,
-                    ),
-                };
-                return client.sendRequest(lc.CodeActionRequest.type, params, token).then(
-                    async (values) => {
-                        if (values === null) return undefined;
-                        const result: (vscode.CodeAction | vscode.Command)[] = [];
-                        const groups = new Map<
-                            string,
-                            { index: number; items: vscode.CodeAction[] }
-                        >();
-                        for (const item of values) {
-                            // In our case we expect to get code edits only from diagnostics
-                            if (lc.CodeAction.is(item)) {
-                                assert(
-                                    !item.command,
-                                    "We don't expect to receive commands in CodeActions",
-                                );
-                                const action = await client.protocol2CodeConverter.asCodeAction(
-                                    item,
-                                    token,
-                                );
-                                result.push(action);
-                                continue;
-                            }
-                            assert(
-                                isCodeActionWithoutEditsAndCommands(item),
-                                "We don't expect edits or commands here",
-                            );
-                            const kind = client.protocol2CodeConverter.asCodeActionKind(
-                                (item as any).kind,
-                            );
-                            const action = new vscode.CodeAction(item.title, kind);
-                            const group = (item as any).group;
-                            action.command = {
-                                command: "rust-analyzer.resolveCodeAction",
-                                title: item.title,
-                                arguments: [item],
-                            };
-
-                            // Set a dummy edit, so that VS Code doesn't try to resolve this.
-                            action.edit = new WorkspaceEdit();
-
-                            if (group) {
-                                let entry = groups.get(group);
-                                if (!entry) {
-                                    entry = { index: result.length, items: [] };
-                                    groups.set(group, entry);
-                                    result.push(action);
-                                }
-                                entry.items.push(action);
-                            } else {
-                                result.push(action);
-                            }
-                        }
-                        for (const [group, { index, items }] of groups) {
-                            if (items.length === 1) {
-                                const item = unwrapUndefinable(items[0]);
-                                result[index] = item;
-                            } else {
-                                const action = new vscode.CodeAction(group);
-                                const item = unwrapUndefinable(items[0]);
-                                action.kind = item.kind;
-                                action.command = {
-                                    command: "rust-analyzer.applyActionGroup",
-                                    title: "",
-                                    arguments: [
-                                        items.map((item) => {
-                                            return {
-                                                label: item.title,
-                                                arguments: item.command!.arguments![0],
-                                            };
-                                        }),
-                                    ],
-                                };
-
-                                // Set a dummy edit, so that VS Code doesn't try to resolve this.
-                                action.edit = new WorkspaceEdit();
-
-                                result[index] = action;
-                            }
-                        }
-                        return result;
-                    },
-                    (_error) => undefined,
-                );
-            },
-        },
+        middleware: raMiddleware,
         markdown: {
             supportHtml: true,
         },
@@ -319,9 +300,11 @@ class ExperimentalFeatures implements lc.StaticFeature {
     constructor(config: Config) {
         this.testExplorer = config.testExplorer || false;
     }
+
     getState(): lc.FeatureState {
         return { kind: "static" };
     }
+
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
         capabilities.experimental = {
             snippetTextEdit: true,
@@ -345,11 +328,14 @@ class ExperimentalFeatures implements lc.StaticFeature {
             ...capabilities.experimental,
         };
     }
+
     initialize(
         _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined,
     ): void {}
+
     dispose(): void {}
+
     clear(): void {}
 }
 
@@ -357,6 +343,7 @@ class OverrideFeatures implements lc.StaticFeature {
     getState(): lc.FeatureState {
         return { kind: "static" };
     }
+
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
         // Force disable `augmentsSyntaxTokens`, VSCode's textmate grammar is somewhat incomplete
         // making the experience generally worse
@@ -365,14 +352,18 @@ class OverrideFeatures implements lc.StaticFeature {
             caps.augmentsSyntaxTokens = false;
         }
     }
+
     initialize(
         _capabilities: lc.ServerCapabilities,
         _documentSelector: lc.DocumentSelector | undefined,
     ): void {}
+
     dispose(): void {}
+
     clear(): void {}
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isCodeActionWithoutEditsAndCommands(value: any): boolean {
     const candidate: lc.CodeAction = value;
     return (

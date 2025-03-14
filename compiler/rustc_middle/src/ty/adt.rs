@@ -4,7 +4,6 @@ use std::ops::Range;
 use std::str;
 
 use rustc_abi::{FIRST_VARIANT, ReprOptions, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::intern::Interned;
@@ -54,8 +53,6 @@ bitflags::bitflags! {
         const IS_VARIANT_LIST_NON_EXHAUSTIVE = 1 << 8;
         /// Indicates whether the type is `UnsafeCell`.
         const IS_UNSAFE_CELL              = 1 << 9;
-        /// Indicates whether the type is anonymous.
-        const IS_ANONYMOUS                = 1 << 10;
     }
 }
 rustc_data_structures::external_bitflags_debug! { AdtFlags }
@@ -215,6 +212,10 @@ impl<'tcx> rustc_type_ir::inherent::AdtDef<TyCtxt<'tcx>> for AdtDef<'tcx> {
 
     fn is_phantom_data(self) -> bool {
         self.is_phantom_data()
+    }
+
+    fn is_manually_drop(self) -> bool {
+        self.is_manually_drop()
     }
 
     fn all_field_tys(
@@ -399,12 +400,6 @@ impl<'tcx> AdtDef<'tcx> {
         self.flags().contains(AdtFlags::IS_MANUALLY_DROP)
     }
 
-    /// Returns `true` if this is an anonymous adt
-    #[inline]
-    pub fn is_anonymous(self) -> bool {
-        self.flags().contains(AdtFlags::IS_ANONYMOUS)
-    }
-
     /// Returns `true` if this type has a destructor.
     pub fn has_dtor(self, tcx: TyCtxt<'tcx>) -> bool {
         self.destructor(tcx).is_some()
@@ -536,7 +531,7 @@ impl<'tcx> AdtDef<'tcx> {
     pub fn discriminants(
         self,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         assert!(self.is_enum());
         let repr_type = self.repr().discr_type();
         let initial = repr_type.initial_discriminant(tcx);

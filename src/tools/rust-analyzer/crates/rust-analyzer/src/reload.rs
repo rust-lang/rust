@@ -178,6 +178,11 @@ impl GlobalState {
         }
 
         if !self.workspaces.is_empty() {
+            self.check_workspaces_msrv().for_each(|e| {
+                status.health |= lsp_ext::Health::Warning;
+                format_to!(message, "{e}");
+            });
+
             let proc_macro_clients =
                 self.proc_macro_clients.iter().map(Some).chain(iter::repeat_with(|| None));
 
@@ -316,6 +321,7 @@ impl GlobalState {
                             let workspace = project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 &cargo_config,
+                                &progress,
                             );
                             Ok(workspace)
                         }
@@ -512,6 +518,11 @@ impl GlobalState {
             // we don't care about build-script results, they are stale.
             // FIXME: can we abort the build scripts here if they are already running?
             self.workspaces = Arc::new(workspaces);
+            self.check_workspaces_msrv().for_each(|message| {
+                self.send_notification::<lsp_types::notification::ShowMessage>(
+                    lsp_types::ShowMessageParams { typ: lsp_types::MessageType::WARNING, message },
+                );
+            });
 
             if self.config.run_build_scripts(None) {
                 self.build_deps_changed = false;
@@ -701,12 +712,13 @@ impl GlobalState {
 
         let (crate_graph, proc_macro_paths, ws_data) = {
             // Create crate graph from all the workspaces
-            let vfs = &mut self.vfs.write().0;
-
+            let vfs = &self.vfs.read().0;
             let load = |path: &AbsPath| {
                 let vfs_path = vfs::VfsPath::from(path.to_path_buf());
                 self.crate_graph_file_dependencies.insert(vfs_path.clone());
-                vfs.file_id(&vfs_path)
+                vfs.file_id(&vfs_path).and_then(|(file_id, excluded)| {
+                    (excluded == vfs::FileExcluded::No).then_some(file_id)
+                })
             };
 
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
@@ -883,7 +895,6 @@ pub fn ws_to_crate_graph(
         ws_data.extend(mapping.values().copied().zip(iter::repeat(Arc::new(CrateWorkspaceData {
             toolchain: toolchain.clone(),
             data_layout: target_layout.clone(),
-            proc_macro_cwd: Some(ws.workspace_root().to_owned()),
         }))));
         proc_macro_paths.push(crate_proc_macros);
     }

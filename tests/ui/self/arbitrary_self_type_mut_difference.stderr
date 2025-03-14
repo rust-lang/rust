@@ -11,8 +11,9 @@ LL |     fn x(self: Pin<&mut Self>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: there is a method `y` with a similar name
    |
-LL |     Pin::new(&S).y();
-   |                  ~
+LL -     Pin::new(&S).x();
+LL +     Pin::new(&S).y();
+   |
 
 error[E0599]: no method named `y` found for struct `Pin<&mut S>` in the current scope
   --> $DIR/arbitrary_self_type_mut_difference.rs:12:22
@@ -27,8 +28,9 @@ LL |     fn y(self: Pin<&Self>) {}
    |     ^^^^^^^^^^^^^^^^^^^^^^
 help: there is a method `x` with a similar name
    |
-LL |     Pin::new(&mut S).x();
-   |                      ~
+LL -     Pin::new(&mut S).y();
+LL +     Pin::new(&mut S).x();
+   |
 
 error: aborting due to 2 previous errors
 

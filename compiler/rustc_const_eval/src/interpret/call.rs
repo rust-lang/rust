@@ -241,7 +241,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         interp_ok(caller == callee)
     }
 
-    fn check_argument_compat(
+    /// Returns a `bool` saying whether the two arguments are ABI-compatible.
+    pub fn check_argument_compat(
         &self,
         caller_abi: &ArgAbi<'tcx, Ty<'tcx>>,
         callee_abi: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -381,10 +382,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 "caller ABI: {:#?}, args: {:#?}",
                 caller_fn_abi,
                 args.iter()
-                    .map(|arg| (arg.layout().ty, match arg {
-                        FnArg::Copy(op) => format!("copy({op:?})"),
-                        FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
-                    }))
+                    .map(|arg| (
+                        arg.layout().ty,
+                        match arg {
+                            FnArg::Copy(op) => format!("copy({op:?})"),
+                            FnArg::InPlace(mplace) => format!("in-place({mplace:?})"),
+                        }
+                    ))
                     .collect::<Vec<_>>()
             );
             trace!(
@@ -874,10 +878,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         );
 
         // Check `unwinding`.
-        assert_eq!(unwinding, match self.frame().loc {
-            Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-            Right(_) => true,
-        });
+        assert_eq!(
+            unwinding,
+            match self.frame().loc {
+                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+                Right(_) => true,
+            }
+        );
         if unwinding && self.frame_idx() == 0 {
             throw_ub_custom!(fluent::const_eval_unwind_past_top);
         }

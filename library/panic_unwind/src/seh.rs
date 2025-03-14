@@ -49,7 +49,7 @@
 use alloc::boxed::Box;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
-use core::mem::{self, ManuallyDrop};
+use core::mem::ManuallyDrop;
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
@@ -135,7 +135,7 @@ mod imp {
     #[derive(Copy, Clone)]
     pub(super) struct ptr_t(u32);
 
-    extern "C" {
+    unsafe extern "C" {
         static __ImageBase: u8;
     }
 
@@ -225,11 +225,11 @@ static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     properties: 0,
     pType: ptr_t::null(),
     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
-    sizeOrOffset: mem::size_of::<Exception>() as c_int,
+    sizeOrOffset: size_of::<Exception>() as c_int,
     copyFunction: ptr_t::null(),
 };
 
-extern "C" {
+unsafe extern "C" {
     // The leading `\x01` byte here is actually a magical signal to LLVM to
     // *not* apply any other mangling like prefixing with a `_` character.
     //
@@ -268,9 +268,11 @@ static mut TYPE_DESCRIPTOR: _TypeDescriptor = _TypeDescriptor {
 macro_rules! define_cleanup {
     ($abi:tt $abi2:tt) => {
         unsafe extern $abi fn exception_cleanup(e: *mut Exception) {
-            if let Exception { data: Some(b), .. } = e.read() {
-                drop(b);
-                super::__rust_drop_panic();
+            unsafe {
+                if let Exception { data: Some(b), .. } = e.read() {
+                    drop(b);
+                    super::__rust_drop_panic();
+                }
             }
         }
         unsafe extern $abi2 fn exception_copy(
@@ -322,45 +324,51 @@ pub(crate) unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
     //
     // In any case, we basically need to do something like this until we can
     // express more operations in statics (and we may never be able to).
-    atomic_store_seqcst(
-        (&raw mut THROW_INFO.pmfnUnwind).cast(),
-        ptr_t::new(exception_cleanup as *mut u8).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
-        ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
-        ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE.pType).cast(),
-        ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
-    );
-    atomic_store_seqcst(
-        (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
-        ptr_t::new(exception_copy as *mut u8).raw(),
-    );
+    unsafe {
+        atomic_store_seqcst(
+            (&raw mut THROW_INFO.pmfnUnwind).cast(),
+            ptr_t::new(exception_cleanup as *mut u8).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut THROW_INFO.pCatchableTypeArray).cast(),
+            ptr_t::new((&raw mut CATCHABLE_TYPE_ARRAY).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE_ARRAY.arrayOfCatchableTypes[0]).cast(),
+            ptr_t::new((&raw mut CATCHABLE_TYPE).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE.pType).cast(),
+            ptr_t::new((&raw mut TYPE_DESCRIPTOR).cast()).raw(),
+        );
+        atomic_store_seqcst(
+            (&raw mut CATCHABLE_TYPE.copyFunction).cast(),
+            ptr_t::new(exception_copy as *mut u8).raw(),
+        );
+    }
 
-    extern "system-unwind" {
+    unsafe extern "system-unwind" {
         fn _CxxThrowException(pExceptionObject: *mut c_void, pThrowInfo: *mut u8) -> !;
     }
 
-    _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
+    unsafe {
+        _CxxThrowException(throw_ptr, (&raw mut THROW_INFO) as *mut _);
+    }
 }
 
 pub(crate) unsafe fn cleanup(payload: *mut u8) -> Box<dyn Any + Send> {
-    // A null payload here means that we got here from the catch (...) of
-    // __rust_try. This happens when a non-Rust foreign exception is caught.
-    if payload.is_null() {
-        super::__rust_foreign_exception();
+    unsafe {
+        // A null payload here means that we got here from the catch (...) of
+        // __rust_try. This happens when a non-Rust foreign exception is caught.
+        if payload.is_null() {
+            super::__rust_foreign_exception();
+        }
+        let exception = payload as *mut Exception;
+        let canary = (&raw const (*exception).canary).read();
+        if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
+            // A foreign Rust exception.
+            super::__rust_foreign_exception();
+        }
+        (*exception).data.take().unwrap()
     }
-    let exception = payload as *mut Exception;
-    let canary = (&raw const (*exception).canary).read();
-    if !core::ptr::eq(canary, &raw const TYPE_DESCRIPTOR) {
-        // A foreign Rust exception.
-        super::__rust_foreign_exception();
-    }
-    (*exception).data.take().unwrap()
 }

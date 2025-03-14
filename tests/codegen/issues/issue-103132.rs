@@ -1,4 +1,4 @@
-//@ compile-flags: -O -C overflow-checks
+//@ compile-flags: -Copt-level=3 -C overflow-checks
 
 #![crate_type = "lib"]
 

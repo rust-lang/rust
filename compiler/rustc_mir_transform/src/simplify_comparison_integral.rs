@@ -89,10 +89,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
 
                 use Operand::*;
                 match rhs {
-                    Rvalue::BinaryOp(_, box (ref mut left @ Move(_), Constant(_))) => {
+                    Rvalue::BinaryOp(_, box (left @ Move(_), Constant(_))) => {
                         *left = Copy(opt.to_switch_on);
                     }
-                    Rvalue::BinaryOp(_, box (Constant(_), ref mut right @ Move(_))) => {
+                    Rvalue::BinaryOp(_, box (Constant(_), right @ Move(_))) => {
                         *right = Copy(opt.to_switch_on);
                     }
                     _ => (),
@@ -113,10 +113,13 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyComparisonIntegral {
                 // if we have StorageDeads to remove then make sure to insert them at the top of
                 // each target
                 for bb_idx in new_targets.all_targets() {
-                    storage_deads_to_insert.push((*bb_idx, Statement {
-                        source_info: terminator.source_info,
-                        kind: StatementKind::StorageDead(opt.to_switch_on.local),
-                    }));
+                    storage_deads_to_insert.push((
+                        *bb_idx,
+                        Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::StorageDead(opt.to_switch_on.local),
+                        },
+                    ));
                 }
             }
 

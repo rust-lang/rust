@@ -11,7 +11,8 @@ pub(crate) mod pat_analysis;
 
 use chalk_ir::Mutability;
 use hir_def::{
-    body::Body, data::adt::VariantData, hir::PatId, AdtId, EnumVariantId, LocalFieldId, VariantId,
+    data::adt::VariantData, expr_store::Body, hir::PatId, AdtId, EnumVariantId, LocalFieldId,
+    VariantId,
 };
 use hir_expand::name::Name;
 use span::Edition;

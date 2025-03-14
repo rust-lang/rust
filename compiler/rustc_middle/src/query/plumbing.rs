@@ -1,6 +1,5 @@
 use std::ops::Deref;
 
-use field_offset::FieldOffset;
 use rustc_data_structures::sync::{AtomicU64, WorkerLocal};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::OwnerId;
@@ -24,8 +23,10 @@ pub struct DynamicQuery<'tcx, C: QueryCache> {
     pub eval_always: bool,
     pub dep_kind: DepKind,
     pub handle_cycle_error: HandleCycleError,
-    pub query_state: FieldOffset<QueryStates<'tcx>, QueryState<C::Key>>,
-    pub query_cache: FieldOffset<QueryCaches<'tcx>, C>,
+    // Offset of this query's state field in the QueryStates struct
+    pub query_state: usize,
+    // Offset of this query's cache field in the QueryCaches struct
+    pub query_cache: usize,
     pub cache_on_disk: fn(tcx: TyCtxt<'tcx>, key: &C::Key) -> bool,
     pub execute_query: fn(tcx: TyCtxt<'tcx>, k: C::Key) -> C::Value,
     pub compute: fn(tcx: TyCtxt<'tcx>, key: C::Key) -> C::Value,
@@ -164,7 +165,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
-#[inline]
+#[inline(always)]
 pub fn query_get_at<'tcx, Cache>(
     tcx: TyCtxt<'tcx>,
     execute_query: fn(TyCtxt<'tcx>, Span, Cache::Key, QueryMode) -> Option<Cache::Value>,
@@ -257,7 +258,7 @@ macro_rules! query_if_arena {
     };
 }
 
-/// If `separate_provide_if_extern`, then the key can be projected to its
+/// If `separate_provide_extern`, then the key can be projected to its
 /// local key via `<$K as AsLocalKey>::LocalKey`.
 macro_rules! local_key_if_separate_extern {
     ([] $($K:tt)*) => {
@@ -369,7 +370,7 @@ macro_rules! define_callbacks {
                 // Increase this limit if necessary, but do try to keep the size low if possible
                 #[cfg(target_pointer_width = "64")]
                 const _: () = {
-                    if mem::size_of::<Key<'static>>() > 88 {
+                    if size_of::<Key<'static>>() > 88 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),
@@ -385,7 +386,7 @@ macro_rules! define_callbacks {
                 #[cfg(target_pointer_width = "64")]
                 #[cfg(not(feature = "rustc_randomized_layouts"))]
                 const _: () = {
-                    if mem::size_of::<Value<'static>>() > 64 {
+                    if size_of::<Value<'static>>() > 64 {
                         panic!("{}", concat!(
                             "the query `",
                             stringify!($name),

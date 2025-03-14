@@ -3,7 +3,7 @@
 
 The type system relies on information in the environment in order for it to function correctly. This information is stored in the [`ParamEnv`][pe] type and it is important to use the correct `ParamEnv` when interacting with the type system.
 
-The information represented by `ParamEnv` is a list of in-scope where-clauses, and a [`Reveal`][reveal] (see linked docs for more information). A `ParamEnv` typically corresponds to a specific item's where clauses, some clauses are not explicitly written bounds and instead are implicitly added in [`predicates_of`][predicates_of] such as `ConstArgHasType` or some implied bounds.
+The information represented by `ParamEnv` is a list of in-scope where-clauses, and a `Reveal` (see linked docs for more information). A `ParamEnv` typically corresponds to a specific item's where clauses, some clauses are not explicitly written bounds and instead are implicitly added in [`predicates_of`][predicates_of] such as `ConstArgHasType` or some implied bounds.
 
 A `ParamEnv` can also be created with arbitrary data that is not derived from a specific item such as in [`compare_method_predicate_entailment`][method_pred_entailment] which creates a hybrid `ParamEnv` consisting of the impl's where clauses and the trait definition's function's where clauses. In most cases `ParamEnv`s are initially created via the [`param_env` query][query] which returns a `ParamEnv` derived from the provided item's where clauses.
 
@@ -57,4 +57,3 @@ It's very important to use the correct `ParamEnv` when interacting with the type
 [method_pred_entailment]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_hir_analysis/check/compare_impl_item/fn.compare_method_predicate_entailment.html
 [pe]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/struct.ParamEnv.html
 [query]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty/context/struct.TyCtxt.html#method.param_env
-[reveal]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_infer/traits/enum.Reveal.html

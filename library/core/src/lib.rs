@@ -192,7 +192,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -203,14 +202,17 @@
 //
 // Target features:
 // tidy-alphabetical-start
+#![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
+#![feature(keylocker_x86)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
+#![feature(s390x_target_feature)]
 #![feature(sha512_sm_x86)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
@@ -224,7 +226,7 @@ extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]
-use prelude::rust_2021::*;
+use prelude::rust_2024::*;
 
 #[cfg(not(test))] // See #65860
 #[macro_use]
@@ -248,7 +250,6 @@ pub mod autodiff {
     pub use crate::macros::builtin::autodiff;
 }
 
-#[cfg(not(bootstrap))]
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

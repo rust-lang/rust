@@ -432,7 +432,7 @@ fn check_nested_occurrences(
             }
             (
                 NestedMacroState::MacroRules,
-                &TokenTree::Token(Token { kind: TokenKind::Not, .. }),
+                &TokenTree::Token(Token { kind: TokenKind::Bang, .. }),
             ) => {
                 state = NestedMacroState::MacroRulesNot;
             }

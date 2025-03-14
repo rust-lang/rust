@@ -9,8 +9,9 @@ LL |             Foo::Baz(..) => (),
    |
 help: there is a variant with a similar name
    |
-LL |             Foo::Bar(..) => (),
-   |                  ~~~
+LL -             Foo::Baz(..) => (),
+LL +             Foo::Bar(..) => (),
+   |
 
 error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
   --> $DIR/issue-28971.rs:15:5

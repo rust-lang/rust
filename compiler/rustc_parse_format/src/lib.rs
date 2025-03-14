@@ -13,7 +13,6 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub use Alignment::*;
@@ -190,7 +189,7 @@ pub enum DebugHex {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum Count<'a> {
     /// The count is specified explicitly.
-    CountIs(usize),
+    CountIs(u16),
     /// The count is specified by the argument with the given name.
     CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
@@ -565,7 +564,7 @@ impl<'a> Parser<'a> {
     /// consuming a macro argument, `None` if it's the case.
     fn position(&mut self) -> Option<Position<'a>> {
         if let Some(i) = self.integer() {
-            Some(ArgumentIs(i))
+            Some(ArgumentIs(i.into()))
         } else {
             match self.cur.peek() {
                 Some(&(lo, c)) if rustc_lexer::is_id_start(c) => {
@@ -771,7 +770,7 @@ impl<'a> Parser<'a> {
     /// width.
     fn count(&mut self, start: usize) -> Count<'a> {
         if let Some(i) = self.integer() {
-            if self.consume('$') { CountIsParam(i) } else { CountIs(i) }
+            if self.consume('$') { CountIsParam(i.into()) } else { CountIs(i) }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
@@ -822,15 +821,15 @@ impl<'a> Parser<'a> {
         word
     }
 
-    fn integer(&mut self) -> Option<usize> {
-        let mut cur: usize = 0;
+    fn integer(&mut self) -> Option<u16> {
+        let mut cur: u16 = 0;
         let mut found = false;
         let mut overflow = false;
         let start = self.current_pos();
         while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
                 let (tmp, mul_overflow) = cur.overflowing_mul(10);
-                let (tmp, add_overflow) = tmp.overflowing_add(i as usize);
+                let (tmp, add_overflow) = tmp.overflowing_add(i as u16);
                 if mul_overflow || add_overflow {
                     overflow = true;
                 }
@@ -847,11 +846,11 @@ impl<'a> Parser<'a> {
             let overflowed_int = &self.input[start..end];
             self.err(
                 format!(
-                    "integer `{}` does not fit into the type `usize` whose range is `0..={}`",
+                    "integer `{}` does not fit into the type `u16` whose range is `0..={}`",
                     overflowed_int,
-                    usize::MAX
+                    u16::MAX
                 ),
-                "integer out of range for `usize`",
+                "integer out of range for `u16`",
                 self.span(start, end),
             );
         }
@@ -863,28 +862,34 @@ impl<'a> Parser<'a> {
         if let (Some(pos), Some(_)) = (self.consume_pos('?'), self.consume_pos(':')) {
             let word = self.word();
             let pos = self.to_span_index(pos);
-            self.errors.insert(0, ParseError {
-                description: "expected format parameter to occur after `:`".to_owned(),
-                note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
-                label: "expected `?` to occur after `:`".to_owned(),
-                span: pos.to(pos),
-                secondary_label: None,
-                suggestion: Suggestion::None,
-            });
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "expected format parameter to occur after `:`".to_owned(),
+                    note: Some(format!("`?` comes after `:`, try `{}:{}` instead", word, "?")),
+                    label: "expected `?` to occur after `:`".to_owned(),
+                    span: pos.to(pos),
+                    secondary_label: None,
+                    suggestion: Suggestion::None,
+                },
+            );
         }
     }
 
     fn suggest_format_align(&mut self, alignment: char) {
         if let Some(pos) = self.consume_pos(alignment) {
             let pos = self.to_span_index(pos);
-            self.errors.insert(0, ParseError {
-                description: "expected format parameter to occur after `:`".to_owned(),
-                note: None,
-                label: format!("expected `{}` to occur after `:`", alignment),
-                span: pos.to(pos),
-                secondary_label: None,
-                suggestion: Suggestion::None,
-            });
+            self.errors.insert(
+                0,
+                ParseError {
+                    description: "expected format parameter to occur after `:`".to_owned(),
+                    note: None,
+                    label: format!("expected `{}` to occur after `:`", alignment),
+                    span: pos.to(pos),
+                    secondary_label: None,
+                    suggestion: Suggestion::None,
+                },
+            );
         }
     }
 
@@ -901,24 +906,36 @@ impl<'a> Parser<'a> {
             if let ArgumentNamed(_) = arg.position {
                 match field.position {
                     ArgumentNamed(_) => {
-                        self.errors.insert(0, ParseError {
-                            description: "field access isn't supported".to_string(),
-                            note: None,
-                            label: "not supported".to_string(),
-                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
-                            secondary_label: None,
-                            suggestion: Suggestion::UsePositional,
-                        });
+                        self.errors.insert(
+                            0,
+                            ParseError {
+                                description: "field access isn't supported".to_string(),
+                                note: None,
+                                label: "not supported".to_string(),
+                                span: InnerSpan::new(
+                                    arg.position_span.start,
+                                    field.position_span.end,
+                                ),
+                                secondary_label: None,
+                                suggestion: Suggestion::UsePositional,
+                            },
+                        );
                     }
                     ArgumentIs(_) => {
-                        self.errors.insert(0, ParseError {
-                            description: "tuple index access isn't supported".to_string(),
-                            note: None,
-                            label: "not supported".to_string(),
-                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
-                            secondary_label: None,
-                            suggestion: Suggestion::UsePositional,
-                        });
+                        self.errors.insert(
+                            0,
+                            ParseError {
+                                description: "tuple index access isn't supported".to_string(),
+                                note: None,
+                                label: "not supported".to_string(),
+                                span: InnerSpan::new(
+                                    arg.position_span.start,
+                                    field.position_span.end,
+                                ),
+                                secondary_label: None,
+                                suggestion: Suggestion::UsePositional,
+                            },
+                        );
                     }
                     _ => {}
                 };
@@ -940,14 +957,17 @@ impl<'a> Parser<'a> {
         let span = self.span(pos - 1, pos + 1);
         let pos = self.to_span_index(pos);
 
-        self.errors.insert(0, ParseError {
-            description: format!("expected `}}`, found `{c}`"),
-            note: None,
-            label: "expected `'}'`".into(),
-            span: pos.to(pos),
-            secondary_label: None,
-            suggestion: Suggestion::ReorderFormatParameter(span, format!("{replacement}")),
-        })
+        self.errors.insert(
+            0,
+            ParseError {
+                description: format!("expected `}}`, found `{c}`"),
+                note: None,
+                label: "expected `'}'`".into(),
+                span: pos.to(pos),
+                secondary_label: None,
+                suggestion: Suggestion::ReorderFormatParameter(span, format!("{replacement}")),
+            },
+        )
     }
 }
 

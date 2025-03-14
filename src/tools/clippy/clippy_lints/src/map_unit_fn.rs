@@ -163,7 +163,7 @@ fn unit_closure<'tcx>(
     expr: &hir::Expr<'_>,
 ) -> Option<(&'tcx hir::Param<'tcx>, &'tcx hir::Expr<'tcx>)> {
     if let hir::ExprKind::Closure(&hir::Closure { fn_decl, body, .. }) = expr.kind
-        && let body = cx.tcx.hir().body(body)
+        && let body = cx.tcx.hir_body(body)
         && let body_expr = &body.value
         && fn_decl.inputs.len() == 1
         && is_unit_expression(cx, body_expr)

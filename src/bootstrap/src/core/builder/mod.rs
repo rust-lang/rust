@@ -10,6 +10,8 @@ use std::time::{Duration, Instant};
 use std::{env, fs};
 
 use clap::ValueEnum;
+#[cfg(feature = "tracing")]
+use tracing::instrument;
 
 pub use self::cargo::{Cargo, cargo_profile_var};
 pub use crate::Compiler;
@@ -21,7 +23,7 @@ use crate::core::config::{DryRun, TargetSelection};
 use crate::utils::cache::Cache;
 use crate::utils::exec::{BootstrapCommand, command};
 use crate::utils::helpers::{self, LldThreads, add_dylib_path, exe, libdir, linker_args, t};
-use crate::{Build, Crate};
+use crate::{Build, Crate, trace};
 
 mod cargo;
 
@@ -48,7 +50,7 @@ pub struct Builder<'a> {
 
     /// A stack of [`Step`]s to run before we can run this builder. The output
     /// of steps is cached in [`Self::cache`].
-    stack: RefCell<Vec<Box<dyn Any>>>,
+    stack: RefCell<Vec<Box<dyn AnyDebug>>>,
 
     /// The total amount of time we spent running [`Step`]s in [`Self::stack`].
     time_spent_on_dependencies: Cell<Duration>,
@@ -65,6 +67,21 @@ impl Deref for Builder<'_> {
     fn deref(&self) -> &Self::Target {
         self.build
     }
+}
+
+/// This trait is similar to `Any`, except that it also exposes the underlying
+/// type's [`Debug`] implementation.
+///
+/// (Trying to debug-print `dyn Any` results in the unhelpful `"Any { .. }"`.)
+trait AnyDebug: Any + Debug {}
+impl<T: Any + Debug> AnyDebug for T {}
+impl dyn AnyDebug {
+    /// Equivalent to `<dyn Any>::downcast_ref`.
+    fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref()
+    }
+
+    // Feel free to add other `dyn Any` methods as necessary.
 }
 
 pub trait Step: 'static + Clone + Debug + PartialEq + Eq + Hash {
@@ -127,10 +144,14 @@ impl RunConfig<'_> {
     pub fn cargo_crates_in_set(&self) -> Vec<String> {
         let mut crates = Vec::new();
         for krate in &self.paths {
-            let path = krate.assert_single_path();
-            let Some(crate_name) = self.builder.crate_paths.get(&path.path) else {
-                panic!("missing crate for path {}", path.path.display())
-            };
+            let path = &krate.assert_single_path().path;
+
+            let crate_name = self
+                .builder
+                .crate_paths
+                .get(path)
+                .unwrap_or_else(|| panic!("missing crate for path {}", path.display()));
+
             crates.push(crate_name.to_string());
         }
         crates
@@ -315,29 +336,32 @@ const PATH_REMAP: &[(&str, &[&str])] = &[
     // actual path is `proc-macro-srv-cli`
     ("rust-analyzer-proc-macro-srv", &["src/tools/rust-analyzer/crates/proc-macro-srv-cli"]),
     // Make `x test tests` function the same as `x t tests/*`
-    ("tests", &[
-        // tidy-alphabetical-start
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/coverage",
-        "tests/coverage-run-rustdoc",
-        "tests/crashes",
-        "tests/debuginfo",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make",
-        "tests/rustdoc",
-        "tests/rustdoc-gui",
-        "tests/rustdoc-js",
-        "tests/rustdoc-js-std",
-        "tests/rustdoc-json",
-        "tests/rustdoc-ui",
-        "tests/ui",
-        "tests/ui-fulldeps",
-        // tidy-alphabetical-end
-    ]),
+    (
+        "tests",
+        &[
+            // tidy-alphabetical-start
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/coverage",
+            "tests/coverage-run-rustdoc",
+            "tests/crashes",
+            "tests/debuginfo",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make",
+            "tests/rustdoc",
+            "tests/rustdoc-gui",
+            "tests/rustdoc-js",
+            "tests/rustdoc-js-std",
+            "tests/rustdoc-json",
+            "tests/rustdoc-ui",
+            "tests/ui",
+            "tests/ui-fulldeps",
+            // tidy-alphabetical-end
+        ],
+    ),
 ];
 
 fn remap_paths(paths: &mut Vec<PathBuf>) {
@@ -871,7 +895,6 @@ impl<'a> Builder<'a> {
                 tool::RemoteTestClient,
                 tool::RustInstaller,
                 tool::Cargo,
-                tool::Rls,
                 tool::RustAnalyzer,
                 tool::RustAnalyzerProcMacroSrv,
                 tool::Rustdoc,
@@ -881,6 +904,7 @@ impl<'a> Builder<'a> {
                 gcc::Gcc,
                 llvm::Sanitizers,
                 tool::Rustfmt,
+                tool::Cargofmt,
                 tool::Miri,
                 tool::CargoMiri,
                 llvm::Lld,
@@ -913,7 +937,6 @@ impl<'a> Builder<'a> {
                 clippy::OptDist,
                 clippy::RemoteTestClient,
                 clippy::RemoteTestServer,
-                clippy::Rls,
                 clippy::RustAnalyzer,
                 clippy::Rustdoc,
                 clippy::Rustfmt,
@@ -931,7 +954,6 @@ impl<'a> Builder<'a> {
                 check::Miri,
                 check::CargoMiri,
                 check::MiroptTestTools,
-                check::Rls,
                 check::Rustfmt,
                 check::RustAnalyzer,
                 check::TestFloatParse,
@@ -1046,7 +1068,6 @@ impl<'a> Builder<'a> {
                 dist::Analysis,
                 dist::Src,
                 dist::Cargo,
-                dist::Rls,
                 dist::RustAnalyzer,
                 dist::Rustfmt,
                 dist::Clippy,
@@ -1063,6 +1084,7 @@ impl<'a> Builder<'a> {
                 dist::PlainSourceTarball,
                 dist::BuildManifest,
                 dist::ReproducibleArtifacts,
+                dist::Gcc
             ),
             Kind::Install => describe!(
                 install::Docs,
@@ -1091,6 +1113,7 @@ impl<'a> Builder<'a> {
                 run::GenerateCompletions,
                 run::UnicodeTableGenerator,
                 run::FeaturesStatusDump,
+                run::CyclicStep,
             ),
             Kind::Setup => {
                 describe!(setup::Profile, setup::Hook, setup::Link, setup::Editor)
@@ -1211,8 +1234,21 @@ impl<'a> Builder<'a> {
     /// compiler will run on, *not* the target it will build code for). Explicitly does not take
     /// `Compiler` since all `Compiler` instances are meant to be obtained through this function,
     /// since it ensures that they are valid (i.e., built and assembled).
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler",
+            target = "COMPILER",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+            ),
+        ),
+    )]
     pub fn compiler(&self, stage: u32, host: TargetSelection) -> Compiler {
-        self.ensure(compile::Assemble { target_compiler: Compiler { stage, host } })
+        self.ensure(compile::Assemble { target_compiler: Compiler::new(stage, host) })
     }
 
     /// Similar to `compiler`, except handles the full-bootstrap option to
@@ -1226,19 +1262,46 @@ impl<'a> Builder<'a> {
     /// sysroot.
     ///
     /// See `force_use_stage1` and `force_use_stage2` for documentation on what each argument is.
+    #[cfg_attr(
+        feature = "tracing",
+        instrument(
+            level = "trace",
+            name = "Builder::compiler_for",
+            target = "COMPILER_FOR",
+            skip_all,
+            fields(
+                stage = stage,
+                host = ?host,
+                target = ?target,
+            ),
+        ),
+    )]
+
+    /// FIXME: This function is unnecessary (and dangerous, see <https://github.com/rust-lang/rust/issues/137469>).
+    /// We already have uplifting logic for the compiler, so remove this.
     pub fn compiler_for(
         &self,
         stage: u32,
         host: TargetSelection,
         target: TargetSelection,
     ) -> Compiler {
-        if self.build.force_use_stage2(stage) {
+        let mut resolved_compiler = if self.build.force_use_stage2(stage) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage2");
             self.compiler(2, self.config.build)
         } else if self.build.force_use_stage1(stage, target) {
+            trace!(target: "COMPILER_FOR", ?stage, "force_use_stage1");
             self.compiler(1, self.config.build)
         } else {
+            trace!(target: "COMPILER_FOR", ?stage, ?host, "no force, fallback to `compiler()`");
             self.compiler(stage, host)
+        };
+
+        if stage != resolved_compiler.stage {
+            resolved_compiler.forced_compiler(true);
         }
+
+        trace!(target: "COMPILER_FOR", ?resolved_compiler);
+        resolved_compiler
     }
 
     pub fn sysroot(&self, compiler: Compiler) -> PathBuf {
@@ -1350,7 +1413,7 @@ impl<'a> Builder<'a> {
     }
 
     pub fn rustdoc(&self, compiler: Compiler) -> PathBuf {
-        self.ensure(tool::Rustdoc { compiler })
+        self.ensure(tool::Rustdoc { compiler }).tool_path
     }
 
     pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
@@ -1366,14 +1429,13 @@ impl<'a> Builder<'a> {
             return cmd;
         }
 
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-        self.ensure(tool::Clippy { compiler: build_compiler, target: self.build.build });
+        let _ = self.ensure(tool::Clippy { compiler: run_compiler, target: self.build.build });
         let cargo_clippy =
-            self.ensure(tool::CargoClippy { compiler: build_compiler, target: self.build.build });
+            self.ensure(tool::CargoClippy { compiler: run_compiler, target: self.build.build });
         let mut dylib_path = helpers::dylib_path();
         dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
 
-        let mut cmd = command(cargo_clippy);
+        let mut cmd = command(cargo_clippy.tool_path);
         cmd.env(helpers::dylib_path_var(), env::join_paths(&dylib_path).unwrap());
         cmd.env("CARGO", &self.initial_cargo);
         cmd
@@ -1381,23 +1443,21 @@ impl<'a> Builder<'a> {
 
     pub fn cargo_miri_cmd(&self, run_compiler: Compiler) -> BootstrapCommand {
         assert!(run_compiler.stage > 0, "miri can not be invoked at stage 0");
-        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
-
         // Prepare the tools
-        let miri = self.ensure(tool::Miri { compiler: build_compiler, target: self.build.build });
+        let miri = self.ensure(tool::Miri { compiler: run_compiler, target: self.build.build });
         let cargo_miri =
-            self.ensure(tool::CargoMiri { compiler: build_compiler, target: self.build.build });
+            self.ensure(tool::CargoMiri { compiler: run_compiler, target: self.build.build });
         // Invoke cargo-miri, make sure it can find miri and cargo.
-        let mut cmd = command(cargo_miri);
-        cmd.env("MIRI", &miri);
+        let mut cmd = command(cargo_miri.tool_path);
+        cmd.env("MIRI", &miri.tool_path);
         cmd.env("CARGO", &self.initial_cargo);
-        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`,
-        // so they match the Miri we just built. However this means they are actually living one
-        // stage up, i.e. we are running `stage0-tools-bin/miri` with the libraries in `stage1/lib`.
-        // This is an unfortunate off-by-1 caused (possibly) by the fact that Miri doesn't have an
-        // "assemble" step like rustc does that would cross the stage boundary. We can't use
-        // `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries added to
-        // the PATH due to the stage mismatch.
+        // Need to add the `run_compiler` libs. Those are the libs produces *by* `build_compiler`
+        // in `tool::ToolBuild` step, so they match the Miri we just built. However this means they
+        // are actually living one stage up, i.e. we are running `stage0-tools-bin/miri` with the
+        // libraries in `stage1/lib`. This is an unfortunate off-by-1 caused (possibly) by the fact
+        // that Miri doesn't have an "assemble" step like rustc does that would cross the stage boundary.
+        // We can't use `add_rustc_lib_path` as that's a NOP on Windows but we do need these libraries
+        // added to the PATH due to the stage mismatch.
         // Also see https://github.com/rust-lang/rust/pull/123192#issuecomment-2028901503.
         add_dylib_path(self.rustc_lib_paths(run_compiler), &mut cmd);
         cmd
@@ -1420,7 +1480,7 @@ impl<'a> Builder<'a> {
             cmd.arg("-Dwarnings");
         }
         cmd.arg("-Znormalize-docs");
-        cmd.args(linker_args(self, compiler.host, LldThreads::Yes));
+        cmd.args(linker_args(self, compiler.host, LldThreads::Yes, compiler.stage));
         cmd
     }
 
@@ -1428,7 +1488,7 @@ impl<'a> Builder<'a> {
     ///
     /// Note that this returns `None` if LLVM is disabled, or if we're in a
     /// check build or dry-run, where there's no need to build all of LLVM.
-    fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
+    pub fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled(target) && self.kind != Kind::Check && !self.config.dry_run() {
             let llvm::LlvmResult { llvm_config, .. } = self.ensure(llvm::Llvm { target });
             if llvm_config.is_file() {

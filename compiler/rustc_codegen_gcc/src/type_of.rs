@@ -63,7 +63,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
 ) -> Type<'gcc> {
     match layout.backend_repr {
         BackendRepr::Scalar(_) => bug!("handled elsewhere"),
-        BackendRepr::Vector { ref element, count } => {
+        BackendRepr::SimdVector { ref element, count } => {
             let element = layout.scalar_gcc_type_at(cx, element, Size::ZERO);
             let element =
                 // NOTE: gcc doesn't allow pointer types in vectors.
@@ -84,7 +84,7 @@ fn uncached_gcc_type<'gcc, 'tcx>(
                 false,
             );
         }
-        BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {}
+        BackendRepr::Memory { .. } => {}
     }
 
     let name = match *layout.ty.kind() {
@@ -178,19 +178,16 @@ pub trait LayoutGccExt<'tcx> {
 impl<'tcx> LayoutGccExt<'tcx> for TyAndLayout<'tcx> {
     fn is_gcc_immediate(&self) -> bool {
         match self.backend_repr {
-            BackendRepr::Scalar(_) | BackendRepr::Vector { .. } => true,
-            BackendRepr::ScalarPair(..) | BackendRepr::Uninhabited | BackendRepr::Memory { .. } => {
-                false
-            }
+            BackendRepr::Scalar(_) | BackendRepr::SimdVector { .. } => true,
+            BackendRepr::ScalarPair(..) | BackendRepr::Memory { .. } => false,
         }
     }
 
     fn is_gcc_scalar_pair(&self) -> bool {
         match self.backend_repr {
             BackendRepr::ScalarPair(..) => true,
-            BackendRepr::Uninhabited
-            | BackendRepr::Scalar(_)
-            | BackendRepr::Vector { .. }
+            BackendRepr::Scalar(_)
+            | BackendRepr::SimdVector { .. }
             | BackendRepr::Memory { .. } => false,
         }
     }

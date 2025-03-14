@@ -25,7 +25,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
+use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -41,7 +41,7 @@ use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_target::spec::PanicStrategy;
-use {rustc_abi as abi, rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_abi as abi, rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 use crate::infer::canonical::{self, Canonical};
 use crate::lint::LintExpectation;
@@ -116,7 +116,7 @@ rustc_queries! {
     }
 
     query early_lint_checks(_: ()) {
-        desc { "perform lints prior to macro expansion" }
+        desc { "perform lints prior to AST lowering" }
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
@@ -143,11 +143,11 @@ rustc_queries! {
 
     /// Represents crate as a whole (as distinct from the top-level crate module).
     ///
-    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir().krate()`),
+    /// If you call `hir_crate` (e.g., indirectly by calling `tcx.hir_crate()`),
     /// we will have to assume that any change means that you need to be recompiled.
     /// This is because the `hir_crate` query gives you access to all other items.
-    /// To avoid this fate, do not call `tcx.hir().krate()`; instead,
-    /// prefer wrappers like `tcx.visit_all_items_in_krate()`.
+    /// To avoid this fate, do not call `tcx.hir_crate()`; instead,
+    /// prefer wrappers like [`TyCtxt::hir_visit_all_item_likes_in_crate`].
     query hir_crate(key: ()) -> &'tcx Crate<'tcx> {
         arena_cache
         eval_always
@@ -163,7 +163,7 @@ rustc_queries! {
 
     /// The items in a module.
     ///
-    /// This can be conveniently accessed by `tcx.hir().visit_item_likes_in_module`.
+    /// This can be conveniently accessed by `tcx.hir_visit_item_likes_in_module`.
     /// Avoid calling this query directly.
     query hir_module_items(key: LocalModDefId) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
@@ -198,7 +198,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
+    query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
         feedable
     }
@@ -614,9 +614,16 @@ rustc_queries! {
         feedable
     }
 
-    /// Summarizes coverage IDs inserted by the `InstrumentCoverage` MIR pass
-    /// (for compiler option `-Cinstrument-coverage`), after MIR optimizations
-    /// have had a chance to potentially remove some of them.
+    /// Scans through a function's MIR after MIR optimizations, to prepare the
+    /// information needed by codegen when `-Cinstrument-coverage` is active.
+    ///
+    /// This includes the details of where to insert `llvm.instrprof.increment`
+    /// intrinsics, and the expression tables to be embedded in the function's
+    /// coverage metadata.
+    ///
+    /// FIXME(Zalathar): This query's purpose has drifted a bit and should
+    /// probably be renamed, but that can wait until after the potential
+    /// follow-ups to #136053 have settled down.
     ///
     /// Returns `None` for functions that were not instrumented.
     query coverage_ids_info(key: ty::InstanceKind<'tcx>) -> Option<&'tcx mir::coverage::CoverageIdsInfo> {
@@ -741,6 +748,15 @@ rustc_queries! {
         }
     }
 
+    /// Compute the conditions that need to hold for a conditionally-const item to be const.
+    /// That is, compute the set of `~const` where clauses for a given item.
+    ///
+    /// This can be thought of as the `~const` equivalent of `predicates_of`. These are the
+    /// predicates that need to be proven at usage sites, and can be assumed at definition.
+    ///
+    /// This query also computes the `~const` where clauses for associated types, which are
+    /// not "const", but which have item bounds which may be `~const`. These must hold for
+    /// the `~const` item bound to hold.
     query const_conditions(
         key: DefId
     ) -> ty::ConstConditions<'tcx> {
@@ -750,6 +766,11 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Compute the const bounds that are implied for a conditionally-const item.
+    ///
+    /// This can be though of as the `~const` equivalent of `explicit_item_bounds`. These
+    /// are the predicates that need to proven at definition sites, and can be assumed at
+    /// usage sites.
     query explicit_implied_const_bounds(
         key: DefId
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::PolyTraitRef<'tcx>, Span)]> {
@@ -764,7 +785,7 @@ rustc_queries! {
     query type_param_predicates(
         key: (LocalDefId, LocalDefId, rustc_span::Ident)
     ) -> ty::EarlyBinder<'tcx, &'tcx [(ty::Clause<'tcx>, Span)]> {
-        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir().ty_param_name(key.1) }
+        desc { |tcx| "computing the bounds for type parameter `{}`", tcx.hir_ty_param_name(key.1) }
     }
 
     query trait_def(key: DefId) -> &'tcx ty::TraitDef {
@@ -795,7 +816,7 @@ rustc_queries! {
 
     query adt_dtorck_constraint(
         key: DefId
-    ) -> Result<&'tcx DropckConstraint<'tcx>, NoSolution> {
+    ) -> &'tcx DropckConstraint<'tcx> {
         desc { |tcx| "computing drop-check constraints for `{}`", tcx.def_path_str(key) }
     }
 
@@ -976,12 +997,6 @@ rustc_queries! {
         desc { |tcx| "computing trait implemented by `{}`", tcx.def_path_str(impl_id) }
         cache_on_disk_if { impl_id.is_local() }
         separate_provide_extern
-    }
-
-    query self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
-        key: DefId
-    ) -> Option<ty::EarlyBinder<'tcx, ty::Ty<'tcx>>> {
-        desc { |tcx| "computing self type wrt issue #33140 `{}`", tcx.def_path_str(key) }
     }
 
     /// Maps a `DefId` of a type to a list of its inherent impls.
@@ -1409,7 +1424,7 @@ rustc_queries! {
     }
 
     /// Gets the rendered precise capturing args for an opaque for use in rustdoc.
-    query rendered_precise_capturing_args(def_id: DefId) -> Option<&'tcx [Symbol]> {
+    query rendered_precise_capturing_args(def_id: DefId) -> Option<&'tcx [PreciseCapturingArgKind<Symbol, Symbol>]> {
         desc { |tcx| "rendering precise capturing args for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }
@@ -1511,6 +1526,11 @@ rustc_queries! {
     /// `ty.is_copy()`, etc, since that will prune the environment where possible.
     query is_copy_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
         desc { "computing whether `{}` is `Copy`", env.value }
+    }
+    /// Trait selection queries. These are best used by invoking `ty.is_use_cloned_modulo_regions()`,
+    /// `ty.is_use_cloned()`, etc, since that will prune the environment where possible.
+    query is_use_cloned_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
+        desc { "computing whether `{}` is `UseCloned`", env.value }
     }
     /// Query backing `Ty::is_sized`.
     query is_sized_raw(env: ty::PseudoCanonicalInput<'tcx, Ty<'tcx>>) -> bool {
@@ -2241,22 +2261,13 @@ rustc_queries! {
         desc { "normalizing `{}`", goal.value }
     }
 
-    query implied_outlives_bounds_compat(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
-    ) -> Result<
-        &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
-        NoSolution,
-    > {
-        desc { "computing implied outlives bounds for `{}`", goal.canonical.value.value.ty }
-    }
-
     query implied_outlives_bounds(
-        goal: CanonicalImpliedOutlivesBoundsGoal<'tcx>
+        key: (CanonicalImpliedOutlivesBoundsGoal<'tcx>, bool)
     ) -> Result<
         &'tcx Canonical<'tcx, canonical::QueryResponse<'tcx, Vec<OutlivesBound<'tcx>>>>,
         NoSolution,
     > {
-        desc { "computing implied outlives bounds v2 for `{}`", goal.canonical.value.value.ty }
+        desc { "computing implied outlives bounds for `{}` (hack disabled = {:?})", key.0.canonical.value.value.ty, key.1 }
     }
 
     /// Do not call this query directly:

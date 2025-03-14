@@ -647,18 +647,21 @@ pub mod ops {
 
         #[lang = "fn"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait Fn<Args: Tuple>: FnMut<Args> {
             extern "rust-call" fn call(&self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_mut"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait FnMut<Args: Tuple>: FnOnce<Args> {
             extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
         }
 
         #[lang = "fn_once"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait FnOnce<Args: Tuple> {
             #[lang = "fn_once_output"]
             type Output;
@@ -736,12 +739,14 @@ pub mod ops {
 
         #[lang = "async_fn"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFn<Args: Tuple>: AsyncFnMut<Args> {
             extern "rust-call" fn async_call(&self, args: Args) -> Self::CallRefFuture<'_>;
         }
 
         #[lang = "async_fn_mut"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFnMut<Args: Tuple>: AsyncFnOnce<Args> {
             #[lang = "call_ref_future"]
             type CallRefFuture<'a>: Future<Output = Self::Output>
@@ -752,6 +757,7 @@ pub mod ops {
 
         #[lang = "async_fn_once"]
         #[fundamental]
+        #[rustc_paren_sugar]
         pub trait AsyncFnOnce<Args: Tuple> {
             #[lang = "async_fn_once_output"]
             type Output;
@@ -1819,7 +1825,7 @@ macro_rules! impl_int {
     ($($t:ty)*) => {
         $(
             impl $t {
-                pub const fn from_ne_bytes(bytes: [u8; mem::size_of::<Self>()]) -> Self {
+                pub const fn from_ne_bytes(bytes: [u8; size_of::<Self>()]) -> Self {
                     unsafe { mem::transmute(bytes) }
                 }
             }
@@ -1868,6 +1874,7 @@ pub mod prelude {
             marker::Sized,                           // :sized
             marker::Sync,                            // :sync
             mem::drop,                               // :drop
+            mem::size_of,                            // :size_of
             ops::Drop,                               // :drop
             ops::{AsyncFn, AsyncFnMut, AsyncFnOnce}, // :async_fn
             ops::{Fn, FnMut, FnOnce},                // :fn
@@ -1887,6 +1894,10 @@ pub mod prelude {
     }
 
     pub mod rust_2021 {
+        pub use super::v1::*;
+    }
+
+    pub mod rust_2024 {
         pub use super::v1::*;
     }
 }

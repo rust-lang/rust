@@ -77,10 +77,10 @@ pub(crate) fn pre_link_args(api_var: ApiVariant, arch: Arch) -> LinkArgs {
         ApiVariant::Default => {
             TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[qcc_arg])
         }
-        ApiVariant::IoSock => TargetOptions::link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &[
-            qcc_arg,
-            get_iosock_param(arch_lib_dir),
-        ]),
+        ApiVariant::IoSock => TargetOptions::link_args(
+            LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+            &[qcc_arg, get_iosock_param(arch_lib_dir)],
+        ),
     }
 }
 

@@ -1,4 +1,3 @@
-#![feature(trait_upcasting)]
 #![feature(trait_alias)]
 
 // Although we *elaborate* `T: Alias` to `i32: B`, we should

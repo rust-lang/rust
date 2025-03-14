@@ -176,15 +176,11 @@ impl CodegenBackend for CraneliftCodegenBackend {
         }
     }
 
-    fn target_features_cfg(
-        &self,
-        sess: &Session,
-        _allow_unstable: bool,
-    ) -> Vec<rustc_span::Symbol> {
+    fn target_features_cfg(&self, sess: &Session) -> (Vec<Symbol>, Vec<Symbol>) {
         // FIXME return the actually used target features. this is necessary for #[cfg(target_feature)]
-        if sess.target.arch == "x86_64" && sess.target.os != "none" {
-            // x86_64 mandates SSE2 support
-            vec![sym::fsxr, sym::sse, sym::sse2]
+        let target_features = if sess.target.arch == "x86_64" && sess.target.os != "none" {
+            // x86_64 mandates SSE2 support and rustc requires the x87 feature to be enabled
+            vec![sym::fsxr, sym::sse, sym::sse2, Symbol::intern("x87")]
         } else if sess.target.arch == "aarch64" {
             match &*sess.target.os {
                 "none" => vec![],
@@ -196,7 +192,10 @@ impl CodegenBackend for CraneliftCodegenBackend {
             }
         } else {
             vec![]
-        }
+        };
+        // FIXME do `unstable_target_features` properly
+        let unstable_target_features = target_features.clone();
+        (target_features, unstable_target_features)
     }
 
     fn print_version(&self) {
@@ -209,7 +208,6 @@ impl CodegenBackend for CraneliftCodegenBackend {
         metadata: EncodedMetadata,
         need_metadata_module: bool,
     ) -> Box<dyn Any> {
-        tcx.dcx().abort_if_errors();
         info!("codegen crate {}", tcx.crate_name(LOCAL_CRATE));
         let config = self.config.clone().unwrap_or_else(|| {
             BackendConfig::from_opts(&tcx.sess.opts.cg.llvm_args)
@@ -290,7 +288,7 @@ fn build_isa(sess: &Session) -> Arc<dyn TargetIsa + 'static> {
             flags_builder.set("opt_level", "none").unwrap();
         }
         OptLevel::Less
-        | OptLevel::Default
+        | OptLevel::More
         | OptLevel::Size
         | OptLevel::SizeMin
         | OptLevel::Aggressive => {

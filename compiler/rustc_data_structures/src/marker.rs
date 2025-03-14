@@ -1,3 +1,5 @@
+use std::alloc::Allocator;
+
 #[rustc_on_unimplemented(message = "`{Self}` doesn't implement `DynSend`. \
             Add it to `rustc_data_structures::marker` or use `IntoDynSyncSend` if it's already `Send`")]
 // This is an auto trait for types which can be sent across threads if `sync::is_dyn_thread_safe()`
@@ -28,8 +30,8 @@ impls_dyn_send_neg!(
     [*const T where T: ?Sized]
     [*mut T where T: ?Sized]
     [std::ptr::NonNull<T> where T: ?Sized]
-    [std::rc::Rc<T> where T: ?Sized]
-    [std::rc::Weak<T> where T: ?Sized]
+    [std::rc::Rc<T, A> where T: ?Sized, A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized, A: Allocator]
     [std::sync::MutexGuard<'_, T> where T: ?Sized]
     [std::sync::RwLockReadGuard<'_, T> where T: ?Sized]
     [std::sync::RwLockWriteGuard<'_, T> where T: ?Sized]
@@ -74,6 +76,7 @@ impl_dyn_send!(
     [crate::sync::RwLock<T> where T: DynSend]
     [crate::tagged_ptr::TaggedRef<'a, P, T> where 'a, P: Sync, T: Send + crate::tagged_ptr::Tag]
     [rustc_arena::TypedArena<T> where T: DynSend]
+    [hashbrown::HashTable<T> where T: DynSend]
     [indexmap::IndexSet<V, S> where V: DynSend, S: DynSend]
     [indexmap::IndexMap<K, V, S> where K: DynSend, V: DynSend, S: DynSend]
     [thin_vec::ThinVec<T> where T: DynSend]
@@ -96,8 +99,8 @@ impls_dyn_sync_neg!(
     [std::cell::RefCell<T> where T: ?Sized]
     [std::cell::UnsafeCell<T> where T: ?Sized]
     [std::ptr::NonNull<T> where T: ?Sized]
-    [std::rc::Rc<T> where T: ?Sized]
-    [std::rc::Weak<T> where T: ?Sized]
+    [std::rc::Rc<T, A> where T: ?Sized, A: Allocator]
+    [std::rc::Weak<T, A> where T: ?Sized, A: Allocator]
     [std::cell::OnceCell<T> where T]
     [std::sync::mpsc::Receiver<T> where T]
     [std::sync::mpsc::Sender<T> where T]
@@ -151,6 +154,7 @@ impl_dyn_sync!(
     [crate::tagged_ptr::TaggedRef<'a, P, T> where 'a, P: Sync, T: Sync + crate::tagged_ptr::Tag]
     [parking_lot::lock_api::Mutex<R, T> where R: DynSync, T: ?Sized + DynSend]
     [parking_lot::lock_api::RwLock<R, T> where R: DynSync, T: ?Sized + DynSend + DynSync]
+    [hashbrown::HashTable<T> where T: DynSync]
     [indexmap::IndexSet<V, S> where V: DynSync, S: DynSync]
     [indexmap::IndexMap<K, V, S> where K: DynSync, V: DynSync, S: DynSync]
     [smallvec::SmallVec<A> where A: smallvec::Array + DynSync]

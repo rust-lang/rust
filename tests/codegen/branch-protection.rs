@@ -1,5 +1,6 @@
 // Test that the correct module flags are emitted with different branch protection flags.
 
+//@ add-core-stubs
 //@ revisions: BTI PACRET LEAF BKEY PAUTHLR PAUTHLR_BKEY PAUTHLR_LEAF PAUTHLR_BTI NONE
 //@ needs-llvm-components: aarch64
 //@ [BTI] compile-flags: -Z branch-protection=bti
@@ -17,8 +18,8 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 // A basic test function.
 // CHECK: @test(){{.*}} [[ATTR:#[0-9]+]] {

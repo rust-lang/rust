@@ -9,7 +9,7 @@ error: fn_abi_of(test) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I8,
@@ -20,6 +20,7 @@ error: fn_abi_of(test) = FnAbi {
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -47,7 +48,7 @@ error: fn_abi_of(test) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Scalar(
+                       backend_repr: Scalar(
                            Initialized {
                                value: Int(
                                    I8,
@@ -67,6 +68,7 @@ error: fn_abi_of(test) = FnAbi {
                                valid_range: 0..=1,
                            },
                        ),
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -105,7 +107,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I8,
@@ -125,6 +127,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                                    valid_range: 0..=1,
                                },
                            ),
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -152,7 +155,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Scalar(
+                       backend_repr: Scalar(
                            Initialized {
                                value: Int(
                                    I8,
@@ -163,6 +166,7 @@ error: fn_abi_of(TestFnPtr) = FnAbi {
                        ),
                        fields: Primitive,
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -201,7 +205,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Pointer(
                                        AddressSpace(
@@ -213,6 +217,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -240,7 +245,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -248,6 +253,7 @@ error: fn_abi_of(test_generic) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -286,7 +292,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I8,
@@ -297,6 +303,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -324,7 +331,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -332,6 +339,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -358,7 +366,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I32,
@@ -369,6 +377,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -396,7 +405,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -404,6 +413,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -436,7 +446,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Memory {
+                           backend_repr: Memory {
                                sized: true,
                            },
                            fields: Array {
@@ -444,6 +454,7 @@ error: ABIs are not compatible
                                count: 32,
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -475,7 +486,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -483,6 +494,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -509,7 +521,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Memory {
+                           backend_repr: Memory {
                                sized: true,
                            },
                            fields: Array {
@@ -517,6 +529,7 @@ error: ABIs are not compatible
                                count: 32,
                            },
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -548,7 +561,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -556,6 +569,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -588,7 +602,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Float(
                                        F32,
@@ -598,6 +612,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -625,7 +640,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -633,6 +648,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -659,7 +675,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I32,
@@ -670,6 +686,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -697,7 +714,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -705,6 +722,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -737,7 +755,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I32,
@@ -748,6 +766,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -775,7 +794,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -783,6 +802,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -809,7 +829,7 @@ error: ABIs are not compatible
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Int(
                                        I32,
@@ -820,6 +840,7 @@ error: ABIs are not compatible
                            ),
                            fields: Primitive,
                            largest_niche: None,
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -847,7 +868,7 @@ error: ABIs are not compatible
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -855,6 +876,7 @@ error: ABIs are not compatible
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
@@ -901,7 +923,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                                abi: $SOME_ALIGN,
                                pref: $SOME_ALIGN,
                            },
-                           abi: Scalar(
+                           backend_repr: Scalar(
                                Initialized {
                                    value: Pointer(
                                        AddressSpace(
@@ -923,6 +945,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                                    valid_range: $NON_NULL,
                                },
                            ),
+                           uninhabited: false,
                            variants: Single {
                                index: 0,
                            },
@@ -952,7 +975,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                            abi: $SOME_ALIGN,
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -960,6 +983,7 @@ error: fn_abi_of(assoc_test) = FnAbi {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },

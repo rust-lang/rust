@@ -1,6 +1,6 @@
 use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, MsrvStack};
 use clippy_utils::source::{trim_span, walk_span_to_context};
 use rustc_ast::ast::{Expr, ExprKind, LitKind, Pat, PatKind, RangeEnd, RangeLimits};
 use rustc_errors::Applicability;
@@ -31,12 +31,12 @@ declare_clippy_lint! {
 impl_lint_pass!(AlmostCompleteRange => [ALMOST_COMPLETE_RANGE]);
 
 pub struct AlmostCompleteRange {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 impl AlmostCompleteRange {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -96,7 +96,7 @@ impl EarlyLintPass for AlmostCompleteRange {
         }
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 fn is_incomplete_range(start: &Expr, end: &Expr) -> bool {

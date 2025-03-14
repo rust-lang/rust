@@ -6,8 +6,9 @@ LL |     unsafe { *ptr = 3; }
    |
 help: consider changing this to be a mutable pointer
    |
-LL |     let ptr = &raw mut val;
-   |                    ~~~
+LL -     let ptr = &raw const val;
+LL +     let ptr = &raw mut val;
+   |
 
 error: aborting due to 1 previous error
 

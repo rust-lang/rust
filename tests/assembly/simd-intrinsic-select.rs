@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x86-avx2 x86-avx512 aarch64
 //@ [x86-avx2] compile-flags: --target=x86_64-unknown-linux-gnu -C llvm-args=-x86-asm-syntax=intel
 //@ [x86-avx2] compile-flags: -C target-feature=+avx2
@@ -8,18 +9,14 @@
 //@ [aarch64] compile-flags: --target=aarch64-unknown-linux-gnu
 //@ [aarch64] needs-llvm-components: aarch64
 //@ assembly-output: emit-asm
-//@ compile-flags: --crate-type=lib -O -C panic=abort
+//@ compile-flags: --crate-type=lib -Copt-level=3 -C panic=abort
 
 #![feature(no_core, lang_items, repr_simd, intrinsics)]
 #![no_core]
 #![allow(non_camel_case_types)]
 
-// Because we don't have core yet.
-#[lang = "sized"]
-pub trait Sized {}
-
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 #[repr(simd)]
 pub struct i8x16([i8; 16]);

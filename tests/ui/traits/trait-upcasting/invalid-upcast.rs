@@ -1,5 +1,3 @@
-#![feature(trait_upcasting)]
-
 trait Foo {
     fn a(&self) -> i32 {
         10

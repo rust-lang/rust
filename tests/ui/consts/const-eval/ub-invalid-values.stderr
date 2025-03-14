@@ -1,19 +1,14 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/ub-invalid-values.rs:2:16
+  --> $DIR/ub-invalid-values.rs:8:5
    |
-LL |     let _val = *ptr as u32;
-   |                ^^^^^^^^^^^ interpreting an invalid 8-bit value as a bool: 0x03
+LL |     bool_cast(&v as *const u8 as *const bool);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ interpreting an invalid 8-bit value as a bool: 0x03
    |
 note: inside `bool_cast`
   --> $DIR/ub-invalid-values.rs:2:16
    |
 LL |     let _val = *ptr as u32;
-   |                ^^^^^^^^^^^
-note: inside `_`
-  --> $DIR/ub-invalid-values.rs:8:5
-   |
-LL |     bool_cast(&v as *const u8 as *const bool);
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                ^^^^^^^^^^^ the failure occurred here
 
 error: aborting due to 1 previous error
 

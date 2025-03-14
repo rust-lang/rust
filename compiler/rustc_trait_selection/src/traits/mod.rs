@@ -660,13 +660,16 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
                     self.idx += 1;
                     idx
                 };
-                Ty::new_placeholder(self.tcx, ty::PlaceholderType {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundTy {
-                        var: ty::BoundVar::from_u32(idx),
-                        kind: ty::BoundTyKind::Anon,
+                Ty::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderType {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundTy {
+                            var: ty::BoundVar::from_u32(idx),
+                            kind: ty::BoundTyKind::Anon,
+                        },
                     },
-                })
+                )
             } else {
                 t.super_fold_with(self)
             }
@@ -674,14 +677,17 @@ fn replace_param_and_infer_args_with_placeholder<'tcx>(
 
         fn fold_const(&mut self, c: ty::Const<'tcx>) -> ty::Const<'tcx> {
             if let ty::ConstKind::Infer(_) = c.kind() {
-                ty::Const::new_placeholder(self.tcx, ty::PlaceholderConst {
-                    universe: ty::UniverseIndex::ROOT,
-                    bound: ty::BoundVar::from_u32({
-                        let idx = self.idx;
-                        self.idx += 1;
-                        idx
-                    }),
-                })
+                ty::Const::new_placeholder(
+                    self.tcx,
+                    ty::PlaceholderConst {
+                        universe: ty::UniverseIndex::ROOT,
+                        bound: ty::BoundVar::from_u32({
+                            let idx = self.idx;
+                            self.idx += 1;
+                            idx
+                        }),
+                    },
+                )
             } else {
                 c.super_fold_with(self)
             }

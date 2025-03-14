@@ -50,7 +50,7 @@ impl Tool {
 #
 # All changes below this comment will be overridden the next time the
 # tool is executed.
-            "#;
+"#;
 
         let mut file_content = String::new();
 

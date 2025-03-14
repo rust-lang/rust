@@ -39,11 +39,11 @@ pub(crate) fn add_configuration(
 ) {
     let tf = sym::target_feature;
 
-    let unstable_target_features = codegen_backend.target_features_cfg(sess, true);
-    sess.unstable_target_features.extend(unstable_target_features.iter().cloned());
+    let (target_features, unstable_target_features) = codegen_backend.target_features_cfg(sess);
 
-    let target_features = codegen_backend.target_features_cfg(sess, false);
-    sess.target_features.extend(target_features.iter().cloned());
+    sess.unstable_target_features.extend(unstable_target_features.iter().copied());
+
+    sess.target_features.extend(target_features.iter().copied());
 
     cfg.extend(target_features.into_iter().map(|feat| (tf, Some(feat))));
 
@@ -433,11 +433,11 @@ pub(crate) fn check_attr_crate_type(
                 }
             } else {
                 // This is here mainly to check for using a macro, such as
-                // #![crate_type = foo!()]. That is not supported since the
+                // `#![crate_type = foo!()]`. That is not supported since the
                 // crate type needs to be known very early in compilation long
                 // before expansion. Otherwise, validation would normally be
-                // caught in AstValidator (via `check_builtin_attribute`), but
-                // by the time that runs the macro is expanded, and it doesn't
+                // caught during semantic analysis via `TyCtxt::check_mod_attrs`,
+                // but by the time that runs the macro is expanded, and it doesn't
                 // give an error.
                 validate_attr::emit_fatal_malformed_builtin_attribute(
                     &sess.psess,

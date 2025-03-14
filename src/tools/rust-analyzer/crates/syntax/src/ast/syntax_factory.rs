@@ -33,6 +33,11 @@ impl SyntaxFactory {
         self.mappings.unwrap_or_default().into_inner()
     }
 
+    /// Take all of the tracked syntax mappings, leaving `SyntaxMapping::default()` in its place, if any.
+    pub fn take(&self) -> SyntaxMapping {
+        self.mappings.as_ref().map(|mappings| mappings.take()).unwrap_or_default()
+    }
+
     fn mappings(&self) -> Option<RefMut<'_, SyntaxMapping>> {
         self.mappings.as_ref().map(|it| it.borrow_mut())
     }

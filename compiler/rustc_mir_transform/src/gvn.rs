@@ -1259,7 +1259,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
         let layout = self.ecx.layout_of(lhs_ty).ok()?;
 
-        let as_bits = |value| {
+        let as_bits = |value: VnIndex| {
             let constant = self.evaluated[value].as_ref()?;
             if layout.backend_repr.is_scalar() {
                 let scalar = self.ecx.read_scalar(constant).discard_err()?;
@@ -1367,16 +1367,17 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn simplify_cast(
         &mut self,
-        kind: &mut CastKind,
-        operand: &mut Operand<'tcx>,
+        initial_kind: &mut CastKind,
+        initial_operand: &mut Operand<'tcx>,
         to: Ty<'tcx>,
         location: Location,
     ) -> Option<VnIndex> {
         use CastKind::*;
         use rustc_middle::ty::adjustment::PointerCoercion::*;
 
-        let mut from = operand.ty(self.local_decls, self.tcx);
-        let mut value = self.simplify_operand(operand, location)?;
+        let mut from = initial_operand.ty(self.local_decls, self.tcx);
+        let mut kind = *initial_kind;
+        let mut value = self.simplify_operand(initial_operand, location)?;
         if from == to {
             return Some(value);
         }
@@ -1396,11 +1397,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             // or `*mut [i32]` <=> `*const [u64]`), including the common special
             // case of `*const T` <=> `*mut T`.
             if let Transmute = kind
-                && from.is_unsafe_ptr()
-                && to.is_unsafe_ptr()
+                && from.is_raw_ptr()
+                && to.is_raw_ptr()
                 && self.pointers_have_same_metadata(from, to)
             {
-                *kind = PtrToPtr;
+                kind = PtrToPtr;
                 was_updated_this_iteration = true;
             }
 
@@ -1443,7 +1444,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 to: inner_to,
             } = *self.get(value)
             {
-                let new_kind = match (inner_kind, *kind) {
+                let new_kind = match (inner_kind, kind) {
                     // Even if there's a narrowing cast in here that's fine, because
                     // things like `*mut [i32] -> *mut i32 -> *const i32` and
                     // `*mut [i32] -> *const [i32] -> *const i32` can skip the middle in MIR.
@@ -1471,7 +1472,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                     _ => None,
                 };
                 if let Some(new_kind) = new_kind {
-                    *kind = new_kind;
+                    kind = new_kind;
                     from = inner_from;
                     value = inner_value;
                     was_updated_this_iteration = true;
@@ -1489,10 +1490,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
 
         if was_ever_updated && let Some(op) = self.try_as_operand(value, location) {
-            *operand = op;
+            *initial_operand = op;
+            *initial_kind = kind;
         }
 
-        Some(self.insert(Value::Cast { kind: *kind, value, from, to }))
+        Some(self.insert(Value::Cast { kind, value, from, to }))
     }
 
     fn simplify_len(&mut self, place: &mut Place<'tcx>, location: Location) -> Option<VnIndex> {
@@ -1556,13 +1558,16 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             return true;
         };
 
+        if layout.uninhabited {
+            return true;
+        }
+
         match layout.backend_repr {
-            BackendRepr::Uninhabited => true,
             BackendRepr::Scalar(a) => !a.is_always_valid(&self.ecx),
             BackendRepr::ScalarPair(a, b) => {
                 !a.is_always_valid(&self.ecx) || !b.is_always_valid(&self.ecx)
             }
-            BackendRepr::Vector { .. } | BackendRepr::Memory { .. } => false,
+            BackendRepr::SimdVector { .. } | BackendRepr::Memory { .. } => false,
         }
     }
 

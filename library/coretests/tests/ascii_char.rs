@@ -26,3 +26,15 @@ fn test_debug_control() {
         assert_eq!(want, format!("{chr:?}"), "byte: {byte}");
     }
 }
+
+/// Tests Extend implementation for ascii::Char.
+#[test]
+fn test_extend() {
+    let mut s = String::from("abc");
+    s.extend_one(Char::SmallD);
+    assert_eq!(s, String::from("abcd"));
+
+    let mut s = String::from("abc");
+    s.extend(Char::CapitalA..=Char::CapitalC);
+    assert_eq!(s, String::from("abcABC"));
+}

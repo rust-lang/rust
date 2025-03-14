@@ -535,7 +535,6 @@ pub(crate) struct WhereClauseBeforeTypeAlias {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum WhereClauseBeforeTypeAliasSugg {
     #[suggestion(ast_passes_remove_suggestion, applicability = "machine-applicable", code = "")]
     Remove {
@@ -733,13 +732,6 @@ pub(crate) struct AssociatedSuggestion2 {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_passes_stability_outside_std, code = E0734)]
-pub(crate) struct StabilityOutsideStd {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_passes_feature_on_non_nightly, code = E0554)]
 pub(crate) struct FeatureOnNonNightly {
     #[primary_span]
@@ -804,7 +796,14 @@ pub(crate) struct NegativeBoundWithParentheticalNotation {
 pub(crate) struct MatchArmWithNoBody {
     #[primary_span]
     pub span: Span,
-    #[suggestion(code = " => todo!(),", applicability = "has-placeholders")]
+    // We include the braces around `todo!()` so that a comma is optional, and we don't have to have
+    // any logic looking at the arm being replaced if there was a comma already or not for the
+    // resulting code to be correct.
+    #[suggestion(
+        code = " => {{ todo!() }}",
+        applicability = "has-placeholders",
+        style = "verbose"
+    )]
     pub suggestion: Span,
 }
 

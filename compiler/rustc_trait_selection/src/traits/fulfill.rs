@@ -1,6 +1,5 @@
 use std::marker::PhantomData;
 
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::obligation_forest::{
     Error, ForestObligation, ObligationForest, ObligationProcessor, Outcome, ProcessResult,
 };
@@ -900,10 +899,10 @@ impl<'a, 'tcx> FulfillProcessor<'a, 'tcx> {
 }
 
 /// Returns the set of inference variables contained in `args`.
-fn args_infer_vars<'a, 'tcx>(
-    selcx: &SelectionContext<'a, 'tcx>,
+fn args_infer_vars<'tcx>(
+    selcx: &SelectionContext<'_, 'tcx>,
     args: ty::Binder<'tcx, GenericArgsRef<'tcx>>,
-) -> impl Iterator<Item = TyOrConstInferVar> + Captures<'tcx> {
+) -> impl Iterator<Item = TyOrConstInferVar> {
     selcx
         .infcx
         .resolve_vars_if_possible(args)

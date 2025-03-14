@@ -67,6 +67,11 @@ impl Limit {
         Limit(value)
     }
 
+    /// Create a new unlimited limit.
+    pub fn unlimited() -> Self {
+        Limit(usize::MAX)
+    }
+
     /// Check that `value` is within the limit. Ensures that the same comparisons are used
     /// throughout the compiler, as mismatches can cause ICEs, see #72540.
     #[inline]
@@ -104,8 +109,8 @@ impl Mul<usize> for Limit {
 }
 
 impl rustc_errors::IntoDiagArg for Limit {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
-        self.to_string().into_diag_arg()
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
+        self.to_string().into_diag_arg(&mut None)
     }
 }
 
@@ -119,6 +124,8 @@ pub struct Limits {
     pub move_size_limit: Limit,
     /// The maximum length of types during monomorphization.
     pub type_length_limit: Limit,
+    /// The maximum pattern complexity allowed (internal only).
+    pub pattern_complexity_limit: Limit,
 }
 
 pub struct CompilerIO {
@@ -136,7 +143,6 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub host_tlib_path: Arc<SearchPath>,
     pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
     pub sysroot: PathBuf,
@@ -906,7 +912,7 @@ fn default_emitter(
     let source_map = if sopts.unstable_opts.link_only { None } else { Some(source_map) };
 
     match sopts.error_format {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
 
             if let HumanReadableErrorType::AnnotateSnippet = kind {
@@ -923,7 +929,6 @@ fn default_emitter(
                     .fluent_bundle(bundle)
                     .sm(source_map)
                     .short_message(short)
-                    .teach(sopts.unstable_opts.teach)
                     .diagnostic_width(sopts.diagnostic_width)
                     .macro_backtrace(macro_backtrace)
                     .track_diagnostics(track_diagnostics)
@@ -965,7 +970,6 @@ fn default_emitter(
 #[allow(rustc::bad_opt_access)]
 #[allow(rustc::untranslatable_diagnostic)] // FIXME: make this translatable
 pub fn build_session(
-    early_dcx: EarlyDiagCtxt,
     sopts: config::Options,
     io: CompilerIO,
     bundle: Option<Arc<rustc_errors::FluentBundle>>,
@@ -990,14 +994,6 @@ pub fn build_session(
     let cap_lints_allow = sopts.lint_cap.is_some_and(|cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
 
-    let host_triple = TargetTuple::from_tuple(config::host_tuple());
-    let (host, target_warnings) = Target::search(&host_triple, &sysroot).unwrap_or_else(|e| {
-        early_dcx.early_fatal(format!("Error loading host specification: {e}"))
-    });
-    for warning in target_warnings.warning_messages() {
-        early_dcx.early_warn(warning)
-    }
-
     let fallback_bundle = fallback_fluent_bundle(
         fluent_resources,
         sopts.unstable_opts.translate_directionality_markers,
@@ -1012,14 +1008,16 @@ pub fn build_session(
         dcx = dcx.with_ice_file(ice_file);
     }
 
-    // Now that the proper handler has been constructed, drop early_dcx to
-    // prevent accidental use.
-    drop(early_dcx);
+    let host_triple = TargetTuple::from_tuple(config::host_tuple());
+    let (host, target_warnings) = Target::search(&host_triple, &sysroot)
+        .unwrap_or_else(|e| dcx.handle().fatal(format!("Error loading host specification: {e}")));
+    for warning in target_warnings.warning_messages() {
+        dcx.handle().warn(warning)
+    }
 
     let self_profiler = if let SwitchWithOptPath::Enabled(ref d) = sopts.unstable_opts.self_profile
     {
-        let directory =
-            if let Some(ref directory) = d { directory } else { std::path::Path::new(".") };
+        let directory = if let Some(directory) = d { directory } else { std::path::Path::new(".") };
 
         let profiler = SelfProfiler::new(
             directory,
@@ -1043,6 +1041,7 @@ pub fn build_session(
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
+    // FIXME use host sysroot?
     let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
@@ -1071,7 +1070,6 @@ pub fn build_session(
         target,
         host,
         opts: sopts,
-        host_tlib_path,
         target_tlib_path,
         psess,
         sysroot,
@@ -1257,7 +1255,8 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
     }
 
     if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {
-        if dwarf_version > 5 {
+        // DWARF 1 is not supported by LLVM and DWARF 6 is not yet finalized.
+        if dwarf_version < 2 || dwarf_version > 5 {
             sess.dcx().emit_err(errors::UnsupportedDwarfVersion { dwarf_version });
         }
     }
@@ -1429,7 +1428,7 @@ fn mk_emitter(output: ErrorOutputType) -> Box<DynEmitter> {
     let fallback_bundle =
         fallback_fluent_bundle(vec![rustc_errors::DEFAULT_LOCALE_RESOURCE], false);
     let emitter: Box<DynEmitter> = match output {
-        config::ErrorOutputType::HumanReadable(kind, color_config) => {
+        config::ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)

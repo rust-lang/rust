@@ -26,11 +26,7 @@ impl OmitFollowedCastReason<'_> {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
-    if !msrv.meets(msrvs::POINTER_CAST) {
-        return;
-    }
-
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: Msrv) {
     if let ExprKind::Cast(cast_expr, cast_to_hir_ty) = expr.kind
         && let (cast_from, cast_to) = (cx.typeck_results().expr_ty(cast_expr), cx.typeck_results().expr_ty(expr))
         && let ty::RawPtr(_, from_mutbl) = cast_from.kind()
@@ -40,6 +36,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, msrv: &Msrv) {
         // The `U` in `pointer::cast` have to be `Sized`
         // as explained here: https://github.com/rust-lang/rust/issues/60602.
         && to_pointee_ty.is_sized(cx.tcx, cx.typing_env())
+        && msrv.meets(cx, msrvs::POINTER_CAST)
     {
         let mut app = Applicability::MachineApplicable;
         let turbofish = match &cast_to_hir_ty.kind {

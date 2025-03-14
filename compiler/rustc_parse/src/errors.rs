@@ -106,6 +106,19 @@ pub(crate) struct IncorrectUseOfAwait {
     pub span: Span,
 }
 
+#[derive(Diagnostic)]
+#[diag(parse_incorrect_use_of_use)]
+pub(crate) struct IncorrectUseOfUse {
+    #[primary_span]
+    #[suggestion(
+        parse_parentheses_suggestion,
+        style = "verbose",
+        code = "",
+        applicability = "machine-applicable"
+    )]
+    pub span: Span,
+}
+
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(
     parse_incorrect_use_of_await_postfix_suggestion,
@@ -772,7 +785,6 @@ pub(crate) struct LabeledLoopInBreak {
 }
 
 #[derive(Subdiagnostic)]
-
 pub(crate) enum WrapInParentheses {
     #[multipart_suggestion(
         parse_sugg_wrap_expression_in_parentheses,
@@ -1025,7 +1037,7 @@ pub(crate) struct SuffixedLiteralInAttribute {
 pub(crate) struct InvalidMetaItem {
     #[primary_span]
     pub span: Span,
-    pub token: Token,
+    pub descr: String,
     #[subdiagnostic]
     pub quote_ident_sugg: Option<InvalidMetaItemQuoteIdentSugg>,
 }
@@ -1121,23 +1133,29 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedIdentifier {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
-        let mut diag = Diag::new(dcx, level, match token_descr {
-            Some(TokenDescription::ReservedIdentifier) => {
-                fluent::parse_expected_identifier_found_reserved_identifier_str
-            }
-            Some(TokenDescription::Keyword) => fluent::parse_expected_identifier_found_keyword_str,
-            Some(TokenDescription::ReservedKeyword) => {
-                fluent::parse_expected_identifier_found_reserved_keyword_str
-            }
-            Some(TokenDescription::DocComment) => {
-                fluent::parse_expected_identifier_found_doc_comment_str
-            }
-            Some(TokenDescription::MetaVar(_)) => {
-                add_token = false;
-                fluent::parse_expected_identifier_found_metavar_str
-            }
-            None => fluent::parse_expected_identifier_found_str,
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match token_descr {
+                Some(TokenDescription::ReservedIdentifier) => {
+                    fluent::parse_expected_identifier_found_reserved_identifier_str
+                }
+                Some(TokenDescription::Keyword) => {
+                    fluent::parse_expected_identifier_found_keyword_str
+                }
+                Some(TokenDescription::ReservedKeyword) => {
+                    fluent::parse_expected_identifier_found_reserved_keyword_str
+                }
+                Some(TokenDescription::DocComment) => {
+                    fluent::parse_expected_identifier_found_doc_comment_str
+                }
+                Some(TokenDescription::MetaVar(_)) => {
+                    add_token = false;
+                    fluent::parse_expected_identifier_found_metavar_str
+                }
+                None => fluent::parse_expected_identifier_found_str,
+            },
+        );
         diag.span(self.span);
         if add_token {
             diag.arg("token", self.token);
@@ -1182,21 +1200,27 @@ impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for ExpectedSemi {
         let token_descr = TokenDescription::from_token(&self.token);
 
         let mut add_token = true;
-        let mut diag = Diag::new(dcx, level, match token_descr {
-            Some(TokenDescription::ReservedIdentifier) => {
-                fluent::parse_expected_semi_found_reserved_identifier_str
-            }
-            Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
-            Some(TokenDescription::ReservedKeyword) => {
-                fluent::parse_expected_semi_found_reserved_keyword_str
-            }
-            Some(TokenDescription::DocComment) => fluent::parse_expected_semi_found_doc_comment_str,
-            Some(TokenDescription::MetaVar(_)) => {
-                add_token = false;
-                fluent::parse_expected_semi_found_metavar_str
-            }
-            None => fluent::parse_expected_semi_found_str,
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match token_descr {
+                Some(TokenDescription::ReservedIdentifier) => {
+                    fluent::parse_expected_semi_found_reserved_identifier_str
+                }
+                Some(TokenDescription::Keyword) => fluent::parse_expected_semi_found_keyword_str,
+                Some(TokenDescription::ReservedKeyword) => {
+                    fluent::parse_expected_semi_found_reserved_keyword_str
+                }
+                Some(TokenDescription::DocComment) => {
+                    fluent::parse_expected_semi_found_doc_comment_str
+                }
+                Some(TokenDescription::MetaVar(_)) => {
+                    add_token = false;
+                    fluent::parse_expected_semi_found_metavar_str
+                }
+                None => fluent::parse_expected_semi_found_str,
+            },
+        );
         diag.span(self.span);
         if add_token {
             diag.arg("token", self.token);
@@ -1489,6 +1513,14 @@ pub(crate) struct AsyncMoveOrderIncorrect {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_async_use_order_incorrect)]
+pub(crate) struct AsyncUseOrderIncorrect {
+    #[primary_span]
+    #[suggestion(style = "verbose", code = "async use", applicability = "maybe-incorrect")]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_double_colon_in_bound)]
 pub(crate) struct DoubleColonInBound {
     #[primary_span]
@@ -1652,6 +1684,13 @@ pub(crate) struct AsyncBlockIn2015 {
 #[derive(Diagnostic)]
 #[diag(parse_async_move_block_in_2015)]
 pub(crate) struct AsyncMoveBlockIn2015 {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_async_use_block_in_2015)]
+pub(crate) struct AsyncUseBlockIn2015 {
     #[primary_span]
     pub span: Span,
 }
@@ -2911,8 +2950,9 @@ pub(crate) struct AddBoxNew {
 #[diag(parse_bad_return_type_notation_output)]
 pub(crate) struct BadReturnTypeNotationOutput {
     #[primary_span]
-    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
     pub span: Span,
+    #[suggestion(code = "", applicability = "maybe-incorrect", style = "verbose")]
+    pub suggestion: Span,
 }
 
 #[derive(Diagnostic)]
@@ -3057,14 +3097,6 @@ pub(crate) struct BadItemKind {
     pub ctx: &'static str,
     #[help]
     pub help: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(parse_single_colon_struct_type)]
-pub(crate) struct SingleColonStructType {
-    #[primary_span]
-    #[suggestion(code = "::", applicability = "maybe-incorrect", style = "verbose")]
-    pub span: Span,
 }
 
 #[derive(Diagnostic)]

@@ -35,12 +35,8 @@ pub(super) fn check_fn<'a, 'tcx>(
     params_can_be_unsized: bool,
 ) -> Option<CoroutineTypes<'tcx>> {
     let fn_id = fcx.tcx.local_def_id_to_hir_id(fn_def_id);
-
     let tcx = fcx.tcx;
-    let hir = tcx.hir();
-
     let declared_ret_ty = fn_sig.output();
-
     let ret_ty =
         fcx.register_infer_ok_obligations(fcx.infcx.replace_opaque_types_with_inference_vars(
             declared_ret_ty,
@@ -69,7 +65,7 @@ pub(super) fn check_fn<'a, 'tcx>(
     });
 
     // Add formal parameters.
-    let inputs_hir = hir.fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
+    let inputs_hir = tcx.hir_fn_decl_by_hir_id(fn_id).map(|decl| &decl.inputs);
     let inputs_fn = fn_sig.inputs().iter().copied();
     for (idx, (param_ty, param)) in inputs_fn.chain(maybe_va_list).zip(body.params).enumerate() {
         // We checked the root's signature during wfcheck, but not the child.
@@ -186,18 +182,21 @@ fn check_panic_info_fn(tcx: TyCtxt<'_>, fn_id: LocalDefId, fn_sig: ty::FnSig<'_>
     let panic_info_did = tcx.require_lang_item(hir::LangItem::PanicInfo, Some(span));
 
     // build type `for<'a, 'b> fn(&'a PanicInfo<'b>) -> !`
-    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(tcx, &[ty::GenericArg::from(
-        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-            var: ty::BoundVar::from_u32(1),
-            kind: ty::BoundRegionKind::Anon,
-        }),
-    )]);
+    let panic_info_ty = tcx.type_of(panic_info_did).instantiate(
+        tcx,
+        &[ty::GenericArg::from(ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::from_u32(1), kind: ty::BoundRegionKind::Anon },
+        ))],
+    );
     let panic_info_ref_ty = Ty::new_imm_ref(
         tcx,
-        ty::Region::new_bound(tcx, ty::INNERMOST, ty::BoundRegion {
-            var: ty::BoundVar::ZERO,
-            kind: ty::BoundRegionKind::Anon,
-        }),
+        ty::Region::new_bound(
+            tcx,
+            ty::INNERMOST,
+            ty::BoundRegion { var: ty::BoundVar::ZERO, kind: ty::BoundRegionKind::Anon },
+        ),
         panic_info_ty,
     );
 
