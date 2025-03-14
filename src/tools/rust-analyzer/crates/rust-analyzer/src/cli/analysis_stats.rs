@@ -2,7 +2,7 @@
 //! errors.
 
 use std::{
-    env,
+    env, fmt,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -156,6 +156,11 @@ impl flags::AnalysisStats {
         let item_tree_time = item_tree_sw.elapsed();
 
         eprintln!("Source stats:");
+        let dep_loc = UsizeWithUnderscore(dep_loc);
+        let deps_item_trees = UsizeWithUnderscore(deps_item_trees);
+        let workspace_loc = UsizeWithUnderscore(workspace_loc);
+        let workspace_item_trees = UsizeWithUnderscore(workspace_item_trees);
+
         eprintln!("  dependency lines of code: {dep_loc}, item trees: {deps_item_trees}");
         eprintln!("  workspace lines of code: {workspace_loc}, item trees: {workspace_item_trees}");
 
@@ -1248,6 +1253,30 @@ fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
 
 fn percentage(n: u64, total: u64) -> u64 {
     (n * 100).checked_div(total).unwrap_or(100)
+}
+
+struct UsizeWithUnderscore(usize);
+
+impl fmt::Display for UsizeWithUnderscore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let num_str = self.0.to_string();
+
+        if num_str.len() <= 3 {
+            return write!(f, "{}", num_str);
+        }
+
+        let mut result = String::new();
+
+        for (count, ch) in num_str.chars().rev().enumerate() {
+            if count > 0 && count % 3 == 0 {
+                result.push('_');
+            }
+            result.push(ch);
+        }
+
+        let result = result.chars().rev().collect::<String>();
+        write!(f, "{}", result)
+    }
 }
 
 // FIXME(salsa-transition): bring this back whenever we implement
