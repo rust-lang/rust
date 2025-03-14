@@ -10,7 +10,7 @@ use crate::GitHubContext;
 /// Representation of a job loaded from the `src/ci/github-actions/jobs.yml` file.
 #[derive(serde::Deserialize, Debug, Clone)]
 pub struct Job {
-    /// Name of the job, e.g. mingw-check
+    /// Name of the job, e.g. mingw-check-1
     pub name: String,
     /// GitHub runner on which the job should be executed
     pub os: String,
