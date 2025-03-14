@@ -600,7 +600,7 @@ Select which editor you would like to set up [default: None]: ";
                 "c394386e6133bbf29ffd32c8af0bb3d4aac354cba9ee051f29612aa9350f8f8d",
             ],
             EditorKind::Zed => {
-                &["bbce727c269d1bd0c98afef4d612eb4ce27aea3c3a8968c5f10b31affbc40b6c"]
+                &["9d6f1f99e8a98467173126fcb480aa8203ea5bdabdb55a903bee03da8307e483"]
             }
         }
     }
