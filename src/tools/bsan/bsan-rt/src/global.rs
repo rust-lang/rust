@@ -17,9 +17,6 @@ impl GlobalContext {
     fn new(allocator: BsanAllocator) -> Self {
         let l1: L1<Provenance> = L1::new(allocator);
         Self { allocator, next_alloc_id: AtomicUsize::new(1), shadow_heap: ShadowHeap { l1 } }
-
-        // TODO: Before returning, make sure to create and init a shadowheap object, including the L1 table using MMMAP
-        // TODO: Follow line 189 on the softboundsCETS.cpp to implement it, with the same flags and asserts
     }
 }
 

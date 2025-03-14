@@ -4,7 +4,7 @@ use core::marker::PhantomData;
 use core::ops::{Add, BitAnd, Deref, DerefMut, Shr};
 use core::{mem, ptr};
 
-use libc::{MAP_ANONYMOUS, MAP_PRIVATE, PROT_READ, PROT_WRITE};
+use libc::{MAP_ANONYMOUS, MAP_NORESERVE, MAP_PRIVATE, PROT_READ, PROT_WRITE};
 
 use crate::BsanAllocator;
 use crate::global::{GlobalContext, global_ctx};
@@ -50,7 +50,7 @@ static L1_LEN: usize = 2_usize.pow(L1_POWER);
 /// Converts an address into a pair of indices into the first and second
 /// levels of the shadow page table.
 #[inline(always)]
-fn table_indices(address: usize) -> (usize, usize) {
+pub fn table_indices(address: usize) -> (usize, usize) {
     #[cfg(target_endian = "little")]
     let l1_index = address.shr(L2_POWER).bitand((L1_POWER - 1) as usize);
 
@@ -69,46 +69,60 @@ pub trait Provenance: Copy + Sized {}
 
 #[repr(C)]
 pub struct L2<T: Provenance> {
-    bytes: *mut [T; L2_LEN], // TODO: Make sure you transmute the c_void pointer
+    pub bytes: *mut [T; L2_LEN],
 }
 
 impl<T: Provenance> L2<T> {
-    fn new(allocator: BsanAllocator) {}
+    pub fn new(allocator: BsanAllocator) -> Self {
+        let mut l2_bytes: *mut [T; L2_LEN] = unsafe {
+            let l2_void = (allocator.mmap)(
+                core::ptr::null_mut(),
+                size_of::<T>() * L2_LEN,
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
+                -1,
+                0,
+            );
+
+            ptr::write_bytes(l2_void as *mut u8, 0, size_of::<T>() * L2_LEN);
+            mem::transmute(l2_void)
+        };
+
+        Self { bytes: l2_bytes }
+    }
     #[inline(always)]
-    unsafe fn lookup_mut(&mut self, index: usize) -> &mut T {
+    pub unsafe fn lookup_mut(&mut self, index: usize) -> &mut T {
         self.bytes.get_unchecked_mut(index)
     }
     #[inline(always)]
-    unsafe fn lookup(&mut self, index: usize) -> &T {
+    pub unsafe fn lookup(&mut self, index: usize) -> &T {
         self.bytes.get_unchecked(index)
     }
 }
 
 #[repr(C)]
 pub struct L1<T: Provenance> {
-    entries: *mut [*mut L2<T>; L1_LEN], //
+    pub entries: *mut [*mut L2<T>; L1_LEN], //
 }
 
 impl<T: Provenance> L1<T> {
     pub fn new(allocator: BsanAllocator) -> Self {
-        let mut l1: L1<T> = unsafe {
+        let mut l1_entries: *mut [*mut L2<T>; L1_LEN] = unsafe {
             let l1_void = (allocator.mmap)(
                 core::ptr::null_mut(),
                 PTR_BYTES * L1_LEN,
                 PROT_READ | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS,
+                MAP_PRIVATE | MAP_ANONYMOUS | MAP_NORESERVE,
                 -1,
                 0,
             );
-            if l1_void == core::ptr::null_mut() {
-                panic!("mmap failed")
-            }
+            assert!(l1_void != core::ptr::null_mut() || l1_void != -1isize as (*mut c_void));
             // zero bytes after allocating
             ptr::write_bytes(l1_void as *mut u8, 0, PTR_BYTES * L1_LEN);
             mem::transmute(l1_void)
         };
 
-        Self { entries: *l1 }
+        Self { entries: l1_entries }
     }
 
     #[inline(always)]
