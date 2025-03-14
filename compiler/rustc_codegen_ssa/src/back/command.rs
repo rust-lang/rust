@@ -143,13 +143,6 @@ impl Command {
             return false;
         }
 
-        // Right now LLD doesn't support the `@` syntax of passing an argument
-        // through files, so regardless of the platform we try to go to the OS
-        // on this one.
-        if let Program::Lld(..) = self.program {
-            return false;
-        }
-
         // Ok so on Windows to spawn a process is 32,768 characters in its
         // command line [1]. Unfortunately we don't actually have access to that
         // as it's calculated just before spawning. Instead we perform a

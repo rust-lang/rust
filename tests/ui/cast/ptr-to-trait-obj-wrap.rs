@@ -2,7 +2,6 @@
 // work. Note that the metadata doesn't change when a DST is wrapped in a
 // structure, so these casts *are* fine.
 //
-// `unwrap` and `unwrap_nested` currently don't work due to a compiler limitation.
 //@ check-pass
 
 trait A {}
