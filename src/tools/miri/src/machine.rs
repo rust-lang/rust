@@ -622,6 +622,9 @@ pub struct MiriMachine<'tcx> {
 }
 
 impl<'tcx> MiriMachine<'tcx> {
+    /// Create a new MiriMachine.
+    ///
+    /// Invariant: `genmc_ctx.is_some() == config.genmc_config.is_some()`
     pub(crate) fn new(
         config: &MiriConfig,
         layout_cx: LayoutCx<'tcx>,
@@ -645,7 +648,7 @@ impl<'tcx> MiriMachine<'tcx> {
         });
         let rng = StdRng::seed_from_u64(config.seed.unwrap_or(0));
         let borrow_tracker = config.borrow_tracker.map(|bt| bt.instantiate_global_state(config));
-        let data_race = if config.genmc_mode {
+        let data_race = if config.genmc_config.is_some() {
             // `genmc_ctx` persists across executions, so we don't create a new one here.
             GlobalDataRaceHandler::Genmc(genmc_ctx.unwrap())
         } else if config.data_race_detector {

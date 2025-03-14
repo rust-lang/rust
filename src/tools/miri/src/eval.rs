@@ -125,8 +125,8 @@ pub struct MiriConfig {
     pub data_race_detector: bool,
     /// Determine if weak memory emulation should be enabled. Requires data race detection to be enabled.
     pub weak_memory_emulation: bool,
-    /// Determine if we are running in GenMC mode. In this mode, Miri will explore multiple concurrent executions of the given program.
-    pub genmc_mode: bool,
+    /// Determine if we are running in GenMC mode and with which settings. In GenMC mode, Miri will explore multiple concurrent executions of the given program.
+    pub genmc_config: Option<GenmcConfig>,
     /// Track when an outdated (weak memory) load happens.
     pub track_outdated_loads: bool,
     /// Rate of spurious failures for compare_exchange_weak atomic operations,
@@ -192,7 +192,7 @@ impl Default for MiriConfig {
             track_alloc_accesses: false,
             data_race_detector: true,
             weak_memory_emulation: true,
-            genmc_mode: false,
+            genmc_config: None,
             track_outdated_loads: false,
             cmpxchg_weak_failure_rate: 0.8, // 80%
             measureme_out: None,
