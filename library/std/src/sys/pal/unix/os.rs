@@ -484,7 +484,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "redox", target_os = "rtems"))]
+#[cfg(target_os = "redox")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    crate::fs::read_to_string("/scheme/sys/exe").map(PathBuf::from)
+}
+
+#[cfg(target_os = "rtems")]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
