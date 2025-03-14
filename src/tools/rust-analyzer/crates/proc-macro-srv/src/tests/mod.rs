@@ -12,7 +12,7 @@ fn test_derive_empty() {
         "DeriveEmpty",
         r#"struct S;"#,
         expect!["SUBTREE $$ 1 1"],
-        expect!["SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021"],
+        expect!["SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024"],
     );
 }
 
@@ -29,12 +29,12 @@ fn test_derive_error() {
                 LITERAL Str #[derive(DeriveError)] struct S ; 1
               PUNCH   ; [alone] 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   compile_error 42:2@0..100#ROOT2021
-              PUNCH   ! [alone] 42:2@0..100#ROOT2021
-              SUBTREE () 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-                LITERAL Str #[derive(DeriveError)] struct S ; 42:2@0..100#ROOT2021
-              PUNCH   ; [alone] 42:2@0..100#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   compile_error 42:2@0..100#ROOT2024
+              PUNCH   ! [alone] 42:2@0..100#ROOT2024
+              SUBTREE () 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+                LITERAL Str #[derive(DeriveError)] struct S ; 42:2@0..100#ROOT2024
+              PUNCH   ; [alone] 42:2@0..100#ROOT2024"#]],
     );
 }
 
@@ -53,14 +53,14 @@ fn test_fn_like_macro_noop() {
               PUNCH   , [alone] 1
               SUBTREE [] 1 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   ident 42:2@0..5#ROOT2021
-              PUNCH   , [alone] 42:2@5..6#ROOT2021
-              LITERAL Integer 0 42:2@7..8#ROOT2021
-              PUNCH   , [alone] 42:2@8..9#ROOT2021
-              LITERAL Integer 1 42:2@10..11#ROOT2021
-              PUNCH   , [alone] 42:2@11..12#ROOT2021
-              SUBTREE [] 42:2@13..14#ROOT2021 42:2@14..15#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   ident 42:2@0..5#ROOT2024
+              PUNCH   , [alone] 42:2@5..6#ROOT2024
+              LITERAL Integer 0 42:2@7..8#ROOT2024
+              PUNCH   , [alone] 42:2@8..9#ROOT2024
+              LITERAL Integer 1 42:2@10..11#ROOT2024
+              PUNCH   , [alone] 42:2@11..12#ROOT2024
+              SUBTREE [] 42:2@13..14#ROOT2024 42:2@14..15#ROOT2024"#]],
     );
 }
 
@@ -75,10 +75,10 @@ fn test_fn_like_macro_clone_ident_subtree() {
               PUNCH   , [alone] 1
               SUBTREE [] 1 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   ident 42:2@0..5#ROOT2021
-              PUNCH   , [alone] 42:2@5..6#ROOT2021
-              SUBTREE [] 42:2@7..8#ROOT2021 42:2@7..8#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   ident 42:2@0..5#ROOT2024
+              PUNCH   , [alone] 42:2@5..6#ROOT2024
+              SUBTREE [] 42:2@7..8#ROOT2024 42:2@7..8#ROOT2024"#]],
     );
 }
 
@@ -91,8 +91,8 @@ fn test_fn_like_macro_clone_raw_ident() {
             SUBTREE $$ 1 1
               IDENT   r#async 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   r#async 42:2@0..7#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   r#async 42:2@0..7#ROOT2024"#]],
     );
 }
 
@@ -105,8 +105,8 @@ fn test_fn_like_fn_like_span_join() {
             SUBTREE $$ 1 1
               IDENT   r#joined 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   r#joined 42:2@0..11#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   r#joined 42:2@0..11#ROOT2024"#]],
     );
 }
 
@@ -121,10 +121,10 @@ fn test_fn_like_fn_like_span_ops() {
               IDENT   resolved_at_def_site 1
               IDENT   start_span 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   set_def_site 41:1@0..150#ROOT2021
-              IDENT   resolved_at_def_site 42:2@13..33#ROOT2021
-              IDENT   start_span 42:2@34..34#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   set_def_site 41:1@0..150#ROOT2024
+              IDENT   resolved_at_def_site 42:2@13..33#ROOT2024
+              IDENT   start_span 42:2@34..34#ROOT2024"#]],
     );
 }
 
@@ -143,14 +143,14 @@ fn test_fn_like_mk_literals() {
               LITERAL Integer 123i64 1
               LITERAL Integer 123 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              LITERAL ByteStr byte_string 42:2@0..100#ROOT2021
-              LITERAL Char c 42:2@0..100#ROOT2021
-              LITERAL Str string 42:2@0..100#ROOT2021
-              LITERAL Float 3.14f64 42:2@0..100#ROOT2021
-              LITERAL Float 3.14 42:2@0..100#ROOT2021
-              LITERAL Integer 123i64 42:2@0..100#ROOT2021
-              LITERAL Integer 123 42:2@0..100#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              LITERAL ByteStr byte_string 42:2@0..100#ROOT2024
+              LITERAL Char c 42:2@0..100#ROOT2024
+              LITERAL Str string 42:2@0..100#ROOT2024
+              LITERAL Float 3.14f64 42:2@0..100#ROOT2024
+              LITERAL Float 3.14 42:2@0..100#ROOT2024
+              LITERAL Integer 123i64 42:2@0..100#ROOT2024
+              LITERAL Integer 123 42:2@0..100#ROOT2024"#]],
     );
 }
 
@@ -164,9 +164,9 @@ fn test_fn_like_mk_idents() {
               IDENT   standard 1
               IDENT   r#raw 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   standard 42:2@0..100#ROOT2021
-              IDENT   r#raw 42:2@0..100#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   standard 42:2@0..100#ROOT2024
+              IDENT   r#raw 42:2@0..100#ROOT2024"#]],
     );
 }
 
@@ -198,27 +198,27 @@ fn test_fn_like_macro_clone_literals() {
               PUNCH   , [alone] 1
               LITERAL CStr null 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              LITERAL Integer 1u16 42:2@0..4#ROOT2021
-              PUNCH   , [alone] 42:2@4..5#ROOT2021
-              LITERAL Integer 2_u32 42:2@6..11#ROOT2021
-              PUNCH   , [alone] 42:2@11..12#ROOT2021
-              PUNCH   - [alone] 42:2@13..14#ROOT2021
-              LITERAL Integer 4i64 42:2@14..18#ROOT2021
-              PUNCH   , [alone] 42:2@18..19#ROOT2021
-              LITERAL Float 3.14f32 42:2@20..27#ROOT2021
-              PUNCH   , [alone] 42:2@27..28#ROOT2021
-              LITERAL Str hello bridge 42:2@29..43#ROOT2021
-              PUNCH   , [alone] 42:2@43..44#ROOT2021
-              LITERAL Str suffixedsuffix 42:2@45..61#ROOT2021
-              PUNCH   , [alone] 42:2@61..62#ROOT2021
-              LITERAL StrRaw(2) raw 42:2@63..73#ROOT2021
-              PUNCH   , [alone] 42:2@73..74#ROOT2021
-              LITERAL Char a 42:2@75..78#ROOT2021
-              PUNCH   , [alone] 42:2@78..79#ROOT2021
-              LITERAL Byte b 42:2@80..84#ROOT2021
-              PUNCH   , [alone] 42:2@84..85#ROOT2021
-              LITERAL CStr null 42:2@86..93#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              LITERAL Integer 1u16 42:2@0..4#ROOT2024
+              PUNCH   , [alone] 42:2@4..5#ROOT2024
+              LITERAL Integer 2_u32 42:2@6..11#ROOT2024
+              PUNCH   , [alone] 42:2@11..12#ROOT2024
+              PUNCH   - [alone] 42:2@13..14#ROOT2024
+              LITERAL Integer 4i64 42:2@14..18#ROOT2024
+              PUNCH   , [alone] 42:2@18..19#ROOT2024
+              LITERAL Float 3.14f32 42:2@20..27#ROOT2024
+              PUNCH   , [alone] 42:2@27..28#ROOT2024
+              LITERAL Str hello bridge 42:2@29..43#ROOT2024
+              PUNCH   , [alone] 42:2@43..44#ROOT2024
+              LITERAL Str suffixedsuffix 42:2@45..61#ROOT2024
+              PUNCH   , [alone] 42:2@61..62#ROOT2024
+              LITERAL StrRaw(2) raw 42:2@63..73#ROOT2024
+              PUNCH   , [alone] 42:2@73..74#ROOT2024
+              LITERAL Char a 42:2@75..78#ROOT2024
+              PUNCH   , [alone] 42:2@78..79#ROOT2024
+              LITERAL Byte b 42:2@80..84#ROOT2024
+              PUNCH   , [alone] 42:2@84..85#ROOT2024
+              LITERAL CStr null 42:2@86..93#ROOT2024"#]],
     );
 }
 
@@ -239,12 +239,12 @@ fn test_attr_macro() {
                 LITERAL Str #[attr_error(some arguments)] mod m {} 1
               PUNCH   ; [alone] 1"#]],
         expect![[r#"
-            SUBTREE $$ 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-              IDENT   compile_error 42:2@0..100#ROOT2021
-              PUNCH   ! [alone] 42:2@0..100#ROOT2021
-              SUBTREE () 42:2@0..100#ROOT2021 42:2@0..100#ROOT2021
-                LITERAL Str #[attr_error(some arguments)] mod m {} 42:2@0..100#ROOT2021
-              PUNCH   ; [alone] 42:2@0..100#ROOT2021"#]],
+            SUBTREE $$ 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+              IDENT   compile_error 42:2@0..100#ROOT2024
+              PUNCH   ! [alone] 42:2@0..100#ROOT2024
+              SUBTREE () 42:2@0..100#ROOT2024 42:2@0..100#ROOT2024
+                LITERAL Str #[attr_error(some arguments)] mod m {} 42:2@0..100#ROOT2024
+              PUNCH   ; [alone] 42:2@0..100#ROOT2024"#]],
     );
 }
 

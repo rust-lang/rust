@@ -105,7 +105,7 @@ mod macros {
 fn completes_std_prelude_if_core_is_defined() {
     check_no_kw(
         r#"
-//- /main.rs crate:main deps:core,std
+//- /main.rs crate:main deps:core,std edition:2021
 fn foo() { let x: $0 }
 
 //- /core/lib.rs crate:core

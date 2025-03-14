@@ -145,6 +145,7 @@ impl ChangeFixture {
         let mut crates = FxHashMap::default();
         let mut crate_deps = Vec::new();
         let mut default_crate_root: Option<FileId> = None;
+        let mut default_edition = Edition::CURRENT;
         let mut default_cfg = CfgOptions::default();
         let mut default_env = Env::from_iter([(
             String::from("__ra_is_test_fixture"),
@@ -228,6 +229,7 @@ impl ChangeFixture {
             } else if meta.path == "/main.rs" || meta.path == "/lib.rs" {
                 assert!(default_crate_root.is_none());
                 default_crate_root = Some(file_id);
+                default_edition = meta.edition;
                 default_cfg.extend(meta.cfg.into_iter());
                 default_env.extend_from_other(&meta.env);
             }
@@ -244,7 +246,7 @@ impl ChangeFixture {
                 .expect("missing default crate root, specify a main.rs or lib.rs");
             crate_graph.add_crate_root(
                 crate_root,
-                Edition::CURRENT,
+                default_edition,
                 Some(CrateName::new("ra_test_fixture").unwrap().into()),
                 None,
                 default_cfg.clone(),

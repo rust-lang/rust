@@ -745,7 +745,12 @@ mod err {
         run_and_expect_errors("test_data/parser/inline/err/fn_pointer_type_missing_fn.rs");
     }
     #[test]
-    fn gen_fn() { run_and_expect_errors("test_data/parser/inline/err/gen_fn.rs"); }
+    fn gen_fn() {
+        run_and_expect_errors_with_edition(
+            "test_data/parser/inline/err/gen_fn.rs",
+            crate::Edition::Edition2021,
+        );
+    }
     #[test]
     fn generic_arg_list_recover() {
         run_and_expect_errors("test_data/parser/inline/err/generic_arg_list_recover.rs");

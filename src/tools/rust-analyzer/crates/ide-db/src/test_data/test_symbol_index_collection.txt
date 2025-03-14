@@ -24,7 +24,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: TYPE_ALIAS,
@@ -55,7 +55,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: CONST,
@@ -86,7 +86,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: CONST,
@@ -119,7 +119,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: ENUM,
@@ -152,7 +152,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -185,7 +185,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MACRO_DEF,
@@ -216,7 +216,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STATIC,
@@ -249,7 +249,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -312,7 +312,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -347,7 +347,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -382,7 +382,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -415,7 +415,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -446,7 +446,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: TRAIT,
@@ -479,7 +479,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -512,7 +512,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: UNION,
@@ -547,7 +547,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MODULE,
@@ -582,7 +582,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MODULE,
@@ -615,7 +615,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MACRO_RULES,
@@ -646,7 +646,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
@@ -679,7 +679,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
@@ -714,7 +714,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: MACRO_RULES,
@@ -745,7 +745,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
@@ -778,7 +778,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -809,7 +809,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: FN,
@@ -857,7 +857,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -901,7 +901,7 @@
                         FileId(
                             1,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -934,7 +934,7 @@
                         FileId(
                             1,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -967,7 +967,7 @@
                         FileId(
                             1,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -1000,7 +1000,7 @@
                         FileId(
                             1,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,
@@ -1033,7 +1033,7 @@
                         FileId(
                             1,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: USE_TREE,

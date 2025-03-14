@@ -1258,7 +1258,7 @@ fn foo(mut foo: Foo) {
 
 pub struct A {}
 pub unsafe fn foo(a: *mut A) {
-    let mut b = || -> *mut A { &mut *a };
+    let mut b = || -> *mut A { unsafe { &mut *a } };
       //^^^^^ 💡 warn: variable does not need to be mutable
     let _ = b();
 }
