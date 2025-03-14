@@ -479,7 +479,7 @@ impl WalkItemKind for ItemKind {
             ItemKind::MacroDef(ident, ts) => {
                 try_visit!(visitor.visit_ident(ident));
                 try_visit!(visitor.visit_mac_def(ts, id));
-                if let Some(EiiMacroFor { extern_item_path, impl_unsafe: _ }) = &ts.eii_macro_for {
+                if let Some(EIIMacroFor { extern_item_path, impl_unsafe: _ }) = &ts.eii_macro_for {
                     try_visit!(visitor.visit_path(extern_item_path, id));
                 }
             }

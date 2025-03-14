@@ -1952,11 +1952,11 @@ pub struct MacroDef {
     /// `true` if macro was defined with `macro_rules`.
     pub macro_rules: bool,
 
-    pub eii_macro_for: Option<EiiMacroFor>,
+    pub eii_macro_for: Option<EIIMacroFor>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug, HashStable_Generic)]
-pub struct EiiMacroFor {
+pub struct EIIMacroFor {
     pub extern_item_path: Path,
     pub impl_unsafe: bool,
 }
@@ -3598,6 +3598,7 @@ pub struct EIIImpl {
     pub impl_safety: Safety,
     pub span: Span,
     pub inner_span: Span,
+    pub is_default: bool,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]

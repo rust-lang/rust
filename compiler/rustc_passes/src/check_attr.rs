@@ -488,7 +488,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         _target_span: Span,
         target: Target,
     ) {
-        for EIIImpl { span, inner_span, eii_macro, impl_marked_unsafe } in impls {
+        for EIIImpl { span, inner_span, eii_macro, impl_marked_unsafe, is_default: _ } in impls {
             match target {
                 Target::Fn => {}
                 _ => {

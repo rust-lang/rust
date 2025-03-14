@@ -1,4 +1,4 @@
-use rustc_ast::{DUMMY_NODE_ID, EIIImpl, EiiMacroFor, ItemKind, ast};
+use rustc_ast::{DUMMY_NODE_ID, EIIImpl, EIIMacroFor, ItemKind, ast};
 use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Span, kw};
@@ -50,7 +50,7 @@ pub(crate) fn eii_macro_for(
         false
     };
 
-    d.eii_macro_for = Some(EiiMacroFor { extern_item_path, impl_unsafe });
+    d.eii_macro_for = Some(EIIMacroFor { extern_item_path, impl_unsafe });
 
     // Return the original item and the new methods.
     vec![item]
@@ -94,8 +94,8 @@ pub(crate) fn eii_macro(
         eii_macro_path: meta_item.path.clone(),
         impl_safety: meta_item.unsafety,
         span,
-        inner_span: meta_item.span,
-        is_default: false,
+        inner_span: meta_item.path.span,
+        is_default,
     });
 
     vec![item]

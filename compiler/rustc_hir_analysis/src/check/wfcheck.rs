@@ -40,7 +40,7 @@ use rustc_trait_selection::traits::{
 use tracing::{debug, instrument};
 use {rustc_ast as ast, rustc_hir as hir};
 
-use super::compare_eii::{compare_eii_function_types, compare_eii_predicate_entailment};
+use super::compare_eii::compare_eii_function_types;
 use crate::autoderef::Autoderef;
 use crate::collect::CollectItemTypesVisitor;
 use crate::constrained_generic_params::{Parameter, identify_constrained_generic_params};

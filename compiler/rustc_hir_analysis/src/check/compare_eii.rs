@@ -2,24 +2,19 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{
-    Applicability, E0050, E0053, E0053, E0053, struct_span_code_err, struct_span_code_err,
-    struct_span_code_err,
-};
+use rustc_errors::{Applicability, E0050, E0053, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{
-    self as hir, self as hir, self as hir, FnSig, HirId, HirId, HirId, ItemKind, ItemKind, ItemKind,
-};
+use rustc_hir::{self as hir, FnSig, HirId, ItemKind};
+use rustc_infer::infer::canonical::ir::TypingMode;
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeError, TypeError};
-use rustc_span::{ErrorGuaranteed, Ident, Span};
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::ObligationCtxt;
-use rustc_type_ir::TypingMode;
 use tracing::{debug, instrument};
 
 use super::potentially_plural_count;
@@ -150,9 +145,9 @@ fn compare_number_of_method_arguments<'tcx>(
                     }
                 })
             })
-            .or_else(|| tcx.hir().span_if_local(declaration));
+            .or_else(|| tcx.hir_span_if_local(declaration));
 
-        let (external_impl_sig, _, _) = &tcx.hir().expect_item(external_impl).expect_fn();
+        let (_, external_impl_sig, _, _) = &tcx.hir_expect_item(external_impl).expect_fn();
         let pos = external_impl_number_args.saturating_sub(1);
         let impl_span = external_impl_sig
             .decl
@@ -326,7 +321,7 @@ fn report_eii_mismatch<'tcx>(
             if declaration_sig.inputs().len() == *i {
                 // Suggestion to change output type. We do not suggest in `async` functions
                 // to avoid complex logic or incorrect output.
-                if let ItemKind::Fn { sig, .. } = &tcx.hir().expect_item(external_impl_did).kind
+                if let ItemKind::Fn { sig, .. } = &tcx.hir_expect_item(external_impl_did).kind
                     && !sig.header.asyncness.is_async()
                 {
                     let msg = "change the output type to match the declaration";
@@ -381,12 +376,9 @@ fn extract_spans_for_error_reporting<'tcx>(
 ) -> (Span, Option<Span>, Ident) {
     let tcx = infcx.tcx;
     let (mut external_impl_args, external_impl_name) = {
-        let item = tcx.hir().expect_item(external_impl);
-        let (sig, _, _) = item.expect_fn();
-        (
-            sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span())),
-            item.ident,
-        )
+        let item = tcx.hir_expect_item(external_impl);
+        let (ident, sig, _, _) = item.expect_fn();
+        (sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span())), ident)
     };
 
     let declaration_args = declaration.as_local().map(|def_id| {
@@ -403,7 +395,7 @@ fn extract_spans_for_error_reporting<'tcx>(
             declaration_args.and_then(|mut args| args.nth(i)),
             external_impl_name,
         ),
-        _ => (cause.span, tcx.hir().span_if_local(declaration), external_impl_name),
+        _ => (cause.span, tcx.hir_span_if_local(declaration), external_impl_name),
     }
 }
 
