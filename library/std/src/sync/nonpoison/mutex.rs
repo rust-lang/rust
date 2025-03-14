@@ -258,7 +258,7 @@ impl<T: ?Sized> Mutex<T> {
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     #[inline]
     pub fn get_mut(&mut self) -> &mut T {
-        return self.data.get_mut();
+        self.data.get_mut()
     }
 }
 
