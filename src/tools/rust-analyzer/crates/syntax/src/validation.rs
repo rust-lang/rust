@@ -142,7 +142,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::String(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 1, '"') {
-                    unescape_str(without_quotes, &mut |range, char| {
+                    unescape_str(without_quotes,|range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -153,7 +153,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::ByteString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_byte_str(without_quotes, &mut |range, char| {
+                    unescape_byte_str(without_quotes, |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }
@@ -164,7 +164,7 @@ fn validate_literal(literal: ast::Literal, acc: &mut Vec<SyntaxError>) {
         ast::LiteralKind::CString(s) => {
             if !s.is_raw() {
                 if let Some(without_quotes) = unquote(text, 2, '"') {
-                    unescape_cstr(without_quotes, &mut |range, char| {
+                    unescape_cstr(without_quotes, |range, char| {
                         if let Err(err) = char {
                             push_err(1, range.start, err);
                         }

@@ -1094,11 +1094,9 @@ fn find_width_map_from_snippet(
 fn unescape_string(string: &str) -> Option<String> {
     let mut buf = String::new();
     let mut ok = true;
-    unescape::unescape_unicode(string, unescape::Mode::Str, &mut |_, unescaped_char| {
-        match unescaped_char {
-            Ok(c) => buf.push(c),
-            Err(_) => ok = false,
-        }
+    unescape::unescape_str(string, &mut |_, res| match res {
+        Ok(c) => buf.push(c),
+        Err(_) => ok = false,
     });
 
     ok.then_some(buf)

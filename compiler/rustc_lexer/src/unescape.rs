@@ -139,7 +139,7 @@ macro_rules! check {
                         " literal (without quotes) and produce a sequence of results of ",
                         stringify!($unit_ty), " or error (returned via `callback`).",
                         "\nNB: Raw strings don't do any unescaping, but do produce errors on bare CR.")]
-        pub fn $check(src: &str, callback: &mut impl FnMut(Range<usize>, Result<$unit, EscapeError>))
+        pub fn $check(src: &str, mut callback: impl FnMut(Range<usize>, Result<$unit, EscapeError>))
         {
             src.char_indices().for_each(|(pos, c)| {
                 callback(
@@ -162,7 +162,7 @@ macro_rules! unescape {
         #[doc = concat!("Take the contents of a ", stringify!($string_ty),
                         " literal (without quotes) and produce a sequence of results of escaped ",
                         stringify!($unit_ty), " or error (returned via `callback`).")]
-        pub fn $unescape(src: &str, callback: &mut impl FnMut(Range<usize>, Result<$unit, EscapeError>))
+        pub fn $unescape(src: &str, mut callback: impl FnMut(Range<usize>, Result<$unit, EscapeError>))
         {
             let mut chars = src.chars();
             while let Some(c) = chars.next() {
@@ -356,36 +356,57 @@ fn unicode_escape(chars: &mut impl Iterator<Item = char>) -> Result<u32, EscapeE
     }
 }
 
-/// Takes the contents of a unicode-only (non-mixed-utf8) literal (without quotes)
-/// and produces a sequence of unescaped characters or errors,
+/// Takes the contents of a literal (without quotes)
+/// and produces a sequence of errors,
 /// which are returned by invoking `callback`.
-///
-/// For `Char` and `Byte` modes, the callback will be called exactly once.
-pub fn unescape_unicode<F>(src: &str, mode: Mode, callback: &mut F)
-where
-    F: FnMut(Range<usize>, Result<char, EscapeError>),
-{
-    let mut byte_callback =
-        |range, res: Result<u8, EscapeError>| callback(range, res.map(char::from));
+pub fn unescape_for_errors(
+    src: &str,
+    mode: Mode,
+    mut error_callback: impl FnMut(Range<usize>, EscapeError),
+) {
     match mode {
         Char => {
             let mut chars = src.chars();
-            let res = unescape_char_iter(&mut chars);
-            callback(0..(src.len() - chars.as_str().len()), res);
+            if let Err(e) = unescape_char_iter(&mut chars) {
+                error_callback(0..(src.len() - chars.as_str().len()), e);
+            }
         }
         Byte => {
             let mut chars = src.chars();
-            let res = unescape_byte_iter(&mut chars).map(char::from);
-            callback(0..(src.len() - chars.as_str().len()), res);
+            if let Err(e) = unescape_byte_iter(&mut chars) {
+                error_callback(0..(src.len() - chars.as_str().len()), e);
+            }
         }
-        Str => unescape_str(src, callback),
-        ByteStr => unescape_byte_str(src, &mut byte_callback),
-        RawStr => check_raw_str(src, callback),
-        RawByteStr => check_raw_byte_str(src, &mut byte_callback),
-        RawCStr => check_raw_cstr(src, &mut |r, res: Result<NonZero<char>, EscapeError>| {
-            callback(r, res.map(|c| c.get()))
+        Str => unescape_str(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
         }),
-        CStr => unreachable!(),
+        ByteStr => unescape_byte_str(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
+        }),
+        CStr => unescape_cstr(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
+        }),
+        RawStr => check_raw_str(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
+        }),
+        RawByteStr => check_raw_byte_str(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
+        }),
+        RawCStr => check_raw_cstr(src, |range, res| {
+            if let Err(e) = res {
+                error_callback(range, e);
+            }
+        }),
     }
 }
 
