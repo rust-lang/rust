@@ -6,10 +6,6 @@ fn mem_replace(_1: &mut u32, _2: u32) -> u32 {
     let mut _0: u32;
     scope 1 (inlined std::mem::replace::<u32>) {
         scope 2 {
-            scope 4 (inlined std::ptr::write::<u32>) {
-            }
-        }
-        scope 3 (inlined std::ptr::read::<u32>) {
         }
     }
 
