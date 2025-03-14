@@ -12,6 +12,8 @@ use crate::intrinsics::type_of;
 pub struct Type {
     /// Per-type information
     pub kind: TypeKind,
+    /// Size of the type. `None` if it is unsized
+    pub size: Option<usize>,
 }
 
 impl TypeId {
