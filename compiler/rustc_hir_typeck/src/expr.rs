@@ -2060,7 +2060,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // struct-like enums (yet...), but it's definitely not
                 // a bug to have constructed one.
                 if adt_kind != AdtKind::Enum {
-                    tcx.check_stability(v_field.did, Some(expr.hir_id), field.span, None);
+                    tcx.check_stability(v_field.did, Some(field.hir_id), field.span, None);
                 }
 
                 self.field_ty(field.span, v_field, args)
