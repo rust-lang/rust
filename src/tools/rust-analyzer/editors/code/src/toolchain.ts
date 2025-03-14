@@ -18,6 +18,22 @@ export interface ArtifactSpec {
     filter?: (artifacts: CompilationArtifact[]) => CompilationArtifact[];
 }
 
+interface CompilerMessage {
+    reason: string;
+    executable?: string;
+    target: {
+        crate_types: [string, ...string[]];
+        kind: [string, ...string[]];
+        name: string;
+    };
+    profile: {
+        test: boolean;
+    };
+    message: {
+        rendered: string;
+    };
+}
+
 export class Cargo {
     constructor(
         readonly rootFolder: string,
@@ -109,7 +125,7 @@ export class Cargo {
 
     private async runCargo(
         cargoArgs: string[],
-        onStdoutJson: (obj: any) => void,
+        onStdoutJson: (obj: CompilerMessage) => void,
         onStderrString: (data: string) => void,
         env?: Record<string, string>,
     ): Promise<number> {
@@ -131,7 +147,7 @@ export class Cargo {
                 onStdoutJson(message);
             });
 
-            cargo.on("exit", (exitCode, _) => {
+            cargo.on("exit", (exitCode) => {
                 if (exitCode === 0) resolve(exitCode);
                 else reject(new Error(`exit code: ${exitCode}.`));
             });

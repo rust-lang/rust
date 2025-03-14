@@ -8,7 +8,7 @@ LL |     ref_str_argument(&String::new());
    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_owned_empty_strings)]`
 
 error: usage of `&String::from("")` for a function expecting a `&str` argument
-  --> tests/ui/unnecessary_owned_empty_strings.rs:14:22
+  --> tests/ui/unnecessary_owned_empty_strings.rs:15:22
    |
 LL |     ref_str_argument(&String::from(""));
    |                      ^^^^^^^^^^^^^^^^^ help: try: `""`

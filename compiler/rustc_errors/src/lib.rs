@@ -14,6 +14,7 @@
 #![feature(associated_type_defaults)]
 #![feature(box_into_inner)]
 #![feature(box_patterns)]
+#![feature(default_field_values)]
 #![feature(error_reporter)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -24,7 +25,6 @@
 #![feature(trait_alias)]
 #![feature(try_blocks)]
 #![feature(yeet_expr)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate self as rustc_errors;
@@ -626,7 +626,6 @@ pub enum StashKey {
     MaybeFruTypo,
     CallAssocMethod,
     AssociatedTypeSuggestion,
-    MaybeForgetReturn,
     /// Query cycle detected, stashing in favor of a better error.
     Cycle,
     UndeterminedMacroResolution,

@@ -24,9 +24,7 @@ export async function applySnippetWorkspaceEdit(
                 for (const indel of edits) {
                     assert(
                         !(indel instanceof vscode.SnippetTextEdit),
-                        `bad ws edit: snippet received with multiple edits: ${JSON.stringify(
-                            edit,
-                        )}`,
+                        `bad ws edit: snippet received with multiple edits: ${JSON.stringify(edit)}`,
                     );
                     builder.replace(indel.range, indel.newText);
                 }

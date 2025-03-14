@@ -7,5 +7,6 @@
 struct A;
 struct B;
 const S: A = B;
+//~^ ERROR: mismatched types
 
 fn main() {}

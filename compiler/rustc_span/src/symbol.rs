@@ -33,6 +33,15 @@ symbols! {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
         // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        //
+        // Notes about `kw::Empty`:
+        // - Its use can blur the lines between "empty symbol" and "no symbol".
+        //   Using `Option<Symbol>` is preferable, where possible, because that
+        //   is unambiguous.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
@@ -308,6 +317,9 @@ symbols! {
         RangeFull,
         RangeInclusive,
         RangeInclusiveCopy,
+        RangeMax,
+        RangeMin,
+        RangeSub,
         RangeTo,
         RangeToInclusive,
         Rc,
@@ -776,6 +788,7 @@ symbols! {
         default_method_body_is_const,
         default_type_parameter_fallback,
         default_type_params,
+        define_opaque,
         delayed_bug_from_inside_query,
         deny,
         deprecated,
@@ -830,6 +843,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
+        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -859,6 +873,7 @@ symbols! {
         eprint_macro,
         eprintln_macro,
         eq,
+        ergonomic_clones,
         ermsb_target_feature,
         exact_div,
         except,
@@ -1012,6 +1027,7 @@ symbols! {
         from_residual,
         from_size_align_unchecked,
         from_str_method,
+        from_u16,
         from_usize,
         from_yeet,
         fs_create_dir,
@@ -1037,6 +1053,7 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_const_items,
+        generic_const_parameter_types,
         generic_param_attrs,
         generic_pattern_types,
         get_context,
@@ -1521,6 +1538,7 @@ symbols! {
         pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
+        pattern_type_range_trait,
         pattern_types,
         permissions_from_mode,
         phantom_data,
@@ -1624,6 +1642,7 @@ symbols! {
         quote,
         range_inclusive_new,
         raw_dylib,
+        raw_dylib_elf,
         raw_eq,
         raw_identifiers,
         raw_ref_op,
@@ -1711,6 +1730,7 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
+        rust_future,
         rust_logo,
         rust_out,
         rustc,
@@ -1877,8 +1897,6 @@ symbols! {
         simd_fma,
         simd_fmax,
         simd_fmin,
-        simd_fpow,
-        simd_fpowi,
         simd_fsin,
         simd_fsqrt,
         simd_gather,
@@ -2084,6 +2102,7 @@ symbols! {
         type_ascribe,
         type_ascription,
         type_changing_struct_update,
+        type_const,
         type_id,
         type_ir_inherent,
         type_length_limit,
@@ -2180,6 +2199,7 @@ symbols! {
         unwrap,
         unwrap_binder,
         unwrap_or,
+        use_cloned,
         use_extern_macros,
         use_nested_groups,
         used,
@@ -2235,6 +2255,7 @@ symbols! {
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
+        where_clause_attrs,
         while_let,
         windows,
         windows_subsystem,
@@ -2294,9 +2315,21 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    /// This is best avoided, because it blurs the lines between "empty
+    /// identifier" and "no identifier". Using `Option<Ident>` is preferable,
+    /// where possible, because that is unambiguous.
     #[inline]
     pub fn empty() -> Ident {
         Ident::with_dummy_span(kw::Empty)
+    }
+
+    // For dummy identifiers that are never used and absolutely must be
+    // present, it's better to use `Ident::dummy` than `Ident::Empty`, because
+    // it's clearer that it's intended as a dummy value, and more likely to be
+    // detected if it accidentally does get used.
+    #[inline]
+    pub fn dummy() -> Ident {
+        Ident::with_dummy_span(sym::dummy)
     }
 
     /// Maps a string to an identifier with a dummy span.

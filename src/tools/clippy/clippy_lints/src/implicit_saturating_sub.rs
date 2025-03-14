@@ -83,9 +83,7 @@ impl_lint_pass!(ImplicitSaturatingSub => [IMPLICIT_SATURATING_SUB, INVERTED_SATU
 
 impl ImplicitSaturatingSub {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -108,12 +106,10 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitSaturatingSub {
             && let ExprKind::Binary(ref cond_op, cond_left, cond_right) = cond.kind
         {
             check_manual_check(
-                cx, expr, cond_op, cond_left, cond_right, if_block, else_block, &self.msrv,
+                cx, expr, cond_op, cond_left, cond_right, if_block, else_block, self.msrv,
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -125,7 +121,7 @@ fn check_manual_check<'tcx>(
     right_hand: &Expr<'tcx>,
     if_block: &Expr<'tcx>,
     else_block: &Expr<'tcx>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let ty = cx.typeck_results().expr_ty(left_hand);
     if ty.is_numeric() && !ty.is_signed() {
@@ -178,7 +174,7 @@ fn check_gt(
     little_var: &Expr<'_>,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
     is_composited: bool,
 ) {
     if let Some(big_var) = Var::new(big_var)
@@ -221,7 +217,7 @@ fn check_subtraction(
     little_var: Var,
     if_block: &Expr<'_>,
     else_block: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
     is_composited: bool,
 ) {
     let if_block = peel_blocks(if_block);
@@ -258,7 +254,7 @@ fn check_subtraction(
             // if `snippet_opt` fails, it won't try the next conditions.
             if let Some(big_var_snippet) = snippet_opt(cx, big_var.span)
                 && let Some(little_var_snippet) = snippet_opt(cx, little_var.span)
-                && (!is_in_const_context(cx) || msrv.meets(msrvs::SATURATING_SUB_CONST))
+                && (!is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST))
             {
                 let sugg = format!(
                     "{}{big_var_snippet}.saturating_sub({little_var_snippet}){}",

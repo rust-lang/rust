@@ -8,6 +8,7 @@
 trait Foo {}
 impl Foo for () {}
 type Bar = impl Foo;
+#[define_opaque(Bar)]
 fn _defining_use() -> Bar {}
 
 trait TraitArg<T> {

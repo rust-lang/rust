@@ -95,13 +95,12 @@ impl HirCollector<'_> {
         sp: Span,
         nested: F,
     ) {
-        let ast_attrs = self.tcx.hir().attrs(self.tcx.local_def_id_to_hir_id(def_id));
+        let ast_attrs = self.tcx.hir_attrs(self.tcx.local_def_id_to_hir_id(def_id));
         if let Some(ref cfg) =
             extract_cfg_from_attrs(ast_attrs.iter(), self.tcx, &FxHashSet::default())
+            && !cfg.matches(&self.tcx.sess.psess, Some(self.tcx.features()))
         {
-            if !cfg.matches(&self.tcx.sess.psess, Some(self.tcx.features())) {
-                return;
-            }
+            return;
         }
 
         let has_name = !name.is_empty();

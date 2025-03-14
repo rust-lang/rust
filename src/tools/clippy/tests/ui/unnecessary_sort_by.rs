@@ -10,13 +10,19 @@ fn unnecessary_sort_by() {
     let mut vec: Vec<isize> = vec![3, 6, 1, 2, 5];
     // Forward examples
     vec.sort_by(|a, b| a.cmp(b));
+    //~^ unnecessary_sort_by
     vec.sort_unstable_by(|a, b| a.cmp(b));
+    //~^ unnecessary_sort_by
     vec.sort_by(|a, b| (a + 5).abs().cmp(&(b + 5).abs()));
+    //~^ unnecessary_sort_by
     vec.sort_unstable_by(|a, b| id(-a).cmp(&id(-b)));
+    //~^ unnecessary_sort_by
     // Reverse examples
     vec.sort_by(|a, b| b.cmp(a)); // not linted to avoid suggesting `Reverse(b)` which would borrow
     vec.sort_by(|a, b| (b + 5).abs().cmp(&(a + 5).abs()));
+    //~^ unnecessary_sort_by
     vec.sort_unstable_by(|a, b| id(-b).cmp(&id(-a)));
+    //~^ unnecessary_sort_by
     // Negative examples (shouldn't be changed)
     let c = &7;
     vec.sort_by(|a, b| (b - a).cmp(&(a - b)));
@@ -27,7 +33,9 @@ fn unnecessary_sort_by() {
     // Vectors of references are fine as long as the resulting key does not borrow
     let mut vec: Vec<&&&isize> = vec![&&&3, &&&6, &&&1, &&&2, &&&5];
     vec.sort_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+    //~^ unnecessary_sort_by
     vec.sort_unstable_by(|a, b| (***a).abs().cmp(&(***b).abs()));
+    //~^ unnecessary_sort_by
     // `Reverse(b)` would borrow in the following cases, don't lint
     vec.sort_by(|a, b| b.cmp(a));
     vec.sort_unstable_by(|a, b| b.cmp(a));
@@ -87,10 +95,14 @@ mod issue_6001 {
 
         // Forward
         args.sort_by(|a, b| a.name().cmp(&b.name()));
+        //~^ unnecessary_sort_by
         args.sort_unstable_by(|a, b| a.name().cmp(&b.name()));
+        //~^ unnecessary_sort_by
         // Reverse
         args.sort_by(|a, b| b.name().cmp(&a.name()));
+        //~^ unnecessary_sort_by
         args.sort_unstable_by(|a, b| b.name().cmp(&a.name()));
+        //~^ unnecessary_sort_by
     }
 }
 

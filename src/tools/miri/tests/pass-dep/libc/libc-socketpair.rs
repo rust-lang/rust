@@ -88,8 +88,7 @@ fn test_socketpair_threaded() {
         assert_eq!(res, 5);
         assert_eq!(buf, "abcde".as_bytes());
     });
-    // FIXME: we should yield here once blocking is implemented.
-    //thread::yield_now();
+    thread::yield_now();
     let data = "abcde".as_bytes().as_ptr();
     let res = unsafe { libc::write(fds[0], data as *const libc::c_void, 5) };
     assert_eq!(res, 5);
@@ -97,14 +96,11 @@ fn test_socketpair_threaded() {
 
     // Read and write from different direction
     let thread2 = thread::spawn(move || {
-        // FIXME: we should yield here once blocking is implemented.
-        //thread::yield_now();
+        thread::yield_now();
         let data = "12345".as_bytes().as_ptr();
         let res = unsafe { libc::write(fds[1], data as *const libc::c_void, 5) };
         assert_eq!(res, 5);
     });
-    // FIXME: we should not yield here once blocking is implemented.
-    thread::yield_now();
     let mut buf: [u8; 5] = [0; 5];
     let res = unsafe { libc::read(fds[0], buf.as_mut_ptr().cast(), buf.len() as libc::size_t) };
     assert_eq!(res, 5);

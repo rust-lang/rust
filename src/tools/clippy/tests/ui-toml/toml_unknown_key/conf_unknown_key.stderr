@@ -5,6 +5,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -13,6 +14,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -29,6 +31,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
@@ -94,6 +97,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -102,6 +106,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -118,6 +123,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
@@ -183,6 +189,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            accept-comment-above-statement
            allow-comparison-to-zero
            allow-dbg-in-tests
+           allow-expect-in-consts
            allow-expect-in-tests
            allow-indexing-slicing-in-tests
            allow-mixed-uninlined-format-args
@@ -191,6 +198,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            allow-print-in-tests
            allow-private-module-inception
            allow-renamed-params-for
+           allow-unwrap-in-consts
            allow-unwrap-in-tests
            allow-useless-vec-in-tests
            allowed-dotfiles
@@ -207,6 +215,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            await-holding-invalid-types
            blacklisted-names
            cargo-ignore-publish
+           check-incompatible-msrv-in-tests
            check-private-items
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold

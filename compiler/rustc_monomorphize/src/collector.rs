@@ -209,7 +209,7 @@ use std::path::PathBuf;
 
 use rustc_attr_parsing::InlineAttr;
 use rustc_data_structures::fx::FxIndexMap;
-use rustc_data_structures::sync::{LRef, MTLock, par_for_each_in};
+use rustc_data_structures::sync::{MTLock, par_for_each_in};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
@@ -357,7 +357,7 @@ impl<'tcx> Extend<Spanned<MonoItem<'tcx>>> for MonoItems<'tcx> {
 fn collect_items_rec<'tcx>(
     tcx: TyCtxt<'tcx>,
     starting_item: Spanned<MonoItem<'tcx>>,
-    state: LRef<'_, SharedState<'tcx>>,
+    state: &SharedState<'tcx>,
     recursion_depths: &mut DefIdMap<usize>,
     recursion_limit: Limit,
     mode: CollectionMode,
@@ -751,7 +751,7 @@ impl<'a, 'tcx> MirVisitor<'tcx> for MirUsedCollector<'a, 'tcx> {
     /// This does not walk the MIR of the constant as that is not needed for codegen, all we need is
     /// to ensure that the constant evaluates successfully and walk the result.
     #[instrument(skip(self), level = "debug")]
-    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, location: Location) {
+    fn visit_const_operand(&mut self, constant: &mir::ConstOperand<'tcx>, _location: Location) {
         // No `super_constant` as we don't care about `visit_ty`/`visit_ty_const`.
         let Some(val) = self.eval_constant(constant) else { return };
         collect_const_value(self.tcx, val, self.used_items);
@@ -1043,18 +1043,7 @@ fn find_vtable_types_for_unsizing<'tcx>(
 ) -> (Ty<'tcx>, Ty<'tcx>) {
     let ptr_vtable = |inner_source: Ty<'tcx>, inner_target: Ty<'tcx>| {
         let typing_env = ty::TypingEnv::fully_monomorphized();
-        let type_has_metadata = |ty: Ty<'tcx>| -> bool {
-            if ty.is_sized(tcx.tcx, typing_env) {
-                return false;
-            }
-            let tail = tcx.struct_tail_for_codegen(ty, typing_env);
-            match tail.kind() {
-                ty::Foreign(..) => false,
-                ty::Str | ty::Slice(..) | ty::Dynamic(..) => true,
-                _ => bug!("unexpected unsized tail: {:?}", tail),
-            }
-        };
-        if type_has_metadata(inner_source) {
+        if tcx.type_has_metadata(inner_source, typing_env) {
             (inner_source, inner_target)
         } else {
             tcx.struct_lockstep_tails_for_codegen(inner_source, inner_target, typing_env)
@@ -1682,30 +1671,26 @@ pub(crate) fn collect_crate_mono_items<'tcx>(
 
     debug!("building mono item graph, beginning at roots");
 
-    let mut state = SharedState {
+    let state = SharedState {
         visited: MTLock::new(UnordSet::default()),
         mentioned: MTLock::new(UnordSet::default()),
         usage_map: MTLock::new(UsageMap::new()),
     };
     let recursion_limit = tcx.recursion_limit();
 
-    {
-        let state: LRef<'_, _> = &mut state;
-
-        tcx.sess.time("monomorphization_collector_graph_walk", || {
-            par_for_each_in(roots, |root| {
-                let mut recursion_depths = DefIdMap::default();
-                collect_items_rec(
-                    tcx,
-                    dummy_spanned(root),
-                    state,
-                    &mut recursion_depths,
-                    recursion_limit,
-                    CollectionMode::UsedItems,
-                );
-            });
+    tcx.sess.time("monomorphization_collector_graph_walk", || {
+        par_for_each_in(roots, |root| {
+            let mut recursion_depths = DefIdMap::default();
+            collect_items_rec(
+                tcx,
+                dummy_spanned(root),
+                &state,
+                &mut recursion_depths,
+                recursion_limit,
+                CollectionMode::UsedItems,
+            );
         });
-    }
+    });
 
     // The set of MonoItems was created in an inherently indeterministic order because
     // of parallelism. We sort it here to ensure that the output is deterministic.

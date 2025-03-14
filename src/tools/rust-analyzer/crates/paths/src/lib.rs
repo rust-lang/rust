@@ -232,7 +232,7 @@ impl AbsPath {
     /// - Removes trailing slashes: `/a/b/` becomes `/a/b`.
     ///
     /// # Example
-    /// ```
+    /// ```ignore
     /// # use paths::AbsPathBuf;
     /// let abs_path_buf = AbsPathBuf::assert("/a/../../b/.//c//".into());
     /// let normalized = abs_path_buf.normalize();

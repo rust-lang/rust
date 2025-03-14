@@ -5,6 +5,6 @@
 struct Foo<'a>(&'a [(); 100]);
 
 fn test(x: &Foo<'_>) {}
-//~^ ERROR: this argument is passed by value, but not consumed in the function body
+//~^ needless_pass_by_value
 
 fn main() {}

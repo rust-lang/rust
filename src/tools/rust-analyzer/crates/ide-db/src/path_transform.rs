@@ -32,7 +32,7 @@ type DefaultedParam = Either<hir::TypeParam, hir::ConstParam>;
 /// block), you generally want to appropriately qualify the names, and sometimes
 /// you might want to substitute generic parameters as well:
 ///
-/// ```
+/// ```ignore
 /// mod x {
 ///   pub struct A<V>;
 ///   pub trait T<U> { fn foo(&self, _: U) -> A<U>; }
@@ -192,7 +192,9 @@ impl<'a> PathTransform<'a> {
                     }
                 }
                 (Either::Left(k), None) => {
-                    if let Some(default) = k.default(db, target_edition) {
+                    if let Some(default) =
+                        k.default(db, target_module.krate().to_display_target(db))
+                    {
                         if let Some(default) = default.expr() {
                             const_substs.insert(k, default.syntax().clone_for_update());
                             defaulted_params.push(Either::Right(k));

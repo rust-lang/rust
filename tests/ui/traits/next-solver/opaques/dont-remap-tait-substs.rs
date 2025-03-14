@@ -12,7 +12,8 @@ type Foo<T: Send, U> = impl NeedsSend<T>;
 trait NeedsSend<T> {}
 impl<T: Send> NeedsSend<T> for T {}
 
-fn define<A, B: Send>(a: A, b: B, _: Foo<B, A>) {
+#[define_opaque(Foo)]
+fn define<A, B: Send>(a: A, b: B) {
     let y: Option<Foo<B, A>> = Some(b);
 }
 

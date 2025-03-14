@@ -31,6 +31,7 @@ mod sparc64;
 mod wasm;
 mod x86;
 mod x86_64;
+mod x86_win32;
 mod x86_win64;
 mod xtensa;
 
@@ -357,7 +358,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
                 scalar_attrs(&layout, a, Size::ZERO),
                 scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
-            BackendRepr::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
+            BackendRepr::SimdVector { .. } => PassMode::Direct(ArgAttributes::new()),
             BackendRepr::Memory { .. } => Self::indirect_pass_mode(&layout),
         };
         ArgAbi { layout, mode }
@@ -649,7 +650,11 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                 };
                 let reg_struct_return = cx.x86_abi_opt().reg_struct_return;
                 let opts = x86::X86Options { flavor, regparm, reg_struct_return };
-                x86::compute_abi_info(cx, self, opts);
+                if spec.is_like_msvc {
+                    x86_win32::compute_abi_info(cx, self, opts);
+                } else {
+                    x86::compute_abi_info(cx, self, opts);
+                }
             }
             "x86_64" => match abi {
                 ExternAbi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
@@ -759,7 +764,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
             if arg_idx.is_none()
                 && arg.layout.size > Primitive::Pointer(AddressSpace::DATA).size(cx) * 2
-                && !matches!(arg.layout.backend_repr, BackendRepr::Vector { .. })
+                && !matches!(arg.layout.backend_repr, BackendRepr::SimdVector { .. })
             {
                 // Return values larger than 2 registers using a return area
                 // pointer. LLVM and Cranelift disagree about how to return
@@ -826,7 +831,7 @@ impl<'a, Ty> FnAbi<'a, Ty> {
                     }
                 }
 
-                BackendRepr::Vector { .. } => {
+                BackendRepr::SimdVector { .. } => {
                     // This is a fun case! The gist of what this is doing is
                     // that we want callers and callees to always agree on the
                     // ABI of how they pass SIMD arguments. If we were to *not*

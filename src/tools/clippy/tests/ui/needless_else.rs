@@ -22,6 +22,7 @@ fn main() {
         println!("Foobar");
     } else {
     }
+    //~^^ needless_else
 
     if b {
         println!("Foobar");

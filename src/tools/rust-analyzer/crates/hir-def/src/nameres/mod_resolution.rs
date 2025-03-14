@@ -134,7 +134,7 @@ impl DirPath {
     /// So this is the case which doesn't really work I think if we try to be
     /// 100% platform agnostic:
     ///
-    /// ```
+    /// ```ignore
     /// mod a {
     ///     #[path="C://sad/face"]
     ///     mod b { mod c; }

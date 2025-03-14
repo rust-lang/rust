@@ -617,7 +617,6 @@ where
             )?;
 
             let certainty = ecx.is_transmutable(
-                goal.param_env,
                 goal.predicate.trait_ref.args.type_at(0),
                 goal.predicate.trait_ref.args.type_at(1),
                 assume,
@@ -785,13 +784,6 @@ where
                     result_to_single(
                         ecx.consider_builtin_struct_unsize(goal, a_def, a_args, b_args),
                     )
-                }
-
-                //  `(A, B, T)` -> `(A, B, U)` where `T: Unsize<U>`
-                (ty::Tuple(a_tys), ty::Tuple(b_tys))
-                    if a_tys.len() == b_tys.len() && !a_tys.is_empty() =>
-                {
-                    result_to_single(ecx.consider_builtin_tuple_unsize(goal, a_tys, b_tys))
                 }
 
                 _ => vec![],
@@ -1085,48 +1077,6 @@ where
             .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
     }
 
-    /// We generate the following builtin impl for tuples of all sizes.
-    ///
-    /// This impl is still unstable and we emit a feature error when it
-    /// when it is used by a coercion.
-    /// ```ignore (builtin impl example)
-    /// impl<T: ?Sized, U: ?Sized, V: ?Sized> Unsize<(T, V)> for (T, U)
-    /// where
-    ///     U: Unsize<V>,
-    /// {}
-    /// ```
-    fn consider_builtin_tuple_unsize(
-        &mut self,
-        goal: Goal<I, (I::Ty, I::Ty)>,
-        a_tys: I::Tys,
-        b_tys: I::Tys,
-    ) -> Result<Candidate<I>, NoSolution> {
-        let cx = self.cx();
-        let Goal { predicate: (_a_ty, b_ty), .. } = goal;
-
-        let (&a_last_ty, a_rest_tys) = a_tys.split_last().unwrap();
-        let b_last_ty = b_tys.last().unwrap();
-
-        // Instantiate just the tail field of B., and require that they're equal.
-        let unsized_a_ty = Ty::new_tup_from_iter(cx, a_rest_tys.iter().copied().chain([b_last_ty]));
-        self.eq(goal.param_env, unsized_a_ty, b_ty)?;
-
-        // Similar to ADTs, require that we can unsize the tail.
-        self.add_goal(
-            GoalSource::ImplWhereBound,
-            goal.with(
-                cx,
-                ty::TraitRef::new(
-                    cx,
-                    cx.require_lang_item(TraitSolverLangItem::Unsize),
-                    [a_last_ty, b_last_ty],
-                ),
-            ),
-        );
-        self.probe_builtin_trait_candidate(BuiltinImplSource::TupleUnsizing)
-            .enter(|ecx| ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes))
-    }
-
     // Return `Some` if there is an impl (built-in or user provided) that may
     // hold for the self type of the goal, which for coherence and soundness
     // purposes must disqualify the built-in auto impl assembled by considering
@@ -1239,17 +1189,15 @@ where
         constituent_tys: impl Fn(
             &EvalCtxt<'_, D>,
             I::Ty,
-        ) -> Result<Vec<ty::Binder<I, I::Ty>>, NoSolution>,
+        ) -> Result<ty::Binder<I, Vec<I::Ty>>, NoSolution>,
     ) -> Result<Candidate<I>, NoSolution> {
         self.probe_trait_candidate(source).enter(|ecx| {
-            let goals = constituent_tys(ecx, goal.predicate.self_ty())?
-                .into_iter()
-                .map(|ty| {
-                    ecx.enter_forall(ty, |ecx, ty| {
-                        goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty))
-                    })
-                })
-                .collect::<Vec<_>>();
+            let goals =
+                ecx.enter_forall(constituent_tys(ecx, goal.predicate.self_ty())?, |ecx, tys| {
+                    tys.into_iter()
+                        .map(|ty| goal.with(ecx.cx(), goal.predicate.with_self_ty(ecx.cx(), ty)))
+                        .collect::<Vec<_>>()
+                });
             ecx.add_goals(GoalSource::ImplWhereBound, goals);
             ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
         })

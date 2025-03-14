@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .take(4)
                     .map(|(var_hir_id, upvar)| {
-                        let var_name = self.tcx.hir().name(*var_hir_id).to_string();
+                        let var_name = self.tcx.hir_name(*var_hir_id).to_string();
                         let msg = format!("`{var_name}` captured here");
                         (upvar.span, msg)
                     })
@@ -1365,6 +1365,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.param_env,
                 ty::TraitRef::new(self.tcx, into_def_id, [expr_ty, expected_ty]),
             ))
+            && !expr
+                .span
+                .macro_backtrace()
+                .any(|x| matches!(x.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, ..)))
         {
             let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
@@ -1380,10 +1384,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
             }
             diag.multipart_suggestion(
-                format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
-                sugg,
-                Applicability::MaybeIncorrect
-            );
+                    format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
+                    sugg,
+                    Applicability::MaybeIncorrect
+                );
             return true;
         }
 

@@ -638,7 +638,6 @@ function getNextElem(query, parserState, elems, isInGenerics) {
                 getFilteredNextElem(query, parserState, generics, isInGenerics);
                 generics[generics.length - 1].bindingName = makePrimitiveElement("output");
             } else {
-                // @ts-expect-error
                 generics.push(makePrimitiveElement(null, {
                     bindingName: makePrimitiveElement("output"),
                     typeFilter: null,
@@ -791,7 +790,7 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
         generics: generics.filter(gen => {
             // Syntactically, bindings are parsed as generics,
             // but the query engine treats them differently.
-            if (gen.bindingName !== null) {
+            if (gen.bindingName !== null && gen.bindingName.name !== null) {
                 if (gen.name !== null) {
                     gen.bindingName.generics.unshift(gen);
                 }
@@ -811,8 +810,8 @@ function createQueryElement(query, parserState, name, generics, isInGenerics) {
 
 /**
  *
- * @param {string} name
- * @param {Object=} extra
+ * @param {string|null} name
+ * @param {rustdoc.ParserQueryElementFields=} extra
  * @returns {rustdoc.ParserQueryElement}
  */
 function makePrimitiveElement(name, extra) {
@@ -1478,73 +1477,61 @@ class DocSearch {
          * Special type name IDs for searching by array.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfArray = this.buildTypeMapIndex("array");
         /**
          * Special type name IDs for searching by slice.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfSlice = this.buildTypeMapIndex("slice");
         /**
          * Special type name IDs for searching by both array and slice (`[]` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfArrayOrSlice = this.buildTypeMapIndex("[]");
         /**
          * Special type name IDs for searching by tuple.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfTuple = this.buildTypeMapIndex("tuple");
         /**
          * Special type name IDs for searching by unit.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfUnit = this.buildTypeMapIndex("unit");
         /**
          * Special type name IDs for searching by both tuple and unit (`()` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfTupleOrUnit = this.buildTypeMapIndex("()");
         /**
          * Special type name IDs for searching `fn`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFn = this.buildTypeMapIndex("fn");
         /**
          * Special type name IDs for searching `fnmut`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFnMut = this.buildTypeMapIndex("fnmut");
         /**
          * Special type name IDs for searching `fnonce`.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfFnOnce = this.buildTypeMapIndex("fnonce");
         /**
          * Special type name IDs for searching higher order functions (`->` syntax).
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfHof = this.buildTypeMapIndex("->");
         /**
          * Special type name IDs the output assoc type.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfOutput = this.buildTypeMapIndex("output", true);
         /**
          * Special type name IDs for searching by reference.
          * @type {number}
          */
-        // @ts-expect-error
         this.typeNameIdOfReference = this.buildTypeMapIndex("reference");
 
         /**
@@ -1586,7 +1573,6 @@ class DocSearch {
         /**
          *  @type {Array<rustdoc.Row>}
          */
-        // @ts-expect-error
         this.searchIndex = this.buildIndex(rawSearchIndex);
     }
 
@@ -1598,10 +1584,16 @@ class DocSearch {
      * done more quickly. Two types with the same name but different item kinds
      * get the same ID.
      *
-     * @param {string} name
+     * @template T extends string
+     * @overload
+     * @param {T} name
      * @param {boolean=} isAssocType - True if this is an assoc type
+     * @returns {T extends "" ? null : number}
      *
-     * @returns {number?}
+     * @param {string} name
+     * @param {boolean=} isAssocType
+     * @returns {number | null}
+     *
      */
     buildTypeMapIndex(name, isAssocType) {
         if (name === "" || name === null) {
@@ -1909,6 +1901,7 @@ class DocSearch {
      * Convert raw search index into in-memory search index.
      *
      * @param {Map<string, rustdoc.RawSearchIndexCrate>} rawSearchIndex
+     * @returns {rustdoc.Row[]}
      */
     buildIndex(rawSearchIndex) {
         /**
@@ -2008,6 +2001,7 @@ class DocSearch {
             return cb;
         };
 
+        /** @type {rustdoc.Row[]} */
         const searchIndex = [];
         let currentIndex = 0;
         let id = 0;
@@ -2108,8 +2102,6 @@ class DocSearch {
             // an array of [(Number) item type,
             //              (String) name]
             const rawPaths = crateCorpus.p;
-            // an array of [(String) alias name
-            //             [Number] index to items]
             const aliases = crateCorpus.a;
             // an array of [(Number) item index,
             //              (String) comma-separated list of function generic param names]
@@ -2232,6 +2224,7 @@ class DocSearch {
                 // object defined above.
                 const itemParentIdx = itemParentIdxDecoder.next();
                 normalizedName = word.indexOf("_") === -1 ? word : word.replace(/_/g, "");
+                /** @type {rustdoc.Row} */
                 const row = {
                     crate,
                     ty: itemTypes.charCodeAt(i) - 65, // 65 = "A"
@@ -2274,16 +2267,14 @@ class DocSearch {
                         continue;
                     }
 
-                    // @ts-expect-error
+                    /** @type{number[]} */
                     let currentNameAliases;
                     if (currentCrateAliases.has(alias_name)) {
                         currentNameAliases = currentCrateAliases.get(alias_name);
                     } else {
                         currentNameAliases = [];
-                        // @ts-expect-error
                         currentCrateAliases.set(alias_name, currentNameAliases);
                     }
-                    // @ts-expect-error
                     for (const local_alias of aliases[alias_name]) {
                         currentNameAliases.push(local_alias + currentIndex);
                     }
@@ -2326,15 +2317,13 @@ class DocSearch {
          * @param {rustdoc.ParserQueryElement} elem
          */
         function convertTypeFilterOnElem(elem) {
-            if (elem.typeFilter !== null) {
+            if (typeof elem.typeFilter === "string") {
                 let typeFilter = elem.typeFilter;
                 if (typeFilter === "const") {
                     typeFilter = "constant";
                 }
-                // @ts-expect-error
                 elem.typeFilter = itemTypeFromName(typeFilter);
             } else {
-                // @ts-expect-error
                 elem.typeFilter = NO_TYPE_FILTER;
             }
             for (const elem2 of elem.generics) {
@@ -2407,9 +2396,9 @@ class DocSearch {
                     continue;
                 }
                 if (!foundStopChar) {
-                    let extra = "";
+                    /** @type String[] */
+                    let extra = [];
                     if (isLastElemGeneric(query.elems, parserState)) {
-                        // @ts-expect-error
                         extra = [" after ", ">"];
                     } else if (prevIs(parserState, "\"")) {
                         throw ["Cannot have more than one element if you use quotes"];
@@ -2547,7 +2536,7 @@ class DocSearch {
          * See `buildTypeMapIndex` for more information.
          *
          * @param {rustdoc.QueryElement} elem
-         * @param {boolean} isAssocType
+         * @param {boolean=} isAssocType
          */
         const convertNameToId = (elem, isAssocType) => {
             const loweredName = elem.pathLast.toLowerCase();
@@ -2627,7 +2616,6 @@ class DocSearch {
                 ];
             }
             for (const elem2 of elem.generics) {
-                // @ts-expect-error
                 convertNameToId(elem2);
             }
             elem.bindings = new Map(Array.from(elem.bindings.entries())
@@ -2750,7 +2738,11 @@ class DocSearch {
             return [displayPath, href, `${exactPath}::${name}`];
         };
 
-        // @ts-expect-error
+        /**
+         *
+         * @param {string} path
+         * @returns {string}
+         */
         function pathSplitter(path) {
             const tmp = "<span>" + path.replace(/::/g, "::</span><span>");
             if (tmp.endsWith("<span>")) {
@@ -2763,9 +2755,9 @@ class DocSearch {
          * Add extra data to result objects, and filter items that have been
          * marked for removal.
          *
-         * @param {[rustdoc.ResultObject]} results
+         * @param {rustdoc.ResultObject[]} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @returns {[rustdoc.ResultObject]}
+         * @returns {rustdoc.ResultObject[]}
          */
         const transformResults = (results, typeInfo) => {
             const duplicates = new Set();
@@ -2840,7 +2832,7 @@ class DocSearch {
             }
             let fnInputs = null;
             let fnOutput = null;
-            // @ts-expect-error
+            /** @type {Map<number, number> | null} */
             let mgens = null;
             if (typeInfo !== "elems" && typeInfo !== "returned") {
                 fnInputs = unifyFunctionTypes(
@@ -3053,7 +3045,6 @@ class DocSearch {
                             writeFn(nested, result);
                         }
                         return;
-                    // @ts-expect-error
                     } else if (mgens) {
                         for (const [queryId, fnId] of mgens) {
                             if (fnId === fnType.id) {
@@ -3069,7 +3060,7 @@ class DocSearch {
                         name: fnParamNames[-1 - fnType.id],
                         highlighted: !!fnType.highlighted,
                     }, result);
-                    // @ts-expect-error
+                    /** @type{string[]} */
                     const where = [];
                     onEachBtwn(
                         fnType.generics,
@@ -3079,7 +3070,6 @@ class DocSearch {
                         () => pushText({ name: " + ", highlighted: false }, where),
                     );
                     if (where.length > 0) {
-                        // @ts-expect-error
                         whereClause.set(fnParamNames[-1 - fnType.id], where);
                     }
                 } else {
@@ -3181,7 +3171,7 @@ class DocSearch {
          * @param {rustdoc.Results} results
          * @param {"sig"|"elems"|"returned"|null} typeInfo
          * @param {string} preferredCrate
-         * @returns {Promise<[rustdoc.ResultObject]>}
+         * @returns {Promise<rustdoc.ResultObject[]>}
          */
         const sortResults = async(results, typeInfo, preferredCrate) => {
             const userQuery = parsedQuery.userQuery;
@@ -3337,7 +3327,6 @@ class DocSearch {
                 return 0;
             });
 
-            // @ts-expect-error
             return transformResults(result_list, typeInfo);
         };
 

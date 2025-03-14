@@ -15,13 +15,11 @@
 
 pub mod args;
 pub mod env;
-pub mod fs;
 pub mod helpers;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 pub mod process;
-pub mod stdio;
 pub mod thread;
 pub mod time;
 

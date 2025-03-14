@@ -12,32 +12,36 @@ const LOOP_OFFSET: usize = 5000;
 pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     // plain manual memcpy
     for i in 0..src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
-        //~| NOTE: `-D clippy::manual-memcpy` implied by `-D warnings`
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
     // dst offset memcpy
     for i in 0..src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i + 10] = src[i];
     }
 
     // src offset memcpy
     for i in 0..src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i + 10];
     }
 
     // src offset memcpy
     for i in 11..src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i - 10];
     }
 
     // overwrite entire dst
     for i in 0..dst.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
@@ -51,7 +55,8 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
 
     // multiple copies - suggest two memcpy statements
     for i in 10..256 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i - 5];
         dst2[i + 500] = src[i]
     }
@@ -64,7 +69,8 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let some_var = 5;
     // Offset in variable
     for i in 10..LOOP_OFFSET {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i + LOOP_OFFSET] = src[i - some_var];
     }
 
@@ -78,7 +84,8 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
 
     // make sure vectors are supported
     for i in 0..src_vec.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst_vec[i] = src_vec[i];
     }
 
@@ -108,24 +115,28 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let from = 1;
 
     for i in from..from + src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i - from];
     }
 
     for i in from..from + 3 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i - from];
     }
 
     #[allow(clippy::identity_op)]
     for i in 0..5 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i - 0] = src[i];
     }
 
     #[allow(clippy::reversed_empty_ranges)]
     for i in 0..0 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
@@ -149,19 +160,22 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let src = [0, 1, 2, 3, 4];
     let mut dst = [0; 4];
     for i in 0..4 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
     let mut dst = [0; 6];
     for i in 0..5 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
     let mut dst = [0; 5];
     for i in 0..5 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i];
     }
 
@@ -208,13 +222,15 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     let src = [[0; 5]; 5];
     let mut dst = [0; 5];
     for i in 0..5 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[0][i];
     }
 
     let src = [[[0; 5]; 5]; 5];
     for i in 0..5 {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[0][1][i];
     }
 }
@@ -222,7 +238,8 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
 #[warn(clippy::needless_range_loop, clippy::manual_memcpy)]
 pub fn manual_clone(src: &[String], dst: &mut [String]) {
     for i in 0..src.len() {
-        //~^ ERROR: it looks like you're manually copying between slices
+        //~^ manual_memcpy
+
         dst[i] = src[i].clone();
     }
 }

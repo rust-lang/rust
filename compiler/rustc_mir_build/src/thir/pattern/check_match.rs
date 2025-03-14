@@ -345,6 +345,7 @@ impl<'p, 'tcx> MatchVisitor<'p, 'tcx> {
             | Borrow { .. }
             | Box { .. }
             | Call { .. }
+            | ByUse { .. }
             | Closure { .. }
             | ConstBlock { .. }
             | ConstParam { .. }
@@ -786,17 +787,13 @@ fn check_borrow_conflicts_in_at_patterns<'tcx>(cx: &MatchVisitor<'_, 'tcx>, pat:
                 }
             });
             if !conflicts_ref.is_empty() {
-                let mut path = None;
-                let ty = cx.tcx.short_string(ty, &mut path);
-                let mut err = sess.dcx().create_err(BorrowOfMovedValue {
+                sess.dcx().emit_err(BorrowOfMovedValue {
                     binding_span: pat.span,
                     conflicts_ref,
                     name: Ident::new(name, pat.span),
                     ty,
                     suggest_borrowing: Some(pat.span.shrink_to_lo()),
                 });
-                *err.long_ty_path() = path;
-                err.emit();
             }
             return;
         }
@@ -1046,7 +1043,7 @@ fn find_fallback_pattern_typo<'tcx>(
         for item in cx.tcx.hir_crate_items(()).free_items() {
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
                 // Look for consts being re-exported.
-                let item = cx.tcx.hir().expect_item(item.owner_id.def_id);
+                let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
                 let use_name = item.ident.name;
                 let hir::ItemKind::Use(path, _) = item.kind else {
                     continue;

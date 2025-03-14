@@ -3,6 +3,7 @@ use span::{Edition, EditionedFileId};
 use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
+use crate::display::DisplayTarget;
 use crate::{db::HirDatabase, mir::MirLowerError, test_db::TestDB, Interner, Substitution};
 
 use super::{interpret_mir, MirEvalError};
@@ -67,7 +68,9 @@ fn check_pass_and_stdio(
             let span_formatter = |file, range: TextRange| {
                 format!("{:?} {:?}..{:?}", file, line_index(range.start()), line_index(range.end()))
             };
-            e.pretty_print(&mut err, &db, span_formatter, Edition::CURRENT).unwrap();
+            let krate = db.module_for_file(file_id).krate();
+            e.pretty_print(&mut err, &db, span_formatter, DisplayTarget::from_crate(&db, krate))
+                .unwrap();
             panic!("Error in interpreting: {err}");
         }
         Ok((stdout, stderr)) => {

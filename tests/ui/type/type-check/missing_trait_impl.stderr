@@ -50,7 +50,7 @@ error[E0614]: type `T` cannot be dereferenced
   --> $DIR/missing_trait_impl.rs:15:13
    |
 LL |     let y = *x;
-   |             ^^
+   |             ^^ can't be dereferenced
 
 error: aborting due to 5 previous errors
 

@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 //@ edition: 2021
 
 extern "C" {

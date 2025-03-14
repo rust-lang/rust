@@ -78,8 +78,8 @@ fn failed(crate_name: &Ident) -> proc_macro::TokenStream {
 
 /// See [rustc_fluent_macro::fluent_messages].
 pub(crate) fn fluent_messages(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    let crate_name = std::env::var("CARGO_PKG_NAME")
-        // If `CARGO_PKG_NAME` is missing, then we're probably running in a test, so use
+    let crate_name = std::env::var("CARGO_CRATE_NAME")
+        // If `CARGO_CRATE_NAME` is missing, then we're probably running in a test, so use
         // `no_crate`.
         .unwrap_or_else(|_| "no_crate".to_string())
         .replace("rustc_", "");

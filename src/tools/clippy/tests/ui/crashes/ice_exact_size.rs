@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![deny(clippy::all)]
 
 // Test for https://github.com/rust-lang/rust-clippy/issues/1336

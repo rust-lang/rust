@@ -47,10 +47,10 @@ pub struct UnsupportedUnion {
 // FIXME(autodiff): I should get used somewhere
 #[derive(Diagnostic)]
 #[diag(middle_autodiff_unsafe_inner_const_ref)]
-pub struct AutodiffUnsafeInnerConstRef {
+pub struct AutodiffUnsafeInnerConstRef<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub ty: String,
+    pub ty: Ty<'tcx>,
 }
 
 #[derive(Subdiagnostic)]

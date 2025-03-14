@@ -82,7 +82,7 @@ fn visit_implementation_of_drop(checker: &Checker<'_>) -> Result<(), ErrorGuaran
         _ => {}
     }
 
-    let impl_ = tcx.hir().expect_item(impl_did).expect_impl();
+    let impl_ = tcx.hir_expect_item(impl_did).expect_impl();
 
     Err(tcx.dcx().emit_err(errors::DropImplOnWrongItem { span: impl_.self_ty.span }))
 }
@@ -109,7 +109,7 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
     match type_allowed_to_implement_copy(tcx, param_env, self_type, cause, impl_header.safety) {
         Ok(()) => Ok(()),
         Err(CopyImplementationError::InfringingFields(fields)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
@@ -119,15 +119,15 @@ fn visit_implementation_of_copy(checker: &Checker<'_>) -> Result<(), ErrorGuaran
             ))
         }
         Err(CopyImplementationError::NotAnAdt) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnNonAdt { span }))
         }
         Err(CopyImplementationError::HasDestructor) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::CopyImplOnTypeWithDtor { span }))
         }
         Err(CopyImplementationError::HasUnsafeFields) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx
                 .dcx()
                 .span_delayed_bug(span, format!("cannot implement `Copy` for `{}`", self_type)))
@@ -157,7 +157,7 @@ fn visit_implementation_of_const_param_ty(
     match type_allowed_to_implement_const_param_ty(tcx, param_env, self_type, kind, cause) {
         Ok(()) => Ok(()),
         Err(ConstParamTyImplementationError::InfrigingFields(fields)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 fields.into_iter().map(|(field, ty, reason)| (tcx.def_span(field.did), ty, reason)),
@@ -167,11 +167,11 @@ fn visit_implementation_of_const_param_ty(
             ))
         }
         Err(ConstParamTyImplementationError::NotAnAdtOrBuiltinAllowed) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnNonAdt { span }))
         }
         Err(ConstParamTyImplementationError::InvalidInnerTyOfBuiltinTy(infringing_tys)) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(infringing_fields_error(
                 tcx,
                 infringing_tys.into_iter().map(|(ty, reason)| (span, ty, reason)),
@@ -181,7 +181,7 @@ fn visit_implementation_of_const_param_ty(
             ))
         }
         Err(ConstParamTyImplementationError::UnsizedConstParamsFeatureRequired) => {
-            let span = tcx.hir().expect_item(impl_did).expect_impl().self_ty.span;
+            let span = tcx.hir_expect_item(impl_did).expect_impl().self_ty.span;
             Err(tcx.dcx().emit_err(errors::ConstParamTyImplOnUnsized { span }))
         }
     }
@@ -526,7 +526,7 @@ pub(crate) fn coerce_unsized_info<'tcx>(
                     note: true,
                 }));
             } else if diff_fields.len() > 1 {
-                let item = tcx.hir().expect_item(impl_did);
+                let item = tcx.hir_expect_item(impl_did);
                 let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
                     t.path.span
                 } else {

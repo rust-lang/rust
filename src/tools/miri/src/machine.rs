@@ -713,12 +713,13 @@ impl<'tcx> MiriMachine<'tcx> {
             clock: Clock::new(config.isolated_op == IsolatedOp::Allow),
             #[cfg(unix)]
             native_lib: config.native_lib.as_ref().map(|lib_file_path| {
+                let host_triple = rustc_session::config::host_tuple();
                 let target_triple = tcx.sess.opts.target_triple.tuple();
                 // Check if host target == the session target.
-                if env!("TARGET") != target_triple {
+                if host_triple != target_triple {
                     panic!(
                         "calling external C functions in linked .so file requires host and target to be the same: host={}, target={}",
-                        env!("TARGET"),
+                        host_triple,
                         target_triple,
                     );
                 }
@@ -1290,18 +1291,12 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
     /// Called on `ptr as usize` casts.
     /// (Actually computing the resulting `usize` doesn't need machine help,
     /// that's just `Scalar::try_to_int`.)
+    #[inline(always)]
     fn expose_provenance(
         ecx: &InterpCx<'tcx, Self>,
         provenance: Self::Provenance,
     ) -> InterpResult<'tcx> {
-        match provenance {
-            Provenance::Concrete { alloc_id, tag } => ecx.expose_ptr(alloc_id, tag),
-            Provenance::Wildcard => {
-                // No need to do anything for wildcard pointers as
-                // their provenances have already been previously exposed.
-                interp_ok(())
-            }
-        }
+        ecx.expose_provenance(provenance)
     }
 
     /// Convert a pointer with provenance into an allocation-offset pair and extra provenance info.

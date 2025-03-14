@@ -49,7 +49,7 @@
 use alloc::boxed::Box;
 use core::any::Any;
 use core::ffi::{c_int, c_uint, c_void};
-use core::mem::{self, ManuallyDrop};
+use core::mem::ManuallyDrop;
 
 // NOTE(nbdd0121): The `canary` field is part of stable ABI.
 #[repr(C)]
@@ -225,7 +225,7 @@ static mut CATCHABLE_TYPE: _CatchableType = _CatchableType {
     properties: 0,
     pType: ptr_t::null(),
     thisDisplacement: _PMD { mdisp: 0, pdisp: -1, vdisp: 0 },
-    sizeOrOffset: mem::size_of::<Exception>() as c_int,
+    sizeOrOffset: size_of::<Exception>() as c_int,
     copyFunction: ptr_t::null(),
 };
 

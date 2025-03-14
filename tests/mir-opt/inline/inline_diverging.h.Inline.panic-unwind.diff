@@ -5,6 +5,7 @@
       let mut _0: ();
       let _1: (!, !);
 +     let mut _2: fn() -> ! {sleep};
++     let mut _8: ();
 +     scope 1 (inlined call_twice::<!, fn() -> ! {sleep}>) {
 +         debug f => _2;
 +         let mut _3: &fn() -> ! {sleep};
@@ -18,6 +19,10 @@
 +                 debug b => _6;
 +             }
 +         }
++         scope 4 (inlined <fn() -> ! {sleep} as Fn<()>>::call - shim(fn() -> ! {sleep})) {
++             scope 5 (inlined sleep) {
++             }
++         }
 +     }
   
       bb0: {
@@ -29,40 +34,13 @@
 +         StorageLive(_4);
 +         StorageLive(_3);
 +         _3 = &_2;
-+         _4 = <fn() -> ! {sleep} as Fn<()>>::call(move _3, const ()) -> [return: bb1, unwind: bb5];
++         StorageLive(_8);
++         _8 = const ();
++         goto -> bb1;
 +     }
 + 
 +     bb1: {
-+         StorageDead(_3);
-+         StorageLive(_5);
-+         _5 = &_2;
-+         _6 = <fn() -> ! {sleep} as Fn<()>>::call(move _5, const ()) -> [return: bb2, unwind: bb4];
-+     }
-+ 
-+     bb2: {
-+         StorageDead(_5);
-+         StorageLive(_7);
-+         _7 = move _4;
-+         _1 = (move _7, copy _6);
-+         StorageDead(_7);
-+         StorageDead(_4);
-+         drop(_2) -> [return: bb3, unwind continue];
-+     }
-+ 
-+     bb3: {
-+         unreachable;
-+     }
-+ 
-+     bb4 (cleanup): {
-+         drop(_4) -> [return: bb5, unwind terminate(cleanup)];
-+     }
-+ 
-+     bb5 (cleanup): {
-+         drop(_2) -> [return: bb6, unwind terminate(cleanup)];
-+     }
-+ 
-+     bb6 (cleanup): {
-+         resume;
++         goto -> bb1;
       }
   }
   

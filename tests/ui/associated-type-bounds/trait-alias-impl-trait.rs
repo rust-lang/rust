@@ -31,6 +31,7 @@ impl Tr1 for S1 {
 }
 
 type Et1 = impl Tr1<As1: Copy>;
+#[define_opaque(Et1)]
 fn def_et1() -> Et1 {
     S1
 }
@@ -39,6 +40,7 @@ pub fn use_et1() {
 }
 
 type Et2 = impl Tr1<As1: 'static>;
+#[define_opaque(Et2)]
 fn def_et2() -> Et2 {
     S1
 }
@@ -47,6 +49,7 @@ pub fn use_et2() {
 }
 
 type Et3 = impl Tr1<As1: Clone + Iterator<Item: Add<u8, Output: Into<u8>>>>;
+#[define_opaque(Et3)]
 fn def_et3() -> Et3 {
     struct A;
     impl Tr1 for A {
@@ -68,6 +71,7 @@ pub fn use_et3() {
 }
 
 type Et4 = impl Tr1<As1: for<'a> Tr2<'a>>;
+#[define_opaque(Et4)]
 fn def_et4() -> Et4 {
     #[derive(Copy, Clone)]
     struct A;

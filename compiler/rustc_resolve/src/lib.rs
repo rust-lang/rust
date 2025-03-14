@@ -20,7 +20,6 @@
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::{Cell, RefCell};
@@ -30,11 +29,12 @@ use std::sync::Arc;
 
 use diagnostics::{ImportSuggestion, LabelSuggestion, Suggestion};
 use effective_visibilities::EffectiveVisibilitiesVisitor;
-use errors::{
-    ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst, ParamKindInTyOfConstParam,
-};
+use errors::{ParamKindInEnumDiscriminant, ParamKindInNonTrivialAnonConst};
 use imports::{Import, ImportData, ImportKind, NameResolution};
-use late::{HasGenericParams, PathSource, PatternSource, UnnecessaryQualification};
+use late::{
+    ForwardGenericParamBanReason, HasGenericParams, PathSource, PatternSource,
+    UnnecessaryQualification,
+};
 use macros::{MacroRulesBinding, MacroRulesScope, MacroRulesScopeRef};
 use rustc_arena::{DroplessArena, TypedArena};
 use rustc_ast::expand::StrippedCfgItem;
@@ -275,9 +275,11 @@ enum ResolutionError<'ra> {
         shadowed_binding_span: Span,
     },
     /// Error E0128: generic parameters with a default cannot use forward-declared identifiers.
-    ForwardDeclaredGenericParam,
+    ForwardDeclaredGenericParam(Symbol, ForwardGenericParamBanReason),
+    // FIXME(generic_const_parameter_types): This should give custom output specifying it's only
+    // problematic to use *forward declared* parameters when the feature is enabled.
     /// ERROR E0770: the type of const parameters must not depend on other generic parameters.
-    ParamInTyOfConstParam { name: Symbol, param_kind: Option<ParamKindInTyOfConstParam> },
+    ParamInTyOfConstParam { name: Symbol },
     /// generic parameters must not be used inside const evaluations.
     ///
     /// This error is only emitted when using `min_const_generics`.
@@ -287,7 +289,7 @@ enum ResolutionError<'ra> {
     /// This error is emitted even with `generic_const_exprs`.
     ParamInEnumDiscriminant { name: Symbol, param_kind: ParamKindInEnumDiscriminant },
     /// Error E0735: generic parameters with a default cannot use `Self`
-    SelfInGenericParamDefault,
+    ForwardDeclaredSelf(ForwardGenericParamBanReason),
     /// Error E0767: use of unreachable label
     UnreachableLabel { name: Symbol, definition_span: Span, suggestion: Option<LabelSuggestion> },
     /// Error E0323, E0324, E0325: mismatch between trait item and impl item.
@@ -1340,7 +1342,7 @@ impl<'tcx> Resolver<'_, 'tcx> {
         &mut self,
         parent: LocalDefId,
         node_id: ast::NodeId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
         expn_id: ExpnId,
         span: Span,

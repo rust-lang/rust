@@ -8,31 +8,25 @@ LL |     let x = async { f.await };
    = help: to override `-D warnings` add `#[allow(clippy::redundant_async_block)]`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:20:16
+  --> tests/ui/redundant_async_block.rs:21:16
    |
 LL |     let fut2 = async { fut1.await };
    |                ^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut1`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:24:16
+  --> tests/ui/redundant_async_block.rs:26:16
    |
 LL |     let fut2 = async move { fut1.await };
    |                ^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut1`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:27:15
+  --> tests/ui/redundant_async_block.rs:30:15
    |
 LL |     let fut = async { async { 42 }.await };
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { 42 }`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:43:5
-   |
-LL |     async move { fut.await }
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut`
-
-error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:56:5
+  --> tests/ui/redundant_async_block.rs:47:5
    |
 LL |     async move { fut.await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut`
@@ -40,17 +34,23 @@ LL |     async move { fut.await }
 error: this async expression only awaits a single future
   --> tests/ui/redundant_async_block.rs:61:5
    |
+LL |     async move { fut.await }
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `fut`
+
+error: this async expression only awaits a single future
+  --> tests/ui/redundant_async_block.rs:67:5
+   |
 LL |     async { f.await }
    |     ^^^^^^^^^^^^^^^^^ help: you can reduce it to: `f`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:84:5
+  --> tests/ui/redundant_async_block.rs:91:5
    |
 LL |     async { async { f().await + 1 }.await }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { f().await + 1 }`
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:147:13
+  --> tests/ui/redundant_async_block.rs:155:13
    |
 LL |             async { async { 42 }.await }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { 42 }`
@@ -61,7 +61,7 @@ LL |     mac!()
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: this async expression only awaits a single future
-  --> tests/ui/redundant_async_block.rs:167:13
+  --> tests/ui/redundant_async_block.rs:176:13
    |
 LL |             async { async { $e }.await }
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: you can reduce it to: `async { $e }`

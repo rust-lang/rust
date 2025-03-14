@@ -7,7 +7,7 @@ use std::sync::Arc;
 
 use rustc_ast::attr::{AttributeExt, MarkedAttrs};
 use rustc_ast::ptr::P;
-use rustc_ast::token::Nonterminal;
+use rustc_ast::token::MetaVarKind;
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{AssocCtxt, Visitor};
 use rustc_ast::{self as ast, AttrVec, Attribute, HasAttrs, Item, NodeId, PatKind};
@@ -19,7 +19,7 @@ use rustc_feature::Features;
 use rustc_hir as hir;
 use rustc_lint_defs::{BufferedEarlyLint, RegisteredTools};
 use rustc_parse::MACRO_ARGUMENTS;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{ForceCollect, Parser};
 use rustc_session::config::CollapseMacroDebuginfo;
 use rustc_session::parse::ParseSess;
 use rustc_session::{Limit, Session};
@@ -53,6 +53,7 @@ pub enum Annotatable {
     Param(ast::Param),
     FieldDef(ast::FieldDef),
     Variant(ast::Variant),
+    WherePredicate(ast::WherePredicate),
     Crate(ast::Crate),
 }
 
@@ -71,6 +72,7 @@ impl Annotatable {
             Annotatable::Param(p) => p.span,
             Annotatable::FieldDef(sf) => sf.span,
             Annotatable::Variant(v) => v.span,
+            Annotatable::WherePredicate(wp) => wp.span,
             Annotatable::Crate(c) => c.spans.inner_span,
         }
     }
@@ -89,6 +91,7 @@ impl Annotatable {
             Annotatable::Param(p) => p.visit_attrs(f),
             Annotatable::FieldDef(sf) => sf.visit_attrs(f),
             Annotatable::Variant(v) => v.visit_attrs(f),
+            Annotatable::WherePredicate(wp) => wp.visit_attrs(f),
             Annotatable::Crate(c) => c.visit_attrs(f),
         }
     }
@@ -107,6 +110,7 @@ impl Annotatable {
             Annotatable::Param(p) => visitor.visit_param(p),
             Annotatable::FieldDef(sf) => visitor.visit_field_def(sf),
             Annotatable::Variant(v) => visitor.visit_variant(v),
+            Annotatable::WherePredicate(wp) => visitor.visit_where_predicate(wp),
             Annotatable::Crate(c) => visitor.visit_crate(c),
         }
     }
@@ -128,6 +132,7 @@ impl Annotatable {
             | Annotatable::Param(..)
             | Annotatable::FieldDef(..)
             | Annotatable::Variant(..)
+            | Annotatable::WherePredicate(..)
             | Annotatable::Crate(..) => panic!("unexpected annotatable"),
         }
     }
@@ -220,6 +225,13 @@ impl Annotatable {
         match self {
             Annotatable::Variant(v) => v,
             _ => panic!("expected variant"),
+        }
+    }
+
+    pub fn expect_where_predicate(self) -> ast::WherePredicate {
+        match self {
+            Annotatable::WherePredicate(wp) => wp,
+            _ => panic!("expected where predicate"),
         }
     }
 
@@ -443,6 +455,10 @@ pub trait MacResult {
     }
 
     fn make_variants(self: Box<Self>) -> Option<SmallVec<[ast::Variant; 1]>> {
+        None
+    }
+
+    fn make_where_predicates(self: Box<Self>) -> Option<SmallVec<[ast::WherePredicate; 1]>> {
         None
     }
 
@@ -1389,13 +1405,13 @@ pub fn parse_macro_name_and_helper_attrs(
 /// If this item looks like a specific enums from `rental`, emit a fatal error.
 /// See #73345 and #83125 for more details.
 /// FIXME(#73933): Remove this eventually.
-fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
+fn pretty_printing_compatibility_hack(item: &Item, psess: &ParseSess) {
     let name = item.ident.name;
     if name == sym::ProceduralMasqueradeDummyType
         && let ast::ItemKind::Enum(enum_def, _) = &item.kind
         && let [variant] = &*enum_def.variants
         && variant.ident.name == sym::Input
-        && let FileName::Real(real) = sess.source_map().span_to_filename(item.ident.span)
+        && let FileName::Real(real) = psess.source_map().span_to_filename(item.ident.span)
         && let Some(c) = real
             .local_path()
             .unwrap_or(Path::new(""))
@@ -1413,7 +1429,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
         };
 
         if crate_matches {
-            sess.dcx().emit_fatal(errors::ProcMacroBackCompat {
+            psess.dcx().emit_fatal(errors::ProcMacroBackCompat {
                 crate_name: "rental".to_string(),
                 fixed_version: "0.5.6".to_string(),
             });
@@ -1421,7 +1437,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &Session) {
     }
 }
 
-pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &Session) {
+pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, psess: &ParseSess) {
     let item = match ann {
         Annotatable::Item(item) => item,
         Annotatable::Stmt(stmt) => match &stmt.kind {
@@ -1430,17 +1446,36 @@ pub(crate) fn ann_pretty_printing_compatibility_hack(ann: &Annotatable, sess: &S
         },
         _ => return,
     };
-    pretty_printing_compatibility_hack(item, sess)
+    pretty_printing_compatibility_hack(item, psess)
 }
 
-pub(crate) fn nt_pretty_printing_compatibility_hack(nt: &Nonterminal, sess: &Session) {
-    let item = match nt {
-        Nonterminal::NtItem(item) => item,
-        Nonterminal::NtStmt(stmt) => match &stmt.kind {
-            ast::StmtKind::Item(item) => item,
-            _ => return,
-        },
+pub(crate) fn stream_pretty_printing_compatibility_hack(
+    kind: MetaVarKind,
+    stream: &TokenStream,
+    psess: &ParseSess,
+) {
+    let item = match kind {
+        MetaVarKind::Item => {
+            let mut parser = Parser::new(psess, stream.clone(), None);
+            // No need to collect tokens for this simple check.
+            parser
+                .parse_item(ForceCollect::No)
+                .expect("failed to reparse item")
+                .expect("an actual item")
+        }
+        MetaVarKind::Stmt => {
+            let mut parser = Parser::new(psess, stream.clone(), None);
+            // No need to collect tokens for this simple check.
+            let stmt = parser
+                .parse_stmt(ForceCollect::No)
+                .expect("failed to reparse")
+                .expect("an actual stmt");
+            match &stmt.kind {
+                ast::StmtKind::Item(item) => item.clone(),
+                _ => return,
+            }
+        }
         _ => return,
     };
-    pretty_printing_compatibility_hack(item, sess)
+    pretty_printing_compatibility_hack(&item, psess)
 }

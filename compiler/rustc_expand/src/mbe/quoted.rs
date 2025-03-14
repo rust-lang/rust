@@ -274,7 +274,7 @@ fn parse_tree<'a>(
                     let msg =
                         format!("expected identifier, found `{}`", pprust::token_to_string(token),);
                     sess.dcx().span_err(token.span, msg);
-                    TokenTree::MetaVar(token.span, Ident::empty())
+                    TokenTree::MetaVar(token.span, Ident::dummy())
                 }
 
                 // There are no more tokens. Just return the `$` we already have.
@@ -302,8 +302,8 @@ fn parse_tree<'a>(
 /// `None`.
 fn kleene_op(token: &Token) -> Option<KleeneOp> {
     match token.kind {
-        token::BinOp(token::Star) => Some(KleeneOp::ZeroOrMore),
-        token::BinOp(token::Plus) => Some(KleeneOp::OneOrMore),
+        token::Star => Some(KleeneOp::ZeroOrMore),
+        token::Plus => Some(KleeneOp::OneOrMore),
         token::Question => Some(KleeneOp::ZeroOrOne),
         _ => None,
     }

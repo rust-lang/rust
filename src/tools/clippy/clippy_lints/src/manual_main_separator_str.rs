@@ -39,9 +39,7 @@ pub struct ManualMainSeparatorStr {
 
 impl ManualMainSeparatorStr {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
@@ -55,10 +53,10 @@ impl LateLintPass<'_> for ManualMainSeparatorStr {
             && let ExprKind::Path(QPath::Resolved(None, path)) = receiver.kind
             && let Res::Def(DefKind::Const, receiver_def_id) = path.res
             && is_trait_method(cx, target, sym::ToString)
-            && self.msrv.meets(msrvs::PATH_MAIN_SEPARATOR_STR)
             && cx.tcx.is_diagnostic_item(sym::path_main_separator, receiver_def_id)
             && let ty::Ref(_, ty, Mutability::Not) = cx.typeck_results().expr_ty_adjusted(expr).kind()
             && ty.is_str()
+            && self.msrv.meets(cx, msrvs::PATH_MAIN_SEPARATOR_STR)
         {
             span_lint_and_sugg(
                 cx,
@@ -71,6 +69,4 @@ impl LateLintPass<'_> for ManualMainSeparatorStr {
             );
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

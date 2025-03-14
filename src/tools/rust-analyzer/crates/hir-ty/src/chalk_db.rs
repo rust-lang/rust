@@ -708,6 +708,9 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Fn => WellKnownTrait::Fn,
         LangItem::FnMut => WellKnownTrait::FnMut,
         LangItem::FnOnce => WellKnownTrait::FnOnce,
+        LangItem::AsyncFn => WellKnownTrait::AsyncFn,
+        LangItem::AsyncFnMut => WellKnownTrait::AsyncFnMut,
+        LangItem::AsyncFnOnce => WellKnownTrait::AsyncFnOnce,
         LangItem::Coroutine => WellKnownTrait::Coroutine,
         LangItem::Sized => WellKnownTrait::Sized,
         LangItem::Unpin => WellKnownTrait::Unpin,
@@ -715,6 +718,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Tuple => WellKnownTrait::Tuple,
         LangItem::PointeeTrait => WellKnownTrait::Pointee,
         LangItem::FnPtrTrait => WellKnownTrait::FnPtr,
+        LangItem::Future => WellKnownTrait::Future,
         _ => return None,
     })
 }
@@ -730,6 +734,9 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Fn => LangItem::Fn,
         WellKnownTrait::FnMut => LangItem::FnMut,
         WellKnownTrait::FnOnce => LangItem::FnOnce,
+        WellKnownTrait::AsyncFn => LangItem::AsyncFn,
+        WellKnownTrait::AsyncFnMut => LangItem::AsyncFnMut,
+        WellKnownTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
         WellKnownTrait::Coroutine => LangItem::Coroutine,
         WellKnownTrait::Sized => LangItem::Sized,
         WellKnownTrait::Tuple => LangItem::Tuple,
@@ -737,6 +744,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Unsize => LangItem::Unsize,
         WellKnownTrait::Pointee => LangItem::PointeeTrait,
         WellKnownTrait::FnPtr => LangItem::FnPtrTrait,
+        WellKnownTrait::Future => LangItem::Future,
     }
 }
 

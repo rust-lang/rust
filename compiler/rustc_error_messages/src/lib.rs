@@ -4,7 +4,6 @@
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(type_alias_impl_trait)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::borrow::Cow;
@@ -209,6 +208,7 @@ pub type LazyFallbackBundle = Arc<LazyLock<FluentBundle, impl FnOnce() -> Fluent
 
 /// Return the default `FluentBundle` with standard "en-US" diagnostic messages.
 #[instrument(level = "trace", skip(resources))]
+#[cfg_attr(not(bootstrap), define_opaque(LazyFallbackBundle))]
 pub fn fallback_fluent_bundle(
     resources: Vec<&'static str>,
     with_directionality_markers: bool,

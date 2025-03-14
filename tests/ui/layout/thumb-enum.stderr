@@ -4,7 +4,7 @@ error: layout_of(A) = Layout {
                abi: Align(1 bytes),
                pref: Align(4 bytes),
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I8,
@@ -49,7 +49,7 @@ error: layout_of(A) = Layout {
                            abi: Align(1 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -71,7 +71,7 @@ error: layout_of(A) = Layout {
            unadjusted_abi_align: Align(1 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/thumb-enum.rs:17:1
+  --> $DIR/thumb-enum.rs:18:1
    |
 LL | enum A { Apple }
    | ^^^^^^
@@ -82,7 +82,7 @@ error: layout_of(B) = Layout {
                abi: Align(1 bytes),
                pref: Align(4 bytes),
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I8,
@@ -127,7 +127,7 @@ error: layout_of(B) = Layout {
                            abi: Align(1 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -149,7 +149,7 @@ error: layout_of(B) = Layout {
            unadjusted_abi_align: Align(1 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/thumb-enum.rs:21:1
+  --> $DIR/thumb-enum.rs:22:1
    |
 LL | enum B { Banana = 255, }
    | ^^^^^^
@@ -160,7 +160,7 @@ error: layout_of(C) = Layout {
                abi: Align(2 bytes),
                pref: Align(4 bytes),
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I16,
@@ -205,7 +205,7 @@ error: layout_of(C) = Layout {
                            abi: Align(2 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -227,7 +227,7 @@ error: layout_of(C) = Layout {
            unadjusted_abi_align: Align(2 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/thumb-enum.rs:25:1
+  --> $DIR/thumb-enum.rs:26:1
    |
 LL | enum C { Chaenomeles = 256, }
    | ^^^^^^
@@ -238,7 +238,7 @@ error: layout_of(P) = Layout {
                abi: Align(4 bytes),
                pref: Align(4 bytes),
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -283,7 +283,7 @@ error: layout_of(P) = Layout {
                            abi: Align(4 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -305,7 +305,7 @@ error: layout_of(P) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/thumb-enum.rs:29:1
+  --> $DIR/thumb-enum.rs:30:1
    |
 LL | enum P { Peach = 0x1000_0000isize, }
    | ^^^^^^
@@ -316,7 +316,7 @@ error: layout_of(T) = Layout {
                abi: Align(4 bytes),
                pref: Align(4 bytes),
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -361,7 +361,7 @@ error: layout_of(T) = Layout {
                            abi: Align(4 bytes),
                            pref: Align(4 bytes),
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -383,7 +383,7 @@ error: layout_of(T) = Layout {
            unadjusted_abi_align: Align(4 bytes),
            randomization_seed: $SEED,
        }
-  --> $DIR/thumb-enum.rs:35:1
+  --> $DIR/thumb-enum.rs:36:1
    |
 LL | enum T { Tangerine = TANGERINE as isize }
    | ^^^^^^

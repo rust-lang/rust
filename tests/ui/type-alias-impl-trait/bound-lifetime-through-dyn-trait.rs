@@ -9,7 +9,7 @@ fn dyn_hoops<T: Sized>() -> dyn for<'a> Iterator<Item = impl Captures<'a>> {
 }
 
 pub fn main() {
-    //~^ ERROR item does not constrain `Opaque::{opaque#0}`, but has it in its signature
+    //~^ ERROR item does not constrain `Opaque::{opaque#0}`
     type Opaque = impl Sized;
     fn define() -> Opaque {
         let x: Opaque = dyn_hoops::<()>();

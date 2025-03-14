@@ -53,6 +53,15 @@ Some additional notes about using the interactive mode:
   containers. With the container name, run `docker exec -it <CONTAINER>
   /bin/bash` where `<CONTAINER>` is the container name like `4ba195e95cef`.
 
+The approach described above is a relatively low-level interface for running the Docker images
+directly. If you want to run a full CI Linux job locally with Docker, in a way that is as close to CI as possible, you can use the following command:
+
+```bash
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local <job-name>
+# For example:
+cargo run --manifest-path src/ci/citool/Cargo.toml run-local dist-x86_64-linux-alt
+```
+
 [Docker]: https://www.docker.com/
 [`src/ci/docker`]: https://github.com/rust-lang/rust/tree/master/src/ci/docker
 [`src/ci/docker/run.sh`]: https://github.com/rust-lang/rust/blob/master/src/ci/docker/run.sh

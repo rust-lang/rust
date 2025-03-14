@@ -9,11 +9,13 @@ fn tuple_types() {
 
     // not ok
     let TupleStruct(_) = ref_value;
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let &TupleStruct(Some(_)) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let TupleStruct(Some(_)) = *ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
 
     // ok
     let &TupleStruct(_) = ref_value;
@@ -31,13 +33,16 @@ fn tuple_enum_variants() {
 
     // not ok
     if let TupleEnum::Var(_) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let &TupleEnum::Var(Some(_)) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let TupleEnum::Var(Some(_)) = *ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let TupleEnum::Empty = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
 
     // ok
     if let &TupleEnum::Var(_) = ref_value {}
@@ -53,11 +58,13 @@ fn plain_tuples() {
 
     // not ok
     let (_a, _b) = ref_value;
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let &(_a, Some(_)) = ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
+
     if let (_a, Some(_)) = *ref_value {}
-    //~^ ERROR: type of pattern does not match the expression type
+    //~^ pattern_type_mismatch
 
     // ok
     let &(_a, _b) = ref_value;

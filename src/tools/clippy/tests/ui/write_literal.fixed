@@ -29,46 +29,55 @@ fn main() {
 
     // these should throw warnings
     write!(v, "Hello world");
-    //~^ ERROR: literal with an empty format string
-    //~| NOTE: `-D clippy::write-literal` implied by `-D warnings`
+    //~^ write_literal
+
     writeln!(v, "Hello {} world", world);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "Hello world");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "a literal {:.4}", 5);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
 
     // positional args don't change the fact
     // that we're using a literal -- this should
     // throw a warning
     writeln!(v, "hello world");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "world hello");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
 
     // named args shouldn't change anything either
     writeln!(v, "hello world");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "world hello");
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
 
     // #10128
     writeln!(v, "hello {0} world", 2);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "world {0} hello", 2);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "hello {0} {1}, {bar}", 2, 3, bar = 4);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
+
     writeln!(v, "hello {0} {1}, world {2}", 2, 3, 4);
-    //~^ ERROR: literal with an empty format string
+    //~^ write_literal
 }
 
 fn issue_13959() {
     let mut v = Vec::new();
     writeln!(v, "\"");
+    //~^ write_literal
     writeln!(
         v,
         "
+        //~^ write_literal
         foo
         \\
         \\\\

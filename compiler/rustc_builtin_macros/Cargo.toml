@@ -3,10 +3,6 @@ name = "rustc_builtin_macros"
 version = "0.0.0"
 edition = "2024"
 
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(llvm_enzyme)'] }
-
 [lib]
 doctest = false
 

@@ -3,7 +3,9 @@
 
 use std::collections::hash_map::{self, *};
 use std::fs as alias;
+//~^ unnecessary_self_imports
 use std::io::{self, Read};
 use std::rc;
+//~^ unnecessary_self_imports
 
 fn main() {}

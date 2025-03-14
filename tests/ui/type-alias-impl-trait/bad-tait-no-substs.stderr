@@ -26,26 +26,14 @@ help: add missing generic argument
 LL |     Tuple(Alias<U>),
    |                +++
 
-error[E0792]: non-defining opaque type use in defining scope
-  --> $DIR/bad-tait-no-substs.rs:8:11
-   |
-LL |     Tuple(Alias),
-   |           ^^^^^ argument `'_` is not a generic parameter
-   |
-note: for this opaque type
-  --> $DIR/bad-tait-no-substs.rs:5:21
-   |
-LL | type Alias<'a, U> = impl Trait<U>;
-   |                     ^^^^^^^^^^^^^
-
-error: item does not constrain `Alias::{opaque#0}`, but has it in its signature
+error: item does not constrain `Alias::{opaque#0}`
   --> $DIR/bad-tait-no-substs.rs:14:4
    |
 LL | fn uwu(x: UninhabitedVariants) {
    |    ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/bad-tait-no-substs.rs:5:21
    |
 LL | type Alias<'a, U> = impl Trait<U>;
@@ -72,7 +60,7 @@ LL +         UninhabitedVariants::Tuple(_) => todo!(),
 LL ~     }
    |
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0004, E0106, E0107, E0792.
+Some errors have detailed explanations: E0004, E0106, E0107.
 For more information about an error, try `rustc --explain E0004`.

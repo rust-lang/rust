@@ -32,13 +32,14 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(exact_size_is_empty)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::sync::Arc;
@@ -98,6 +99,8 @@ struct LoweringContext<'a, 'hir> {
 
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
+    /// `#[define_opaque]` attributes
+    define_opaque: Option<&'hir [(Span, LocalDefId)]>,
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.
@@ -136,6 +139,7 @@ struct LoweringContext<'a, 'hir> {
 
     allow_try_trait: Arc<[Symbol]>,
     allow_gen_future: Arc<[Symbol]>,
+    allow_pattern_type: Arc<[Symbol]>,
     allow_async_iterator: Arc<[Symbol]>,
     allow_for_await: Arc<[Symbol]>,
     allow_async_fn_traits: Arc<[Symbol]>,
@@ -154,6 +158,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             // HirId handling.
             bodies: Vec::new(),
+            define_opaque: None,
             attrs: SortedMap::default(),
             children: Vec::default(),
             contract_ensures: None,
@@ -176,6 +181,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             impl_trait_defs: Vec::new(),
             impl_trait_bounds: Vec::new(),
             allow_try_trait: [sym::try_trait_v2, sym::yeet_desugar_details].into(),
+            allow_pattern_type: [sym::pattern_types, sym::pattern_type_range_trait].into(),
             allow_gen_future: if tcx.features().async_fn_track_caller() {
                 [sym::gen_future, sym::closure_track_caller].into()
             } else {
@@ -492,7 +498,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         parent: LocalDefId,
         node_id: ast::NodeId,
-        name: Symbol,
+        name: Option<Symbol>,
         def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
@@ -545,6 +551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
+        let current_define_opaque = std::mem::take(&mut self.define_opaque);
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
 
@@ -578,6 +585,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
+        self.define_opaque = current_define_opaque;
         self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
 
         #[cfg(debug_assertions)]
@@ -597,6 +605,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
+        let define_opaque = std::mem::take(&mut self.define_opaque);
         let trait_map = std::mem::take(&mut self.trait_map);
 
         #[cfg(debug_assertions)]
@@ -616,7 +625,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
-        let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
+        let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }
@@ -772,7 +781,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let _def_id = self.create_def(
                     self.current_hir_id_owner.def_id,
                     param,
-                    kw::UnderscoreLifetime,
+                    Some(kw::UnderscoreLifetime),
                     DefKind::LifetimeParam,
                     ident.span,
                 );
@@ -926,19 +935,26 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     if let Some(first_char) = constraint.ident.as_str().chars().next()
                         && first_char.is_ascii_lowercase()
                     {
-                        let mut err = if !data.inputs.is_empty() {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Inputs {
-                                span: data.inputs_span,
-                            })
-                        } else if let FnRetTy::Ty(ty) = &data.output {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::Output {
-                                span: data.inputs_span.shrink_to_hi().to(ty.span),
-                            })
-                        } else {
-                            self.dcx().create_err(errors::BadReturnTypeNotation::NeedsDots {
-                                span: data.inputs_span,
-                            })
+                        let err = match (&data.inputs[..], &data.output) {
+                            ([_, ..], FnRetTy::Default(_)) => {
+                                errors::BadReturnTypeNotation::Inputs { span: data.inputs_span }
+                            }
+                            ([], FnRetTy::Default(_)) => {
+                                errors::BadReturnTypeNotation::NeedsDots { span: data.inputs_span }
+                            }
+                            // The case `T: Trait<method(..) -> Ret>` is handled in the parser.
+                            (_, FnRetTy::Ty(ty)) => {
+                                let span = data.inputs_span.shrink_to_hi().to(ty.span);
+                                errors::BadReturnTypeNotation::Output {
+                                    span,
+                                    suggestion: errors::RTNSuggestion {
+                                        output: span,
+                                        input: data.inputs_span,
+                                    },
+                                }
+                            }
                         };
+                        let mut err = self.dcx().create_err(err);
                         if !self.tcx.features().return_type_notation()
                             && self.tcx.sess.is_nightly_build()
                         {
@@ -1086,7 +1102,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             .and_then(|partial_res| partial_res.full_res())
                         {
                             if !res.matches_ns(Namespace::TypeNS)
-                                && path.is_potential_trivial_const_arg()
+                                && path.is_potential_trivial_const_arg(false)
                             {
                                 debug!(
                                     "lower_generic_arg: Lowering type argument as const argument: {:?}",
@@ -1357,7 +1373,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
             }
             TyKind::Pat(ty, pat) => {
-                hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_ty_pat(pat))
+                hir::TyKind::Pat(self.lower_ty(ty, itctx), self.lower_ty_pat(pat, ty.span))
             }
             TyKind::MacCall(_) => {
                 span_bug!(t.span, "`TyKind::MacCall` should have been expanded by now")
@@ -2053,8 +2069,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> &'hir hir::ConstArg<'hir> {
         let tcx = self.tcx;
 
-        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
-        let ct_kind = if path.is_potential_trivial_const_arg()
+        let ct_kind = if path
+            .is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
             && (tcx.features().min_generic_const_args()
                 || matches!(res, Res::Def(DefKind::ConstParam, _)))
         {
@@ -2064,7 +2080,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );
@@ -2080,8 +2096,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // We're lowering a const argument that was originally thought to be a type argument,
             // so the def collector didn't create the def ahead of time. That's why we have to do
             // it here.
-            let def_id =
-                self.create_def(parent_def_id, node_id, kw::Empty, DefKind::AnonConst, span);
+            let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
             let hir_id = self.lower_node_id(node_id);
 
             let path_expr = Expr {
@@ -2128,19 +2143,18 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         };
         let maybe_res =
             self.resolver.get_partial_res(expr.id).and_then(|partial_res| partial_res.full_res());
-        // FIXME(min_generic_const_args): we only allow one-segment const paths for now
-        if let ExprKind::Path(None, path) = &expr.kind
-            && path.is_potential_trivial_const_arg()
+        if let ExprKind::Path(qself, path) = &expr.kind
+            && path.is_potential_trivial_const_arg(tcx.features().min_generic_const_args())
             && (tcx.features().min_generic_const_args()
                 || matches!(maybe_res, Some(Res::Def(DefKind::ConstParam, _))))
         {
             let qpath = self.lower_qpath(
                 expr.id,
-                &None,
+                qself,
                 path,
                 ParamMode::Optional,
                 AllowReturnTypeNotation::No,
-                // FIXME(min_generic_const_args): update for `fn foo() -> Bar<FOO<impl Trait>>` support
+                // FIXME(mgca): update for `fn foo() -> Bar<FOO<impl Trait>>` support
                 ImplTraitContext::Disallowed(ImplTraitPosition::Path),
                 None,
             );

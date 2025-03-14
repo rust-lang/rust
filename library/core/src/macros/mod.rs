@@ -1743,6 +1743,21 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Provide a list of type aliases and other opaque-type-containing type definitions.
+    /// This list will be used in the body of the item it is applied to to define opaque
+    /// types' hidden types.
+    /// Can only be applied to things that have bodies.
+    #[unstable(
+        feature = "type_alias_impl_trait",
+        issue = "63063",
+        reason = "`type_alias_impl_trait` has open design concerns"
+    )]
+    #[rustc_builtin_macro]
+    #[cfg(not(bootstrap))]
+    pub macro define_opaque($($tt:tt)*) {
+        /* compiler built-in */
+    }
+
     /// Unstable placeholder for type ascription.
     #[allow_internal_unstable(builtin_syntax)]
     #[unstable(

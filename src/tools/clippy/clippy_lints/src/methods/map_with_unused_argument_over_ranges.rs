@@ -62,7 +62,7 @@ pub(super) fn check(
     ex: &Expr<'_>,
     receiver: &Expr<'_>,
     arg: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
     method_call_span: Span,
 ) {
     let mut applicability = Applicability::MaybeIncorrect;
@@ -82,7 +82,7 @@ pub(super) fn check(
         let use_take;
 
         if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
-            if msrv.meets(msrvs::REPEAT_N) {
+            if msrv.meets(cx, msrvs::REPEAT_N) {
                 method_to_use_name = "repeat_n";
                 let body_snippet = snippet_with_applicability(cx, body_expr.span, "..", &mut applicability);
                 new_span = (arg.span, format!("{body_snippet}, {count}"));
@@ -93,7 +93,7 @@ pub(super) fn check(
                 new_span = (arg.span, body_snippet.to_string());
                 use_take = true;
             }
-        } else if msrv.meets(msrvs::REPEAT_WITH) {
+        } else if msrv.meets(cx, msrvs::REPEAT_WITH) {
             method_to_use_name = "repeat_with";
             new_span = (param.span, String::new());
             use_take = true;

@@ -43,10 +43,7 @@ cfg_if::cfg_if! {
 
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::{
-                mem::{align_of, size_of},
-                slice,
-            };
+            use crate::slice;
             use libc::{c_ulong, sigset_t};
 
             // The implementations from bionic (android libc) type pun `sigset_t` as an

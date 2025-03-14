@@ -47,6 +47,21 @@ pub trait Delegate<'tcx> {
     /// the id of the binding in the pattern `pat`.
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
 
+    /// The value found at `place` is used, depending
+    /// on `mode`. Where `diag_expr_id` is the id used for diagnostics for `place`.
+    ///
+    /// Use of a `Copy` type in a ByUse context is considered a use
+    /// by `ImmBorrow` and `borrow` is called instead. This is because
+    /// a shared borrow is the "minimum access" that would be needed
+    /// to perform a copy.
+    ///
+    ///
+    /// The parameter `diag_expr_id` indicates the HIR id that ought to be used for
+    /// diagnostics. Around pattern matching such as `let pat = expr`, the diagnostic
+    /// id will be the id of the expression `expr` but the place itself will have
+    /// the id of the binding in the pattern `pat`.
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId);
+
     /// The value found at `place` is being borrowed with kind `bk`.
     /// `diag_expr_id` is the id used for diagnostics (see `consume` for more details).
     fn borrow(
@@ -89,6 +104,10 @@ pub trait Delegate<'tcx> {
 impl<'tcx, D: Delegate<'tcx>> Delegate<'tcx> for &mut D {
     fn consume(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
         (**self).consume(place_with_id, diag_expr_id)
+    }
+
+    fn use_cloned(&mut self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        (**self).use_cloned(place_with_id, diag_expr_id)
     }
 
     fn borrow(
@@ -143,6 +162,8 @@ pub trait TypeInformationCtxt<'tcx> {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
 
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool;
+
     fn body_owner_def_id(&self) -> LocalDefId;
 
     fn tcx(&self) -> TyCtxt<'tcx>;
@@ -182,6 +203,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for &FnCtxt<'_, 'tcx> {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
         self.infcx.type_is_copy_modulo_regions(self.param_env, ty)
+    }
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.infcx.type_is_use_cloned_modulo_regions(self.param_env, ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -228,6 +253,10 @@ impl<'tcx> TypeInformationCtxt<'tcx> for (&LateContext<'tcx>, LocalDefId) {
 
     fn type_is_copy_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
         self.0.type_is_copy_modulo_regions(ty)
+    }
+
+    fn type_is_use_cloned_modulo_regions(&self, ty: Ty<'tcx>) -> bool {
+        self.0.type_is_use_cloned_modulo_regions(ty)
     }
 
     fn body_owner_def_id(&self) -> LocalDefId {
@@ -295,6 +324,24 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
+    pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
+        debug!("delegate_consume_or_clone(place_with_id={:?})", place_with_id);
+
+        // `x.use` will do one of the following
+        // * if it implements `Copy`, it will be a copy
+        // * if it implements `UseCloned`, it will be a call to `clone`
+        // * otherwise, it is a move
+        //
+        // we do a conservative approximation of this, treating it as a move unless we know that it implements copy or `UseCloned`
+        if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
+        } else if self.cx.type_is_use_cloned_modulo_regions(place_with_id.place.ty()) {
+            self.delegate.borrow_mut().use_cloned(place_with_id, diag_expr_id);
+        } else {
+            self.delegate.borrow_mut().consume(place_with_id, diag_expr_id);
+        }
+    }
+
     fn consume_exprs(&self, exprs: &[hir::Expr<'_>]) -> Result<(), Cx::Error> {
         for expr in exprs {
             self.consume_expr(expr)?;
@@ -309,6 +356,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
         let place_with_id = self.cat_expr(expr)?;
         self.consume_or_copy(&place_with_id, place_with_id.hir_id);
+        self.walk_expr(expr)?;
+        Ok(())
+    }
+
+    pub fn consume_or_clone_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
+        debug!("consume_or_clone_expr(expr={:?})", expr);
+
+        let place_with_id = self.cat_expr(expr)?;
+        self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
         Ok(())
     }
@@ -364,6 +420,10 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 // callee(args)
                 self.consume_expr(callee)?;
                 self.consume_exprs(args)?;
+            }
+
+            hir::ExprKind::Use(expr, _) => {
+                self.consume_or_clone_expr(expr)?;
             }
 
             hir::ExprKind::MethodCall(.., receiver, args, _) => {
@@ -895,48 +955,44 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             match pat.kind {
                 PatKind::Binding(_, canonical_id, ..) => {
                     debug!("walk_pat: binding place={:?} pat={:?}", place, pat);
-                    if let Some(bm) = self
+                    let bm = self
                         .cx
                         .typeck_results()
-                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span)
-                    {
-                        debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
+                        .extract_binding_mode(tcx.sess, pat.hir_id, pat.span);
+                    debug!("walk_pat: pat.hir_id={:?} bm={:?}", pat.hir_id, bm);
 
-                        // pat_ty: the type of the binding being produced.
-                        let pat_ty = self.node_ty(pat.hir_id)?;
-                        debug!("walk_pat: pat_ty={:?}", pat_ty);
+                    // pat_ty: the type of the binding being produced.
+                    let pat_ty = self.node_ty(pat.hir_id)?;
+                    debug!("walk_pat: pat_ty={:?}", pat_ty);
 
-                        let def = Res::Local(canonical_id);
-                        if let Ok(ref binding_place) =
-                            self.cat_res(pat.hir_id, pat.span, pat_ty, def)
-                        {
-                            self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    let def = Res::Local(canonical_id);
+                    if let Ok(ref binding_place) = self.cat_res(pat.hir_id, pat.span, pat_ty, def) {
+                        self.delegate.borrow_mut().bind(binding_place, binding_place.hir_id);
+                    }
+
+                    // Subtle: MIR desugaring introduces immutable borrows for each pattern
+                    // binding when lowering pattern guards to ensure that the guard does not
+                    // modify the scrutinee.
+                    if has_guard {
+                        self.delegate.borrow_mut().borrow(
+                            place,
+                            discr_place.hir_id,
+                            BorrowKind::Immutable,
+                        );
+                    }
+
+                    // It is also a borrow or copy/move of the value being matched.
+                    // In a cases of pattern like `let pat = upvar`, don't use the span
+                    // of the pattern, as this just looks confusing, instead use the span
+                    // of the discriminant.
+                    match bm.0 {
+                        hir::ByRef::Yes(m) => {
+                            let bk = ty::BorrowKind::from_mutbl(m);
+                            self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
                         }
-
-                        // Subtle: MIR desugaring introduces immutable borrows for each pattern
-                        // binding when lowering pattern guards to ensure that the guard does not
-                        // modify the scrutinee.
-                        if has_guard {
-                            self.delegate.borrow_mut().borrow(
-                                place,
-                                discr_place.hir_id,
-                                BorrowKind::Immutable,
-                            );
-                        }
-
-                        // It is also a borrow or copy/move of the value being matched.
-                        // In a cases of pattern like `let pat = upvar`, don't use the span
-                        // of the pattern, as this just looks confusing, instead use the span
-                        // of the discriminant.
-                        match bm.0 {
-                            hir::ByRef::Yes(m) => {
-                                let bk = ty::BorrowKind::from_mutbl(m);
-                                self.delegate.borrow_mut().borrow(place, discr_place.hir_id, bk);
-                            }
-                            hir::ByRef::No => {
-                                debug!("walk_pat binding consuming pat");
-                                self.consume_or_copy(place, discr_place.hir_id);
-                            }
+                        hir::ByRef::No => {
+                            debug!("walk_pat binding consuming pat");
+                            self.consume_or_copy(place, discr_place.hir_id);
                         }
                     }
                 }
@@ -1089,6 +1145,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                         ty::UpvarCapture::ByValue => {
                             self.consume_or_copy(&place_with_id, place_with_id.hir_id);
                         }
+                        ty::UpvarCapture::ByUse => {
+                            self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
+                        }
                         ty::UpvarCapture::ByRef(upvar_borrow) => {
                             self.delegate.borrow_mut().borrow(
                                 &place_with_id,
@@ -1176,7 +1235,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 self.cx.tainted_by_errors()?;
                 bug!(
                     "no type for node {} in mem_categorization",
-                    self.cx.tcx().hir().node_to_string(id)
+                    self.cx.tcx().hir_id_to_string(id)
                 );
             }
         }
@@ -1390,6 +1449,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
             hir::ExprKind::AddrOf(..)
             | hir::ExprKind::Call(..)
+            | hir::ExprKind::Use(..)
             | hir::ExprKind::Assign(..)
             | hir::ExprKind::AssignOp(..)
             | hir::ExprKind::Closure { .. }
