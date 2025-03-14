@@ -2,14 +2,16 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, E0053, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Applicability, E0053, E0053, struct_span_code_err, struct_span_code_err,
+};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, HirId, ItemKind};
+use rustc_hir::{self as hir, self as hir, HirId, HirId, ItemKind, ItemKind};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::error::{ExpectedFound, ExpectedFound, TypeError, TypeError};
 use rustc_span::{ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
@@ -63,7 +65,7 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     let external_impl_sig = ocx.normalize(&norm_cause, param_env, external_impl_sig);
     debug!(?external_impl_sig);
 
-    let declaration_sig = tcx.fn_sig(declaration).no_bound_vars().expect("no bound vars");
+    let declaration_sig = tcx.fn_sig(declaration).instantiate_identity();
     let declaration_sig =
         tcx.liberate_late_bound_regions(external_impl.to_def_id(), declaration_sig);
     let declaration_sig = ocx.normalize(&norm_cause, param_env, declaration_sig);
