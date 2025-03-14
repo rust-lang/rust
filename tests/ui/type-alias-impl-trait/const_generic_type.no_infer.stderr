@@ -19,22 +19,5 @@ note: this opaque type is supposed to be constrained
 LL | type Bar = impl std::fmt::Display;
    |            ^^^^^^^^^^^^^^^^^^^^^^
 
-error: item does not constrain `Bar::{opaque#0}`
-  --> $DIR/const_generic_type.rs:8:31
-   |
-LL |   async fn test<const N: Bar>() {
-   |  _______________________________^
-...  |
-LL | |     let x: u32 = N;
-LL | | }
-   | |_^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/const_generic_type.rs:5:12
-   |
-LL | type Bar = impl std::fmt::Display;
-   |            ^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
