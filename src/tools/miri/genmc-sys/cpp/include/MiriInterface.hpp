@@ -126,7 +126,7 @@ struct MiriGenmcShim : private GenMCDriver {
 
     /**** Memory (de)allocation ****/
     auto handle_malloc(ThreadId thread_id, uint64_t size, uint64_t alignment) -> uint64_t;
-    void handle_free(ThreadId thread_id, uint64_t address);
+    auto handle_free(ThreadId thread_id, uint64_t address) -> bool;
 
     /**** Thread management ****/
     void handle_thread_create(ThreadId thread_id, ThreadId parent_id);
@@ -257,6 +257,7 @@ namespace GenmcScalarExt {
 inline GenmcScalar uninit() {
     return GenmcScalar {
         .value = 0,
+        .extra = 0,
         .is_init = false,
     };
 }
@@ -264,13 +265,14 @@ inline GenmcScalar uninit() {
 inline GenmcScalar from_sval(SVal sval) {
     return GenmcScalar {
         .value = sval.get(),
+        .extra = sval.getExtra(),
         .is_init = true,
     };
 }
 
 inline SVal to_sval(GenmcScalar scalar) {
     ERROR_ON(!scalar.is_init, "Cannot convert an uninitialized `GenmcScalar` into an `SVal`\n");
-    return SVal(scalar.value);
+    return SVal(scalar.value, scalar.extra);
 }
 } // namespace GenmcScalarExt
 

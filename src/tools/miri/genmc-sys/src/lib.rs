@@ -45,10 +45,14 @@ pub fn create_genmc_driver_handle(
 }
 
 impl GenmcScalar {
-    pub const UNINIT: Self = Self { value: 0, is_init: false };
+    pub const UNINIT: Self = Self { value: 0, extra: 0, is_init: false };
 
     pub const fn from_u64(value: u64) -> Self {
-        Self { value, is_init: true }
+        Self { value, extra: 0, is_init: true }
+    }
+
+    pub const fn has_provenance(&self) -> bool {
+        self.extra != 0
     }
 }
 
@@ -162,10 +166,16 @@ mod ffi {
     }
 
     /// This type corresponds to `Option<SVal>` (or `std::optional<SVal>`), where `SVal` is the type that GenMC uses for storing values.
-    /// CXX doesn't support `std::optional` currently, so we need to use an extra `bool` to define whether this value is initialized or not.
     #[derive(Debug, Clone, Copy)]
     struct GenmcScalar {
+        /// The raw byte-level value (discarding provenance, if any) of this scalar.
         value: u64,
+        /// This is zero for integer values. For pointers, this encodes the provenance by
+        /// storing the base address of the allocation that this pointer belongs to.
+        /// Operations on `SVal` in GenMC (e.g., `fetch_add`) preserve the `extra` of the left argument (`left.fetch_add(right, ...)`).
+        extra: u64,
+        /// Indicates whether this value is initialized. If this is `false`, the other fields do not matter.
+        /// (Ideally we'd use `std::optional` but CXX does not support that.)
         is_init: bool,
     }
 
@@ -173,6 +183,7 @@ mod ffi {
     #[derive(Debug, Clone, Copy)]
     enum ExecutionState {
         Ok,
+        Error,
         Blocked,
         Finished,
     }
@@ -406,7 +417,8 @@ mod ffi {
             size: u64,
             alignment: u64,
         ) -> u64;
-        fn handle_free(self: Pin<&mut MiriGenmcShim>, thread_id: i32, address: u64);
+        /// Returns true if an error was found.
+        fn handle_free(self: Pin<&mut MiriGenmcShim>, thread_id: i32, address: u64) -> bool;
 
         /**** Thread management ****/
         fn handle_thread_create(self: Pin<&mut MiriGenmcShim>, thread_id: i32, parent_id: i32);

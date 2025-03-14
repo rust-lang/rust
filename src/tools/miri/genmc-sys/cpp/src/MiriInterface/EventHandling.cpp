@@ -250,8 +250,9 @@ auto MiriGenmcShim::handle_malloc(ThreadId thread_id, uint64_t size, uint64_t al
     return ret_val.get();
 }
 
-void MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) {
+auto MiriGenmcShim::handle_free(ThreadId thread_id, uint64_t address) -> bool {
     const auto pos = inc_pos(thread_id);
     GenMCDriver::handleFree(pos, SAddr(address), EventDeps());
-    // FIXME(genmc): add error handling once GenMC returns errors from `handleFree`
+    // FIXME(genmc): use returned error from `handleFree` once implemented in GenMC.
+    return getResult().status.has_value();
 }

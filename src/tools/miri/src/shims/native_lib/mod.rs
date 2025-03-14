@@ -219,11 +219,9 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // so we cannot assume 1 access = 1 allocation. :(
             let mut rg = evt_rg.addr..evt_rg.end();
             while let Some(curr) = rg.next() {
-                let Some(alloc_id) = this.alloc_id_from_addr(
-                    curr.to_u64(),
-                    rg.len().try_into().unwrap(),
-                    /* only_exposed_allocations */ true,
-                ) else {
+                let Some(alloc_id) =
+                    this.alloc_id_from_addr(curr.to_u64(), rg.len().try_into().unwrap())
+                else {
                     throw_ub_format!("Foreign code did an out-of-bounds access!")
                 };
                 let alloc = this.get_alloc_raw(alloc_id)?;

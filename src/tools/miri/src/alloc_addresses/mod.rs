@@ -207,13 +207,7 @@ impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     // Returns the `AllocId` that corresponds to the specified addr,
     // or `None` if the addr is out of bounds.
-    // Setting `only_exposed_allocations` selects whether only exposed allocations are considered.
-    fn alloc_id_from_addr(
-        &self,
-        addr: u64,
-        size: i64,
-        only_exposed_allocations: bool,
-    ) -> Option<AllocId> {
+    fn alloc_id_from_addr(&self, addr: u64, size: i64) -> Option<AllocId> {
         let this = self.eval_context_ref();
         let global_state = this.machine.alloc_addresses.borrow();
         assert!(global_state.provenance_mode != ProvenanceMode::Strict);
@@ -242,13 +236,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
         }?;
 
-        // We only use this provenance if it has been exposed, or if the caller requested also non-exposed allocations
-        if !only_exposed_allocations || global_state.exposed.contains(&alloc_id) {
+        // We only use this provenance if it has been exposed.
+        if global_state.exposed.contains(&alloc_id) {
             // This must still be live, since we remove allocations from `int_to_ptr_map` when they get freed.
-            // In GenMC mode, we keep all allocations, so this check doesn't apply there.
-            if this.machine.data_race.as_genmc_ref().is_none() {
-                debug_assert!(this.is_alloc_live(alloc_id));
-            }
+            debug_assert!(this.is_alloc_live(alloc_id));
             Some(alloc_id)
         } else {
             None
@@ -443,8 +434,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             alloc_id
         } else {
             // A wildcard pointer.
-            let only_exposed_allocations = true;
-            this.alloc_id_from_addr(addr.bytes(), size, only_exposed_allocations)?
+            this.alloc_id_from_addr(addr.bytes(), size)?
         };
 
         // This cannot fail: since we already have a pointer with that provenance, adjust_alloc_root_pointer
@@ -465,13 +455,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> MiriMachine<'tcx> {
     pub fn free_alloc_id(&mut self, dead_id: AllocId, size: Size, align: Align, kind: MemoryKind) {
-        // In GenMC mode, we can't remove dead allocation info since such pointers can
-        // still be stored in atomics and we need this info to convert GenMC pointers to Miri pointers.
-        // `global_state.reuse` is also unused so we can just skip this entire function.
-        if self.data_race.as_genmc_ref().is_some() {
-            return;
-        }
-
         let global_state = self.alloc_addresses.get_mut();
         let rng = self.rng.get_mut();
 

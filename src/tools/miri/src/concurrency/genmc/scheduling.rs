@@ -117,6 +117,14 @@ impl GenmcCtx {
                     leak_check: exit_status.do_leak_check()
                 });
             }
+            ExecutionState::Error => {
+                // GenMC found an error in one of the `handle_*` functions, but didn't return the detected error from the function immediately.
+                // This is still an bug in the user program, so we print the error string.
+                panic!(
+                    "GenMC found an error ({:?}), but didn't report it immediately, so we cannot provide an appropriate source code location for where it happened.",
+                    self.try_get_error().unwrap()
+                );
+            }
             _ => unreachable!(),
         }
     }
