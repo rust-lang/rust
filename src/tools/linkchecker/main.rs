@@ -46,6 +46,8 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
     // The docs in std::primitive use proper intra-doc links, so these seem fine to special-case.
     // Most these are broken because liballoc uses `#[lang_item]` magic to define things on
     // primitives that aren't available in core.
+    ("alloc/ffi/c_str/struct.CString.html", &["#method.sort_by_key"]),
+    ("alloc/ffi/struct.CString.html", &["#method.sort_by_key"]),
     ("alloc/slice/trait.Join.html", &["#method.join"]),
     ("alloc/slice/trait.Concat.html", &["#method.concat"]),
     ("alloc/slice/index.html", &["#method.concat", "#method.join"]),
@@ -72,6 +74,16 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
         "core/bstr/slice::sort_by_key",
         "core\\bstr\\slice::sort_by_key",
         "#method.sort_by_cached_key"
+    ]),
+    ("core/ffi/c_str/struct.CStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/ffi/c_str/slice::sort_by_key",
+    ]),
+    ("core/ffi/struct.CStr.html", &[
+        "#method.to_ascii_uppercase",
+        "#method.to_ascii_lowercase",
+        "core/ffi/slice::sort_by_key",
     ]),
     ("core/primitive.str.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase"]),
     ("core/primitive.slice.html", &["#method.to_ascii_uppercase", "#method.to_ascii_lowercase",
