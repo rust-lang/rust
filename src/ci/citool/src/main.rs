@@ -158,9 +158,6 @@ enum Args {
     PostprocessMetrics {
         /// Path to the metrics.json file
         metrics_path: PathBuf,
-        /// Path to a file where the postprocessed metrics summary will be stored.
-        /// Usually, this will be GITHUB_STEP_SUMMARY on CI.
-        summary_path: PathBuf,
     },
     /// Upload CI metrics to Datadog.
     UploadBuildMetrics {
@@ -211,8 +208,8 @@ fn main() -> anyhow::Result<()> {
         Args::UploadBuildMetrics { cpu_usage_csv } => {
             upload_ci_metrics(&cpu_usage_csv)?;
         }
-        Args::PostprocessMetrics { metrics_path, summary_path } => {
-            postprocess_metrics(&metrics_path, &summary_path)?;
+        Args::PostprocessMetrics { metrics_path } => {
+            postprocess_metrics(&metrics_path)?;
         }
         Args::PostMergeReport { current: commit, parent } => {
             post_merge_report(load_db(default_jobs_file)?, parent, commit)?;

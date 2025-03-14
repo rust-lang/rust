@@ -253,7 +253,7 @@ jobs:
           fi
 
           ./build/citool/debug/citool postprocess-metrics \
-              ${METRICS} ${GITHUB_STEP_SUMMARY}
+              ${METRICS} >> ${GITHUB_STEP_SUMMARY}
 
       - name: upload job metrics to DataDog
         # This step is not critical, and if some I/O problem happens, we don't want

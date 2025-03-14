@@ -1,6 +1,4 @@
 use std::collections::BTreeMap;
-use std::fs::File;
-use std::io::Write;
 use std::path::Path;
 
 use anyhow::Context;
@@ -8,57 +6,46 @@ use build_helper::metrics::{
     BuildStep, JsonNode, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
 };
 
-pub fn postprocess_metrics(metrics_path: &Path, summary_path: &Path) -> anyhow::Result<()> {
+pub fn postprocess_metrics(metrics_path: &Path) -> anyhow::Result<()> {
     let metrics = load_metrics(metrics_path)?;
 
-    let mut file = File::options()
-        .append(true)
-        .create(true)
-        .open(summary_path)
-        .with_context(|| format!("Cannot open summary file at {summary_path:?}"))?;
-
     if !metrics.invocations.is_empty() {
-        writeln!(file, "# Bootstrap steps")?;
-        record_bootstrap_step_durations(&metrics, &mut file)?;
-        record_test_suites(&metrics, &mut file)?;
+        println!("# Bootstrap steps");
+        record_bootstrap_step_durations(&metrics);
+        record_test_suites(&metrics);
     }
 
     Ok(())
 }
 
-fn record_bootstrap_step_durations(metrics: &JsonRoot, file: &mut File) -> anyhow::Result<()> {
+fn record_bootstrap_step_durations(metrics: &JsonRoot) {
     for invocation in &metrics.invocations {
         let step = BuildStep::from_invocation(invocation);
         let table = format_build_steps(&step);
         eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
-        writeln!(
-            file,
+        println!(
             r"<details>
 <summary>{}</summary>
 <pre><code>{table}</code></pre>
 </details>
 ",
             invocation.cmdline
-        )?;
+        );
     }
     eprintln!("Recorded {} bootstrap invocation(s)", metrics.invocations.len());
-
-    Ok(())
 }
 
-fn record_test_suites(metrics: &JsonRoot, file: &mut File) -> anyhow::Result<()> {
+fn record_test_suites(metrics: &JsonRoot) {
     let suites = get_test_suites(&metrics);
 
     if !suites.is_empty() {
         let aggregated = aggregate_test_suites(&suites);
         let table = render_table(aggregated);
-        writeln!(file, "\n# Test results\n")?;
-        writeln!(file, "{table}")?;
+        println!("\n# Test results\n");
+        println!("{table}");
     } else {
         eprintln!("No test suites found in metrics");
     }
-
-    Ok(())
 }
 
 fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
