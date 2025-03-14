@@ -16,7 +16,7 @@ use rustc_span::{Span, Symbol, sym};
 use crate::{errors, parse_in};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() {
+    if attr.is_doc_comment() || attr.has_name(sym::cfg_attr_trace) {
         return;
     }
 

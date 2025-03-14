@@ -1,0 +1,62 @@
+PRINT-ATTR INPUT (DISPLAY): #[test_macros::print_attr] struct S;
+PRINT-ATTR DEEP-RE-COLLECTED (DISPLAY): #[test_macros :: print_attr] struct S;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Punct {
+        ch: '#',
+        spacing: Alone,
+        span: #0 bytes(271..272),
+    },
+    Group {
+        delimiter: Bracket,
+        stream: TokenStream [
+            Ident {
+                ident: "test_macros",
+                span: #0 bytes(289..300),
+            },
+            Punct {
+                ch: ':',
+                spacing: Joint,
+                span: #0 bytes(300..301),
+            },
+            Punct {
+                ch: ':',
+                spacing: Alone,
+                span: #0 bytes(301..302),
+            },
+            Ident {
+                ident: "print_attr",
+                span: #0 bytes(302..312),
+            },
+        ],
+        span: #0 bytes(272..314),
+    },
+    Ident {
+        ident: "struct",
+        span: #0 bytes(315..321),
+    },
+    Ident {
+        ident: "S",
+        span: #0 bytes(322..323),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #0 bytes(323..324),
+    },
+]
+PRINT-ATTR INPUT (DISPLAY): struct S;
+PRINT-ATTR INPUT (DEBUG): TokenStream [
+    Ident {
+        ident: "struct",
+        span: #0 bytes(315..321),
+    },
+    Ident {
+        ident: "S",
+        span: #0 bytes(322..323),
+    },
+    Punct {
+        ch: ';',
+        spacing: Alone,
+        span: #0 bytes(323..324),
+    },
+]
