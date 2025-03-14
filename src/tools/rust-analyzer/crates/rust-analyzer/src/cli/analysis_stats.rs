@@ -126,7 +126,7 @@ impl flags::AnalysisStats {
 
         let mut dep_loc = 0;
         let mut workspace_loc = 0;
-        let mut deps_item_trees = 0;
+        let mut dep_item_trees = 0;
         let mut workspace_item_trees = 0;
 
         for source_root_id in source_roots {
@@ -146,7 +146,7 @@ impl flags::AnalysisStats {
                             db.file_item_tree(EditionedFileId::current_edition(file_id).into());
 
                             dep_loc += length;
-                            deps_item_trees += 1
+                            dep_item_trees += 1
                         }
                     }
                 }
@@ -156,16 +156,19 @@ impl flags::AnalysisStats {
         let item_tree_time = item_tree_sw.elapsed();
 
         eprintln!("Source stats:");
-        let dep_loc = UsizeWithUnderscore(dep_loc);
-        let deps_item_trees = UsizeWithUnderscore(deps_item_trees);
-        let workspace_loc = UsizeWithUnderscore(workspace_loc);
-        let workspace_item_trees = UsizeWithUnderscore(workspace_item_trees);
-
-        eprintln!("  dependency lines of code: {dep_loc}, item trees: {deps_item_trees}");
-        eprintln!("  workspace lines of code: {workspace_loc}, item trees: {workspace_item_trees}");
+        eprintln!(
+            "  dependency lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(dep_loc),
+            UsizeWithUnderscore(dep_item_trees),
+        );
+        eprintln!(
+            "  workspace lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(workspace_loc),
+            UsizeWithUnderscore(workspace_item_trees),
+        );
 
         // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
-        // and ParseMacroExpansionQuery (mcaro expansion "file") size whenever we implement
+        // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
         // Salsa's memory usage tracking works with tracked functions.
 
         // let mut total_file_size = Bytes::default();
@@ -180,7 +183,7 @@ impl flags::AnalysisStats {
         // }
         // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
 
-        eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
+        eprintln!("{:<20} {}", "Item Tree Collection (workspace):", item_tree_time);
         report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
 
         let mut crate_def_map_sw = self.stop_watch();
