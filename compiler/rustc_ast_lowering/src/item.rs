@@ -155,18 +155,25 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> Vec<hir::Attribute> {
         match i {
             ItemKind::Fn(box Fn { eii_impl, .. }) => {
-                let mut res = Vec::new();
-
-                for (id, path) in eii_impl {
-                    let did = self.lower_path_simple_eii(*id, path);
-                    res.push(hir::Attribute::Parsed(AttributeKind::EiiImpl { eii_macro: did }));
+                let mut eii_impls = ThinVec::new();
+                for EIIImpl { node_id, eii_macro_path, impl_safety, span, inner_span } in eii_impl {
+                    let did = self.lower_path_simple_eii(*node_id, eii_macro_path);
+                    eii_impls.push(rustc_attr_parsing::EIIImpl {
+                        eii_macro: did,
+                        span: self.lower_span(*span),
+                        inner_span: self.lower_span(*inner_span),
+                        impl_marked_unsafe: self
+                            .lower_safety(*impl_safety, hir::Safety::Safe)
+                            .is_unsafe(),
+                    })
                 }
 
-                res
+                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(eii_impls))]
             }
-            ItemKind::MacroDef(_, MacroDef { eii_macro_for: Some(path), .. }) => {
+            ItemKind::MacroDef(_, MacroDef { eii_macro_for: Some(EiiMacroFor { extern_item_path, impl_unsafe }), .. }) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor {
-                    eii_extern_item: self.lower_path_simple_eii(id, path),
+                    eii_extern_item: self.lower_path_simple_eii(id, extern_item_path),
+                    impl_unsafe: *impl_unsafe,
                 })]
             }
             ItemKind::ExternCrate(..)

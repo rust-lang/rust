@@ -1920,3 +1920,32 @@ pub(crate) struct UnsupportedAttributesInWhere {
     #[primary_span]
     pub span: MultiSpan,
 }
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_not_function)]
+pub(crate) struct EIIImplNotFunction {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(passes_eii_impl_requires_unsafe)]
+pub(crate) struct EIIImplRequiresUnsafe {
+    #[primary_span]
+    pub span: Span,
+    pub name: Symbol,
+    #[subdiagnostic]
+    pub suggestion: EIIImplRequiresUnsafeSuggestion,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    passes_eii_impl_requires_unsafe_suggestion,
+    applicability = "machine-applicable"
+)]
+pub(crate) struct EIIImplRequiresUnsafeSuggestion {
+    #[suggestion_part(code = "unsafe(")]
+    pub left: Span,
+    #[suggestion_part(code = ")")]
+    pub right: Span,
+}
