@@ -1,8 +1,7 @@
 use ast::StaticItem;
 use itertools::{Itertools, Position};
-use rustc_ast as ast;
-use rustc_ast::ModKind;
 use rustc_ast::ptr::P;
+use rustc_ast::{self as ast, EIIImpl, ModKind, Safety};
 use rustc_span::Ident;
 
 use crate::pp::BoxMarker;
@@ -677,9 +676,16 @@ impl<'a> State<'a> {
 
         let body_cb_ib = body.as_ref().map(|body| (body, self.head("")));
 
-        for (_, path) in eii_impl {
+        for EIIImpl { eii_macro_path, impl_safety, .. } in eii_impl {
             self.word("#[");
-            self.print_path(path, false, 0);
+            if let Safety::Unsafe(..) = impl_safety {
+                self.word("unsafe");
+                self.popen();
+            }
+            self.print_path(eii_macro_path, false, 0);
+            if let Safety::Unsafe(..) = impl_safety {
+                self.pclose();
+            }
             self.word("]");
             self.hardbreak();
         }

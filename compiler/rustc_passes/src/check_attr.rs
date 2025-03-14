@@ -10,7 +10,7 @@ use std::collections::hash_map::Entry;
 
 use rustc_abi::{Align, ExternAbi, Size};
 use rustc_ast::{AttrStyle, LitKind, MetaItemInner, MetaItemKind, MetaItemLit, ast};
-use rustc_attr_parsing::{AttributeKind, ReprAttr, find_attr};
+use rustc_attr_parsing::{AttributeKind, EIIImpl, ReprAttr, find_attr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::{Applicability, DiagCtxtHandle, IntoDiagArg, MultiSpan, StashKey};
 use rustc_feature::{AttributeDuplicates, AttributeType, BUILTIN_ATTRIBUTE_MAP, BuiltinAttribute};
@@ -124,8 +124,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     AttributeKind::Stability { span, .. }
                     | AttributeKind::ConstStability { span, .. },
                 ) => self.check_stability_promotable(*span, target),
-                Attribute::Parsed(AttributeKind::Eii(attr_span)) => {
-                    self.check_eii(hir_id, *attr_span, span, target)
+                Attribute::Parsed(AttributeKind::EiiImpl(impls)) => {
+                    self.check_eii_impl(hir_id, impls, span, target)
+                }
+                Attribute::Parsed(AttributeKind::EiiMacroFor { .. }) => {
+                    // no checks needed
                 }
                 Attribute::Parsed(AttributeKind::AllowInternalUnstable(syms)) => self
                     .check_allow_internal_unstable(
@@ -478,13 +481,32 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         }
     }
 
-    /// Checks if an `#[inline]` is applied to a function or a closure.
-    fn check_eii(&self, _hir_id: HirId, _attr_span: Span, _defn_span: Span, target: Target) {
-        match target {
-            Target::ForeignFn => {}
-            target => {
-                // TODO:
-                bug!("wrong target for EII: {target:?}");
+    fn check_eii_impl(
+        &self,
+        _hir_id: HirId,
+        impls: &[EIIImpl],
+        _target_span: Span,
+        target: Target,
+    ) {
+        for EIIImpl { span, inner_span, eii_macro, impl_marked_unsafe } in impls {
+            match target {
+                Target::Fn => {}
+                _ => {
+                    self.dcx().emit_err(errors::EIIImplNotFunction { span: *span });
+                }
+            }
+
+            if find_attr!(self.tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor { impl_unsafe, .. } if *impl_unsafe)
+                && !impl_marked_unsafe
+            {
+                self.dcx().emit_err(errors::EIIImplRequiresUnsafe {
+                    span: *span,
+                    name: self.tcx.item_name(*eii_macro),
+                    suggestion: errors::EIIImplRequiresUnsafeSuggestion {
+                        left: inner_span.shrink_to_lo(),
+                        right: inner_span.shrink_to_hi(),
+                    },
+                });
             }
         }
     }

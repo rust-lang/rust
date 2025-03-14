@@ -311,6 +311,12 @@ passes_duplicate_lang_item_crate_depends =
     .first_definition_path = first definition in `{$orig_crate_name}` loaded from {$orig_path}
     .second_definition_path = second definition in `{$crate_name}` loaded from {$path}
 
+passes_eii_impl_not_function =
+    `eii_macro_for` is only valid on functions
+
+passes_eii_impl_requires_unsafe =
+    `#[{$name}]` is unsafe to implement
+passes_eii_impl_requires_unsafe_suggestion = wrap the attribute in `unsafe(...)`
 passes_export_name =
     attribute should be applied to a free function, impl method or static
     .label = not a free function, impl method or static

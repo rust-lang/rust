@@ -1066,9 +1066,10 @@ impl<'ra: 'ast, 'ast, 'tcx> Visitor<'ast> for LateResolutionVisitor<'_, 'ast, 'r
         };
         debug!("(resolving function) entering function");
 
+
         if let FnKind::Fn(_, _, f) = fn_kind {
-            for (id, path) in &f.eii_impl {
-                self.smart_resolve_path(*id, &None, &path, PathSource::Macro);
+            for EIIImpl { node_id, eii_macro_path, .. } in &f.eii_impl {
+                self.smart_resolve_path(*node_id, &None, &eii_macro_path, PathSource::Macro);
             }
         }
 
@@ -2850,8 +2851,15 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     self.parent_scope.macro_rules = self.r.macro_rules_scopes[&def_id];
                 }
 
-                if let Some(ref path) = macro_def.eii_macro_for {
-                    self.smart_resolve_path(item.id, &None, path, PathSource::Expr(None));
+                if let Some(EiiMacroFor { extern_item_path, impl_unsafe: _ }) =
+                    &macro_def.eii_macro_for
+                {
+                    self.smart_resolve_path(
+                        item.id,
+                        &None,
+                        extern_item_path,
+                        PathSource::Expr(None),
+                    );
                 }
             }
 

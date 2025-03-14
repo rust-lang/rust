@@ -479,8 +479,8 @@ impl WalkItemKind for ItemKind {
             ItemKind::MacroDef(ident, ts) => {
                 try_visit!(visitor.visit_ident(ident));
                 try_visit!(visitor.visit_mac_def(ts, id));
-                if let Some(i) = &ts.eii_macro_for {
-                    try_visit!(visitor.visit_path(i, id));
+                if let Some(EiiMacroFor { extern_item_path, impl_unsafe: _ }) = &ts.eii_macro_for {
+                    try_visit!(visitor.visit_path(extern_item_path, id));
                 }
             }
             ItemKind::Delegation(box Delegation {
@@ -961,9 +961,8 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             // Visibility is visited as a part of the item.
             try_visit!(visitor.visit_ident(ident));
 
-            // Identifier and visibility are visited as a part of the item.
-            for (node_id, path) in eii_impl {
-                try_visit!(visitor.visit_path(path, *node_id));
+            for EIIImpl { node_id, eii_macro_path, .. } in eii_impl {
+                try_visit!(visitor.visit_path(eii_macro_path, *node_id));
             }
 
             try_visit!(visitor.visit_fn_header(header));
