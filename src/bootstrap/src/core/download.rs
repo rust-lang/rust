@@ -666,7 +666,7 @@ impl Config {
             }
         };
 
-        // For the beta compiler, put special effort into ensuring the checksums are valid.
+        // For the stage0 compiler, put special effort into ensuring the checksums are valid.
         let checksum = if should_verify {
             let error = format!(
                 "src/stage0 doesn't contain a checksum for {url}. \

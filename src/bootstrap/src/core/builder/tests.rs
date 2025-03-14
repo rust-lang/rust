@@ -435,7 +435,7 @@ mod defaults {
             first(cache.all::<tool::ErrorIndex>()),
             &[tool::ErrorIndex { compiler: Compiler::new(1, a) }]
         );
-        // docs should be built with the beta compiler, not with the stage0 artifacts.
+        // docs should be built with the stage0 compiler, not with the stage0 artifacts.
         // recall that rustdoc is off-by-one: `stage` is the compiler rustdoc is _linked_ to,
         // not the one it was built by.
         assert_eq!(

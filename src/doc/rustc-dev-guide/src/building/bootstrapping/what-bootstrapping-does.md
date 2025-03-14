@@ -66,13 +66,12 @@ The stage0 compiler is by default the very recent _beta_ `rustc` compiler and it
 associated dynamic libraries, which `./x.py` will download for you. (You can
 also configure `./x.py` to change stage0 to something else.)
 
-The stage0 compiler is then used only to compile [`src/bootstrap`] and [`compiler/rustc`].
-When assembling the libraries and binaries that will become the stage1 `rustc` compiler,
-the freshly compiled `rustc` and beta `std` are used.
+The precompiled stage0 compiler is then used only to compile [`src/bootstrap`] and [`compiler/rustc`]
+with precompiled stage0 std.
 
-Note that to build the stage1 compiler we use the precompiled beta compiler and beta std from stage0.
-Therefore, to use a compiler with a std that is freshly built from the tree, you need to build the
-stage2 compiler.
+Note that to build the stage1 compiler we use the precompiled stage0 compiler and std.
+Therefore, to use a compiler with a std that is freshly built from the tree, you need to
+build the stage2 compiler.
 
 There are two concepts at play here: a compiler (with its set of dependencies) and its
 'target' or 'object' libraries (`std` and `rustc`). Both are staged, but in a staggered manner.
@@ -87,7 +86,7 @@ The rustc source code is then compiled with the `stage0` compiler to produce the
 
 ### Stage 2: the truly current compiler
 
-We then rebuild our `stage1` compiler with in-tree std to produce the `stage2`
+We then rebuild the compiler using `stage1` compiler with in-tree std to produce the `stage2`
 compiler.
 
 The `stage1` compiler itself was built by precompiled `stage0` compiler and std
@@ -194,8 +193,8 @@ include, but are not limited to:
   without building `rustc` from source ('build with `stage0`, then test the
   artifacts'). If you're working on the standard library, this is normally the
   test command you want.
-- `./x build --stage 0` means to build with the beta `rustc`.
-- `./x doc --stage 0` means to document using the beta `rustdoc`.
+- `./x build --stage 0` means to build with the stage0 `rustc`.
+- `./x doc --stage 0` means to document using the stage0 `rustdoc`.
 
 #### Examples of what *not* to do
 
@@ -442,6 +441,6 @@ compiler itself uses to run. These aren't actually used by artifacts the new
 compiler generates. This step also copies the `rustc` and `rustdoc` binaries we
 generated into `build/$HOST/stage/bin`.
 
-The `stage1/bin/rustc` is a fully functional compiler built with the beta compiler and std.
-To use a compiler built entirely from source with the in-tree compiler and std, you need to build
-the stage2 compiler, which is compiled using the stage1 compiler and std.
+The `stage1/bin/rustc` is a fully functional compiler built with stage0 (precompiled) compiler and std.
+To use a compiler built entirely from source with the in-tree compiler and std, you need to build the
+stage2 compiler, which is compiled using the stage1 (in-tree) compiler and std.

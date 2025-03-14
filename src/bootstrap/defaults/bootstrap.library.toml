@@ -1,6 +1,5 @@
 # These defaults are meant for contributors to the standard library and documentation.
 [build]
-# When building the standard library, you almost never want to build the compiler itself.
 build-stage = 1
 test-stage = 1
 bench-stage = 1
@@ -10,8 +9,10 @@ bench-stage = 1
 incremental = true
 # Make the compiler and standard library faster to build, at the expense of a ~20% runtime slowdown.
 lto = "off"
-# Download rustc by default for library profile if compiler-affecting
-# directories are not modified. For CI this is disabled.
+# When building the standard library, you almost never want to build the compiler itself.
+#
+# If compiler-affecting directories are not modified, use precompiled rustc to speed up
+# library development by skipping compiler builds.
 download-rustc = "if-unchanged"
 
 [llvm]

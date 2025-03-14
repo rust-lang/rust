@@ -1031,7 +1031,7 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // NOTE: the ABI of the stage0 compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
             trace!(stage = compiler.stage, "`download_rustc` requested");
@@ -1785,9 +1785,9 @@ impl Step for Sysroot {
         t!(fs::create_dir_all(&sysroot));
 
         // In some cases(see https://github.com/rust-lang/rust/issues/109314), when the stage0
-        // compiler relies on more recent version of LLVM than the beta compiler, it may not
+        // compiler relies on more recent version of LLVM than the stage0 compiler, it may not
         // be able to locate the correct LLVM in the sysroot. This situation typically occurs
-        // when we upgrade LLVM version while the beta compiler continues to use an older version.
+        // when we upgrade LLVM version while the stage0 compiler continues to use an older version.
         //
         // Make sure to add the correct version of LLVM into the stage0 sysroot.
         if compiler.stage == 0 {
