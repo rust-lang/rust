@@ -65,7 +65,7 @@ impl TestCx<'_> {
 
         // FIXME(#41968): Move this check to tidy?
         if !errors::load_errors(&self.testpaths.file, self.revision).is_empty() {
-            self.fatal("compile-pass tests with expected warnings should be moved to ui/");
+            self.fatal("build-pass tests with expected warnings should be moved to ui/");
         }
     }
 
