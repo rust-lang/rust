@@ -143,12 +143,18 @@ where
                 }
 
                 ecx.probe_trait_candidate(source).enter(|ecx| {
-                    let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
+                    let (assumption_trait_pred, goals) =
+                        ecx.instantiate_binder_with_infer_and_goals(trait_clause);
                     ecx.eq(
                         goal.param_env,
                         goal.predicate.trait_ref,
                         assumption_trait_pred.trait_ref,
                     )?;
+                    let cx = ecx.cx();
+                    ecx.add_goals(
+                        GoalSource::Misc,
+                        goals.iter().map(|clause| goal.with(cx, clause)),
+                    );
                     then(ecx)
                 })
             } else {
