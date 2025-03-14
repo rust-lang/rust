@@ -63,15 +63,20 @@ impl Step for Gcc {
         }
 
         build_gcc(&metadata, builder, target);
-
-        let lib_alias = metadata.install_dir.join("lib/libgccjit.so.0");
-        if !lib_alias.exists() {
-            t!(builder.symlink_file(&libgccjit_path, lib_alias));
-        }
+        create_lib_alias(builder, &libgccjit_path);
 
         t!(metadata.stamp.write());
 
         GccOutput { libgccjit: libgccjit_path }
+    }
+}
+
+/// Creates a libgccjit.so.0 alias next to libgccjit.so if it does not
+/// already exist
+fn create_lib_alias(builder: &Builder<'_>, libgccjit: &PathBuf) {
+    let lib_alias = libgccjit.parent().unwrap().join("libgccjit.so.0");
+    if !lib_alias.exists() {
+        t!(builder.symlink_file(libgccjit, lib_alias));
     }
 }
 
@@ -109,8 +114,10 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         builder.config.download_ci_gcc(&sha, &root);
         t!(gcc_stamp.write());
     }
-    // FIXME: put libgccjit.so into a lib directory in dist::Gcc
-    Some(root.join("libgccjit.so"))
+
+    let libgccjit = root.join("lib").join("libgccjit.so");
+    create_lib_alias(builder, &libgccjit);
+    Some(libgccjit)
 }
 
 #[cfg(test)]
@@ -177,6 +184,14 @@ fn libgccjit_built_path(install_dir: &Path) -> PathBuf {
 }
 
 fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
+    if builder.build.cc_tool(target).is_like_clang()
+        || builder.build.cxx_tool(target).is_like_clang()
+    {
+        panic!(
+            "Attempting to build GCC using Clang, which is known to misbehave. Please use GCC as the host C/C++ compiler. "
+        );
+    }
+
     let Meta { stamp: _, out_dir, install_dir, root } = metadata;
 
     t!(fs::create_dir_all(out_dir));
@@ -203,18 +218,13 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
     let mut configure_cmd = command(src_dir.join("configure"));
     configure_cmd
         .current_dir(out_dir)
-        // On CI, we compile GCC with Clang.
-        // The -Wno-everything flag is needed to make GCC compile with Clang 19.
-        // `-g -O2` are the default flags that are otherwise used by Make.
-        // FIXME(kobzol): change the flags once we have [gcc] configuration in config.toml.
-        .env("CXXFLAGS", "-Wno-everything -g -O2")
-        .env("CFLAGS", "-Wno-everything -g -O2")
         .arg("--enable-host-shared")
-        .arg("--enable-languages=jit")
+        .arg("--enable-languages=c,jit,lto")
         .arg("--enable-checking=release")
         .arg("--disable-bootstrap")
         .arg("--disable-multilib")
         .arg(format!("--prefix={}", install_dir.display()));
+
     let cc = builder.build.cc(target).display().to_string();
     let cc = builder
         .build
