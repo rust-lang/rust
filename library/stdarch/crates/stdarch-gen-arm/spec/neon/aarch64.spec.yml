@@ -13,39 +13,9 @@ auto_llvm_sign_conversion: false
 neon-stable: &neon-stable
   FnCall: [stable, ['feature = "neon_intrinsics"', 'since = "1.59.0"']]
 
-# #[unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800")]
-neon-unstable: &neon-unstable
-  FnCall: [unstable, ['feature = "stdarch_arm_neon_intrinsics"', 'issue = "111800"']]
-
-# #[cfg_attr(target_arch = "arm", target_feature(enable = "v7"))]
-neon-v7: &neon-v7
-  FnCall: [cfg_attr, ['target_arch = "arm"', { FnCall: [target_feature, [ 'enable = "v7"']]} ]]
-
-# #[target_feature(enable = "neon,v7")]
-enable-v7: &enable-v7
-  FnCall: [target_feature, ['enable = "neon,v7"']]
-
-# #[cfg_attr(target_arch = "arm", target_feature(enable = "v8"))]
-neon-v8: &neon-v8
-  FnCall: [cfg_attr, ['target_arch = "arm"', { FnCall: [target_feature, [ 'enable = "v8"']]} ]]
-
-target-is-arm: &target-is-arm
-  FnCall: [cfg, ['target_arch = "arm"']]
-
 # #[cfg(not(target_arch = "arm"))]
 target-not-arm: &target-not-arm
   FnCall: [cfg, [{ FnCall: [not, ['target_arch = "arm"']]}]]
-
-neon-target-aarch64-arm64ec: &neon-target-aarch64-arm64ec
-  FnCall: [all, [test, {FnCall: [any, ['target_arch = "aarch64"', 'target_arch = "arm64ec"']]}]]
-
-# #[cfg_attr(not(target_arch = "arm"), stable(feature = "neon_intrinsics", since = "1.59.0"))]
-neon-stable-not-arm: &neon-stable-not-arm
-  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, *neon-stable]]
-
-#[cfg_attr(target_arch = "arm", unstable(feature = "stdarch_arm_neon_intrinsics", issue = "111800"))]
-neon-unstable-is-arm: &neon-unstable-is-arm
-  FnCall: [ cfg_attr, ['target_arch = "arm"', *neon-unstable]] 
 
 # #[cfg_attr(all(test, not(target_env = "msvc"))]
 msvc-disabled: &msvc-disabled
@@ -73,10 +43,6 @@ enable-fhm: &enable-fhm
 
 enable-fcma: &enable-fcma
   FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']]}, { FnCall: [target_feature, ['enable = "fcma"']] }]]
-
-#[cfg_attr(not(target_arch = "arm"), unstable(feature = "stdarch_neon_i8mm", issue = "117223"))]
-neon-unstable-i8mm: &neon-unstable-i8mm
-  FnCall: [cfg_attr, [{ FnCall: [not, ['target_arch = "arm"']] }, { FnCall: [unstable, ['feature = "stdarch_neon_i8mm"', 'issue = "117223"']] } ]]
 
 # #[unstable(feature = "stdarch_neon_fcma", issue = "117222")]
 neon-unstable-fcma: &neon-unstable-fcma
