@@ -23,7 +23,9 @@ pub fn run_genmc_mode<'tcx>(
     // There exists only one `global_state` per full run in GenMC mode.
     // It is shared by all `GenmcCtx` in this run.
     // FIXME(genmc): implement multithreading once GenMC supports it.
-    let global_state = Arc::new(GlobalState::new(tcx.target_usize_max()));
+    // FIXME(genmc): disable warnings in estimation mode once it is added.
+    let global_state =
+        Arc::new(GlobalState::new(tcx.target_usize_max(), /* print_warnings */ true));
     let genmc_ctx = Rc::new(GenmcCtx::new(config, global_state));
 
     // `rep` is used to report the progress, Miri will panic on wrap-around.

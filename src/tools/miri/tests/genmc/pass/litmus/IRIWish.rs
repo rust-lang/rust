@@ -57,9 +57,7 @@ fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
         join_pthreads(ids);
 
         // Print the values to check that we get all of them:
-        if writeln!(MiriStderr, "{results:?}").is_err() {
-            std::process::abort();
-        }
+        writeln!(MiriStderr, "{results:?}").unwrap_or_else(|_| std::process::abort());
 
         0
     }

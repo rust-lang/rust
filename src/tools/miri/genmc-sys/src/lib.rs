@@ -198,6 +198,19 @@ mod ffi {
         is_coherence_order_maximal_write: bool,
     }
 
+    #[must_use]
+    #[derive(Debug)]
+    struct CompareExchangeResult {
+        /// If there was an error, it will be stored in `error`, otherwise it is `None`.
+        error: UniquePtr<CxxString>,
+        /// The value that was read by the compare-exchange.
+        old_value: GenmcScalar,
+        /// `true` if compare_exchange op was successful.
+        is_success: bool,
+        /// `true` if the write should also be reflected in Miri's memory representation.
+        is_coherence_order_maximal_write: bool,
+    }
+
     /**** These are GenMC types that we have to copy-paste here since cxx does not support
     "importing" externally defined C++ types. ****/
 
@@ -313,6 +326,18 @@ mod ffi {
             rhs_value: GenmcScalar,
             old_value: GenmcScalar,
         ) -> ReadModifyWriteResult;
+        fn handle_compare_exchange(
+            self: Pin<&mut MiriGenmcShim>,
+            thread_id: i32,
+            address: u64,
+            size: u64,
+            expected_value: GenmcScalar,
+            new_value: GenmcScalar,
+            old_value: GenmcScalar,
+            success_ordering: MemOrdering,
+            fail_load_ordering: MemOrdering,
+            can_fail_spuriously: bool,
+        ) -> CompareExchangeResult;
         fn handle_store(
             self: Pin<&mut MiriGenmcShim>,
             thread_id: i32,

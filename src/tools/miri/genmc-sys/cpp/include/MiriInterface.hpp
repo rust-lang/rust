@@ -34,6 +34,7 @@ struct SchedulingResult;
 struct LoadResult;
 struct StoreResult;
 struct ReadModifyWriteResult;
+struct CompareExchangeResult;
 
 // GenMC uses `int` for its thread IDs.
 using ThreadId = int;
@@ -99,6 +100,17 @@ struct MiriGenmcShim : private GenMCDriver {
         MemOrdering ordering,
         GenmcScalar rhs_value,
         GenmcScalar old_val
+    );
+    [[nodiscard]] CompareExchangeResult handle_compare_exchange(
+        ThreadId thread_id,
+        uint64_t address,
+        uint64_t size,
+        GenmcScalar expected_value,
+        GenmcScalar new_value,
+        GenmcScalar old_val,
+        MemOrdering success_ordering,
+        MemOrdering fail_load_ordering,
+        bool can_fail_spuriously
     );
     [[nodiscard]] StoreResult handle_store(
         ThreadId thread_id,
@@ -231,15 +243,15 @@ constexpr auto get_global_alloc_static_mask() -> uint64_t {
 namespace GenmcScalarExt {
 inline GenmcScalar uninit() {
     return GenmcScalar {
-        /* value: */ 0,
-        /* is_init: */ false,
+        .value = 0,
+        .is_init = false,
     };
 }
 
 inline GenmcScalar from_sval(SVal sval) {
     return GenmcScalar {
-        /* value: */ sval.get(),
-        /* is_init: */ true,
+        .value = sval.get(),
+        .is_init = true,
     };
 }
 
@@ -252,22 +264,22 @@ inline SVal to_sval(GenmcScalar scalar) {
 namespace LoadResultExt {
 inline LoadResult no_value() {
     return LoadResult {
-        /* error: */ std::unique_ptr<std::string>(nullptr),
-        /* has_value: */ false,
-        /* read_value: */ GenmcScalarExt::uninit(),
+        .error = std::unique_ptr<std::string>(nullptr),
+        .has_value = false,
+        .read_value = GenmcScalarExt::uninit(),
     };
 }
 
 inline LoadResult from_value(SVal read_value) {
-    return LoadResult { /* error: */ std::unique_ptr<std::string>(nullptr),
-                        /* has_value: */ true,
-                        /* read_value: */ GenmcScalarExt::from_sval(read_value) };
+    return LoadResult { .error = std::unique_ptr<std::string>(nullptr),
+                        .has_value = true,
+                        .read_value = GenmcScalarExt::from_sval(read_value) };
 }
 
 inline LoadResult from_error(std::unique_ptr<std::string> error) {
-    return LoadResult { /* error: */ std::move(error),
-                        /* has_value: */ false,
-                        /* read_value: */ GenmcScalarExt::uninit() };
+    return LoadResult { .error = std::move(error),
+                        .has_value = false,
+                        .read_value = GenmcScalarExt::uninit() };
 }
 } // namespace LoadResultExt
 
@@ -278,26 +290,50 @@ inline StoreResult ok(bool is_coherence_order_maximal_write) {
 }
 
 inline StoreResult from_error(std::unique_ptr<std::string> error) {
-    return StoreResult { /* error: */ std::move(error),
-                         /* is_coherence_order_maximal_write: */ false };
+    return StoreResult { .error = std::move(error), .is_coherence_order_maximal_write = false };
 }
 } // namespace StoreResultExt
 
 namespace ReadModifyWriteResultExt {
 inline ReadModifyWriteResult
 ok(SVal old_value, SVal new_value, bool is_coherence_order_maximal_write) {
-    return ReadModifyWriteResult { /* error: */ std::unique_ptr<std::string>(nullptr),
-                                   /* old_value: */ GenmcScalarExt::from_sval(old_value),
-                                   /* new_value: */ GenmcScalarExt::from_sval(new_value),
-                                   is_coherence_order_maximal_write };
+    return ReadModifyWriteResult { .error = std::unique_ptr<std::string>(nullptr),
+                                   .old_value = GenmcScalarExt::from_sval(old_value),
+                                   .new_value = GenmcScalarExt::from_sval(new_value),
+                                   .is_coherence_order_maximal_write =
+                                       is_coherence_order_maximal_write };
 }
 
 inline ReadModifyWriteResult from_error(std::unique_ptr<std::string> error) {
-    return ReadModifyWriteResult { /* error: */ std::move(error),
-                                   /* old_value: */ GenmcScalarExt::uninit(),
-                                   /* new_value: */ GenmcScalarExt::uninit(),
-                                   /* is_coherence_order_maximal_write: */ false };
+    return ReadModifyWriteResult { .error = std::move(error),
+                                   .old_value = GenmcScalarExt::uninit(),
+                                   .new_value = GenmcScalarExt::uninit(),
+                                   .is_coherence_order_maximal_write = false };
 }
 } // namespace ReadModifyWriteResultExt
+
+namespace CompareExchangeResultExt {
+inline CompareExchangeResult success(SVal old_value, bool is_coherence_order_maximal_write) {
+    return CompareExchangeResult { .error = nullptr,
+                                   .old_value = GenmcScalarExt::from_sval(old_value),
+                                   .is_success = true,
+                                   .is_coherence_order_maximal_write =
+                                       is_coherence_order_maximal_write };
+}
+
+inline CompareExchangeResult failure(SVal old_value) {
+    return CompareExchangeResult { .error = nullptr,
+                                   .old_value = GenmcScalarExt::from_sval(old_value),
+                                   .is_success = false,
+                                   .is_coherence_order_maximal_write = false };
+}
+
+inline CompareExchangeResult from_error(std::unique_ptr<std::string> error) {
+    return CompareExchangeResult { .error = std::move(error),
+                                   .old_value = GenmcScalarExt::uninit(),
+                                   .is_success = false,
+                                   .is_coherence_order_maximal_write = false };
+}
+} // namespace CompareExchangeResultExt
 
 #endif /* GENMC_MIRI_INTERFACE_HPP */
