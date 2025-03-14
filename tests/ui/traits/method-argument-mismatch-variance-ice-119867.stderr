@@ -6,8 +6,9 @@ LL |     fn deserialize(s: _) {}
    |
 help: try replacing `_` with the type in the corresponding trait method signature
    |
-LL |     fn deserialize(s: &ArchivedVec<T>) {}
-   |                       ~~~~~~~~~~~~~~~
+LL -     fn deserialize(s: _) {}
+LL +     fn deserialize(s: &ArchivedVec<T>) {}
+   |
 
 error[E0186]: method `deserialize` has a `&self` declaration in the trait, but not in the impl
   --> $DIR/method-argument-mismatch-variance-ice-119867.rs:8:5

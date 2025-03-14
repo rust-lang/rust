@@ -1,4 +1,4 @@
-//@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0 -O
+//@ compile-flags: -C no-prepopulate-passes -Zmir-opt-level=0 -Copt-level=3
 
 #![crate_type = "lib"]
 

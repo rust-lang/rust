@@ -12,7 +12,6 @@ use tracing::*;
 use crate::common::{Config, Debugger, FailMode, Mode, PassMode};
 use crate::debuggers::{extract_cdb_version, extract_gdb_version};
 use crate::header::auxiliary::{AuxProps, parse_and_update_aux};
-use crate::header::cfg::{MatchOutcome, parse_cfg_name_directive};
 use crate::header::needs::CachedNeedsConditions;
 use crate::util::static_regex;
 
@@ -472,11 +471,24 @@ impl TestProps {
 
                     config.set_name_directive(ln, IGNORE_PASS, &mut self.ignore_pass);
 
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stdout") {
-                        self.normalize_stdout.push(rule);
-                    }
-                    if let Some(rule) = config.parse_custom_normalization(ln, "normalize-stderr") {
-                        self.normalize_stderr.push(rule);
+                    if let Some(NormalizeRule { kind, regex, replacement }) =
+                        config.parse_custom_normalization(ln)
+                    {
+                        let rule_tuple = (regex, replacement);
+                        match kind {
+                            NormalizeKind::Stdout => self.normalize_stdout.push(rule_tuple),
+                            NormalizeKind::Stderr => self.normalize_stderr.push(rule_tuple),
+                            NormalizeKind::Stderr32bit => {
+                                if config.target_cfg().pointer_width == 32 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                            NormalizeKind::Stderr64bit => {
+                                if config.target_cfg().pointer_width == 64 {
+                                    self.normalize_stderr.push(rule_tuple);
+                                }
+                            }
+                        }
                     }
 
                     if let Some(code) = config
@@ -697,11 +709,11 @@ impl TestProps {
 /// returns a struct containing various parts of the directive.
 fn line_directive<'line>(
     line_number: usize,
-    comment: &str,
     original_line: &'line str,
 ) -> Option<DirectiveLine<'line>> {
     // Ignore lines that don't start with the comment prefix.
-    let after_comment = original_line.trim_start().strip_prefix(comment)?.trim_start();
+    let after_comment =
+        original_line.trim_start().strip_prefix(COMPILETEST_DIRECTIVE_PREFIX)?.trim_start();
 
     let revision;
     let raw_directive;
@@ -710,7 +722,7 @@ fn line_directive<'line>(
         // A comment like `//@[foo]` only applies to revision `foo`.
         let Some((line_revision, after_close_bracket)) = after_open_bracket.split_once(']') else {
             panic!(
-                "malformed condition directive: expected `{comment}[foo]`, found `{original_line}`"
+                "malformed condition directive: expected `{COMPILETEST_DIRECTIVE_PREFIX}[foo]`, found `{original_line}`"
             )
         };
 
@@ -824,6 +836,8 @@ pub(crate) fn check_directive<'a>(
     CheckDirectiveResult { is_known_directive: is_known(&directive_name), trailing_directive }
 }
 
+const COMPILETEST_DIRECTIVE_PREFIX: &str = "//@";
+
 fn iter_header(
     mode: Mode,
     _suite: &str,
@@ -837,8 +851,7 @@ fn iter_header(
     }
 
     // Coverage tests in coverage-run mode always have these extra directives, without needing to
-    // specify them manually in every test file. (Some of the comments below have been copied over
-    // from the old `tests/run-make/coverage-reports/Makefile`, which no longer exists.)
+    // specify them manually in every test file.
     //
     // FIXME(jieyouxu): I feel like there's a better way to do this, leaving for later.
     if mode == Mode::CoverageRun {
@@ -855,9 +868,6 @@ fn iter_header(
         }
     }
 
-    // NOTE(jieyouxu): once we get rid of `Makefile`s we can unconditionally check for `//@`.
-    let comment = if testfile.extension().is_some_and(|e| e == "rs") { "//@" } else { "#" };
-
     let mut rdr = BufReader::with_capacity(1024, rdr);
     let mut ln = String::new();
     let mut line_number = 0;
@@ -870,15 +880,7 @@ fn iter_header(
         }
         let ln = ln.trim();
 
-        // Assume that any directives will be found before the first module or function. This
-        // doesn't seem to be an optimization with a warm page cache. Maybe with a cold one.
-        // FIXME(jieyouxu): this will cause `//@` directives in the rest of the test file to
-        // not be checked.
-        if ln.starts_with("fn") || ln.starts_with("mod") {
-            return;
-        }
-
-        let Some(directive_line) = line_directive(line_number, comment, ln) else {
+        let Some(directive_line) = line_directive(line_number, ln) else {
             continue;
         };
 
@@ -922,6 +924,9 @@ fn iter_header(
 
 impl Config {
     fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
+        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+            ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
+
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
             if self.mode == Mode::RunMake {
                 panic!("`run-make` tests do not support revisions: {}", testfile.display());
@@ -933,6 +938,15 @@ impl Config {
                     panic!(
                         "duplicate revision: `{}` in line `{}`: {}",
                         revision,
+                        raw,
+                        testfile.display()
+                    );
+                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
+                {
+                    panic!(
+                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
+                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
                         raw,
                         testfile.display()
                     );
@@ -966,20 +980,26 @@ impl Config {
         }
     }
 
-    fn parse_custom_normalization(&self, line: &str, prefix: &str) -> Option<(String, String)> {
-        let parsed = parse_cfg_name_directive(self, line, prefix);
-        if parsed.outcome != MatchOutcome::Match {
-            return None;
-        }
-        let name = parsed.name.expect("successful match always has a name");
+    fn parse_custom_normalization(&self, raw_directive: &str) -> Option<NormalizeRule> {
+        // FIXME(Zalathar): Integrate name/value splitting into `DirectiveLine`
+        // instead of doing it here.
+        let (directive_name, raw_value) = raw_directive.split_once(':')?;
 
-        let Some((regex, replacement)) = parse_normalize_rule(line) else {
+        let kind = match directive_name {
+            "normalize-stdout" => NormalizeKind::Stdout,
+            "normalize-stderr" => NormalizeKind::Stderr,
+            "normalize-stderr-32bit" => NormalizeKind::Stderr32bit,
+            "normalize-stderr-64bit" => NormalizeKind::Stderr64bit,
+            _ => return None,
+        };
+
+        let Some((regex, replacement)) = parse_normalize_rule(raw_value) else {
             panic!(
-                "couldn't parse custom normalization rule: `{line}`\n\
-                help: expected syntax is: `{prefix}-{name}: \"REGEX\" -> \"REPLACEMENT\"`"
+                "couldn't parse custom normalization rule: `{raw_directive}`\n\
+                help: expected syntax is: `{directive_name}: \"REGEX\" -> \"REPLACEMENT\"`"
             );
         };
-        Some((regex, replacement))
+        Some(NormalizeRule { kind, regex, replacement })
     }
 
     fn parse_name_directive(&self, line: &str, directive: &str) -> bool {
@@ -1002,19 +1022,6 @@ impl Config {
         } else {
             None
         }
-    }
-
-    pub fn find_rust_src_root(&self) -> Option<PathBuf> {
-        let mut path = self.src_base.clone();
-        let path_postfix = Path::new("src/etc/lldb_batchmode.py");
-
-        while path.pop() {
-            if path.join(&path_postfix).is_file() {
-                return Some(path);
-            }
-        }
-
-        None
     }
 
     fn parse_edition(&self, line: &str) -> Option<String> {
@@ -1061,10 +1068,11 @@ impl Config {
     }
 }
 
+// FIXME(jieyouxu): fix some of these variable names to more accurately reflect what they do.
 fn expand_variables(mut value: String, config: &Config) -> String {
     const CWD: &str = "{{cwd}}";
     const SRC_BASE: &str = "{{src-base}}";
-    const BUILD_BASE: &str = "{{build-base}}";
+    const TEST_SUITE_BUILD_BASE: &str = "{{build-base}}";
     const RUST_SRC_BASE: &str = "{{rust-src-base}}";
     const SYSROOT_BASE: &str = "{{sysroot-base}}";
     const TARGET_LINKER: &str = "{{target-linker}}";
@@ -1076,15 +1084,16 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     }
 
     if value.contains(SRC_BASE) {
-        value = value.replace(SRC_BASE, &config.src_base.to_string_lossy());
+        value = value.replace(SRC_BASE, &config.src_test_suite_root.to_str().unwrap());
     }
 
-    if value.contains(BUILD_BASE) {
-        value = value.replace(BUILD_BASE, &config.build_base.to_string_lossy());
+    if value.contains(TEST_SUITE_BUILD_BASE) {
+        value =
+            value.replace(TEST_SUITE_BUILD_BASE, &config.build_test_suite_root.to_str().unwrap());
     }
 
     if value.contains(SYSROOT_BASE) {
-        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_string_lossy());
+        value = value.replace(SYSROOT_BASE, &config.sysroot_base.to_str().unwrap());
     }
 
     if value.contains(TARGET_LINKER) {
@@ -1105,27 +1114,42 @@ fn expand_variables(mut value: String, config: &Config) -> String {
     value
 }
 
+struct NormalizeRule {
+    kind: NormalizeKind,
+    regex: String,
+    replacement: String,
+}
+
+enum NormalizeKind {
+    Stdout,
+    Stderr,
+    Stderr32bit,
+    Stderr64bit,
+}
+
 /// Parses the regex and replacement values of a `//@ normalize-*` header,
 /// in the format:
 /// ```text
-/// normalize-*: "REGEX" -> "REPLACEMENT"
+/// "REGEX" -> "REPLACEMENT"
 /// ```
-fn parse_normalize_rule(header: &str) -> Option<(String, String)> {
+fn parse_normalize_rule(raw_value: &str) -> Option<(String, String)> {
     // FIXME: Support escaped double-quotes in strings.
     let captures = static_regex!(
         r#"(?x) # (verbose mode regex)
         ^
-        [^:\s]+:\s*             # (header name followed by colon)
+        \s*                     # (leading whitespace)
         "(?<regex>[^"]*)"       # "REGEX"
         \s+->\s+                # ->
         "(?<replacement>[^"]*)" # "REPLACEMENT"
         $
         "#
     )
-    .captures(header)?;
+    .captures(raw_value)?;
     let regex = captures["regex"].to_owned();
     let replacement = captures["replacement"].to_owned();
-    // FIXME: Support escaped new-line in strings.
+    // A `\n` sequence in the replacement becomes an actual newline.
+    // FIXME: Do unescaping in a less ad-hoc way, and perhaps support escaped
+    // backslashes and double-quotes.
     let replacement = replacement.replace("\\n", "\n");
     Some((regex, replacement))
 }

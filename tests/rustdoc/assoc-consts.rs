@@ -45,7 +45,7 @@ pub fn f(_: &(ToString + 'static)) {}
 
 impl Bar {
     //@ has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.F"]' \
-    //      "const F: fn(_: &(dyn ToString + 'static))"
+    //      "const F: fn(&(dyn ToString + 'static))"
     pub const F: fn(_: &(ToString + 'static)) = f;
 }
 

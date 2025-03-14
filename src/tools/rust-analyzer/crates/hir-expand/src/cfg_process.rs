@@ -201,9 +201,6 @@ pub(crate) fn process_cfg_attrs(
         MacroDefKind::BuiltInAttr(_, expander) => expander.is_derive(),
         _ => false,
     };
-    if !is_derive {
-        return None;
-    }
     let mut remove = FxHashSet::default();
 
     let item = ast::Item::cast(node.clone())?;
@@ -220,28 +217,43 @@ pub(crate) fn process_cfg_attrs(
             }
         }
     }
-    match item {
-        ast::Item::Struct(it) => match it.field_list()? {
-            ast::FieldList::RecordFieldList(fields) => {
-                process_has_attrs_with_possible_comma(db, fields.fields(), loc.krate, &mut remove)?;
+
+    if is_derive {
+        // Only derives get their code cfg-clean, normal attribute macros process only the cfg at their level
+        // (cfg_attr is handled above, cfg is handled in the def map).
+        match item {
+            ast::Item::Struct(it) => match it.field_list()? {
+                ast::FieldList::RecordFieldList(fields) => {
+                    process_has_attrs_with_possible_comma(
+                        db,
+                        fields.fields(),
+                        loc.krate,
+                        &mut remove,
+                    )?;
+                }
+                ast::FieldList::TupleFieldList(fields) => {
+                    process_has_attrs_with_possible_comma(
+                        db,
+                        fields.fields(),
+                        loc.krate,
+                        &mut remove,
+                    )?;
+                }
+            },
+            ast::Item::Enum(it) => {
+                process_enum(db, it.variant_list()?, loc.krate, &mut remove)?;
             }
-            ast::FieldList::TupleFieldList(fields) => {
-                process_has_attrs_with_possible_comma(db, fields.fields(), loc.krate, &mut remove)?;
+            ast::Item::Union(it) => {
+                process_has_attrs_with_possible_comma(
+                    db,
+                    it.record_field_list()?.fields(),
+                    loc.krate,
+                    &mut remove,
+                )?;
             }
-        },
-        ast::Item::Enum(it) => {
-            process_enum(db, it.variant_list()?, loc.krate, &mut remove)?;
+            // FIXME: Implement for other items if necessary. As we do not support #[cfg_eval] yet, we do not need to implement it for now
+            _ => {}
         }
-        ast::Item::Union(it) => {
-            process_has_attrs_with_possible_comma(
-                db,
-                it.record_field_list()?.fields(),
-                loc.krate,
-                &mut remove,
-            )?;
-        }
-        // FIXME: Implement for other items if necessary. As we do not support #[cfg_eval] yet, we do not need to implement it for now
-        _ => {}
     }
     Some(remove)
 }

@@ -44,121 +44,121 @@ LL |     let _ = EMPTY_STR.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:61:13
+  --> tests/ui/const_is_empty.rs:62:13
    |
 LL |     let _ = NON_EMPTY_STR.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:63:13
+  --> tests/ui/const_is_empty.rs:65:13
    |
 LL |     let _ = EMPTY_BSTR.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:65:13
+  --> tests/ui/const_is_empty.rs:68:13
    |
 LL |     let _ = NON_EMPTY_BSTR.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:67:13
+  --> tests/ui/const_is_empty.rs:71:13
    |
 LL |     let _ = EMPTY_ARRAY.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:69:13
+  --> tests/ui/const_is_empty.rs:74:13
    |
 LL |     let _ = EMPTY_ARRAY_REPEAT.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:71:13
+  --> tests/ui/const_is_empty.rs:77:13
    |
 LL |     let _ = EMPTY_U8_SLICE.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:73:13
+  --> tests/ui/const_is_empty.rs:80:13
    |
 LL |     let _ = NON_EMPTY_U8_SLICE.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:75:13
+  --> tests/ui/const_is_empty.rs:83:13
    |
 LL |     let _ = NON_EMPTY_ARRAY.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:77:13
+  --> tests/ui/const_is_empty.rs:86:13
    |
 LL |     let _ = NON_EMPTY_ARRAY_REPEAT.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:79:13
+  --> tests/ui/const_is_empty.rs:89:13
    |
 LL |     let _ = EMPTY_REF_ARRAY.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:81:13
+  --> tests/ui/const_is_empty.rs:92:13
    |
 LL |     let _ = NON_EMPTY_REF_ARRAY.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:83:13
+  --> tests/ui/const_is_empty.rs:95:13
    |
 LL |     let _ = EMPTY_SLICE.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:85:13
+  --> tests/ui/const_is_empty.rs:98:13
    |
 LL |     let _ = NON_EMPTY_SLICE.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:87:13
+  --> tests/ui/const_is_empty.rs:101:13
    |
 LL |     let _ = NON_EMPTY_SLICE_REPEAT.is_empty();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:93:13
+  --> tests/ui/const_is_empty.rs:107:13
    |
 LL |     let _ = value.is_empty();
    |             ^^^^^^^^^^^^^^^^
 
 error: this expression always evaluates to false
-  --> tests/ui/const_is_empty.rs:96:13
+  --> tests/ui/const_is_empty.rs:111:13
    |
 LL |     let _ = x.is_empty();
    |             ^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:98:13
+  --> tests/ui/const_is_empty.rs:114:13
    |
 LL |     let _ = "".is_empty();
    |             ^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:100:13
+  --> tests/ui/const_is_empty.rs:117:13
    |
 LL |     let _ = b"".is_empty();
    |             ^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:154:13
+  --> tests/ui/const_is_empty.rs:171:13
    |
 LL |     let _ = val.is_empty();
    |             ^^^^^^^^^^^^^^
 
 error: this expression always evaluates to true
-  --> tests/ui/const_is_empty.rs:185:9
+  --> tests/ui/const_is_empty.rs:202:9
    |
 LL |         EMPTY_STR.is_empty();
    |         ^^^^^^^^^^^^^^^^^^^^

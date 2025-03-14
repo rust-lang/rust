@@ -9,7 +9,7 @@ LL |     vec.sort();
    = help: to override `-D warnings` add `#[allow(clippy::stable_sort_primitive)]`
 
 error: used `sort` on primitive type `bool`
-  --> tests/ui/stable_sort_primitive.rs:9:5
+  --> tests/ui/stable_sort_primitive.rs:10:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -17,14 +17,6 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `char`
-  --> tests/ui/stable_sort_primitive.rs:11:5
-   |
-LL |     vec.sort();
-   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
-   |
-   = note: an unstable sort typically performs faster without any observable difference for this data type
-
-error: used `sort` on primitive type `str`
   --> tests/ui/stable_sort_primitive.rs:13:5
    |
 LL |     vec.sort();
@@ -32,8 +24,16 @@ LL |     vec.sort();
    |
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
+error: used `sort` on primitive type `str`
+  --> tests/ui/stable_sort_primitive.rs:16:5
+   |
+LL |     vec.sort();
+   |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
+   |
+   = note: an unstable sort typically performs faster without any observable difference for this data type
+
 error: used `sort` on primitive type `tuple`
-  --> tests/ui/stable_sort_primitive.rs:15:5
+  --> tests/ui/stable_sort_primitive.rs:19:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -41,7 +41,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `array`
-  --> tests/ui/stable_sort_primitive.rs:17:5
+  --> tests/ui/stable_sort_primitive.rs:22:5
    |
 LL |     vec.sort();
    |     ^^^^^^^^^^ help: try: `vec.sort_unstable()`
@@ -49,7 +49,7 @@ LL |     vec.sort();
    = note: an unstable sort typically performs faster without any observable difference for this data type
 
 error: used `sort` on primitive type `i32`
-  --> tests/ui/stable_sort_primitive.rs:19:5
+  --> tests/ui/stable_sort_primitive.rs:25:5
    |
 LL |     arr.sort();
    |     ^^^^^^^^^^ help: try: `arr.sort_unstable()`

@@ -8,8 +8,9 @@ LL |     let x = if true { 10i32 } else { 10u32 };
    |
 help: change the type of the numeric literal from `u32` to `i32`
    |
-LL |     let x = if true { 10i32 } else { 10i32 };
-   |                                        ~~~
+LL -     let x = if true { 10i32 } else { 10u32 };
+LL +     let x = if true { 10i32 } else { 10i32 };
+   |
 
 error: aborting due to 1 previous error
 

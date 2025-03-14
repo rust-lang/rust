@@ -6,8 +6,9 @@ LL | Struct Foor {
    |
 help: write keyword `struct` in lowercase (notice the capitalization difference)
    |
-LL | struct Foor {
-   | ~~~~~~
+LL - Struct Foor {
+LL + struct Foor {
+   |
 
 error: aborting due to 1 previous error
 

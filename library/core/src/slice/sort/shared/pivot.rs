@@ -31,9 +31,9 @@ pub fn choose_pivot<T, F: FnMut(&T, &T) -> bool>(v: &[T], is_less: &mut F) -> us
         let c = v_base.add(len_div_8 * 7); // [7*floor(n/8), 8*floor(n/8))
 
         if len < PSEUDO_MEDIAN_REC_THRESHOLD {
-            median3(&*a, &*b, &*c, is_less).sub_ptr(v_base)
+            median3(&*a, &*b, &*c, is_less).offset_from_unsigned(v_base)
         } else {
-            median3_rec(a, b, c, len_div_8, is_less).sub_ptr(v_base)
+            median3_rec(a, b, c, len_div_8, is_less).offset_from_unsigned(v_base)
         }
     }
 }

@@ -29,6 +29,10 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
                 let mut _12: U;
                 scope 6 {
                     debug x => _10;
+                    scope 7 (inlined ops::function::impls::<impl FnOnce<(T,)> for &mut impl Fn(T) -> U>::call_once) {
+                        debug self => _8;
+                        debug args => _11;
+                    }
                 }
             }
         }
@@ -85,7 +89,7 @@ fn mapped(_1: impl Iterator<Item = T>, _2: impl Fn(T) -> U) -> () {
         StorageLive(_12);
         StorageLive(_11);
         _11 = (copy _10,);
-        _12 = <&mut impl Fn(T) -> U as FnOnce<(T,)>>::call_once(move _8, move _11) -> [return: bb7, unwind: bb10];
+        _12 = <impl Fn(T) -> U as FnMut<(T,)>>::call_mut(move _8, move _11) -> [return: bb7, unwind: bb10];
     }
 
     bb7: {

@@ -10,12 +10,10 @@ LL | fn callee<'x, 'y, T: for<'z> Trait2<'y, 'z>>(t: &'x dyn for<'z> Trait1< <T 
    |                    ++++++++++++++++++++++++
 
 error[E0277]: the trait bound `for<'z> T: Trait2<'y, 'z>` is not satisfied
-  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:23:1
+  --> $DIR/regions-implied-bounds-projection-gap-hr-1.rs:21:25
    |
-LL | / {
-LL | |
-LL | | }
-   | |_^ the trait `for<'z> Trait2<'y, 'z>` is not implemented for `T`
+LL | fn callee<'x, 'y, T>(t: &'x dyn for<'z> Trait1< <T as Trait2<'y, 'z>>::Foo >)
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `for<'z> Trait2<'y, 'z>` is not implemented for `T`
    |
 help: consider restricting type parameter `T` with trait `Trait2`
    |

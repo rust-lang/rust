@@ -4,8 +4,13 @@ use std::process::{self, Command};
 fn main() {
     let target = env::var("SCCACHE_TARGET").unwrap();
     // Locate the actual compiler that we're invoking
-    env::set_var("CC", env::var_os("SCCACHE_CC").unwrap());
-    env::set_var("CXX", env::var_os("SCCACHE_CXX").unwrap());
+
+    // SAFETY: we're in main, there are no other threads
+    unsafe {
+        env::set_var("CC", env::var_os("SCCACHE_CC").unwrap());
+        env::set_var("CXX", env::var_os("SCCACHE_CXX").unwrap());
+    }
+
     let mut cfg = cc::Build::new();
     cfg.cargo_metadata(false)
         .out_dir("/")

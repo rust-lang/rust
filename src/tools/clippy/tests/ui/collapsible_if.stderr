@@ -18,7 +18,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:21:5
+  --> tests/ui/collapsible_if.rs:22:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -35,7 +35,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:27:5
+  --> tests/ui/collapsible_if.rs:29:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" || y == "hello" {
@@ -52,7 +52,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:33:5
+  --> tests/ui/collapsible_if.rs:36:5
    |
 LL | /     if x == "hello" || x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -69,7 +69,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:39:5
+  --> tests/ui/collapsible_if.rs:43:5
    |
 LL | /     if x == "hello" && x == "world" {
 LL | |         if y == "world" && y == "hello" {
@@ -86,7 +86,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:45:5
+  --> tests/ui/collapsible_if.rs:50:5
    |
 LL | /     if 42 == 1337 {
 LL | |         if 'a' != 'A' {
@@ -103,7 +103,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:101:5
+  --> tests/ui/collapsible_if.rs:107:5
    |
 LL | /     if x == "hello" {
 LL | |         if y == "world" { // Collapsible
@@ -120,7 +120,7 @@ LL +     }
    |
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:160:5
+  --> tests/ui/collapsible_if.rs:167:5
    |
 LL | /     if matches!(true, true) {
 LL | |         if matches!(true, true) {}
@@ -128,7 +128,7 @@ LL | |     }
    | |_____^ help: collapse nested if block: `if matches!(true, true) && matches!(true, true) {}`
 
 error: this `if` statement can be collapsed
-  --> tests/ui/collapsible_if.rs:165:5
+  --> tests/ui/collapsible_if.rs:173:5
    |
 LL | /     if matches!(true, true) && truth() {
 LL | |         if matches!(true, true) {}

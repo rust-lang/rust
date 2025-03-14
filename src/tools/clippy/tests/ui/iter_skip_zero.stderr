@@ -9,7 +9,7 @@ LL |     let _ = [1, 2, 3].iter().skip(0);
    = help: to override `-D warnings` add `#[allow(clippy::iter_skip_zero)]`
 
 error: usage of `.skip(0)`
-  --> tests/ui/iter_skip_zero.rs:12:39
+  --> tests/ui/iter_skip_zero.rs:13:39
    |
 LL |     let _ = vec![1, 2, 3].iter().skip(0);
    |                                       ^ help: if you meant to skip the first element, use: `1`
@@ -17,7 +17,7 @@ LL |     let _ = vec![1, 2, 3].iter().skip(0);
    = note: this call to `skip` does nothing and is useless; remove it
 
 error: usage of `.skip(0)`
-  --> tests/ui/iter_skip_zero.rs:13:34
+  --> tests/ui/iter_skip_zero.rs:15:34
    |
 LL |     let _ = once([1, 2, 3]).skip(0);
    |                                  ^ help: if you meant to skip the first element, use: `1`
@@ -25,7 +25,7 @@ LL |     let _ = once([1, 2, 3]).skip(0);
    = note: this call to `skip` does nothing and is useless; remove it
 
 error: usage of `.skip(0)`
-  --> tests/ui/iter_skip_zero.rs:14:71
+  --> tests/ui/iter_skip_zero.rs:17:71
    |
 LL |     let _ = vec![1, 2, 3].iter().chain([1, 2, 3].iter().skip(0)).skip(0);
    |                                                                       ^ help: if you meant to skip the first element, use: `1`
@@ -33,7 +33,7 @@ LL |     let _ = vec![1, 2, 3].iter().chain([1, 2, 3].iter().skip(0)).skip(0);
    = note: this call to `skip` does nothing and is useless; remove it
 
 error: usage of `.skip(0)`
-  --> tests/ui/iter_skip_zero.rs:14:62
+  --> tests/ui/iter_skip_zero.rs:17:62
    |
 LL |     let _ = vec![1, 2, 3].iter().chain([1, 2, 3].iter().skip(0)).skip(0);
    |                                                              ^ help: if you meant to skip the first element, use: `1`

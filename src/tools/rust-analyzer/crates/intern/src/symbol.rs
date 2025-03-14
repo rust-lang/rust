@@ -13,26 +13,22 @@ use std::{
 use dashmap::{DashMap, SharedValue};
 use hashbrown::{hash_map::RawEntryMut, HashMap};
 use rustc_hash::FxHasher;
-use sptr::Strict;
 use triomphe::Arc;
 
 pub mod symbols;
 
 // some asserts for layout compatibility
-const _: () = assert!(std::mem::size_of::<Box<str>>() == std::mem::size_of::<&str>());
-const _: () = assert!(std::mem::align_of::<Box<str>>() == std::mem::align_of::<&str>());
+const _: () = assert!(size_of::<Box<str>>() == size_of::<&str>());
+const _: () = assert!(align_of::<Box<str>>() == align_of::<&str>());
 
-const _: () = assert!(std::mem::size_of::<Arc<Box<str>>>() == std::mem::size_of::<&&str>());
-const _: () = assert!(std::mem::align_of::<Arc<Box<str>>>() == std::mem::align_of::<&&str>());
+const _: () = assert!(size_of::<Arc<Box<str>>>() == size_of::<&&str>());
+const _: () = assert!(align_of::<Arc<Box<str>>>() == align_of::<&&str>());
 
-const _: () =
-    assert!(std::mem::size_of::<*const *const str>() == std::mem::size_of::<TaggedArcPtr>());
-const _: () =
-    assert!(std::mem::align_of::<*const *const str>() == std::mem::align_of::<TaggedArcPtr>());
+const _: () = assert!(size_of::<*const *const str>() == size_of::<TaggedArcPtr>());
+const _: () = assert!(align_of::<*const *const str>() == align_of::<TaggedArcPtr>());
 
-const _: () = assert!(std::mem::size_of::<Arc<Box<str>>>() == std::mem::size_of::<TaggedArcPtr>());
-const _: () =
-    assert!(std::mem::align_of::<Arc<Box<str>>>() == std::mem::align_of::<TaggedArcPtr>());
+const _: () = assert!(size_of::<Arc<Box<str>>>() == size_of::<TaggedArcPtr>());
+const _: () = assert!(align_of::<Arc<Box<str>>>() == align_of::<TaggedArcPtr>());
 
 /// A pointer that points to a pointer to a `str`, it may be backed as a `&'static &'static str` or
 /// `Arc<Box<str>>` but its size is that of a thin pointer. The active variant is encoded as a tag
@@ -50,9 +46,7 @@ impl TaggedArcPtr {
     const BOOL_BITS: usize = true as usize;
 
     const fn non_arc(r: &'static &'static str) -> Self {
-        assert!(
-            mem::align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS
-        );
+        assert!(align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS);
         // SAFETY: The pointer is non-null as it is derived from a reference
         // Ideally we would call out to `pack_arc` but for a `false` tag, unfortunately the
         // packing stuff requires reading out the pointer to an integer which is not supported
@@ -65,9 +59,7 @@ impl TaggedArcPtr {
     }
 
     fn arc(arc: Arc<Box<str>>) -> Self {
-        assert!(
-            mem::align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS
-        );
+        assert!(align_of::<&'static &'static str>().trailing_zeros() as usize > Self::BOOL_BITS);
         Self {
             packed: Self::pack_arc(
                 // Safety: `Arc::into_raw` always returns a non null pointer
@@ -84,7 +76,7 @@ impl TaggedArcPtr {
     #[inline]
     pub(crate) unsafe fn try_as_arc_owned(self) -> Option<ManuallyDrop<Arc<Box<str>>>> {
         // Unpack the tag from the alignment niche
-        let tag = Strict::addr(self.packed.as_ptr()) & Self::BOOL_BITS;
+        let tag = self.packed.as_ptr().addr() & Self::BOOL_BITS;
         if tag != 0 {
             // Safety: We checked that the tag is non-zero -> true, so we are pointing to the data offset of an `Arc`
             Some(ManuallyDrop::new(unsafe {
@@ -99,40 +91,18 @@ impl TaggedArcPtr {
     fn pack_arc(ptr: NonNull<*const str>) -> NonNull<*const str> {
         let packed_tag = true as usize;
 
-        // can't use this strict provenance stuff here due to trait methods not being const
-        // unsafe {
-        //     // Safety: The pointer is derived from a non-null
-        //     NonNull::new_unchecked(Strict::map_addr(ptr.as_ptr(), |addr| {
-        //         // Safety:
-        //         // - The pointer is `NonNull` => it's address is `NonZero<usize>`
-        //         // - `P::BITS` least significant bits are always zero (`Pointer` contract)
-        //         // - `T::BITS <= P::BITS` (from `Self::ASSERTION`)
-        //         //
-        //         // Thus `addr >> T::BITS` is guaranteed to be non-zero.
-        //         //
-        //         // `{non_zero} | packed_tag` can't make the value zero.
-
-        //         (addr >> Self::BOOL_BITS) | packed_tag
-        //     }))
-        // }
-        // so what follows is roughly what the above looks like but inlined
-
-        let self_addr = ptr.as_ptr() as *const *const str as usize;
-        let addr = self_addr | packed_tag;
-        let dest_addr = addr as isize;
-        let offset = dest_addr.wrapping_sub(self_addr as isize);
-
-        // SAFETY: The resulting pointer is guaranteed to be NonNull as we only modify the niche bytes
-        unsafe { NonNull::new_unchecked(ptr.as_ptr().cast::<u8>().wrapping_offset(offset).cast()) }
+        unsafe {
+            // Safety: The pointer is derived from a non-null and bit-oring it with true (1) will
+            // not make it null.
+            NonNull::new_unchecked(ptr.as_ptr().map_addr(|addr| addr | packed_tag))
+        }
     }
 
     #[inline]
     pub(crate) fn pointer(self) -> NonNull<*const str> {
         // SAFETY: The resulting pointer is guaranteed to be NonNull as we only modify the niche bytes
         unsafe {
-            NonNull::new_unchecked(Strict::map_addr(self.packed.as_ptr(), |addr| {
-                addr & !Self::BOOL_BITS
-            }))
+            NonNull::new_unchecked(self.packed.as_ptr().map_addr(|addr| addr & !Self::BOOL_BITS))
         }
     }
 
@@ -154,8 +124,8 @@ impl fmt::Debug for Symbol {
     }
 }
 
-const _: () = assert!(std::mem::size_of::<Symbol>() == std::mem::size_of::<NonNull<()>>());
-const _: () = assert!(std::mem::align_of::<Symbol>() == std::mem::align_of::<NonNull<()>>());
+const _: () = assert!(size_of::<Symbol>() == size_of::<NonNull<()>>());
+const _: () = assert!(align_of::<Symbol>() == align_of::<NonNull<()>>());
 
 static MAP: OnceLock<DashMap<SymbolProxy, (), BuildHasherDefault<FxHasher>>> = OnceLock::new();
 

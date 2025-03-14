@@ -51,12 +51,14 @@ LL | fn foo() {
    |
 help: use struct literal syntax instead
    |
-LL |     let f = Foo { a: val };
-   |             ~~~~~~~~~~~~~~
+LL -     let f = Foo();
+LL +     let f = Foo { a: val };
+   |
 help: a function with a similar name exists (notice the capitalization difference)
    |
-LL |     let f = foo();
-   |             ~~~
+LL -     let f = Foo();
+LL +     let f = foo();
+   |
 
 error: aborting due to 5 previous errors
 

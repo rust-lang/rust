@@ -79,11 +79,22 @@ pub(super) trait MirPass<'tcx> {
         true
     }
 
+    /// Returns `true` if this pass can be overridden by `-Zenable-mir-passes`. This should be
+    /// true for basically every pass other than those that are necessary for correctness.
+    fn can_be_overridden(&self) -> bool {
+        true
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>);
 
     fn is_mir_dump_enabled(&self) -> bool {
         true
     }
+
+    /// Returns `true` if this pass must be run (i.e. it is required for soundness).
+    /// For passes which are strictly optimizations, this should return `false`.
+    /// If this is `false`, `#[optimize(none)]` will disable the pass.
+    fn is_required(&self) -> bool;
 }
 
 /// Just like `MirPass`, except it cannot mutate `Body`, and MIR dumping is
@@ -128,6 +139,10 @@ where
     fn is_mir_dump_enabled(&self) -> bool {
         false
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 pub(super) struct WithMinOptLevel<T>(pub u32, pub T);
@@ -147,6 +162,19 @@ where
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         self.1.run_pass(tcx, body)
     }
+
+    fn is_required(&self) -> bool {
+        self.1.is_required()
+    }
+}
+
+/// Whether to allow non-[required] optimizations
+///
+/// [required]: MirPass::is_required
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Optimizations {
+    Suppressed,
+    Allowed,
 }
 
 /// Run the sequence of passes without validating the MIR after each pass. The MIR is still
@@ -157,7 +185,7 @@ pub(super) fn run_passes_no_validate<'tcx>(
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
 ) {
-    run_passes_inner(tcx, body, passes, phase_change, false);
+    run_passes_inner(tcx, body, passes, phase_change, false, Optimizations::Allowed);
 }
 
 /// The optional `phase_change` is applied after executing all the passes, if present
@@ -166,15 +194,24 @@ pub(super) fn run_passes<'tcx>(
     body: &mut Body<'tcx>,
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
+    optimizations: Optimizations,
 ) {
-    run_passes_inner(tcx, body, passes, phase_change, true);
+    run_passes_inner(tcx, body, passes, phase_change, true, optimizations);
 }
 
-pub(super) fn should_run_pass<'tcx, P>(tcx: TyCtxt<'tcx>, pass: &P) -> bool
+pub(super) fn should_run_pass<'tcx, P>(
+    tcx: TyCtxt<'tcx>,
+    pass: &P,
+    optimizations: Optimizations,
+) -> bool
 where
     P: MirPass<'tcx> + ?Sized,
 {
     let name = pass.name();
+
+    if !pass.can_be_overridden() {
+        return pass.is_enabled(tcx.sess);
+    }
 
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     let overridden =
@@ -186,7 +223,8 @@ where
             );
             *polarity
         });
-    overridden.unwrap_or_else(|| pass.is_enabled(tcx.sess))
+    let suppressed = !pass.is_required() && matches!(optimizations, Optimizations::Suppressed);
+    overridden.unwrap_or_else(|| !suppressed && pass.is_enabled(tcx.sess))
 }
 
 fn run_passes_inner<'tcx>(
@@ -195,6 +233,7 @@ fn run_passes_inner<'tcx>(
     passes: &[&dyn MirPass<'tcx>],
     phase_change: Option<MirPhase>,
     validate_each: bool,
+    optimizations: Optimizations,
 ) {
     let overridden_passes = &tcx.sess.opts.unstable_opts.mir_enable_passes;
     trace!(?overridden_passes);
@@ -233,7 +272,7 @@ fn run_passes_inner<'tcx>(
         for pass in passes {
             let name = pass.name();
 
-            if !should_run_pass(tcx, *pass) {
+            if !should_run_pass(tcx, *pass, optimizations) {
                 continue;
             };
 

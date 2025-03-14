@@ -3,7 +3,6 @@
 //@ compile-flags: -Copt-level=3 -Ctarget-cpu=x86-64
 
 #![crate_type = "lib"]
-#![feature(target_feature_11)]
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
@@ -13,7 +12,7 @@ use std::arch::x86_64::*;
 #[cfg(target_arch = "x86_64")]
 #[target_feature(enable = "avx")]
 fn with_avx(x: __m256) -> __m256 {
-    // CHECK: fadd
+    // CHECK: fadd <8 x float>
     let add = {
         #[inline(always)]
         |x, y| unsafe { _mm256_add_ps(x, y) }
@@ -25,14 +24,10 @@ fn with_avx(x: __m256) -> __m256 {
 #[no_mangle]
 #[cfg(target_arch = "x86_64")]
 unsafe fn without_avx(x: __m256) -> __m256 {
-    // CHECK-NOT: fadd
+    // CHECK-NOT: fadd <8 x float>
     let add = {
         #[inline(always)]
         |x, y| unsafe { _mm256_add_ps(x, y) }
     };
     add(x, x)
 }
-
-// Don't allow the above CHECK-NOT to accidentally match a commit hash in the
-// compiler version.
-// CHECK-LABEL: rustc version

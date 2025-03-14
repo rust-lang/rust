@@ -238,9 +238,7 @@ pub fn set_permissions<P: AsRef<Path>>(path: P, perm: std::fs::Permissions) {
     ));
 }
 
-/// A function which prints all file names in the directory `dir` similarly to Unix's `ls`.
-/// Useful for debugging.
-/// Usage: `eprintln!("{:#?}", shallow_find_dir_entries(some_dir));`
+/// List directory entries immediately under the given `dir`.
 #[track_caller]
 pub fn shallow_find_dir_entries<P: AsRef<Path>>(dir: P) -> Vec<PathBuf> {
     let paths = read_dir(dir);

@@ -7,7 +7,7 @@ edition = "2021"
 build_helper = { path = "../../build_helper" }
 env_logger = "0.11"
 log = "0.4"
-anyhow = { version = "1", features = ["backtrace"] }
+anyhow = "1"
 humantime = "2"
 humansize = "2"
 sysinfo = { version = "0.31.2", default-features = false, features = ["disk"] }

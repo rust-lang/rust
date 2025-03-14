@@ -20,6 +20,7 @@ pub struct AssistConfig {
     pub assist_emit_must_use: bool,
     pub term_search_fuel: u64,
     pub term_search_borrowck: bool,
+    pub code_action_grouping: bool,
 }
 
 impl AssistConfig {
@@ -28,6 +29,7 @@ impl AssistConfig {
             prefer_no_std: self.prefer_no_std,
             prefer_prelude: self.prefer_prelude,
             prefer_absolute: self.prefer_absolute,
+            allow_unstable: true,
         }
     }
 }

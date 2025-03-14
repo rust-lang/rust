@@ -2,7 +2,7 @@ error: implementation of `Foo` is not general enough
   --> $DIR/hrtb-just-for-static.rs:24:5
    |
 LL |     want_hrtb::<StaticInt>()
-   |     ^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^ implementation of `Foo` is not general enough
    |
    = note: `StaticInt` must implement `Foo<&'0 isize>`, for any lifetime `'0`...
    = note: ...but it actually implements `Foo<&'static isize>`

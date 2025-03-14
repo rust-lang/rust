@@ -1,9 +1,11 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetOptions, cvs};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, Target, TargetMetadata, TargetOptions, cvs,
+};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "mipsel-sony-psx".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("MIPS (LE) Sony PlayStation 1 (PSX)".into()),
             tier: Some(3),
             host_tools: Some(false),

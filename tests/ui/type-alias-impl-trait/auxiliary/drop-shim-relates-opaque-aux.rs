@@ -3,6 +3,7 @@
 #![feature(type_alias_impl_trait)]
 
 type Tait = impl Sized;
+#[define_opaque(Tait)]
 fn _constrain() -> Tait {}
 
 struct WrapperWithDrop<T>(T);

@@ -2,9 +2,9 @@
 
 //@ edition: 2024
 //@ compile-flags:--test
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ normalize-stdout-test: ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"
 
 #![deny(warnings)]
 

@@ -62,6 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
             && let Some(closure_body) = desugared_async_block(cx, block)
             && let Node::Item(Item {vis_span, ..}) | Node::ImplItem(ImplItem {vis_span, ..}) =
                 cx.tcx.hir_node_by_def_id(fn_def_id)
+            && !span.from_expansion()
         {
             let header_span = span.with_hi(ret_ty.span.hi());
 
@@ -74,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                     if let Some(vis_snip) = vis_span.get_source_text(cx)
                         && let Some(header_snip) = header_span.get_source_text(cx)
                         && let Some(ret_pos) = position_before_rarrow(&header_snip)
-                        && let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output)
+                        && let Some((_, ret_snip)) = suggested_ret(cx, output)
                     {
                         let header_snip = if vis_snip.is_empty() {
                             format!("async {}", &header_snip[..ret_pos])
@@ -82,19 +83,14 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             format!("{} async {}", vis_snip, &header_snip[vis_snip.len() + 1..ret_pos])
                         };
 
-                        let help = format!("make the function `async` and {ret_sugg}");
-                        diag.span_suggestion(
-                            header_span,
-                            help,
-                            format!("{header_snip}{ret_snip}"),
-                            Applicability::MachineApplicable,
-                        );
+                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span)).to_string();
 
-                        let body_snip = snippet_block(cx, closure_body.value.span, "..", Some(block.span));
-                        diag.span_suggestion(
-                            block.span,
-                            "move the body of the async block to the enclosing function",
-                            body_snip,
+                        diag.multipart_suggestion(
+                            "make the function `async` and return the output of the future directly",
+                            vec![
+                                (header_span, format!("{header_snip}{ret_snip}")),
+                                (block.span, body_snip),
+                            ],
                             Applicability::MachineApplicable,
                         );
                     }
@@ -173,7 +169,7 @@ fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>)
         && let ClosureKind::Coroutine(CoroutineKind::Desugared(CoroutineDesugaring::Async, CoroutineSource::Block)) =
             kind
     {
-        return Some(cx.tcx.hir().body(body));
+        return Some(cx.tcx.hir_body(body));
     }
 
     None

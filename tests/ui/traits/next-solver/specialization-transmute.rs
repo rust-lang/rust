@@ -1,5 +1,4 @@
 //@ compile-flags: -Znext-solver
-//~^ ERROR cannot normalize `<T as Default>::Id: '_`
 #![feature(specialization)]
 //~^ WARN the feature `specialization` is incomplete
 
@@ -14,6 +13,7 @@ impl<T> Default for T {
     // This will be fixed by #111994
     fn intu(&self) -> &Self::Id {
         //~^ ERROR type annotations needed
+        //~| ERROR cannot normalize `<T as Default>::Id: '_`
         self //~ ERROR cannot satisfy
     }
 }

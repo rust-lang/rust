@@ -1,7 +1,7 @@
 // ignore-tidy-linelength
 // Strip out raw byte dumps to make comparison platform-independent:
-//@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
-//@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
 #![allow(invalid_value)]
 
 use std::mem;
@@ -63,7 +63,7 @@ const DATA_FN_PTR: fn() = unsafe { mem::transmute(&13) };
 const UNALIGNED_READ: () = unsafe {
     let x = &[0u8; 4];
     let ptr = x.as_ptr().cast::<u32>();
-    ptr.read(); //~ inside `UNALIGNED_READ`
+    ptr.read(); //~ ERROR evaluation of constant value failed
 };
 
 

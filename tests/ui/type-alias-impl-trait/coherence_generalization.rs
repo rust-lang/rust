@@ -6,6 +6,7 @@
 #![feature(type_alias_impl_trait)]
 trait Trait {}
 type Opaque<T> = impl Sized;
+#[define_opaque(Opaque)]
 fn foo<T>() -> Opaque<T> {
     ()
 }

@@ -229,6 +229,27 @@ impl<B, C> ControlFlow<B, C> {
     }
 }
 
+impl<T> ControlFlow<T, T> {
+    /// Extracts the value `T` that is wrapped by `ControlFlow<T, T>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(control_flow_into_value)]
+    /// use std::ops::ControlFlow;
+    ///
+    /// assert_eq!(ControlFlow::<i32, i32>::Break(1024).into_value(), 1024);
+    /// assert_eq!(ControlFlow::<i32, i32>::Continue(512).into_value(), 512);
+    /// ```
+    #[unstable(feature = "control_flow_into_value", issue = "137461")]
+    #[rustc_allow_const_fn_unstable(const_precise_live_drops)]
+    pub const fn into_value(self) -> T {
+        match self {
+            ControlFlow::Continue(x) | ControlFlow::Break(x) => x,
+        }
+    }
+}
+
 /// These are used only as part of implementing the iterator adapters.
 /// They have mediocre names and non-obvious semantics, so aren't
 /// currently on a path to potential stabilization.

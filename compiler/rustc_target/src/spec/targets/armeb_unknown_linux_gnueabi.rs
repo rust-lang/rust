@@ -1,10 +1,11 @@
-use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions, base};
+use rustc_abi::Endian;
+
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
         llvm_target: "armeb-unknown-linux-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Arm BE8 the default Arm big-endian architecture since Armv6".into()),
             tier: Some(3),
             host_tools: None, // ?
@@ -15,6 +16,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             features: "+strict-align,+v8,+crc".into(),
             endian: Endian::Big,
             max_atomic_width: Some(64),

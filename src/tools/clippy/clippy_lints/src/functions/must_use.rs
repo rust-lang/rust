@@ -5,7 +5,6 @@ use rustc_hir::def_id::DefIdSet;
 use rustc_hir::{self as hir, Attribute, QPath};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{Span, sym};
 
@@ -22,18 +21,23 @@ use core::ops::ControlFlow;
 use super::{DOUBLE_MUST_USE, MUST_USE_CANDIDATE, MUST_USE_UNIT};
 
 pub(super) fn check_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
-    let attrs = cx.tcx.hir().attrs(item.hir_id());
+    let attrs = cx.tcx.hir_attrs(item.hir_id());
     let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
-    if let hir::ItemKind::Fn(ref sig, _generics, ref body_id) = item.kind {
+    if let hir::ItemKind::Fn {
+        ref sig,
+        body: ref body_id,
+        ..
+    } = item.kind
+    {
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if is_public && !is_proc_macro(attrs) && !attrs.iter().any(|a| a.has_name(sym::no_mangle)) {
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -47,15 +51,15 @@ pub(super) fn check_impl_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Imp
     if let hir::ImplItemKind::Fn(ref sig, ref body_id) = item.kind {
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if is_public && !is_proc_macro(attrs) && trait_ref_of_method(cx, item.owner_id.def_id).is_none() {
             check_must_use_candidate(
                 cx,
                 sig.decl,
-                cx.tcx.hir().body(*body_id),
+                cx.tcx.hir_body(*body_id),
                 item.span,
                 item.owner_id,
                 item.span.with_hi(sig.decl.output.span().hi()),
@@ -70,12 +74,12 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
         let is_public = cx.effective_visibilities.is_exported(item.owner_id.def_id);
         let fn_header_span = item.span.with_hi(sig.decl.output.span().hi());
 
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         let attr = cx.tcx.get_attr(item.owner_id, sym::must_use);
         if let Some(attr) = attr {
-            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, sig);
+            check_needless_must_use(cx, sig.decl, item.owner_id, item.span, fn_header_span, attr, attrs, sig);
         } else if let hir::TraitFn::Provided(eid) = *eid {
-            let body = cx.tcx.hir().body(eid);
+            let body = cx.tcx.hir_body(eid);
             if attr.is_none() && is_public && !is_proc_macro(attrs) {
                 check_must_use_candidate(
                     cx,
@@ -91,6 +95,8 @@ pub(super) fn check_trait_item<'tcx>(cx: &LateContext<'tcx>, item: &'tcx hir::Tr
     }
 }
 
+// FIXME: needs to be an EARLY LINT. all attribute lints should be
+#[allow(clippy::too_many_arguments)]
 fn check_needless_must_use(
     cx: &LateContext<'_>,
     decl: &hir::FnDecl<'_>,
@@ -98,21 +104,43 @@ fn check_needless_must_use(
     item_span: Span,
     fn_header_span: Span,
     attr: &Attribute,
+    attrs: &[Attribute],
     sig: &FnSig<'_>,
 ) {
-    if in_external_macro(cx.sess(), item_span) {
+    if item_span.in_external_macro(cx.sess().source_map()) {
         return;
     }
     if returns_unit(decl) {
-        span_lint_and_then(
-            cx,
-            MUST_USE_UNIT,
-            fn_header_span,
-            "this unit-returning function has a `#[must_use]` attribute",
-            |diag| {
-                diag.span_suggestion(attr.span, "remove the attribute", "", Applicability::MachineApplicable);
-            },
-        );
+        if attrs.len() == 1 {
+            span_lint_and_then(
+                cx,
+                MUST_USE_UNIT,
+                fn_header_span,
+                "this unit-returning function has a `#[must_use]` attribute",
+                |diag| {
+                    diag.span_suggestion(
+                        attr.span(),
+                        "remove the attribute",
+                        "",
+                        Applicability::MachineApplicable,
+                    );
+                },
+            );
+        } else {
+            // When there are multiple attributes, it is not sufficient to simply make `must_use` empty, see
+            // issue #12320.
+            // FIXME(jdonszelmann): this used to give a machine-applicable fix. However, it was super fragile,
+            // honestly looked incorrect, and is a little hard to support for a little bit now. Some day this
+            // could be re-added.
+            span_lint_and_help(
+                cx,
+                MUST_USE_UNIT,
+                fn_header_span,
+                "this unit-returning function has a `#[must_use]` attribute",
+                Some(attr.span()),
+                "remove `must_use`",
+            );
+        }
     } else if attr.value_str().is_none() && is_must_use_ty(cx, return_ty(cx, item_id)) {
         // Ignore async functions unless Future::Output type is a must_use type
         if sig.header.is_async() {
@@ -121,7 +149,7 @@ fn check_needless_must_use(
                 && !is_must_use_ty(cx, future_ty)
             {
                 return;
-            };
+            }
         }
 
         span_lint_and_help(
@@ -146,7 +174,7 @@ fn check_must_use_candidate<'tcx>(
 ) {
     if has_mutable_arg(cx, body)
         || mutates_static(cx, body)
-        || in_external_macro(cx.sess(), item_span)
+        || item_span.in_external_macro(cx.sess().source_map())
         || returns_unit(decl)
         || !cx.effective_visibilities.is_exported(item_id.def_id)
         || is_must_use_ty(cx, return_ty(cx, item_id))

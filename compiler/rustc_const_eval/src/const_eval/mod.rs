@@ -1,7 +1,7 @@
 // Not in interpret to make sure we do not use private implementation details
 
 use rustc_abi::VariantIdx;
-use rustc_middle::query::{Key, TyCtxtAt};
+use rustc_middle::query::Key;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_middle::{bug, mir};
@@ -35,16 +35,17 @@ pub(crate) type ValTreeCreationResult<'tcx> = Result<ty::ValTree<'tcx>, ValTreeC
 
 #[instrument(skip(tcx), level = "debug")]
 pub(crate) fn try_destructure_mir_constant_for_user_output<'tcx>(
-    tcx: TyCtxtAt<'tcx>,
+    tcx: TyCtxt<'tcx>,
     val: mir::ConstValue<'tcx>,
     ty: Ty<'tcx>,
 ) -> Option<mir::DestructuredConstant<'tcx>> {
     let typing_env = ty::TypingEnv::fully_monomorphized();
-    let (ecx, op) = mk_eval_cx_for_const_val(tcx, typing_env, val, ty)?;
+    // FIXME: use a proper span here?
+    let (ecx, op) = mk_eval_cx_for_const_val(tcx.at(rustc_span::DUMMY_SP), typing_env, val, ty)?;
 
     // We go to `usize` as we cannot allocate anything bigger anyway.
     let (field_count, variant, down) = match ty.kind() {
-        ty::Array(_, len) => (len.try_to_target_usize(tcx.tcx)? as usize, None, op),
+        ty::Array(_, len) => (len.try_to_target_usize(tcx)? as usize, None, op),
         ty::Adt(def, _) if def.variants().is_empty() => {
             return None;
         }

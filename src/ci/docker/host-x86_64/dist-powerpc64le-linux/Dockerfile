@@ -3,8 +3,8 @@ FROM ubuntu:22.04
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
 
-COPY scripts/crosstool-ng-git.sh /scripts/
-RUN sh /scripts/crosstool-ng-git.sh
+COPY scripts/crosstool-ng.sh /scripts/
+RUN sh /scripts/crosstool-ng.sh
 
 COPY scripts/rustbuild-setup.sh /scripts/
 RUN sh /scripts/rustbuild-setup.sh
@@ -18,7 +18,7 @@ RUN /scripts/crosstool-ng-build.sh
 WORKDIR /build
 
 RUN apt-get install -y --no-install-recommends rpm2cpio cpio
-COPY host-x86_64/dist-powerpc64le-linux/shared.sh host-x86_64/dist-powerpc64le-linux/build-powerpc64le-toolchain.sh /build/
+COPY scripts/shared.sh host-x86_64/dist-powerpc64le-linux/build-powerpc64le-toolchain.sh /build/
 RUN ./build-powerpc64le-toolchain.sh
 
 COPY scripts/sccache.sh /scripts/

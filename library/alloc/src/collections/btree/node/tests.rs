@@ -6,7 +6,7 @@ use crate::string::String;
 
 impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> {
     // Asserts that the back pointer in each reachable node points to its parent.
-    pub fn assert_back_pointers(self) {
+    pub(crate) fn assert_back_pointers(self) {
         if let ForceResult::Internal(node) = self.force() {
             for idx in 0..=node.len() {
                 let edge = unsafe { Handle::new_edge(node, idx) };
@@ -20,7 +20,7 @@ impl<'a, K: 'a, V: 'a> NodeRef<marker::Immut<'a>, K, V, marker::LeafOrInternal> 
     // Renders a multi-line display of the keys in order and in tree hierarchy,
     // picturing the tree growing sideways from its root on the left to its
     // leaves on the right.
-    pub fn dump_keys(self) -> String
+    pub(crate) fn dump_keys(self) -> String
     where
         K: Debug,
     {
@@ -92,8 +92,8 @@ fn test_partial_eq() {
 #[cfg(target_arch = "x86_64")]
 #[cfg_attr(any(miri, randomized_layouts), ignore)] // We'd like to run Miri with layout randomization
 fn test_sizes() {
-    assert_eq!(core::mem::size_of::<LeafNode<(), ()>>(), 16);
-    assert_eq!(core::mem::size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 2 * 8);
-    assert_eq!(core::mem::size_of::<InternalNode<(), ()>>(), 16 + (CAPACITY + 1) * 8);
-    assert_eq!(core::mem::size_of::<InternalNode<i64, i64>>(), 16 + (CAPACITY * 3 + 1) * 8);
+    assert_eq!(size_of::<LeafNode<(), ()>>(), 16);
+    assert_eq!(size_of::<LeafNode<i64, i64>>(), 16 + CAPACITY * 2 * 8);
+    assert_eq!(size_of::<InternalNode<(), ()>>(), 16 + (CAPACITY + 1) * 8);
+    assert_eq!(size_of::<InternalNode<i64, i64>>(), 16 + (CAPACITY * 3 + 1) * 8);
 }

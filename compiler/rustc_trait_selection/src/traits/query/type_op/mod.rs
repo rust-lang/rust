@@ -92,6 +92,7 @@ pub trait QueryTypeOp<'tcx>: fmt::Debug + Copy + TypeFoldable<TyCtxt<'tcx>> + 't
     fn perform_locally_with_next_solver(
         ocx: &ObligationCtxt<'_, 'tcx>,
         key: ParamEnvAnd<'tcx, Self>,
+        span: Span,
     ) -> Result<Self::QueryResponse, NoSolution>;
 
     fn fully_perform_into(
@@ -152,7 +153,7 @@ where
         if infcx.next_trait_solver() {
             return Ok(scrape_region_constraints(
                 infcx,
-                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self),
+                |ocx| QueryTypeOp::perform_locally_with_next_solver(ocx, self, span),
                 "query type op",
                 span,
             )?

@@ -6,8 +6,9 @@ LL |     if let Some(_) == x {}
    |
 help: consider using `=` here
    |
-LL |     if let Some(_) = x {}
-   |                    ~
+LL -     if let Some(_) == x {}
+LL +     if let Some(_) = x {}
+   |
 
 error[E0308]: mismatched types
   --> $DIR/issue-103587.rs:7:8

@@ -2,9 +2,10 @@
 
 #![feature(type_alias_impl_trait)]
 
-use std::iter::{once, Chain};
+use std::iter::{Chain, once};
 
 type I<A> = Chain<A, impl Iterator<Item = &'static str>>;
+#[define_opaque(I)]
 fn test2<A: Iterator<Item = &'static str>>(x: A) -> I<A> {
     x.chain(once("5"))
 }

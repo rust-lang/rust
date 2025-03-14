@@ -41,7 +41,9 @@ impl Category {
             | ExprKind::UpvarRef { .. }
             | ExprKind::VarRef { .. }
             | ExprKind::PlaceTypeAscription { .. }
-            | ExprKind::ValueTypeAscription { .. } => Some(Category::Place),
+            | ExprKind::ValueTypeAscription { .. }
+            | ExprKind::PlaceUnwrapUnsafeBinder { .. }
+            | ExprKind::ValueUnwrapUnsafeBinder { .. } => Some(Category::Place),
 
             ExprKind::LogicalOp { .. }
             | ExprKind::Match { .. }
@@ -54,6 +56,7 @@ impl Category {
             | ExprKind::RawBorrow { .. }
             | ExprKind::Yield { .. }
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::InlineAsm { .. } => Some(Category::Rvalue(RvalueFunc::Into)),
 
             ExprKind::Array { .. }
@@ -68,7 +71,8 @@ impl Category {
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::ThreadLocalRef(_)
-            | ExprKind::OffsetOf { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
+            | ExprKind::OffsetOf { .. }
+            | ExprKind::WrapUnsafeBinder { .. } => Some(Category::Rvalue(RvalueFunc::AsRvalue)),
 
             ExprKind::ConstBlock { .. }
             | ExprKind::Literal { .. }

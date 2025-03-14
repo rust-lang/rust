@@ -1,5 +1,6 @@
 use crate::spec::{
-    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetOptions, base,
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, TargetOptions,
+    base,
 };
 
 pub(crate) fn target() -> Target {
@@ -15,7 +16,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-linux-android".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("64-bit x86 Android".into()),
             tier: Some(2),
             host_tools: Some(false),

@@ -12,7 +12,7 @@ use super::types::TestDesc;
 // Return code for secondary process.
 // Start somewhere other than 0 so we know the return code means what we think
 // it means.
-pub const TR_OK: i32 = 50;
+pub(crate) const TR_OK: i32 = 50;
 
 // On Windows we use __fastfail to abort, which is documented to use this
 // exception code.
@@ -39,7 +39,7 @@ pub enum TestResult {
 
 /// Creates a `TestResult` depending on the raw result of test execution
 /// and associated data.
-pub fn calc_result<'a>(
+pub(crate) fn calc_result<'a>(
     desc: &TestDesc,
     task_result: Result<(), &'a (dyn Any + 'static + Send)>,
     time_opts: Option<&time::TestTimeOptions>,
@@ -93,7 +93,7 @@ pub fn calc_result<'a>(
 }
 
 /// Creates a `TestResult` depending on the exit code of test subprocess.
-pub fn get_result_from_exit_code(
+pub(crate) fn get_result_from_exit_code(
     desc: &TestDesc,
     status: ExitStatus,
     time_opts: Option<&time::TestTimeOptions>,

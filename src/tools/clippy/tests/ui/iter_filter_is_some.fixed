@@ -13,45 +13,48 @@ use std::collections::HashMap;
 fn main() {
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         let _ = vec![Some(1), None, Some(3)]
             .into_iter()
             .flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
+
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 
     {
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
 
         #[rustfmt::skip]
         let _ = vec![Some(1), None, Some(3)].into_iter().flatten();
-        //~^ HELP: consider using `flatten` instead
+        //~^ iter_filter_is_some
     }
 }
 

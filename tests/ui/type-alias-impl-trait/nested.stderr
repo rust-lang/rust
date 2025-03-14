@@ -1,18 +1,18 @@
-error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/nested.rs:10:4
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/nested.rs:11:4
    |
 LL | fn bar() -> Bar {
    |    ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/nested.rs:3:12
    |
 LL | type Foo = impl std::fmt::Debug;
    |            ^^^^^^^^^^^^^^^^^^^^
 
 error[E0277]: `Bar` doesn't implement `Debug`
-  --> $DIR/nested.rs:16:22
+  --> $DIR/nested.rs:17:22
    |
 LL |     println!("{:?}", bar());
    |                      ^^^^^ `Bar` cannot be formatted using `{:?}` because it doesn't implement `Debug`

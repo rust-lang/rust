@@ -58,7 +58,7 @@ pub fn futex_wait(futex: &AtomicU32, expected: u32, timeout: Option<Duration>) -
                         _clockid: libc::CLOCK_MONOTONIC as u32,
                     });
                     let umtx_timeout_ptr = umtx_timeout.as_ref().map_or(null(), |t| t as *const _);
-                    let umtx_timeout_size = umtx_timeout.as_ref().map_or(0, |t| crate::mem::size_of_val(t));
+                    let umtx_timeout_size = umtx_timeout.as_ref().map_or(0, |t| size_of_val(t));
                     libc::_umtx_op(
                         futex as *const AtomicU32 as *mut _,
                         libc::UMTX_OP_WAIT_UINT_PRIVATE,
@@ -219,7 +219,7 @@ pub fn futex_wake_all(futex: &AtomicU32) {
 }
 
 #[cfg(target_os = "emscripten")]
-extern "C" {
+unsafe extern "C" {
     fn emscripten_futex_wake(addr: *const AtomicU32, count: libc::c_int) -> libc::c_int;
     fn emscripten_futex_wait(
         addr: *const AtomicU32,
@@ -267,7 +267,7 @@ pub mod zircon {
     pub const ZX_ERR_BAD_STATE: zx_status_t = -20;
     pub const ZX_ERR_TIMED_OUT: zx_status_t = -21;
 
-    extern "C" {
+    unsafe extern "C" {
         pub fn zx_clock_get_monotonic() -> zx_time_t;
         pub fn zx_futex_wait(
             value_ptr: *const zx_futex_t,

@@ -20,9 +20,11 @@ const HOVER_BASE_CONFIG: HoverConfig = HoverConfig {
     max_trait_assoc_items_count: None,
     max_fields_count: Some(5),
     max_enum_variants_count: Some(5),
+    max_subst_ty_len: super::SubstTyLen::Unlimited,
+    show_drop_glue: true,
 };
 
-fn check_hover_no_result(ra_fixture: &str) {
+fn check_hover_no_result(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -34,7 +36,7 @@ fn check_hover_no_result(ra_fixture: &str) {
 }
 
 #[track_caller]
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -54,7 +56,7 @@ fn check(ra_fixture: &str, expect: Expect) {
 #[track_caller]
 fn check_hover_fields_limit(
     fields_count: impl Into<Option<usize>>,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -80,7 +82,7 @@ fn check_hover_fields_limit(
 #[track_caller]
 fn check_hover_enum_variants_limit(
     variants_count: impl Into<Option<usize>>,
-    ra_fixture: &str,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
     expect: Expect,
 ) {
     let (analysis, position) = fixture::position(ra_fixture);
@@ -104,7 +106,11 @@ fn check_hover_enum_variants_limit(
 }
 
 #[track_caller]
-fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
+fn check_assoc_count(
+    count: usize,
+    #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    expect: Expect,
+) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -125,7 +131,7 @@ fn check_assoc_count(count: usize, ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_links(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -142,7 +148,7 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_memory_layout(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -159,7 +165,7 @@ fn check_hover_no_memory_layout(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
+fn check_hover_no_markdown(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, position) = fixture::position(ra_fixture);
     let hover = analysis
         .hover(
@@ -180,7 +186,7 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
     expect.assert_eq(&actual)
 }
 
-fn check_actions(ra_fixture: &str, expect: Expect) {
+fn check_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, file_id, position) = fixture::range_or_position(ra_fixture);
     let mut hover = analysis
         .hover(
@@ -205,13 +211,13 @@ fn check_actions(ra_fixture: &str, expect: Expect) {
     expect.assert_debug_eq(&hover.info.actions)
 }
 
-fn check_hover_range(ra_fixture: &str, expect: Expect) {
+fn check_hover_range(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
     let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap().unwrap();
     expect.assert_eq(hover.info.markup.as_str())
 }
 
-fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
+fn check_hover_range_actions(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (analysis, range) = fixture::range(ra_fixture);
     let mut hover = analysis
         .hover(&HoverConfig { links_in_hover: true, ..HOVER_BASE_CONFIG }, range)
@@ -233,7 +239,7 @@ fn check_hover_range_actions(ra_fixture: &str, expect: Expect) {
     expect.assert_debug_eq(&hover.info.actions);
 }
 
-fn check_hover_range_no_results(ra_fixture: &str) {
+fn check_hover_range_no_results(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
     let (analysis, range) = fixture::range(ra_fixture);
     let hover = analysis.hover(&HOVER_BASE_CONFIG, range).unwrap();
     assert!(hover.is_none());
@@ -298,6 +304,7 @@ m!(ab$0c);
             ---
 
             Outer
+
             ---
 
             ```rust
@@ -347,7 +354,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
             ___
@@ -371,7 +377,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
             ___
@@ -406,7 +411,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl FnOnce()
             ```
             ___
@@ -436,7 +440,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl FnMut()
             ```
             ___
@@ -462,7 +465,6 @@ fn main() {
 "#,
         expect![[r#"
             ```rust
-            {closure#0}
             impl FnOnce() -> S2
             ```
             ___
@@ -566,6 +568,10 @@ fn main() {
             ---
 
             size = 8, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -811,6 +817,10 @@ struct Foo { fiel$0d_a: u8, field_b: i32, field_c: i16 }
             ---
 
             size = 1, align = 1, offset = 6
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -862,6 +872,10 @@ fn main() {
             ---
 
             size = 4, align = 4, offset = 0
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -932,6 +946,10 @@ struct Foo$0(pub u32) where u32: Copy;
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -958,6 +976,10 @@ struct Foo$0 { field: u32 }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check(
@@ -983,6 +1005,10 @@ struct Foo$0 where u32: Copy { field: u32 }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1012,6 +1038,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1035,6 +1065,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1061,6 +1095,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 16 (0x10), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1082,6 +1120,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1103,6 +1145,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 
@@ -1126,6 +1172,10 @@ fn hover_record_struct_limit() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1151,6 +1201,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1172,6 +1226,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1193,6 +1251,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 16 (0x10), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1214,6 +1276,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_fields_limit(
@@ -1235,6 +1301,10 @@ fn hover_record_variant_limit() {
             ---
 
             size = 12 (0xC), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1261,6 +1331,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1283,6 +1357,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1302,6 +1380,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1321,6 +1403,10 @@ fn hover_enum_limit() {
             ---
 
             size = 1, align = 1, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_enum_variants_limit(
@@ -1357,7 +1443,11 @@ fn hover_enum_limit() {
 
             ---
 
-            size = 12 (0xC), align = 4, niches = 4294967288
+            size = 12 (0xC), align = 4, niches = a lot
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1384,6 +1474,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1406,6 +1500,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1425,6 +1523,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
     check_hover_fields_limit(
@@ -1444,6 +1546,10 @@ fn hover_union_limit() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1470,6 +1576,10 @@ struct Foo$0 where u32: Copy;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -1492,6 +1602,10 @@ type Fo$0o: Trait = S where T: Trait;
             where
                 T: Trait,
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1641,6 +1755,10 @@ fn main() {
             ---
 
             size = 8, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
     check_hover_range(
@@ -1696,6 +1814,10 @@ fn main() { let b$0ar = Some(12); }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -1720,6 +1842,10 @@ enum Option<T> {
             ```rust
             None
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -1783,6 +1909,10 @@ fn hover_for_local_variable_pat() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -1815,6 +1945,10 @@ fn hover_for_param_edge() {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -1837,6 +1971,10 @@ fn hover_for_param_with_multiple_traits() {
             ```rust
             _x: impl Deref<Target = u8> + DerefMut<Target = u8>
             ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
         "#]],
     )
 }
@@ -1863,6 +2001,10 @@ fn main() { let foo_$0test = Thing::new(); }
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     )
 }
@@ -2322,6 +2464,144 @@ fn foo(Foo { b$0ar }: &Foo) {}
 }
 
 #[test]
+fn test_hover_show_type_def_for_subst() {
+    check_actions(
+        r#"
+fn f<T>(t: T) {
+
+}
+
+struct S;
+
+fn test() {
+    let a = S;
+    f$0(a);
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 3,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::S",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 20..29,
+                                focus_range: 27..28,
+                                name: "S",
+                                kind: Struct,
+                                description: "struct S",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_show_type_def_for_func_param() {
+    check_actions(
+        r#"
+struct Bar;
+fn f(b: Bar) {
+
+}
+
+fn test() {
+    let b = Bar;
+    f$0(b);
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 15,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..11,
+                                focus_range: 7..10,
+                                name: "Bar",
+                                kind: Struct,
+                                description: "struct Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn test_hover_show_type_def_for_trait_bound() {
+    check_actions(
+        r#"
+trait Bar {}
+fn f<T: Bar>(b: T) {
+
+}
+
+fn test() {
+    f$0();
+}
+"#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 16,
+                    },
+                ),
+                GoToType(
+                    [
+                        HoverGotoTypeData {
+                            mod_path: "ra_test_fixture::Bar",
+                            nav: NavigationTarget {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                full_range: 0..12,
+                                focus_range: 6..9,
+                                name: "Bar",
+                                kind: Trait,
+                                description: "trait Bar",
+                            },
+                        },
+                    ],
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
 fn test_hover_non_ascii_space_doc() {
     check(
         "
@@ -2474,6 +2754,10 @@ fn test_hover_function_pointer_show_identifiers() {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2496,6 +2780,10 @@ fn test_hover_function_pointer_no_identifier() {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2742,6 +3030,10 @@ pub struct B$0ar
 
             ---
 
+            does not contain types with destructors (drop glue); doesn't have a destructor
+
+            ---
+
             [external](https://www.google.com)
         "#]],
     );
@@ -2770,6 +3062,10 @@ pub struct B$0ar
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
 
             ---
 
@@ -2863,6 +3159,10 @@ fn test_hover_layout_of_variant() {
             ---
 
             size = 4, align = 2
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2884,6 +3184,10 @@ fn test_hover_layout_of_variant_generic() {
             ```rust
             None
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -2909,6 +3213,10 @@ struct S$0<T>(core::marker::PhantomData<T>);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -2937,6 +3245,10 @@ fn test_hover_layout_of_enum() {
             ---
 
             size = 16 (0x10), align = 8, niches = 254
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     );
 }
@@ -2955,6 +3267,10 @@ fn test_hover_no_memory_layout() {
             ```rust
             field_a: u8
             ```
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -2969,7 +3285,6 @@ fn main() {
         expect![[r#"
             *|*
             ```rust
-            {closure#0}
             impl Fn(i32) -> i32
             ```
 
@@ -3212,6 +3527,11 @@ fn foo_$0test() {}
                             },
                         },
                         cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: false,
+                            insta: false,
+                            snapbox: false,
+                        },
                     },
                 ),
             ]
@@ -3229,28 +3549,33 @@ mod tests$0 {
 }
 "#,
         expect![[r#"
-                [
-                    Runnable(
-                        Runnable {
-                            use_name_in_title: false,
-                            nav: NavigationTarget {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                full_range: 0..46,
-                                focus_range: 4..9,
-                                name: "tests",
-                                kind: Module,
-                                description: "mod tests",
-                            },
-                            kind: TestMod {
-                                path: "tests",
-                            },
-                            cfg: None,
+            [
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 0..46,
+                            focus_range: 4..9,
+                            name: "tests",
+                            kind: Module,
+                            description: "mod tests",
                         },
-                    ),
-                ]
-            "#]],
+                        kind: TestMod {
+                            path: "tests",
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: false,
+                            insta: false,
+                            snapbox: false,
+                        },
+                    },
+                ),
+            ]
+        "#]],
     );
 }
 
@@ -4254,6 +4579,11 @@ fn main() {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+
             ---
 
             ```rust
@@ -4267,6 +4597,10 @@ fn main() {
             ---
 
             size = 4, align = 4, offset = 0
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4292,6 +4626,10 @@ struct S$0T<const C: usize = 1, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4317,6 +4655,10 @@ struct S$0T<const C: usize = {40 + 2}, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4343,6 +4685,10 @@ struct S$0T<const C: usize = VAL, T = Foo>(T);
             ---
 
             size = 0, align = 1
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
         "#]],
     );
 }
@@ -4367,6 +4713,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4391,6 +4741,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4415,6 +4769,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4439,6 +4797,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4463,6 +4825,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4486,6 +4852,10 @@ impl Foo {
             ---
 
             size = 8, align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4510,6 +4880,10 @@ impl Foo {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4648,6 +5022,10 @@ fn hover_lifetime() {
             *'lifetime*
 
             ```rust
+            ra_test_fixture::foo
+            ```
+
+            ```rust
             'lifetime
             ```
         "#]],
@@ -4678,6 +5056,10 @@ impl<T: TraitA + TraitB> Foo<T$0> where T: Sized {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: TraitA + TraitB
             ```
         "#]],
@@ -4690,6 +5072,10 @@ impl<T> Foo<T$0> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T
@@ -4706,6 +5092,10 @@ impl<T: 'static> Foo<T$0> {}
             *T*
 
             ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
             T: 'static
             ```
         "#]],
@@ -4720,10 +5110,14 @@ fn hover_type_param_sized_bounds() {
 //- minicore: sized
 trait Trait {}
 struct Foo<T>(T);
-impl<T: Trait> Foo<T$0> {}
+impl<T$0: Trait> Foo<T> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: Trait
@@ -4735,10 +5129,14 @@ impl<T: Trait> Foo<T$0> {}
 //- minicore: sized
 trait Trait {}
 struct Foo<T>(T);
-impl<T: Trait + ?Sized> Foo<T$0> {}
+impl<T$0: Trait + ?Sized> Foo<T> {}
 "#,
         expect![[r#"
             *T*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             T: Trait + ?Sized
@@ -4761,8 +5159,16 @@ fn foo<T$0>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4778,8 +5184,16 @@ fn foo<T$0: Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4795,8 +5209,16 @@ fn foo<T$0: ?Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: ?Sized
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4813,8 +5235,16 @@ fn foo<T$0: Trait>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4831,8 +5261,16 @@ fn foo<T$0: Trait + Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4849,8 +5287,16 @@ fn foo<T$0: Trait + ?Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait + ?Sized
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4866,8 +5312,16 @@ fn foo<T$0: ?Sized + Sized + Sized>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4884,8 +5338,16 @@ fn foo<T$0: Sized + ?Sized + Sized + Trait>() {}
                 *T*
 
                 ```rust
+                ra_test_fixture::foo
+                ```
+
+                ```rust
                 T: Trait
                 ```
+
+                ---
+
+                invariant
             "#]],
         );
     }
@@ -4912,6 +5374,10 @@ type Fo$0o2 = Foo<2>;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -4925,6 +5391,10 @@ impl<const LEN: usize> Foo<LEN$0> {}
 "#,
         expect![[r#"
             *LEN*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
 
             ```rust
             const LEN: usize
@@ -4961,6 +5431,10 @@ enum E {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             This is a doc
         "#]],
     );
@@ -4987,6 +5461,10 @@ enum E {
             ---
 
             size = 1, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -5020,6 +5498,10 @@ enum E {
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             This is a doc
         "#]],
     );
@@ -5047,6 +5529,10 @@ enum E {
             ---
 
             size = 1, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -5176,6 +5662,10 @@ fn main() {
 
             ---
 
+            `Self` = `()`
+
+            ---
+
             false
         "#]],
     );
@@ -5205,6 +5695,10 @@ fn main() {
             ```rust
             const B: bool = false
             ```
+
+            ---
+
+            `Self` = `i32`
 
             ---
 
@@ -5970,6 +6464,10 @@ fn main() {
             ---
 
             size = 32 (0x20), align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -6020,7 +6518,7 @@ use foo::bar::{self$0};
             ```
 
             ```rust
-            mod bar
+            pub mod bar
             ```
 
             ---
@@ -7269,6 +7767,10 @@ enum Enum {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -7285,7 +7787,7 @@ enum Enum {
             *field*
 
             ```rust
-            ra_test_fixture::RecordV
+            ra_test_fixture::Enum::RecordV
             ```
 
             ```rust
@@ -7295,6 +7797,10 @@ enum Enum {
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -7765,7 +8271,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7794,7 +8300,7 @@ fn test() {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7824,7 +8330,7 @@ mod m {
             *foo*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
@@ -7854,7 +8360,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7883,7 +8389,7 @@ fn test() {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::S
             ```
 
             ```rust
@@ -7913,7 +8419,7 @@ mod m {
             *A*
 
             ```rust
-            ra_test_fixture::S
+            ra_test_fixture::m::inner::S
             ```
 
             ```rust
@@ -7965,6 +8471,10 @@ fn test() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8116,7 +8626,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀🦀\A
+            value of literal: ` 🦀🦀\A `
         "#]],
     );
     check(
@@ -8132,7 +8642,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀\u{1f980}\\\x41
+            value of literal: ` 🦀\u{1f980}\\\x41 `
         "#]],
     );
     check(
@@ -8154,7 +8664,7 @@ fsdghs";
             ```
             ___
 
-            value of literal (truncated up to newline): 🦀\u{1f980}\\\x41
+            value of literal (truncated up to newline): ` 🦀\u{1f980}\\\x41 `
         "#]],
     );
 }
@@ -8174,9 +8684,74 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀🦀\A
+            value of literal: ` 🦀🦀\A `
         "#]],
     );
+}
+
+#[test]
+fn rawstring_literal() {
+    check(
+        r#"
+fn main() {
+    $0r"`[^`]*`";
+}"#,
+        expect![[r#"
+            *r"`[^`]*`"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: ```` `[^`]*` ````
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"`";
+}"#,
+        expect![[r#"
+            *r"`"*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `` ` ``
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r"    ";
+}"#,
+        expect![[r#"
+            *r"    "*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `    `
+        "#]],
+    );
+    check(
+        r#"
+fn main() {
+    $0r" Hello World ";
+
+}"#,
+        expect![[r#"
+            *r" Hello World "*
+            ```rust
+            &str
+            ```
+            ___
+
+            value of literal: `  Hello World  `
+"#]],
+    )
 }
 
 #[test]
@@ -8194,7 +8769,7 @@ fn main() {
             ```
             ___
 
-            value of literal: [240, 159, 166, 128, 92]
+            value of literal: ` [240, 159, 166, 128, 92] `
         "#]],
     );
     check(
@@ -8210,7 +8785,7 @@ fn main() {
             ```
             ___
 
-            value of literal: [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92]
+            value of literal: ` [92, 120, 70, 48, 92, 120, 57, 70, 92, 120, 65, 54, 92, 120, 56, 48, 92, 92] `
         "#]],
     );
 }
@@ -8230,7 +8805,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 0xF0
+            value of literal: ` 0xF0 `
         "#]],
     );
     check(
@@ -8246,7 +8821,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 0x5C
+            value of literal: ` 0x5C `
         "#]],
     );
 }
@@ -8266,7 +8841,7 @@ fn main() {
             ```
             ___
 
-            value of literal: A
+            value of literal: ` A `
         "#]],
     );
     check(
@@ -8282,7 +8857,7 @@ fn main() {
             ```
             ___
 
-            value of literal: \
+            value of literal: ` \ `
         "#]],
     );
     check(
@@ -8298,7 +8873,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 🦀
+            value of literal: ` 🦀 `
         "#]],
     );
 }
@@ -8318,7 +8893,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3FF0000000000000)
+            value of literal: ` 1 (bits: 0x3FF0000000000000) `
         "#]],
     );
     check(
@@ -8334,7 +8909,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3C00)
+            value of literal: ` 1 (bits: 0x3C00) `
         "#]],
     );
     check(
@@ -8350,7 +8925,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3F800000)
+            value of literal: ` 1 (bits: 0x3F800000) `
         "#]],
     );
     check(
@@ -8366,7 +8941,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1 (bits: 0x3FFF0000000000000000000000000000)
+            value of literal: ` 1 (bits: 0x3FFF0000000000000000000000000000) `
         "#]],
     );
     check(
@@ -8382,7 +8957,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 134000000000000 (bits: 0x42DE77D399980000)
+            value of literal: ` 134000000000000 (bits: 0x42DE77D399980000) `
         "#]],
     );
     check(
@@ -8398,7 +8973,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 1523527134274733600000000 (bits: 0x44F429E9249F629B)
+            value of literal: ` 1523527134274733600000000 (bits: 0x44F429E9249F629B) `
         "#]],
     );
     check(
@@ -8434,7 +9009,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010)
+            value of literal: ` 34325236457856836345234 (0x744C659178614489D92|0b111010001001100011001011001000101111000011000010100010010001001110110010010) `
         "#]],
     );
     check(
@@ -8450,7 +9025,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 13412342421 (0x31F701A95|0b1100011111011100000001101010010101)
+            value of literal: ` 13412342421 (0x31F701A95|0b1100011111011100000001101010010101) `
         "#]],
     );
     check(
@@ -8466,7 +9041,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 306328611 (0x12423423|0b10010010000100011010000100011)
+            value of literal: ` 306328611 (0x12423423|0b10010010000100011010000100011) `
         "#]],
     );
     check(
@@ -8482,7 +9057,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 255 (0xFF|0b11111111)
+            value of literal: ` 255 (0xFF|0b11111111) `
         "#]],
     );
     check(
@@ -8498,7 +9073,7 @@ fn main() {
             ```
             ___
 
-            value of literal: 5349 (0x14E5|0b1010011100101)
+            value of literal: ` 5349 (0x14E5|0b1010011100101) `
         "#]],
     );
     check(
@@ -8549,6 +9124,10 @@ fn main(notable$0: u32) {}
             ---
 
             size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8641,6 +9220,10 @@ extern "C" {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8787,6 +9370,10 @@ struct Pedro$0<'a> {
             ---
 
             size = 16 (0x10), align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
         "#]],
     )
 }
@@ -8804,6 +9391,10 @@ fn main(a$0: impl T) {}
             ```rust
             a: impl T + ?Sized
             ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
         "#]],
     );
 }
@@ -8825,6 +9416,10 @@ fn main(a$0: T) {}
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -8878,6 +9473,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 }
@@ -9215,6 +9814,10 @@ type A$0 = B;
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             *This is the documentation for* `struct B`
 
             Docs for B
@@ -9245,6 +9848,10 @@ type A$0 = B;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
 
             ---
 
@@ -9282,6 +9889,10 @@ type A$0 = B;
 
             ---
 
+            does not contain types with destructors (drop glue)
+
+            ---
+
             *This is the documentation for* `struct C`
 
             Docs for C
@@ -9311,6 +9922,10 @@ type A$0 = B;
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9435,6 +10050,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9463,6 +10082,10 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
         "#]],
     );
 
@@ -9498,6 +10121,868 @@ fn main() {
             ---
 
             size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+        "#]],
+    );
+}
+
+#[test]
+fn subst_fn() {
+    check(
+        r#"
+struct Foo<T>(T);
+impl<T> Foo<T> {
+    fn foo<U>(v: T, u: U) {}
+}
+
+fn bar() {
+    Foo::fo$0o(123, false);
+}
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<T> Foo<T>
+            fn foo<U>(v: T, u: U)
+            ```
+
+            ---
+
+            `T` = `i32`, `U` = `bool`
+        "#]],
+    );
+    check(
+        r#"
+fn foo<T>(v: T) {}
+
+fn bar() {
+    fo$0o(123);
+}
+        "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            fn foo<T>(v: T)
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_record_constructor() {
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = $0Foo { field: 123 };
+}
+        "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T> {
+                field: T,
+            }
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let $0Foo { field: _ } = v;
+}
+        "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T> {
+                field: T,
+            }
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_method_call() {
+    check(
+        r#"
+struct Foo<T>(T);
+
+impl<U> Foo<U> {
+    fn bar<T>(self, v: T) {}
+}
+
+fn baz() {
+    Foo(123).bar$0("hello");
+}
+    "#,
+        expect![[r#"
+            *bar*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<U> Foo<U>
+            fn bar<T>(self, v: T)
+            ```
+
+            ---
+
+            `U` = `i32`, `T` = `&str`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_type_alias_do_not_work() {
+    // It is very hard to support subst for type aliases properly in all places because they are eagerly evaluated.
+    // We can show the user the subst for the underlying type instead but that'll be very confusing.
+    check(
+        r#"
+struct Foo<T, U> { a: T, b: U }
+type Alias<T> = Foo<T, i32>;
+
+fn foo() {
+    let _ = Alias$0 { a: true, b: 123 };
+}
+    "#,
+        expect![[r#"
+            *Alias*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type Alias<T> = Foo<T, i32>
+            ```
+        "#]],
+    );
+}
+
+#[test]
+fn subst_self() {
+    check(
+        r#"
+trait Trait<T> {
+    fn foo<U>(&self, v: U) {}
+}
+struct Struct<T>(T);
+impl<T> Trait<i64> for Struct<T> {}
+
+fn bar() {
+    Struct(123).foo$0(true);
+}
+    "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Trait
+            ```
+
+            ```rust
+            trait Trait<T>
+            fn foo<U>(&self, v: U)
+            ```
+
+            ---
+
+            `Self` = `Struct<i32>`, `T` = `i64`, `U` = `bool`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_with_lifetimes_and_consts() {
+    check(
+        r#"
+struct Foo<'a, const N: usize, T>(&[T; N]);
+
+impl<'a, T, const N: usize> Foo<'a, N, T> {
+    fn foo<'b, const Z: u32, U>(&self, v: U) {}
+}
+
+fn bar() {
+    Foo(&[1i8]).fo$0o::<456, _>("");
+}
+    "#,
+        expect![[r#"
+            *foo*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            impl<'a, T, const N: usize> Foo<'a, N, T>
+            fn foo<'b, const Z: u32, U>(&self, v: U)
+            ```
+
+            ---
+
+            `T` = `i8`, `U` = `&str`
+        "#]],
+    );
+}
+
+#[test]
+fn subst_field() {
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { $0field: 123 };
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let field = 123;
+    let v = Foo { field$0 };
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            let field: i32
+            ```
+
+            ---
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let Foo { field$0 } = v;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            let field: i32
+            ```
+
+            ---
+
+            size = 4, align = 4
+
+            ---
+
+            does not contain types with destructors (drop glue)
+
+            ---
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let Foo { field$0: _ } = v;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T> { field: T }
+
+fn bar() {
+    let v = Foo { field: 123 };
+    let _ = (&v).$0field;
+}
+    "#,
+        expect![[r#"
+            *field*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            field: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+    check(
+        r#"
+struct Foo<T>(T);
+
+fn bar() {
+    let v = Foo(123);
+    let _ = v.$00;
+}
+    "#,
+        expect![[r#"
+            *0*
+
+            ```rust
+            ra_test_fixture::Foo
+            ```
+
+            ```rust
+            0: T
+            ```
+
+            ---
+
+            `T` = `i32`
+        "#]],
+    );
+}
+
+#[test]
+fn i128_max() {
+    check(
+        r#"
+//- /core.rs library crate:core
+#![rustc_coherence_is_core]
+impl u128 {
+    pub const MAX: Self = 340_282_366_920_938_463_463_374_607_431_768_211_455u128;
+}
+impl i128 {
+    pub const MAX: Self = (u128::MAX >> 1) as Self;
+}
+
+//- /foo.rs crate:foo deps:core
+fn foo() {
+    let _ = i128::MAX$0;
+}
+        "#,
+        expect![
+            r#"
+            *MAX*
+
+            ```rust
+            core
+            ```
+
+            ```rust
+            pub const MAX: Self = 170141183460469231731687303715884105727 (0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)
+            ```
+        "#
+        ],
+    );
+}
+
+#[test]
+fn test_runnables_with_snapshot_tests() {
+    check_actions(
+        r#"
+//- /lib.rs crate:foo deps:expect_test,insta,snapbox
+use expect_test::expect;
+use insta::assert_debug_snapshot;
+use snapbox::Assert;
+
+#[test]
+fn test$0() {
+    let actual = "new25";
+    expect!["new25"].assert_eq(&actual);
+    Assert::new()
+        .action_env("SNAPSHOTS")
+        .eq(actual, snapbox::str!["new25"]);
+    assert_debug_snapshot!(actual);
+}
+
+//- /lib.rs crate:expect_test
+struct Expect;
+
+impl Expect {
+    fn assert_eq(&self, actual: &str) {}
+}
+
+#[macro_export]
+macro_rules! expect {
+    ($e:expr) => Expect; // dummy
+}
+
+//- /lib.rs crate:insta
+#[macro_export]
+macro_rules! assert_debug_snapshot {
+    ($e:expr) => {}; // dummy
+}
+
+//- /lib.rs crate:snapbox
+pub struct Assert;
+
+impl Assert {
+    pub fn new() -> Self { Assert }
+
+    pub fn action_env(&self, env: &str) -> &Self { self }
+
+    pub fn eq(&self, actual: &str, expected: &str) {}
+}
+
+#[macro_export]
+macro_rules! str {
+    ($e:expr) => ""; // dummy
+}
+        "#,
+        expect![[r#"
+            [
+                Reference(
+                    FilePositionWrapper {
+                        file_id: FileId(
+                            0,
+                        ),
+                        offset: 92,
+                    },
+                ),
+                Runnable(
+                    Runnable {
+                        use_name_in_title: false,
+                        nav: NavigationTarget {
+                            file_id: FileId(
+                                0,
+                            ),
+                            full_range: 81..301,
+                            focus_range: 92..96,
+                            name: "test",
+                            kind: Function,
+                        },
+                        kind: Test {
+                            test_id: Path(
+                                "test",
+                            ),
+                            attr: TestAttr {
+                                ignore: false,
+                            },
+                        },
+                        cfg: None,
+                        update_test: UpdateTest {
+                            expect_test: true,
+                            insta: true,
+                            snapbox: true,
+                        },
+                    },
+                ),
+            ]
+        "#]],
+    );
+}
+
+#[test]
+fn drop_glue() {
+    check(
+        r#"
+struct NoDrop$0;
+    "#,
+        expect![[r#"
+            *NoDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct NoDrop
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop$0;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+    "#,
+        expect![[r#"
+            *NeedsDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct NeedsDrop
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue); has a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: manually_drop, drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+type NoDrop$0 = core::mem::ManuallyDrop<NeedsDrop>;
+    "#,
+        expect![[r#"
+            *NoDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type NoDrop = core::mem::ManuallyDrop<NeedsDrop>
+            ```
+
+            ---
+
+            size = 0, align = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+struct DropField$0 {
+    _x: i32,
+    _y: NeedsDrop,
+}
+    "#,
+        expect![[r#"
+            *DropField*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct DropField {
+                _x: i32,
+                _y: NeedsDrop,
+            }
+            ```
+
+            ---
+
+            size = 4, align = 4
+
+            ---
+
+            contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: sized
+type Foo$0 = impl Sized;
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            type Foo = impl Sized
+            ```
+
+            ---
+
+            contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: drop
+struct NeedsDrop;
+impl Drop for NeedsDrop {
+    fn drop(&mut self) {}
+}
+enum Enum {
+    A$0(&'static str),
+    B(NeedsDrop)
+}
+    "#,
+        expect![[r#"
+            *A*
+
+            ```rust
+            ra_test_fixture::Enum
+            ```
+
+            ```rust
+            A(&'static str)
+            ```
+
+            ---
+
+            size = 16 (0x10), align = 8, niches = 1
+
+            ---
+
+            does not contain types with destructors (drop glue)
+        "#]],
+    );
+    check(
+        r#"
+struct Foo$0<T>(T);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(T)
+            ```
+
+            ---
+
+            may contain types with destructors (drop glue) depending on type parameters; doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: copy
+struct Foo$0<T: Copy>(T);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(T)
+            where
+                T: Copy,
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+//- minicore: copy
+trait Trait {
+    type Assoc: Copy;
+}
+struct Foo$0<T: Trait>(T::Assoc);
+    "#,
+        expect![[r#"
+            *Foo*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            struct Foo<T>(<T as Trait>::Assoc)
+            where
+                T: Trait,
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+    check(
+        r#"
+#[rustc_coherence_is_core]
+
+#[lang = "manually_drop"]
+#[repr(transparent)]
+pub struct ManuallyDrop$0<T: ?Sized> {
+    value: T,
+}
+    "#,
+        expect![[r#"
+            *ManuallyDrop*
+
+            ```rust
+            ra_test_fixture
+            ```
+
+            ```rust
+            pub struct ManuallyDrop<T>
+            where
+                T: ?Sized,
+            {
+                value: T,
+            }
+            ```
+
+            ---
+
+            does not contain types with destructors (drop glue); doesn't have a destructor
+        "#]],
+    );
+}
+
+#[test]
+fn projection_const() {
+    // This uses two crates, which have *no* relation between them, to test another thing:
+    // `render_const_scalar()` used to just use the last crate for the trait env, which will
+    // fail in this scenario.
+    check(
+        r#"
+//- /foo.rs crate:foo
+pub trait PublicFlags {
+    type Internal;
+}
+
+pub struct NoteDialects(<NoteDialects as PublicFlags>::Internal);
+
+impl NoteDialects {
+    pub const CLAP$0: Self = Self(InternalBitFlags);
+}
+
+pub struct InternalBitFlags;
+
+impl PublicFlags for NoteDialects {
+    type Internal = InternalBitFlags;
+}
+//- /bar.rs crate:bar
+    "#,
+        expect![[r#"
+            *CLAP*
+
+            ```rust
+            foo::NoteDialects
+            ```
+
+            ```rust
+            pub const CLAP: Self = NoteDialects(InternalBitFlags)
+            ```
         "#]],
     );
 }

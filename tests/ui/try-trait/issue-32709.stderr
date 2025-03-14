@@ -19,7 +19,6 @@ LL |     Err(5)?;
              `(T, T, T, T, T, T, T, T)` implements `From<[T; 8]>`
              `(T, T, T, T, T, T, T, T, T)` implements `From<[T; 9]>`
            and 4 others
-   = note: required for `Result<i32, ()>` to implement `FromResidual<Result<Infallible, {integer}>>`
 
 error: aborting due to 1 previous error
 

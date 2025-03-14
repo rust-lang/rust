@@ -42,7 +42,7 @@ pub(super) fn check_match<'tcx>(
         cx,
         scrutinee,
         arms.iter()
-            .map(|arm| (cx.tcx.hir().attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
+            .map(|arm| (cx.tcx.hir_attrs(arm.hir_id), Some(arm.pat), arm.body, arm.guard)),
         e,
         false,
     )
@@ -117,7 +117,7 @@ where
             if let ty::Ref(..) = cx.typeck_results().expr_ty(ex_inner).kind() {
                 ex_new = ex_inner;
             }
-        };
+        }
         span_lint_and_sugg(
             cx,
             MATCH_LIKE_MATCHES_MACRO,

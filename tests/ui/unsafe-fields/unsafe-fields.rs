@@ -17,7 +17,7 @@ fn f(a: A) {
 }
 
 struct WithInvalidUnsafeField {
-    unsafe unsafe_noncopy_field: Vec<u32>, //~ ERROR
+    unsafe unsafe_noncopy_field: Vec<u32>,
 }
 
 struct WithManuallyDropUnsafeField {

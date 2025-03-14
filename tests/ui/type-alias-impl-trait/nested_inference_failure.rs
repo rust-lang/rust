@@ -22,6 +22,7 @@ struct Foo<T: Debug, F: FnOnce(T)> {
 type ImplT = impl Debug;
 type FooImpl = Foo<ImplT, impl FnOnce(ImplT)>;
 
+#[define_opaque(FooImpl)]
 fn bar() -> FooImpl {
     Foo::<i32, _> { f: |_| (), _phantom: PhantomData }
 }

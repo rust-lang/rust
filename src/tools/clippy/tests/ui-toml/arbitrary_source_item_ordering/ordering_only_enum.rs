@@ -20,6 +20,7 @@ enum EnumOrdered {
 enum EnumUnordered {
     B,
     A,
+    //~^ arbitrary_source_item_ordering
 }
 
 trait TraitUnordered {

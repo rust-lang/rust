@@ -1,0 +1,48 @@
+name: Date-Check
+
+on:
+  schedule:
+    # Run at noon UTC every 1st of the month
+    - cron: '00 12 01 * *'
+
+  # Allow manually starting the workflow
+  workflow_dispatch:
+
+jobs:
+  date-check:
+    if: github.repository == 'rust-lang/rustc-dev-guide'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Ensure Rust is up-to-date
+        run: |
+          rustup update stable
+
+      - name: Run `date-check`
+        working-directory: ci/date-check
+        run: |
+          cargo run -- ../../src/ > ../../date-check-output.txt
+
+      - name: Open issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+
+            const rawText = fs.readFileSync('date-check-output.txt', { encoding: 'utf8' });
+            const title = rawText.split('\n')[0];
+            if (title != 'empty') {
+                const body = rawText.split('\n').slice(1).join('\n');
+                github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                  body,
+                });
+                console.log('Opened issue.');
+            } else {
+                console.log('No dates to triage.');
+            }

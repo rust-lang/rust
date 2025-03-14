@@ -2,6 +2,7 @@
 
 type Tait<'a> = impl Sized + 'a;
 
+#[define_opaque(Tait)]
 fn foo<'a, 'b>() -> Tait<'a> {
     if false {
         if { return } {

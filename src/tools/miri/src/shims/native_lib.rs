@@ -1,5 +1,4 @@
 //! Implements calling functions from a native library.
-use std::cell::RefCell;
 use std::ops::Deref;
 
 use libffi::high::call as ffi;
@@ -73,7 +72,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             // Functions with no declared return type (i.e., the default return)
             // have the output_type `Tuple([])`.
-            ty::Tuple(t_list) if t_list.len() == 0 => {
+            ty::Tuple(t_list) if t_list.is_empty() => {
                 unsafe { ffi::call::<()>(ptr, libffi_args.as_slice()) };
                 return interp_ok(ImmTy::uninit(dest.layout));
             }
@@ -161,36 +160,26 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             }
             let imm = this.read_immediate(arg)?;
             libffi_args.push(imm_to_carg(&imm, this)?);
-            // If we are passing a pointer, prepare the memory it points to.
+            // If we are passing a pointer, expose its provenance. Below, all exposed memory
+            // (previously exposed and new exposed) will then be properly prepared.
             if matches!(arg.layout.ty.kind(), ty::RawPtr(..)) {
                 let ptr = imm.to_scalar().to_pointer(this)?;
                 let Some(prov) = ptr.provenance else {
-                    // Pointer without provenance may not access any memory.
+                    // Pointer without provenance may not access any memory anyway, skip.
                     continue;
                 };
-                // We use `get_alloc_id` for its best-effort behaviour with Wildcard provenance.
-                let Some(alloc_id) = prov.get_alloc_id() else {
-                    // Wildcard pointer, whatever it points to must be already exposed.
-                    continue;
-                };
-                // The first time this happens at a particular location, print a warning.
-                thread_local! {
-                    static HAVE_WARNED: RefCell<bool> = const { RefCell::new(false) };
+                // The first time this happens, print a warning.
+                if !this.machine.native_call_mem_warned.replace(true) {
+                    // Newly set, so first time we get here.
+                    this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
                 }
-                HAVE_WARNED.with_borrow_mut(|have_warned| {
-                    if !*have_warned {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::NativeCallSharedMem);
-                        *have_warned = true;
-                    }
-                });
 
-                this.prepare_for_native_call(alloc_id, prov)?;
+                this.expose_provenance(prov)?;
             }
         }
 
-        // FIXME: In the future, we should also call `prepare_for_native_call` on all previously
-        // exposed allocations, since C may access any of them.
+        // Prepare all exposed memory.
+        this.prepare_exposed_for_native_call()?;
 
         // Convert them to `libffi::high::Arg` type.
         let libffi_args = libffi_args
@@ -277,7 +266,7 @@ fn imm_to_carg<'tcx>(v: &ImmTy<'tcx>, cx: &impl HasDataLayout) -> InterpResult<'
             CArg::USize(v.to_scalar().to_target_usize(cx)?.try_into().unwrap()),
         ty::RawPtr(..) => {
             let s = v.to_scalar().to_pointer(cx)?.addr();
-            // This relies on the `expose_provenance` in `addr_from_alloc_id`.
+            // This relies on the `expose_provenance` in `prepare_for_native_call`.
             CArg::RawPtr(std::ptr::with_exposed_provenance_mut(s.bytes_usize()))
         }
         _ => throw_unsup_format!("unsupported argument type for native call: {}", v.layout.ty),

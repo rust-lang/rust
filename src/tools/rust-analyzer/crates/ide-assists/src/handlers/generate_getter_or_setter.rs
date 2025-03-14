@@ -233,7 +233,7 @@ fn generate_getter_from_info(
                 .map(|conversion| {
                     cov_mark::hit!(convert_reference_type);
                     (
-                        conversion.convert_type(ctx.db(), krate.edition(ctx.db())),
+                        conversion.convert_type(ctx.db(), krate.to_display_target(ctx.db())),
                         conversion.getter(record_field_info.field_name.to_string()),
                     )
                 })
@@ -933,7 +933,7 @@ mod tests_setter {
 
     use super::*;
 
-    fn check_not_applicable(ra_fixture: &str) {
+    fn check_not_applicable(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         check_assist_not_applicable(generate_setter, ra_fixture)
     }
 

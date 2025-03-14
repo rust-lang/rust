@@ -15,3 +15,6 @@ indent_size = 2
 
 [*.{yml,yaml}]
 indent_size = 2
+
+[COMMIT_EDITMSG]
+max_line_length = unset

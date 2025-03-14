@@ -5,6 +5,7 @@
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
 #![allow(rustc::untranslatable_diagnostic)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(assert_matches)]
@@ -16,8 +17,8 @@
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![feature(rustdoc_internals)]
+#![feature(string_from_utf8_lossy_owned)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;
@@ -38,6 +39,7 @@ mod compile_error;
 mod concat;
 mod concat_bytes;
 mod concat_idents;
+mod define_opaque;
 mod derive;
 mod deriving;
 mod edition_panic;
@@ -54,6 +56,7 @@ mod trace_macros;
 
 pub mod asm;
 pub mod cmdline_attrs;
+pub mod contracts;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
 pub mod test_harness;
@@ -112,6 +115,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
+        define_opaque: define_opaque::expand,
         derive: derive::Expander { is_const: false },
         derive_const: derive::Expander { is_const: true },
         global_allocator: global_allocator::expand,
@@ -131,11 +135,13 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         Ord: ord::expand_deriving_ord,
         PartialEq: partial_eq::expand_deriving_partial_eq,
         PartialOrd: partial_ord::expand_deriving_partial_ord,
-        RustcDecodable: decodable::expand_deriving_rustc_decodable,
-        RustcEncodable: encodable::expand_deriving_rustc_encodable,
         CoercePointee: coerce_pointee::expand_deriving_coerce_pointee,
     }
 
     let client = proc_macro::bridge::client::Client::expand1(proc_macro::quote);
     register(sym::quote, SyntaxExtensionKind::Bang(Box::new(BangProcMacro { client })));
+    let requires = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandRequires));
+    register(sym::contracts_requires, requires);
+    let ensures = SyntaxExtensionKind::Attr(Box::new(contracts::ExpandEnsures));
+    register(sym::contracts_ensures, ensures);
 }

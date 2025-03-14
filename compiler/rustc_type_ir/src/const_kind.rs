@@ -31,7 +31,7 @@ pub enum ConstKind<I: Interner> {
     Unevaluated(ty::UnevaluatedConst<I>),
 
     /// Used to hold computed value.
-    Value(I::Ty, I::ValueConst),
+    Value(I::ValueConst),
 
     /// A placeholder for a const which could not be computed; this is
     /// propagated to avoid useless error messages.
@@ -52,7 +52,7 @@ impl<I: Interner> fmt::Debug for ConstKind<I> {
             Bound(debruijn, var) => crate::debug_bound_var(f, *debruijn, var),
             Placeholder(placeholder) => write!(f, "{placeholder:?}"),
             Unevaluated(uv) => write!(f, "{uv:?}"),
-            Value(ty, valtree) => write!(f, "({valtree:?}: {ty:?})"),
+            Value(val) => write!(f, "{val:?}"),
             Error(_) => write!(f, "{{const error}}"),
             Expr(expr) => write!(f, "{expr:?}"),
         }

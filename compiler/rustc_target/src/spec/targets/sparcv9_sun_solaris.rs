@@ -1,5 +1,6 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Target, base};
+use rustc_abi::Endian;
+
+use crate::spec::{Cc, LinkerFlavor, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::solaris::opts();
@@ -12,7 +13,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "sparcv9-sun-solaris".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("SPARC Solaris 11.4".into()),
             tier: Some(2),
             host_tools: Some(false),

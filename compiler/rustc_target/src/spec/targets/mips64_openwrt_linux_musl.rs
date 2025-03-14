@@ -1,7 +1,8 @@
 //! A target tuple for OpenWrt MIPS64 targets.
 
-use crate::abi::Endian;
-use crate::spec::{Target, TargetOptions, base};
+use rustc_abi::Endian;
+
+use crate::spec::{Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_musl::opts();
@@ -12,7 +13,7 @@ pub(crate) fn target() -> Target {
     Target {
         // LLVM doesn't recognize "muslabi64" yet.
         llvm_target: "mips64-unknown-linux-musl".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("MIPS64 for OpenWrt Linux musl 1.2.3".into()),
             tier: Some(3),
             host_tools: Some(false),

@@ -156,10 +156,8 @@ fn main() {
         let cargo = rustc_info::get_cargo_path();
         let rustc = rustc_info::get_rustc_path();
         let rustdoc = rustc_info::get_rustdoc_path();
-        let triple = std::env::var("HOST_TRIPLE")
-            .ok()
-            .or_else(|| config::get_value("host"))
-            .unwrap_or_else(|| rustc_info::get_host_triple(&rustc));
+        let triple =
+            std::env::var("HOST_TRIPLE").unwrap_or_else(|_| rustc_info::get_host_triple(&rustc));
         Compiler {
             cargo,
             rustc,
@@ -170,10 +168,8 @@ fn main() {
             runner: vec![],
         }
     };
-    let target_triple = std::env::var("TARGET_TRIPLE")
-        .ok()
-        .or_else(|| config::get_value("target"))
-        .unwrap_or_else(|| bootstrap_host_compiler.triple.clone());
+    let target_triple =
+        std::env::var("TARGET_TRIPLE").unwrap_or_else(|_| bootstrap_host_compiler.triple.clone());
 
     let dirs = path::Dirs {
         source_dir: current_dir.clone(),
@@ -247,7 +243,7 @@ fn main() {
             );
         }
         Command::Bench => {
-            build_sysroot::build_sysroot(
+            let compiler = build_sysroot::build_sysroot(
                 &dirs,
                 sysroot_kind,
                 &cg_clif_dylib,
@@ -255,7 +251,7 @@ fn main() {
                 rustup_toolchain_name.as_deref(),
                 target_triple,
             );
-            bench::benchmark(&dirs, &bootstrap_host_compiler);
+            bench::benchmark(&dirs, &compiler);
         }
     }
 }

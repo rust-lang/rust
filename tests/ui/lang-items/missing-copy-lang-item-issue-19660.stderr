@@ -1,0 +1,8 @@
+error: requires `copy` lang_item
+  --> $DIR/missing-copy-lang-item-issue-19660.rs:14:5
+   |
+LL |     argc
+   |     ^^^^
+
+error: aborting due to 1 previous error
+

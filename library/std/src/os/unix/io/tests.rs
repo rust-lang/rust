@@ -1,4 +1,3 @@
-use crate::mem::size_of;
 use crate::os::unix::io::RawFd;
 
 #[test]

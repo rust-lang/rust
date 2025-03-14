@@ -58,12 +58,17 @@ fn test_metrics_dump() {
         );
 
         let message = rfs::read_to_string(json_path);
-        let parsed: serde_json::Value =
+        let mut parsed: serde_json::Value =
             serde_json::from_str(&message).expect("metrics should be dumped as json");
+        // remove timestamps
+        assert!(parsed["lib_features"][0]["timestamp"].is_number());
+        assert!(parsed["lang_features"][0]["timestamp"].is_number());
+        parsed["lib_features"][0]["timestamp"] = serde_json::json!(null);
+        parsed["lang_features"][0]["timestamp"] = serde_json::json!(null);
         let expected = serde_json::json!(
             {
-                "lib_features":[{"symbol":"ascii_char"}],
-                "lang_features":[{"symbol":"box_patterns","since":null}]
+                "lib_features":[{"symbol":"ascii_char", "timestamp":null}],
+                "lang_features":[{"symbol":"box_patterns","since":null, "timestamp":null}]
             }
         );
 

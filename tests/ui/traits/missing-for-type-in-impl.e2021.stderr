@@ -1,15 +1,3 @@
-error[E0277]: the trait bound `i64: Foo<i64>` is not satisfied
-  --> $DIR/missing-for-type-in-impl.rs:19:19
-   |
-LL |     let x: i64 = <i64 as Foo<i64>>::id(10);
-   |                   ^^^ the trait `Foo<i64>` is not implemented for `i64`
-   |
-help: this trait has no implementations, consider adding one
-  --> $DIR/missing-for-type-in-impl.rs:3:1
-   |
-LL | trait Foo<T> {
-   | ^^^^^^^^^^^^
-
 error[E0782]: expected a type, found a trait
   --> $DIR/missing-for-type-in-impl.rs:8:6
    |
@@ -24,6 +12,18 @@ help: you might have intended to implement this trait for a given type
    |
 LL | impl Foo<i64> for /* Type */ {
    |               ++++++++++++++
+
+error[E0277]: the trait bound `i64: Foo<i64>` is not satisfied
+  --> $DIR/missing-for-type-in-impl.rs:19:19
+   |
+LL |     let x: i64 = <i64 as Foo<i64>>::id(10);
+   |                   ^^^ the trait `Foo<i64>` is not implemented for `i64`
+   |
+help: this trait has no implementations, consider adding one
+  --> $DIR/missing-for-type-in-impl.rs:3:1
+   |
+LL | trait Foo<T> {
+   | ^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

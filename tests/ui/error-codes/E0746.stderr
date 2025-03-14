@@ -1,4 +1,4 @@
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/E0746.rs:8:13
    |
 LL | fn foo() -> dyn Trait { Struct }
@@ -6,14 +6,15 @@ LL | fn foo() -> dyn Trait { Struct }
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn foo() -> impl Trait { Struct }
-   |             ~~~~
+LL - fn foo() -> dyn Trait { Struct }
+LL + fn foo() -> impl Trait { Struct }
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL | fn foo() -> Box<dyn Trait> { Box::new(Struct) }
    |             ++++         +   +++++++++      +
 
-error[E0746]: return type cannot have an unboxed trait object
+error[E0746]: return type cannot be a trait object without pointer indirection
   --> $DIR/E0746.rs:11:13
    |
 LL | fn bar() -> dyn Trait {
@@ -21,8 +22,9 @@ LL | fn bar() -> dyn Trait {
    |
 help: consider returning an `impl Trait` instead of a `dyn Trait`
    |
-LL | fn bar() -> impl Trait {
-   |             ~~~~
+LL - fn bar() -> dyn Trait {
+LL + fn bar() -> impl Trait {
+   |
 help: alternatively, box the return type, and wrap all of the returned values in `Box::new`
    |
 LL ~ fn bar() -> Box<dyn Trait> {

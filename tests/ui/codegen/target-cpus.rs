@@ -6,4 +6,4 @@
 // output so that the stdout with LLVM-at-HEAD matches the output of the LLVM
 // versions currently used by default.
 // FIXME(#133919): Once Rust upgrades to LLVM 20, remove this.
-//@ normalize-stdout-test: "(?m)^ *lime1\n" -> ""
+//@ normalize-stdout: "(?m)^ *lime1\n" -> ""

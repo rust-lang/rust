@@ -80,7 +80,6 @@
       bb8: {
 +         _12 = const false;
           StorageDead(_6);
-          StorageDead(_5);
           drop(_4) -> [return: bb9, unwind: bb16];
       }
   

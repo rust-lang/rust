@@ -1,5 +1,6 @@
-#![feature(start, core_intrinsics, alloc_error_handler, lang_items)]
+#![feature(core_intrinsics, alloc_error_handler, lang_items)]
 #![no_std]
+#![no_main]
 #![allow(internal_features)]
 
 extern crate alloc;
@@ -37,8 +38,8 @@ unsafe extern "C" fn _Unwind_Resume() {
     core::intrinsics::unreachable();
 }
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+#[no_mangle]
+extern "C" fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     let world: Box<&str> = Box::new("Hello World!\0");
     unsafe {
         puts(*world as *const str as *const u8);

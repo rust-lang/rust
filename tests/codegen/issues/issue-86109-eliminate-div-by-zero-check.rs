@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //! Test for https://github.com/rust-lang/rust/issues/86109
 //! Check LLVM can eliminate the impossible division by zero check by
 //! ensuring there is no call (to panic) instruction.

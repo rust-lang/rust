@@ -5,6 +5,7 @@
 type Bar = impl Sized;
 //~^ ERROR: cycle
 
+#[define_opaque(Bar)]
 fn foo() -> Bar
 where
     Bar: Send,

@@ -9,11 +9,11 @@ use rustc_middle::ty::TyCtxt;
 pub fn check_crate(tcx: TyCtxt<'_>) {
     let errors = Lock::new(Vec::new());
 
-    tcx.hir().par_for_each_module(|module_id| {
+    tcx.par_hir_for_each_module(|module_id| {
         let mut v =
             HirIdValidator { tcx, owner: None, hir_ids_seen: Default::default(), errors: &errors };
 
-        tcx.hir().visit_item_likes_in_module(module_id, &mut v);
+        tcx.hir_visit_item_likes_in_module(module_id, &mut v);
     });
 
     let errors = errors.into_inner();
@@ -60,19 +60,18 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
             .expect("owning item has no entry");
 
         if max != self.hir_ids_seen.len() - 1 {
-            let hir = self.tcx.hir();
-            let pretty_owner = hir.def_path(owner.def_id).to_string_no_crate_verbose();
+            let pretty_owner = self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose();
 
             let missing_items: Vec<_> = (0..=max as u32)
                 .map(|i| ItemLocalId::from_u32(i))
                 .filter(|&local_id| !self.hir_ids_seen.contains(local_id))
-                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
+                .map(|local_id| self.tcx.hir_id_to_string(HirId { owner, local_id }))
                 .collect();
 
             let seen_items: Vec<_> = self
                 .hir_ids_seen
                 .iter()
-                .map(|local_id| hir.node_to_string(HirId { owner, local_id }))
+                .map(|local_id| self.tcx.hir_id_to_string(HirId { owner, local_id }))
                 .collect();
 
             self.error(|| {
@@ -105,8 +104,8 @@ impl<'a, 'hir> HirIdValidator<'a, 'hir> {
 impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
     type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.tcx
     }
 
     fn visit_nested_item(&mut self, id: hir::ItemId) {
@@ -137,9 +136,9 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
             self.error(|| {
                 format!(
                     "HirIdValidator: The recorded owner of {} is {} instead of {}",
-                    self.tcx.hir().node_to_string(hir_id),
-                    self.tcx.hir().def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
-                    self.tcx.hir().def_path(owner.def_id).to_string_no_crate_verbose()
+                    self.tcx.hir_id_to_string(hir_id),
+                    self.tcx.hir_def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
+                    self.tcx.hir_def_path(owner.def_id).to_string_no_crate_verbose()
                 )
             });
         }
@@ -162,7 +161,7 @@ impl<'a, 'hir> intravisit::Visitor<'hir> for HirIdValidator<'a, 'hir> {
         inner_visitor.check(i.owner_id, |this| intravisit::walk_impl_item(this, i));
     }
 
-    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::Pat<'hir>) {
-        self.visit_pat(p)
+    fn visit_pattern_type_pattern(&mut self, p: &'hir hir::TyPat<'hir>) {
+        intravisit::walk_ty_pat(self, p)
     }
 }

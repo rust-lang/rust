@@ -10,18 +10,10 @@ use crate::{Crate, Symbol, with};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct DefId(pub(crate) usize);
 
-/// A trait for retrieving information about a particular definition.
-///
-/// Implementors must provide the implementation of `def_id` which will be used to retrieve
-/// information about a crate's definition.
-pub trait CrateDef {
-    /// Retrieve the unique identifier for the current definition.
-    fn def_id(&self) -> DefId;
-
-    /// Return the fully qualified name of the current definition.
-    fn name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, false))
+impl DefId {
+    /// Return fully qualified name of this definition
+    pub fn name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, false))
     }
 
     /// Return a trimmed name of this definition.
@@ -34,9 +26,31 @@ pub trait CrateDef {
     ///
     /// For example, this function may shorten `std::vec::Vec` to just `Vec`,
     /// as long as there is no other `Vec` importable anywhere.
+    pub fn trimmed_name(&self) -> Symbol {
+        with(|cx| cx.def_name(*self, true))
+    }
+}
+
+/// A trait for retrieving information about a particular definition.
+///
+/// Implementors must provide the implementation of `def_id` which will be used to retrieve
+/// information about a crate's definition.
+pub trait CrateDef {
+    /// Retrieve the unique identifier for the current definition.
+    fn def_id(&self) -> DefId;
+
+    /// Return the fully qualified name of the current definition.
+    ///
+    /// See [`DefId::name`] for more details
+    fn name(&self) -> Symbol {
+        self.def_id().name()
+    }
+
+    /// Return a trimmed name of this definition.
+    ///
+    /// See [`DefId::trimmed_name`] for more details
     fn trimmed_name(&self) -> Symbol {
-        let def_id = self.def_id();
-        with(|cx| cx.def_name(def_id, true))
+        self.def_id().trimmed_name()
     }
 
     /// Return information about the crate where this definition is declared.
@@ -53,19 +67,22 @@ pub trait CrateDef {
         with(|cx| cx.span_of_an_item(def_id))
     }
 
-    /// Return attributes with the given attribute name.
+    /// Return registered tool attributes with the given attribute name.
     ///
-    /// Single segmented name like `#[inline]` is specified as `&["inline".to_string()]`.
+    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
+    /// attributes will simply return an empty list.
+    ///
+    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
     /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
-    fn attrs_by_path(&self, attr: &[Symbol]) -> Vec<Attribute> {
+    fn tool_attrs(&self, attr: &[Symbol]) -> Vec<Attribute> {
         let def_id = self.def_id();
-        with(|cx| cx.get_attrs_by_path(def_id, attr))
+        with(|cx| cx.tool_attrs(def_id, attr))
     }
 
-    /// Return all attributes of this definition.
-    fn all_attrs(&self) -> Vec<Attribute> {
+    /// Return all tool attributes of this definition.
+    fn all_tool_attrs(&self) -> Vec<Attribute> {
         let def_id = self.def_id();
-        with(|cx| cx.get_all_attrs(def_id))
+        with(|cx| cx.all_tool_attrs(def_id))
     }
 }
 

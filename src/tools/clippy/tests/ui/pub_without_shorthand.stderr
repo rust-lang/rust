@@ -8,13 +8,13 @@ LL | pub(in self) fn b() {}
    = help: to override `-D warnings` add `#[allow(clippy::pub_without_shorthand)]`
 
 error: usage of `pub` with `in`
-  --> tests/ui/pub_without_shorthand.rs:18:5
+  --> tests/ui/pub_without_shorthand.rs:19:5
    |
 LL |     pub(in super) fn d() {}
    |     ^^^^^^^^^^^^^ help: remove it: `pub(super)`
 
 error: usage of `pub` with `in`
-  --> tests/ui/pub_without_shorthand.rs:22:5
+  --> tests/ui/pub_without_shorthand.rs:24:5
    |
 LL |     pub(in crate) fn m() {}
    |     ^^^^^^^^^^^^^ help: remove it: `pub(crate)`

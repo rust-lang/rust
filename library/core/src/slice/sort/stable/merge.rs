@@ -143,7 +143,7 @@ impl<T> Drop for MergeState<T> {
         // leave the input slice `v` with each original element and all possible
         // modifications observed.
         unsafe {
-            let len = self.end.sub_ptr(self.start);
+            let len = self.end.offset_from_unsigned(self.start);
             ptr::copy_nonoverlapping(self.start, self.dst, len);
         }
     }

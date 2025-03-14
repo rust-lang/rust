@@ -7,14 +7,12 @@
 
 #![feature(type_alias_impl_trait, arbitrary_self_types)]
 
-mod foo {
-    pub type Foo = impl Copy;
+pub type Foo = impl Copy;
 
-    fn foo() -> Foo {
-        42_u32
-    }
+#[define_opaque(Foo)]
+fn foo() -> Foo {
+    42_u32
 }
-use foo::Foo;
 
 #[derive(Copy, Clone)]
 struct Bar<T>(T);

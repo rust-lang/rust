@@ -6,8 +6,8 @@ LL | fn foo<const N: Nat>() {}
    |
 help: add `#[derive(ConstParamTy)]` to the struct
    |
+LL - enum Nat {
 LL + #[derive(ConstParamTy)]
-LL | enum Nat {
    |
 
 error: aborting due to 1 previous error

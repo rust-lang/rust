@@ -4,7 +4,7 @@
 #![allow(stable_features)]
 #![allow(unused_must_use)]
 
-//@ ignore-emscripten no threads support
+//@ needs-threads
 
 #![feature(std_panic)]
 

@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for NonOctalUnixPermissions {
                 }
             },
             _ => {},
-        };
+        }
     }
 }
 

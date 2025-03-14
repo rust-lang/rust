@@ -241,7 +241,7 @@ RecordFieldList =
 
 RecordField =
   Attr* Visibility?
-  Name ':' Type
+  Name ':' Type ('=' Expr)?
 
 TupleFieldList =
   '(' fields:(TupleField (',' TupleField)* ','?)? ')'
@@ -278,6 +278,11 @@ Adt =
   Enum
 | Struct
 | Union
+
+VariantDef =
+  Struct
+| Union
+| Variant
 
 Const =
   Attr* Visibility?
@@ -438,9 +443,9 @@ MacroExpr =
 Literal =
   Attr* value:(
     '@int_number' | '@float_number'
-  | '@string' | '@raw_string'
-  | '@byte_string' | '@raw_byte_string'
-  | '@c_string' | '@raw_c_string'
+  | '@string'
+  | '@byte_string'
+  | '@c_string'
   | '@char' | '@byte'
   | 'true' | 'false'
   )

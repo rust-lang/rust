@@ -8,25 +8,29 @@
 //! hidden type of the opaque type. Thus we ended up relying on the
 //! result of our analysis to compute the result of our analysis.
 
-//@[unit] check-pass
+pub type Foo = impl Sized;
 
-mod helper {
-    pub type Foo = impl Sized;
-
-    #[cfg(string)]
-    pub const FOO: Foo = String::new();
-
-    #[cfg(atomic)]
-    pub const FOO: Foo = std::sync::atomic::AtomicU8::new(42);
-
-    #[cfg(unit)]
-    pub const FOO: Foo = ();
+#[cfg(string)]
+#[define_opaque(Foo)]
+const fn foo() -> Foo {
+    String::new()
 }
-use helper::*;
+
+#[cfg(atomic)]
+#[define_opaque(Foo)]
+const fn foo() -> Foo {
+    std::sync::atomic::AtomicU8::new(42)
+}
+
+#[cfg(unit)]
+#[define_opaque(Foo)]
+const fn foo() -> Foo {}
+
+const FOO: Foo = foo();
 
 const BAR: () = {
     let _: &'static _ = &FOO;
-    //[string,atomic]~^ ERROR: destructor of `helper::Foo` cannot be evaluated at compile-time
+    //[string,atomic,unit]~^ ERROR: destructor of `Foo` cannot be evaluated at compile-time
 };
 
 const BAZ: &Foo = &FOO;
@@ -34,5 +38,5 @@ const BAZ: &Foo = &FOO;
 
 fn main() {
     let _: &'static _ = &FOO;
-    //[string,atomic]~^ ERROR: temporary value dropped while borrowed
+    //[string,atomic,unit]~^ ERROR: temporary value dropped while borrowed
 }

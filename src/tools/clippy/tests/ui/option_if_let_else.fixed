@@ -4,6 +4,7 @@
     clippy::equatable_if_let,
     clippy::let_unit_value,
     clippy::redundant_locals,
+    clippy::manual_midpoint,
     clippy::manual_unwrap_or_default,
     clippy::manual_unwrap_or
 )]
@@ -24,17 +25,23 @@ fn else_if_option(string: Option<&str>) -> Option<(bool, &str)> {
 
 fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
     let _ = string.map_or(0, |s| s.len());
+    //~^ option_if_let_else
     let _ = num.as_ref().map_or(&0, |s| s);
+    //~^ option_if_let_else
     let _ = num.as_mut().map_or(&0, |s| {
+        //~^ option_if_let_else
         *s += 1;
         s
     });
     let _ = num.as_ref().map_or(&0, |s| s);
+    //~^ option_if_let_else
     let _ = num.map_or(0, |mut s| {
+        //~^ option_if_let_else
         s += 1;
         s
     });
     let _ = num.as_mut().map_or(&0, |s| {
+        //~^ option_if_let_else
         *s += 1;
         s
     });
@@ -42,6 +49,7 @@ fn unop_bad(string: &Option<&str>, mut num: Option<i32>) {
 
 fn longer_body(arg: Option<u32>) -> u32 {
     arg.map_or(13, |x| {
+        //~^ option_if_let_else
         let y = x * x;
         y * y
     })
@@ -98,6 +106,7 @@ fn test_result_impure_else(variable: Result<u32, &str>) -> bool {
         println!("Err");
         false
     }, |binding| {
+        //~^ option_if_let_else
         println!("Ok {binding}");
         true
     })
@@ -119,6 +128,7 @@ fn complex_subpat() -> DummyEnum {
 fn main() {
     let optional = Some(5);
     let _ = optional.map_or(5, |x| x + 2);
+    //~^ option_if_let_else
     let _ = bad1(None);
     let _ = else_if_option(None);
     unop_bad(&None, None);
@@ -153,10 +163,12 @@ fn main() {
     let s = String::new();
     // Lint, both branches immutably borrow `s`.
     let _ = Some(0).map_or(s.len(), |x| s.len() + x);
+    //~^ option_if_let_else
 
     let s = String::new();
     // Lint, `Some` branch consumes `s`, but else branch doesn't use `s`.
     let _ = Some(0).map_or(1, |x| {
+        //~^ option_if_let_else
         let s = s;
         s.len() + x
     });
@@ -200,6 +212,7 @@ fn main() {
     let _ = res.map_or(1, |a| a + 1);
     let _ = res.map_or(1, |a| a + 1);
     let _ = res.map_or(5, |a| a + 1);
+    //~^ option_if_let_else
 }
 
 #[allow(dead_code)]
@@ -243,6 +256,7 @@ fn issue11429() {
     let mut _hashmap = opt.as_ref().map_or_else(HashMap::new, |hm| hm.clone());
 
     let mut _hm = opt.as_ref().map_or_else(|| new_map!(), |hm| hm.clone());
+    //~^ option_if_let_else
 }
 
 fn issue11893() {

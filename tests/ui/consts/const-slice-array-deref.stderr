@@ -1,0 +1,25 @@
+error[E0277]: the size for values of type `[u16]` cannot be known at compilation time
+  --> $DIR/const-slice-array-deref.rs:1:12
+   |
+LL | const ONE: [u16] = [1];
+   |            ^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u16]`
+   = note: statics and constants must have a statically known size
+
+error[E0308]: mismatched types
+  --> $DIR/const-slice-array-deref.rs:1:20
+   |
+LL | const ONE: [u16] = [1];
+   |                    ^^^ expected `[u16]`, found `[u16; 1]`
+
+error[E0161]: cannot move a value of type `[u16]`
+  --> $DIR/const-slice-array-deref.rs:5:28
+   |
+LL | const TWO: &'static u16 = &ONE[0];
+   |                            ^^^ the size of `[u16]` cannot be statically determined
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0161, E0277, E0308.
+For more information about an error, try `rustc --explain E0161`.

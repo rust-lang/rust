@@ -1,5 +1,6 @@
-use crate::abi::Endian;
-use crate::spec::{Target, base};
+use rustc_abi::Endian;
+
+use crate::spec::{Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_gnu::opts();
@@ -9,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "sparc64-unknown-linux-gnu".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("SPARC Linux (kernel 4.4, glibc 2.23)".into()),
             tier: Some(2),
             host_tools: Some(false),

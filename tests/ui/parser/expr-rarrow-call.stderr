@@ -7,8 +7,9 @@ LL |     named->foo;
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     named.foo;
-   |          ~
+LL -     named->foo;
+LL +     named.foo;
+   |
 
 error: `->` used for field access or method call
   --> $DIR/expr-rarrow-call.rs:18:12
@@ -19,8 +20,9 @@ LL |     unnamed->0;
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     unnamed.0;
-   |            ~
+LL -     unnamed->0;
+LL +     unnamed.0;
+   |
 
 error: `->` used for field access or method call
   --> $DIR/expr-rarrow-call.rs:22:6
@@ -31,8 +33,9 @@ LL |     t->0;
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     t.0;
-   |      ~
+LL -     t->0;
+LL +     t.0;
+   |
 
 error: `->` used for field access or method call
   --> $DIR/expr-rarrow-call.rs:23:6
@@ -43,8 +46,9 @@ LL |     t->1;
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     t.1;
-   |      ~
+LL -     t->1;
+LL +     t.1;
+   |
 
 error: `->` used for field access or method call
   --> $DIR/expr-rarrow-call.rs:30:8
@@ -55,8 +59,9 @@ LL |     foo->clone();
    = help: the `.` operator will dereference the value if needed
 help: try using `.` instead
    |
-LL |     foo.clone();
-   |        ~
+LL -     foo->clone();
+LL +     foo.clone();
+   |
 
 error: aborting due to 5 previous errors
 

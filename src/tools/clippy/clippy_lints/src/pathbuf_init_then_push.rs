@@ -7,7 +7,6 @@ use rustc_errors::Applicability;
 use rustc_hir::def::Res;
 use rustc_hir::{BindingMode, Block, Expr, ExprKind, HirId, LetStmt, PatKind, QPath, Stmt, StmtKind, TyKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, Symbol, sym};
 
@@ -136,18 +135,18 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
     fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx LetStmt<'tcx>) {
         if let Some(init_expr) = local.init
             && let PatKind::Binding(BindingMode::MUT, id, name, None) = local.pat.kind
-            && !in_external_macro(cx.sess(), local.span)
+            && !local.span.in_external_macro(cx.sess().source_map())
             && let ty = cx.typeck_results().pat_ty(local.pat)
             && is_type_diagnostic_item(cx, ty, sym::PathBuf)
         {
             self.searcher = Some(PathbufPushSearcher {
                 local_id: id,
                 lhs_is_let: true,
-                name: name.name,
                 let_ty_span: local.ty.map(|ty| ty.span),
-                err_span: local.span,
                 init_val: *init_expr,
                 arg: None,
+                name: name.name,
+                err_span: local.span,
             });
         }
     }
@@ -157,7 +156,7 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
             && let ExprKind::Path(QPath::Resolved(None, path)) = left.kind
             && let [name] = &path.segments
             && let Res::Local(id) = path.res
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && let ty = cx.typeck_results().expr_ty(left)
             && is_type_diagnostic_item(cx, ty, sym::PathBuf)
         {
@@ -165,10 +164,10 @@ impl<'tcx> LateLintPass<'tcx> for PathbufThenPush<'tcx> {
                 local_id: id,
                 lhs_is_let: false,
                 let_ty_span: None,
-                name: name.ident.name,
-                err_span: expr.span,
                 init_val: *right,
                 arg: None,
+                name: name.ident.name,
+                err_span: expr.span,
             });
         }
     }

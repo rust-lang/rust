@@ -8,13 +8,13 @@ use clippy_utils::{
 };
 use rustc_errors::MultiSpan;
 use rustc_hir::LangItem::OptionNone;
-use rustc_hir::{Arm, Expr, HirId, Pat, PatKind};
+use rustc_hir::{Arm, Expr, HirId, Pat, PatExpr, PatExprKind, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::Span;
 
 use super::{COLLAPSIBLE_MATCH, pat_contains_disallowed_or};
 
-pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], msrv: &Msrv) {
+pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>], msrv: Msrv) {
     if let Some(els_arm) = arms.iter().rfind(|arm| arm_is_wild_like(cx, arm)) {
         for arm in arms {
             check_arm(cx, true, arm.pat, arm.body, arm.guard, Some(els_arm.body), msrv);
@@ -27,7 +27,7 @@ pub(super) fn check_if_let<'tcx>(
     pat: &'tcx Pat<'_>,
     body: &'tcx Expr<'_>,
     else_expr: Option<&'tcx Expr<'_>>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     check_arm(cx, false, pat, body, None, else_expr, msrv);
 }
@@ -39,7 +39,7 @@ fn check_arm<'tcx>(
     outer_then_body: &'tcx Expr<'tcx>,
     outer_guard: Option<&'tcx Expr<'tcx>>,
     outer_else_body: Option<&'tcx Expr<'tcx>>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     let inner_expr = peel_blocks_with_stmt(outer_then_body);
     if let Some(inner) = IfLetOrMatch::parse(cx, inner_expr)
@@ -60,7 +60,7 @@ fn check_arm<'tcx>(
         // match expression must be a local binding
         // match <local> { .. }
         && let Some(binding_id) = path_to_local(peel_ref_operators(cx, inner_scrutinee))
-        && !pat_contains_disallowed_or(inner_then_pat, msrv)
+        && !pat_contains_disallowed_or(cx, inner_then_pat, msrv)
         // the binding must come from the pattern of the containing match arm
         // ..<local>.. => match <local> { .. }
         && let (Some(binding_span), is_innermost_parent_pat_struct)
@@ -119,7 +119,11 @@ fn arm_is_wild_like(cx: &LateContext<'_>, arm: &Arm<'_>) -> bool {
     }
     match arm.pat.kind {
         PatKind::Binding(..) | PatKind::Wild => true,
-        PatKind::Path(ref qpath) => is_res_lang_ctor(cx, cx.qpath_res(qpath, arm.pat.hir_id), OptionNone),
+        PatKind::Expr(PatExpr {
+            kind: PatExprKind::Path(qpath),
+            hir_id,
+            ..
+        }) => is_res_lang_ctor(cx, cx.qpath_res(qpath, *hir_id), OptionNone),
         _ => false,
     }
 }

@@ -103,7 +103,7 @@ where
                 |ecx| {
                     // Const conditions must hold for the implied const bound to hold.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasBoundConstCondition,
                         cx.const_conditions(alias_ty.def_id)
                             .iter_instantiated(cx, alias_ty.args)
                             .map(|trait_ref| {
@@ -248,10 +248,11 @@ where
 
         let pred = inputs_and_output
             .map_bound(|(inputs, _)| {
-                ty::TraitRef::new(cx, goal.predicate.def_id(), [
-                    goal.predicate.self_ty(),
-                    Ty::new_tup(cx, inputs.as_slice()),
-                ])
+                ty::TraitRef::new(
+                    cx,
+                    goal.predicate.def_id(),
+                    [goal.predicate.self_ty(), Ty::new_tup(cx, inputs.as_slice())],
+                )
             })
             .to_host_effect_clause(cx, goal.predicate.constness);
 
@@ -353,7 +354,7 @@ where
 
         ecx.probe_builtin_trait_candidate(BuiltinImplSource::Misc).enter(|ecx| {
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::AliasBoundConstCondition,
                 const_conditions.into_iter().map(|trait_ref| {
                     goal.with(
                         cx,
@@ -371,6 +372,13 @@ where
         _goal: Goal<I, Self>,
     ) -> Result<Candidate<I>, NoSolution> {
         unreachable!("TransmuteFrom is not const")
+    }
+
+    fn consider_builtin_bikeshed_guaranteed_no_drop_candidate(
+        _ecx: &mut EvalCtxt<'_, D>,
+        _goal: Goal<I, Self>,
+    ) -> Result<Candidate<I>, NoSolution> {
+        unreachable!("BikeshedGuaranteedNoDrop is not const");
     }
 
     fn consider_structural_builtin_unsize_candidates(
@@ -397,6 +405,6 @@ where
                 goal.with(ecx.cx(), goal.predicate.trait_ref);
             ecx.compute_trait_goal(trait_goal)
         })?;
-        self.merge_candidates(proven_via, candidates)
+        self.merge_candidates(proven_via, candidates, |_ecx| Err(NoSolution))
     }
 }

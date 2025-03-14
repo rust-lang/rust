@@ -85,7 +85,7 @@ pub fn main() {
 pub fn main() {
     // Exercise some of the configured items in ways that wouldn't be possible
     // if they had the FALSE definition
-    assert!((b));
+    assert!(b);
     let _x: t = true;
     let _y: tg = tg::bar;
 

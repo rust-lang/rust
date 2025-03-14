@@ -13,7 +13,7 @@ use chalk_solve::rust_ir::{self, OpaqueTyDatumBound, WellKnownTrait};
 
 use base_db::CrateId;
 use hir_def::{
-    data::adt::StructFlags,
+    data::{adt::StructFlags, TraitFlags},
     hir::Movability,
     lang_item::{LangItem, LangItemTarget},
     AssocItemId, BlockId, CallableDefId, GenericDefId, HasModule, ItemContainerId, Lookup,
@@ -675,13 +675,13 @@ pub(crate) fn trait_datum_query(
     let generic_params = generics(db.upcast(), trait_.into());
     let bound_vars = generic_params.bound_vars_subst(db, DebruijnIndex::INNERMOST);
     let flags = rust_ir::TraitFlags {
-        auto: trait_data.is_auto,
+        auto: trait_data.flags.contains(TraitFlags::IS_AUTO),
         upstream: trait_.lookup(db.upcast()).container.krate() != krate,
         non_enumerable: true,
         coinductive: false, // only relevant for Chalk testing
         // FIXME: set these flags correctly
         marker: false,
-        fundamental: trait_data.fundamental,
+        fundamental: trait_data.flags.contains(TraitFlags::IS_FUNDAMENTAL),
     };
     let where_clauses = convert_where_clauses(db, trait_.into(), &bound_vars);
     let associated_ty_ids = trait_data.associated_types().map(to_assoc_type_id).collect();
@@ -708,6 +708,9 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Fn => WellKnownTrait::Fn,
         LangItem::FnMut => WellKnownTrait::FnMut,
         LangItem::FnOnce => WellKnownTrait::FnOnce,
+        LangItem::AsyncFn => WellKnownTrait::AsyncFn,
+        LangItem::AsyncFnMut => WellKnownTrait::AsyncFnMut,
+        LangItem::AsyncFnOnce => WellKnownTrait::AsyncFnOnce,
         LangItem::Coroutine => WellKnownTrait::Coroutine,
         LangItem::Sized => WellKnownTrait::Sized,
         LangItem::Unpin => WellKnownTrait::Unpin,
@@ -715,6 +718,7 @@ fn well_known_trait_from_lang_item(item: LangItem) -> Option<WellKnownTrait> {
         LangItem::Tuple => WellKnownTrait::Tuple,
         LangItem::PointeeTrait => WellKnownTrait::Pointee,
         LangItem::FnPtrTrait => WellKnownTrait::FnPtr,
+        LangItem::Future => WellKnownTrait::Future,
         _ => return None,
     })
 }
@@ -730,6 +734,9 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Fn => LangItem::Fn,
         WellKnownTrait::FnMut => LangItem::FnMut,
         WellKnownTrait::FnOnce => LangItem::FnOnce,
+        WellKnownTrait::AsyncFn => LangItem::AsyncFn,
+        WellKnownTrait::AsyncFnMut => LangItem::AsyncFnMut,
+        WellKnownTrait::AsyncFnOnce => LangItem::AsyncFnOnce,
         WellKnownTrait::Coroutine => LangItem::Coroutine,
         WellKnownTrait::Sized => LangItem::Sized,
         WellKnownTrait::Tuple => LangItem::Tuple,
@@ -737,6 +744,7 @@ fn lang_item_from_well_known_trait(trait_: WellKnownTrait) -> LangItem {
         WellKnownTrait::Unsize => LangItem::Unsize,
         WellKnownTrait::Pointee => LangItem::PointeeTrait,
         WellKnownTrait::FnPtr => LangItem::FnPtrTrait,
+        WellKnownTrait::Future => LangItem::Future,
     }
 }
 
@@ -856,7 +864,7 @@ fn impl_def_datum(
     let associated_ty_value_ids = impl_data
         .items
         .iter()
-        .filter_map(|item| match item {
+        .filter_map(|(_, item)| match item {
             AssocItemId::TypeAliasId(type_alias) => Some(*type_alias),
             _ => None,
         })
@@ -950,11 +958,18 @@ pub(crate) fn fn_def_datum_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Ar
 
 pub(crate) fn fn_def_variance_query(db: &dyn HirDatabase, fn_def_id: FnDefId) -> Variances {
     let callable_def: CallableDefId = from_chalk(db, fn_def_id);
-    let generic_params =
-        generics(db.upcast(), GenericDefId::from_callable(db.upcast(), callable_def));
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(GenericDefId::from_callable(db.upcast(), callable_def))
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .map(|v| match v {
+                crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+                crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+                crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+                crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+            }),
     )
 }
 
@@ -962,10 +977,14 @@ pub(crate) fn adt_variance_query(
     db: &dyn HirDatabase,
     chalk_ir::AdtId(adt_id): AdtId,
 ) -> Variances {
-    let generic_params = generics(db.upcast(), adt_id.into());
     Variances::from_iter(
         Interner,
-        std::iter::repeat(chalk_ir::Variance::Invariant).take(generic_params.len()),
+        db.variances_of(adt_id.into()).as_deref().unwrap_or_default().iter().map(|v| match v {
+            crate::variance::Variance::Covariant => chalk_ir::Variance::Covariant,
+            crate::variance::Variance::Invariant => chalk_ir::Variance::Invariant,
+            crate::variance::Variance::Contravariant => chalk_ir::Variance::Contravariant,
+            crate::variance::Variance::Bivariant => chalk_ir::Variance::Invariant,
+        }),
     )
 }
 

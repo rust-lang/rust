@@ -158,7 +158,6 @@ function createCommands(): Record<string, CommandFactory> {
         matchingBrace: { enabled: commands.matchingBrace },
         joinLines: { enabled: commands.joinLines },
         parentModule: { enabled: commands.parentModule },
-        syntaxTree: { enabled: commands.syntaxTree },
         viewHir: { enabled: commands.viewHir },
         viewMir: { enabled: commands.viewMir },
         interpretFunction: { enabled: commands.interpretFunction },
@@ -199,6 +198,10 @@ function createCommands(): Record<string, CommandFactory> {
         rename: { enabled: commands.rename },
         openLogs: { enabled: commands.openLogs },
         revealDependency: { enabled: commands.revealDependency },
+        syntaxTreeReveal: { enabled: commands.syntaxTreeReveal },
+        syntaxTreeCopy: { enabled: commands.syntaxTreeCopy },
+        syntaxTreeHideWhitespace: { enabled: commands.syntaxTreeHideWhitespace },
+        syntaxTreeShowWhitespace: { enabled: commands.syntaxTreeShowWhitespace },
     };
 }
 
@@ -211,6 +214,7 @@ function checkConflictingExtensions() {
                     "both plugins to not work correctly. You should disable one of them.",
                 "Got it",
             )
+            // eslint-disable-next-line no-console
             .then(() => {}, console.error);
     }
 }

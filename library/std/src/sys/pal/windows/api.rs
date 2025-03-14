@@ -137,7 +137,7 @@ pub const fn to_utf16<const UTF16_LEN: usize>(s: &str) -> [u16; UTF16_LEN] {
 /// use frequent `as` casts. This is risky because they are too powerful.
 /// For example, the following will compile today:
 ///
-/// `std::mem::size_of::<u64> as u32`
+/// `size_of::<u64> as u32`
 ///
 /// Note that `size_of` is never actually called, instead a function pointer is
 /// converted to a `u32`. Clippy would warn about this but, alas, it's not run
@@ -147,7 +147,7 @@ const fn win32_size_of<T: Sized>() -> u32 {
     // Uses a trait to workaround restriction on using generic types in inner items.
     trait Win32SizeOf: Sized {
         const WIN32_SIZE_OF: u32 = {
-            let size = core::mem::size_of::<Self>();
+            let size = size_of::<Self>();
             assert!(size <= u32::MAX as usize);
             size as u32
         };

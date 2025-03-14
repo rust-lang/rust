@@ -129,15 +129,18 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 
     fn call(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
-        self.add_block_from(some_from_block, TerminatorKind::Call {
-            func: Operand::Copy(self.dummy_place.clone()),
-            args: [].into(),
-            destination: self.dummy_place.clone(),
-            target: Some(TEMP_BLOCK),
-            unwind: UnwindAction::Continue,
-            call_source: CallSource::Misc,
-            fn_span: DUMMY_SP,
-        })
+        self.add_block_from(
+            some_from_block,
+            TerminatorKind::Call {
+                func: Operand::Copy(self.dummy_place.clone()),
+                args: [].into(),
+                destination: self.dummy_place.clone(),
+                target: Some(TEMP_BLOCK),
+                unwind: UnwindAction::Continue,
+                call_source: CallSource::Misc,
+                fn_span: DUMMY_SP,
+            },
+        )
     }
 
     fn goto(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {

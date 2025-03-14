@@ -177,23 +177,22 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
             } else if let Some(did) = target.def_id(&cx.cache) {
                 cleaner.items.insert(did.into());
             }
-            if let Some(for_did) = for_.def_id(&cx.cache) {
-                if type_did_to_deref_target.insert(for_did, target).is_none() {
-                    // Since only the `DefId` portion of the `Type` instances is known to be same for both the
-                    // `Deref` target type and the impl for type positions, this map of types is keyed by
-                    // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
-                    if cleaner.keep_impl_with_def_id(for_did.into()) {
-                        let mut targets = DefIdSet::default();
-                        targets.insert(for_did);
-                        add_deref_target(
-                            cx,
-                            &type_did_to_deref_target,
-                            &mut cleaner,
-                            &mut targets,
-                            for_did,
-                        );
-                    }
-                }
+            if let Some(for_did) = for_.def_id(&cx.cache)
+                && type_did_to_deref_target.insert(for_did, target).is_none()
+                // Since only the `DefId` portion of the `Type` instances is known to be same for both the
+                // `Deref` target type and the impl for type positions, this map of types is keyed by
+                // `DefId` and for convenience uses a special cleaner that accepts `DefId`s directly.
+                && cleaner.keep_impl_with_def_id(for_did.into())
+            {
+                let mut targets = DefIdSet::default();
+                targets.insert(for_did);
+                add_deref_target(
+                    cx,
+                    &type_did_to_deref_target,
+                    &mut cleaner,
+                    &mut targets,
+                    for_did,
+                );
             }
         }
     }

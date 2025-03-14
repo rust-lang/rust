@@ -22,7 +22,7 @@ note: method defined here
   --> $DIR/issue-52893.rs:11:8
    |
 LL |     fn push(self, other: T) -> Self::PushRes;
-   |        ^^^^
+   |        ^^^^       -----
 
 error: aborting due to 1 previous error
 

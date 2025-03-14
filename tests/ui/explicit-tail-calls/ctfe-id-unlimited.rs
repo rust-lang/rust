@@ -15,7 +15,6 @@ const fn rec_id(n: u32) -> u32 {
             0 => acc,
             #[cfg(r#become)] _ => become inner(acc + 1, n - 1),
             #[cfg(r#return)] _ => return inner(acc + 1, n - 1),
-            //[return]~^ error: evaluation of constant value failed
         }
     }
 
@@ -26,7 +25,7 @@ const fn rec_id(n: u32) -> u32 {
 const ORIGINAL: u32 = 12345;
 // Original number, but with identity function applied
 // (this is the same, but requires execution of the recursion)
-const ID_ED: u32 = rec_id(ORIGINAL);
+const ID_ED: u32 = rec_id(ORIGINAL); //[return]~ error: evaluation of constant value failed
 // Assert to make absolutely sure the computation actually happens
 const ASSERT: () = assert!(ORIGINAL == ID_ED);
 

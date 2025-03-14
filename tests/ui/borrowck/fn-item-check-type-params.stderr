@@ -12,12 +12,12 @@ LL |     extend_lt(val);
    |     argument requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/fn-item-check-type-params.rs:39:12
+  --> $DIR/fn-item-check-type-params.rs:39:31
    |
 LL | pub fn test_coercion<'a>() {
    |                      -- lifetime `'a` defined here
 LL |     let _: fn(&'a str) -> _ = extend_lt;
-   |            ^^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
+   |                               ^^^^^^^^^ coercion requires that `'a` must outlive `'static`
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/fn-item-check-type-params.rs:48:11

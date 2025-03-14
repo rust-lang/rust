@@ -1,5 +1,5 @@
 //@ run-pass
-#![allow(dead_code)]
+#![allow(dead_code, missing_abi)]
 
 unsafe extern fn foo() {}
 unsafe extern "C" fn bar() {}

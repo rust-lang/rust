@@ -1,7 +1,7 @@
 //@ compile-flags:-Zprint-mono-items=eager -Zinline-mir=no
 
 #![deny(dead_code)]
-#![feature(start)]
+#![crate_type = "lib"]
 
 struct Struct<T> {
     x: T,
@@ -38,8 +38,8 @@ impl<'a> LifeTimeOnly<'a> {
 }
 
 //~ MONO_ITEM fn start
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+pub fn start(_: isize, _: *const *const u8) -> isize {
     //~ MONO_ITEM fn Struct::<i32>::new
     //~ MONO_ITEM fn id::<i32>
     //~ MONO_ITEM fn Struct::<i32>::get::<i16>

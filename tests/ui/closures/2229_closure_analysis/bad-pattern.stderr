@@ -109,7 +109,7 @@ LL |         let PAT = v1;
 help: introduce a variable instead
    |
 LL |         let PAT_var = v1;
-   |             ~~~~~~~
+   |                ++++
 
 error: aborting due to 7 previous errors
 

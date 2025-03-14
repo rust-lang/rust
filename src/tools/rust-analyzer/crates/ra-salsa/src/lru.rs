@@ -103,11 +103,11 @@ where
 
     /// Records that `node` was used. This may displace an old node (if the LRU limits are
     pub(crate) fn record_use(&self, node: &Arc<Node>) -> Option<Arc<Node>> {
-        tracing::debug!("record_use(node={:?})", node);
+        tracing::trace!("record_use(node={:?})", node);
 
         // Load green zone length and check if the LRU cache is even enabled.
         let green_zone = self.green_zone.load(Ordering::Acquire);
-        tracing::debug!("record_use: green_zone={}", green_zone);
+        tracing::trace!("record_use: green_zone={}", green_zone);
         if green_zone == 0 {
             return None;
         }
@@ -115,7 +115,7 @@ where
         // Find current index of list (if any) and the current length
         // of our green zone.
         let index = node.lru_index().load();
-        tracing::debug!("record_use: index={}", index);
+        tracing::trace!("record_use: index={}", index);
 
         // Already a member of the list, and in the green zone -- nothing to do!
         if index < green_zone {
@@ -162,9 +162,9 @@ where
         let entries =
             std::mem::replace(&mut self.entries, Vec::with_capacity(self.end_red_zone as usize));
 
-        tracing::debug!("green_zone = {:?}", self.green_zone());
-        tracing::debug!("yellow_zone = {:?}", self.yellow_zone());
-        tracing::debug!("red_zone = {:?}", self.red_zone());
+        tracing::trace!("green_zone = {:?}", self.green_zone());
+        tracing::trace!("yellow_zone = {:?}", self.yellow_zone());
+        tracing::trace!("red_zone = {:?}", self.red_zone());
 
         // We expect to resize when the LRU cache is basically empty.
         // So just forget all the old LRU indices to start.
@@ -180,7 +180,7 @@ where
     /// list may displace an old member of the red zone, in which case
     /// that is returned.
     fn record_use(&mut self, node: &Arc<Node>) -> Option<Arc<Node>> {
-        tracing::debug!("record_use(node={:?})", node);
+        tracing::trace!("record_use(node={:?})", node);
 
         // NB: When this is invoked, we have typically already loaded
         // the LRU index (to check if it is in green zone). But that
@@ -212,7 +212,7 @@ where
         if len < self.end_red_zone {
             self.entries.push(node.clone());
             node.lru_index().store(len);
-            tracing::debug!("inserted node {:?} at {}", node, len);
+            tracing::trace!("inserted node {:?} at {}", node, len);
             return self.record_use(node);
         }
 
@@ -220,7 +220,7 @@ where
         // zone and then promoting.
         let victim_index = self.pick_index(self.red_zone());
         let victim_node = std::mem::replace(&mut self.entries[victim_index as usize], node.clone());
-        tracing::debug!("evicting red node {:?} from {}", victim_node, victim_index);
+        tracing::trace!("evicting red node {:?} from {}", victim_node, victim_index);
         victim_node.lru_index().clear();
         self.promote_red_to_green(node, victim_index);
         Some(victim_node)
@@ -241,7 +241,7 @@ where
         // going to invoke `self.promote_yellow` next, and it will get
         // updated then.
         let yellow_index = self.pick_index(self.yellow_zone());
-        tracing::debug!(
+        tracing::trace!(
             "demoting yellow node {:?} from {} to red at {}",
             self.entries[yellow_index as usize],
             yellow_index,
@@ -265,7 +265,7 @@ where
 
         // Pick a yellow at random and switch places with it.
         let green_index = self.pick_index(self.green_zone());
-        tracing::debug!(
+        tracing::trace!(
             "demoting green node {:?} from {} to yellow at {}",
             self.entries[green_index as usize],
             green_index,
@@ -275,7 +275,7 @@ where
         self.entries[yellow_index as usize].lru_index().store(yellow_index);
         node.lru_index().store(green_index);
 
-        tracing::debug!("promoted {:?} to green index {}", node, green_index);
+        tracing::trace!("promoted {:?} to green index {}", node, green_index);
     }
 
     fn pick_index(&mut self, zone: std::ops::Range<u16>) -> u16 {

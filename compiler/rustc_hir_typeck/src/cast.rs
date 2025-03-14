@@ -32,6 +32,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -45,6 +46,7 @@ use rustc_session::lint;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument};
 
 use super::FnCtxt;
@@ -154,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 enum CastError<'tcx> {
     ErrorGuaranteed(ErrorGuaranteed),
 
@@ -181,6 +183,7 @@ enum CastError<'tcx> {
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToWideCast(Option<&'static str>),
     ForeignNonExhaustiveAdt,
+    PtrPtrAddingAutoTrait(Vec<DefId>),
 }
 
 impl From<ErrorGuaranteed> for CastError<'_> {
@@ -547,17 +550,19 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
+                let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {
                     span: self.span,
-                    expr_ty: self.expr_ty,
-                    cast_ty: fcx.ty_to_string(self.cast_ty),
+                    expr_ty,
+                    cast_ty,
                     teach: fcx.tcx.sess.teach(E0607),
                 });
             }
             CastError::IntToWideCast(known_metadata) => {
                 let expr_if_nightly = fcx.tcx.sess.is_nightly_build().then_some(self.expr_span);
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-                let expr_ty = fcx.ty_to_string(self.expr_ty);
+                let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 let metadata = known_metadata.unwrap_or("type-specific metadata");
                 let known_wide = known_metadata.is_some();
                 let span = self.cast_span;
@@ -592,6 +597,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 )
                 .with_note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
+            }
+            CastError::PtrPtrAddingAutoTrait(added) => {
+                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                    span: self.span,
+                    traits_len: added.len(),
+                    traits: {
+                        let mut traits: Vec<_> = added
+                            .into_iter()
+                            .map(|trait_did| fcx.tcx.def_path_str(trait_did))
+                            .collect();
+
+                        traits.sort();
+                        traits.into()
+                    },
+                });
             }
         }
     }
@@ -665,11 +685,12 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         };
         let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
         let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
-        fcx.tcx.emit_node_span_lint(lint, self.expr.hir_id, self.span, errors::TrivialCast {
-            numeric,
-            expr_ty,
-            cast_ty,
-        });
+        fcx.tcx.emit_node_span_lint(
+            lint,
+            self.expr.hir_id,
+            self.span,
+            errors::TrivialCast { numeric, expr_ty, cast_ty },
+        );
     }
 
     #[instrument(skip(fcx), level = "debug")]
@@ -688,7 +709,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         } else {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
-                    if self.expr_ty.is_unsafe_ptr() && self.cast_ty.is_unsafe_ptr() {
+                    if self.expr_ty.is_raw_ptr() && self.cast_ty.is_raw_ptr() {
                         // When casting a raw pointer to another raw pointer, we cannot convert the cast into
                         // a coercion because the pointee types might only differ in regions, which HIR typeck
                         // cannot distinguish. This would cause us to erroneously discard a cast which will
@@ -830,7 +851,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
 
             // prim -> prim
             (Int(CEnum), Int(_)) => {
-                self.cenum_impl_drop_lint(fcx);
+                self.err_if_cenum_impl_drop(fcx);
                 Ok(CastKind::EnumCast)
             }
             (Int(Char) | Int(Bool), Int(_)) => Ok(CastKind::PrimIntCast),
@@ -891,20 +912,22 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         // e.g. we want to allow `dyn T -> (dyn T,)`, etc.
                         //
                         // We also need to skip auto traits to emit an FCW and not an error.
-                        let src_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        let src_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &src_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
-                        let dst_obj = tcx.mk_ty_from_kind(ty::Dynamic(
+                        );
+                        let dst_obj = Ty::new_dynamic(
+                            tcx,
                             tcx.mk_poly_existential_predicates(
                                 &dst_tty.without_auto_traits().collect::<Vec<_>>(),
                             ),
                             tcx.lifetimes.re_erased,
                             ty::Dyn,
-                        ));
+                        );
 
                         // `dyn Src = dyn Dst`, this checks for matching traits/generics/projections
                         // This is `fcx.demand_eqtype`, but inlined to give a better error.
@@ -923,7 +946,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         let src_auto: FxHashSet<_> = src_tty
                             .auto_traits()
                             .chain(
-                                tcx.supertrait_def_ids(src_principal.def_id())
+                                elaborate::supertrait_def_ids(tcx, src_principal.def_id())
                                     .filter(|def_id| tcx.trait_is_auto(*def_id)),
                             )
                             .collect();
@@ -934,23 +957,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .collect::<Vec<_>>();
 
                         if !added.is_empty() {
-                            tcx.emit_node_span_lint(
-                                lint::builtin::PTR_CAST_ADD_AUTO_TO_OBJECT,
-                                self.expr.hir_id,
-                                self.span,
-                                errors::PtrCastAddAutoToObject {
-                                    traits_len: added.len(),
-                                    traits: {
-                                        let mut traits: Vec<_> = added
-                                            .into_iter()
-                                            .map(|trait_did| tcx.def_path_str(trait_did))
-                                            .collect();
-
-                                        traits.sort();
-                                        traits.into()
-                                    },
-                                },
-                            )
+                            return Err(CastError::PtrPtrAddingAutoTrait(added));
                         }
 
                         Ok(CastKind::PtrPtrCast)
@@ -1090,19 +1097,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
         }
     }
 
-    fn cenum_impl_drop_lint(&self, fcx: &FnCtxt<'a, 'tcx>) {
+    fn err_if_cenum_impl_drop(&self, fcx: &FnCtxt<'a, 'tcx>) {
         if let ty::Adt(d, _) = self.expr_ty.kind()
             && d.has_dtor(fcx.tcx)
         {
             let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
             let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
 
-            fcx.tcx.emit_node_span_lint(
-                lint::builtin::CENUM_IMPL_DROP_CAST,
-                self.expr.hir_id,
-                self.span,
-                errors::CastEnumDrop { expr_ty, cast_ty },
-            );
+            fcx.dcx().emit_err(errors::CastEnumDrop { span: self.span, expr_ty, cast_ty });
         }
     }
 
@@ -1167,10 +1169,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             if let Some((deref_ty, _)) = derefed {
                 // Give a note about what the expr derefs to.
                 if deref_ty != self.expr_ty.peel_refs() {
-                    err.subdiagnostic(errors::DerefImplsIsEmpty {
-                        span: self.expr_span,
-                        deref_ty: fcx.ty_to_string(deref_ty),
-                    });
+                    err.subdiagnostic(errors::DerefImplsIsEmpty { span: self.expr_span, deref_ty });
                 }
 
                 // Create a multipart suggestion: add `!` and `.is_empty()` in
@@ -1178,7 +1177,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.subdiagnostic(errors::UseIsEmpty {
                     lo: self.expr_span.shrink_to_lo(),
                     hi: self.span.with_lo(self.expr_span.hi()),
-                    expr_ty: fcx.ty_to_string(self.expr_ty),
+                    expr_ty: self.expr_ty,
                 });
             }
         }

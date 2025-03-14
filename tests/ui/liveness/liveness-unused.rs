@@ -2,6 +2,7 @@
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types, trivial_numeric_casts, dropping_copy_types)]
+#![feature(intrinsics)]
 
 use std::ops::AddAssign;
 
@@ -136,6 +137,11 @@ fn f7() {
     }
     drop(a);
 }
+
+// unused params warnings are not needed for intrinsic functions without bodies
+#[rustc_intrinsic]
+unsafe fn simd_shuffle<T, I, U>(a: T, b: T, i: I) -> U;
+
 
 fn main() {
 }

@@ -1,6 +1,6 @@
 use hir::{HasSource, InFile, InRealFile, Semantics};
 use ide_db::{
-    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxHashSet,
+    defs::Definition, helpers::visit_file_defs, FileId, FilePosition, FileRange, FxIndexSet,
     RootDatabase,
 };
 use itertools::Itertools;
@@ -21,7 +21,7 @@ mod fn_references;
 // Provides user with annotations above items for looking up references or impl blocks
 // and running/debugging binaries.
 //
-// image::https://user-images.githubusercontent.com/48062697/113020672-b7c34f00-917a-11eb-8f6e-858735660a0e.png[]
+// ![Annotations](https://user-images.githubusercontent.com/48062697/113020672-b7c34f00-917a-11eb-8f6e-858735660a0e.png)
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub struct Annotation {
     pub range: TextRange,
@@ -55,7 +55,7 @@ pub(crate) fn annotations(
     config: &AnnotationConfig,
     file_id: FileId,
 ) -> Vec<Annotation> {
-    let mut annotations = FxHashSet::default();
+    let mut annotations = FxIndexSet::default();
 
     if config.annotate_runnables {
         for runnable in runnables(db, file_id) {
@@ -170,7 +170,12 @@ pub(crate) fn annotations(
         }));
     }
 
-    annotations.into_iter().sorted_by_key(|a| (a.range.start(), a.range.end())).collect()
+    annotations
+        .into_iter()
+        .sorted_by_key(|a| {
+            (a.range.start(), a.range.end(), matches!(a.kind, AnnotationKind::Runnable(..)))
+        })
+        .collect()
 }
 
 pub(crate) fn resolve_annotation(db: &RootDatabase, mut annotation: Annotation) -> Annotation {
@@ -220,7 +225,11 @@ mod tests {
         location: AnnotationLocation::AboveName,
     };
 
-    fn check_with_config(ra_fixture: &str, expect: Expect, config: &AnnotationConfig) {
+    fn check_with_config(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        config: &AnnotationConfig,
+    ) {
         let (analysis, file_id) = fixture::file(ra_fixture);
 
         let annotations: Vec<Annotation> = analysis
@@ -233,7 +242,7 @@ mod tests {
         expect.assert_debug_eq(&annotations);
     }
 
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         check_with_config(ra_fixture, expect, &DEFAULT_CONFIG);
     }
 
@@ -316,6 +325,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -401,6 +415,11 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -523,6 +542,20 @@ fn main() {
                     },
                     Annotation {
                         range: 69..73,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 69,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 69..73,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -537,22 +570,13 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 69..73,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 69,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                 ]
             "#]],
@@ -597,6 +621,11 @@ fn main() {}
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -695,6 +724,20 @@ fn main() {
                     },
                     Annotation {
                         range: 61..65,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 61,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 61..65,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -709,22 +752,13 @@ fn main() {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 61..65,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 61,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                 ]
             "#]],
@@ -746,6 +780,20 @@ mod tests {
                 [
                     Annotation {
                         range: 3..7,
+                        kind: HasReferences {
+                            pos: FilePositionWrapper {
+                                file_id: FileId(
+                                    0,
+                                ),
+                                offset: 3,
+                            },
+                            data: Some(
+                                [],
+                            ),
+                        },
+                    },
+                    Annotation {
+                        range: 3..7,
                         kind: Runnable(
                             Runnable {
                                 use_name_in_title: false,
@@ -760,22 +808,13 @@ mod tests {
                                 },
                                 kind: Bin,
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
-                    },
-                    Annotation {
-                        range: 3..7,
-                        kind: HasReferences {
-                            pos: FilePositionWrapper {
-                                file_id: FileId(
-                                    0,
-                                ),
-                                offset: 3,
-                            },
-                            data: Some(
-                                [],
-                            ),
-                        },
                     },
                     Annotation {
                         range: 18..23,
@@ -796,6 +835,11 @@ mod tests {
                                     path: "tests",
                                 },
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },
@@ -822,6 +866,11 @@ mod tests {
                                     },
                                 },
                                 cfg: None,
+                                update_test: UpdateTest {
+                                    expect_test: false,
+                                    insta: false,
+                                    snapbox: false,
+                                },
                             },
                         ),
                     },

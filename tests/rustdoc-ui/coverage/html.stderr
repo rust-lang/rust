@@ -1,2 +1,2 @@
-error: html output format isn't supported for the --show-coverage option
+error: `--output-format=html` is not supported for the `--show-coverage` option
 

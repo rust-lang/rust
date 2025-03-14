@@ -11,6 +11,7 @@
     clippy::new_without_default,
     clippy::needless_pass_by_value,
     clippy::needless_lifetimes,
+    clippy::elidable_lifetime_names,
     clippy::print_stdout,
     clippy::must_use_candidate,
     clippy::use_self,
@@ -101,6 +102,7 @@ struct BadNew;
 
 impl BadNew {
     fn new() -> i32 {
+        //~^ new_ret_no_self
         0
     }
 }
@@ -122,6 +124,7 @@ fn filter_next() {
 
     // Multi-line case.
     let _ = v.iter().filter(|&x| {
+    //~^ filter_next
                                 *x < 0
                             }
                    ).next();

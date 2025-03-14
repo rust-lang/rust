@@ -31,7 +31,9 @@ pub use iter::{IterRange, IterRangeFrom, IterRangeInclusive};
 #[doc(inline)]
 pub use crate::iter::Step;
 #[doc(inline)]
-pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive};
+pub use crate::ops::{
+    Bound, IntoBounds, OneSidedRange, RangeBounds, RangeFull, RangeTo, RangeToInclusive,
+};
 
 /// A (half-open) range bounded inclusively below and exclusively above
 /// (`start..end` in a future edition).
@@ -48,6 +50,7 @@ pub use crate::ops::{Bound, OneSidedRange, RangeBounds, RangeFull, RangeTo, Rang
 /// assert_eq!(Range::from(3..5), Range { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, Range::from(3..6).into_iter().sum());
 /// ```
+#[lang = "RangeCopy"]
 #[derive(Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct Range<Idx> {
@@ -174,6 +177,14 @@ impl<T> RangeBounds<T> for Range<&T> {
     }
 }
 
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for Range<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Excluded(self.end))
+    }
+}
+
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<Range<T>> for legacy::Range<T> {
     #[inline]
@@ -205,6 +216,7 @@ impl<T> From<legacy::Range<T>> for Range<T> {
 /// assert_eq!(RangeInclusive::from(3..=5), RangeInclusive { start: 3, end: 5 });
 /// assert_eq!(3 + 4 + 5, RangeInclusive::from(3..=5).into_iter().sum());
 /// ```
+#[lang = "RangeInclusiveCopy"]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct RangeInclusive<Idx> {
@@ -341,6 +353,14 @@ impl<T> RangeBounds<T> for RangeInclusive<&T> {
     }
 }
 
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for RangeInclusive<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Included(self.end))
+    }
+}
+
 #[unstable(feature = "new_range_api", issue = "125687")]
 impl<T> From<RangeInclusive<T>> for legacy::RangeInclusive<T> {
     #[inline]
@@ -388,6 +408,7 @@ impl<T> From<legacy::RangeInclusive<T>> for RangeInclusive<T> {
 /// assert_eq!(RangeFrom::from(2..), core::range::RangeFrom { start: 2 });
 /// assert_eq!(2 + 3 + 4, RangeFrom::from(2..).into_iter().take(3).sum());
 /// ```
+#[lang = "RangeFromCopy"]
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[unstable(feature = "new_range_api", issue = "125687")]
 pub struct RangeFrom<Idx> {
@@ -473,6 +494,14 @@ impl<T> RangeBounds<T> for RangeFrom<&T> {
     }
     fn end_bound(&self) -> Bound<&T> {
         Unbounded
+    }
+}
+
+// #[unstable(feature = "range_into_bounds", issue = "136903")]
+#[unstable(feature = "new_range_api", issue = "125687")]
+impl<T> IntoBounds<T> for RangeFrom<T> {
+    fn into_bounds(self) -> (Bound<T>, Bound<T>) {
+        (Included(self.start), Unbounded)
     }
 }
 

@@ -1,0 +1,15 @@
+// MIR for `main` after PreCodegen
+
+fn main() -> () {
+    let mut _0: ();
+    scope 1 {
+        debug x => const 2_u32 is 1..;
+        scope 2 {
+            debug y => const {transmute(0x00000000): (u32) is 1..};
+        }
+    }
+
+    bb0: {
+        return;
+    }
+}

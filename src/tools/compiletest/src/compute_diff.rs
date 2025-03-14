@@ -31,7 +31,7 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
 
     for result in diff::lines(expected, actual) {
         match result {
-            diff::Result::Left(str) => {
+            diff::Result::Left(s) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
@@ -41,11 +41,11 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Expected(str.to_owned()));
+                mismatch.lines.push(DiffLine::Expected(s.to_owned()));
                 line_number += 1;
                 lines_since_mismatch = 0;
             }
-            diff::Result::Right(str) => {
+            diff::Result::Right(s) => {
                 if lines_since_mismatch >= context_size && lines_since_mismatch > 0 {
                     results.push(mismatch);
                     mismatch = Mismatch::new(line_number - context_queue.len() as u32);
@@ -55,18 +55,18 @@ pub fn make_diff(expected: &str, actual: &str, context_size: usize) -> Vec<Misma
                     mismatch.lines.push(DiffLine::Context(line.to_owned()));
                 }
 
-                mismatch.lines.push(DiffLine::Resulting(str.to_owned()));
+                mismatch.lines.push(DiffLine::Resulting(s.to_owned()));
                 lines_since_mismatch = 0;
             }
-            diff::Result::Both(str, _) => {
+            diff::Result::Both(s, _) => {
                 if context_queue.len() >= context_size {
                     let _ = context_queue.pop_front();
                 }
 
                 if lines_since_mismatch < context_size {
-                    mismatch.lines.push(DiffLine::Context(str.to_owned()));
+                    mismatch.lines.push(DiffLine::Context(s.to_owned()));
                 } else if context_size > 0 {
-                    context_queue.push_back(str);
+                    context_queue.push_back(s);
                 }
 
                 line_number += 1;

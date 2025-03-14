@@ -9,7 +9,7 @@ use std::ops::ControlFlow;
 use std::{cmp, iter};
 
 use hir::def::DefKind;
-use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
+use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Diag, EmissionGuarantee};
 use rustc_hir as hir;
@@ -25,13 +25,13 @@ use rustc_middle::dep_graph::{DepNodeIndex, dep_kinds};
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
 use rustc_middle::ty::error::TypeErrorToStringExt;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::print::{PrintTraitRefExt as _, with_no_trimmed_paths};
 use rustc_middle::ty::{
     self, GenericArgsRef, PolyProjectionPredicate, Ty, TyCtxt, TypeFoldable, TypeVisitableExt,
     TypingMode, Upcast,
 };
 use rustc_span::{Symbol, sym};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -961,7 +961,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                             return Ok(EvaluatedToAmbig);
                         }
                         ty::ConstKind::Error(_) => return Ok(EvaluatedToOk),
-                        ty::ConstKind::Value(ty, _) => ty,
+                        ty::ConstKind::Value(cv) => cv.ty,
                         ty::ConstKind::Unevaluated(uv) => {
                             self.tcx().type_of(uv.def).instantiate(self.tcx(), uv.args)
                         }
@@ -1007,7 +1007,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // depend on its particular value in order to work, so we can clear
             // out the param env and get better caching.
             debug!("in global");
-            obligation.param_env = obligation.param_env.without_caller_bounds();
+            obligation.param_env = ty::ParamEnv::empty();
         }
 
         let stack = self.push_stack(previous_stack, &obligation);
@@ -1224,15 +1224,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// that recursion is ok. This routine returns `true` if the top of the
     /// stack (`cycle[0]`):
     ///
-    /// - is a defaulted trait,
+    /// - is a coinductive trait: an auto-trait or `Sized`,
     /// - it also appears in the backtrace at some position `X`,
     /// - all the predicates at positions `X..` between `X` and the top are
-    ///   also defaulted traits.
+    ///   also coinductive traits.
     pub(crate) fn coinductive_match<I>(&mut self, mut cycle: I) -> bool
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        cycle.all(|predicate| predicate.is_coinductive(self.tcx()))
+        cycle.all(|p| match p.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::ClauseKind::Trait(data)) => {
+                self.infcx.tcx.trait_is_coinductive(data.def_id())
+            }
+            ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => true,
+            _ => false,
+        })
     }
 
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested
@@ -1619,9 +1625,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // projections, we will never be able to equate, e.g. `<T as Tr>::A`
             // with `<<T as Tr>::A as Tr>::A`.
             let relevant_bounds = if in_parent_alias_type {
-                self.tcx().item_non_self_assumptions(alias_ty.def_id)
+                self.tcx().item_non_self_bounds(alias_ty.def_id)
             } else {
-                self.tcx().item_super_predicates(alias_ty.def_id)
+                self.tcx().item_self_bounds(alias_ty.def_id)
             };
 
             for bound in relevant_bounds.instantiate(self.tcx(), alias_ty.args) {
@@ -1843,7 +1849,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         // a global and a non-global where-clause.
         //
         // Our handling of where-bounds is generally fairly messy but necessary for backwards
-        // compatability, see #50825 for why we need to handle global where-bounds like this.
+        // compatibility, see #50825 for why we need to handle global where-bounds like this.
         let is_global = |c: ty::PolyTraitPredicate<'tcx>| c.is_global() && !c.has_bound_vars();
         let param_candidates = candidates
             .iter()
@@ -1895,6 +1901,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             Some(None) => {}
             None => return None,
         }
+        // Same for upcasting.
+        let upcast_bound = candidates
+            .iter()
+            .filter_map(|c| {
+                if let TraitUpcastingUnsizeCandidate(i) = c.candidate { Some(i) } else { None }
+            })
+            .try_reduce(|c1, c2| if has_non_region_infer { None } else { Some(c1.min(c2)) });
+        match upcast_bound {
+            Some(Some(index)) => return Some(TraitUpcastingUnsizeCandidate(index)),
+            Some(None) => {}
+            None => return None,
+        }
 
         // Finally, handle overlapping user-written impls.
         let impls = candidates.iter().filter_map(|c| {
@@ -1907,9 +1925,9 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let mut impl_candidate = None;
         for c in impls {
             if let Some(prev) = impl_candidate.replace(c) {
-                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev) {
+                if self.prefer_lhs_over_victim(has_non_region_infer, c, prev.0) {
                     // Ok, prefer `c` over the previous entry
-                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c) {
+                } else if self.prefer_lhs_over_victim(has_non_region_infer, prev, c.0) {
                     // Ok, keep `prev` instead of the new entry
                     impl_candidate = Some(prev);
                 } else {
@@ -1936,7 +1954,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 | TraitAliasCandidate
                 | TraitUpcastingUnsizeCandidate(_)
                 | BuiltinObjectCandidate
-                | BuiltinUnsizeCandidate => false,
+                | BuiltinUnsizeCandidate
+                | BikeshedGuaranteedNoDropCandidate => false,
                 // Non-global param candidates have already been handled, global
                 // where-bounds get ignored.
                 ParamCandidate(_) | ImplCandidate(_) => true,
@@ -1967,7 +1986,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         &self,
         has_non_region_infer: bool,
         (lhs, lhs_evaluation): (DefId, EvaluationResult),
-        (victim, victim_evaluation): (DefId, EvaluationResult),
+        victim: DefId,
     ) -> bool {
         let tcx = self.tcx();
         // See if we can toss out `victim` based on specialization.
@@ -1983,14 +2002,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         }
 
         match tcx.impls_are_allowed_to_overlap(lhs, victim) {
-            // For #33140 the impl headers must be exactly equal, the trait must not have
-            // any associated items and there are no where-clauses.
-            //
-            // We can just arbitrarily drop one of the impls.
-            Some(ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects) => {
-                assert_eq!(lhs_evaluation, victim_evaluation);
-                true
-            }
             // For candidates which already reference errors it doesn't really
             // matter what we do 🤷
             Some(ty::ImplOverlapKind::Permitted { marker: false }) => {
@@ -2185,8 +2196,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::CoroutineWitness(def_id, args) => {
-                let hidden_types = bind_coroutine_hidden_types_above(
-                    self.infcx,
+                let hidden_types = rebind_coroutine_witness_types(
+                    self.infcx.tcx,
                     def_id,
                     args,
                     obligation.predicate.bound_vars(),
@@ -2218,15 +2229,6 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                             .rebind(args.as_coroutine_closure().upvar_tys().to_vec()),
                     )
                 }
-            }
-
-            // `Copy` and `Clone` are automatically implemented for an anonymous adt
-            // if all of its fields are `Copy` and `Clone`
-            ty::Adt(adt, args) if adt.is_anonymous() => {
-                // (*) binder moved here
-                Where(obligation.predicate.rebind(
-                    adt.non_enum_variant().fields.iter().map(|f| f.ty(self.tcx(), args)).collect(),
-                ))
             }
 
             ty::Adt(..) | ty::Alias(..) | ty::Param(..) | ty::Placeholder(..) => {
@@ -2334,7 +2336,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             }
 
             ty::CoroutineWitness(def_id, args) => {
-                bind_coroutine_hidden_types_above(self.infcx, def_id, args, t.bound_vars())
+                rebind_coroutine_witness_types(self.infcx.tcx, def_id, args, t.bound_vars())
             }
 
             // For `PhantomData<T>`, we pass `T`.
@@ -2409,9 +2411,11 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
                 } else {
                     // If this is an ill-formed auto/built-in trait, then synthesize
                     // new error args for the missing generics.
-                    let err_args = ty::GenericArgs::extend_with_error(tcx, trait_def_id, &[
-                        normalized_ty.into(),
-                    ]);
+                    let err_args = ty::GenericArgs::extend_with_error(
+                        tcx,
+                        trait_def_id,
+                        &[normalized_ty.into()],
+                    );
                     ty::TraitRef::new_from_args(tcx, trait_def_id, err_args)
                 };
 
@@ -2519,7 +2523,8 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         let a_auto_traits: FxIndexSet<DefId> = a_data
             .auto_traits()
             .chain(a_data.principal_def_id().into_iter().flat_map(|principal_def_id| {
-                tcx.supertrait_def_ids(principal_def_id).filter(|def_id| tcx.trait_is_auto(*def_id))
+                elaborate::supertrait_def_ids(tcx, principal_def_id)
+                    .filter(|def_id| tcx.trait_is_auto(*def_id))
             }))
             .collect();
 
@@ -2824,6 +2829,23 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
 
         obligations
     }
+}
+
+fn rebind_coroutine_witness_types<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: DefId,
+    args: ty::GenericArgsRef<'tcx>,
+    bound_vars: &'tcx ty::List<ty::BoundVariableKind>,
+) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
+    let bound_coroutine_types = tcx.coroutine_hidden_types(def_id).skip_binder();
+    let shifted_coroutine_types =
+        tcx.shift_bound_var_indices(bound_vars.len(), bound_coroutine_types.skip_binder());
+    ty::Binder::bind_with_vars(
+        ty::EarlyBinder::bind(shifted_coroutine_types.to_vec()).instantiate(tcx, args),
+        tcx.mk_bound_variable_kinds_from_iter(
+            bound_vars.iter().chain(bound_coroutine_types.bound_vars()),
+        ),
+    )
 }
 
 impl<'o, 'tcx> TraitObligationStack<'o, 'tcx> {
@@ -3133,57 +3155,4 @@ pub(crate) enum ProjectionMatchesProjection {
     Yes,
     Ambiguous,
     No,
-}
-
-/// Replace all regions inside the coroutine interior with late bound regions.
-/// Note that each region slot in the types gets a new fresh late bound region, which means that
-/// none of the regions inside relate to any other, even if typeck had previously found constraints
-/// that would cause them to be related.
-#[instrument(level = "trace", skip(infcx), ret)]
-fn bind_coroutine_hidden_types_above<'tcx>(
-    infcx: &InferCtxt<'tcx>,
-    def_id: DefId,
-    args: ty::GenericArgsRef<'tcx>,
-    bound_vars: &ty::List<ty::BoundVariableKind>,
-) -> ty::Binder<'tcx, Vec<Ty<'tcx>>> {
-    let tcx = infcx.tcx;
-    let mut seen_tys = FxHashSet::default();
-
-    let considering_regions = infcx.considering_regions;
-
-    let num_bound_variables = bound_vars.len() as u32;
-    let mut counter = num_bound_variables;
-
-    let hidden_types: Vec<_> = tcx
-        .coroutine_hidden_types(def_id)
-        // Deduplicate tys to avoid repeated work.
-        .filter(|bty| seen_tys.insert(*bty))
-        .map(|mut bty| {
-            // Only remap erased regions if we use them.
-            if considering_regions {
-                bty = bty.map_bound(|ty| {
-                    fold_regions(tcx, ty, |r, current_depth| match r.kind() {
-                        ty::ReErased => {
-                            let br = ty::BoundRegion {
-                                var: ty::BoundVar::from_u32(counter),
-                                kind: ty::BoundRegionKind::Anon,
-                            };
-                            counter += 1;
-                            ty::Region::new_bound(tcx, current_depth, br)
-                        }
-                        r => bug!("unexpected region: {r:?}"),
-                    })
-                })
-            }
-
-            bty.instantiate(tcx, args)
-        })
-        .collect();
-    let bound_vars = tcx.mk_bound_variable_kinds_from_iter(
-        bound_vars.iter().chain(
-            (num_bound_variables..counter)
-                .map(|_| ty::BoundVariableKind::Region(ty::BoundRegionKind::Anon)),
-        ),
-    );
-    ty::Binder::bind_with_vars(hidden_types, bound_vars)
 }

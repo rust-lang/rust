@@ -39,7 +39,7 @@ where
         //
         // FIXME(-Znext-solver=coinductive): I think this should be split
         // and we tag the impl bounds with `GoalSource::ImplWhereBound`?
-        // Right not this includes both the impl and the assoc item where bounds,
+        // Right now this includes both the impl and the assoc item where bounds,
         // and I don't think the assoc item where-bounds are allowed to be coinductive.
         self.add_goals(
             GoalSource::Misc,

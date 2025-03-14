@@ -6,7 +6,6 @@
 #![deny(rustdoc::invalid_codeblock_attributes)]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 // This higher-order macro defines the error codes that are in use. It is used
@@ -24,6 +23,10 @@
 //
 // Both columns are necessary because it's not possible in Rust to create a new identifier such as
 // `E0123` from an integer literal such as `0123`, unfortunately.
+//
+// Do *not* remove entries from this list. Instead, just add a note th the corresponding markdown
+// file saying that this error is not emitted by the compiler any more (see E0001.md for an
+// example), and remove all code examples that do not build any more.
 #[macro_export]
 macro_rules! error_codes {
     ($macro:path) => (
@@ -541,6 +544,9 @@ E0798: 0798,
 E0799: 0799,
 E0800: 0800,
 E0801: 0801,
+E0802: 0802,
+E0803: 0803,
+E0804: 0804,
         );
     )
 }

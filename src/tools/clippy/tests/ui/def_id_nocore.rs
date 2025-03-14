@@ -1,6 +1,6 @@
 //@ignore-target: apple
 
-#![feature(no_core, lang_items, start)]
+#![feature(no_core, lang_items)]
 #![no_core]
 #![allow(clippy::missing_safety_doc)]
 

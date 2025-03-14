@@ -1,5 +1,5 @@
 //! Reports references in code that the IDE layer cannot resolve.
-use hir::{db::HirDatabase, AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics};
+use hir::{db::HirDatabase, sym, AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics};
 use ide::{AnalysisHost, RootDatabase, TextRange};
 use ide_db::{
     base_db::{SourceDatabase, SourceRootDatabase},
@@ -66,7 +66,7 @@ impl flags::UnresolvedReferences {
             let file_id = module.definition_source_file_id(db).original_file(db);
             if !visited_files.contains(&file_id) {
                 let crate_name =
-                    module.krate().display_name(db).as_deref().unwrap_or("unknown").to_owned();
+                    module.krate().display_name(db).as_deref().unwrap_or(&sym::unknown).to_owned();
                 let file_path = vfs.file_path(file_id.into());
                 eprintln!("processing crate: {crate_name}, module: {file_path}",);
 

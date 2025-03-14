@@ -250,6 +250,8 @@ dependencies = [
  "itertools",
  "path_macro",
  "rustc_version",
+ "serde",
+ "serde_derive",
  "serde_json",
  "shell-words",
  "tempfile",

@@ -2,25 +2,27 @@
 #![crate_type = "lib"]
 
 //! Make sure str::to_string is specialized not to use fmt machinery.
+//!
+//! Note that the `CHECK-NOT`s here try to match on calls to functions under `core::fmt`.
 
 // CHECK-LABEL: define {{(dso_local )?}}void @one_ref
 #[no_mangle]
 pub fn one_ref(input: &str) -> String {
-    // CHECK-NOT: {{(call|invoke).*}}fmt
+    // CHECK-NOT: {{(call|invoke)}}{{.*}}@{{.*}}core{{.*}}fmt{{.*}}
     input.to_string()
 }
 
 // CHECK-LABEL: define {{(dso_local )?}}void @two_ref
 #[no_mangle]
 pub fn two_ref(input: &&str) -> String {
-    // CHECK-NOT: {{(call|invoke).*}}fmt
+    // CHECK-NOT: {{(call|invoke)}}{{.*}}@{{.*}}core{{.*}}fmt{{.*}}
     input.to_string()
 }
 
 // CHECK-LABEL: define {{(dso_local )?}}void @thirteen_ref
 #[no_mangle]
 pub fn thirteen_ref(input: &&&&&&&&&&&&&str) -> String {
-    // CHECK-NOT: {{(call|invoke).*}}fmt
+    // CHECK-NOT: {{(call|invoke)}}{{.*}}@{{.*}}core{{.*}}fmt{{.*}}
     input.to_string()
 }
 
@@ -31,6 +33,6 @@ pub fn thirteen_ref(input: &&&&&&&&&&&&&str) -> String {
 // CHECK-LABEL: define {{(dso_local )?}}void @fourteen_ref
 #[no_mangle]
 pub fn fourteen_ref(input: &&&&&&&&&&&&&&str) -> String {
-    // CHECK: {{(call|invoke).*}}fmt
+    // CHECK: {{(call|invoke)}}{{.*}}@{{.*}}core{{.*}}fmt{{.*}}
     input.to_string()
 }

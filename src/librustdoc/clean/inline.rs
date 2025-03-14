@@ -17,12 +17,12 @@ use rustc_span::symbol::{Symbol, sym};
 use thin_vec::{ThinVec, thin_vec};
 use tracing::{debug, trace};
 
-use super::Item;
+use super::{Item, extract_cfg_from_attrs};
 use crate::clean::{
-    self, Attributes, AttributesExt, ImplKind, ItemId, Type, clean_bound_vars, clean_generics,
-    clean_impl_item, clean_middle_assoc_item, clean_middle_field, clean_middle_ty,
-    clean_poly_fn_sig, clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type,
-    clean_ty_generics, clean_variant_def, utils,
+    self, Attributes, ImplKind, ItemId, Type, clean_bound_vars, clean_generics, clean_impl_item,
+    clean_middle_assoc_item, clean_middle_field, clean_middle_ty, clean_poly_fn_sig,
+    clean_trait_ref_with_constraints, clean_ty, clean_ty_alias_inner_type, clean_ty_generics,
+    clean_variant_def, utils,
 };
 use crate::core::DocContext;
 use crate::formats::item_type::ItemType;
@@ -181,7 +181,7 @@ pub(crate) fn try_inline_glob(
                 .filter_map(|child| child.res.opt_def_id())
                 .filter(|def_id| !cx.tcx.is_doc_hidden(def_id))
                 .collect();
-            let attrs = cx.tcx.hir().attrs(import.hir_id());
+            let attrs = cx.tcx.hir_attrs(import.hir_id());
             let mut items = build_module_items(
                 cx,
                 did,
@@ -408,10 +408,13 @@ pub(crate) fn merge_attrs(
             } else {
                 Attributes::from_hir(&both)
             },
-            both.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(both.iter(), cx.tcx, &cx.cache.hidden_cfg),
         )
     } else {
-        (Attributes::from_hir(old_attrs), old_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg))
+        (
+            Attributes::from_hir(old_attrs),
+            extract_cfg_from_attrs(old_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
+        )
     }
 }
 
@@ -452,7 +455,7 @@ pub(crate) fn build_impl(
     }
 
     let impl_item = match did.as_local() {
-        Some(did) => match &tcx.hir().expect_item(did).kind {
+        Some(did) => match &tcx.hir_expect_item(did).kind {
             hir::ItemKind::Impl(impl_) => Some(impl_),
             _ => panic!("`DefID` passed to `build_impl` is not an `impl"),
         },
@@ -485,7 +488,7 @@ pub(crate) fn build_impl(
             impl_
                 .items
                 .iter()
-                .map(|item| tcx.hir().impl_item(item.id))
+                .map(|item| tcx.hir_impl_item(item.id))
                 .filter(|item| {
                     // Filter out impl items whose corresponding trait item has `doc(hidden)`
                     // not to document such impl items.
@@ -560,11 +563,13 @@ pub(crate) fn build_impl(
     // Return if the trait itself or any types of the generic parameters are doc(hidden).
     let mut stack: Vec<&Type> = vec![&for_];
 
-    if let Some(did) = trait_.as_ref().map(|t| t.def_id()) {
-        if !document_hidden && tcx.is_doc_hidden(did) {
-            return;
-        }
+    if let Some(did) = trait_.as_ref().map(|t| t.def_id())
+        && !document_hidden
+        && tcx.is_doc_hidden(did)
+    {
+        return;
     }
+
     if let Some(generics) = trait_.as_ref().and_then(|t| t.generics()) {
         stack.extend(generics);
     }
@@ -700,7 +705,7 @@ fn build_module_items(
 pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
     if let Some(did) = did.as_local() {
         let hir_id = tcx.local_def_id_to_hir_id(did);
-        rustc_hir_pretty::id_to_string(&tcx.hir(), hir_id)
+        rustc_hir_pretty::id_to_string(&tcx, hir_id)
     } else {
         tcx.rendered_const(did).clone()
     }

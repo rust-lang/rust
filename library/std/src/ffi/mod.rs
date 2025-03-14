@@ -179,19 +179,19 @@ pub use core::ffi::{
     c_ulong, c_ulonglong, c_ushort,
 };
 
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 pub use self::c_str::FromBytesUntilNulError;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "cstr_from_bytes", since = "1.10.0")]
 pub use self::c_str::FromBytesWithNulError;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "cstring_from_vec_with_nul", since = "1.58.0")]
 pub use self::c_str::FromVecWithNulError;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "cstring_into", since = "1.7.0")]
 pub use self::c_str::IntoStringError;
-#[doc(no_inline)]
+#[doc(inline)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::c_str::NulError;
 #[doc(inline)]
@@ -201,5 +201,5 @@ pub use self::c_str::{CStr, CString};
 #[doc(inline)]
 pub use self::os_str::{OsStr, OsString};
 
-#[unstable(feature = "os_str_display", issue = "120048")]
+#[stable(feature = "os_str_display", since = "CURRENT_RUSTC_VERSION")]
 pub mod os_str;

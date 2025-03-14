@@ -398,12 +398,12 @@ mod prim_never {}
 /// let v = vec!['h', 'e', 'l', 'l', 'o'];
 ///
 /// // five elements times four bytes for each element
-/// assert_eq!(20, v.len() * std::mem::size_of::<char>());
+/// assert_eq!(20, v.len() * size_of::<char>());
 ///
 /// let s = String::from("hello");
 ///
 /// // five elements times one byte per element
-/// assert_eq!(5, s.len() * std::mem::size_of::<u8>());
+/// assert_eq!(5, s.len() * size_of::<u8>());
 /// ```
 ///
 /// [`String`]: ../std/string/struct.String.html
@@ -443,8 +443,8 @@ mod prim_never {}
 /// let s = String::from("love: ❤️");
 /// let v: Vec<char> = s.chars().collect();
 ///
-/// assert_eq!(12, std::mem::size_of_val(&s[..]));
-/// assert_eq!(32, std::mem::size_of_val(&v[..]));
+/// assert_eq!(12, size_of_val(&s[..]));
+/// assert_eq!(32, size_of_val(&v[..]));
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 mod prim_char {}
@@ -594,10 +594,8 @@ impl () {}
 /// #[allow(unused_extern_crates)]
 /// extern crate libc;
 ///
-/// use std::mem;
-///
 /// unsafe {
-///     let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>()) as *mut i32;
+///     let my_num: *mut i32 = libc::malloc(size_of::<i32>()) as *mut i32;
 ///     if my_num.is_null() {
 ///         panic!("failed to allocate memory");
 ///     }
@@ -893,11 +891,11 @@ mod prim_array {}
 ///
 /// ```
 /// # use std::rc::Rc;
-/// let pointer_size = std::mem::size_of::<&u8>();
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<&[u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<*const [u8]>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Box<[u8]>>());
-/// assert_eq!(2 * pointer_size, std::mem::size_of::<Rc<[u8]>>());
+/// let pointer_size = size_of::<&u8>();
+/// assert_eq!(2 * pointer_size, size_of::<&[u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<*const [u8]>());
+/// assert_eq!(2 * pointer_size, size_of::<Box<[u8]>>());
+/// assert_eq!(2 * pointer_size, size_of::<Rc<[u8]>>());
 /// ```
 ///
 /// ## Trait Implementations
@@ -1160,9 +1158,9 @@ impl<T> (T,) {}
 ///
 /// Note that most common platforms will not support `f16` in hardware without enabling extra target
 /// features, with the notable exception of Apple Silicon (also known as M1, M2, etc.) processors.
-/// Hardware support on x86-64 requires the avx512fp16 feature, while RISC-V requires Zhf.
-/// Usually the fallback implementation will be to use `f32` hardware if it exists, and convert
-/// between `f16` and `f32` when performing math.
+/// Hardware support on x86/x86-64 requires the avx512fp16 or avx10.1 features, while RISC-V requires
+/// Zfh, and Arm/AArch64 requires FEAT_FP16.  Usually the fallback implementation will be to use `f32`
+/// hardware if it exists, and convert between `f16` and `f32` when performing math.
 ///
 /// *[See also the `std::f16::consts` module](crate::f16::consts).*
 ///
@@ -1344,10 +1342,10 @@ mod prim_f64 {}
 /// quad-precision values][wikipedia] for more information.
 ///
 /// Note that no platforms have hardware support for `f128` without enabling target specific features,
-/// as for all instruction set architectures `f128` is considered an optional feature.
-/// Only Power ISA ("PowerPC") and RISC-V specify it, and only certain microarchitectures
-/// actually implement it. For x86-64 and AArch64, ISA support is not even specified,
-/// so it will always be a software implementation significantly slower than `f64`.
+/// as for all instruction set architectures `f128` is considered an optional feature.  Only Power ISA
+/// ("PowerPC") and RISC-V (via the Q extension) specify it, and only certain microarchitectures
+/// actually implement it. For x86-64 and AArch64, ISA support is not even specified, so it will always
+/// be a software implementation significantly slower than `f64`.
 ///
 /// _Note: `f128` support is incomplete. Many platforms will not be able to link math functions. On
 /// x86 in particular, these functions do link but their results are always incorrect._
@@ -1692,15 +1690,13 @@ mod prim_ref {}
 /// This zero-sized type *coerces* to a regular function pointer. For example:
 ///
 /// ```rust
-/// use std::mem;
-///
 /// fn bar(x: i32) {}
 ///
 /// let not_bar_ptr = bar; // `not_bar_ptr` is zero-sized, uniquely identifying `bar`
-/// assert_eq!(mem::size_of_val(&not_bar_ptr), 0);
+/// assert_eq!(size_of_val(&not_bar_ptr), 0);
 ///
 /// let bar_ptr: fn(i32) = not_bar_ptr; // force coercion to function pointer
-/// assert_eq!(mem::size_of_val(&bar_ptr), mem::size_of::<usize>());
+/// assert_eq!(size_of_val(&bar_ptr), size_of::<usize>());
 ///
 /// let footgun = &bar; // this is a shared reference to the zero-sized type identifying `bar`
 /// ```

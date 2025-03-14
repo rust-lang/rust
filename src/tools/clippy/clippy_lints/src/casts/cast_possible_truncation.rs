@@ -4,13 +4,13 @@ use clippy_utils::expr_or_init;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
+use rustc_abi::IntegerType;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
 use rustc_span::Span;
-use rustc_target::abi::IntegerType;
 
 use super::{CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION, utils};
 

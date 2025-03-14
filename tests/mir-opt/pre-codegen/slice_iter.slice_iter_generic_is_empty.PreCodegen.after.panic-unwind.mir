@@ -4,22 +4,21 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
     debug it => _1;
     let mut _0: bool;
     scope 1 (inlined <std::slice::Iter<'_, T> as ExactSizeIterator>::is_empty) {
-        let mut _2: *const *const T;
-        let mut _3: *const std::ptr::NonNull<T>;
-        let mut _8: *const T;
+        let mut _2: *const T;
+        let mut _7: *const T;
         scope 2 {
-            let _4: std::ptr::NonNull<T>;
-            let _9: usize;
+            let _3: std::ptr::NonNull<T>;
+            let _8: usize;
             scope 3 {
             }
             scope 4 {
-                scope 8 (inlined <NonNull<T> as PartialEq>::eq) {
-                    let mut _5: std::ptr::NonNull<T>;
+                scope 7 (inlined <NonNull<T> as PartialEq>::eq) {
+                    let mut _4: std::ptr::NonNull<T>;
+                    let mut _5: *mut T;
                     let mut _6: *mut T;
-                    let mut _7: *mut T;
-                    scope 9 (inlined NonNull::<T>::as_ptr) {
+                    scope 8 (inlined NonNull::<T>::as_ptr) {
                     }
-                    scope 10 (inlined NonNull::<T>::as_ptr) {
+                    scope 9 (inlined NonNull::<T>::as_ptr) {
                     }
                 }
             }
@@ -27,50 +26,45 @@ fn slice_iter_generic_is_empty(_1: &std::slice::Iter<'_, T>) -> bool {
                 scope 6 (inlined std::ptr::const_ptr::<impl *const T>::cast::<()>) {
                 }
             }
-            scope 7 (inlined std::ptr::const_ptr::<impl *const *const T>::cast::<NonNull<T>>) {
-            }
         }
     }
 
     bb0: {
-        StorageLive(_9);
         StorageLive(_8);
-        StorageLive(_4);
+        StorageLive(_7);
+        StorageLive(_3);
         switchInt(const <T as std::mem::SizedTypeProperties>::IS_ZST) -> [0: bb1, otherwise: bb2];
     }
 
     bb1: {
-        StorageLive(_3);
         StorageLive(_2);
-        _2 = &raw const ((*_1).1: *const T);
-        _3 = copy _2 as *const std::ptr::NonNull<T> (PtrToPtr);
+        _2 = copy ((*_1).1: *const T);
+        _3 = move _2 as std::ptr::NonNull<T> (Transmute);
         StorageDead(_2);
-        _4 = copy (*_3);
-        StorageDead(_3);
-        StorageLive(_6);
         StorageLive(_5);
-        _5 = copy ((*_1).0: std::ptr::NonNull<T>);
-        _6 = copy _5 as *mut T (Transmute);
-        StorageDead(_5);
-        StorageLive(_7);
-        _7 = copy _4 as *mut T (Transmute);
-        _0 = Eq(move _6, move _7);
-        StorageDead(_7);
+        StorageLive(_4);
+        _4 = copy ((*_1).0: std::ptr::NonNull<T>);
+        _5 = copy _4 as *mut T (Transmute);
+        StorageDead(_4);
+        StorageLive(_6);
+        _6 = copy _3 as *mut T (Transmute);
+        _0 = Eq(move _5, move _6);
         StorageDead(_6);
+        StorageDead(_5);
         goto -> bb3;
     }
 
     bb2: {
-        _8 = copy ((*_1).1: *const T);
-        _9 = copy _8 as usize (Transmute);
-        _0 = Eq(copy _9, const 0_usize);
+        _7 = copy ((*_1).1: *const T);
+        _8 = copy _7 as usize (Transmute);
+        _0 = Eq(copy _8, const 0_usize);
         goto -> bb3;
     }
 
     bb3: {
-        StorageDead(_4);
+        StorageDead(_3);
+        StorageDead(_7);
         StorageDead(_8);
-        StorageDead(_9);
         return;
     }
 }

@@ -39,7 +39,7 @@ impl RWUTable {
     /// Size of packed RWU in bits.
     const RWU_BITS: usize = 4;
     /// Size of a word in bits.
-    const WORD_BITS: usize = std::mem::size_of::<u8>() * 8;
+    const WORD_BITS: usize = size_of::<u8>() * 8;
     /// Number of packed RWUs that fit into a single word.
     const WORD_RWU_COUNT: usize = Self::WORD_BITS / Self::RWU_BITS;
 

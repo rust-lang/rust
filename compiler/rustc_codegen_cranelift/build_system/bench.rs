@@ -16,11 +16,7 @@ static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
     "<none>",
 );
 
-pub(crate) fn benchmark(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
-    benchmark_simple_raytracer(dirs, bootstrap_host_compiler);
-}
-
-fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
+pub(crate) fn benchmark(dirs: &Dirs, compiler: &Compiler) {
     if std::process::Command::new("hyperfine").output().is_err() {
         eprintln!("Hyperfine not installed");
         eprintln!("Hint: Try `cargo install hyperfine` to install hyperfine");
@@ -39,9 +35,9 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
     };
 
     eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-    let cargo_clif = dirs
-        .dist_dir
-        .join(get_file_name(&bootstrap_host_compiler.rustc, "cargo_clif", "bin").replace('_', "-"));
+    let cargo_clif = &compiler.cargo;
+    let rustc_clif = &compiler.rustc;
+    let rustflags = &compiler.rustflags.join("\x1f");
     let manifest_path = SIMPLE_RAYTRACER_REPO.source_dir().to_path(dirs).join("Cargo.toml");
     let target_dir = dirs.build_dir.join("simple_raytracer");
 
@@ -56,22 +52,24 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
         target_dir = target_dir.display(),
     );
     let clif_build_cmd = format!(
-        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_clif || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_clif",
+        "RUSTC={rustc_clif} CARGO_ENCODED_RUSTFLAGS=\"{rustflags}\" {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} && (rm build/raytracer_cg_clif || true) && ln build/simple_raytracer/debug/main build/raytracer_cg_clif",
         cargo_clif = cargo_clif.display(),
+        rustc_clif = rustc_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
     let clif_build_opt_cmd = format!(
-        "RUSTC=rustc {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} --release && (rm build/raytracer_cg_clif_opt || true) && ln build/simple_raytracer/release/main build/raytracer_cg_clif_opt",
+        "RUSTC={rustc_clif} CARGO_ENCODED_RUSTFLAGS=\"{rustflags}\" {cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir} --release && (rm build/raytracer_cg_clif_opt || true) && ln build/simple_raytracer/release/main build/raytracer_cg_clif_opt",
         cargo_clif = cargo_clif.display(),
+        rustc_clif = rustc_clif.display(),
         manifest_path = manifest_path.display(),
         target_dir = target_dir.display(),
     );
 
-    let bench_compile_markdown = dirs.dist_dir.join("bench_compile.md");
+    let bench_compile_markdown = dirs.build_dir.join("bench_compile.md");
 
     let bench_compile = hyperfine_command(
-        1,
+        0,
         bench_runs,
         Some(&clean_cmd),
         &[
@@ -92,23 +90,14 @@ fn benchmark_simple_raytracer(dirs: &Dirs, bootstrap_host_compiler: &Compiler) {
 
     eprintln!("[BENCH RUN] ebobby/simple-raytracer");
 
-    let bench_run_markdown = dirs.dist_dir.join("bench_run.md");
+    let bench_run_markdown = dirs.build_dir.join("bench_run.md");
 
-    let raytracer_cg_llvm = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_llvm",
-        "bin",
-    ));
-    let raytracer_cg_clif = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_clif",
-        "bin",
-    ));
-    let raytracer_cg_clif_opt = Path::new(".").join(get_file_name(
-        &bootstrap_host_compiler.rustc,
-        "raytracer_cg_clif_opt",
-        "bin",
-    ));
+    let raytracer_cg_llvm =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_llvm", "bin"));
+    let raytracer_cg_clif =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_clif", "bin"));
+    let raytracer_cg_clif_opt =
+        Path::new(".").join(get_file_name(&compiler.rustc, "raytracer_cg_clif_opt", "bin"));
     let mut bench_run = hyperfine_command(
         0,
         bench_runs,

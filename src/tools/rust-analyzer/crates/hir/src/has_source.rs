@@ -15,7 +15,7 @@ use tt::TextRange;
 use crate::{
     db::HirDatabase, Adt, Callee, Const, Enum, ExternCrateDecl, Field, FieldSource, Function, Impl,
     InlineAsmOperand, Label, LifetimeParam, LocalSource, Macro, Module, Param, SelfParam, Static,
-    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant,
+    Struct, Trait, TraitAlias, TypeAlias, TypeOrConstParam, Union, Variant, VariantDef,
 };
 
 pub trait HasSource {
@@ -107,6 +107,16 @@ impl HasSource for Adt {
             Adt::Struct(s) => Some(s.source(db)?.map(ast::Adt::Struct)),
             Adt::Union(u) => Some(u.source(db)?.map(ast::Adt::Union)),
             Adt::Enum(e) => Some(e.source(db)?.map(ast::Adt::Enum)),
+        }
+    }
+}
+impl HasSource for VariantDef {
+    type Ast = ast::VariantDef;
+    fn source(self, db: &dyn HirDatabase) -> Option<InFile<Self::Ast>> {
+        match self {
+            VariantDef::Struct(s) => Some(s.source(db)?.map(ast::VariantDef::Struct)),
+            VariantDef::Union(u) => Some(u.source(db)?.map(ast::VariantDef::Union)),
+            VariantDef::Variant(v) => Some(v.source(db)?.map(ast::VariantDef::Variant)),
         }
     }
 }
@@ -248,7 +258,7 @@ impl HasSource for Param {
                 let ast @ InFile { file_id, value } = source_map.expr_syntax(expr_id).ok()?;
                 let root = db.parse_or_expand(file_id);
                 match value.to_node(&root) {
-                    ast::Expr::ClosureExpr(it) => it
+                    Either::Left(ast::Expr::ClosureExpr(it)) => it
                         .param_list()?
                         .params()
                         .nth(self.idx)
@@ -301,7 +311,7 @@ impl HasSource for InlineAsmOperand {
             let root = src.file_syntax(db.upcast());
             return src
                 .map(|ast| match ast.to_node(&root) {
-                    ast::Expr::AsmExpr(asm) => asm
+                    Either::Left(ast::Expr::AsmExpr(asm)) => asm
                         .asm_pieces()
                         .filter_map(|it| match it {
                             ast::AsmPiece::AsmOperandNamed(it) => Some(it),

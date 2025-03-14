@@ -4,7 +4,8 @@
         target_os = "emscripten",
         all(target_os = "wasi", target_env = "p1"),
         target_env = "sgx",
-        target_os = "xous"
+        target_os = "xous",
+        target_os = "trusty",
     ))
 ))]
 mod tests;
@@ -12,7 +13,8 @@ mod tests;
 use crate::fmt;
 use crate::io::{self, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
-use crate::sys_common::{AsInner, FromInner, IntoInner, net as net_imp};
+use crate::sys::net as net_imp;
+use crate::sys_common::{AsInner, FromInner, IntoInner};
 use crate::time::Duration;
 
 /// A UDP socket.

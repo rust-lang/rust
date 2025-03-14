@@ -3,7 +3,7 @@
 `rustc` supports doing profile-guided optimization (PGO).
 This chapter describes what PGO is, what it is good for, and how it can be used.
 
-## What Is Profiled-Guided Optimization?
+## What Is Profile-Guided Optimization?
 
 The basic concept of PGO is to collect data about the typical execution of
 a program (e.g. which branches it is likely to take) and then use this data

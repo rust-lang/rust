@@ -452,15 +452,15 @@ mod items {
     /// ItemKind::Fn
     mod item_fn {
         pub const unsafe extern "C" fn f() {}
-        pub async unsafe extern fn g() {}
+        pub async unsafe extern "C" fn g() {}
         fn h<'a, T>() where T: 'a {}
 
         trait TraitItems {
-            unsafe extern fn f();
+            unsafe extern "C" fn f();
         }
 
         impl TraitItems for _ {
-            default unsafe extern fn f() {}
+            default unsafe extern "C" fn f() {}
         }
     }
 
@@ -472,7 +472,7 @@ mod items {
     /// ItemKind::ForeignMod
     mod item_foreign_mod {
         unsafe extern "C++" {}
-        unsafe extern {}
+        unsafe extern "C" {}
     }
 
     /// ItemKind::GlobalAsm
@@ -651,8 +651,8 @@ mod patterns {
         let &mut pat;
     }
 
-    /// PatKind::Lit
-    fn pat_lit() {
+    /// PatKind::Expr
+    fn pat_expr() {
         let 1_000_i8;
         let -"";
     }

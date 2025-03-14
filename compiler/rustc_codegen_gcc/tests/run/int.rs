@@ -3,8 +3,6 @@
 // Run-time:
 //   status: 0
 
-#![feature(const_black_box)]
-
 /*
  * Code
  */

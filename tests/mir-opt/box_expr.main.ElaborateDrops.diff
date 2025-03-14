@@ -12,6 +12,7 @@
       let mut _7: std::boxed::Box<S>;
 +     let mut _8: &mut std::boxed::Box<S>;
 +     let mut _9: ();
++     let mut _10: *const S;
       scope 1 {
           debug x => _1;
       }
@@ -68,7 +69,7 @@
   
       bb8 (cleanup): {
 -         drop(_5) -> [return: bb9, unwind terminate(cleanup)];
-+         goto -> bb11;
++         goto -> bb12;
       }
   
       bb9 (cleanup): {
@@ -82,6 +83,11 @@
 + 
 +     bb11 (cleanup): {
 +         goto -> bb10;
++     }
++ 
++     bb12 (cleanup): {
++         _10 = copy ((_5.0: std::ptr::Unique<S>).0: std::ptr::NonNull<S>) as *const S (Transmute);
++         goto -> bb11;
       }
   }
   

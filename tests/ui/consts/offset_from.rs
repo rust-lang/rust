@@ -1,8 +1,5 @@
 //@ run-pass
 
-#![feature(const_ptr_sub_ptr)]
-#![feature(ptr_sub_ptr)]
-
 struct Struct {
     field: (),
 }
@@ -47,7 +44,7 @@ pub const OFFSET_EQUAL_INTS: isize = {
 pub const OFFSET_UNSIGNED: usize = {
     let a = ['a', 'b', 'c'];
     let ptr = a.as_ptr();
-    unsafe { ptr.add(2).sub_ptr(ptr) }
+    unsafe { ptr.add(2).offset_from_unsigned(ptr) }
 };
 
 fn main() {

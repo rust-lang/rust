@@ -4,6 +4,7 @@
 
 type Test = impl Copy;
 
+#[define_opaque(Test)]
 fn test() -> Test {
     let y = || -> Test { () };
     7 //~ ERROR mismatched types

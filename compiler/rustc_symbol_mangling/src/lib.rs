@@ -89,11 +89,11 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use rustc_hir::def::DefKind;
@@ -151,7 +151,7 @@ fn symbol_name_provider<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> ty
 
 pub fn typeid_for_trait_ref<'tcx>(
     tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyExistentialTraitRef<'tcx>,
+    trait_ref: ty::ExistentialTraitRef<'tcx>,
 ) -> String {
     v0::mangle_typeid_for_trait_ref(tcx, trait_ref)
 }

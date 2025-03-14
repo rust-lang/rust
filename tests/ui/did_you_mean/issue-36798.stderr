@@ -6,8 +6,9 @@ LL |     f.baz;
    |
 help: a field with a similar name exists
    |
-LL |     f.bar;
-   |       ~~~
+LL -     f.baz;
+LL +     f.bar;
+   |
 
 error: aborting due to 1 previous error
 

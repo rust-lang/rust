@@ -8,6 +8,7 @@ type B = impl Foo;
 
 trait Foo {}
 
+#[define_opaque(A, B)]
 fn muh(x: A) -> B {
     //[current]~^ ERROR: item does not constrain `A::{opaque#0}`
     //[next]~^^ ERROR: cannot satisfy `_ == A`

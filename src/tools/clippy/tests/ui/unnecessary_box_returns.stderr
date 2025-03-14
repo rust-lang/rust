@@ -17,7 +17,7 @@ LL |     fn baz(&self) -> Box<usize> {
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `usize`
-  --> tests/ui/unnecessary_box_returns.rs:27:20
+  --> tests/ui/unnecessary_box_returns.rs:28:20
    |
 LL | fn bxed_usize() -> Box<usize> {
    |                    ^^^^^^^^^^ help: try: `usize`
@@ -25,7 +25,7 @@ LL | fn bxed_usize() -> Box<usize> {
    = help: changing this also requires a change to the return expressions in this function
 
 error: boxed return of the sized type `Foo`
-  --> tests/ui/unnecessary_box_returns.rs:33:19
+  --> tests/ui/unnecessary_box_returns.rs:35:19
    |
 LL | fn _bxed_foo() -> Box<Foo> {
    |                   ^^^^^^^^ help: try: `Foo`

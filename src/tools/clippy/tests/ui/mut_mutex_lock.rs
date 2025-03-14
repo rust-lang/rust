@@ -8,11 +8,13 @@ fn mut_mutex_lock() {
     let value_mutex = Arc::get_mut(&mut value_rc).unwrap();
 
     let mut value = value_mutex.lock().unwrap();
+    //~^ mut_mutex_lock
     *value += 1;
 
     let mut value_mutex = Mutex::new(42_u8);
     let mut_ref_mut_ref_mutex = &mut &mut value_mutex;
     let mut value = mut_ref_mut_ref_mutex.lock().unwrap();
+    //~^ mut_mutex_lock
     *value += 1;
 }
 

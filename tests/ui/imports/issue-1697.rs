@@ -2,7 +2,7 @@
 
 use unresolved::*;
 //~^ ERROR unresolved import `unresolved` [E0432]
-//~| NOTE you might be missing crate `unresolved`
-//~| HELP consider importing the `unresolved` crate
+//~| NOTE use of unresolved module or unlinked crate `unresolved`
+//~| HELP you might be missing a crate named `unresolved`
 
 fn main() {}

@@ -1,6 +1,7 @@
 #[cfg(feature = "master")]
 use gccjit::{FnAttribute, VarAttribute, Visibility};
 use gccjit::{Function, GlobalKind, LValue, RValue, ToRValue, Type};
+use rustc_abi::{self as abi, Align, HasDataLayout, Primitive, Size, WrappingRange};
 use rustc_codegen_ssa::traits::{
     BaseTypeCodegenMethods, ConstCodegenMethods, StaticCodegenMethods,
 };
@@ -14,7 +15,6 @@ use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
 use crate::base;
 use crate::context::CodegenCx;
@@ -252,7 +252,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             let global = self.declare_global(
                 sym,
                 gcc_type,
-                GlobalKind::Exported,
+                GlobalKind::Imported,
                 is_tls,
                 fn_attrs.link_section,
             );
@@ -302,9 +302,9 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn const_alloc_to_gcc<'gcc, 'tcx>(
-    cx: &CodegenCx<'gcc, 'tcx>,
-    alloc: ConstAllocation<'tcx>,
+pub fn const_alloc_to_gcc<'gcc>(
+    cx: &CodegenCx<'gcc, '_>,
+    alloc: ConstAllocation<'_>,
 ) -> RValue<'gcc> {
     let alloc = alloc.inner();
     let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
@@ -404,7 +404,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(
         // TODO(antoyo): set linkage.
         let value = cx.const_ptrcast(global1.get_address(None), gcc_type);
         global2.global_set_initializer_rvalue(value);
-        // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     } else {
         // Generate an external declaration.

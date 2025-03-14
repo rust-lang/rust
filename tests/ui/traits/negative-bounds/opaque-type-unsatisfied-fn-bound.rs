@@ -3,6 +3,6 @@
 #![feature(negative_bounds, unboxed_closures)]
 
 fn produce() -> impl !Fn<(u32,)> {}
-//~^ ERROR the trait bound `(): !Fn(u32)` is not satisfied
+//~^ ERROR type mismatch resolving
 
 fn main() {}

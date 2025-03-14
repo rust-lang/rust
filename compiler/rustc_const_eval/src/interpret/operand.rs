@@ -385,7 +385,7 @@ impl<'tcx, Prov: Provenance> ImmTy<'tcx, Prov> {
             (Immediate::Uninit, _) => Immediate::Uninit,
             // If the field is uninhabited, we can forget the data (can happen in ConstProp).
             // `enum S { A(!), B, C }` is an example of an enum with Scalar layout that
-            // has an `Uninhabited` variant, which means this case is possible.
+            // has an uninhabited variant, which means this case is possible.
             _ if layout.is_uninhabited() => Immediate::Uninit,
             // the field contains no information, can be left uninit
             // (Scalar/ScalarPair can contain even aligned ZST, not just 1-ZST)
@@ -704,8 +704,8 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     pub fn read_str(&self, mplace: &MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx, &str> {
         let len = mplace.len(self)?;
         let bytes = self.read_bytes_ptr_strip_provenance(mplace.ptr(), Size::from_bytes(len))?;
-        let str = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
-        interp_ok(str)
+        let s = std::str::from_utf8(bytes).map_err(|err| err_ub!(InvalidStr(err)))?;
+        interp_ok(s)
     }
 
     /// Read from a local of the current frame. Convenience method for [`InterpCx::local_at_frame_to_op`].

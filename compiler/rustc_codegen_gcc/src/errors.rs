@@ -28,6 +28,7 @@ pub(crate) struct UnstableCTargetFeature<'a> {
 #[diag(codegen_gcc_forbidden_ctarget_feature)]
 pub(crate) struct ForbiddenCTargetFeature<'a> {
     pub feature: &'a str,
+    pub enabled: &'a str,
     pub reason: &'a str,
 }
 
@@ -38,10 +39,6 @@ pub(crate) enum PossibleFeature<'a> {
     #[help(codegen_gcc_consider_filing_feature_request)]
     None,
 }
-
-#[derive(Diagnostic)]
-#[diag(codegen_gcc_lto_not_supported)]
-pub(crate) struct LTONotSupported;
 
 #[derive(Diagnostic)]
 #[diag(codegen_gcc_unwinding_inline_asm)]

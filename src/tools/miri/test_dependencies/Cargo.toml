@@ -8,13 +8,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-# all dependencies (and their transitive ones) listed here can be used in `tests/`.
+# all dependencies (and their transitive ones) listed here can be used in `tests/*-dep`.
 libc = "0.2"
 num_cpus = "1.10.1"
 cfg-if = "1"
 
 getrandom_01 = { package = "getrandom", version = "0.1" }
 getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+getrandom_03 = { package = "getrandom", version = "0.3" }
 
 [target.'cfg(not(any(target_arch = "wasm32", target_arch = "wasm64")))'.dependencies]
 tempfile = "3"

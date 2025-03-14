@@ -241,9 +241,10 @@ unsafe fn test_simd() {
     let (zero0, zero1) = std::mem::transmute::<_, (u64, u64)>(x);
     assert_eq!((zero0, zero1), (0, 0));
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
-    assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [
-        0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff
-    ]);
+    assert_eq!(
+        std::mem::transmute::<_, [u16; 8]>(cmp_eq),
+        [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]
+    );
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);
 
     test_mm_slli_si128();

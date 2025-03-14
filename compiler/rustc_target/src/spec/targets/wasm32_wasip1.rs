@@ -10,7 +10,9 @@
 //! was since renamed to `wasm32-wasip1` after the preview2 target was
 //! introduced.
 
-use crate::spec::{Cc, LinkSelfContainedDefault, LinkerFlavor, Target, base, crt_objects};
+use crate::spec::{
+    Cc, LinkSelfContainedDefault, LinkerFlavor, Target, TargetMetadata, base, crt_objects,
+};
 
 pub(crate) fn target() -> Target {
     let mut options = base::wasm::options();
@@ -48,7 +50,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "wasm32-wasip1".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("WebAssembly with WASI".into()),
             tier: Some(2),
             host_tools: Some(false),

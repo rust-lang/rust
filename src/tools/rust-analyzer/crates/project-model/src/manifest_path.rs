@@ -46,7 +46,7 @@ impl ManifestPath {
     }
 
     pub fn is_rust_manifest(&self) -> bool {
-        self.file.extension().map_or(false, |ext| ext == "rs")
+        self.file.extension() == Some("rs")
     }
 }
 

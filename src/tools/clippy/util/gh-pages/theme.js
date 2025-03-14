@@ -1,3 +1,5 @@
+"use strict";
+
 function storeValue(settingName, value) {
     try {
         localStorage.setItem(`clippy-lint-list-${settingName}`, value);
@@ -57,4 +59,11 @@ function setTheme(theme, store) {
     } else {
         setTheme(theme, false);
     }
+
+    const themeChoice = document.getElementById("theme-choice");
+
+    themeChoice.value = loadValue("theme");
+    document.getElementById("theme-choice").addEventListener("change", (e) => {
+        setTheme(themeChoice.value, true);
+    });
 })();

@@ -47,7 +47,11 @@ pub enum Alignment {
 #[derive(Copy, Clone)]
 pub enum Count {
     /// Specified with a literal number, stores the value
+    #[cfg(bootstrap)]
     Is(usize),
+    /// Specified with a literal number, stores the value
+    #[cfg(not(bootstrap))]
+    Is(u16),
     /// Specified using `$` and `*` syntaxes, stores the index into `args`
     Param(usize),
     /// Not specified
@@ -74,7 +78,7 @@ enum ArgumentType<'a> {
         formatter: unsafe fn(NonNull<()>, &mut Formatter<'_>) -> Result,
         _lifetime: PhantomData<&'a ()>,
     },
-    Count(usize),
+    Count(u16),
 }
 
 /// This struct represents a generic "argument" which is taken by format_args!().
@@ -96,12 +100,12 @@ pub struct Argument<'a> {
 #[rustc_diagnostic_item = "ArgumentMethods"]
 impl Argument<'_> {
     #[inline]
-    fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
+    const fn new<'a, T>(x: &'a T, f: fn(&T, &mut Formatter<'_>) -> Result) -> Argument<'a> {
         Argument {
             // INVARIANT: this creates an `ArgumentType<'a>` from a `&'a T` and
             // a `fn(&T, ...)`, so the invariant is maintained.
             ty: ArgumentType::Placeholder {
-                value: NonNull::from(x).cast(),
+                value: NonNull::from_ref(x).cast(),
                 // SAFETY: function pointers always have the same layout.
                 formatter: unsafe { mem::transmute(f) },
                 _lifetime: PhantomData,
@@ -150,8 +154,12 @@ impl Argument<'_> {
         Self::new(x, UpperExp::fmt)
     }
     #[inline]
-    pub fn from_usize(x: &usize) -> Argument<'_> {
-        Argument { ty: ArgumentType::Count(*x) }
+    #[track_caller]
+    pub const fn from_usize(x: &usize) -> Argument<'_> {
+        if *x > u16::MAX as usize {
+            panic!("Formatting argument out of range");
+        }
+        Argument { ty: ArgumentType::Count(*x as u16) }
     }
 
     /// Format this placeholder argument.
@@ -181,7 +189,7 @@ impl Argument<'_> {
     }
 
     #[inline]
-    pub(super) fn as_usize(&self) -> Option<usize> {
+    pub(super) const fn as_u16(&self) -> Option<u16> {
         match self.ty {
             ArgumentType::Count(count) => Some(count),
             ArgumentType::Placeholder { .. } => None,
@@ -199,7 +207,7 @@ impl Argument<'_> {
     /// println!("{f}");
     /// ```
     #[inline]
-    pub fn none() -> [Self; 0] {
+    pub const fn none() -> [Self; 0] {
         []
     }
 }
@@ -216,7 +224,7 @@ impl UnsafeArg {
     /// See documentation where `UnsafeArg` is required to know when it is safe to
     /// create and use `UnsafeArg`.
     #[inline]
-    pub unsafe fn new() -> Self {
+    pub const unsafe fn new() -> Self {
         Self { _private: () }
     }
 }

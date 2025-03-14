@@ -3,5 +3,5 @@ fn main() {
 }
 
 extern "rust-intrinsic" fn transmute() {}
-//~^ ERROR intrinsics are subject to change
+//~^ ERROR "rust-intrinsic" ABI is an implementation detail
 //~| ERROR intrinsic must be in `extern "rust-intrinsic" { ... }` block

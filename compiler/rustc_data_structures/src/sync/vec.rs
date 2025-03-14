@@ -45,14 +45,14 @@ impl<T: Copy> AppendOnlyVec<T> {
         self.vec.read().get(i).copied()
     }
 
-    pub fn iter_enumerated(&self) -> impl Iterator<Item = (usize, T)> + '_ {
+    pub fn iter_enumerated(&self) -> impl Iterator<Item = (usize, T)> {
         (0..)
             .map(|i| (i, self.get(i)))
             .take_while(|(_, o)| o.is_some())
             .filter_map(|(i, o)| Some((i, o?)))
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = T> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = T> {
         (0..).map(|i| self.get(i)).take_while(|o| o.is_some()).flatten()
     }
 }

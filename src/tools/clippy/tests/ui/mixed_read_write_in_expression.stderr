@@ -19,31 +19,31 @@ LL |     x += {
    |     ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:20:9
+  --> tests/ui/mixed_read_write_in_expression.rs:21:9
    |
 LL |         x = 20;
    |         ^^^^^^
 
 error: unsequenced read of `x`
-  --> tests/ui/mixed_read_write_in_expression.rs:32:12
+  --> tests/ui/mixed_read_write_in_expression.rs:33:12
    |
 LL |         a: x,
    |            ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:35:13
+  --> tests/ui/mixed_read_write_in_expression.rs:36:13
    |
 LL |             x = 6;
    |             ^^^^^
 
 error: unsequenced read of `x`
-  --> tests/ui/mixed_read_write_in_expression.rs:42:9
+  --> tests/ui/mixed_read_write_in_expression.rs:43:9
    |
 LL |         x += {
    |         ^
    |
 note: whether read occurs before this write depends on evaluation order
-  --> tests/ui/mixed_read_write_in_expression.rs:44:13
+  --> tests/ui/mixed_read_write_in_expression.rs:46:13
    |
 LL |             x = 20;
    |             ^^^^^^

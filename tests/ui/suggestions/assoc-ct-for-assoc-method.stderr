@@ -10,8 +10,9 @@ LL |     let x: i32 = MyS::foo;
            found fn item `fn() -> MyS {MyS::foo}`
 help: try referring to the associated const `FOO` instead (notice the capitalization difference)
    |
-LL |     let x: i32 = MyS::FOO;
-   |                       ~~~
+LL -     let x: i32 = MyS::foo;
+LL +     let x: i32 = MyS::FOO;
+   |
 
 error[E0308]: mismatched types
   --> $DIR/assoc-ct-for-assoc-method.rs:15:18
@@ -25,8 +26,9 @@ LL |     let z: i32 = i32::max;
            found fn item `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
 help: try referring to the associated const `MAX` instead
    |
-LL |     let z: i32 = i32::MAX;
-   |                       ~~~
+LL -     let z: i32 = i32::max;
+LL +     let z: i32 = i32::MAX;
+   |
 
 error[E0369]: cannot subtract `{integer}` from `fn(i32, i32) -> i32 {<i32 as Ord>::max}`
   --> $DIR/assoc-ct-for-assoc-method.rs:22:27

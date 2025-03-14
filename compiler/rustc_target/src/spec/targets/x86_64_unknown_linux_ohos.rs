@@ -1,4 +1,6 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, base};
+use crate::spec::{
+    Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target, TargetMetadata, base,
+};
 
 pub(crate) fn target() -> Target {
     let mut base = base::linux_ohos::opts();
@@ -16,7 +18,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-linux-ohos".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("x86_64 OpenHarmony".into()),
             tier: Some(2),
             host_tools: Some(false),

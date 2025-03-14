@@ -8,7 +8,6 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 
 #![feature(rustc_private)]
 #![feature(assert_matches)]
@@ -52,13 +51,11 @@ fn test_intrinsics() -> ControlFlow<()> {
 
 /// This check is unfortunately tight to the implementation of intrinsics.
 ///
-/// We want to ensure that StableMIR can handle intrinsics with and without fallback body.
+/// We want to ensure that StableMIR can handle intrinsics with and without fallback body:
+/// for intrinsics without a body, obviously we cannot expose anything.
 ///
 /// If by any chance this test breaks because you changed how an intrinsic is implemented, please
 /// update the test to invoke a different intrinsic.
-///
-/// In StableMIR, we only expose intrinsic body if they are not marked with
-/// `rustc_intrinsic_must_be_overridden`.
 fn check_instance(instance: &Instance) {
     assert_eq!(instance.kind, InstanceKind::Intrinsic);
     let name = instance.intrinsic_name().unwrap();

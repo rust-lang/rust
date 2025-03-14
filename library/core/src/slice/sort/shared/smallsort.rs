@@ -113,7 +113,7 @@ pub(crate) trait UnstableSmallSortFreezeTypeImpl: Sized + FreezeMarker {
 impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
     #[inline(always)]
     default fn small_sort_threshold() -> usize {
-        if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             SMALL_SORT_GENERAL_THRESHOLD
         } else {
             SMALL_SORT_FALLBACK_THRESHOLD
@@ -125,7 +125,7 @@ impl<T: FreezeMarker> UnstableSmallSortFreezeTypeImpl for T {
     where
         F: FnMut(&T, &T) -> bool,
     {
-        if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             small_sort_general(v, is_less);
         } else {
             small_sort_fallback(v, is_less);
@@ -143,10 +143,10 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
     #[inline(always)]
     fn small_sort_threshold() -> usize {
         if has_efficient_in_place_swap::<T>()
-            && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+            && (size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
             SMALL_SORT_NETWORK_THRESHOLD
-        } else if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        } else if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             SMALL_SORT_GENERAL_THRESHOLD
         } else {
             SMALL_SORT_FALLBACK_THRESHOLD
@@ -159,10 +159,10 @@ impl<T: FreezeMarker + CopyMarker> UnstableSmallSortFreezeTypeImpl for T {
         F: FnMut(&T, &T) -> bool,
     {
         if has_efficient_in_place_swap::<T>()
-            && (mem::size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
+            && (size_of::<T>() * SMALL_SORT_NETWORK_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE
         {
             small_sort_network(v, is_less);
-        } else if (mem::size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
+        } else if (size_of::<T>() * SMALL_SORT_GENERAL_SCRATCH_LEN) <= MAX_STACK_ARRAY_SIZE {
             small_sort_general(v, is_less);
         } else {
             small_sort_fallback(v, is_less);
@@ -238,7 +238,7 @@ fn small_sort_general_with_scratch<T: FreezeMarker, F: FnMut(&T, &T) -> bool>(
     unsafe {
         let scratch_base = scratch.as_mut_ptr() as *mut T;
 
-        let presorted_len = if const { mem::size_of::<T>() <= 16 } && len >= 16 {
+        let presorted_len = if const { size_of::<T>() <= 16 } && len >= 16 {
             // SAFETY: scratch_base is valid and has enough space.
             sort8_stable(v_base, scratch_base, scratch_base.add(len), is_less);
             sort8_stable(
@@ -387,7 +387,7 @@ unsafe fn swap_if_less<T, F>(v_base: *mut T, a_pos: usize, b_pos: usize, is_less
 where
     F: FnMut(&T, &T) -> bool,
 {
-    // SAFETY: the caller must guarantee that `a` and `b` each added to `v_base` yield valid
+    // SAFETY: the caller must guarantee that `a_pos` and `b_pos` each added to `v_base` yield valid
     // pointers into `v_base`, and are properly aligned, and part of the same allocation.
     unsafe {
         let v_a = v_base.add(a_pos);
@@ -404,16 +404,16 @@ where
         // The equivalent code with a branch would be:
         //
         // if should_swap {
-        //     ptr::swap(left, right, 1);
+        //     ptr::swap(v_a, v_b, 1);
         // }
 
         // The goal is to generate cmov instructions here.
-        let left_swap = if should_swap { v_b } else { v_a };
-        let right_swap = if should_swap { v_a } else { v_b };
+        let v_a_swap = should_swap.select_unpredictable(v_b, v_a);
+        let v_b_swap = should_swap.select_unpredictable(v_a, v_b);
 
-        let right_swap_tmp = ManuallyDrop::new(ptr::read(right_swap));
-        ptr::copy(left_swap, v_a, 1);
-        ptr::copy_nonoverlapping(&*right_swap_tmp, v_b, 1);
+        let v_b_swap_tmp = ManuallyDrop::new(ptr::read(v_b_swap));
+        ptr::copy(v_a_swap, v_a, 1);
+        ptr::copy_nonoverlapping(&*v_b_swap_tmp, v_b, 1);
     }
 }
 
@@ -640,25 +640,20 @@ pub unsafe fn sort4_stable<T, F: FnMut(&T, &T) -> bool>(
         //  1,  1 |  c   b    a         d
         let c3 = is_less(&*c, &*a);
         let c4 = is_less(&*d, &*b);
-        let min = select(c3, c, a);
-        let max = select(c4, b, d);
-        let unknown_left = select(c3, a, select(c4, c, b));
-        let unknown_right = select(c4, d, select(c3, b, c));
+        let min = c3.select_unpredictable(c, a);
+        let max = c4.select_unpredictable(b, d);
+        let unknown_left = c3.select_unpredictable(a, c4.select_unpredictable(c, b));
+        let unknown_right = c4.select_unpredictable(d, c3.select_unpredictable(b, c));
 
         // Sort the last two unknown elements.
         let c5 = is_less(&*unknown_right, &*unknown_left);
-        let lo = select(c5, unknown_right, unknown_left);
-        let hi = select(c5, unknown_left, unknown_right);
+        let lo = c5.select_unpredictable(unknown_right, unknown_left);
+        let hi = c5.select_unpredictable(unknown_left, unknown_right);
 
         ptr::copy_nonoverlapping(min, dst, 1);
         ptr::copy_nonoverlapping(lo, dst.add(1), 1);
         ptr::copy_nonoverlapping(hi, dst.add(2), 1);
         ptr::copy_nonoverlapping(max, dst.add(3), 1);
-    }
-
-    #[inline(always)]
-    fn select<T>(cond: bool, if_true: *const T, if_false: *const T) -> *const T {
-        if cond { if_true } else { if_false }
     }
 }
 
@@ -868,5 +863,5 @@ fn panic_on_ord_violation() -> ! {
 #[must_use]
 pub(crate) const fn has_efficient_in_place_swap<T>() -> bool {
     // Heuristic that holds true on all tested 64-bit capable architectures.
-    mem::size_of::<T>() <= 8 // mem::size_of::<u64>()
+    size_of::<T>() <= 8 // size_of::<u64>()
 }

@@ -148,16 +148,20 @@ pub struct CfgDiff {
 }
 
 impl CfgDiff {
-    /// Create a new CfgDiff. Will return None if the same item appears more than once in the set
-    /// of both.
-    pub fn new(enable: Vec<CfgAtom>, disable: Vec<CfgAtom>) -> Option<CfgDiff> {
-        let mut occupied = FxHashSet::default();
-        if enable.iter().chain(disable.iter()).any(|item| !occupied.insert(item)) {
-            // was present
-            return None;
+    /// Create a new CfgDiff.
+    pub fn new(mut enable: Vec<CfgAtom>, mut disable: Vec<CfgAtom>) -> CfgDiff {
+        enable.sort();
+        enable.dedup();
+        disable.sort();
+        disable.dedup();
+        for i in (0..enable.len()).rev() {
+            if let Some(j) = disable.iter().position(|atom| *atom == enable[i]) {
+                enable.remove(i);
+                disable.remove(j);
+            }
         }
 
-        Some(CfgDiff { enable, disable })
+        CfgDiff { enable, disable }
     }
 
     /// Returns the total number of atoms changed by this diff.

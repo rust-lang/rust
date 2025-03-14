@@ -15,8 +15,11 @@ pub(crate) fn socket_transport(
     stream: TcpStream,
 ) -> (Sender<Message>, Receiver<Message>, IoThreads) {
     let (reader_receiver, reader) = make_reader(stream.try_clone().unwrap());
-    let (writer_sender, writer) = make_write(stream);
-    let io_threads = make_io_threads(reader, writer);
+    let (writer_sender, writer, messages_to_drop) = make_write(stream);
+    let dropper = std::thread::spawn(move || {
+        messages_to_drop.into_iter().for_each(drop);
+    });
+    let io_threads = make_io_threads(reader, writer, dropper);
     (writer_sender, reader_receiver, io_threads)
 }
 
@@ -36,11 +39,21 @@ fn make_reader(stream: TcpStream) -> (Receiver<Message>, thread::JoinHandle<io::
     (reader_receiver, reader)
 }
 
-fn make_write(mut stream: TcpStream) -> (Sender<Message>, thread::JoinHandle<io::Result<()>>) {
+fn make_write(
+    mut stream: TcpStream,
+) -> (Sender<Message>, thread::JoinHandle<io::Result<()>>, Receiver<Message>) {
     let (writer_sender, writer_receiver) = bounded::<Message>(0);
+    let (drop_sender, drop_receiver) = bounded::<Message>(0);
     let writer = thread::spawn(move || {
-        writer_receiver.into_iter().try_for_each(|it| it.write(&mut stream)).unwrap();
+        writer_receiver
+            .into_iter()
+            .try_for_each(|it| {
+                let result = it.write(&mut stream);
+                let _ = drop_sender.send(it);
+                result
+            })
+            .unwrap();
         Ok(())
     });
-    (writer_sender, writer)
+    (writer_sender, writer, drop_receiver)
 }

@@ -9,6 +9,11 @@ LL |         deref!(x) => x,
    |                |
    |                data moved here
    |                move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         deref!(ref x) => x,
+   |                +++
 
 error[E0507]: cannot move out of a shared reference
   --> $DIR/cant_move_out_of_pattern.rs:17:11
@@ -21,6 +26,11 @@ LL |         deref!(x) => x,
    |                |
    |                data moved here
    |                move occurs because `x` has type `Struct`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         deref!(ref x) => x,
+   |                +++
 
 error: aborting due to 2 previous errors
 

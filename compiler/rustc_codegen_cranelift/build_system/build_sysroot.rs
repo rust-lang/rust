@@ -33,14 +33,7 @@ pub(crate) fn build_sysroot(
     let cg_clif_dylib_path = match cg_clif_dylib_src {
         CodegenBackend::Local(src_path) => {
             // Copy the backend
-            let cg_clif_dylib_path = if cfg!(windows) {
-                // Windows doesn't have rpath support, so the cg_clif dylib needs to be next to the
-                // binaries.
-                dist_dir.join("bin")
-            } else {
-                dist_dir.join("lib")
-            }
-            .join(src_path.file_name().unwrap());
+            let cg_clif_dylib_path = dist_dir.join("lib").join(src_path.file_name().unwrap());
             try_hard_link(src_path, &cg_clif_dylib_path);
             CodegenBackend::Local(cg_clif_dylib_path)
         }
@@ -102,19 +95,14 @@ pub(crate) fn build_sysroot(
         .install_into_sysroot(dist_dir);
     }
 
-    let mut target_compiler = {
-        let rustc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustc-clif"));
-        let rustdoc_clif = dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif"));
-
-        Compiler {
-            cargo: bootstrap_host_compiler.cargo.clone(),
-            rustc: rustc_clif.clone(),
-            rustdoc: rustdoc_clif.clone(),
-            rustflags: vec![],
-            rustdocflags: vec![],
-            triple: target_triple,
-            runner: vec![],
-        }
+    let mut target_compiler = Compiler {
+        cargo: bootstrap_host_compiler.cargo.clone(),
+        rustc: dist_dir.join(wrapper_base_name.replace("____", "rustc-clif")),
+        rustdoc: dist_dir.join(wrapper_base_name.replace("____", "rustdoc-clif")),
+        rustflags: vec![],
+        rustdocflags: vec![],
+        triple: target_triple,
+        runner: vec![],
     };
     if !is_native {
         target_compiler.set_cross_linker_and_runner();

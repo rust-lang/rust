@@ -1,4 +1,4 @@
 // This previously triggered an ICE.
 
 pub(in crate::r#mod) fn main() {}
-//~^ ERROR failed to resolve: you might be missing crate `r#mod`
+//~^ ERROR failed to resolve: use of unresolved module or unlinked crate `r#mod`

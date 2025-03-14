@@ -1,0 +1,24 @@
+error[E0369]: cannot add `(..., ..., ..., ...)` to `(..., ..., ..., ...)`
+  --> $DIR/binop.rs:8:7
+   |
+LL |     x + x;
+   |     - ^ - (..., ..., ..., ...)
+   |     |
+   |     (..., ..., ..., ...)
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/binop.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0600]: cannot apply unary operator `!` to type `(..., ..., ..., ...)`
+  --> $DIR/binop.rs:12:5
+   |
+LL |     !x;
+   |     ^^ cannot apply unary operator `!`
+   |
+   = note: the full name for the type has been written to '$TEST_BUILD_DIR/binop.long-type-$LONG_TYPE_HASH.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0369, E0600.
+For more information about an error, try `rustc --explain E0369`.

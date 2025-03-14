@@ -1,9 +1,10 @@
 //@ compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::simd_ceil;
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
@@ -20,10 +21,6 @@ pub struct f32x8(pub [f32; 8]);
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 pub struct f32x16(pub [f32; 16]);
-
-extern "rust-intrinsic" {
-    fn simd_ceil<T>(x: T) -> T;
-}
 
 // CHECK-LABEL: @ceil_32x2
 #[no_mangle]

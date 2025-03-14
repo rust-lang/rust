@@ -7,7 +7,7 @@ use ide_db::{
     base_db::{SourceRootDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
 };
-use syntax::{ast, AstNode, SyntaxKind, ToSmolStr};
+use syntax::{ast, AstNode, SyntaxKind};
 
 use crate::{context::CompletionContext, CompletionItem, Completions};
 
@@ -140,9 +140,7 @@ fn directory_to_look_for_submodules(
     module_chain_to_containing_module_file(module, db)
         .into_iter()
         .filter_map(|module| module.name(db))
-        .try_fold(base_directory, |path, name| {
-            path.join(&name.unescaped().display_no_db().to_smolstr())
-        })
+        .try_fold(base_directory, |path, name| path.join(name.as_str()))
 }
 
 fn module_chain_to_containing_module_file(
@@ -159,14 +157,9 @@ fn module_chain_to_containing_module_file(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::completion_list;
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual);
-    }
+    use crate::tests::check;
 
     #[test]
     fn lib_module_completion() {

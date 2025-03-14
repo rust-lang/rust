@@ -21,7 +21,7 @@ use crate::arena::Arena;
 ///   pointer.
 /// - Because of this, you cannot get a `List<T>` that is a sub-list of another
 ///   `List<T>`. You can get a sub-slice `&[T]`, however.
-/// - `List<T>` can be used with `CopyTaggedPtr`, which is useful within
+/// - `List<T>` can be used with `TaggedRef`, which is useful within
 ///   structs whose size must be minimized.
 /// - Because of the uniqueness assumption, we can use the address of a
 ///   `List<T>` for faster equality comparisons and hashing.
@@ -93,7 +93,7 @@ impl<H, T> RawList<H, T> {
         T: Copy,
     {
         assert!(!mem::needs_drop::<T>());
-        assert!(mem::size_of::<T>() != 0);
+        assert!(size_of::<T>() != 0);
         assert!(!slice.is_empty());
 
         let (layout, _offset) =
@@ -155,7 +155,7 @@ macro_rules! impl_list_empty {
                 static EMPTY: ListSkeleton<$header_ty, MaxAlign> =
                     ListSkeleton { header: $header_init, len: 0, data: [] };
 
-                assert!(mem::align_of::<T>() <= mem::align_of::<MaxAlign>());
+                assert!(align_of::<T>() <= align_of::<MaxAlign>());
 
                 // SAFETY: `EMPTY` is sufficiently aligned to be an empty list for all
                 // types with `align_of(T) <= align_of(MaxAlign)`, which we checked above.

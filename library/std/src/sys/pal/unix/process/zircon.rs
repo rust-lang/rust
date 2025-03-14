@@ -75,7 +75,7 @@ pub struct zx_info_process_t {
     pub reserved1: u32,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn zx_job_default() -> zx_handle_t;
 
     pub fn zx_task_kill(handle: zx_handle_t) -> zx_status_t;
@@ -115,7 +115,7 @@ pub struct fdio_spawn_action_t {
     pub reserved1: u64,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn fdio_spawn_etc(
         job: zx_handle_t,
         flags: u32,

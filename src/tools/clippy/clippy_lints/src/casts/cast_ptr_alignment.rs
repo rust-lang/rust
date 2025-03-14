@@ -24,7 +24,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
             && let Some(generic_args) = method_path.args
             && let [GenericArg::Type(cast_to)] = generic_args.args
             // There probably is no obvious reason to do this, just to be consistent with `as` cases.
-            && !is_hir_ty_cfg_dependant(cx, cast_to)
+            && !is_hir_ty_cfg_dependant(cx, cast_to.as_unambig_ty())
         {
             let (cast_from, cast_to) = (cx.typeck_results().expr_ty(self_arg), cx.typeck_results().expr_ty(expr));
             lint_cast_ptr_alignment(cx, expr, cast_from, cast_to);
@@ -66,7 +66,7 @@ fn is_used_as_unaligned(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             if matches!(name.ident.as_str(), "read_unaligned" | "write_unaligned")
                 && let Some(def_id) = cx.typeck_results().type_dependent_def_id(parent.hir_id)
                 && let Some(def_id) = cx.tcx.impl_of_method(def_id)
-                && cx.tcx.type_of(def_id).instantiate_identity().is_unsafe_ptr()
+                && cx.tcx.type_of(def_id).instantiate_identity().is_raw_ptr()
             {
                 true
             } else {

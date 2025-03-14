@@ -4,14 +4,14 @@ use std::fmt;
 
 use intern::{sym, Symbol};
 use span::{Edition, SyntaxContextId};
-use syntax::ast;
 use syntax::utils::is_raw_identifier;
+use syntax::{ast, format_smolstr};
 
 /// `Name` is a wrapper around string, which is used in hir for both references
 /// and declarations. In theory, names should also carry hygiene info, but we are
 /// not there yet!
 ///
-/// Note that the rawness (`r#`) of names does not depend on whether they are written raw.
+/// Note that the rawness (`r#`) of names is not preserved. Names are always stored without a `r#` prefix.
 /// This is because we want to show (in completions etc.) names as raw depending on the needs
 /// of the current crate, for example if it is edition 2021 complete `gen` even if the defining
 /// crate is in edition 2024 and wrote `r#gen`, and the opposite holds as well.
@@ -51,51 +51,86 @@ impl PartialEq<Symbol> for Name {
     }
 }
 
+impl PartialEq<&Symbol> for Name {
+    fn eq(&self, &sym: &&Symbol) -> bool {
+        self.symbol == *sym
+    }
+}
+
 impl PartialEq<Name> for Symbol {
     fn eq(&self, name: &Name) -> bool {
         *self == name.symbol
     }
 }
 
-/// Wrapper of `Name` to print the name without "r#" even when it is a raw identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct UnescapedName<'a>(&'a Name);
-
-impl<'a> UnescapedName<'a> {
-    pub fn display(self, db: &dyn crate::db::ExpandDatabase) -> impl fmt::Display + 'a {
-        _ = db;
-        UnescapedDisplay { name: self }
-    }
-    #[doc(hidden)]
-    pub fn display_no_db(self) -> impl fmt::Display + 'a {
-        UnescapedDisplay { name: self }
+impl PartialEq<Name> for &Symbol {
+    fn eq(&self, name: &Name) -> bool {
+        **self == name.symbol
     }
 }
 
 impl Name {
-    /// Note: this is private to make creating name from random string hard.
-    /// Hopefully, this should allow us to integrate hygiene cleaner in the
-    /// future, and to switch to interned representation of names.
     fn new_text(text: &str) -> Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+        // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
+        // and we don't know which edition it came from.
+        // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
+        ctx.remove_root_edition();
         _ = ctx;
-        Self::new_text(text)
+        match text.strip_prefix("r#") {
+            Some(text) => Self::new_text(text),
+            None => Self::new_text(text),
+        }
+    }
+
+    pub fn new_root(text: &str) -> Name {
+        // The edition doesn't matter for hygiene.
+        Self::new(text, SyntaxContextId::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
-        Name { symbol: Symbol::intern(&idx.to_string()), ctx: () }
+        let symbol = match idx {
+            0 => sym::INTEGER_0.clone(),
+            1 => sym::INTEGER_1.clone(),
+            2 => sym::INTEGER_2.clone(),
+            3 => sym::INTEGER_3.clone(),
+            4 => sym::INTEGER_4.clone(),
+            5 => sym::INTEGER_5.clone(),
+            6 => sym::INTEGER_6.clone(),
+            7 => sym::INTEGER_7.clone(),
+            8 => sym::INTEGER_8.clone(),
+            9 => sym::INTEGER_9.clone(),
+            10 => sym::INTEGER_10.clone(),
+            11 => sym::INTEGER_11.clone(),
+            12 => sym::INTEGER_12.clone(),
+            13 => sym::INTEGER_13.clone(),
+            14 => sym::INTEGER_14.clone(),
+            15 => sym::INTEGER_15.clone(),
+            _ => Symbol::intern(&idx.to_string()),
+        };
+        Name { symbol, ctx: () }
     }
 
     pub fn new_lifetime(lt: &ast::Lifetime) -> Name {
-        Name { symbol: Symbol::intern(lt.text().as_str()), ctx: () }
+        let text = lt.text();
+        match text.strip_prefix("'r#") {
+            Some(text) => Self::new_text(&format_smolstr!("'{text}")),
+            None => Self::new_text(text.as_str()),
+        }
     }
 
-    /// Resolve a name from the text of token.
-    fn resolve(raw_text: &str) -> Name {
-        Name::new_text(raw_text.trim_start_matches("r#"))
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+        debug_assert!(!symbol.as_str().starts_with("r#"));
+        _ = ctx;
+        Self { symbol, ctx: () }
+    }
+
+    // FIXME: This needs to go once we have hygiene
+    pub fn new_symbol_root(sym: Symbol) -> Self {
+        Self::new_symbol(sym, SyntaxContextId::root(Edition::Edition2015))
     }
 
     /// A fake name for things missing in the source code.
@@ -107,8 +142,8 @@ impl Name {
     /// Ideally, we want a `gensym` semantics for missing names -- each missing
     /// name is equal only to itself. It's not clear how to implement this in
     /// salsa though, so we punt on that bit for a moment.
-    pub fn missing() -> Name {
-        Name { symbol: sym::MISSING_NAME.clone(), ctx: () }
+    pub const fn missing() -> Name {
+        Name { symbol: sym::consts::MISSING_NAME, ctx: () }
     }
 
     /// Returns true if this is a fake name for things missing in the source code. See
@@ -132,17 +167,17 @@ impl Name {
         self.symbol.as_str().parse().ok()
     }
 
+    /// Whether this name needs to be escaped in the given edition via `r#`.
+    pub fn needs_escape(&self, edition: Edition) -> bool {
+        is_raw_identifier(self.symbol.as_str(), edition)
+    }
+
     /// Returns the text this name represents if it isn't a tuple field.
+    ///
+    /// Do not use this for user-facing text, use `display` instead to handle editions properly.
+    // FIXME: This should take a database argument to hide the interning
     pub fn as_str(&self) -> &str {
         self.symbol.as_str()
-    }
-
-    pub fn unescaped(&self) -> UnescapedName<'_> {
-        UnescapedName(self)
-    }
-
-    pub fn is_escaped(&self, edition: Edition) -> bool {
-        is_raw_identifier(self.symbol.as_str(), edition)
     }
 
     pub fn display<'a>(
@@ -154,7 +189,7 @@ impl Name {
         self.display_no_db(edition)
     }
 
-    // FIXME: Remove this
+    // FIXME: Remove this in favor of `display`, see fixme on `as_str`
     #[doc(hidden)]
     pub fn display_no_db(&self, edition: Edition) -> impl fmt::Display + '_ {
         Display { name: self, needs_escaping: is_raw_identifier(self.symbol.as_str(), edition) }
@@ -162,21 +197,6 @@ impl Name {
 
     pub fn symbol(&self) -> &Symbol {
         &self.symbol
-    }
-
-    pub const fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
-        _ = ctx;
-        Self { symbol, ctx: () }
-    }
-
-    // FIXME: This needs to go once we have hygiene
-    pub const fn new_symbol_root(sym: Symbol) -> Self {
-        Self { symbol: sym, ctx: () }
-    }
-
-    #[inline]
-    pub fn eq_ident(&self, ident: &str) -> bool {
-        self.as_str() == ident.trim_start_matches("r#")
     }
 }
 
@@ -194,17 +214,6 @@ impl fmt::Display for Display<'_> {
     }
 }
 
-struct UnescapedDisplay<'a> {
-    name: UnescapedName<'a>,
-}
-
-impl fmt::Display for UnescapedDisplay<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let symbol = self.name.0.symbol.as_str();
-        fmt::Display::fmt(symbol, f)
-    }
-}
-
 pub trait AsName {
     fn as_name(&self) -> Name;
 }
@@ -213,14 +222,14 @@ impl AsName for ast::NameRef {
     fn as_name(&self) -> Name {
         match self.as_tuple_field() {
             Some(idx) => Name::new_tuple_field(idx),
-            None => Name::resolve(&self.text()),
+            None => Name::new_root(&self.text()),
         }
     }
 }
 
 impl AsName for ast::Name {
     fn as_name(&self) -> Name {
-        Name::resolve(&self.text())
+        Name::new_root(&self.text())
     }
 }
 
@@ -235,7 +244,7 @@ impl AsName for ast::NameOrNameRef {
 
 impl<Span> AsName for tt::Ident<Span> {
     fn as_name(&self) -> Name {
-        Name::resolve(self.sym.as_str())
+        Name::new_root(self.sym.as_str())
     }
 }
 
@@ -253,6 +262,6 @@ impl AsName for ast::FieldKind {
 
 impl AsName for base_db::Dependency {
     fn as_name(&self) -> Name {
-        Name::new_text(&self.name)
+        Name::new_symbol_root((*self.name).clone())
     }
 }

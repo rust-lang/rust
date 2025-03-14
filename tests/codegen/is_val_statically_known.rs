@@ -1,4 +1,4 @@
-//@ compile-flags: --crate-type=lib -Zmerge-functions=disabled -O
+//@ compile-flags: --crate-type=lib -Zmerge-functions=disabled -Copt-level=3
 
 #![feature(core_intrinsics)]
 #![feature(f16, f128)]

@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Node};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, SyntaxContext, sym};
 
@@ -60,7 +59,7 @@ impl LateLintPass<'_> for DbgMacro {
 
         if cur_syntax_ctxt != self.prev_ctxt &&
             let Some(macro_call) = first_dbg_macro_in_expansion(cx, expr.span) &&
-            !in_external_macro(cx.sess(), macro_call.span) &&
+            !macro_call.span.in_external_macro(cx.sess().source_map()) &&
             self.checked_dbg_call_site.insert(macro_call.span) &&
             // allows `dbg!` in test code if allow-dbg-in-test is set to true in clippy.toml
             !(self.allow_dbg_in_tests && is_in_test(cx.tcx, expr.hir_id))

@@ -15,6 +15,7 @@ mod helper {
     use std::ops::Coroutine;
     pub type F = impl Coroutine<(), Yield = (), Return = ()>;
 
+    #[define_opaque(F)]
     fn f() -> F {
         metadata_sufficient_for_layout::g()
     }

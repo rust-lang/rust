@@ -15,7 +15,6 @@ linkedProjects = [
     "library/Cargo.toml",
     "src/bootstrap/Cargo.toml",
     "src/tools/rust-analyzer/Cargo.toml",
-    "src/tools/x/Cargo.toml",
 ]
 
 [language-server.rust-analyzer.config.check]

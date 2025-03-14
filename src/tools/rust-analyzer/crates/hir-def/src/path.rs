@@ -57,7 +57,7 @@ pub enum Path {
     /// or type anchor, it is `Path::Normal` with the generics filled with `None` even if there are none (practically
     /// this is not a problem since many more paths have generics than a type anchor).
     BarePath(Interned<ModPath>),
-    /// `Path::Normal` may have empty generics and type anchor (but generic args will be filled with `None`).
+    /// `Path::Normal` will always have either generics or type anchor.
     Normal(NormalPath),
     /// A link to a lang item. It is used in desugaring of things like `it?`. We can show these
     /// links via a normal path since they might be private and not accessible in the usage place.
@@ -173,10 +173,7 @@ impl Path {
                 segments: path.mod_path().segments(),
                 generic_args: Some(path.generic_args()),
             },
-            Path::LangItem(_, seg) => PathSegments {
-                segments: seg.as_ref().map_or(&[], |seg| std::slice::from_ref(seg)),
-                generic_args: None,
-            },
+            Path::LangItem(_, seg) => PathSegments { segments: seg.as_slice(), generic_args: None },
         }
     }
 
@@ -211,11 +208,15 @@ impl Path {
                     mod_path.segments()[..mod_path.segments().len() - 1].iter().cloned(),
                 ));
                 let qualifier_generic_args = &generic_args[..generic_args.len() - 1];
-                Some(Path::Normal(NormalPath::new(
-                    type_anchor,
-                    qualifier_mod_path,
-                    qualifier_generic_args.iter().cloned(),
-                )))
+                if type_anchor.is_none() && qualifier_generic_args.iter().all(|it| it.is_none()) {
+                    Some(Path::BarePath(qualifier_mod_path))
+                } else {
+                    Some(Path::Normal(NormalPath::new(
+                        type_anchor,
+                        qualifier_mod_path,
+                        qualifier_generic_args.iter().cloned(),
+                    )))
+                }
             }
             Path::LangItem(..) => None,
         }
@@ -240,6 +241,12 @@ pub struct PathSegment<'a> {
     pub args_and_bindings: Option<&'a GenericArgs>,
 }
 
+impl PathSegment<'_> {
+    pub const MISSING: PathSegment<'static> =
+        PathSegment { name: &Name::missing(), args_and_bindings: None };
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct PathSegments<'a> {
     segments: &'a [Name],
     generic_args: Option<&'a [Option<GenericArgs>]>,
@@ -259,6 +266,7 @@ impl<'a> PathSegments<'a> {
     pub fn last(&self) -> Option<PathSegment<'a>> {
         self.get(self.len().checked_sub(1)?)
     }
+
     pub fn get(&self, idx: usize) -> Option<PathSegment<'a>> {
         let res = PathSegment {
             name: self.segments.get(idx)?,
@@ -266,24 +274,37 @@ impl<'a> PathSegments<'a> {
         };
         Some(res)
     }
+
     pub fn skip(&self, len: usize) -> PathSegments<'a> {
         PathSegments {
             segments: self.segments.get(len..).unwrap_or(&[]),
             generic_args: self.generic_args.and_then(|it| it.get(len..)),
         }
     }
+
     pub fn take(&self, len: usize) -> PathSegments<'a> {
         PathSegments {
             segments: self.segments.get(..len).unwrap_or(self.segments),
             generic_args: self.generic_args.map(|it| it.get(..len).unwrap_or(it)),
         }
     }
+
     pub fn strip_last(&self) -> PathSegments<'a> {
         PathSegments {
             segments: self.segments.split_last().map_or(&[], |it| it.1),
             generic_args: self.generic_args.map(|it| it.split_last().map_or(&[][..], |it| it.1)),
         }
     }
+
+    pub fn strip_last_two(&self) -> PathSegments<'a> {
+        PathSegments {
+            segments: self.segments.get(..self.segments.len().saturating_sub(2)).unwrap_or(&[]),
+            generic_args: self
+                .generic_args
+                .map(|it| it.get(..it.len().saturating_sub(2)).unwrap_or(&[])),
+        }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = PathSegment<'a>> {
         self.segments
             .iter()

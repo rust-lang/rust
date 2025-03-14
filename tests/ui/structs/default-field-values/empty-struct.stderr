@@ -1,0 +1,26 @@
+error: `A` has no fields, `..` needs at least one default field in the struct definition
+  --> $DIR/empty-struct.rs:16:17
+   |
+LL |     let _ = A { .. };
+   |             -   ^^
+   |             |
+   |             this type has no fields
+
+error: `B` has no fields, `..` needs at least one default field in the struct definition
+  --> $DIR/empty-struct.rs:17:17
+   |
+LL |     let _ = B { .. };
+   |             -   ^^
+   |             |
+   |             this type has no fields
+
+error: `C` has no fields, `..` needs at least one default field in the struct definition
+  --> $DIR/empty-struct.rs:18:17
+   |
+LL |     let _ = C { .. };
+   |             -   ^^
+   |             |
+   |             this type has no fields
+
+error: aborting due to 3 previous errors
+

@@ -1,8 +1,8 @@
 use std::any::Any;
 use std::mem;
+use std::sync::Arc;
 
 use rustc_attr_parsing::Deprecation;
-use rustc_data_structures::sync::Lrc;
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, LOCAL_CRATE};
 use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
@@ -165,7 +165,7 @@ macro_rules! provide_one {
             // doesn't need to do this (and can't, as it would cause a query cycle).
             use rustc_middle::dep_graph::dep_kinds;
             if dep_kinds::$name != dep_kinds::crate_hash && $tcx.dep_graph.is_fully_enabled() {
-                $tcx.ensure().crate_hash($def_id.krate);
+                $tcx.ensure_ok().crate_hash($def_id.krate);
             }
 
             let cdata = rustc_data_structures::sync::FreezeReadGuard::map(CStore::from_tcx($tcx), |c| {
@@ -241,7 +241,7 @@ impl IntoArgs for (CrateNum, SimplifiedType) {
 
 provide! { tcx, def_id, other, cdata,
     explicit_item_bounds => { table_defaulted_array }
-    explicit_item_super_predicates => { table_defaulted_array }
+    explicit_item_self_bounds => { table_defaulted_array }
     explicit_predicates_of => { table }
     generics_of => { table }
     inferred_outlives_of => { table_defaulted_array }
@@ -409,7 +409,7 @@ provide! { tcx, def_id, other, cdata,
         matches!(cdata.extern_crate, Some(extern_crate) if !extern_crate.is_direct())
     }
 
-    used_crate_source => { Lrc::clone(&cdata.source) }
+    used_crate_source => { Arc::clone(&cdata.source) }
     debugger_visualizers => { cdata.get_debugger_visualizers() }
 
     exported_symbols => {
@@ -548,7 +548,7 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             visible_parent_map
         },
 
-        dependency_formats: |tcx, ()| Lrc::new(crate::dependency_format::calculate(tcx)),
+        dependency_formats: |tcx, ()| Arc::new(crate::dependency_format::calculate(tcx)),
         has_global_allocator: |tcx, LocalCrate| CStore::from_tcx(tcx).has_global_allocator(),
         has_alloc_error_handler: |tcx, LocalCrate| CStore::from_tcx(tcx).has_alloc_error_handler(),
         postorder_cnums: |tcx, ()| {
@@ -689,7 +689,7 @@ fn provide_cstore_hooks(providers: &mut Providers) {
     providers.hooks.def_path_hash_to_def_id_extern = |tcx, hash, stable_crate_id| {
         // If this is a DefPathHash from an upstream crate, let the CrateStore map
         // it to a DefId.
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         let cnum = *tcx
             .untracked()
             .stable_crate_ids
@@ -702,11 +702,11 @@ fn provide_cstore_hooks(providers: &mut Providers) {
     };
 
     providers.hooks.expn_hash_to_expn_id = |tcx, cnum, index_guess, hash| {
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         cstore.get_crate_data(cnum).expn_hash_to_expn_id(tcx.sess, index_guess, hash)
     };
     providers.hooks.import_source_files = |tcx, cnum| {
-        let cstore = CStore::from_tcx(tcx.tcx);
+        let cstore = CStore::from_tcx(tcx);
         let cdata = cstore.get_crate_data(cnum);
         for file_index in 0..cdata.root.source_map.size() {
             cdata.imported_source_file(file_index as u32, tcx.sess);

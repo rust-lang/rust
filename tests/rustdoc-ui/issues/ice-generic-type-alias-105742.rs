@@ -5,8 +5,8 @@ use std::ops::Index;
 pub fn next<'a, T>(s: &'a mut dyn SVec<Item = T, Output = T>) {
     //~^ expected 1 lifetime argument
     //~| expected 1 generic argument
-    //~| the trait `SVec` cannot be made into an object
-    //~| `SVec` cannot be made into an object
+    //~| the trait `SVec` is not dyn compatible
+    //~| `SVec` is not dyn compatible
     //~| missing generics for associated type `SVec::Item`
     //~| missing generics for associated type `SVec::Item`
     let _ = s;

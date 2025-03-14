@@ -1,4 +1,4 @@
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::interval::SparseIntervalMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
@@ -102,7 +102,7 @@ pub fn save_as_intervals<'tcx, N, A>(
 ) -> SparseIntervalMatrix<N, PointIndex>
 where
     N: Idx,
-    A: Analysis<'tcx, Domain = BitSet<N>>,
+    A: Analysis<'tcx, Domain = DenseBitSet<N>>,
 {
     let values = SparseIntervalMatrix::new(elements.num_points());
     let mut visitor = Visitor { elements, values };
@@ -122,7 +122,7 @@ struct Visitor<'a, N: Idx> {
 
 impl<'mir, 'tcx, A, N> ResultsVisitor<'mir, 'tcx, A> for Visitor<'_, N>
 where
-    A: Analysis<'tcx, Domain = BitSet<N>>,
+    A: Analysis<'tcx, Domain = DenseBitSet<N>>,
     N: Idx,
 {
     fn visit_after_primary_statement_effect(

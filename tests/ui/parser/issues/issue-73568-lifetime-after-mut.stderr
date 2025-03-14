@@ -6,8 +6,9 @@ LL | fn x<'a>(x: &mut 'a i32){}
    |
 help: place the lifetime before `mut`
    |
-LL | fn x<'a>(x: &'a mut i32){}
-   |             ~~~~~~~
+LL - fn x<'a>(x: &mut 'a i32){}
+LL + fn x<'a>(x: &'a mut i32){}
+   |
 
 error[E0178]: expected a path on the left-hand side of `+`, not `&mut 'a`
   --> $DIR/issue-73568-lifetime-after-mut.rs:14:13
@@ -32,8 +33,9 @@ LL | mac!('a);
    = note: this error originates in the macro `mac` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: place the lifetime before `mut`
    |
-LL |         fn w<$lt>(w: &$lt mut i32) {}
-   |                      ~~~~~~~~
+LL -         fn w<$lt>(w: &mut $lt i32) {}
+LL +         fn w<$lt>(w: &$lt mut i32) {}
+   |
 
 error[E0423]: expected value, found trait `Send`
   --> $DIR/issue-73568-lifetime-after-mut.rs:17:28

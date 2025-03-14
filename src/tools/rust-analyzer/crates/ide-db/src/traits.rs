@@ -123,7 +123,9 @@ mod tests {
     use crate::RootDatabase;
 
     /// Creates analysis from a multi-file fixture, returns positions marked with $0.
-    pub(crate) fn position(ra_fixture: &str) -> (RootDatabase, FilePosition) {
+    pub(crate) fn position(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+    ) -> (RootDatabase, FilePosition) {
         let change_fixture = ChangeFixture::parse(ra_fixture);
         let mut database = RootDatabase::default();
         database.apply_change(change_fixture.change);
@@ -133,7 +135,7 @@ mod tests {
         (database, FilePosition { file_id, offset })
     }
 
-    fn check_trait(ra_fixture: &str, expect: Expect) {
+    fn check_trait(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
         let file = sema.parse(position.file_id);
@@ -147,7 +149,7 @@ mod tests {
         expect.assert_eq(&actual);
     }
 
-    fn check_missing_assoc(ra_fixture: &str, expect: Expect) {
+    fn check_missing_assoc(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (db, position) = position(ra_fixture);
         let sema = Semantics::new(&db);
         let file = sema.parse(position.file_id);

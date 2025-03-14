@@ -1,0 +1,17 @@
+error[E0525]: expected a closure that implements the `AsyncFn` trait, but this closure only implements `AsyncFnOnce`
+  --> $DIR/kind-due-to-rpit.rs:7:20
+   |
+LL | fn repro(foo: impl Into<bool>) -> impl AsyncFn() {
+   |                                   -------------- the requirement to implement `AsyncFn` derives from here
+LL |     let inner_fn = async move || {
+   |                    ^^^^^^^^^^^^^ this closure implements `AsyncFnOnce`, not `AsyncFn`
+LL |
+LL |         let _ = foo.into();
+   |                 --- closure is `AsyncFnOnce` because it moves the variable `foo` out of its environment
+LL |     };
+LL |     inner_fn
+   |     -------- return type was inferred to be `{async closure@$DIR/kind-due-to-rpit.rs:7:20: 7:33}` here
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0525`.

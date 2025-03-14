@@ -6,8 +6,9 @@ LL | make_macro!((meow));
    |
 help: change the delimiters to curly braces
    |
-LL | make_macro!({meow});
-   |             ~    ~
+LL - make_macro!((meow));
+LL + make_macro!({meow});
+   |
 help: add a semicolon
    |
 LL |         macro_rules! $macro_name; {

@@ -456,8 +456,8 @@ impl<'tcx> Visitor<'tcx> for UsedCountVisitor<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -470,14 +470,14 @@ fn detect_iter_and_into_iters<'tcx: 'a, 'a>(
     captured_ids: HirIdSet,
 ) -> Option<Vec<IterFunction>> {
     let mut visitor = IterFunctionVisitor {
-        uses: Vec::new(),
-        target: id,
-        seen_other: false,
-        cx,
-        current_mutably_captured_ids: HirIdSet::default(),
         illegal_mutable_capture_ids: captured_ids,
+        current_mutably_captured_ids: HirIdSet::default(),
+        cx,
+        uses: Vec::new(),
         hir_id_uses_map: FxHashMap::default(),
         current_statement_hir_id: None,
+        seen_other: false,
+        target: id,
     };
     visitor.visit_block(block);
     if visitor.seen_other {
@@ -498,7 +498,7 @@ fn get_captured_ids(cx: &LateContext<'_>, ty: Ty<'_>) -> HirIdSet {
                 }
             },
             ty::Closure(def_id, _) => {
-                let closure_hir_node = cx.tcx.hir().get_if_local(*def_id).unwrap();
+                let closure_hir_node = cx.tcx.hir_get_if_local(*def_id).unwrap();
                 if let Node::Expr(closure_expr) = closure_hir_node {
                     can_move_expr_to_closure(cx, closure_expr)
                         .unwrap()

@@ -7,14 +7,13 @@
 use rustc_abi::ExternAbi;
 use rustc_ast::ast;
 use rustc_attr_parsing::DeprecatedSince;
-use rustc_hir::def::{CtorKind, DefKind};
+use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_metadata::rendered_const;
 use rustc_middle::{bug, ty};
-use rustc_span::{Pos, Symbol, sym};
+use rustc_span::{Pos, Symbol};
 use rustdoc_json_types::*;
 
-use super::FullItemId;
 use crate::clean::{self, ItemId};
 use crate::formats::FormatRenderer;
 use crate::formats::item_type::ItemType;
@@ -108,67 +107,6 @@ impl JsonRenderer<'_> {
         }
     }
 
-    pub(crate) fn id_from_item_default(&self, item_id: ItemId) -> Id {
-        self.id_from_item_inner(item_id, None, None)
-    }
-
-    pub(crate) fn id_from_item_inner(
-        &self,
-        item_id: ItemId,
-        name: Option<Symbol>,
-        extra: Option<Id>,
-    ) -> Id {
-        let make_part = |def_id: DefId, name: Option<Symbol>, extra: Option<Id>| {
-            let name = match name {
-                Some(name) => Some(name),
-                None => {
-                    // We need this workaround because primitive types' DefId actually refers to
-                    // their parent module, which isn't present in the output JSON items. So
-                    // instead, we directly get the primitive symbol
-                    if matches!(self.tcx.def_kind(def_id), DefKind::Mod)
-                        && let Some(prim) = self
-                            .tcx
-                            .get_attrs(def_id, sym::rustc_doc_primitive)
-                            .find_map(|attr| attr.value_str())
-                    {
-                        Some(prim)
-                    } else {
-                        self.tcx.opt_item_name(def_id)
-                    }
-                }
-            };
-
-            FullItemId { def_id, name, extra }
-        };
-
-        let key = match item_id {
-            ItemId::DefId(did) => (make_part(did, name, extra), None),
-            ItemId::Blanket { for_, impl_id } => {
-                (make_part(impl_id, None, None), Some(make_part(for_, name, extra)))
-            }
-            ItemId::Auto { for_, trait_ } => {
-                (make_part(trait_, None, None), Some(make_part(for_, name, extra)))
-            }
-        };
-
-        let mut interner = self.id_interner.borrow_mut();
-        let len = interner.len();
-        *interner
-            .entry(key)
-            .or_insert_with(|| Id(len.try_into().expect("too many items in a crate")))
-    }
-
-    pub(crate) fn id_from_item(&self, item: &clean::Item) -> Id {
-        match item.kind {
-            clean::ItemKind::ImportItem(ref import) => {
-                let extra =
-                    import.source.did.map(ItemId::from).map(|i| self.id_from_item_default(i));
-                self.id_from_item_inner(item.item_id, item.name, extra)
-            }
-            _ => self.id_from_item_inner(item.item_id, item.name, None),
-        }
-    }
-
     fn ids(&self, items: impl IntoIterator<Item = clean::Item>) -> Vec<Id> {
         items
             .into_iter()
@@ -231,11 +169,11 @@ impl FromClean<clean::GenericArgs> for GenericArgs {
         use clean::GenericArgs::*;
         match args {
             AngleBracketed { args, constraints } => GenericArgs::AngleBracketed {
-                args: args.into_vec().into_json(renderer),
+                args: args.into_json(renderer),
                 constraints: constraints.into_json(renderer),
             },
             Parenthesized { inputs, output } => GenericArgs::Parenthesized {
-                inputs: inputs.into_vec().into_json(renderer),
+                inputs: inputs.into_json(renderer),
                 output: output.map(|a| (*a).into_json(renderer)),
             },
         }
@@ -312,15 +250,15 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
         StructFieldItem(f) => ItemEnum::StructField(f.into_json(renderer)),
         EnumItem(e) => ItemEnum::Enum(e.into_json(renderer)),
         VariantItem(v) => ItemEnum::Variant(v.into_json(renderer)),
-        FunctionItem(f) => ItemEnum::Function(from_function(f, true, header.unwrap(), renderer)),
+        FunctionItem(f) => ItemEnum::Function(from_function(*f, true, header.unwrap(), renderer)),
         ForeignFunctionItem(f, _) => {
-            ItemEnum::Function(from_function(f, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_function(*f, false, header.unwrap(), renderer))
         }
         TraitItem(t) => ItemEnum::Trait((*t).into_json(renderer)),
         TraitAliasItem(t) => ItemEnum::TraitAlias(t.into_json(renderer)),
-        MethodItem(m, _) => ItemEnum::Function(from_function(m, true, header.unwrap(), renderer)),
+        MethodItem(m, _) => ItemEnum::Function(from_function(*m, true, header.unwrap(), renderer)),
         RequiredMethodItem(m) => {
-            ItemEnum::Function(from_function(m, false, header.unwrap(), renderer))
+            ItemEnum::Function(from_function(*m, false, header.unwrap(), renderer))
         }
         ImplItem(i) => ItemEnum::Impl((*i).into_json(renderer)),
         StaticItem(s) => ItemEnum::Static(convert_static(s, rustc_hir::Safety::Safe, renderer)),
@@ -548,7 +486,18 @@ impl FromClean<clean::GenericBound> for GenericBound {
                 }
             }
             Outlives(lifetime) => GenericBound::Outlives(convert_lifetime(lifetime)),
-            Use(args) => GenericBound::Use(args.into_iter().map(|arg| arg.to_string()).collect()),
+            Use(args) => GenericBound::Use(
+                args.iter()
+                    .map(|arg| match arg {
+                        clean::PreciseCapturingArg::Lifetime(lt) => {
+                            PreciseCapturingArg::Lifetime(convert_lifetime(*lt))
+                        }
+                        clean::PreciseCapturingArg::Param(param) => {
+                            PreciseCapturingArg::Param(param.to_string())
+                        }
+                    })
+                    .collect(),
+            ),
         }
     }
 }
@@ -573,7 +522,7 @@ impl FromClean<clean::Type> for Type {
     fn from_clean(ty: clean::Type, renderer: &JsonRenderer<'_>) -> Self {
         use clean::Type::{
             Array, BareFunction, BorrowedRef, Generic, ImplTrait, Infer, Primitive, QPath,
-            RawPointer, SelfTy, Slice, Tuple,
+            RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
         };
 
         match ty {
@@ -613,6 +562,8 @@ impl FromClean<clean::Type> for Type {
                 self_type: Box::new(self_type.into_json(renderer)),
                 trait_: trait_.map(|trait_| trait_.into_json(renderer)),
             },
+            // FIXME(unsafe_binder): Implement rustdoc-json.
+            UnsafeBinder(_) => todo!(),
         }
     }
 }
@@ -620,7 +571,7 @@ impl FromClean<clean::Type> for Type {
 impl FromClean<clean::Path> for Path {
     fn from_clean(path: clean::Path, renderer: &JsonRenderer<'_>) -> Path {
         Path {
-            name: path.whole_name(),
+            path: path.whole_name(),
             id: renderer.id_from_item_default(path.def_id().into()),
             args: path.segments.last().map(|args| Box::new(args.clone().args.into_json(renderer))),
         }
@@ -730,12 +681,11 @@ impl FromClean<clean::Impl> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: Box<clean::Function>,
+    clean::Function { decl, generics }: clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
     renderer: &JsonRenderer<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = *function;
     Function {
         sig: decl.into_json(renderer),
         generics: generics.into_json(renderer),
@@ -845,7 +795,7 @@ fn convert_static(
         is_unsafe: safety.is_unsafe(),
         expr: stat
             .expr
-            .map(|e| rendered_const(tcx, tcx.hir().body(e), tcx.hir().body_owner_def_id(e)))
+            .map(|e| rendered_const(tcx, tcx.hir_body(e), tcx.hir_body_owner_def_id(e)))
             .unwrap_or_default(),
     }
 }

@@ -134,10 +134,12 @@ pub(super) fn let_stmt(p: &mut Parser<'_>, with_semi: Semicolon) {
         // test_err let_else_right_curly_brace
         // fn func() { let Some(_) = {Some(1)} else { panic!("h") };}
         if let Some(expr) = expr_after_eq {
-            if BlockLike::is_blocklike(expr.kind()) {
-                p.error(
-                    "right curly brace `}` before `else` in a `let...else` statement not allowed",
-                )
+            if let Some(token) = expr.last_token(p) {
+                if token == T!['}'] {
+                    p.error(
+                        "right curly brace `}` before `else` in a `let...else` statement not allowed"
+                    )
+                }
             }
         }
 
@@ -339,13 +341,20 @@ fn lhs(p: &mut Parser<'_>, r: Restrictions) -> Option<(CompletedMarker, BlockLik
         //     // raw reference operator
         //     let _ = &raw mut foo;
         //     let _ = &raw const foo;
+        //     let _ = &raw foo;
         // }
         T![&] => {
             m = p.start();
             p.bump(T![&]);
-            if p.at_contextual_kw(T![raw]) && [T![mut], T![const]].contains(&p.nth(1)) {
-                p.bump_remap(T![raw]);
-                p.bump_any();
+            if p.at_contextual_kw(T![raw]) {
+                if [T![mut], T![const]].contains(&p.nth(1)) {
+                    p.bump_remap(T![raw]);
+                    p.bump_any();
+                } else if p.nth_at(1, SyntaxKind::IDENT) {
+                    // we treat raw as keyword in this case
+                    // &raw foo;
+                    p.bump_remap(T![raw]);
+                }
             } else {
                 p.eat(T![mut]);
             }
@@ -669,6 +678,8 @@ fn path_expr(p: &mut Parser<'_>, r: Restrictions) -> (CompletedMarker, BlockLike
 //     S { x };
 //     S { x, y: 32, };
 //     S { x, y: 32, ..Default::default() };
+//     S { x, y: 32, .. };
+//     S { .. };
 //     S { x: ::default() };
 //     TupleStruct { 0: 1 };
 // }
@@ -700,6 +711,8 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 // fn main() {
                 //     S { field ..S::default() }
                 //     S { 0 ..S::default() }
+                //     S { field .. }
+                //     S { 0 .. }
                 // }
                 name_ref_or_index(p);
                 p.error("expected `:`");
@@ -730,7 +743,13 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                 //     S { .. } = S {};
                 // }
 
-                // We permit `.. }` on the left-hand side of a destructuring assignment.
+                // test struct_initializer_with_defaults
+                // fn foo() {
+                //     let _s = S { .. };
+                // }
+
+                // We permit `.. }` on the left-hand side of a destructuring assignment
+                // or defaults values.
                 if !p.at(T!['}']) {
                     expr(p);
 
@@ -739,6 +758,12 @@ pub(crate) fn record_expr_field_list(p: &mut Parser<'_>) {
                         // fn foo() {
                         //     S { ..x, };
                         //     S { ..x, a: 0 }
+                        // }
+
+                        // test_err comma_after_default_values_syntax
+                        // fn foo() {
+                        //     S { .., };
+                        //     S { .., a: 0 }
                         // }
 
                         // Do not bump, so we can support additional fields after this comma.

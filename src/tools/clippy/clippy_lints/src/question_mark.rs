@@ -59,7 +59,7 @@ pub struct QuestionMark {
     /// As for why we need this in the first place: <https://github.com/rust-lang/rust-clippy/issues/8628>
     try_block_depth_stack: Vec<u32>,
     /// Keeps track of the number of inferred return type closures we are inside, to avoid problems
-    /// with the `Err(x.into())` expansion being ambiguious.
+    /// with the `Err(x.into())` expansion being ambiguous.
     inferred_ret_closure_stack: u16,
 }
 
@@ -68,7 +68,7 @@ impl_lint_pass!(QuestionMark => [QUESTION_MARK, MANUAL_LET_ELSE]);
 impl QuestionMark {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
             matches_behaviour: conf.matches_for_let_else,
             try_block_depth_stack: Vec::new(),
             inferred_ret_closure_stack: 0,
@@ -543,5 +543,4 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
                 .expect("blocks are always part of bodies and must have a depth") -= 1;
         }
     }
-    extract_msrv_attr!(LateContext);
 }

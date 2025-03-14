@@ -52,8 +52,13 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     let paths = paths
         .into_iter()
         .filter_map(|path| {
-            path.gen_source_code(&scope, &mut formatter, ctx.config.import_path_config(), edition)
-                .ok()
+            path.gen_source_code(
+                &scope,
+                &mut formatter,
+                ctx.config.import_path_config(),
+                scope.krate().to_display_target(ctx.db()),
+            )
+            .ok()
         })
         .unique();
 

@@ -9,8 +9,9 @@ LL | fn two_lifetimes_needed(a: &(), b: &()) -> TwoLifetimes<'_, '_> {
    = help: this function's return type contains a borrowed value, but the signature does not say whether it is borrowed from `a` or `b`
 help: consider introducing a named lifetime parameter
    |
-LL | fn two_lifetimes_needed<'a>(a: &'a (), b: &'a ()) -> TwoLifetimes<'a, 'a> {
-   |                        ++++     ++         ++                     ~~  ~~
+LL - fn two_lifetimes_needed(a: &(), b: &()) -> TwoLifetimes<'_, '_> {
+LL + fn two_lifetimes_needed<'a>(a: &'a (), b: &'a ()) -> TwoLifetimes<'a, 'a> {
+   |
 
 error: aborting due to 1 previous error
 

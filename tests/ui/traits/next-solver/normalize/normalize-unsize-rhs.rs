@@ -1,6 +1,5 @@
 //@ compile-flags: -Znext-solver
 //@ check-pass
-#![feature(trait_upcasting)]
 
 trait A {}
 trait B: A {}

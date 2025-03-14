@@ -315,4 +315,69 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "`build.vendor` is now enabled by default for dist/tarball sources when 'vendor' directory and '.cargo/config.toml' file are present.",
     },
+    ChangeInfo {
+        change_id: 134809,
+        severity: ChangeSeverity::Warning,
+        summary: "compiletest now takes `--no-capture` instead of `--nocapture`; bootstrap now accepts `--no-capture` as an argument to test commands directly",
+    },
+    ChangeInfo {
+        change_id: 134650,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `rust.parallel-compiler` as it was deprecated in #132282 long time ago.",
+    },
+    ChangeInfo {
+        change_id: 135326,
+        severity: ChangeSeverity::Warning,
+        summary: "It is now possible to configure `optimized-compiler-builtins` for per target.",
+    },
+    ChangeInfo {
+        change_id: 135281,
+        severity: ChangeSeverity::Warning,
+        summary: "Some stamp names in the build artifacts may have changed slightly (e.g., from `llvm-finished-building` to `.llvm-stamp`).",
+    },
+    ChangeInfo {
+        change_id: 135729,
+        severity: ChangeSeverity::Info,
+        summary: "Change the compiler profile to default to rust.debug-assertions = true",
+    },
+    ChangeInfo {
+        change_id: 135832,
+        severity: ChangeSeverity::Info,
+        summary: "Rustdoc now respects the value of rust.lto.",
+    },
+    ChangeInfo {
+        change_id: 136941,
+        severity: ChangeSeverity::Info,
+        summary: "The llvm.ccache option has moved to build.ccache. llvm.ccache is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 137170,
+        severity: ChangeSeverity::Info,
+        summary: "It is now possible to configure `jemalloc` for each target",
+    },
+    ChangeInfo {
+        change_id: 137215,
+        severity: ChangeSeverity::Info,
+        summary: "Added `build.test-stage = 2` to 'tools' profile defaults",
+    },
+    ChangeInfo {
+        change_id: 137220,
+        severity: ChangeSeverity::Info,
+        summary: "`rust.channel` now supports \"auto-detect\" to load the channel from `src/ci/channel`",
+    },
+    ChangeInfo {
+        change_id: 137723,
+        severity: ChangeSeverity::Info,
+        summary: "The rust.description option has moved to build.description and rust.description is now deprecated.",
+    },
+    ChangeInfo {
+        change_id: 138051,
+        severity: ChangeSeverity::Info,
+        summary: "There is now a new `gcc` config section that can be used to download GCC from CI using `gcc.download-ci-gcc = true`",
+    },
+    ChangeInfo {
+        change_id: 126856,
+        severity: ChangeSeverity::Warning,
+        summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
+    },
 ];

@@ -9,15 +9,7 @@
 </div>
 {% else %}
 {% endmatch %}
-<div class="example-wrap">
-    {# https://developers.google.com/search/docs/crawling-indexing/robots-meta-tag#data-nosnippet-attr
-       Do not show "1 2 3 4 5 ..." in web search results. #}
-    <div data-nosnippet><pre class="src-line-numbers">
-        {% for line in lines.clone() %}
-            {# ~#}
-            <a href="#{{line|safe}}" id="{{line|safe}}">{{line|safe}}</a>
-        {% endfor %}
-    </pre></div> {# #}
+<div class="example-wrap digits-{{max_nb_digits}}"> {# #}
     <pre class="rust"> {# #}
         <code>
             {{code_html|safe}}

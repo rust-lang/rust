@@ -13,27 +13,34 @@ fn should_lint() {
     let v: Vec<i32> = Vec::new();
     let mut acc = 0;
     for elem in v.iter() {
+        //~^ needless_for_each
         acc += elem;
     }
     for elem in v.into_iter() {
+        //~^ needless_for_each
         acc += elem;
     }
 
     for elem in [1, 2, 3].iter() {
+        //~^ needless_for_each
         acc += elem;
     }
 
     let mut hash_map: HashMap<i32, i32> = HashMap::new();
     for (k, v) in hash_map.iter() {
+        //~^ needless_for_each
         acc += k + v;
     }
     for (k, v) in hash_map.iter_mut() {
+        //~^ needless_for_each
         acc += *k + *v;
     }
     for k in hash_map.keys() {
+        //~^ needless_for_each
         acc += k;
     }
     for v in hash_map.values() {
+        //~^ needless_for_each
         acc += v;
     }
 
@@ -41,6 +48,7 @@ fn should_lint() {
         Vec::new()
     }
     for elem in my_vec().iter() {
+        //~^ needless_for_each
         acc += elem;
     }
 }

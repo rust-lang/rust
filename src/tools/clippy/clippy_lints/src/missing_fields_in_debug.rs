@@ -207,14 +207,14 @@ impl<'tcx> LateLintPass<'tcx> for MissingFieldsInDebug {
             // this prevents ICEs such as when self is a type parameter or a primitive type
             // (see #10887, #11063)
             && let Res::Def(DefKind::Struct | DefKind::Enum | DefKind::Union, self_path_did) = self_path.res
-            && cx.match_def_path(trait_def_id, &[sym::core, sym::fmt, sym::Debug])
+            && cx.tcx.is_diagnostic_item(sym::Debug, trait_def_id)
             // don't trigger if this impl was derived
             && !cx.tcx.has_attr(item.owner_id, sym::automatically_derived)
             && !item.span.from_expansion()
             // find `Debug::fmt` function
             && let Some(fmt_item) = items.iter().find(|i| i.ident.name == sym::fmt)
-            && let ImplItem { kind: ImplItemKind::Fn(_, body_id), .. } = cx.tcx.hir().impl_item(fmt_item.id)
-            && let body = cx.tcx.hir().body(*body_id)
+            && let ImplItem { kind: ImplItemKind::Fn(_, body_id), .. } = cx.tcx.hir_impl_item(fmt_item.id)
+            && let body = cx.tcx.hir_body(*body_id)
             && let ExprKind::Block(block, _) = body.value.kind
             // inspect `self`
             && let self_ty = cx.tcx.type_of(self_path_did).skip_binder().peel_refs()

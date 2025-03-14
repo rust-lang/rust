@@ -9,7 +9,6 @@ use std::cmp::max;
 use rand::Rng;
 use rustc_abi::{Align, Size};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_span::Span;
 
 use self::reuse_pool::ReusePool;
 use crate::concurrency::VClock;
@@ -199,8 +198,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 }
                 AllocKind::Dead => unreachable!(),
             };
-            // Ensure this pointer's provenance is exposed, so that it can be used by FFI code.
-            return interp_ok(base_ptr.expose_provenance().try_into().unwrap());
+            // We don't have to expose this pointer yet, we do that in `prepare_for_native_call`.
+            return interp_ok(base_ptr.addr().try_into().unwrap());
         }
         // We are not in native lib mode, so we control the addresses ourselves.
         if let Some((reuse_addr, clock)) = global_state.reuse.take_addr(
@@ -218,7 +217,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // We have to pick a fresh address.
             // Leave some space to the previous allocation, to give it some chance to be less aligned.
             // We ensure that `(global_state.next_base_addr + slack) % 16` is uniformly distributed.
-            let slack = rng.gen_range(0..16);
+            let slack = rng.random_range(0..16);
             // From next_base_addr + slack, round up to adjust for alignment.
             let base_addr = global_state
                 .next_base_addr
@@ -286,9 +285,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
 
 impl<'tcx> EvalContextExt<'tcx> for crate::MiriInterpCx<'tcx> {}
 pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
-    fn expose_ptr(&self, alloc_id: AllocId, tag: BorTag) -> InterpResult<'tcx> {
+    fn expose_provenance(&self, provenance: Provenance) -> InterpResult<'tcx> {
         let this = self.eval_context_ref();
         let mut global_state = this.machine.alloc_addresses.borrow_mut();
+
+        let (alloc_id, tag) = match provenance {
+            Provenance::Concrete { alloc_id, tag } => (alloc_id, tag),
+            Provenance::Wildcard => {
+                // No need to do anything for wildcard pointers as
+                // their provenances have already been previously exposed.
+                return interp_ok(());
+            }
+        };
+
         // In strict mode, we don't need this, so we can save some cycles by not tracking it.
         if global_state.provenance_mode == ProvenanceMode::Strict {
             return interp_ok(());
@@ -319,17 +328,12 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         match global_state.provenance_mode {
             ProvenanceMode::Default => {
                 // The first time this happens at a particular location, print a warning.
-                thread_local! {
-                    // `Span` is non-`Send`, so we use a thread-local instead.
-                    static PAST_WARNINGS: RefCell<FxHashSet<Span>> = RefCell::default();
+                let mut int2ptr_warned = this.machine.int2ptr_warned.borrow_mut();
+                let first = int2ptr_warned.is_empty();
+                if int2ptr_warned.insert(this.cur_span()) {
+                    // Newly inserted, so first time we see this span.
+                    this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
                 }
-                PAST_WARNINGS.with_borrow_mut(|past_warnings| {
-                    let first = past_warnings.is_empty();
-                    if past_warnings.insert(this.cur_span()) {
-                        // Newly inserted, so first time we see this span.
-                        this.emit_diagnostic(NonHaltingDiagnostic::Int2Ptr { details: first });
-                    }
-                });
             }
             ProvenanceMode::Strict => {
                 throw_machine_stop!(TerminationInfo::Int2PtrWithStrictProvenance);
@@ -373,7 +377,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_global_alloc_bytes(
         &self,
         id: AllocId,
-        kind: MemoryKind,
         bytes: &[u8],
         align: Align,
     ) -> InterpResult<'tcx, MiriAllocBytes> {
@@ -382,7 +385,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
             // This additional call ensures that some `MiriAllocBytes` are always prepared, just in case
             // this function gets called before the first time `addr_from_alloc_id` gets called.
-            this.addr_from_alloc_id(id, kind)?;
+            this.addr_from_alloc_id(id, MiriMemoryKind::Global.into())?;
             // The memory we need here will have already been allocated during an earlier call to
             // `addr_from_alloc_id` for this allocation. So don't create a new `MiriAllocBytes` here, instead
             // fetch the previously prepared bytes from `prepared_alloc_bytes`.
@@ -427,6 +430,19 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         // Wrapping "addr - base_addr"
         let rel_offset = this.truncate_to_target_usize(addr.bytes().wrapping_sub(base_addr));
         Some((alloc_id, Size::from_bytes(rel_offset)))
+    }
+
+    /// Prepare all exposed memory for a native call.
+    /// This overapproximates the modifications which external code might make to memory:
+    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
+    /// and overwrite them with `Provenance::WILDCARD`.
+    fn prepare_exposed_for_native_call(&mut self) -> InterpResult<'tcx> {
+        let this = self.eval_context_mut();
+        // We need to make a deep copy of this list, but it's fine; it also serves as scratch space
+        // for the search within `prepare_for_native_call`.
+        let exposed: Vec<AllocId> =
+            this.machine.alloc_addresses.get_mut().exposed.iter().copied().collect();
+        this.prepare_for_native_call(exposed)
     }
 }
 

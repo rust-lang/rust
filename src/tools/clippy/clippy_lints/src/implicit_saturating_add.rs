@@ -120,7 +120,7 @@ fn get_const<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<(u128, B
         let ecx = ConstEvalCtxt::new(cx);
         if let Some(Constant::Int(c)) = ecx.eval(r) {
             return Some((c, op.node, l));
-        };
+        }
         if let Some(Constant::Int(c)) = ecx.eval(l) {
             return Some((c, invert_op(op.node)?, r));
         }

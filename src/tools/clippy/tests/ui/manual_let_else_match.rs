@@ -34,14 +34,13 @@ fn main() {}
 
 fn fire() {
     let v = match g() {
-        //~^ ERROR: this could be rewritten as `let...else`
-        //~| NOTE: `-D clippy::manual-let-else` implied by `-D warnings`
+        //~^ manual_let_else
         Some(v_some) => v_some,
         None => return,
     };
 
     let v = match g() {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Some(v_some) => v_some,
         _ => return,
     };
@@ -49,13 +48,13 @@ fn fire() {
     loop {
         // More complex pattern for the identity arm and diverging arm
         let v = match h() {
-            //~^ ERROR: this could be rewritten as `let...else`
+            //~^ manual_let_else
             (Some(v), None) | (None, Some(v)) => v,
             (Some(_), Some(_)) | (None, None) => continue,
         };
         // Custom enums are supported as long as the "else" arm is a simple _
         let v = match build_enum() {
-            //~^ ERROR: this could be rewritten as `let...else`
+            //~^ manual_let_else
             Variant::Bar(v) | Variant::Baz(v) => v,
             _ => continue,
         };
@@ -64,14 +63,14 @@ fn fire() {
     // There is a _ in the diverging arm
     // TODO also support unused bindings aka _v
     let v = match f() {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Ok(v) => v,
         Err(_) => return,
     };
 
     // Err(()) is an allowed pattern
     let v = match f().map_err(|_| ()) {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Ok(v) => v,
         Err(()) => return,
     };
@@ -79,20 +78,20 @@ fn fire() {
     let f = Variant::Bar(1);
 
     let _value = match f {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Variant::Bar(v) | Variant::Baz(v) => v,
         _ => return,
     };
 
     let _value = match Some(build_enum()) {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Some(Variant::Bar(v) | Variant::Baz(v)) => v,
         _ => return,
     };
 
     let data = [1_u8, 2, 3, 4, 0, 0, 0, 0];
     let data = match data.as_slice() {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         [data @ .., 0, 0, 0, 0] | [data @ .., 0, 0] | [data @ .., 0] => data,
         _ => return,
     };
@@ -173,7 +172,7 @@ fn not_fire() {
 
 fn issue11579() {
     let msg = match Some("hi") {
-        //~^ ERROR: this could be rewritten as `let...else`
+        //~^ manual_let_else
         Some(m) => m,
         _ => unreachable!("can't happen"),
     };

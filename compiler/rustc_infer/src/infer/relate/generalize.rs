@@ -4,7 +4,6 @@ use rustc_data_structures::sso::SsoHashMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::DefId;
 use rustc_middle::bug;
-use rustc_middle::infer::unify_key::ConstVariableValue;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::MaxUniverse;
 use rustc_middle::ty::{
@@ -18,6 +17,7 @@ use super::{
     PredicateEmittingRelation, Relate, RelateResult, StructurallyRelateAliases, TypeRelation,
 };
 use crate::infer::type_variable::TypeVariableValue;
+use crate::infer::unify_key::ConstVariableValue;
 use crate::infer::{InferCtxt, RegionVariableOrigin, relate};
 
 impl<'tcx> InferCtxt<'tcx> {

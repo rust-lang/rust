@@ -5,19 +5,19 @@
 //! librustdoc, it is not production quality at all.
 
 cfg_match! {
-    cfg(target_os = "linux") => {
+    target_os = "linux" => {
         mod linux;
         use linux as imp;
     }
-    cfg(target_os = "redox") => {
+    target_os = "redox" => {
         mod linux;
         use linux as imp;
     }
-    cfg(unix) => {
+    unix => {
         mod unix;
         use unix as imp;
     }
-    cfg(windows) => {
+    windows => {
         mod windows;
         use self::windows as imp;
     }

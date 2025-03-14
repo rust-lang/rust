@@ -13,8 +13,9 @@ LL |     fn value() -> u32;
               found signature `fn() -> i64`
 help: change the output type to match the trait
    |
-LL |     fn value() -> u32 {
-   |                   ~~~
+LL -     fn value() -> i64 {
+LL +     fn value() -> u32 {
+   |
 
 error: aborting due to 1 previous error
 

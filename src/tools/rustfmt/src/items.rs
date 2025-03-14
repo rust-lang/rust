@@ -333,19 +333,19 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, fn_sig, vis, generics, _) => {
-                let mut fn_sig = FnSig::from_method_sig(fn_sig, generics, vis);
+            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, vis, ast::Fn { sig, generics, .. }) => {
+                let mut fn_sig = FnSig::from_method_sig(sig, generics, vis);
                 fn_sig.defaultness = defaultness;
                 fn_sig
             }
-            visit::FnKind::Fn(_, _, fn_sig, vis, generics, _) => FnSig {
+            visit::FnKind::Fn(_, _, vis, ast::Fn { sig, generics, .. }) => FnSig {
                 decl,
                 generics,
-                ext: fn_sig.header.ext,
-                constness: fn_sig.header.constness,
-                coroutine_kind: Cow::Borrowed(&fn_sig.header.coroutine_kind),
+                ext: sig.header.ext,
+                constness: sig.header.constness,
+                coroutine_kind: Cow::Borrowed(&sig.header.coroutine_kind),
                 defaultness,
-                safety: fn_sig.header.safety,
+                safety: sig.header.safety,
                 visibility: vis,
             },
             _ => unreachable!(),
@@ -2359,6 +2359,21 @@ impl Rewrite for ast::Param {
     }
 }
 
+fn rewrite_opt_lifetime(
+    context: &RewriteContext<'_>,
+    lifetime: Option<ast::Lifetime>,
+) -> RewriteResult {
+    let Some(l) = lifetime else {
+        return Ok(String::new());
+    };
+    let mut result = l.rewrite_result(
+        context,
+        Shape::legacy(context.config.max_width(), Indent::empty()),
+    )?;
+    result.push(' ');
+    Ok(result)
+}
+
 fn rewrite_explicit_self(
     context: &RewriteContext<'_>,
     explicit_self: &ast::ExplicitSelf,
@@ -2367,58 +2382,34 @@ fn rewrite_explicit_self(
     shape: Shape,
     has_multiple_attr_lines: bool,
 ) -> RewriteResult {
-    match explicit_self.node {
+    let self_str = match explicit_self.node {
         ast::SelfKind::Region(lt, m) => {
             let mut_str = format_mutability(m);
-            match lt {
-                Some(ref l) => {
-                    let lifetime_str = l.rewrite_result(
-                        context,
-                        Shape::legacy(context.config.max_width(), Indent::empty()),
-                    )?;
-                    Ok(combine_strs_with_missing_comments(
-                        context,
-                        param_attrs,
-                        &format!("&{lifetime_str} {mut_str}self"),
-                        span,
-                        shape,
-                        !has_multiple_attr_lines,
-                    )?)
-                }
-                None => Ok(combine_strs_with_missing_comments(
-                    context,
-                    param_attrs,
-                    &format!("&{mut_str}self"),
-                    span,
-                    shape,
-                    !has_multiple_attr_lines,
-                )?),
-            }
+            let lifetime_str = rewrite_opt_lifetime(context, lt)?;
+            format!("&{lifetime_str}{mut_str}self")
+        }
+        ast::SelfKind::Pinned(lt, m) => {
+            let mut_str = m.ptr_str();
+            let lifetime_str = rewrite_opt_lifetime(context, lt)?;
+            format!("&{lifetime_str}pin {mut_str} self")
         }
         ast::SelfKind::Explicit(ref ty, mutability) => {
             let type_str = ty.rewrite_result(
                 context,
                 Shape::legacy(context.config.max_width(), Indent::empty()),
             )?;
-
-            Ok(combine_strs_with_missing_comments(
-                context,
-                param_attrs,
-                &format!("{}self: {}", format_mutability(mutability), type_str),
-                span,
-                shape,
-                !has_multiple_attr_lines,
-            )?)
+            format!("{}self: {}", format_mutability(mutability), type_str)
         }
-        ast::SelfKind::Value(mutability) => Ok(combine_strs_with_missing_comments(
-            context,
-            param_attrs,
-            &format!("{}self", format_mutability(mutability)),
-            span,
-            shape,
-            !has_multiple_attr_lines,
-        )?),
-    }
+        ast::SelfKind::Value(mutability) => format!("{}self", format_mutability(mutability)),
+    };
+    Ok(combine_strs_with_missing_comments(
+        context,
+        param_attrs,
+        &self_str,
+        span,
+        shape,
+        !has_multiple_attr_lines,
+    )?)
 }
 
 pub(crate) fn span_lo_for_param(param: &ast::Param) -> BytePos {
@@ -3453,6 +3444,7 @@ impl Rewrite for ast::ForeignItem {
                     ref sig,
                     ref generics,
                     ref body,
+                    ..
                 } = **fn_kind;
                 if body.is_some() {
                     let mut visitor = FmtVisitor::from_context(context);
@@ -3461,7 +3453,7 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, &self.ident, sig, &self.vis, generics, body),
+                        visit::FnKind::Fn(fn_ctxt, &self.ident, &self.vis, fn_kind),
                         &sig.decl,
                         self.span,
                         defaultness,

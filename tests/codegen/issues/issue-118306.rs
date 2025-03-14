@@ -1,4 +1,4 @@
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ min-llvm-version: 19
 //@ only-x86_64
 

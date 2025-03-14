@@ -5,7 +5,6 @@ pub mod diagnostics;
 mod item;
 mod stack;
 
-use std::cell::RefCell;
 use std::fmt::Write;
 use std::{cmp, mem};
 
@@ -822,16 +821,9 @@ trait EvalContextPrivExt<'tcx, 'ecx>: crate::MiriInterpCxExt<'tcx> {
         let size = match size {
             Some(size) => size,
             None => {
-                // The first time this happens, show a warning.
-                thread_local! { static WARNING_SHOWN: RefCell<bool> = const { RefCell::new(false) }; }
-                WARNING_SHOWN.with_borrow_mut(|shown| {
-                    if *shown {
-                        return;
-                    }
-                    // Not yet shown. Show it!
-                    *shown = true;
+                if !this.machine.sb_extern_type_warned.replace(true) {
                     this.emit_diagnostic(NonHaltingDiagnostic::ExternTypeReborrow);
-                });
+                }
                 return interp_ok(place.clone());
             }
         };
@@ -873,7 +865,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let cause = match kind {
-            RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
+            RetagKind::TwoPhase => RetagCause::TwoPhase,
             RetagKind::FnEntry => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
@@ -888,7 +880,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
         let retag_fields = this.machine.borrow_tracker.as_mut().unwrap().get_mut().retag_fields;
         let retag_cause = match kind {
-            RetagKind::TwoPhase { .. } => unreachable!(), // can only happen in `retag_ptr_value`
+            RetagKind::TwoPhase => unreachable!(), // can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
             RetagKind::Default | RetagKind::Raw => RetagCause::Normal,
         };
@@ -912,10 +904,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 new_perm: NewPermission,
             ) -> InterpResult<'tcx> {
                 let val = self.ecx.read_immediate(&self.ecx.place_to_op(place)?)?;
-                let val = self.ecx.sb_retag_reference(&val, new_perm, RetagInfo {
-                    cause: self.retag_cause,
-                    in_field: self.in_field,
-                })?;
+                let val = self.ecx.sb_retag_reference(
+                    &val,
+                    new_perm,
+                    RetagInfo { cause: self.retag_cause, in_field: self.in_field },
+                )?;
                 self.ecx.write_immediate(*val, place)?;
                 interp_ok(())
             }
@@ -1004,10 +997,11 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        this.sb_retag_place(place, new_perm, RetagInfo {
-            cause: RetagCause::InPlaceFnPassing,
-            in_field: false,
-        })
+        this.sb_retag_place(
+            place,
+            new_perm,
+            RetagInfo { cause: RetagCause::InPlaceFnPassing, in_field: false },
+        )
     }
 
     /// Mark the given tag as exposed. It was found on a pointer with the given AllocId.

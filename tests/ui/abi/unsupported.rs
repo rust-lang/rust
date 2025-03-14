@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ revisions: x64 i686 aarch64 arm riscv32 riscv64
 //
 //@ [x64] needs-llvm-components: x86
@@ -19,16 +20,15 @@
     abi_ptx,
     abi_msp430_interrupt,
     abi_avr_interrupt,
+    abi_gpu_kernel,
     abi_x86_interrupt,
     abi_riscv_interrupt,
     abi_c_cmse_nonsecure_call,
     cmse_nonsecure_entry
 )]
-#[lang = "sized"]
-trait Sized {}
 
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 extern "ptx-kernel" fn ptx() {}
 //~^ ERROR is not a supported ABI
@@ -38,6 +38,8 @@ fn ptx_ptr(f: extern "ptx-kernel" fn()) {
     f()
 }
 extern "ptx-kernel" {}
+//~^ ERROR is not a supported ABI
+extern "gpu-kernel" fn gpu() {}
 //~^ ERROR is not a supported ABI
 
 extern "aapcs" fn aapcs() {}

@@ -2,7 +2,6 @@
 // recursions.
 
 //@ build-fail
-//@ normalize-stderr-test: ".nll/" -> "/"
 
 fn generic<T>() { //~ WARN function cannot return without recursing
     generic::<Option<T>>();

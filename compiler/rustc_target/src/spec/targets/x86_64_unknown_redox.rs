@@ -1,4 +1,4 @@
-use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, base};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetMetadata, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::redox::opts();
@@ -10,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "x86_64-unknown-redox".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("Redox OS".into()),
             tier: Some(2),
             host_tools: Some(false),

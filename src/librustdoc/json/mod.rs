@@ -5,6 +5,7 @@
 //! docs for usage and details.
 
 mod conversions;
+mod ids;
 mod import_finder;
 
 use std::cell::RefCell;
@@ -16,7 +17,6 @@ use std::rc::Rc;
 use rustc_hir::def_id::{DefId, DefIdSet};
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::Symbol;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustdoc_json_types as types;
 // It's important to use the FxHashMap from rustdoc_json_types here, instead of
@@ -35,14 +35,6 @@ use crate::formats::cache::Cache;
 use crate::json::conversions::IntoJson;
 use crate::{clean, try_err};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
-struct FullItemId {
-    def_id: DefId,
-    name: Option<Symbol>,
-    /// Used to distinguish imports of different items with the same name
-    extra: Option<types::Id>,
-}
-
 #[derive(Clone)]
 pub(crate) struct JsonRenderer<'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -55,7 +47,7 @@ pub(crate) struct JsonRenderer<'tcx> {
     out_dir: Option<PathBuf>,
     cache: Rc<Cache>,
     imported_items: DefIdSet,
-    id_interner: Rc<RefCell<FxHashMap<(FullItemId, Option<FullItemId>), types::Id>>>,
+    id_interner: Rc<RefCell<ids::IdInterner>>,
 }
 
 impl<'tcx> JsonRenderer<'tcx> {
@@ -268,11 +260,14 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .chain(&self.cache.external_paths)
                 .map(|(&k, &(ref path, kind))| {
-                    (self.id_from_item_default(k.into()), types::ItemSummary {
-                        crate_id: k.krate.as_u32(),
-                        path: path.iter().map(|s| s.to_string()).collect(),
-                        kind: kind.into_json(self),
-                    })
+                    (
+                        self.id_from_item_default(k.into()),
+                        types::ItemSummary {
+                            crate_id: k.krate.as_u32(),
+                            path: path.iter().map(|s| s.to_string()).collect(),
+                            kind: kind.into_json(self),
+                        },
+                    )
                 })
                 .collect(),
             external_crates: self
@@ -281,13 +276,16 @@ impl<'tcx> FormatRenderer<'tcx> for JsonRenderer<'tcx> {
                 .iter()
                 .map(|(crate_num, external_location)| {
                     let e = ExternalCrate { crate_num: *crate_num };
-                    (crate_num.as_u32(), types::ExternalCrate {
-                        name: e.name(self.tcx).to_string(),
-                        html_root_url: match external_location {
-                            ExternalLocation::Remote(s) => Some(s.clone()),
-                            _ => None,
+                    (
+                        crate_num.as_u32(),
+                        types::ExternalCrate {
+                            name: e.name(self.tcx).to_string(),
+                            html_root_url: match external_location {
+                                ExternalLocation::Remote(s) => Some(s.clone()),
+                                _ => None,
+                            },
                         },
-                    })
+                    )
                 })
                 .collect(),
             format_version: types::FORMAT_VERSION,

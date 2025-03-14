@@ -2,17 +2,15 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{
-    self, EarlyBinder, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast,
-};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_trait_selection::traits;
-use tracing::{debug, instrument};
+use tracing::instrument;
 
 #[instrument(level = "debug", skip(tcx), ret)]
 fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
@@ -37,8 +35,6 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
         | Never
         | Dynamic(_, _, ty::DynStar) => None,
 
-        UnsafeBinder(_) => todo!(),
-
         // these are never sized
         Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
 
@@ -52,8 +48,13 @@ fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'
             sized_constraint_for_ty(tcx, ty)
         }),
 
-        // these can be sized or unsized
+        // these can be sized or unsized.
         Param(..) | Alias(..) | Error(_) => Some(ty),
+
+        // We cannot instantiate the binder, so just return the *original* type back,
+        // but only if the inner type has a sized constraint. Thus we skip the binder,
+        // but don't actually use the result from `sized_constraint_for_ty`.
+        UnsafeBinder(inner_ty) => sized_constraint_for_ty(tcx, inner_ty.skip_binder()).map(|_| ty),
 
         Placeholder(..) | Bound(..) | Infer(..) => {
             bug!("unexpected type `{ty:?}` in sized_constraint_for_ty")
@@ -257,57 +258,6 @@ fn param_env_normalized_for_post_analysis(tcx: TyCtxt<'_>, def_id: DefId) -> ty:
     typing_env.with_post_analysis_normalized(tcx).param_env
 }
 
-/// If the given trait impl enables exploiting the former order dependence of trait objects,
-/// returns its self type; otherwise, returns `None`.
-///
-/// See [`ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects`] for more details.
-#[instrument(level = "debug", skip(tcx))]
-fn self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(
-    tcx: TyCtxt<'_>,
-    def_id: DefId,
-) -> Option<EarlyBinder<'_, Ty<'_>>> {
-    let impl_ =
-        tcx.impl_trait_header(def_id).unwrap_or_else(|| bug!("called on inherent impl {def_id:?}"));
-
-    let trait_ref = impl_.trait_ref.skip_binder();
-    debug!(?trait_ref);
-
-    let is_marker_like = impl_.polarity == ty::ImplPolarity::Positive
-        && tcx.associated_item_def_ids(trait_ref.def_id).is_empty();
-
-    // Check whether these impls would be ok for a marker trait.
-    if !is_marker_like {
-        debug!("not marker-like!");
-        return None;
-    }
-
-    // impl must be `impl Trait for dyn Marker1 + Marker2 + ...`
-    if trait_ref.args.len() != 1 {
-        debug!("impl has args!");
-        return None;
-    }
-
-    let predicates = tcx.predicates_of(def_id);
-    if predicates.parent.is_some() || !predicates.predicates.is_empty() {
-        debug!(?predicates, "impl has predicates!");
-        return None;
-    }
-
-    let self_ty = trait_ref.self_ty();
-    let self_ty_matches = match self_ty.kind() {
-        ty::Dynamic(data, re, _) if re.is_static() => data.principal().is_none(),
-        _ => false,
-    };
-
-    if self_ty_matches {
-        debug!("MATCHES!");
-        Some(EarlyBinder::bind(self_ty))
-    } else {
-        debug!("non-matching self type");
-        None
-    }
-}
-
 /// Check if a function is async.
 fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     let node = tcx.hir_node_by_def_id(def_id);
@@ -317,7 +267,7 @@ fn asyncness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Asyncness {
     })
 }
 
-fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32> {
+fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> DenseBitSet<u32> {
     let def = tcx.adt_def(def_id);
     let num_params = tcx.generics_of(def_id).count();
 
@@ -338,10 +288,10 @@ fn unsizing_params_for_adt<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> BitSet<u32
 
     // The last field of the structure has to exist and contain type/const parameters.
     let Some((tail_field, prefix_fields)) = def.non_enum_variant().fields.raw.split_last() else {
-        return BitSet::new_empty(num_params);
+        return DenseBitSet::new_empty(num_params);
     };
 
-    let mut unsizing_params = BitSet::new_empty(num_params);
+    let mut unsizing_params = DenseBitSet::new_empty(num_params);
     for arg in tcx.type_of(tail_field.did).instantiate_identity().walk() {
         if let Some(i) = maybe_unsizing_param_idx(arg) {
             unsizing_params.insert(i);
@@ -367,7 +317,6 @@ pub(crate) fn provide(providers: &mut Providers) {
         adt_sized_constraint,
         param_env,
         param_env_normalized_for_post_analysis,
-        self_ty_of_trait_impl_enabling_order_dep_trait_object_hack,
         defaultness,
         unsizing_params_for_adt,
         ..*providers

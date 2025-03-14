@@ -5,7 +5,7 @@ test $DIR/relative-path-include-bytes-132203.rs - (line 18) ... FAILED
 failures:
 
 ---- $DIR/relative-path-include-bytes-132203.rs - (line 18) stdout ----
-error: couldn't read `$DIR/relative-dir-empty-file`: No such file or directory (os error 2)
+error: couldn't read `$DIR/relative-dir-empty-file`: $FILE_NOT_FOUND_MSG (os error 2)
   --> $DIR/relative-path-include-bytes-132203.rs:19:9
    |
 LL | let x = include_bytes!("relative-dir-empty-file");

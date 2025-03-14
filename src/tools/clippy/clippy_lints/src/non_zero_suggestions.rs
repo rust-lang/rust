@@ -55,7 +55,7 @@ impl<'tcx> LateLintPass<'tcx> for NonZeroSuggestions {
             check_non_zero_conversion(cx, rhs, Applicability::MachineApplicable);
         } else {
             // Check if the parent expression is a binary operation
-            let parent_is_binary = cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, node)| {
+            let parent_is_binary = cx.tcx.hir_parent_iter(expr.hir_id).any(|(_, node)| {
                 matches!(node, rustc_hir::Node::Expr(parent_expr) if matches!(parent_expr.kind, ExprKind::Binary(..)))
             });
 

@@ -6,7 +6,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_macros::HashStable;
 use rustc_middle::bug;
-use rustc_middle::ty::{self, PolyExistentialTraitRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, ExistentialTraitRef, Ty, TyCtxt};
 
 use super::{DefinitionLocation, SmallVec, UNKNOWN_LINE_NUMBER, unknown_file_metadata};
 use crate::common::{AsCCharPtr, CodegenCx};
@@ -44,7 +44,7 @@ pub(super) enum UniqueTypeId<'tcx> {
     /// The ID for the additional wrapper struct type describing an enum variant in CPP-like mode.
     VariantStructTypeCppLikeWrapper(Ty<'tcx>, VariantIdx, private::HiddenZst),
     /// The ID of the artificial type we create for VTables.
-    VTableTy(Ty<'tcx>, Option<PolyExistentialTraitRef<'tcx>>, private::HiddenZst),
+    VTableTy(Ty<'tcx>, Option<ExistentialTraitRef<'tcx>>, private::HiddenZst),
 }
 
 impl<'tcx> UniqueTypeId<'tcx> {
@@ -88,7 +88,7 @@ impl<'tcx> UniqueTypeId<'tcx> {
     pub(crate) fn for_vtable_ty(
         tcx: TyCtxt<'tcx>,
         self_type: Ty<'tcx>,
-        implemented_trait: Option<PolyExistentialTraitRef<'tcx>>,
+        implemented_trait: Option<ExistentialTraitRef<'tcx>>,
     ) -> Self {
         assert_eq!(
             self_type,

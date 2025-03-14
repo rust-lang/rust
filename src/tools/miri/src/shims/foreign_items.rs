@@ -1,6 +1,5 @@
 use std::collections::hash_map::Entry;
 use std::io::Write;
-use std::iter;
 use std::path::Path;
 
 use rustc_abi::{Align, AlignFromBytesError, Size};
@@ -9,6 +8,7 @@ use rustc_ast::expand::allocator::alloc_error_handler_name;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::CrateNum;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_middle::mir::interpret::AllocInit;
 use rustc_middle::ty::Ty;
 use rustc_middle::{mir, ty};
 use rustc_span::Symbol;
@@ -357,7 +357,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // Obtains a Miri backtrace. See the README for details.
             "miri_get_backtrace" => {
                 // `check_shim` happens inside `handle_miri_get_backtrace`.
-                this.handle_miri_get_backtrace(abi, link_name, args, dest)?;
+                this.handle_miri_get_backtrace(abi, link_name, args)?;
             }
             // Resolves a Miri backtrace frame. See the README for details.
             "miri_resolve_frame" => {
@@ -428,7 +428,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "exit" => {
                 let [code] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let code = this.read_scalar(code)?.to_i32()?;
-                throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
+                throw_machine_stop!(TerminationInfo::Exit { code, leak_check: false });
             }
             "abort" => {
                 let [] = this.check_shim(abi, Conv::C, link_name, args)?;
@@ -442,7 +442,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let [size] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let size = this.read_target_usize(size)?;
                 if size <= this.max_size_of_val().bytes() {
-                    let res = this.malloc(size, /*zero_init:*/ false)?;
+                    let res = this.malloc(size, AllocInit::Uninit)?;
                     this.write_pointer(res, dest)?;
                 } else {
                     // If this does not fit in an isize, return null and, on Unix, set errno.
@@ -457,7 +457,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                 let items = this.read_target_usize(items)?;
                 let elem_size = this.read_target_usize(elem_size)?;
                 if let Some(size) = this.compute_size_in_bytes(Size::from_bytes(elem_size), items) {
-                    let res = this.malloc(size.bytes(), /*zero_init:*/ true)?;
+                    let res = this.malloc(size.bytes(), AllocInit::Zero)?;
                     this.write_pointer(res, dest)?;
                 } else {
                     // On size overflow, return null and, on Unix, set errno.
@@ -509,6 +509,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         memory_kind.into(),
+                        AllocInit::Uninit,
                     )?;
 
                     ecx.write_pointer(ptr, dest)
@@ -537,14 +538,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
                         MiriMemoryKind::Rust.into(),
+                        AllocInit::Zero,
                     )?;
-
-                    // We just allocated this, the access is definitely in-bounds.
-                    this.write_bytes_ptr(
-                        ptr.into(),
-                        iter::repeat(0u8).take(usize::try_from(size).unwrap()),
-                    )
-                    .unwrap();
                     this.write_pointer(ptr, dest)
                 });
             }
@@ -604,6 +599,7 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                         Size::from_bytes(new_size),
                         align,
                         MiriMemoryKind::Rust.into(),
+                        AllocInit::Uninit,
                     )?;
                     this.write_pointer(new_ptr, dest)
                 });
@@ -746,6 +742,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log1pf"
             | "expm1f"
             | "tgammaf"
+            | "erff"
+            | "erfcf"
             => {
                 let [f] = this.check_shim(abi, Conv::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f32()?;
@@ -763,9 +761,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log1pf" => f_host.ln_1p(),
                     "expm1f" => f_host.exp_m1(),
                     "tgammaf" => f_host.gamma(),
+                    "erff" => f_host.erf(),
+                    "erfcf" => f_host.erfc(),
                     _ => bug!(),
                 };
                 let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -788,6 +796,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdimf" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -803,6 +819,8 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             | "log1p"
             | "expm1"
             | "tgamma"
+            | "erf"
+            | "erfc"
             => {
                 let [f] = this.check_shim(abi, Conv::C , link_name, args)?;
                 let f = this.read_scalar(f)?.to_f64()?;
@@ -820,9 +838,19 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "log1p" => f_host.ln_1p(),
                     "expm1" => f_host.exp_m1(),
                     "tgamma" => f_host.gamma(),
+                    "erf" => f_host.erf(),
+                    "erfc" => f_host.erfc(),
                     _ => bug!(),
                 };
                 let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res.to_soft(),
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f]);
                 this.write_scalar(res, dest)?;
             }
@@ -845,6 +873,14 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     "fdim" => f1.to_host().abs_sub(f2.to_host()).to_soft(),
                     _ => bug!(),
                 };
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(
+                //     this,
+                //     res,
+                //     4, // log2(16)
+                // );
                 let res = this.adjust_nan(res, &[f1, f2]);
                 this.write_scalar(res, dest)?;
             }
@@ -865,23 +901,33 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
             "lgammaf_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f32()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
             "lgamma_r" => {
                 let [x, signp] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let x = this.read_scalar(x)?.to_f64()?;
-                let signp = this.deref_pointer(signp)?;
+                let signp = this.deref_pointer_as(signp, this.machine.layouts.i32)?;
 
                 // Using host floats (but it's fine, these operations do not have guaranteed precision).
                 let (res, sign) = x.to_host().ln_gamma();
                 this.write_int(sign, &signp)?;
-                let res = this.adjust_nan(res.to_soft(), &[x]);
+                let res = res.to_soft();
+                // Apply a relative error of 16ULP to introduce some non-determinism
+                // simulating imprecise implementations and optimizations.
+                // FIXME: temporarily disabled as it breaks std tests.
+                // let res = math::apply_random_float_error_ulp(this, res, 4 /* log2(16) */);
+                let res = this.adjust_nan(res, &[x]);
                 this.write_scalar(res, dest)?;
             }
 
@@ -943,20 +989,12 @@ trait EvalContextExtPriv<'tcx>: crate::MiriInterpCxExt<'tcx> {
                     this, link_name, abi, args, dest,
                 );
             }
-            // FIXME: Move these to an `arm` submodule.
-            "llvm.aarch64.isb" if this.tcx.sess.target.arch == "aarch64" => {
-                let [arg] = this.check_shim(abi, Conv::C, link_name, args)?;
-                let arg = this.read_scalar(arg)?.to_i32()?;
-                match arg {
-                    // SY ("full system scope")
-                    15 => {
-                        this.yield_active_thread();
-                    }
-                    _ => {
-                        throw_unsup_format!("unsupported llvm.aarch64.isb argument {}", arg);
-                    }
-                }
+            name if name.starts_with("llvm.aarch64.") && this.tcx.sess.target.arch == "aarch64" => {
+                return shims::aarch64::EvalContextExt::emulate_aarch64_intrinsic(
+                    this, link_name, abi, args, dest,
+                );
             }
+            // FIXME: Move this to an `arm` submodule.
             "llvm.arm.hint" if this.tcx.sess.target.arch == "arm" => {
                 let [arg] = this.check_shim(abi, Conv::C, link_name, args)?;
                 let arg = this.read_scalar(arg)?.to_i32()?;

@@ -6,8 +6,9 @@ LL |     E::A::f();
    |
 help: there is an enum variant `E::A`; try using the variant's enum
    |
-LL |     E::f();
-   |     ~
+LL -     E::A::f();
+LL +     E::f();
+   |
 
 error: aborting due to 1 previous error
 

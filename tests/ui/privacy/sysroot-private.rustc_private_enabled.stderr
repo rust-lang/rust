@@ -1,0 +1,40 @@
+error[E0405]: cannot find trait `Equivalent` in this scope
+  --> $DIR/sysroot-private.rs:27:18
+   |
+LL | trait Trait2<K>: Equivalent<K> {}
+   |                  ^^^^^^^^^^ not found in this scope
+
+error[E0412]: cannot find type `K` in this scope
+  --> $DIR/sysroot-private.rs:32:35
+   |
+LL | fn trait_member<T>(val: &T, key: &K) -> bool {
+   |                 -                 ^
+   |                 |
+   |                 similarly named type parameter `T` defined here
+   |
+help: a type parameter with a similar name exists
+   |
+LL - fn trait_member<T>(val: &T, key: &K) -> bool {
+LL + fn trait_member<T>(val: &T, key: &T) -> bool {
+   |
+help: you might be missing a type parameter
+   |
+LL | fn trait_member<T, K>(val: &T, key: &K) -> bool {
+   |                  +++
+
+error[E0220]: associated type `ExpressionStack` not found for `Trait`
+  --> $DIR/sysroot-private.rs:22:31
+   |
+LL | type AssociatedTy = dyn Trait<ExpressionStack = i32, Bar = i32>;
+   |                               ^^^^^^^^^^^^^^^ there is an associated type `ExpressionStack` in the trait `gimli::read::op::EvaluationStorage`
+
+error[E0425]: cannot find function `memchr2` in this scope
+  --> $DIR/sysroot-private.rs:40:5
+   |
+LL |     memchr2(b'a', b'b', buf)
+   |     ^^^^^^^ not found in this scope
+
+error: aborting due to 4 previous errors
+
+Some errors have detailed explanations: E0220, E0405, E0412, E0425.
+For more information about an error, try `rustc --explain E0220`.

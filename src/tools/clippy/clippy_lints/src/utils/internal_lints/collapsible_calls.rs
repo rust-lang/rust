@@ -80,7 +80,7 @@ impl<'tcx> LateLintPass<'tcx> for CollapsibleCalls {
         if let ExprKind::Call(func, [call_cx, call_lint, call_sp, call_msg, call_f]) = expr.kind
             && is_expr_path_def_path(cx, func, &["clippy_utils", "diagnostics", "span_lint_and_then"])
             && let ExprKind::Closure(&Closure { body, .. }) = call_f.kind
-            && let body = cx.tcx.hir().body(body)
+            && let body = cx.tcx.hir_body(body)
             && let only_expr = peel_blocks_with_stmt(body.value)
             && let ExprKind::MethodCall(ps, recv, span_call_args, _) = &only_expr.kind
             && let ExprKind::Path(..) = recv.kind

@@ -308,7 +308,7 @@ pub trait MirVisitor {
     fn super_rvalue(&mut self, rvalue: &Rvalue, location: Location) {
         match rvalue {
             Rvalue::AddressOf(mutability, place) => {
-                let pcx = PlaceContext { is_mut: *mutability == Mutability::Mut };
+                let pcx = PlaceContext { is_mut: *mutability == RawPtrKind::Mut };
                 self.visit_place(place, pcx, location);
             }
             Rvalue::Aggregate(_, operands) => {
@@ -426,7 +426,10 @@ pub trait MirVisitor {
             | AssertMessage::RemainderByZero(op) => {
                 self.visit_operand(op, location);
             }
-            AssertMessage::ResumedAfterReturn(_) | AssertMessage::ResumedAfterPanic(_) => { //nothing to visit
+            AssertMessage::ResumedAfterReturn(_)
+            | AssertMessage::ResumedAfterPanic(_)
+            | AssertMessage::NullPointerDereference => {
+                //nothing to visit
             }
             AssertMessage::MisalignedPointerDereference { required, found } => {
                 self.visit_operand(required, location);

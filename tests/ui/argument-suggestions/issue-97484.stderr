@@ -12,7 +12,7 @@ note: function defined here
   --> $DIR/issue-97484.rs:9:4
    |
 LL | fn foo(a: &A, d: D, e: &E, g: G) {}
-   |    ^^^ -----  ----  -----  ----
+   |    ^^^              -----
 help: consider borrowing here
    |
 LL |     foo(&&A, B, C, D, &E, F, G);

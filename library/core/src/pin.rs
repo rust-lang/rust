@@ -156,8 +156,8 @@
 //!
 //! In order to implement the second option, we must in some way enforce its key invariant,
 //! *i.e.* prevent the value from being *moved* or otherwise invalidated (you may notice this
-//! sounds an awful lot like the definition of *pinning* a value). There a few ways one might be
-//! able to enforce this invariant in Rust:
+//! sounds an awful lot like the definition of *pinning* a value). There are a few ways one might
+//! be able to enforce this invariant in Rust:
 //!
 //! 1. Offer a wholly `unsafe` API to interact with the object, thus requiring every caller to
 //! uphold the invariant themselves
@@ -331,7 +331,7 @@
 //!
 //! Note that this invariant is enforced by simply making it impossible to call code that would
 //! perform a move on the pinned value. This is the case since the only way to access that pinned
-//! value is through the pinning <code>[Pin]<[&mut] T>></code>, which in turn restricts our access.
+//! value is through the pinning <code>[Pin]<[&mut] T></code>, which in turn restricts our access.
 //!
 //! ## [`Unpin`]
 //!
@@ -379,7 +379,7 @@
 //!
 //! Exposing access to the inner field which you want to remain pinned must then be carefully
 //! considered as well! Remember, exposing a method that gives access to a
-//! <code>[Pin]<[&mut] InnerT>></code> where <code>InnerT: [Unpin]</code> would allow safe code to
+//! <code>[Pin]<[&mut] InnerT></code> where <code>InnerT: [Unpin]</code> would allow safe code to
 //! trivially move the inner value out of that pinning pointer, which is precisely what you're
 //! seeking to prevent! Exposing a field of a pinned value through a pinning pointer is called
 //! "projecting" a pin, and the more general case of deciding in which cases a pin should be able
@@ -595,7 +595,7 @@
 //! [drop-impl]: self#implementing-drop-for-types-with-address-sensitive-states
 //!
 //! The [`drop`] function takes [`&mut self`], but this is called *even if that `self` has been
-//! pinned*! Implementing [`Drop`] for a type with address-sensitive states, because if `self` was
+//! pinned*! Implementing [`Drop`] for a type with address-sensitive states requires some care, because if `self` was
 //! indeed in an address-sensitive state before [`drop`] was called, it is as if the compiler
 //! automatically called [`Pin::get_unchecked_mut`].
 //!
@@ -1240,8 +1240,8 @@ impl<Ptr: Deref> Pin<Ptr> {
     /// points to is pinned, that is a violation of the API contract and may lead to undefined
     /// behavior in later (even safe) operations.
     ///
-    /// By using this method, you are also making a promise about the [`Deref`] and
-    /// [`DerefMut`] implementations of `Ptr`, if they exist. Most importantly, they
+    /// By using this method, you are also making a promise about the [`Deref`],
+    /// [`DerefMut`], and [`Drop`] implementations of `Ptr`, if they exist. Most importantly, they
     /// must not move out of their `self` arguments: `Pin::as_mut` and `Pin::as_ref`
     /// will call `DerefMut::deref_mut` and `Deref::deref` *on the pointer type `Ptr`*
     /// and expect these methods to uphold the pinning invariants.

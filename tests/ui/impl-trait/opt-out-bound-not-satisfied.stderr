@@ -1,0 +1,16 @@
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/opt-out-bound-not-satisfied.rs:5:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: relaxing a default bound only does something for `?Sized`; all other traits are not bound by default
+  --> $DIR/opt-out-bound-not-satisfied.rs:5:18
+   |
+LL | fn foo() -> impl ?Future<Output = impl Send> {
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: aborting due to 2 previous errors
+

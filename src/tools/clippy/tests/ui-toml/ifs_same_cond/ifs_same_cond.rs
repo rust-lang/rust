@@ -13,6 +13,7 @@ fn issue10272() {
     if x.get() {
     } else if !x.take() {
     } else if x.get() {
+        //~^ ifs_same_cond
     } else {
     }
 }

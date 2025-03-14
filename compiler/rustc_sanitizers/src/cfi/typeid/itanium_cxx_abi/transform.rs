@@ -51,8 +51,7 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
     // Transforms a ty:Ty for being encoded and used in the substitution dictionary.
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
         match t.kind() {
-            ty::Array(..)
-            | ty::Closure(..)
+            ty::Closure(..)
             | ty::Coroutine(..)
             | ty::CoroutineClosure(..)
             | ty::CoroutineWitness(..)
@@ -66,6 +65,13 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for TransformTy<'tcx> {
             | ty::Str
             | ty::Tuple(..)
             | ty::UnsafeBinder(_) => t.super_fold_with(self),
+
+            // Don't transform the type of the array length and keep it as `usize`.
+            // This is required for `try_to_target_usize` to work correctly.
+            &ty::Array(inner, len) => {
+                let inner = self.fold_ty(inner);
+                Ty::new_array_with_const_len(self.tcx, inner, len)
+            }
 
             ty::Bool => {
                 if self.options.contains(EncodeTyOptions::NORMALIZE_INTEGERS) {

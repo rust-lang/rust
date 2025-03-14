@@ -3,18 +3,16 @@
 
 use std::cell::Cell;
 use std::mem;
+use std::sync::Arc;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, Crate, Inline, ItemKind, ModKind, NodeId, attr};
+use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::intern::Interned;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, StashKey};
 use rustc_expand::base::{
-    Annotatable, DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension,
-    SyntaxExtensionKind,
+    DeriveResolution, Indeterminate, ResolverExpand, SyntaxExtension, SyntaxExtensionKind,
 };
 use rustc_expand::compile_declarative_macro;
 use rustc_expand::expand::{
@@ -26,8 +24,8 @@ use rustc_middle::middle::stability;
 use rustc_middle::ty::{RegisteredTools, TyCtxt, Visibility};
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::{
-    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, SOFT_UNSTABLE,
-    UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES, UNUSED_MACRO_RULES, UNUSED_MACROS,
+    LEGACY_DERIVE_HELPERS, OUT_OF_SCOPE_MACRO_CALLS, UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+    UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
 use rustc_span::edit_distance::edit_distance;
@@ -157,26 +155,6 @@ pub(crate) fn registered_tools(tcx: TyCtxt<'_>, (): ()) -> RegisteredTools {
     registered_tools
 }
 
-// Some feature gates for inner attributes are reported as lints for backward compatibility.
-fn soft_custom_inner_attributes_gate(path: &ast::Path, invoc: &Invocation) -> bool {
-    match &path.segments[..] {
-        // `#![test]`
-        [seg] if seg.ident.name == sym::test => return true,
-        // `#![rustfmt::skip]` on out-of-line modules
-        [seg1, seg2] if seg1.ident.name == sym::rustfmt && seg2.ident.name == sym::skip => {
-            if let InvocationKind::Attr { item, .. } = &invoc.kind {
-                if let Annotatable::Item(item) = item {
-                    if let ItemKind::Mod(_, ModKind::Loaded(_, Inline::No, _, _)) = item.kind {
-                        return true;
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
-    false
-}
-
 impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     fn next_node_id(&mut self) -> NodeId {
         self.next_node_id()
@@ -260,7 +238,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         invoc: &Invocation,
         eager_expansion_root: LocalExpnId,
         force: bool,
-    ) -> Result<Lrc<SyntaxExtension>, Indeterminate> {
+    ) -> Result<Arc<SyntaxExtension>, Indeterminate> {
         let invoc_id = invoc.expansion_data.id;
         let parent_scope = match self.invocation_parent_scopes.get(&invoc_id) {
             Some(parent_scope) => *parent_scope,
@@ -317,7 +295,6 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             parent_scope,
             node_id,
             force,
-            soft_custom_inner_attributes_gate(path, invoc),
             deleg_impl,
             looks_like_invoc_in_mod_inert_attr,
         )?;
@@ -549,10 +526,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         parent_scope: &ParentScope<'ra>,
         node_id: NodeId,
         force: bool,
-        soft_custom_inner_attributes_gate: bool,
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<LocalDefId>,
-    ) -> Result<(Lrc<SyntaxExtension>, Res), Indeterminate> {
+    ) -> Result<(Arc<SyntaxExtension>, Res), Indeterminate> {
         let (ext, res) = match self.resolve_macro_or_delegation_path(
             path,
             Some(kind),
@@ -667,22 +643,12 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 Res::NonMacroAttr(..) => false,
                 _ => unreachable!(),
             };
-            if soft_custom_inner_attributes_gate {
-                self.tcx.sess.psess.buffer_lint(
-                    SOFT_UNSTABLE,
-                    path.span,
-                    node_id,
-                    BuiltinLintDiag::InnerAttributeUnstable { is_macro },
-                );
+            let msg = if is_macro {
+                "inner macro attributes are unstable"
             } else {
-                // FIXME: deduplicate with rustc_lint (`BuiltinLintDiag::InnerAttributeUnstable`)
-                let msg = if is_macro {
-                    "inner macro attributes are unstable"
-                } else {
-                    "custom inner attributes are unstable"
-                };
-                feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
-            }
+                "custom inner attributes are unstable"
+            };
+            feature_err(&self.tcx.sess, sym::custom_inner_attributes, path.span, msg).emit();
         }
 
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
@@ -715,7 +681,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         trace: bool,
         force: bool,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         self.resolve_macro_or_delegation_path(
             path,
             kind,
@@ -738,7 +704,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         deleg_impl: Option<LocalDefId>,
         invoc_in_mod_inert_attr: Option<(LocalDefId, NodeId)>,
         ignore_import: Option<Import<'ra>>,
-    ) -> Result<(Option<Lrc<SyntaxExtension>>, Res), Determinacy> {
+    ) -> Result<(Option<Arc<SyntaxExtension>>, Res), Determinacy> {
         let path_span = ast_path.span;
         let mut path = Segment::from_path(ast_path);
 
@@ -821,11 +787,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(impl_def_id) => match res {
                 def::Res::Def(DefKind::Trait, def_id) => {
                     let edition = self.tcx.sess.edition();
-                    Some(Lrc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
+                    Some(Arc::new(SyntaxExtension::glob_delegation(def_id, impl_def_id, edition)))
                 }
                 _ => None,
             },
-            None => self.get_macro(res).map(|macro_data| Lrc::clone(&macro_data.ext)),
+            None => self.get_macro(res).map(|macro_data| Arc::clone(&macro_data.ext)),
         };
         Ok((ext, res))
     }
@@ -890,8 +856,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 ),
                 path_res @ (PathResult::NonModule(..) | PathResult::Failed { .. }) => {
                     let mut suggestion = None;
-                    let (span, label, module) =
-                        if let PathResult::Failed { span, label, module, .. } = path_res {
+                    let (span, label, module, segment) =
+                        if let PathResult::Failed { span, label, module, segment_name, .. } =
+                            path_res
+                        {
                             // try to suggest if it's not a macro, maybe a function
                             if let PathResult::NonModule(partial_res) =
                                 self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope, None)
@@ -909,7 +877,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     Applicability::MaybeIncorrect,
                                 ));
                             }
-                            (span, label, module)
+                            (span, label, module, segment_name)
                         } else {
                             (
                                 path_span,
@@ -919,14 +887,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                                     kind.descr()
                                 ),
                                 None,
+                                path.last().map(|segment| segment.ident.name).unwrap(),
                             )
                         };
-                    self.report_error(span, ResolutionError::FailedToResolve {
-                        segment: path.last().map(|segment| segment.ident.name),
-                        label,
-                        suggestion,
-                        module,
-                    });
+                    self.report_error(
+                        span,
+                        ResolutionError::FailedToResolve {
+                            segment: Some(segment),
+                            label,
+                            suggestion,
+                            module,
+                        },
+                    );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),
             }
@@ -1031,6 +1003,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         is_soft,
                         span,
                         soft_handler,
+                        stability::UnstableKind::Regular,
                     );
                 }
             }
@@ -1054,7 +1027,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         span: Span,
     ) {
         if let Some(Res::NonMacroAttr(kind)) = res {
-            if kind != NonMacroAttrKind::Tool && binding.map_or(true, |b| b.is_import()) {
+            if kind != NonMacroAttrKind::Tool && binding.is_none_or(|b| b.is_import()) {
                 let binding_span = binding.map(|binding| binding.span);
                 self.dcx().emit_err(errors::CannotUseThroughAnImport {
                     span,
@@ -1096,11 +1069,24 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 None,
             );
             if fallback_binding.ok().and_then(|b| b.res().opt_def_id()) != Some(def_id) {
+                let location = match parent_scope.module.kind {
+                    ModuleKind::Def(_, _, name) if name == kw::Empty => {
+                        "the crate root".to_string()
+                    }
+                    ModuleKind::Def(kind, def_id, name) => {
+                        format!("{} `{name}`", kind.descr(def_id))
+                    }
+                    ModuleKind::Block => "this scope".to_string(),
+                };
                 self.tcx.sess.psess.buffer_lint(
                     OUT_OF_SCOPE_MACRO_CALLS,
                     path.span,
                     node_id,
-                    BuiltinLintDiag::OutOfScopeMacroCalls { path: pprust::path_to_string(path) },
+                    BuiltinLintDiag::OutOfScopeMacroCalls {
+                        span: path.span,
+                        path: pprust::path_to_string(path),
+                        location,
+                    },
                 );
             }
         }
@@ -1125,7 +1111,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         macro_def: &ast::MacroDef,
         ident: Ident,
-        attrs: &[impl AttributeExt],
+        attrs: &[rustc_hir::Attribute],
         span: Span,
         node_id: NodeId,
         edition: Edition,
@@ -1162,7 +1148,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             }
         }
 
-        MacroData { ext: Lrc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
+        MacroData { ext: Arc::new(ext), rule_spans, macro_rules: macro_def.macro_rules }
     }
 
     fn path_accessible(

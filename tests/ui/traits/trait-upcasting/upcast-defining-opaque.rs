@@ -3,7 +3,7 @@
 //@ ignore-compare-mode-next-solver (explicit revisions)
 //@check-pass
 
-#![feature(trait_upcasting, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 trait Super {
     type Assoc;
@@ -17,6 +17,7 @@ impl<T: ?Sized> Super for T {
 
 type Foo = impl Sized;
 
+#[define_opaque(Foo)]
 fn upcast(x: &dyn Sub<Assoc = Foo>) -> &dyn Super<Assoc = i32> {
     x
 }

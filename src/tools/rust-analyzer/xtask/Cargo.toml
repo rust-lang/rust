@@ -16,8 +16,7 @@ xflags = "0.3.0"
 time = { version = "0.3", default-features = false }
 zip = { version = "0.6", default-features = false, features = ["deflate", "time"] }
 stdx.workspace = true
-# https://github.com/dtolnay/proc-macro2/issues/475
-proc-macro2 = "=1.0.86"
+proc-macro2 = "1.0.93"
 quote = "1.0.20"
 ungrammar = "1.16.1"
 either.workspace = true

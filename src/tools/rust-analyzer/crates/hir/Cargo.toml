@@ -10,7 +10,6 @@ license.workspace = true
 rust-version.workspace = true
 
 [lib]
-doctest = false
 
 [dependencies]
 rustc-hash.workspace = true
@@ -20,6 +19,7 @@ itertools.workspace = true
 smallvec.workspace = true
 tracing.workspace = true
 triomphe.workspace = true
+indexmap.workspace = true
 
 # local deps
 base-db.workspace = true

@@ -15,6 +15,10 @@ impl<'tcx> crate::MirPass<'tcx> for PostAnalysisNormalize {
         let typing_env = ty::TypingEnv::post_analysis(tcx, body.source.def_id());
         PostAnalysisNormalizeVisitor { tcx, typing_env }.visit_body_preserves_cfg(body);
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 struct PostAnalysisNormalizeVisitor<'tcx> {

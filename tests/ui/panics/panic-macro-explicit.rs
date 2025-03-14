@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:panicked
 //@ error-pattern:explicit panic
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 fn main() {
     panic!();

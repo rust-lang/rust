@@ -4,31 +4,29 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 
-fn parent_impl_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
+fn parent_impl_or_trait_constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let parent_id = tcx.local_parent(def_id);
-    if matches!(tcx.def_kind(parent_id), DefKind::Impl { .. })
-        && let Some(header) = tcx.impl_trait_header(parent_id)
-    {
-        header.constness
-    } else {
-        hir::Constness::NotConst
+    match tcx.def_kind(parent_id) {
+        DefKind::Impl { of_trait: true } => tcx.impl_trait_header(parent_id).unwrap().constness,
+        DefKind::Trait => {
+            if tcx.is_const_trait(parent_id.into()) {
+                hir::Constness::Const
+            } else {
+                hir::Constness::NotConst
+            }
+        }
+        _ => hir::Constness::NotConst,
     }
 }
 
-/// Checks whether an item is considered to be `const`. If it is a constructor, it is const.
-/// If it is an assoc method or function,
-/// return if it has a `const` modifier. If it is an intrinsic, report whether said intrinsic
-/// has a `rustc_const_{un,}stable` attribute. Otherwise, panic.
+/// Checks whether a function-like definition is considered to be `const`.
 fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
     let node = tcx.hir_node_by_def_id(def_id);
 
     match node {
-        hir::Node::Ctor(hir::VariantData::Tuple(..))
-        | hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Const(..), .. }) => {
-            hir::Constness::Const
-        }
-        hir::Node::ForeignItem(_) => {
-            // Foreign items cannot be evaluated at compile-time.
+        hir::Node::Ctor(hir::VariantData::Tuple(..)) => hir::Constness::Const,
+        hir::Node::ForeignItem(item) if let hir::ForeignItemKind::Fn(..) = item.kind => {
+            // Foreign functions cannot be evaluated at compile-time.
             hir::Constness::NotConst
         }
         hir::Node::Expr(e) if let hir::ExprKind::Closure(c) = e.kind => c.constness,
@@ -40,7 +38,7 @@ fn constness(tcx: TyCtxt<'_>, def_id: LocalDefId) -> hir::Constness {
 
                 // If the function itself is not annotated with `const`, it may still be a `const fn`
                 // if it resides in a const trait impl.
-                parent_impl_constness(tcx, def_id)
+                parent_impl_or_trait_constness(tcx, def_id)
             } else {
                 tcx.dcx().span_bug(
                     tcx.def_span(def_id),

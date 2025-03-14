@@ -160,7 +160,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// empty region. The `expansion` phase will grow this larger.
     fn construct_var_data(&self) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
-            values: IndexVec::from_fn_n(
+            values: IndexVec::<RegionVid, _>::from_fn_n(
                 |vid| {
                     let vid_universe = self.var_infos[vid].universe;
                     VarValue::Empty(vid_universe)

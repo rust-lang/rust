@@ -1,4 +1,7 @@
 //@ check-pass
+//@ revisions: current next
+//@ ignore-compare-mode-next-solver (explicit revisions)
+//@[next] compile-flags: -Znext-solver
 
 pub trait Fn0: Fn(i32) -> Self::Out {
     type Out;

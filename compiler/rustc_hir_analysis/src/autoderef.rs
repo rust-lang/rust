@@ -86,7 +86,7 @@ impl<'a, 'tcx> Iterator for Autoderef<'a, 'tcx> {
                 if self.infcx.next_trait_solver()
                     && let ty::Alias(..) = ty.kind()
                 {
-                    let (normalized_ty, obligations) = self.structurally_normalize(ty)?;
+                    let (normalized_ty, obligations) = self.structurally_normalize_ty(ty)?;
                     self.state.obligations.extend(obligations);
                     (AutoderefKind::Builtin, normalized_ty)
                 } else {
@@ -166,7 +166,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
         }
 
         let (normalized_ty, obligations) =
-            self.structurally_normalize(Ty::new_projection(tcx, trait_target_def_id, [ty]))?;
+            self.structurally_normalize_ty(Ty::new_projection(tcx, trait_target_def_id, [ty]))?;
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
@@ -174,12 +174,12 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
     }
 
     #[instrument(level = "debug", skip(self), ret)]
-    pub fn structurally_normalize(
+    pub fn structurally_normalize_ty(
         &self,
         ty: Ty<'tcx>,
     ) -> Option<(Ty<'tcx>, PredicateObligations<'tcx>)> {
         let ocx = ObligationCtxt::new(self.infcx);
-        let Ok(normalized_ty) = ocx.structurally_normalize(
+        let Ok(normalized_ty) = ocx.structurally_normalize_ty(
             &traits::ObligationCause::misc(self.span, self.body_id),
             self.param_env,
             ty,

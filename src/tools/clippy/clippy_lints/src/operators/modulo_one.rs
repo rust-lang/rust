@@ -21,6 +21,6 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, op: BinOpKind, right:
                     "any number modulo -1 will panic/overflow or result in 0",
                 );
             }
-        };
+        }
     }
 }

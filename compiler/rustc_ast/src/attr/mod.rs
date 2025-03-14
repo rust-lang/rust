@@ -14,7 +14,7 @@ use crate::ast::{
     PathSegment, Safety,
 };
 use crate::ptr::P;
-use crate::token::{self, CommentKind, Delimiter, Token};
+use crate::token::{self, CommentKind, Delimiter, InvisibleOrigin, MetaVarKind, Token};
 use crate::tokenstream::{
     DelimSpan, LazyAttrTokenStream, Spacing, TokenStream, TokenStreamIter, TokenTree,
 };
@@ -302,7 +302,7 @@ impl AttrItem {
 impl MetaItem {
     /// For a single-segment meta item, returns its name; otherwise, returns `None`.
     pub fn ident(&self) -> Option<Ident> {
-        if self.path.segments.len() == 1 { Some(self.path.segments[0].ident) } else { None }
+        if let [PathSegment { ident, .. }] = self.path.segments[..] { Some(ident) } else { None }
     }
 
     pub fn name_or_empty(&self) -> Symbol {
@@ -405,11 +405,17 @@ impl MetaItem {
                 let span = span.with_hi(segments.last().unwrap().ident.span.hi());
                 Path { span, segments, tokens: None }
             }
-            Some(TokenTree::Token(Token { kind: token::Interpolated(nt), .. }, _)) => match &**nt {
-                token::Nonterminal::NtMeta(item) => return item.meta(item.path.span),
-                token::Nonterminal::NtPath(path) => (**path).clone(),
-                _ => return None,
-            },
+            Some(TokenTree::Delimited(
+                _span,
+                _spacing,
+                Delimiter::Invisible(InvisibleOrigin::MetaVar(
+                    MetaVarKind::Meta { .. } | MetaVarKind::Path,
+                )),
+                _stream,
+            )) => {
+                // This path is currently unreachable in the test suite.
+                unreachable!()
+            }
             Some(TokenTree::Token(
                 Token { kind: token::OpenDelim(_) | token::CloseDelim(_), .. },
                 _,
@@ -723,6 +729,8 @@ impl MetaItemLit {
 pub trait AttributeExt: Debug {
     fn id(&self) -> AttrId;
 
+    /// For a single-segment attribute (i.e., `#[attr]` and not `#[path::atrr]`),
+    /// return the name of the attribute, else return the empty identifier.
     fn name_or_empty(&self) -> Symbol {
         self.ident().unwrap_or_else(Ident::empty).name
     }

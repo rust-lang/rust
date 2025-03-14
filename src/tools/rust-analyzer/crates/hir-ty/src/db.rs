@@ -13,6 +13,7 @@ use hir_def::{
     ConstParamId, DefWithBodyId, EnumVariantId, FunctionId, GeneralConstId, GenericDefId, ImplId,
     LifetimeParamId, LocalFieldId, StaticId, TraitId, TypeAliasId, TypeOrConstParamId, VariantId,
 };
+use hir_expand::name::Name;
 use la_arena::ArenaMap;
 use smallvec::SmallVec;
 use triomphe::Arc;
@@ -20,6 +21,7 @@ use triomphe::Arc;
 use crate::{
     chalk_db,
     consteval::ConstEvalError,
+    drop::DropGlue,
     dyn_compatibility::DynCompatibilityViolation,
     layout::{Layout, LayoutError},
     lower::{Diagnostics, GenericDefaults, GenericPredicates},
@@ -28,7 +30,6 @@ use crate::{
     Binders, ClosureId, Const, FnDefId, ImplTraitId, ImplTraits, InferenceResult, Interner,
     PolyFnSig, Substitution, TraitEnvironment, TraitRef, Ty, TyDefId, ValueTyDefId,
 };
-use hir_expand::name::Name;
 
 #[ra_salsa::query_group(HirDatabaseStorage)]
 pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
@@ -271,6 +272,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[ra_salsa::invoke(chalk_db::adt_variance_query)]
     fn adt_variance(&self, adt_id: chalk_db::AdtId) -> chalk_db::Variances;
 
+    #[ra_salsa::invoke(crate::variance::variances_of)]
+    #[ra_salsa::cycle(crate::variance::variances_of_cycle)]
+    fn variances_of(&self, def: GenericDefId) -> Option<Arc<[crate::variance::Variance]>>;
+
     #[ra_salsa::invoke(chalk_db::associated_ty_value_query)]
     fn associated_ty_value(
         &self,
@@ -301,6 +306,10 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
         block: Option<BlockId>,
         env: chalk_ir::Environment<Interner>,
     ) -> chalk_ir::ProgramClauses<Interner>;
+
+    #[ra_salsa::invoke(crate::drop::has_drop_glue)]
+    #[ra_salsa::cycle(crate::drop::has_drop_glue_recover)]
+    fn has_drop_glue(&self, ty: Ty, env: Arc<TraitEnvironment>) -> DropGlue {}
 }
 
 #[test]

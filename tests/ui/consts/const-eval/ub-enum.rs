@@ -1,7 +1,7 @@
 // Strip out raw byte dumps to make comparison platform-independent:
-//@ normalize-stderr-test: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
-//@ normalize-stderr-test: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
-//@ normalize-stderr-test: "0x0+" -> "0x0"
+//@ normalize-stderr: "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+//@ normalize-stderr: "([0-9a-f][0-9a-f] |╾─*ALLOC[0-9]+(\+[a-z0-9]+)?(<imm>)?─*╼ )+ *│.*" -> "HEX_DUMP"
+//@ normalize-stderr: "0x0+" -> "0x0"
 #![feature(never_type)]
 #![allow(invalid_value)]
 
@@ -101,7 +101,7 @@ const BAD_UNINHABITED_WITH_DATA2: Result<(i32, !), (i32, Never)> = unsafe { mem:
 const TEST_ICE_89765: () = {
     // This is a regression test for https://github.com/rust-lang/rust/issues/89765.
     unsafe { std::mem::discriminant(&*(&() as *const () as *const Never)); };
-    //~^ inside `TEST_ICE_89765`
+    //~^ ERROR evaluation of constant value failed
 };
 
 fn main() {

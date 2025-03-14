@@ -6,8 +6,9 @@ LL |     let x ➖= 1;
    |
 help: Unicode character '➖' (Heavy Minus Sign) looks like '-' (Minus/Hyphen), but it is not
    |
-LL |     let x -= 1;
-   |           ~
+LL -     let x ➖= 1;
+LL +     let x -= 1;
+   |
 
 error: can't reassign to an uninitialized variable
   --> $DIR/suggest-remove-compount-assign-let-ice.rs:13:11

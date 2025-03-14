@@ -151,7 +151,7 @@ pub fn anon_pipe(ours_readable: bool, their_handle_inheritable: bool) -> io::Res
         opts.write(ours_readable);
         opts.read(!ours_readable);
         opts.share_mode(0);
-        let size = mem::size_of::<c::SECURITY_ATTRIBUTES>();
+        let size = size_of::<c::SECURITY_ATTRIBUTES>();
         let mut sa = c::SECURITY_ATTRIBUTES {
             nLength: size as u32,
             lpSecurityDescriptor: ptr::null_mut(),

@@ -549,18 +549,18 @@ impl Macro {
             }
             "pr" => {
                 let pr = &self.target;
-                let url = format!("https://github.com/rust-analyzer/rust-analyzer/pull/{pr}");
+                let url = format!("https://github.com/rust-lang/rust-analyzer/pull/{pr}");
                 format!("[`#{pr}`]({url})")
             }
             "commit" => {
                 let hash = &self.target;
                 let short = &hash[0..7];
-                let url = format!("https://github.com/rust-analyzer/rust-analyzer/commit/{hash}");
+                let url = format!("https://github.com/rust-lang/rust-analyzer/commit/{hash}");
                 format!("[`{short}`]({url})")
             }
             "release" => {
                 let date = &self.target;
-                let url = format!("https://github.com/rust-analyzer/rust-analyzer/releases/{date}");
+                let url = format!("https://github.com/rust-lang/rust-analyzer/releases/{date}");
                 format!("[`{date}`]({url})")
             }
             _ => bail!("macro not supported: {name}"),

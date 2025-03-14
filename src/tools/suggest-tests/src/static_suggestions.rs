@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use crate::{Suggestion, sug};
 
-// FIXME: perhaps this could use `std::lazy` when it is stablizied
+// FIXME: perhaps this could use `std::lazy` when it is stabilized
 macro_rules! static_suggestions {
     ($( [ $( $glob:expr ),* $(,)? ] => [ $( $suggestion:expr ),* $(,)? ] ),* $(,)? ) => {
         pub(crate) fn static_suggestions() -> &'static [(Vec<&'static str>, Vec<Suggestion>)]

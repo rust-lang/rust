@@ -4,7 +4,7 @@ exclude = ["crates/proc-macro-srv/proc-macro-test/imp"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.82"
+rust-version = "1.84"
 edition = "2021"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
@@ -25,7 +25,6 @@ salsa.opt-level = 3
 miniz_oxide.opt-level = 3
 
 [profile.release]
-incremental = true
 # Set this to 1 or 2 to get more useful backtraces in debugger.
 debug = 0
 
@@ -64,7 +63,6 @@ ide-db = { path = "./crates/ide-db", version = "0.0.0" }
 ide-diagnostics = { path = "./crates/ide-diagnostics", version = "0.0.0" }
 ide-ssr = { path = "./crates/ide-ssr", version = "0.0.0" }
 intern = { path = "./crates/intern", version = "0.0.0" }
-limit = { path = "./crates/limit", version = "0.0.0" }
 load-cargo = { path = "./crates/load-cargo", version = "0.0.0" }
 mbe = { path = "./crates/mbe", version = "0.0.0" }
 parser = { path = "./crates/parser", version = "0.0.0" }
@@ -79,23 +77,24 @@ span = { path = "./crates/span", version = "0.0.0" }
 stdx = { path = "./crates/stdx", version = "0.0.0" }
 syntax = { path = "./crates/syntax", version = "0.0.0" }
 syntax-bridge = { path = "./crates/syntax-bridge", version = "0.0.0" }
+test-fixture = { path = "./crates/test-fixture", version = "0.0.0" }
+test-utils = { path = "./crates/test-utils", version = "0.0.0" }
 toolchain = { path = "./crates/toolchain", version = "0.0.0" }
 tt = { path = "./crates/tt", version = "0.0.0" }
 vfs-notify = { path = "./crates/vfs-notify", version = "0.0.0" }
 vfs = { path = "./crates/vfs", version = "0.0.0" }
 edition = { path = "./crates/edition", version = "0.0.0" }
 
-ra-ap-rustc_lexer = { version = "0.87", default-features = false }
-ra-ap-rustc_parse_format = { version = "0.87", default-features = false }
-ra-ap-rustc_index = { version = "0.87", default-features = false }
-ra-ap-rustc_abi = { version = "0.87", default-features = false }
-ra-ap-rustc_pattern_analysis = { version = "0.87", default-features = false }
+ra-ap-rustc_hashes = { version = "0.100", default-features = false }
+ra-ap-rustc_lexer = { version = "0.100", default-features = false }
+ra-ap-rustc_parse_format = { version = "0.100", default-features = false }
+ra-ap-rustc_index = { version = "0.100", default-features = false }
+ra-ap-rustc_abi = { version = "0.100", default-features = false }
+ra-ap-rustc_pattern_analysis = { version = "0.100", default-features = false }
 
 # local crates that aren't published to crates.io. These should not have versions.
-test-fixture = { path = "./crates/test-fixture" }
-test-utils = { path = "./crates/test-utils" }
 
-# In-tree crates that are published separately and follow semver. See lib/README.md
+# in-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.2" }
 la-arena = { version = "0.3.1" }
 lsp-server = { version = "0.7.6" }
@@ -106,10 +105,10 @@ arrayvec = "0.7.4"
 bitflags = "2.4.1"
 cargo_metadata = "0.18.1"
 camino = "1.1.6"
-chalk-solve = { version = "0.98.0", default-features = false }
-chalk-ir = "0.98.0"
-chalk-recursive = { version = "0.98.0", default-features = false }
-chalk-derive = "0.98.0"
+chalk-solve = { version = "0.100.0", default-features = false }
+chalk-ir = "0.100.0"
+chalk-recursive = { version = "0.100.0", default-features = false }
+chalk-derive = "0.100.0"
 crossbeam-channel = "0.5.8"
 dissimilar = "1.0.7"
 dot = "0.1.4"
@@ -203,6 +202,13 @@ new_ret_no_self = "allow"
 useless_asref = "allow"
 # Has false positives
 assigning_clones = "allow"
+# Does not work with macros
+vec_init_then_push = "allow"
+# Our tests have a lot of these
+literal_string_with_formatting_args = "allow"
+# This lint has been empowered but now also triggers on cases where its invalid to do so
+# due to it ignoring move analysis
+unnecessary_map_or = "allow"
 
 ## Following lints should be tackled at some point
 too_many_arguments = "allow"

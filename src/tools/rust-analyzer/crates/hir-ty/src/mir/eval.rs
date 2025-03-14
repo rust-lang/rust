@@ -6,9 +6,9 @@ use base_db::CrateId;
 use chalk_ir::{cast::Cast, Mutability};
 use either::Either;
 use hir_def::{
-    body::HygieneId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
+    expr_store::HygieneId,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
@@ -24,7 +24,7 @@ use rustc_apfloat::{
     Float,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, FileId};
+use span::FileId;
 use stdx::never;
 use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
@@ -32,7 +32,7 @@ use triomphe::Arc;
 use crate::{
     consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
     db::{HirDatabase, InternedClosure},
-    display::{ClosureStyle, HirDisplay},
+    display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
     layout::{Layout, LayoutError, RustcEnumVariantIdx},
     mapping::from_chalk,
@@ -302,7 +302,7 @@ impl Address {
         }
     }
 
-    fn to_bytes(&self) -> [u8; mem::size_of::<usize>()] {
+    fn to_bytes(&self) -> [u8; size_of::<usize>()] {
         usize::to_le_bytes(self.to_usize())
     }
 
@@ -359,7 +359,7 @@ impl MirEvalError {
         f: &mut String,
         db: &dyn HirDatabase,
         span_formatter: impl Fn(FileId, TextRange) -> String,
-        edition: Edition,
+        display_target: DisplayTarget,
     ) -> std::result::Result<(), std::fmt::Error> {
         writeln!(f, "Mir eval error:")?;
         let mut err = self;
@@ -372,7 +372,7 @@ impl MirEvalError {
                         writeln!(
                             f,
                             "In function {} ({:?})",
-                            function_name.name.display(db.upcast(), edition),
+                            function_name.name.display(db.upcast(), display_target.edition),
                             func
                         )?;
                     }
@@ -417,7 +417,7 @@ impl MirEvalError {
                 write!(
                     f,
                     "Layout for type `{}` is not available due {err:?}",
-                    ty.display(db, edition).with_closure_style(ClosureStyle::ClosureWithId)
+                    ty.display(db, display_target).with_closure_style(ClosureStyle::ClosureWithId)
                 )?;
             }
             MirEvalError::MirLowerError(func, err) => {
@@ -428,12 +428,15 @@ impl MirEvalError {
                         let substs = generics.placeholder_subst(db);
                         db.impl_self_ty(impl_id)
                             .substitute(Interner, &substs)
-                            .display(db, edition)
+                            .display(db, display_target)
                             .to_string()
                     }),
-                    ItemContainerId::TraitId(it) => {
-                        Some(db.trait_data(it).name.display(db.upcast(), edition).to_string())
-                    }
+                    ItemContainerId::TraitId(it) => Some(
+                        db.trait_data(it)
+                            .name
+                            .display(db.upcast(), display_target.edition)
+                            .to_string(),
+                    ),
                     _ => None,
                 };
                 writeln!(
@@ -441,17 +444,17 @@ impl MirEvalError {
                     "MIR lowering for function `{}{}{}` ({:?}) failed due:",
                     self_.as_deref().unwrap_or_default(),
                     if self_.is_some() { "::" } else { "" },
-                    function_name.name.display(db.upcast(), edition),
+                    function_name.name.display(db.upcast(), display_target.edition),
                     func
                 )?;
-                err.pretty_print(f, db, span_formatter, edition)?;
+                err.pretty_print(f, db, span_formatter, display_target)?;
             }
             MirEvalError::ConstEvalError(name, err) => {
                 MirLowerError::ConstEvalError((**name).into(), err.clone()).pretty_print(
                     f,
                     db,
                     span_formatter,
-                    edition,
+                    display_target,
                 )?;
             }
             MirEvalError::UndefinedBehavior(_)
@@ -589,7 +592,7 @@ pub fn interpret_mir(
     let ty = body.locals[return_slot()].ty.clone();
     let mut evaluator = Evaluator::new(db, body.owner, assert_placeholder_ty_is_unused, trait_env)?;
     let it: Result<Const> = (|| {
-        if evaluator.ptr_size() != std::mem::size_of::<usize>() {
+        if evaluator.ptr_size() != size_of::<usize>() {
             not_supported!("targets with different pointer size from host");
         }
         let interval = evaluator.interpret_mir(body.clone(), None.into_iter())?;
@@ -1211,7 +1214,9 @@ impl Evaluator<'_> {
                         }
                         lc = &lc[..self.ptr_size()];
                         rc = &rc[..self.ptr_size()];
-                        ls
+                        lc = self.read_memory(Address::from_bytes(lc)?, ls)?;
+                        rc = self.read_memory(Address::from_bytes(rc)?, ls)?;
+                        break 'binary_op Owned(vec![u8::from(lc == rc)]);
                     } else {
                         self.size_of_sized(&ty, locals, "operand of binary op")?
                     };
@@ -1340,18 +1345,8 @@ impl Evaluator<'_> {
                     }
                 } else {
                     let is_signed = matches!(ty.as_builtin(), Some(BuiltinType::Int(_)));
-                    let l128 = i128::from_le_bytes(pad16(lc, is_signed));
-                    let r128 = i128::from_le_bytes(pad16(rc, is_signed));
-                    let check_overflow = |r: i128| {
-                        // FIXME: this is not very correct, and only catches the basic cases.
-                        let r = r.to_le_bytes();
-                        for &k in &r[lc.len()..] {
-                            if k != 0 && (k != 255 || !is_signed) {
-                                return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
-                            }
-                        }
-                        Ok(Owned(r[0..lc.len()].into()))
-                    };
+                    let l128 = IntValue::from_bytes(lc, is_signed);
+                    let r128 = IntValue::from_bytes(rc, is_signed);
                     match op {
                         BinOp::Ge | BinOp::Gt | BinOp::Le | BinOp::Lt | BinOp::Eq | BinOp::Ne => {
                             let r = op.run_compare(l128, r128) as u8;
@@ -1366,25 +1361,31 @@ impl Evaluator<'_> {
                         | BinOp::Rem
                         | BinOp::Sub => {
                             let r = match op {
-                                BinOp::Add => l128.overflowing_add(r128).0,
-                                BinOp::Mul => l128.overflowing_mul(r128).0,
+                                BinOp::Add => l128.checked_add(r128).ok_or_else(|| {
+                                    MirEvalError::Panic(format!("Overflow in {op:?}"))
+                                })?,
+                                BinOp::Mul => l128.checked_mul(r128).ok_or_else(|| {
+                                    MirEvalError::Panic(format!("Overflow in {op:?}"))
+                                })?,
                                 BinOp::Div => l128.checked_div(r128).ok_or_else(|| {
                                     MirEvalError::Panic(format!("Overflow in {op:?}"))
                                 })?,
                                 BinOp::Rem => l128.checked_rem(r128).ok_or_else(|| {
                                     MirEvalError::Panic(format!("Overflow in {op:?}"))
                                 })?,
-                                BinOp::Sub => l128.overflowing_sub(r128).0,
+                                BinOp::Sub => l128.checked_sub(r128).ok_or_else(|| {
+                                    MirEvalError::Panic(format!("Overflow in {op:?}"))
+                                })?,
                                 BinOp::BitAnd => l128 & r128,
                                 BinOp::BitOr => l128 | r128,
                                 BinOp::BitXor => l128 ^ r128,
                                 _ => unreachable!(),
                             };
-                            check_overflow(r)?
+                            Owned(r.to_bytes())
                         }
                         BinOp::Shl | BinOp::Shr => {
                             let r = 'b: {
-                                if let Ok(shift_amount) = u32::try_from(r128) {
+                                if let Some(shift_amount) = r128.as_u32() {
                                     let r = match op {
                                         BinOp::Shl => l128.checked_shl(shift_amount),
                                         BinOp::Shr => l128.checked_shr(shift_amount),
@@ -1401,7 +1402,7 @@ impl Evaluator<'_> {
                                 };
                                 return Err(MirEvalError::Panic(format!("Overflow in {op:?}")));
                             };
-                            Owned(r.to_le_bytes()[..lc.len()].to_vec())
+                            Owned(r.to_bytes())
                         }
                         BinOp::Offset => not_supported!("offset binop"),
                     }
@@ -1646,14 +1647,15 @@ impl Evaluator<'_> {
             Variants::Multiple { tag, tag_encoding, variants, .. } => {
                 let size = tag.size(&*self.target_data_layout).bytes_usize();
                 let offset = layout.fields.offset(0).bytes_usize(); // The only field on enum variants is the tag field
+                let is_signed = tag.is_signed();
                 match tag_encoding {
                     TagEncoding::Direct => {
                         let tag = &bytes[offset..offset + size];
-                        Ok(i128::from_le_bytes(pad16(tag, false)))
+                        Ok(i128::from_le_bytes(pad16(tag, is_signed)))
                     }
                     TagEncoding::Niche { untagged_variant, niche_start, .. } => {
                         let tag = &bytes[offset..offset + size];
-                        let candidate_tag = i128::from_le_bytes(pad16(tag, false))
+                        let candidate_tag = i128::from_le_bytes(pad16(tag, is_signed))
                             .wrapping_sub(*niche_start as i128)
                             as usize;
                         let idx = variants
@@ -2115,7 +2117,7 @@ impl Evaluator<'_> {
         while self.heap.len() % align != 0 {
             self.heap.push(0);
         }
-        if size.checked_add(self.heap.len()).map_or(true, |x| x > self.memory_limit) {
+        if size.checked_add(self.heap.len()).is_none_or(|x| x > self.memory_limit) {
             return Err(MirEvalError::Panic(format!("Memory allocation of {size} bytes failed")));
         }
         let pos = self.heap.len();
@@ -2945,10 +2947,10 @@ pub fn render_const_using_debug_impl(
     // a3 = ::core::fmt::Arguments::new_v1(a1, a2)
     // FIXME: similarly, we should call function here, not directly working with memory.
     let a3 = evaluator.heap_allocate(evaluator.ptr_size() * 6, evaluator.ptr_size())?;
-    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a1.to_bytes())?;
+    evaluator.write_memory(a3, &a1.to_bytes())?;
+    evaluator.write_memory(a3.offset(evaluator.ptr_size()), &[1])?;
+    evaluator.write_memory(a3.offset(2 * evaluator.ptr_size()), &a2.to_bytes())?;
     evaluator.write_memory(a3.offset(3 * evaluator.ptr_size()), &[1])?;
-    evaluator.write_memory(a3.offset(4 * evaluator.ptr_size()), &a2.to_bytes())?;
-    evaluator.write_memory(a3.offset(5 * evaluator.ptr_size()), &[1])?;
     let Some(ValueNs::FunctionId(format_fn)) = resolver.resolve_path_in_value_ns_fully(
         db.upcast(),
         &hir_def::path::Path::from_known_path_with_no_generic(path![std::fmt::format]),
@@ -2973,4 +2975,130 @@ pub fn pad16(it: &[u8], is_signed: bool) -> [u8; 16] {
     let mut res = [if is_negative { 255 } else { 0 }; 16];
     res[..it.len()].copy_from_slice(it);
     res
+}
+
+macro_rules! for_each_int_type {
+    ($call_macro:path, $args:tt) => {
+        $call_macro! {
+            $args
+            I8
+            U8
+            I16
+            U16
+            I32
+            U32
+            I64
+            U64
+            I128
+            U128
+        }
+    };
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum IntValue {
+    I8(i8),
+    U8(u8),
+    I16(i16),
+    U16(u16),
+    I32(i32),
+    U32(u32),
+    I64(i64),
+    U64(u64),
+    I128(i128),
+    U128(u128),
+}
+
+macro_rules! checked_int_op {
+    ( [ $op:ident ] $( $int_ty:ident )+ ) => {
+        fn $op(self, other: Self) -> Option<Self> {
+            match (self, other) {
+                $( (Self::$int_ty(a), Self::$int_ty(b)) => a.$op(b).map(Self::$int_ty), )+
+                _ => panic!("incompatible integer types"),
+            }
+        }
+    };
+}
+
+macro_rules! int_bit_shifts {
+    ( [ $op:ident ] $( $int_ty:ident )+ ) => {
+        fn $op(self, amount: u32) -> Option<Self> {
+            match self {
+                $( Self::$int_ty(this) => this.$op(amount).map(Self::$int_ty), )+
+            }
+        }
+    };
+}
+
+macro_rules! unchecked_int_op {
+    ( [ $name:ident, $op:tt ]  $( $int_ty:ident )+ ) => {
+        fn $name(self, other: Self) -> Self {
+            match (self, other) {
+                $( (Self::$int_ty(a), Self::$int_ty(b)) => Self::$int_ty(a $op b), )+
+                _ => panic!("incompatible integer types"),
+            }
+        }
+    };
+}
+
+impl IntValue {
+    fn from_bytes(bytes: &[u8], is_signed: bool) -> Self {
+        match (bytes.len(), is_signed) {
+            (1, false) => Self::U8(u8::from_le_bytes(bytes.try_into().unwrap())),
+            (1, true) => Self::I8(i8::from_le_bytes(bytes.try_into().unwrap())),
+            (2, false) => Self::U16(u16::from_le_bytes(bytes.try_into().unwrap())),
+            (2, true) => Self::I16(i16::from_le_bytes(bytes.try_into().unwrap())),
+            (4, false) => Self::U32(u32::from_le_bytes(bytes.try_into().unwrap())),
+            (4, true) => Self::I32(i32::from_le_bytes(bytes.try_into().unwrap())),
+            (8, false) => Self::U64(u64::from_le_bytes(bytes.try_into().unwrap())),
+            (8, true) => Self::I64(i64::from_le_bytes(bytes.try_into().unwrap())),
+            (16, false) => Self::U128(u128::from_le_bytes(bytes.try_into().unwrap())),
+            (16, true) => Self::I128(i128::from_le_bytes(bytes.try_into().unwrap())),
+            _ => panic!("invalid integer size"),
+        }
+    }
+
+    fn to_bytes(self) -> Vec<u8> {
+        macro_rules! m {
+            ( [] $( $int_ty:ident )+ ) => {
+                match self {
+                    $( Self::$int_ty(v) => v.to_le_bytes().to_vec() ),+
+                }
+            };
+        }
+        for_each_int_type! { m, [] }
+    }
+
+    fn as_u32(self) -> Option<u32> {
+        macro_rules! m {
+            ( [] $( $int_ty:ident )+ ) => {
+                match self {
+                    $( Self::$int_ty(v) => v.try_into().ok() ),+
+                }
+            };
+        }
+        for_each_int_type! { m, [] }
+    }
+
+    for_each_int_type!(checked_int_op, [checked_add]);
+    for_each_int_type!(checked_int_op, [checked_sub]);
+    for_each_int_type!(checked_int_op, [checked_div]);
+    for_each_int_type!(checked_int_op, [checked_rem]);
+    for_each_int_type!(checked_int_op, [checked_mul]);
+
+    for_each_int_type!(int_bit_shifts, [checked_shl]);
+    for_each_int_type!(int_bit_shifts, [checked_shr]);
+}
+
+impl std::ops::BitAnd for IntValue {
+    type Output = Self;
+    for_each_int_type!(unchecked_int_op, [bitand, &]);
+}
+impl std::ops::BitOr for IntValue {
+    type Output = Self;
+    for_each_int_type!(unchecked_int_op, [bitor, |]);
+}
+impl std::ops::BitXor for IntValue {
+    type Output = Self;
+    for_each_int_type!(unchecked_int_op, [bitxor, ^]);
 }

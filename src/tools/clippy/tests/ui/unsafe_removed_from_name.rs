@@ -3,11 +3,10 @@
 #![warn(clippy::unsafe_removed_from_name)]
 
 use std::cell::UnsafeCell as TotallySafeCell;
-//~^ ERROR: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCell`
-//~| NOTE: `-D clippy::unsafe-removed-from-name` implied by `-D warnings`
+//~^ unsafe_removed_from_name
 
 use std::cell::UnsafeCell as TotallySafeCellAgain;
-//~^ ERROR: removed `unsafe` from the name of `UnsafeCell` in use as `TotallySafeCellAgain`
+//~^ unsafe_removed_from_name
 
 // Shouldn't error
 use std::cell::RefCell as ProbablyNotUnsafe;
@@ -26,12 +25,12 @@ mod mod_with_some_unsafe_things {
 }
 
 use mod_with_some_unsafe_things::Unsafe as LieAboutModSafety;
-//~^ ERROR: removed `unsafe` from the name of `Unsafe` in use as `LieAboutModSafety`
+//~^ unsafe_removed_from_name
 
 // merged imports
 use mod_with_some_unsafe_things::{Unsafe as A, Unsafe as B};
-//~^ ERROR: removed `unsafe` from the name of `Unsafe` in use as `A`
-//~| ERROR: removed `unsafe` from the name of `Unsafe` in use as `B`
+//~^ unsafe_removed_from_name
+//~| unsafe_removed_from_name
 
 // Shouldn't error
 use mod_with_some_unsafe_things::Safe as IPromiseItsSafeThisTime;

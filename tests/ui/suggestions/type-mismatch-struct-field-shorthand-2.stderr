@@ -28,8 +28,9 @@ LL |     let _ = RGB { r, g, c };
    |
 help: a field with a similar name exists
    |
-LL |     let _ = RGB { r, g, b };
-   |                         ~
+LL -     let _ = RGB { r, g, c };
+LL +     let _ = RGB { r, g, b };
+   |
 
 error: aborting due to 3 previous errors
 

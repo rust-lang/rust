@@ -7,7 +7,7 @@ LL |
 LL | fn together_we_will_rule_the_galaxy(son: &dyn A) {}
    |                                               ^
    |
-   = note: because of the default `Self` reference, type parameters must be specified on object types
+   = note: because the parameter default references `Self`, the parameter must be specified on the object type
 help: set the type parameter to the desired type
    |
 LL | fn together_we_will_rule_the_galaxy(son: &dyn A<T>) {}

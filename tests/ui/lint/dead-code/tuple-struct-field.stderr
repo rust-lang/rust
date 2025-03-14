@@ -33,8 +33,9 @@ LL | struct UnusedInTheMiddle(i32, f32, String, u8, u32);
    |
 help: consider changing the fields to be of unit type to suppress this warning while preserving the field numbering, or remove the fields
    |
-LL | struct UnusedInTheMiddle(i32, (), (), u8, ());
-   |                               ~~  ~~      ~~
+LL - struct UnusedInTheMiddle(i32, f32, String, u8, u32);
+LL + struct UnusedInTheMiddle(i32, (), (), u8, ());
+   |
 
 error: aborting due to 3 previous errors
 

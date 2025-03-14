@@ -9,7 +9,7 @@ note: method defined here
 help: provide the argument
    |
 LL |     f.call_once(/* args */)
-   |                ~~~~~~~~~~~~
+   |                 ++++++++++
 
 error: aborting due to 1 previous error
 

@@ -32,14 +32,9 @@ pub(crate) fn complete_for_and_where(
 
 #[cfg(test)]
 mod tests {
-    use expect_test::{expect, Expect};
+    use expect_test::expect;
 
-    use crate::tests::{check_edit, completion_list};
-
-    fn check(ra_fixture: &str, expect: Expect) {
-        let actual = completion_list(ra_fixture);
-        expect.assert_eq(&actual)
-    }
+    use crate::tests::{check, check_edit};
 
     #[test]
     fn test_else_edit_after_if() {
@@ -334,5 +329,35 @@ fn main() {
 }
 ",
         )
+    }
+
+    #[test]
+    fn completes_let_with_space() {
+        check_edit(
+            "let",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let $0
+}
+"#,
+        );
+        check_edit(
+            "letm",
+            r#"
+fn main() {
+    $0
+}
+"#,
+            r#"
+fn main() {
+    let mut $0
+}
+"#,
+        );
     }
 }

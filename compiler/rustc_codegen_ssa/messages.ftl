@@ -16,6 +16,10 @@ codegen_ssa_archive_build_failure = failed to build archive at `{$path}`: {$erro
 
 codegen_ssa_atomic_compare_exchange = Atomic compare-exchange intrinsic missing failure memory ordering
 
+codegen_ssa_autodiff_without_lto = using the autodiff feature requires using fat-lto
+
+codegen_ssa_bare_instruction_set = `#[instruction_set]` requires an argument
+
 codegen_ssa_binary_output_to_tty = option `-o` or `--emit` is used to write binary output type `{$shorthand}` to stdout, but stdout is a tty
 
 codegen_ssa_cgu_not_recorded =
@@ -29,6 +33,8 @@ codegen_ssa_compiler_builtins_cannot_call =
 codegen_ssa_copy_path = could not copy {$from} to {$to}: {$error}
 
 codegen_ssa_copy_path_buf = unable to copy {$source_file} to {$output_path}: {$error}
+
+codegen_ssa_cpu_required = target requires explicitly specifying a cpu with `-C target-cpu`
 
 codegen_ssa_create_temp_dir = couldn't create a temp dir: {$error}
 
@@ -47,6 +53,10 @@ codegen_ssa_error_creating_remark_dir = failed to create remark directory: {$err
 
 codegen_ssa_error_writing_def_file =
     Error writing .DEF file: {$error}
+
+codegen_ssa_expected_name_value_pair = expected name value pair
+
+codegen_ssa_expected_one_argument = expected one argument
 
 codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
@@ -67,7 +77,7 @@ codegen_ssa_failed_to_write = failed to write {$path}: {$error}
 codegen_ssa_field_associated_value_expected = associated value expected for `{$name}`
 
 codegen_ssa_forbidden_target_feature_attr =
-    target feature `{$feature}` cannot be toggled with `#[target_feature]`: {$reason}
+    target feature `{$feature}` cannot be enabled with `#[target_feature]`: {$reason}
 
 codegen_ssa_ignoring_emit_path = ignoring emit path because multiple .{$extension} files were produced
 
@@ -84,8 +94,16 @@ codegen_ssa_incorrect_cgu_reuse_type =
 
 codegen_ssa_insufficient_vs_code_product = VS Code is a different product, and is not sufficient.
 
+codegen_ssa_invalid_argument = invalid argument
+    .help = valid inline arguments are `always` and `never`
+
+codegen_ssa_invalid_instruction_set = invalid instruction set specified
+
 codegen_ssa_invalid_link_ordinal_nargs = incorrect number of arguments to `#[link_ordinal]`
     .note = the attribute requires exactly one argument
+
+codegen_ssa_invalid_literal_value = invalid literal value
+    .label = value must be an integer between `0` and `255`
 
 codegen_ssa_invalid_monomorphization_basic_float_type = invalid monomorphization of `{$name}` intrinsic: expected basic float type, found `{$ty}`
 
@@ -115,7 +133,8 @@ codegen_ssa_invalid_monomorphization_inserted_type = invalid monomorphization of
 
 codegen_ssa_invalid_monomorphization_invalid_bitmask = invalid monomorphization of `{$name}` intrinsic: invalid bitmask `{$mask_ty}`, expected `u{$expected_int_bits}` or `[u8; {$expected_bytes}]`
 
-codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: mask element type is `{$ty}`, expected `i_`
+codegen_ssa_invalid_monomorphization_mask_type = invalid monomorphization of `{$name}` intrinsic: found mask element type is `{$ty}`, expected a signed integer type
+    .note = the mask may be widened, which only has the correct behavior for signed integers
 
 codegen_ssa_invalid_monomorphization_mismatched_lengths = invalid monomorphization of `{$name}` intrinsic: mismatched lengths: mask length `{$m_len}` != other vector length `{$v_len}`
 
@@ -183,6 +202,8 @@ codegen_ssa_linker_file_stem = couldn't extract file stem from specified linker
 codegen_ssa_linker_not_found = linker `{$linker_path}` not found
     .note = {$error}
 
+codegen_ssa_linker_output = {$inner}
+
 codegen_ssa_linker_unsupported_modifier = `as-needed` modifier not supported for current linker
 
 codegen_ssa_linking_failed = linking with `{$linker_path}` failed: {$exit_status}
@@ -210,8 +231,10 @@ codegen_ssa_msvc_missing_linker = the msvc targets depend on the msvc linker but
 
 codegen_ssa_multiple_external_func_decl = multiple declarations of external function `{$function}` from library `{$library_name}` have different calling conventions
 
+codegen_ssa_multiple_instruction_set = cannot specify more than one instruction set
+
 codegen_ssa_multiple_main_functions = entry symbol `main` declared multiple times
-    .help = did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead
+    .help = did you use `#[no_mangle]` on `fn main`? Use `#![no_main]` to suppress the usual Rust-generated entry point
 
 codegen_ssa_no_field = no field `{$name}`
 
@@ -222,12 +245,19 @@ codegen_ssa_no_natvis_directory = error enumerating natvis directory: {$error}
 
 codegen_ssa_no_saved_object_file = cached cgu {$cgu_name} should have an object file, but doesn't
 
+codegen_ssa_null_on_export = `export_name` may not contain null characters
+
+codegen_ssa_out_of_range_integer = integer value out of range
+    .label = value must be between `0` and `255`
+
 codegen_ssa_processing_dymutil_failed = processing debug info with `dsymutil` failed: {$status}
     .note = {$output}
 
 codegen_ssa_read_file = failed to read file: {$message}
 
 codegen_ssa_repair_vs_build_tools = the Visual Studio build tools may need to be repaired using the Visual Studio installer
+
+codegen_ssa_requires_rust_abi = `#[track_caller]` requires Rust ABI
 
 codegen_ssa_rlib_archive_build_failure = failed to build archive from rlib at `{$path}`: {$error}
 
@@ -349,6 +379,9 @@ codegen_ssa_unable_to_run_dsymutil = unable to run `dsymutil`: {$error}
 
 codegen_ssa_unable_to_write_debugger_visualizer = Unable to write debugger visualizer file `{$path}`: {$error}
 
+codegen_ssa_unexpected_parameter_name = unexpected parameter name
+    .label = expected `{$prefix_nops}` or `{$entry_nops}`
+
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
 
@@ -359,6 +392,8 @@ codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 
 codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
+
+codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
 

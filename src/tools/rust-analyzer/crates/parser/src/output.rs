@@ -16,8 +16,9 @@ pub struct Output {
     /// 32-bit encoding of events. If LSB is zero, then that's an index into the
     /// error vector. Otherwise, it's one of the thee other variants, with data encoded as
     ///
-    ///     |16 bit kind|8 bit n_input_tokens|4 bit tag|4 bit leftover|
-    ///
+    /// ```text
+    /// |16 bit kind|8 bit n_input_tokens|4 bit tag|4 bit leftover|
+    /// ``````
     event: Vec<u32>,
     error: Vec<String>,
 }
@@ -85,7 +86,7 @@ impl Output {
     }
 
     pub(crate) fn float_split_hack(&mut self, ends_in_dot: bool) {
-        let e = (Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT
+        let e = ((Self::SPLIT_EVENT as u32) << Self::TAG_SHIFT)
             | ((ends_in_dot as u32) << Self::N_INPUT_TOKEN_SHIFT)
             | Self::EVENT_MASK;
         self.event.push(e);
@@ -99,7 +100,7 @@ impl Output {
     }
 
     pub(crate) fn leave_node(&mut self) {
-        let e = (Self::EXIT_EVENT as u32) << Self::TAG_SHIFT | Self::EVENT_MASK;
+        let e = ((Self::EXIT_EVENT as u32) << Self::TAG_SHIFT) | Self::EVENT_MASK;
         self.event.push(e)
     }
 

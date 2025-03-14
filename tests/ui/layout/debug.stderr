@@ -1,5 +1,5 @@
 error: unions cannot have zero fields
-  --> $DIR/debug.rs:82:1
+  --> $DIR/debug.rs:84:1
    |
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^^^^
@@ -10,7 +10,7 @@ error: layout_of(E) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Arbitrary {
@@ -31,6 +31,7 @@ error: layout_of(E) = Layout {
                    valid_range: 0..=0,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -48,7 +49,7 @@ error: layout_of(E) = Layout {
                            abi: Align(1 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Memory {
+                       backend_repr: Memory {
                            sized: true,
                        },
                        fields: Arbitrary {
@@ -56,11 +57,13 @@ error: layout_of(E) = Layout {
                            memory_index: [],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(1 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(12 bytes),
@@ -68,7 +71,9 @@ error: layout_of(E) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: Uninhabited,
+                       backend_repr: Memory {
+                           sized: true,
+                       },
                        fields: Arbitrary {
                            offsets: [
                                Size(4 bytes),
@@ -82,18 +87,21 @@ error: layout_of(E) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: true,
                        variants: Single {
                            index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:7:1
+  --> $DIR/debug.rs:8:1
    |
 LL | enum E { Foo, Bar(!, i32, i32) }
    | ^^^^^^
@@ -104,7 +112,7 @@ error: layout_of(S) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I32,
@@ -133,13 +141,15 @@ error: layout_of(S) = Layout {
                ],
            },
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:10:1
+  --> $DIR/debug.rs:11:1
    |
 LL | struct S { f1: i32, f2: (), f3: i32 }
    | ^^^^^^^^
@@ -150,20 +160,22 @@ error: layout_of(U) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:13:1
+  --> $DIR/debug.rs:14:1
    |
 LL | union U { f1: (i32, i32), f3: i32 }
    | ^^^^^^^
@@ -174,7 +186,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: ScalarPair(
+           backend_repr: ScalarPair(
                Initialized {
                    value: Int(
                        I32,
@@ -208,6 +220,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                    valid_range: 0..=1,
                },
            ),
+           uninhabited: false,
            variants: Multiple {
                tag: Initialized {
                    value: Int(
@@ -225,7 +238,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I32,
@@ -250,11 +263,13 @@ error: layout_of(Result<i32, i32>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 0,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                    Layout {
                        size: Size(8 bytes),
@@ -262,7 +277,7 @@ error: layout_of(Result<i32, i32>) = Layout {
                            abi: Align(4 bytes),
                            pref: $SOME_ALIGN,
                        },
-                       abi: ScalarPair(
+                       backend_repr: ScalarPair(
                            Initialized {
                                value: Int(
                                    I32,
@@ -287,18 +302,21 @@ error: layout_of(Result<i32, i32>) = Layout {
                            ],
                        },
                        largest_niche: None,
+                       uninhabited: false,
                        variants: Single {
                            index: 1,
                        },
                        max_repr_align: None,
                        unadjusted_abi_align: Align(4 bytes),
+                       randomization_seed: $SEED,
                    },
                ],
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:16:1
+  --> $DIR/debug.rs:17:1
    |
 LL | type Test = Result<i32, i32>;
    | ^^^^^^^^^
@@ -309,7 +327,7 @@ error: layout_of(i32) = Layout {
                abi: Align(4 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Initialized {
                    value: Int(
                        I32,
@@ -320,13 +338,15 @@ error: layout_of(i32) = Layout {
            ),
            fields: Primitive,
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(4 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:19:1
+  --> $DIR/debug.rs:20:1
    |
 LL | type T = impl std::fmt::Debug;
    | ^^^^^^
@@ -337,20 +357,22 @@ error: layout_of(V) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:25:1
+  --> $DIR/debug.rs:27:1
    |
 LL | pub union V {
    | ^^^^^^^^^^^
@@ -361,20 +383,22 @@ error: layout_of(W) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:31:1
+  --> $DIR/debug.rs:33:1
    |
 LL | pub union W {
    | ^^^^^^^^^^^
@@ -385,20 +409,22 @@ error: layout_of(Y) = Layout {
                abi: Align(2 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(2 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:37:1
+  --> $DIR/debug.rs:39:1
    |
 LL | pub union Y {
    | ^^^^^^^^^^^
@@ -409,20 +435,22 @@ error: layout_of(P1) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:44:1
+  --> $DIR/debug.rs:46:1
    |
 LL | union P1 { x: u32 }
    | ^^^^^^^^
@@ -433,20 +461,22 @@ error: layout_of(P2) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:48:1
+  --> $DIR/debug.rs:50:1
    |
 LL | union P2 { x: (u32, u32) }
    | ^^^^^^^^
@@ -457,20 +487,22 @@ error: layout_of(P3) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:56:1
+  --> $DIR/debug.rs:58:1
    |
 LL | union P3 { x: F32x4 }
    | ^^^^^^^^
@@ -481,20 +513,22 @@ error: layout_of(P4) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Memory {
+           backend_repr: Memory {
                sized: true,
            },
            fields: Union(
                1,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:60:1
+  --> $DIR/debug.rs:62:1
    |
 LL | union P4 { x: E }
    | ^^^^^^^^
@@ -505,7 +539,7 @@ error: layout_of(P5) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Union {
                    value: Int(
                        I8,
@@ -517,13 +551,15 @@ error: layout_of(P5) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:64:1
+  --> $DIR/debug.rs:66:1
    |
 LL | union P5 { zst: [u16; 0], byte: u8 }
    | ^^^^^^^^
@@ -534,7 +570,7 @@ error: layout_of(MaybeUninit<u8>) = Layout {
                abi: Align(1 bytes),
                pref: $SOME_ALIGN,
            },
-           abi: Scalar(
+           backend_repr: Scalar(
                Union {
                    value: Int(
                        I8,
@@ -546,25 +582,27 @@ error: layout_of(MaybeUninit<u8>) = Layout {
                2,
            ),
            largest_niche: None,
+           uninhabited: false,
            variants: Single {
                index: 0,
            },
            max_repr_align: None,
            unadjusted_abi_align: Align(1 bytes),
+           randomization_seed: $SEED,
        }
-  --> $DIR/debug.rs:67:1
+  --> $DIR/debug.rs:69:1
    |
 LL | type X = std::mem::MaybeUninit<u8>;
    | ^^^^^^
 
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:70:1
+  --> $DIR/debug.rs:72:1
    |
 LL | const C: () = ();
    | ^^^^^^^^^^^
 
 error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/debug.rs:78:19
+  --> $DIR/debug.rs:80:19
    |
 LL | type Impossible = (str, str);
    |                   ^^^^^^^^^^ doesn't have a size known at compile-time
@@ -572,18 +610,24 @@ LL | type Impossible = (str, str);
    = help: the trait `Sized` is not implemented for `str`
    = note: only the last element of a tuple may have a dynamically sized type
 
-error: the type `EmptyUnion` has an unknown layout
-  --> $DIR/debug.rs:82:1
+error: the type has an unknown layout
+  --> $DIR/debug.rs:84:1
    |
 LL | union EmptyUnion {}
    | ^^^^^^^^^^^^^^^^
 
+error: the type `T` does not have a fixed layout
+  --> $DIR/debug.rs:90:1
+   |
+LL | type TooGeneric<T> = T;
+   | ^^^^^^^^^^^^^^^^^^
+
 error: `#[rustc_layout]` can only be applied to `struct`/`enum`/`union` declarations and type aliases
-  --> $DIR/debug.rs:74:5
+  --> $DIR/debug.rs:76:5
    |
 LL |     const C: () = ();
    |     ^^^^^^^^^^^
 
-error: aborting due to 19 previous errors
+error: aborting due to 20 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

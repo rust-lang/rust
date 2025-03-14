@@ -43,7 +43,7 @@ pub(crate) fn complete_cargo_env_vars(
         .sema
         .hir_file_for(&expanded.syntax().parent()?)
         .macro_file()
-        .map_or(false, |it| it.is_env_or_option_env(ctx.sema.db));
+        .is_some_and(|it| it.is_env_or_option_env(ctx.sema.db));
     if !is_in_env_expansion {
         let call = macro_call_for_string_token(expanded)?;
         let makro = ctx.sema.resolve_macro_call(&call)?;
@@ -68,43 +68,40 @@ pub(crate) fn complete_cargo_env_vars(
 mod tests {
     use crate::tests::{check_edit, completion_list};
 
-    fn check(macro_name: &str) {
-        check_edit(
-            "CARGO_BIN_NAME",
-            &format!(
-                r#"
-            #[rustc_builtin_macro]
-            macro {macro_name} {{
-                ($var:literal) => {{ 0 }}
-            }}
-
-            fn main() {{
-                let foo = {macro_name}!("CAR$0");
-            }}
-        "#
-            ),
-            &format!(
-                r#"
-            #[rustc_builtin_macro]
-            macro {macro_name} {{
-                ($var:literal) => {{ 0 }}
-            }}
-
-            fn main() {{
-                let foo = {macro_name}!("CARGO_BIN_NAME");
-            }}
-        "#
-            ),
-        );
-    }
     #[test]
     fn completes_env_variable_in_env() {
-        check("env")
+        check_edit(
+            "CARGO_BIN_NAME",
+            r#"
+//- minicore: env
+fn main() {
+    let foo = env!("CAR$0");
+}
+        "#,
+            r#"
+fn main() {
+    let foo = env!("CARGO_BIN_NAME");
+}
+        "#,
+        );
     }
 
     #[test]
     fn completes_env_variable_in_option_env() {
-        check("option_env");
+        check_edit(
+            "CARGO_BIN_NAME",
+            r#"
+//- minicore: env
+fn main() {
+    let foo = option_env!("CAR$0");
+}
+        "#,
+            r#"
+fn main() {
+    let foo = option_env!("CARGO_BIN_NAME");
+}
+        "#,
+        );
     }
 
     #[test]

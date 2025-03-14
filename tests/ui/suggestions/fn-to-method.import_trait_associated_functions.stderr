@@ -1,0 +1,39 @@
+error[E0425]: cannot find function `cmp` in this scope
+  --> $DIR/fn-to-method.rs:12:13
+   |
+LL |     let x = cmp(&1, &2);
+   |             ^^^ not found in this scope
+   |
+help: consider importing one of these associated functions
+   |
+LL + use std::cmp::Ord::cmp;
+   |
+LL + use std::iter::Iterator::cmp;
+   |
+
+error[E0425]: cannot find function `len` in this scope
+  --> $DIR/fn-to-method.rs:16:13
+   |
+LL |     let y = len([1, 2, 3]);
+   |             ^^^ not found in this scope
+   |
+help: consider importing this associated function
+   |
+LL + use std::iter::ExactSizeIterator::len;
+   |
+
+error[E0425]: cannot find function `bar` in this scope
+  --> $DIR/fn-to-method.rs:20:13
+   |
+LL |     let z = bar(Foo);
+   |             ^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `bar` on `Foo`
+   |
+LL -     let z = bar(Foo);
+LL +     let z = Foo.bar();
+   |
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

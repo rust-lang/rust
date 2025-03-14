@@ -8,37 +8,39 @@
 
 static THRESHOLD: i32 = 10;
 static REF_THRESHOLD: &Option<&i32> = &Some(&THRESHOLD);
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
-//~| NOTE: `-D clippy::ref-option-ref` implied by `-D warnings`
+//~^ ref_option_ref
+
 const CONST_THRESHOLD: &i32 = &10;
 const REF_CONST: &Option<&i32> = &Some(CONST_THRESHOLD);
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+//~^ ref_option_ref
 
 type RefOptRefU32<'a> = &'a Option<&'a u32>;
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+//~^ ref_option_ref
+
 type RefOptRef<'a, T> = &'a Option<&'a T>;
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+//~^ ref_option_ref
 
 fn foo(data: &Option<&u32>) {}
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+//~^ ref_option_ref
 
 fn bar(data: &u32) -> &Option<&u32> {
-    //~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+    //~^ ref_option_ref
+
     &None
 }
 
 struct StructRef<'a> {
     data: &'a Option<&'a u32>,
-    //~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to
+    //~^ ref_option_ref
 }
 
 struct StructTupleRef<'a>(u32, &'a Option<&'a u32>);
-//~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to `Opt
+//~^ ref_option_ref
 
 enum EnumRef<'a> {
     Variant1(u32),
     Variant2(&'a Option<&'a u32>),
-    //~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to
+    //~^ ref_option_ref
 }
 
 trait RefOptTrait {
@@ -48,14 +50,14 @@ trait RefOptTrait {
 
 impl RefOptTrait for u32 {
     type A = &'static Option<&'static Self>;
-    //~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to
+    //~^ ref_option_ref
 
     fn foo(&self, _: Self::A) {}
 }
 
 fn main() {
     let x: &Option<&u32> = &None;
-    //~^ ERROR: since `&` implements the `Copy` trait, `&Option<&T>` can be simplified to
+    //~^ ref_option_ref
 }
 
 fn issue9682(arg: &Option<&mut String>) {

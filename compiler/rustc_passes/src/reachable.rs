@@ -66,7 +66,7 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
     fn visit_nested_body(&mut self, body: hir::BodyId) {
         let old_maybe_typeck_results =
             self.maybe_typeck_results.replace(self.tcx.typeck_body(body));
-        let body = self.tcx.hir().body(body);
+        let body = self.tcx.hir_body(body);
         self.visit_body(body);
         self.maybe_typeck_results = old_maybe_typeck_results;
     }
@@ -141,7 +141,7 @@ impl<'tcx> ReachableContext<'tcx> {
 
         match self.tcx.hir_node_by_def_id(def_id) {
             Node::Item(item) => match item.kind {
-                hir::ItemKind::Fn(..) => recursively_reachable(self.tcx, def_id.into()),
+                hir::ItemKind::Fn { .. } => recursively_reachable(self.tcx, def_id.into()),
                 _ => false,
             },
             Node::TraitItem(trait_method) => match trait_method.kind {
@@ -200,7 +200,7 @@ impl<'tcx> ReachableContext<'tcx> {
         match *node {
             Node::Item(item) => {
                 match item.kind {
-                    hir::ItemKind::Fn(.., body) => {
+                    hir::ItemKind::Fn { body, .. } => {
                         if recursively_reachable(self.tcx, item.owner_id.into()) {
                             self.visit_nested_body(body);
                         }
@@ -246,7 +246,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     | hir::ItemKind::Struct(..)
                     | hir::ItemKind::Enum(..)
                     | hir::ItemKind::Union(..)
-                    | hir::ItemKind::GlobalAsm(..) => {}
+                    | hir::ItemKind::GlobalAsm { .. } => {}
                 }
             }
             Node::TraitItem(trait_method) => {
@@ -291,7 +291,7 @@ impl<'tcx> ReachableContext<'tcx> {
             _ => {
                 bug!(
                     "found unexpected node kind in worklist: {} ({:?})",
-                    self.tcx.hir().node_to_string(self.tcx.local_def_id_to_hir_id(search_item)),
+                    self.tcx.hir_id_to_string(self.tcx.local_def_id_to_hir_id(search_item)),
                     node,
                 );
             }

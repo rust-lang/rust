@@ -5,10 +5,14 @@ use crate::{
     navigation_target::{self, ToNav},
     FilePosition, NavigationTarget, RangeInfo, TryToNav, UpmappingResult,
 };
-use hir::{AsAssocItem, AssocItem, FileRange, InFile, MacroFileIdExt, ModuleDef, Semantics};
+use hir::{
+    sym, AsAssocItem, AssocItem, CallableKind, FileRange, HasCrate, InFile, MacroFileIdExt,
+    ModuleDef, Semantics,
+};
 use ide_db::{
     base_db::{AnchoredPath, FileLoader, SourceDatabase},
     defs::{Definition, IdentClass},
+    famous_defs::FamousDefs,
     helpers::pick_best_token,
     RootDatabase, SymbolKind,
 };
@@ -27,13 +31,11 @@ use syntax::{
 //
 // For outline modules, this will navigate to the source file of the module.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>F12</kbd> |
 //
-// | VS Code | kbd:[F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif[]
+// ![Go to Definition](https://user-images.githubusercontent.com/48062697/113065563-025fbe00-91b1-11eb-83e4-a5a703610b23.gif)
 pub(crate) fn goto_definition(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -81,6 +83,10 @@ pub(crate) fn goto_definition(
         return Some(RangeInfo::new(original_token.text_range(), navs));
     }
 
+    if let Some(navs) = find_definition_for_known_blanket_dual_impls(sema, &original_token) {
+        return Some(RangeInfo::new(original_token.text_range(), navs));
+    }
+
     let navs = sema
         .descend_into_macros_no_opaque(original_token.clone())
         .into_iter()
@@ -103,7 +109,7 @@ pub(crate) fn goto_definition(
                 IdentClass::classify_node(sema, &parent)?
                     .definitions()
                     .into_iter()
-                    .flat_map(|def| {
+                    .flat_map(|(def, _)| {
                         if let Definition::ExternCrateDecl(crate_def) = def {
                             return crate_def
                                 .resolved_crate(db)
@@ -123,6 +129,77 @@ pub(crate) fn goto_definition(
         .collect::<Vec<NavigationTarget>>();
 
     Some(RangeInfo::new(original_token.text_range(), navs))
+}
+
+// If the token is into(), try_into(), search the definition of From, TryFrom.
+fn find_definition_for_known_blanket_dual_impls(
+    sema: &Semantics<'_, RootDatabase>,
+    original_token: &SyntaxToken,
+) -> Option<Vec<NavigationTarget>> {
+    let method_call = ast::MethodCallExpr::cast(original_token.parent()?.parent()?)?;
+    let callable = sema.resolve_method_call_as_callable(&method_call)?;
+    let CallableKind::Function(f) = callable.kind() else { return None };
+    let assoc = f.as_assoc_item(sema.db)?;
+
+    let return_type = callable.return_type();
+    let fd = FamousDefs(sema, return_type.krate(sema.db));
+
+    let t = match assoc.container(sema.db) {
+        hir::AssocItemContainer::Trait(t) => t,
+        hir::AssocItemContainer::Impl(impl_)
+            if impl_.self_ty(sema.db).is_str() && f.name(sema.db) == sym::parse =>
+        {
+            let t = fd.core_convert_FromStr()?;
+            let t_f = t.function(sema.db, &sym::from_str)?;
+            return sema
+                .resolve_trait_impl_method(
+                    return_type.clone(),
+                    t,
+                    t_f,
+                    [return_type.type_arguments().next()?],
+                )
+                .map(|f| def_to_nav(sema.db, f.into()));
+        }
+        hir::AssocItemContainer::Impl(_) => return None,
+    };
+
+    let fn_name = f.name(sema.db);
+    let f = if fn_name == sym::into && fd.core_convert_Into() == Some(t) {
+        let dual = fd.core_convert_From()?;
+        let dual_f = dual.function(sema.db, &sym::from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [return_type, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::try_into && fd.core_convert_TryInto() == Some(t) {
+        let dual = fd.core_convert_TryFrom()?;
+        let dual_f = dual.function(sema.db, &sym::try_from)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            // Extract the `T` from `Result<T, ..>`
+            [return_type.type_arguments().next()?, callable.receiver_param(sema.db)?.1],
+        )?
+    } else if fn_name == sym::to_string && fd.alloc_string_ToString() == Some(t) {
+        let dual = fd.core_fmt_Display()?;
+        let dual_f = dual.function(sema.db, &sym::fmt)?;
+        sema.resolve_trait_impl_method(
+            return_type.clone(),
+            dual,
+            dual_f,
+            [callable.receiver_param(sema.db)?.1.strip_reference()],
+        )?
+    } else {
+        return None;
+    };
+    // Assert that we got a trait impl function, if we are back in a trait definition we didn't
+    // succeed
+    let _t = f.as_assoc_item(sema.db)?.implemented_trait(sema.db)?;
+    let def = Definition::from(f);
+    Some(def_to_nav(sema.db, def))
 }
 
 fn try_lookup_include_path(
@@ -424,7 +501,7 @@ mod tests {
     use syntax::SmolStr;
 
     #[track_caller]
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
@@ -443,14 +520,14 @@ mod tests {
         assert_eq!(expected, navs);
     }
 
-    fn check_unresolved(ra_fixture: &str) {
+    fn check_unresolved(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
 
         assert!(navs.is_empty(), "didn't expect this to resolve anywhere: {navs:?}")
     }
 
-    fn check_name(expected_name: &str, ra_fixture: &str) {
+    fn check_name(expected_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, _) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
         assert!(navs.len() < 2, "expected single navigation target but encountered {}", navs.len());
@@ -3018,6 +3095,231 @@ fn foo() {
  // ^^^^
         m!(continue 'bar$0);
     }
+}
+"#,
+        );
+    }
+    #[test]
+    fn into_call_to_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl From<A> for B {
+    fn from(value: A) -> Self {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn into_call_to_from_definition_with_trait_bounds() {
+        check(
+            r#"
+//- minicore: from, iterator
+struct A;
+
+impl<T> From<T> for A
+where
+    T: IntoIterator<Item = i64>,
+{
+    fn from(value: T) -> Self {
+     //^^^^
+        A
+    }
+}
+
+fn f() {
+    let a: A = [1, 2, 3].into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl Into<B> for A {
+    fn into(self) -> B {
+     //^^^^
+        B
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: B = a.into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn try_into_call_to_try_from_definition() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryFrom<A> for B {
+    type Error = String;
+
+    fn try_from(value: A) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn goto_try_into_definition_if_exists() {
+        check(
+            r#"
+//- minicore: from
+struct A;
+
+struct B;
+
+impl TryInto<B> for A {
+    type Error = String;
+
+    fn try_into(self) -> Result<B, Self::Error> {
+     //^^^^^^^^
+        Ok(B)
+    }
+}
+
+fn f() {
+    let a = A;
+    let b: Result<B, _> = a.try_into$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn parse_call_to_from_str_definition() {
+        check(
+            r#"
+//- minicore: from, str
+struct A;
+impl FromStr for A {
+    type Error = String;
+    fn from_str(value: &str) -> Result<Self, Self::Error> {
+     //^^^^^^^^
+        Ok(A)
+    }
+}
+fn f() {
+    let a: Result<A, _> = "aaaaaa".parse$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn to_string_call_to_display_definition() {
+        check(
+            r#"
+//- minicore:fmt
+//- /alloc.rs crate:alloc
+pub mod string {
+    pub struct String;
+    pub trait ToString {
+        fn to_string(&self) -> String;
+    }
+
+    impl<T: core::fmt::Display> ToString for T {
+        fn to_string(&self) -> String { String }
+    }
+}
+//- /lib.rs crate:lib deps:alloc
+use alloc::string::ToString;
+struct A;
+impl core::fmt::Display for A {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {}
+    // ^^^
+}
+fn f() {
+    A.to_string$0();
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn use_inside_body() {
+        check(
+            r#"
+fn main() {
+    mod nice_module {
+        pub(super) struct NiceStruct;
+                       // ^^^^^^^^^^
+    }
+
+    use nice_module::NiceStruct$0;
+
+    let _ = NiceStruct;
+}
+    "#,
+        );
+    }
+
+    #[test]
+    fn shadow_builtin_type_by_module() {
+        check(
+            r#"
+mod Foo{
+pub mod str {
+     // ^^^
+    pub fn foo() {}
+}
+}
+
+fn main() {
+    use Foo::str;
+    let s = st$0r::foo();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn not_goto_module_because_str_is_builtin_type() {
+        check(
+            r#"
+mod str {
+pub fn foo() {}
+}
+
+fn main() {
+    let s = st$0r::f();
 }
 "#,
         );

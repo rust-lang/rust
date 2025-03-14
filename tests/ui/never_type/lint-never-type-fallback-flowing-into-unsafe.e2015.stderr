@@ -130,10 +130,6 @@ LL |         msg_send!();
    = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2024/never-type-fallback.html>
    = help: specify the type explicitly
    = note: this warning originates in the macro `msg_send` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: use `()` annotations to avoid fallback changes
-   |
-LL |             match send_message::<() /* ?0 */>() {
-   |                                  ~~
 
 warning: 10 warnings emitted
 

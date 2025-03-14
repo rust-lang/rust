@@ -1,8 +1,10 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
-use clippy_utils::source::{snippet, snippet_with_applicability, snippet_with_context};
-use clippy_utils::sugg::Sugg;
+use clippy_utils::source::{snippet, snippet_with_context};
+use clippy_utils::sugg::{DiagExt as _, Sugg};
 use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
-use clippy_utils::{get_parent_expr, is_trait_method, is_ty_alias, path_to_local};
+use clippy_utils::{
+    get_parent_expr, is_inherent_method_call, is_trait_item, is_trait_method, is_ty_alias, path_to_local,
+};
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
@@ -10,7 +12,8 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::Obligation;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
+use rustc_middle::ty::adjustment::{Adjust, AutoBorrow, AutoBorrowMutability};
+use rustc_middle::ty::{self, AdtDef, EarlyBinder, GenericArg, GenericArgsRef, Ty, TypeVisitableExt};
 use rustc_session::impl_lint_pass;
 use rustc_span::{Span, sym};
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
@@ -249,26 +252,25 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             //  ^^^
                             let (into_iter_recv, depth) = into_iter_deep_call(cx, into_iter_recv);
 
-                            let plural = if depth == 0 { "" } else { "s" };
-                            let mut applicability = Applicability::MachineApplicable;
-                            let sugg = snippet_with_applicability(
-                                cx,
-                                into_iter_recv.span.source_callsite(),
-                                "<expr>",
-                                &mut applicability,
-                            )
-                            .into_owned();
                             span_lint_and_then(
                                 cx,
                                 USELESS_CONVERSION,
                                 e.span,
                                 "explicit call to `.into_iter()` in function argument accepting `IntoIterator`",
                                 |diag| {
-                                    diag.span_suggestion(
-                                        e.span,
+                                    let receiver_span = into_iter_recv.span.source_callsite();
+                                    let adjustments = adjustments(cx, into_iter_recv);
+                                    let mut sugg = if adjustments.is_empty() {
+                                        vec![]
+                                    } else {
+                                        vec![(receiver_span.shrink_to_lo(), adjustments)]
+                                    };
+                                    let plural = if depth == 0 { "" } else { "s" };
+                                    sugg.push((e.span.with_lo(receiver_span.hi()), String::new()));
+                                    diag.multipart_suggestion(
                                         format!("consider removing the `.into_iter()`{plural}"),
                                         sugg,
-                                        applicability,
+                                        Applicability::MachineApplicable,
                                     );
                                     diag.span_note(span, "this parameter accepts any `IntoIterator`, so you don't need to call `.into_iter()`");
                                 },
@@ -381,4 +383,64 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
             self.expn_depth -= 1;
         }
     }
+}
+
+/// Check if `arg` is a `Into::into` or `From::from` applied to `receiver` to give `expr`, through a
+/// higher-order mapping function.
+pub fn check_function_application(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, arg: &Expr<'_>) {
+    if has_eligible_receiver(cx, recv, expr)
+        && (is_trait_item(cx, arg, sym::Into) || is_trait_item(cx, arg, sym::From))
+        && let ty::FnDef(_, args) = cx.typeck_results().expr_ty(arg).kind()
+        && let &[from_ty, to_ty] = args.into_type_list(cx.tcx).as_slice()
+        && same_type_and_consts(from_ty, to_ty)
+    {
+        span_lint_and_then(
+            cx,
+            USELESS_CONVERSION,
+            expr.span.with_lo(recv.span.hi()),
+            format!("useless conversion to the same type: `{from_ty}`"),
+            |diag| {
+                diag.suggest_remove_item(
+                    cx,
+                    expr.span.with_lo(recv.span.hi()),
+                    "consider removing",
+                    Applicability::MachineApplicable,
+                );
+            },
+        );
+    }
+}
+
+fn has_eligible_receiver(cx: &LateContext<'_>, recv: &Expr<'_>, expr: &Expr<'_>) -> bool {
+    let recv_ty = cx.typeck_results().expr_ty(recv);
+    if is_inherent_method_call(cx, expr)
+        && let Some(recv_ty_defid) = recv_ty.ty_adt_def().map(AdtDef::did)
+    {
+        if let Some(diag_name) = cx.tcx.get_diagnostic_name(recv_ty_defid)
+            && matches!(diag_name, sym::Option | sym::Result)
+        {
+            return true;
+        }
+
+        if cx.tcx.is_diagnostic_item(sym::ControlFlow, recv_ty_defid) {
+            return true;
+        }
+    }
+    if is_trait_method(cx, expr, sym::Iterator) {
+        return true;
+    }
+    false
+}
+
+fn adjustments(cx: &LateContext<'_>, expr: &Expr<'_>) -> String {
+    let mut prefix = String::new();
+    for adj in cx.typeck_results().expr_adjustments(expr) {
+        match adj.kind {
+            Adjust::Deref(_) => prefix = format!("*{prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Mut { .. })) => prefix = format!("&mut {prefix}"),
+            Adjust::Borrow(AutoBorrow::Ref(AutoBorrowMutability::Not)) => prefix = format!("&{prefix}"),
+            _ => {},
+        }
+    }
+    prefix
 }

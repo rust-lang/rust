@@ -26,7 +26,7 @@ use crate::InternId;
 #[cfg(feature = "ra-salsa")]
 use ra_salsa::{InternId, InternValue};
 
-use crate::MacroCallId;
+use crate::{Edition, MacroCallId};
 
 /// Interned [`SyntaxContextData`].
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -59,11 +59,20 @@ impl fmt::Display for SyntaxContextId {
 }
 
 impl SyntaxContextId {
+    #[inline]
+    pub fn remove_root_edition(&mut self) {
+        if self.is_root() {
+            *self = Self::root(Edition::Edition2015);
+        }
+    }
+
     /// The root context, which is the parent of all other contexts. All [`FileId`]s have this context.
-    pub const ROOT: Self = SyntaxContextId(unsafe { InternId::new_unchecked(0) });
+    pub const fn root(edition: Edition) -> Self {
+        SyntaxContextId(unsafe { InternId::new_unchecked(edition as u32) })
+    }
 
     pub fn is_root(self) -> bool {
-        self == Self::ROOT
+        self.into_u32() <= Edition::LATEST as u32
     }
 
     /// Deconstruct a `SyntaxContextId` into a raw `u32`.
@@ -89,6 +98,7 @@ pub struct SyntaxContextData {
     // per crate. Though that is likely not a problem as `MacroCallId`s are already crate calling dependent.
     pub outer_expn: Option<MacroCallId>,
     pub outer_transparency: Transparency,
+    pub edition: Edition,
     pub parent: SyntaxContextId,
     /// This context, but with all transparent and semi-transparent expansions filtered away.
     pub opaque: SyntaxContextId,
@@ -98,10 +108,10 @@ pub struct SyntaxContextData {
 
 #[cfg(feature = "ra-salsa")]
 impl InternValue for SyntaxContextData {
-    type Key = (SyntaxContextId, Option<MacroCallId>, Transparency);
+    type Key = (SyntaxContextId, Option<MacroCallId>, Transparency, Edition);
 
     fn into_key(&self) -> Self::Key {
-        (self.parent, self.outer_expn, self.outer_transparency)
+        (self.parent, self.outer_expn, self.outer_transparency, self.edition)
     }
 }
 
@@ -118,13 +128,14 @@ impl std::fmt::Debug for SyntaxContextData {
 }
 
 impl SyntaxContextData {
-    pub fn root() -> Self {
+    pub fn root(edition: Edition) -> Self {
         SyntaxContextData {
             outer_expn: None,
             outer_transparency: Transparency::Opaque,
-            parent: SyntaxContextId::ROOT,
-            opaque: SyntaxContextId::ROOT,
-            opaque_and_semitransparent: SyntaxContextId::ROOT,
+            parent: SyntaxContextId::root(edition),
+            opaque: SyntaxContextId::root(edition),
+            opaque_and_semitransparent: SyntaxContextId::root(edition),
+            edition,
         }
     }
 }

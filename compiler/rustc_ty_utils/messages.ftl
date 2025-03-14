@@ -14,6 +14,8 @@ ty_utils_borrow_not_supported = borrowing is not supported in generic constants
 
 ty_utils_box_not_supported = allocations are not allowed in generic constants
 
+ty_utils_by_use_not_supported = .use is not allowed in generic constants
+
 ty_utils_closure_and_return_not_supported = closures and function keywords are not supported in generic constants
 
 ty_utils_const_block_not_supported = const blocks are not supported in generic constants
@@ -41,8 +43,6 @@ ty_utils_inline_asm_not_supported = assembly is not supported in generic constan
 ty_utils_logical_op_not_supported = unsupported operation in generic constants, short-circuiting operations would imply control flow
 
 ty_utils_loop_not_supported = loops and loop control flow are not supported in generic constants
-
-ty_utils_multiple_array_fields_simd_type = monomorphising SIMD type `{$ty}` with more than one array field
 
 ty_utils_needs_drop_overflow = overflow while checking whether `{$query_ty}` requires drop
 

@@ -31,9 +31,8 @@ note: function defined here
   --> $DIR/generic-mismatch-reporting-issue-116615.rs:2:4
    |
 LL | fn foo_multi_same<T>(a: T, b: T, c: T, d: T, e: T, f: i32) {}
-   |    ^^^^^^^^^^^^^^ -  ----  ----  ----  ----  ----  ------
-   |                   |  |     |     |     |     |
-   |                   |  |     |     |     |     this parameter needs to match the `&str` type of `a` and `b`
+   |    ^^^^^^^^^^^^^^ -  ----  ----  ----  ----  ---- this parameter needs to match the `&str` type of `a` and `b`
+   |                   |  |     |     |     |
    |                   |  |     |     |     this parameter needs to match the `&str` type of `a` and `b`
    |                   |  |     |     this parameter needs to match the `&str` type of `a` and `b`
    |                   |  |     `c`, `d` and `e` need to match the `&str` type of this parameter
@@ -83,9 +82,8 @@ note: function defined here
   --> $DIR/generic-mismatch-reporting-issue-116615.rs:2:4
    |
 LL | fn foo_multi_same<T>(a: T, b: T, c: T, d: T, e: T, f: i32) {}
-   |    ^^^^^^^^^^^^^^ -  ----  ----  ----  ----  ----  ------
-   |                   |  |     |     |     |     |
-   |                   |  |     |     |     |     `b` and `c` need to match the `&str` type of this parameter
+   |    ^^^^^^^^^^^^^^ -  ----  ----  ----  ----  ---- `b` and `c` need to match the `&str` type of this parameter
+   |                   |  |     |     |     |
    |                   |  |     |     |     `b` and `c` need to match the `&str` type of this parameter
    |                   |  |     |     this parameter needs to match the `&str` type of `a`, `d` and `e`
    |                   |  |     this parameter needs to match the `&str` type of `a`, `d` and `e`

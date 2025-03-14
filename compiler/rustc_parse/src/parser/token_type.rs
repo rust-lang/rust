@@ -25,7 +25,7 @@ pub enum TokenType {
     Gt,
     AndAnd,
     OrOr,
-    Not,
+    Bang,
     Tilde,
 
     // BinOps
@@ -83,6 +83,8 @@ pub enum TokenType {
     KwCatch,
     KwConst,
     KwContinue,
+    KwContractEnsures,
+    KwContractRequires,
     KwCrate,
     KwDefault,
     KwDyn,
@@ -170,7 +172,7 @@ impl TokenType {
             Gt,
             AndAnd,
             OrOr,
-            Not,
+            Bang,
             Tilde,
 
             Plus,
@@ -217,6 +219,8 @@ impl TokenType {
             KwCatch,
             KwConst,
             KwContinue,
+            KwContractEnsures,
+            KwContractRequires,
             KwCrate,
             KwDefault,
             KwDyn,
@@ -289,6 +293,8 @@ impl TokenType {
             TokenType::KwCatch => Some(kw::Catch),
             TokenType::KwConst => Some(kw::Const),
             TokenType::KwContinue => Some(kw::Continue),
+            TokenType::KwContractEnsures => Some(kw::ContractEnsures),
+            TokenType::KwContractRequires => Some(kw::ContractRequires),
             TokenType::KwCrate => Some(kw::Crate),
             TokenType::KwDefault => Some(kw::Default),
             TokenType::KwDyn => Some(kw::Dyn),
@@ -360,7 +366,7 @@ impl TokenType {
             TokenType::Gt => "`>`",
             TokenType::AndAnd => "`&&`",
             TokenType::OrOr => "`||`",
-            TokenType::Not => "`!`",
+            TokenType::Bang => "`!`",
             TokenType::Tilde => "`~`",
 
             TokenType::Plus => "`+`",
@@ -439,12 +445,6 @@ macro_rules! exp {
             token_type: $crate::parser::token_type::TokenType::$tok
         }
     };
-    (@binop, $op:ident) => {
-        $crate::parser::token_type::ExpTokenPair {
-            tok: &rustc_ast::token::BinOp(rustc_ast::token::BinOpToken::$op),
-            token_type: $crate::parser::token_type::TokenType::$op,
-        }
-    };
     (@open, $delim:ident, $token_type:ident) => {
         $crate::parser::token_type::ExpTokenPair {
             tok: &rustc_ast::token::OpenDelim(rustc_ast::token::Delimiter::$delim),
@@ -479,8 +479,13 @@ macro_rules! exp {
     (Gt)             => { exp!(@tok, Gt) };
     (AndAnd)         => { exp!(@tok, AndAnd) };
     (OrOr)           => { exp!(@tok, OrOr) };
-    (Not)            => { exp!(@tok, Not) };
+    (Bang)           => { exp!(@tok, Bang) };
     (Tilde)          => { exp!(@tok, Tilde) };
+    (Plus)           => { exp!(@tok, Plus) };
+    (Minus)          => { exp!(@tok, Minus) };
+    (Star)           => { exp!(@tok, Star) };
+    (And)            => { exp!(@tok, And) };
+    (Or)             => { exp!(@tok, Or) };
     (At)             => { exp!(@tok, At) };
     (Dot)            => { exp!(@tok, Dot) };
     (DotDot)         => { exp!(@tok, DotDot) };
@@ -495,12 +500,6 @@ macro_rules! exp {
     (Pound)          => { exp!(@tok, Pound) };
     (Question)       => { exp!(@tok, Question) };
     (Eof)            => { exp!(@tok, Eof) };
-
-    (Plus)           => { exp!(@binop, Plus) };
-    (Minus)          => { exp!(@binop, Minus) };
-    (Star)           => { exp!(@binop, Star) };
-    (And)            => { exp!(@binop, And) };
-    (Or)             => { exp!(@binop, Or) };
 
     (OpenParen)      => { exp!(@open,  Parenthesis, OpenParen) };
     (OpenBrace)      => { exp!(@open,  Brace,       OpenBrace) };
@@ -519,6 +518,8 @@ macro_rules! exp {
     (Catch)          => { exp!(@kw, Catch,      KwCatch) };
     (Const)          => { exp!(@kw, Const,      KwConst) };
     (Continue)       => { exp!(@kw, Continue,   KwContinue) };
+    (ContractEnsures)  => { exp!(@kw, ContractEnsures, KwContractEnsures) };
+    (ContractRequires) => { exp!(@kw, ContractRequires, KwContractRequires) };
     (Crate)          => { exp!(@kw, Crate,      KwCrate) };
     (Default)        => { exp!(@kw, Default,    KwDefault) };
     (Dyn)            => { exp!(@kw, Dyn,        KwDyn) };
@@ -618,7 +619,7 @@ impl Iterator for TokenTypeSetIter {
     type Item = TokenType;
 
     fn next(&mut self) -> Option<TokenType> {
-        let num_bits: u32 = (std::mem::size_of_val(&self.0.0) * 8) as u32;
+        let num_bits: u32 = (size_of_val(&self.0.0) * 8) as u32;
         assert_eq!(num_bits, 128);
         let z = self.0.0.trailing_zeros();
         if z == num_bits {

@@ -11,10 +11,12 @@ trait Foo {
     const BAR: Self::Bar;
 }
 
+#[define_opaque(Two)]
 fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
     (t, u, T::BAR)
 }
 
+#[define_opaque(Two)]
 fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
     (t, u, 42)
     //~^ ERROR concrete type differs

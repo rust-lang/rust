@@ -7,8 +7,9 @@ LL |         Foo("hi".to_owned()) => true,
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         Foo(val) if val == "hi".to_owned() => true,
-   |             ~~~  +++++++++++++++++++++++++
+LL -         Foo("hi".to_owned()) => true,
+LL +         Foo(val) if val == "hi".to_owned() => true,
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "hi".to_owned();
@@ -29,8 +30,9 @@ LL |         Bar { baz: "hi".to_owned() } => true,
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         Bar { baz } if baz == "hi".to_owned() => true,
-   |               ~~~   +++++++++++++++++++++++++
+LL -         Bar { baz: "hi".to_owned() } => true,
+LL +         Bar { baz } if baz == "hi".to_owned() => true,
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const BAZ: /* Type */ = "hi".to_owned();
@@ -51,8 +53,9 @@ LL |         &["foo".to_string()] => {}
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         &[val] if val == "foo".to_string() => {}
-   |           ~~~  +++++++++++++++++++++++++++
+LL -         &["foo".to_string()] => {}
+LL +         &[val] if val == "foo".to_string() => {}
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "foo".to_string();

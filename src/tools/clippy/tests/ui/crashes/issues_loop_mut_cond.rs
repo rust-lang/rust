@@ -1,3 +1,5 @@
+//@ check-pass
+
 #![allow(dead_code)]
 
 /// Issue: https://github.com/rust-lang/rust-clippy/issues/2596

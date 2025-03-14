@@ -5,7 +5,7 @@
 
 #![feature(coroutines, stmt_expr_attributes)]
 
-//@ normalize-stderr-test: "std::pin::Unpin" -> "std::marker::Unpin"
+//@ normalize-stderr: "std::pin::Unpin" -> "std::marker::Unpin"
 
 use std::marker::Unpin;
 

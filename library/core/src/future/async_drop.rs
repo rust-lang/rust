@@ -133,9 +133,8 @@ pub trait AsyncDrop {
 }
 
 #[lang = "async_destruct"]
-#[cfg_attr(bootstrap, rustc_deny_explicit_impl(implement_via_object = false))]
-#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
-#[cfg_attr(not(bootstrap), rustc_do_not_implement_via_object)]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
 trait AsyncDestruct {
     type AsyncDestructor: Future<Output = ()>;
 }

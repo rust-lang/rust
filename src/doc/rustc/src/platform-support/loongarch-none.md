@@ -32,7 +32,7 @@ By default, code generated with the soft-float target should run on any
 LoongArch64 hardware, with the hard-float target additionally requiring an FPU;
 enabling additional target features may raise this baseline.
 
-Code generated with the targets will use the `small` code model by default.
+Code generated with the targets will use the `medium` code model by default.
 You can change this using the `-C code-model=` option to rustc.
 
 On `loongarch64-unknown-none*`, `extern "C"` uses the [architecture's standard calling convention][lapcs].

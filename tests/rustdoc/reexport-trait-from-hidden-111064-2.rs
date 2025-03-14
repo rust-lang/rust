@@ -1,7 +1,10 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/111064>.
-#![feature(no_core)]
+#![feature(no_core, lang_items)]
 #![no_core]
 #![crate_name = "foo"]
+
+#[lang = "sized"]
+trait Sized {}
 
 //@ files "foo" "['sidebar-items.js', 'all.html', 'hidden', 'index.html', 'struct.Bar.html', \
 //        'visible']"

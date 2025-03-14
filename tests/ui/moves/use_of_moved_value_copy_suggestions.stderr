@@ -196,7 +196,7 @@ LL |     [t, t];
 help: consider further restricting type parameter `T` with trait `Copy`
    |
 LL |     T:, T: Copy
-   |       ~~~~~~~~~
+   |         +++++++
 
 error: aborting due to 11 previous errors
 

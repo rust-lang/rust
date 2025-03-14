@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::hash::Hash;
 use std::path::PathBuf;
 use std::sync::{Arc, OnceLock as OnceCell};
@@ -32,7 +31,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 pub(crate) use self::ItemKind::*;
 pub(crate) use self::Type::{
     Array, BareFunction, BorrowedRef, DynTrait, Generic, ImplTrait, Infer, Primitive, QPath,
-    RawPointer, SelfTy, Slice, Tuple,
+    RawPointer, SelfTy, Slice, Tuple, UnsafeBinder,
 };
 use crate::clean::cfg::Cfg;
 use crate::clean::clean_middle_path;
@@ -209,11 +208,11 @@ impl ExternalCrate {
                     .get_attrs(def_id, sym::doc)
                     .flat_map(|attr| attr.meta_item_list().unwrap_or_default());
                 for meta in meta_items {
-                    if meta.has_name(sym::keyword) {
-                        if let Some(v) = meta.value_str() {
-                            keyword = Some(v);
-                            break;
-                        }
+                    if meta.has_name(sym::keyword)
+                        && let Some(v) = meta.value_str()
+                    {
+                        keyword = Some(v);
+                        break;
                     }
                 }
                 return keyword.map(|p| (def_id, p));
@@ -221,12 +220,11 @@ impl ExternalCrate {
             None
         };
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -267,7 +265,7 @@ impl ExternalCrate {
                     let attr_value = attr.value_str().expect("syntax should already be validated");
                     let Some(prim) = PrimitiveType::from_symbol(attr_value) else {
                         span_bug!(
-                            attr.span,
+                            attr.span(),
                             "primitive `{attr_value}` is not a member of `PrimitiveType`"
                         );
                     };
@@ -278,12 +276,11 @@ impl ExternalCrate {
         };
 
         if root.is_local() {
-            tcx.hir()
-                .root_module()
+            tcx.hir_root_module()
                 .item_ids
                 .iter()
                 .filter_map(|&id| {
-                    let item = tcx.hir().item(id);
+                    let item = tcx.hir_item(id);
                     match item.kind {
                         hir::ItemKind::Mod(_) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
@@ -400,7 +397,25 @@ impl Item {
     }
 
     pub(crate) fn deprecation(&self, tcx: TyCtxt<'_>) -> Option<Deprecation> {
-        self.def_id().and_then(|did| tcx.lookup_deprecation(did))
+        self.def_id().and_then(|did| tcx.lookup_deprecation(did)).or_else(|| {
+            // `allowed_through_unstable_modules` is a bug-compatibility hack for old rustc
+            // versions; the paths that are exposed through it are "deprecated" because they
+            // were never supposed to work at all.
+            let stab = self.stability(tcx)?;
+            if let rustc_attr_parsing::StabilityLevel::Stable {
+                allowed_through_unstable_modules: Some(note),
+                ..
+            } = stab.level
+            {
+                Some(Deprecation {
+                    since: rustc_attr_parsing::DeprecatedSince::Unspecified,
+                    note: Some(note),
+                    suggestion: None,
+                })
+            } else {
+                None
+            }
+        })
     }
 
     pub(crate) fn inner_docs(&self, tcx: TyCtxt<'_>) -> bool {
@@ -459,7 +474,7 @@ impl Item {
             name,
             kind,
             Attributes::from_hir(hir_attrs),
-            hir_attrs.cfg(cx.tcx, &cx.cache.hidden_cfg),
+            extract_cfg_from_attrs(hir_attrs.iter(), cx.tcx, &cx.cache.hidden_cfg),
         )
     }
 
@@ -487,7 +502,7 @@ impl Item {
         let Some(links) = cx.cache().intra_doc_links.get(&self.item_id) else { return vec![] };
         links
             .iter()
-            .filter_map(|ItemLink { link: s, link_text, page_id: id, ref fragment }| {
+            .filter_map(|ItemLink { link: s, link_text, page_id: id, fragment }| {
                 debug!(?id);
                 if let Ok((mut href, ..)) = href(*id, cx) {
                     debug!(?href);
@@ -648,17 +663,28 @@ impl Item {
                 ty::Asyncness::Yes => hir::IsAsync::Async(DUMMY_SP),
                 ty::Asyncness::No => hir::IsAsync::NotAsync,
             };
-            hir::FnHeader { safety: sig.safety(), abi: sig.abi(), constness, asyncness }
+            hir::FnHeader {
+                safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                    hir::HeaderSafety::SafeTargetFeatures
+                } else {
+                    sig.safety().into()
+                },
+                abi: sig.abi(),
+                constness,
+                asyncness,
+            }
         }
         let header = match self.kind {
             ItemKind::ForeignFunctionItem(_, safety) => {
                 let def_id = self.def_id().unwrap();
                 let abi = tcx.fn_sig(def_id).skip_binder().abi();
                 hir::FnHeader {
-                    safety: if abi == ExternAbi::RustIntrinsic {
-                        intrinsic_operation_unsafety(tcx, def_id.expect_local())
+                    safety: if tcx.codegen_fn_attrs(def_id).safe_target_features {
+                        hir::HeaderSafety::SafeTargetFeatures
+                    } else if abi == ExternAbi::RustIntrinsic {
+                        intrinsic_operation_unsafety(tcx, def_id.expect_local()).into()
                     } else {
-                        safety
+                        safety.into()
                     },
                     abi,
                     constness: if tcx.is_const_fn(def_id) {
@@ -959,147 +985,105 @@ pub(crate) struct Module {
     pub(crate) span: Span,
 }
 
-pub(crate) trait AttributesExt {
-    type AttributeIterator<'a>: Iterator<Item = ast::MetaItemInner>
-    where
-        Self: 'a;
-    type Attributes<'a>: Iterator<Item = &'a hir::Attribute>
-    where
-        Self: 'a;
+pub(crate) fn hir_attr_lists<'a, I: IntoIterator<Item = &'a hir::Attribute>>(
+    attrs: I,
+    name: Symbol,
+) -> impl Iterator<Item = ast::MetaItemInner> + use<'a, I> {
+    attrs
+        .into_iter()
+        .filter(move |attr| attr.has_name(name))
+        .filter_map(ast::attr::AttributeExt::meta_item_list)
+        .flatten()
+}
 
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_>;
+pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> + Clone>(
+    attrs: I,
+    tcx: TyCtxt<'_>,
+    hidden_cfg: &FxHashSet<Cfg>,
+) -> Option<Arc<Cfg>> {
+    let sess = tcx.sess;
+    let doc_cfg_active = tcx.features().doc_cfg();
+    let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
 
-    fn iter(&self) -> Self::Attributes<'_>;
-
-    fn cfg(&self, tcx: TyCtxt<'_>, hidden_cfg: &FxHashSet<Cfg>) -> Option<Arc<Cfg>> {
-        let sess = tcx.sess;
-        let doc_cfg_active = tcx.features().doc_cfg();
-        let doc_auto_cfg_active = tcx.features().doc_auto_cfg();
-
-        fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
-            let mut iter = it.into_iter();
-            let item = iter.next()?;
-            if iter.next().is_some() {
-                return None;
-            }
-            Some(item)
+    fn single<T: IntoIterator>(it: T) -> Option<T::Item> {
+        let mut iter = it.into_iter();
+        let item = iter.next()?;
+        if iter.next().is_some() {
+            return None;
         }
+        Some(item)
+    }
 
-        let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
-            let mut doc_cfg = self
-                .iter()
-                .filter(|attr| attr.has_name(sym::doc))
-                .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+    let mut cfg = if doc_cfg_active || doc_auto_cfg_active {
+        let mut doc_cfg = attrs
+            .clone()
+            .filter(|attr| attr.has_name(sym::doc))
+            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+            .filter(|attr| attr.has_name(sym::cfg))
+            .peekable();
+        if doc_cfg.peek().is_some() && doc_cfg_active {
+            doc_cfg
+                .filter_map(|attr| Cfg::parse(&attr).ok())
+                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
+        } else if doc_auto_cfg_active {
+            // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
+            // `doc(cfg())` overrides `cfg()`).
+            attrs
+                .clone()
                 .filter(|attr| attr.has_name(sym::cfg))
-                .peekable();
-            if doc_cfg.peek().is_some() && doc_cfg_active {
-                doc_cfg
-                    .filter_map(|attr| Cfg::parse(&attr).ok())
-                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-            } else if doc_auto_cfg_active {
-                // If there is no `doc(cfg())`, then we retrieve the `cfg()` attributes (because
-                // `doc(cfg())` overrides `cfg()`).
-                self.iter()
-                    .filter(|attr| attr.has_name(sym::cfg))
-                    .filter_map(|attr| single(attr.meta_item_list()?))
-                    .filter_map(|attr| {
-                        Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten()
-                    })
-                    .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
-            } else {
-                Cfg::True
-            }
+                .filter_map(|attr| single(attr.meta_item_list()?))
+                .filter_map(|attr| Cfg::parse_without(attr.meta_item()?, hidden_cfg).ok().flatten())
+                .fold(Cfg::True, |cfg, new_cfg| cfg & new_cfg)
         } else {
             Cfg::True
-        };
+        }
+    } else {
+        Cfg::True
+    };
 
-        for attr in self.iter() {
-            // #[doc]
-            if attr.doc_str().is_none() && attr.has_name(sym::doc) {
-                // #[doc(...)]
-                if let Some(list) = attr.meta_item_list() {
-                    for item in list {
-                        // #[doc(hidden)]
-                        if !item.has_name(sym::cfg) {
-                            continue;
-                        }
-                        // #[doc(cfg(...))]
-                        if let Some(cfg_mi) = item
-                            .meta_item()
-                            .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
-                        {
-                            match Cfg::parse(cfg_mi) {
-                                Ok(new_cfg) => cfg &= new_cfg,
-                                Err(e) => {
-                                    sess.dcx().span_err(e.span, e.msg);
-                                }
+    for attr in attrs.clone() {
+        // #[doc]
+        if attr.doc_str().is_none() && attr.has_name(sym::doc) {
+            // #[doc(...)]
+            if let Some(list) = attr.meta_item_list() {
+                for item in list {
+                    // #[doc(hidden)]
+                    if !item.has_name(sym::cfg) {
+                        continue;
+                    }
+                    // #[doc(cfg(...))]
+                    if let Some(cfg_mi) = item
+                        .meta_item()
+                        .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
+                    {
+                        match Cfg::parse(cfg_mi) {
+                            Ok(new_cfg) => cfg &= new_cfg,
+                            Err(e) => {
+                                sess.dcx().span_err(e.span, e.msg);
                             }
                         }
                     }
                 }
             }
         }
+    }
 
-        // treat #[target_feature(enable = "feat")] attributes as if they were
-        // #[doc(cfg(target_feature = "feat"))] attributes as well
-        for attr in self.lists(sym::target_feature) {
-            if attr.has_name(sym::enable) {
-                if attr.value_str().is_some() {
-                    // Clone `enable = "feat"`, change to `target_feature = "feat"`.
-                    // Unwrap is safe because `value_str` succeeded above.
-                    let mut meta = attr.meta_item().unwrap().clone();
-                    meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
+    // treat #[target_feature(enable = "feat")] attributes as if they were
+    // #[doc(cfg(target_feature = "feat"))] attributes as well
+    for attr in hir_attr_lists(attrs, sym::target_feature) {
+        if attr.has_name(sym::enable) && attr.value_str().is_some() {
+            // Clone `enable = "feat"`, change to `target_feature = "feat"`.
+            // Unwrap is safe because `value_str` succeeded above.
+            let mut meta = attr.meta_item().unwrap().clone();
+            meta.path = ast::Path::from_ident(Ident::with_dummy_span(sym::target_feature));
 
-                    if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
-                        cfg &= feat_cfg;
-                    }
-                }
+            if let Ok(feat_cfg) = Cfg::parse(&ast::MetaItemInner::MetaItem(meta)) {
+                cfg &= feat_cfg;
             }
         }
-
-        if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
-    }
-}
-
-impl AttributesExt for [hir::Attribute] {
-    type AttributeIterator<'a> = impl Iterator<Item = ast::MetaItemInner> + 'a;
-    type Attributes<'a> = impl Iterator<Item = &'a hir::Attribute> + 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        self.iter()
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(ast::attr::AttributeExt::meta_item_list)
-            .flatten()
     }
 
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter()
-    }
-}
-
-impl AttributesExt for [(Cow<'_, hir::Attribute>, Option<DefId>)] {
-    type AttributeIterator<'a>
-        = impl Iterator<Item = ast::MetaItemInner> + 'a
-    where
-        Self: 'a;
-    type Attributes<'a>
-        = impl Iterator<Item = &'a hir::Attribute> + 'a
-    where
-        Self: 'a;
-
-    fn lists(&self, name: Symbol) -> Self::AttributeIterator<'_> {
-        AttributesExt::iter(self)
-            .filter(move |attr| attr.has_name(name))
-            .filter_map(hir::Attribute::meta_item_list)
-            .flatten()
-    }
-
-    fn iter(&self) -> Self::Attributes<'_> {
-        self.iter().map(move |(attr, _)| match attr {
-            Cow::Borrowed(attr) => *attr,
-            Cow::Owned(attr) => attr,
-        })
-    }
+    if cfg == Cfg::True { None } else { Some(Arc::new(cfg)) }
 }
 
 pub(crate) trait NestedAttributesExt {
@@ -1164,8 +1148,8 @@ pub(crate) struct Attributes {
 }
 
 impl Attributes {
-    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> + '_ {
-        self.other_attrs.lists(name)
+    pub(crate) fn lists(&self, name: Symbol) -> impl Iterator<Item = ast::MetaItemInner> {
+        hir_attr_lists(&self.other_attrs[..], name)
     }
 
     pub(crate) fn has_doc_flag(&self, flag: Symbol) -> bool {
@@ -1174,10 +1158,10 @@ impl Attributes {
                 continue;
             }
 
-            if let Some(items) = attr.meta_item_list() {
-                if items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag)) {
-                    return true;
-                }
+            if let Some(items) = attr.meta_item_list()
+                && items.iter().filter_map(|i| i.meta_item()).any(|it| it.has_name(flag))
+            {
+                return true;
             }
         }
 
@@ -1232,7 +1216,9 @@ impl Attributes {
     pub(crate) fn get_doc_aliases(&self) -> Box<[Symbol]> {
         let mut aliases = FxIndexSet::default();
 
-        for attr in self.other_attrs.lists(sym::doc).filter(|a| a.has_name(sym::alias)) {
+        for attr in
+            hir_attr_lists(&self.other_attrs[..], sym::doc).filter(|a| a.has_name(sym::alias))
+        {
             if let Some(values) = attr.meta_item_list() {
                 for l in values {
                     if let Some(lit) = l.lit()
@@ -1254,7 +1240,7 @@ pub(crate) enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifiers),
     Outlives(Lifetime),
     /// `use<'a, T>` precise-capturing bound syntax
-    Use(Vec<Symbol>),
+    Use(Vec<PreciseCapturingArg>),
 }
 
 impl GenericBound {
@@ -1263,10 +1249,13 @@ impl GenericBound {
     }
 
     pub(crate) fn maybe_sized(cx: &mut DocContext<'_>) -> GenericBound {
-        Self::sized_with(cx, hir::TraitBoundModifiers {
-            polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
-            constness: hir::BoundConstness::Never,
-        })
+        Self::sized_with(
+            cx,
+            hir::TraitBoundModifiers {
+                polarity: hir::BoundPolarity::Maybe(DUMMY_SP),
+                constness: hir::BoundConstness::Never,
+            },
+        )
     }
 
     fn sized_with(cx: &mut DocContext<'_>, modifiers: hir::TraitBoundModifiers) -> GenericBound {
@@ -1312,6 +1301,21 @@ impl Lifetime {
 
     pub(crate) fn elided() -> Lifetime {
         Lifetime(kw::UnderscoreLifetime)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub(crate) enum PreciseCapturingArg {
+    Lifetime(Lifetime),
+    Param(Symbol),
+}
+
+impl PreciseCapturingArg {
+    pub(crate) fn name(self) -> Symbol {
+        match self {
+            PreciseCapturingArg::Lifetime(lt) => lt.0,
+            PreciseCapturingArg::Param(param) => param,
+        }
     }
 }
 
@@ -1511,6 +1515,8 @@ pub(crate) enum Type {
 
     /// An `impl Trait`: `impl TraitA + TraitB + ...`
     ImplTrait(Vec<GenericBound>),
+
+    UnsafeBinder(Box<UnsafeBinderTy>),
 }
 
 impl Type {
@@ -1703,7 +1709,7 @@ impl Type {
             Type::Pat(..) => PrimitiveType::Pat,
             RawPointer(..) => PrimitiveType::RawPointer,
             QPath(box QPathData { ref self_type, .. }) => return self_type.def_id(cache),
-            Generic(_) | SelfTy | Infer | ImplTrait(_) => return None,
+            Generic(_) | SelfTy | Infer | ImplTrait(_) | UnsafeBinder(_) => return None,
         };
         Primitive(t).def_id(cache)
     }
@@ -1871,7 +1877,7 @@ impl PrimitiveType {
             .copied()
     }
 
-    pub(crate) fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> + '_ {
+    pub(crate) fn all_impls(tcx: TyCtxt<'_>) -> impl Iterator<Item = DefId> {
         Self::simplified_types()
             .values()
             .flatten()
@@ -2127,9 +2133,8 @@ impl Discriminant {
     /// Will be `None` in the case of cross-crate reexports, and may be
     /// simplified
     pub(crate) fn expr(&self, tcx: TyCtxt<'_>) -> Option<String> {
-        self.expr.map(|body| {
-            rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
-        })
+        self.expr
+            .map(|body| rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body)))
     }
     pub(crate) fn value(&self, tcx: TyCtxt<'_>, with_underscores: bool) -> String {
         print_evaluated_const(tcx, self.value, with_underscores, false).unwrap()
@@ -2254,8 +2259,8 @@ impl GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
-    AngleBracketed { args: Box<[GenericArg]>, constraints: ThinVec<AssocItemConstraint> },
-    Parenthesized { inputs: Box<[Type]>, output: Option<Box<Type>> },
+    AngleBracketed { args: ThinVec<GenericArg>, constraints: ThinVec<AssocItemConstraint> },
+    Parenthesized { inputs: ThinVec<Type>, output: Option<Box<Type>> },
 }
 
 impl GenericArgs {
@@ -2267,7 +2272,7 @@ impl GenericArgs {
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
         }
     }
-    pub(crate) fn constraints<'a>(&'a self) -> Box<dyn Iterator<Item = AssocItemConstraint> + 'a> {
+    pub(crate) fn constraints(&self) -> Box<dyn Iterator<Item = AssocItemConstraint> + '_> {
         match self {
             GenericArgs::AngleBracketed { constraints, .. } => {
                 Box::new(constraints.iter().cloned())
@@ -2279,7 +2284,7 @@ impl GenericArgs {
                         assoc: PathSegment {
                             name: sym::Output,
                             args: GenericArgs::AngleBracketed {
-                                args: Vec::new().into_boxed_slice(),
+                                args: ThinVec::new(),
                                 constraints: ThinVec::new(),
                             },
                         },
@@ -2341,6 +2346,12 @@ pub(crate) struct BareFunctionDecl {
     pub(crate) generic_params: Vec<GenericParamDef>,
     pub(crate) decl: FnDecl,
     pub(crate) abi: ExternAbi,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug, Hash)]
+pub(crate) struct UnsafeBinderTy {
+    pub(crate) generic_params: Vec<GenericParamDef>,
+    pub(crate) ty: Type,
 }
 
 #[derive(Clone, Debug)]
@@ -2419,9 +2430,9 @@ impl ConstantKind {
             ConstantKind::Path { ref path } => path.to_string(),
             ConstantKind::Extern { def_id } => print_inlined_const(tcx, def_id),
             ConstantKind::Local { body, .. } | ConstantKind::Anonymous { body } => {
-                rendered_const(tcx, tcx.hir().body(body), tcx.hir().body_owner_def_id(body))
+                rendered_const(tcx, tcx.hir_body(body), tcx.hir_body_owner_def_id(body))
             }
-            ConstantKind::Infer { .. } => "_".to_string(),
+            ConstantKind::Infer => "_".to_string(),
         }
     }
 
@@ -2590,12 +2601,12 @@ mod size_asserts {
     static_assert_size!(Crate, 56); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
-    static_assert_size!(GenericArgs, 32);
+    static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
     static_assert_size!(Item, 48);
     static_assert_size!(ItemKind, 48);
-    static_assert_size!(PathSegment, 40);
+    static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);
     // tidy-alphabetical-end
 }

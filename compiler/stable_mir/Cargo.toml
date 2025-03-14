@@ -1,7 +1,7 @@
 [package]
 name = "stable_mir"
 version = "0.1.0-preview"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 scoped-tls = "1.0"

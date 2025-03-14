@@ -206,6 +206,19 @@ impl SlotIndex {
     }
 }
 
+/// In-memory cache for queries whose keys are densely-numbered IDs
+/// (e.g `CrateNum`, `LocalDefId`), and can therefore be used as indices
+/// into a dense vector of cached values.
+///
+/// (As of [#124780] the underlying storage is not an actual `Vec`, but rather
+/// a series of increasingly-large buckets, for improved performance when the
+/// parallel frontend is using multiple threads.)
+///
+/// Each entry in the cache stores the query's return value (`V`), and also
+/// an associated index (`I`), which in practice is a `DepNodeIndex` used for
+/// query dependency tracking.
+///
+/// [#124780]: https://github.com/rust-lang/rust/pull/124780
 pub struct VecCache<K: Idx, V, I> {
     // Entries per bucket:
     // Bucket  0:       4096 2^12

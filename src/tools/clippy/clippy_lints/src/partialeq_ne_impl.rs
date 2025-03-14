@@ -53,6 +53,6 @@ impl<'tcx> LateLintPass<'tcx> for PartialEqNeImpl {
                     );
                 }
             }
-        };
+        }
     }
 }

@@ -13,6 +13,7 @@ pub fn is_box(db: &dyn HirDatabase, adt: AdtId) -> bool {
 
 pub fn is_unsafe_cell(db: &dyn HirDatabase, adt: AdtId) -> bool {
     let AdtId::StructId(id) = adt else { return false };
+
     db.struct_data(id).flags.contains(StructFlags::IS_UNSAFE_CELL)
 }
 

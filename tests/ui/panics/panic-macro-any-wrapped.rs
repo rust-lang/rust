@@ -1,7 +1,7 @@
 //@ run-fail
 //@ error-pattern:panicked
 //@ error-pattern:Box<dyn Any>
-//@ ignore-emscripten no processes
+//@ needs-subprocess
 
 #![allow(non_fmt_panics)]
 

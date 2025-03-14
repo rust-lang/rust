@@ -1744,6 +1744,14 @@ where
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T, E> crate::clone::UseCloned for Result<T, E>
+where
+    T: crate::clone::UseCloned,
+    E: crate::clone::UseCloned,
+{
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, E> IntoIterator for Result<T, E> {
     type Item = T;

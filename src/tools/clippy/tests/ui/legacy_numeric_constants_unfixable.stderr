@@ -1,5 +1,5 @@
 error: importing legacy numeric constants
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:9:5
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:10:5
    |
 LL | use std::u128 as _;
    |     ^^^^^^^^^
@@ -9,7 +9,7 @@ LL | use std::u128 as _;
    = help: to override `-D warnings` add `#[allow(clippy::legacy_numeric_constants)]`
 
 error: importing legacy numeric constants
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:13:24
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:14:24
    |
 LL |     pub use std::{mem, u128};
    |                        ^^^^
@@ -18,7 +18,7 @@ LL |     pub use std::{mem, u128};
    = note: then `u128::<CONST>` will resolve to the respective associated constant
 
 error: importing a legacy numeric constant
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:29:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:30:9
    |
 LL |     use std::u32::MAX;
    |         ^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL |     use std::u32::MAX;
    = help: remove this import and use the associated constant `u32::MAX` from the primitive type instead
 
 error: importing a legacy numeric constant
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:32:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:33:9
    |
 LL |     use std::u8::MIN;
    |         ^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL |     use std::u8::MIN;
    = help: remove this import and use the associated constant `u8::MIN` from the primitive type instead
 
 error: importing legacy numeric constants
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:36:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:37:9
    |
 LL |     use std::u32;
    |         ^^^^^^^^
@@ -43,7 +43,7 @@ LL |     use std::u32;
    = note: then `u32::<CONST>` will resolve to the respective associated constant
 
 error: importing a legacy numeric constant
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:40:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:41:9
    |
 LL |     use std::f32::MIN_POSITIVE;
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     use std::f32::MIN_POSITIVE;
    = help: remove this import and use the associated constant `f32::MIN_POSITIVE` from the primitive type instead
 
 error: importing legacy numeric constants
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:44:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:45:9
    |
 LL |     use std::i16::*;
    |         ^^^^^^^^
@@ -59,7 +59,7 @@ LL |     use std::i16::*;
    = help: remove this import and use associated constants `i16::<CONST>` from the primitive type instead
 
 error: importing legacy numeric constants
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:21:17
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:22:17
    |
 LL |             use std::u32;
    |                 ^^^^^^^^
@@ -72,7 +72,7 @@ LL |     b!();
    = note: this error originates in the macro `b` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: importing a legacy numeric constant
-  --> tests/ui/legacy_numeric_constants_unfixable.rs:76:9
+  --> tests/ui/legacy_numeric_constants_unfixable.rs:77:9
    |
 LL |     use std::u32::MAX;
    |         ^^^^^^^^^^^^^

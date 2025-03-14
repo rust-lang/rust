@@ -4,7 +4,7 @@ Thank you for your interest in contributing to rust-analyzer! There are many way
 and we appreciate all of them.
 
 To get a quick overview of the crates and structure of the project take a look at the
-[./docs/dev](./docs/dev) folder.
+[Contributing](https://rust-analyzer.github.io/book/contributing) section of the manual.
 
 If you have any questions please ask them in the [rust-analyzer zulip stream](
 https://rust-lang.zulipchat.com/#narrow/stream/185405-t-compiler.2Frust-analyzer) or if unsure where

@@ -94,7 +94,6 @@ impl Finiteness {
 }
 
 impl From<bool> for Finiteness {
-    #[must_use]
     fn from(b: bool) -> Self {
         if b { Infinite } else { Finite }
     }
@@ -159,7 +158,7 @@ fn is_infinite(cx: &LateContext<'_>, expr: &Expr<'_>) -> Finiteness {
             }
             if method.ident.name.as_str() == "flat_map" && args.len() == 1 {
                 if let ExprKind::Closure(&Closure { body, .. }) = args[0].kind {
-                    let body = cx.tcx.hir().body(body);
+                    let body = cx.tcx.hir_body(body);
                     return is_infinite(cx, body.value);
                 }
             }

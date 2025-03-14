@@ -1,11 +1,11 @@
+use either::Either;
 use ide_db::{
     famous_defs::FamousDefs,
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
 };
-use itertools::Itertools;
 use syntax::{
-    ast::{self, Expr, HasGenericArgs},
-    match_ast, AstNode, NodeOrToken, SyntaxKind, TextRange,
+    ast::{self, syntax_factory::SyntaxFactory, HasArgList, HasGenericArgs},
+    match_ast, AstNode, NodeOrToken, SyntaxKind,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -39,11 +39,11 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
     let ret_type = ctx.find_node_at_offset::<ast::RetType>()?;
     let parent = ret_type.syntax().parent()?;
-    let body = match_ast! {
+    let body_expr = match_ast! {
         match parent {
-            ast::Fn(func) => func.body()?,
+            ast::Fn(func) => func.body()?.into(),
             ast::ClosureExpr(closure) => match closure.body()? {
-                Expr::BlockExpr(block) => block,
+                ast::Expr::BlockExpr(block) => block.into(),
                 // closures require a block when a return type is specified
                 _ => return None,
             },
@@ -65,72 +65,110 @@ pub(crate) fn unwrap_return_type(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let happy_type = extract_wrapped_type(type_ref)?;
 
     acc.add(kind.assist_id(), kind.label(), type_ref.syntax().text_range(), |builder| {
-        let body = ast::Expr::BlockExpr(body);
+        let mut editor = builder.make_editor(&parent);
+        let make = SyntaxFactory::new();
 
         let mut exprs_to_unwrap = Vec::new();
         let tail_cb = &mut |e: &_| tail_cb_impl(&mut exprs_to_unwrap, e);
-        walk_expr(&body, &mut |expr| {
-            if let Expr::ReturnExpr(ret_expr) = expr {
+        walk_expr(&body_expr, &mut |expr| {
+            if let ast::Expr::ReturnExpr(ret_expr) = expr {
                 if let Some(ret_expr_arg) = &ret_expr.expr() {
                     for_each_tail_expr(ret_expr_arg, tail_cb);
                 }
             }
         });
-        for_each_tail_expr(&body, tail_cb);
+        for_each_tail_expr(&body_expr, tail_cb);
 
         let is_unit_type = is_unit_type(&happy_type);
         if is_unit_type {
-            let mut text_range = ret_type.syntax().text_range();
-
             if let Some(NodeOrToken::Token(token)) = ret_type.syntax().next_sibling_or_token() {
                 if token.kind() == SyntaxKind::WHITESPACE {
-                    text_range = TextRange::new(text_range.start(), token.text_range().end());
+                    editor.delete(token);
                 }
             }
 
-            builder.delete(text_range);
+            editor.delete(ret_type.syntax());
         } else {
-            builder.replace(type_ref.syntax().text_range(), happy_type.syntax().text());
+            editor.replace(type_ref.syntax(), happy_type.syntax());
         }
 
-        for ret_expr_arg in exprs_to_unwrap {
-            let ret_expr_str = ret_expr_arg.to_string();
+        let mut final_placeholder = None;
+        for tail_expr in exprs_to_unwrap {
+            match &tail_expr {
+                ast::Expr::CallExpr(call_expr) => {
+                    let ast::Expr::PathExpr(path_expr) = call_expr.expr().unwrap() else {
+                        continue;
+                    };
 
-            let needs_replacing = match kind {
-                UnwrapperKind::Option => ret_expr_str.starts_with("Some("),
-                UnwrapperKind::Result => {
-                    ret_expr_str.starts_with("Ok(") || ret_expr_str.starts_with("Err(")
-                }
-            };
+                    let path_str = path_expr.path().unwrap().to_string();
+                    let needs_replacing = match kind {
+                        UnwrapperKind::Option => path_str == "Some",
+                        UnwrapperKind::Result => path_str == "Ok" || path_str == "Err",
+                    };
 
-            if needs_replacing {
-                let arg_list = ret_expr_arg.syntax().children().find_map(ast::ArgList::cast);
-                if let Some(arg_list) = arg_list {
+                    if !needs_replacing {
+                        continue;
+                    }
+
+                    let arg_list = call_expr.arg_list().unwrap();
                     if is_unit_type {
-                        match ret_expr_arg.syntax().prev_sibling_or_token() {
-                            // Useful to delete the entire line without leaving trailing whitespaces
-                            Some(whitespace) => {
-                                let new_range = TextRange::new(
-                                    whitespace.text_range().start(),
-                                    ret_expr_arg.syntax().text_range().end(),
-                                );
-                                builder.delete(new_range);
+                        let tail_parent = tail_expr
+                            .syntax()
+                            .parent()
+                            .and_then(Either::<ast::ReturnExpr, ast::StmtList>::cast)
+                            .unwrap();
+                        match tail_parent {
+                            Either::Left(ret_expr) => {
+                                editor.replace(ret_expr.syntax(), make.expr_return(None).syntax())
                             }
-                            None => {
-                                builder.delete(ret_expr_arg.syntax().text_range());
+                            Either::Right(stmt_list) => {
+                                let new_block = if stmt_list.statements().next().is_none() {
+                                    make.expr_empty_block()
+                                } else {
+                                    make.block_expr(stmt_list.statements(), None)
+                                };
+                                editor.replace(
+                                    stmt_list.syntax(),
+                                    new_block.stmt_list().unwrap().syntax(),
+                                );
                             }
                         }
-                    } else {
-                        builder.replace(
-                            ret_expr_arg.syntax().text_range(),
-                            arg_list.args().join(", "),
-                        );
+                    } else if let Some(first_arg) = arg_list.args().next() {
+                        editor.replace(tail_expr.syntax(), first_arg.syntax());
                     }
                 }
-            } else if matches!(kind, UnwrapperKind::Option if ret_expr_str == "None") {
-                builder.replace(ret_expr_arg.syntax().text_range(), "()");
+                ast::Expr::PathExpr(path_expr) => {
+                    let UnwrapperKind::Option = kind else {
+                        continue;
+                    };
+
+                    if path_expr.path().unwrap().to_string() != "None" {
+                        continue;
+                    }
+
+                    let new_tail_expr = make.expr_unit();
+                    editor.replace(path_expr.syntax(), new_tail_expr.syntax());
+                    if let Some(cap) = ctx.config.snippet_cap {
+                        editor.add_annotation(
+                            new_tail_expr.syntax(),
+                            builder.make_placeholder_snippet(cap),
+                        );
+
+                        final_placeholder = Some(new_tail_expr);
+                    }
+                }
+                _ => (),
             }
         }
+
+        if let Some(cap) = ctx.config.snippet_cap {
+            if let Some(final_placeholder) = final_placeholder {
+                editor.add_annotation(final_placeholder.syntax(), builder.make_tabstop_after(cap));
+            }
+        }
+
+        editor.add_mappings(make.finish_with_mappings());
+        builder.add_file_edits(ctx.file_id(), editor);
     })
 }
 
@@ -168,12 +206,12 @@ impl UnwrapperKind {
 
 fn tail_cb_impl(acc: &mut Vec<ast::Expr>, e: &ast::Expr) {
     match e {
-        Expr::BreakExpr(break_expr) => {
+        ast::Expr::BreakExpr(break_expr) => {
             if let Some(break_expr_arg) = break_expr.expr() {
                 for_each_tail_expr(&break_expr_arg, &mut |e| tail_cb_impl(acc, e))
             }
         }
-        Expr::ReturnExpr(_) => {
+        ast::Expr::ReturnExpr(_) => {
             // all return expressions have already been handled by the walk loop
         }
         e => acc.push(e.clone()),
@@ -238,8 +276,7 @@ fn foo() -> Option<()$0> {
 }
 "#,
             r#"
-fn foo() {
-}
+fn foo() {}
 "#,
             "Unwrap Option return type",
         );
@@ -254,8 +291,7 @@ fn foo() -> Option<()$0>{
 }
 "#,
             r#"
-fn foo() {
-}
+fn foo() {}
 "#,
             "Unwrap Option return type",
         );
@@ -280,7 +316,42 @@ fn foo() -> i32 {
     if true {
         42
     } else {
-        ()
+        ${1:()}$0
+    }
+}
+"#,
+            "Unwrap Option return type",
+        );
+    }
+
+    #[test]
+    fn unwrap_option_return_type_multi_none() {
+        check_assist_by_label(
+            unwrap_return_type,
+            r#"
+//- minicore: option
+fn foo() -> Option<i3$02> {
+    if false {
+        return None;
+    }
+
+    if true {
+        Some(42)
+    } else {
+        None
+    }
+}
+"#,
+            r#"
+fn foo() -> i32 {
+    if false {
+        return ${1:()};
+    }
+
+    if true {
+        42
+    } else {
+        ${2:()}$0
     }
 }
 "#,
@@ -1262,8 +1333,7 @@ fn foo() -> Result<(), Box<dyn Error$0>> {
 }
 "#,
             r#"
-fn foo() {
-}
+fn foo() {}
 "#,
             "Unwrap Result return type",
         );
@@ -1278,8 +1348,7 @@ fn foo() -> Result<(), Box<dyn Error$0>>{
 }
 "#,
             r#"
-fn foo() {
-}
+fn foo() {}
 "#,
             "Unwrap Result return type",
         );

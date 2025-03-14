@@ -92,7 +92,7 @@ fn detect_src_and_out() {
             //     `{build-dir}/bootstrap/debug/deps/bootstrap-c7ee91d5661e2804`
             // `{build-dir}` can be anywhere, not just in the rust project directory.
             let dep = Path::new(args.first().unwrap());
-            let expected_out = dep.ancestors().nth(4).unwrap();
+            let expected_out = dep.ancestors().nth(5).unwrap();
 
             assert_eq!(&cfg.out, expected_out);
         }
@@ -120,6 +120,7 @@ fn override_toml() {
             "--set=change-id=1".to_owned(),
             "--set=rust.lto=fat".to_owned(),
             "--set=rust.deny-warnings=false".to_owned(),
+            "--set=build.optimized-compiler-builtins=true".to_owned(),
             "--set=build.gdb=\"bar\"".to_owned(),
             "--set=build.tools=[\"cargo\"]".to_owned(),
             "--set=llvm.build-config={\"foo\" = \"bar\"}".to_owned(),
@@ -127,6 +128,7 @@ fn override_toml() {
             "--set=target.x86_64-unknown-linux-gnu.rpath=false".to_owned(),
             "--set=target.aarch64-unknown-linux-gnu.sanitizers=false".to_owned(),
             "--set=target.aarch64-apple-darwin.runner=apple".to_owned(),
+            "--set=target.aarch64-apple-darwin.optimized-compiler-builtins=false".to_owned(),
         ]),
         |&_| {
             toml::from_str(
@@ -167,6 +169,7 @@ runner = "x86_64-runner"
     );
     assert_eq!(config.gdb, Some("bar".into()), "setting string value with quotes");
     assert!(!config.deny_warnings, "setting boolean value");
+    assert!(config.optimized_compiler_builtins, "setting boolean value");
     assert_eq!(
         config.tools,
         Some(["cargo".to_string()].into_iter().collect()),
@@ -193,7 +196,11 @@ runner = "x86_64-runner"
         ..Default::default()
     };
     let darwin = TargetSelection::from_user("aarch64-apple-darwin");
-    let darwin_values = Target { runner: Some("apple".into()), ..Default::default() };
+    let darwin_values = Target {
+        runner: Some("apple".into()),
+        optimized_compiler_builtins: Some(false),
+        ..Default::default()
+    };
     assert_eq!(
         config.target_config,
         [(x86_64, x86_64_values), (aarch64, aarch64_values), (darwin, darwin_values)]
@@ -446,4 +453,65 @@ fn check_rustc_if_unchanged_paths() {
     for p in normalised_allowed_paths {
         assert!(config.src.join(p).exists(), "{p} doesn't exist.");
     }
+}
+
+#[test]
+fn test_explicit_stage() {
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            test-stage = 1
+        "#,
+            )
+        },
+    );
+
+    assert!(!config.explicit_stage_from_cli);
+    assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--stage=2".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+        ]),
+        |&_| toml::from_str(""),
+    );
+
+    assert!(config.explicit_stage_from_cli);
+    assert!(!config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--stage=2".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+        ]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            test-stage = 1
+        "#,
+            )
+        },
+    );
+
+    assert!(config.explicit_stage_from_cli);
+    assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
+        |&_| toml::from_str(""),
+    );
+
+    assert!(!config.explicit_stage_from_cli);
+    assert!(!config.explicit_stage_from_config);
+    assert!(!config.is_explicit_stage());
 }

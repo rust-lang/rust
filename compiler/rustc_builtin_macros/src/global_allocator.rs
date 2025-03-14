@@ -81,7 +81,9 @@ impl AllocFnFactory<'_, '_> {
             defaultness: ast::Defaultness::Final,
             sig,
             generics: Generics::default(),
+            contract: None,
             body,
+            define_opaque: None,
         }));
         let item = self.cx.item(
             self.span,

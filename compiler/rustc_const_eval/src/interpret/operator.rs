@@ -537,6 +537,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                 ImmTy::from_uint(val, usize_layout())
             }
             UbChecks => ImmTy::from_bool(M::ub_checks(self)?, *self.tcx),
+            ContractChecks => ImmTy::from_bool(M::contract_checks(self)?, *self.tcx),
         })
     }
 }

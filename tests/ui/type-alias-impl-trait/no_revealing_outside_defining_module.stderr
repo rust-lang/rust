@@ -1,8 +1,8 @@
 error[E0308]: mismatched types
-  --> $DIR/no_revealing_outside_defining_module.rs:15:19
+  --> $DIR/no_revealing_outside_defining_module.rs:14:19
    |
-LL |     pub type Boo = impl ::std::fmt::Debug;
-   |                    ---------------------- the found opaque type
+LL | pub type Boo = impl ::std::fmt::Debug;
+   |                ---------------------- the found opaque type
 ...
 LL |     let _: &str = bomp();
    |            ----   ^^^^^^ expected `&str`, found opaque type
@@ -11,29 +11,29 @@ LL |     let _: &str = bomp();
    |
    = note: expected reference `&str`
             found opaque type `Boo`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/no_revealing_outside_defining_module.rs:14:4
+note: this item must have a `#[define_opaque(Boo)]` attribute to be able to define hidden types
+  --> $DIR/no_revealing_outside_defining_module.rs:13:4
    |
 LL | fn bomp2() {
    |    ^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/no_revealing_outside_defining_module.rs:19:5
+  --> $DIR/no_revealing_outside_defining_module.rs:18:5
    |
-LL |     pub type Boo = impl ::std::fmt::Debug;
-   |                    ---------------------- the expected opaque type
+LL | pub type Boo = impl ::std::fmt::Debug;
+   |                ---------------------- the expected opaque type
 ...
-LL | fn bomp() -> boo::Boo {
-   |              -------- expected `Boo` because of return type
+LL | fn bomp() -> Boo {
+   |              --- expected `Boo` because of return type
 LL |     ""
    |     ^^ expected opaque type, found `&str`
    |
    = note: expected opaque type `Boo`
                 found reference `&'static str`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/no_revealing_outside_defining_module.rs:18:4
+note: this item must have a `#[define_opaque(Boo)]` attribute to be able to define hidden types
+  --> $DIR/no_revealing_outside_defining_module.rs:17:4
    |
-LL | fn bomp() -> boo::Boo {
+LL | fn bomp() -> Boo {
    |    ^^^^
 
 error: aborting due to 2 previous errors

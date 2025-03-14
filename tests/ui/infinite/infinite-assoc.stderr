@@ -6,8 +6,9 @@ LL | struct A((A, <S as Trait>::T<NOT_EXIST?>));
    |
 help: if you meant to express that the type might not contain a value, use the `Option` wrapper type
    |
-LL | struct A((A, <S as Trait>::T<Option<NOT_EXIST>>));
-   |                              +++++++         ~
+LL - struct A((A, <S as Trait>::T<NOT_EXIST?>));
+LL + struct A((A, <S as Trait>::T<Option<NOT_EXIST>>));
+   |
 
 error[E0072]: recursive type `A` has infinite size
   --> $DIR/infinite-assoc.rs:12:1

@@ -83,7 +83,8 @@ pub type RawMap<A> = hash_map::HashMap<TypeId, Box<A>, BuildHasherDefault<TypeId
 /// (Here using the [`AnyMap`] convenience alias; the first line could use
 /// <code>[anymap::Map][Map]::&lt;[core::any::Any]&gt;::new()</code> instead if desired.)
 ///
-/// ```rust
+/// ```
+/// # use stdx::anymap;
 #[doc = "let mut data = anymap::AnyMap::new();"]
 /// assert_eq!(data.get(), None::<&i32>);
 /// ```

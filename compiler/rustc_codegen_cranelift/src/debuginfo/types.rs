@@ -166,7 +166,7 @@ impl DebugContext {
         let tuple_entry = self.dwarf.unit.get_mut(tuple_type_id);
         tuple_entry.set(gimli::DW_AT_name, AttributeValue::StringRef(self.dwarf.strings.add(name)));
         tuple_entry.set(gimli::DW_AT_byte_size, AttributeValue::Udata(layout.size.bytes()));
-        tuple_entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(layout.align.pref.bytes()));
+        tuple_entry.set(gimli::DW_AT_alignment, AttributeValue::Udata(layout.align.abi.bytes()));
 
         for (i, (ty, dw_ty)) in components.into_iter().enumerate() {
             let member_id = self.dwarf.unit.add(tuple_type_id, gimli::DW_TAG_member);
@@ -179,7 +179,7 @@ impl DebugContext {
             member_entry.set(
                 gimli::DW_AT_alignment,
                 AttributeValue::Udata(
-                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty).align.pref.bytes(),
+                    FullyMonomorphizedLayoutCx(tcx).layout_of(ty).align.abi.bytes(),
                 ),
             );
             member_entry.set(

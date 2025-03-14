@@ -1,5 +1,5 @@
 use hir::db::ExpandDatabase;
-use hir::{HirFileIdExt, UnsafetyReason};
+use hir::{HirFileIdExt, UnsafeLint, UnsafetyReason};
 use ide_db::text_edit::TextEdit;
 use ide_db::{assists::Assist, source_change::SourceChange};
 use syntax::{ast, SyntaxNode};
@@ -11,10 +11,10 @@ use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
 //
 // This diagnostic is triggered if an operation marked as `unsafe` is used outside of an `unsafe` function or block.
 pub(crate) fn missing_unsafe(ctx: &DiagnosticsContext<'_>, d: &hir::MissingUnsafe) -> Diagnostic {
-    let code = if d.only_lint {
-        DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn")
-    } else {
-        DiagnosticCode::RustcHardError("E0133")
+    let code = match d.lint {
+        UnsafeLint::HardError => DiagnosticCode::RustcHardError("E0133"),
+        UnsafeLint::UnsafeOpInUnsafeFn => DiagnosticCode::RustcLint("unsafe_op_in_unsafe_fn"),
+        UnsafeLint::DeprecatedSafe2024 => DiagnosticCode::RustcLint("deprecated_safe_2024"),
     };
     let operation = display_unsafety_reason(d.reason);
     Diagnostic::new_with_syntax_node_ptr(
@@ -235,6 +235,24 @@ fn main() {
 
     #[test]
     fn no_missing_unsafe_diagnostic_with_safe_intrinsic() {
+        check_diagnostics(
+            r#"
+#[rustc_intrinsic]
+pub fn bitreverse(x: u32) -> u32; // Safe intrinsic
+#[rustc_intrinsic]
+pub unsafe fn floorf32(x: f32) -> f32; // Unsafe intrinsic
+
+fn main() {
+    let _ = bitreverse(12);
+    let _ = floorf32(12.0);
+          //^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_missing_unsafe_diagnostic_with_legacy_safe_intrinsic() {
         check_diagnostics(
             r#"
 extern "rust-intrinsic" {
@@ -567,22 +585,56 @@ fn main() {
             r#"
 //- /ed2021.rs crate:ed2021 edition:2021
 #[rustc_deprecated_safe_2024]
-unsafe fn safe() -> u8 {
+unsafe fn deprecated_safe() -> u8 {
     0
 }
+
 //- /ed2024.rs crate:ed2024 edition:2024
 #[rustc_deprecated_safe_2024]
-unsafe fn not_safe() -> u8 {
+unsafe fn deprecated_safe() -> u8 {
     0
 }
-//- /main.rs crate:main deps:ed2021,ed2024
+
+//- /dep1.rs crate:dep1 deps:ed2021,ed2024 edition:2021
 fn main() {
-    ed2021::safe();
-    ed2024::not_safe();
-  //^^^^^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+    ed2021::deprecated_safe();
+    ed2024::deprecated_safe();
+}
+
+//- /dep2.rs crate:dep2 deps:ed2021,ed2024 edition:2024
+fn main() {
+    ed2021::deprecated_safe();
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+    ed2024::deprecated_safe();
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+
+//- /dep3.rs crate:dep3 deps:ed2021,ed2024 edition:2021
+#![warn(deprecated_safe)]
+
+fn main() {
+    ed2021::deprecated_safe();
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^💡 warn: call to unsafe function is unsafe and requires an unsafe function or block
+    ed2024::deprecated_safe();
+ // ^^^^^^^^^^^^^^^^^^^^^^^^^💡 warn: call to unsafe function is unsafe and requires an unsafe function or block
 }
             "#,
         )
+    }
+
+    #[test]
+    fn orphan_unsafe_format_args() {
+        // Checks that we don't place orphan arguments for formatting under an unsafe block.
+        check_diagnostics(
+            r#"
+//- minicore: fmt
+fn foo() {
+    let p = 0xDEADBEEF as *const i32;
+    format_args!("", *p);
+                  // ^^ error: dereference of raw pointer is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
     }
 
     #[test]
@@ -793,5 +845,37 @@ fn main() {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn target_feature() {
+        check_diagnostics(
+            r#"
+#[target_feature(enable = "avx")]
+fn foo() {}
+
+#[target_feature(enable = "avx2")]
+fn bar() {
+    foo();
+}
+
+fn baz() {
+    foo();
+ // ^^^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn unsafe_fn_ptr_call() {
+        check_diagnostics(
+            r#"
+fn f(it: unsafe fn()){
+    it();
+ // ^^^^ 💡 error: call to unsafe function is unsafe and requires an unsafe function or block
+}
+        "#,
+        );
     }
 }

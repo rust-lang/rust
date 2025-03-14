@@ -9,8 +9,9 @@ LL |     4i32 == T(4);
    = note: `T` implements `PartialEq<i32>`
 help: consider swapping the equality
    |
-LL |     T(4) == 4i32;
-   |     ~~~~    ~~~~
+LL -     4i32 == T(4);
+LL +     T(4) == 4i32;
+   |
 
 error: aborting due to 1 previous error
 

@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use crate::cli::TestOpts;
 use crate::types::{TestDescAndFn, TestId, TestName};
 
-pub fn get_shuffle_seed(opts: &TestOpts) -> Option<u64> {
+pub(crate) fn get_shuffle_seed(opts: &TestOpts) -> Option<u64> {
     opts.shuffle_seed.or_else(|| {
         if opts.shuffle {
             Some(
@@ -19,7 +19,7 @@ pub fn get_shuffle_seed(opts: &TestOpts) -> Option<u64> {
     })
 }
 
-pub fn shuffle_tests(shuffle_seed: u64, tests: &mut [(TestId, TestDescAndFn)]) {
+pub(crate) fn shuffle_tests(shuffle_seed: u64, tests: &mut [(TestId, TestDescAndFn)]) {
     let test_names: Vec<&TestName> = tests.iter().map(|test| &test.1.desc.name).collect();
     let test_names_hash = calculate_hash(&test_names);
     let mut rng = Rng::new(shuffle_seed, test_names_hash);

@@ -17,8 +17,8 @@ use tracing::*;
 
 use crate::common::{
     Assembly, Codegen, CodegenUnits, CompareMode, Config, CoverageMap, CoverageRun, Crashes,
-    DebugInfo, Debugger, FailMode, Incremental, JsDocTest, MirOpt, PassMode, Pretty, RunMake,
-    Rustdoc, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
+    DebugInfo, Debugger, FailMode, Incremental, MirOpt, PassMode, Pretty, RunMake, Rustdoc,
+    RustdocJs, RustdocJson, TestPaths, UI_EXTENSIONS, UI_FIXED, UI_RUN_STDERR, UI_RUN_STDOUT,
     UI_STDERR, UI_STDOUT, UI_SVG, UI_WINDOWS_SVG, Ui, expected_output_path, incremental_dir,
     output_base_dir, output_base_name, output_testname_unique,
 };
@@ -32,7 +32,7 @@ use crate::{ColorConfig, json, stamp_file_path};
 mod debugger;
 
 // Helper modules that implement test running logic for each test suite.
-// tidy-alphabet-start
+// tidy-alphabetical-start
 mod assembly;
 mod codegen;
 mod codegen_units;
@@ -47,7 +47,7 @@ mod run_make;
 mod rustdoc;
 mod rustdoc_json;
 mod ui;
-// tidy-alphabet-end
+// tidy-alphabetical-end
 
 #[cfg(test)]
 mod tests;
@@ -59,7 +59,7 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     use std::sync::Mutex;
 
     use windows::Win32::System::Diagnostics::Debug::{
-        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode, THREAD_ERROR_MODE,
+        SEM_FAILCRITICALERRORS, SEM_NOGPFAULTERRORBOX, SetErrorMode,
     };
 
     static LOCK: Mutex<()> = Mutex::new(());
@@ -80,7 +80,6 @@ fn disable_error_reporting<F: FnOnce() -> R, R>(f: F) -> R {
     unsafe {
         // read inherited flags
         let old_mode = SetErrorMode(SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
-        let old_mode = THREAD_ERROR_MODE(old_mode);
         SetErrorMode(old_mode | SEM_NOGPFAULTERRORBOX | SEM_FAILCRITICALERRORS);
         let r = f();
         SetErrorMode(old_mode);
@@ -213,7 +212,7 @@ fn remove_and_create_dir_all(path: &Path) {
     fs::create_dir_all(path).unwrap();
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 struct TestCx<'test> {
     config: &'test Config,
     props: &'test TestProps,
@@ -269,7 +268,7 @@ impl<'test> TestCx<'test> {
             Ui => self.run_ui_test(),
             MirOpt => self.run_mir_opt_test(),
             Assembly => self.run_assembly_test(),
-            JsDocTest => self.run_js_doc_test(),
+            RustdocJs => self.run_rustdoc_js_test(),
             CoverageMap => self.run_coverage_map_test(), // see self::coverage
             CoverageRun => self.run_coverage_run_test(), // see self::coverage
             Crashes => self.run_crash_test(),
@@ -303,7 +302,7 @@ impl<'test> TestCx<'test> {
 
     fn should_compile_successfully(&self, pm: Option<PassMode>) -> bool {
         match self.config.mode {
-            JsDocTest => true,
+            RustdocJs => true,
             Ui => pm.is_some() || self.props.fail_mode > Some(FailMode::Build),
             Crashes => false,
             Incremental => {
@@ -506,8 +505,9 @@ impl<'test> TestCx<'test> {
             // Generate `cfg(FALSE, REV1, ..., REVN)` (for all possible revisions)
             //
             // For compatibility reason we consider the `FALSE` cfg to be expected
-            // since it is extensively used in the testsuite.
-            check_cfg.push_str("cfg(FALSE");
+            // since it is extensively used in the testsuite, as well as the `test`
+            // cfg since we have tests that uses it.
+            check_cfg.push_str("cfg(test,FALSE");
             for revision in &self.props.revisions {
                 check_cfg.push(',');
                 check_cfg.push_str(&normalize_revision(revision));
@@ -535,7 +535,9 @@ impl<'test> TestCx<'test> {
             .arg(&out_dir)
             .arg(&format!("--target={}", target))
             .arg("-L")
-            .arg(&self.config.build_base)
+            // FIXME(jieyouxu): this search path seems questionable. Is this intended for
+            // `rust_test_helpers` in ui tests?
+            .arg(&self.config.build_test_suite_root)
             .arg("-L")
             .arg(aux_dir)
             .arg("-A")
@@ -1365,8 +1367,8 @@ impl<'test> TestCx<'test> {
         //
         // Note: avoid adding a subdirectory of an already filtered directory here, otherwise the
         // same slice of text will be double counted and the truncation might not happen.
-        add_path(&self.config.src_base);
-        add_path(&self.config.build_base);
+        add_path(&self.config.src_test_suite_root);
+        add_path(&self.config.build_test_suite_root);
 
         read2_abbreviated(child, &filter_paths_from_len).expect("failed to read output")
     }
@@ -1417,13 +1419,11 @@ impl<'test> TestCx<'test> {
     }
 
     fn is_rustdoc(&self) -> bool {
-        self.config.src_base.ends_with("rustdoc-ui")
-            || self.config.src_base.ends_with("rustdoc-js")
-            || self.config.src_base.ends_with("rustdoc-json")
+        matches!(self.config.suite.as_str(), "rustdoc-ui" | "rustdoc-js" | "rustdoc-json")
     }
 
     fn get_mir_dump_dir(&self) -> PathBuf {
-        let mut mir_dump_dir = PathBuf::from(self.config.build_base.as_path());
+        let mut mir_dump_dir = self.config.build_test_suite_root.clone();
         debug!("input_file: {:?}", self.testpaths.file);
         mir_dump_dir.push(&self.testpaths.relative_dir);
         mir_dump_dir.push(self.testpaths.file.file_stem().unwrap());
@@ -1473,7 +1473,7 @@ impl<'test> TestCx<'test> {
         // Similarly, vendored sources shouldn't be shown when running from a dist tarball.
         rustc.arg("-Z").arg(format!(
             "ignore-directory-in-diagnostics-source-blocks={}",
-            self.config.find_rust_src_root().unwrap().join("vendor").display(),
+            self.config.src_root.join("vendor").to_str().unwrap(),
         ));
 
         // Optionally prevent default --sysroot if specified in test compile-flags.
@@ -1626,7 +1626,7 @@ impl<'test> TestCx<'test> {
             Crashes => {
                 set_mir_dump_dir(&mut rustc);
             }
-            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | JsDocTest => {
+            Pretty | DebugInfo | Rustdoc | RustdocJson | RunMake | CodegenUnits | RustdocJs => {
                 // do not use JSON output
             }
         }
@@ -1634,7 +1634,7 @@ impl<'test> TestCx<'test> {
         if self.props.remap_src_base {
             rustc.arg(format!(
                 "--remap-path-prefix={}={}",
-                self.config.src_base.display(),
+                self.config.src_test_suite_root.to_str().unwrap(),
                 FAKE_SRC_BASE,
             ));
         }
@@ -2318,31 +2318,46 @@ impl<'test> TestCx<'test> {
         match output_kind {
             TestOutput::Compile => {
                 if !self.props.dont_check_compiler_stdout {
-                    errors += self.compare_output(
+                    if self
+                        .compare_output(
+                            stdout_kind,
+                            &normalized_stdout,
+                            &proc_res.stdout,
+                            &expected_stdout,
+                        )
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+                if !self.props.dont_check_compiler_stderr {
+                    if self
+                        .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                        .should_error()
+                    {
+                        errors += 1;
+                    }
+                }
+            }
+            TestOutput::Run => {
+                if self
+                    .compare_output(
                         stdout_kind,
                         &normalized_stdout,
                         &proc_res.stdout,
                         &expected_stdout,
-                    );
+                    )
+                    .should_error()
+                {
+                    errors += 1;
                 }
-                if !self.props.dont_check_compiler_stderr {
-                    errors += self.compare_output(
-                        stderr_kind,
-                        &normalized_stderr,
-                        &stderr,
-                        &expected_stderr,
-                    );
+
+                if self
+                    .compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr)
+                    .should_error()
+                {
+                    errors += 1;
                 }
-            }
-            TestOutput::Run => {
-                errors += self.compare_output(
-                    stdout_kind,
-                    &normalized_stdout,
-                    &proc_res.stdout,
-                    &expected_stdout,
-                );
-                errors +=
-                    self.compare_output(stderr_kind, &normalized_stderr, &stderr, &expected_stderr);
             }
         }
         errors
@@ -2397,14 +2412,11 @@ impl<'test> TestCx<'test> {
         let rust_src_dir = rust_src_dir.read_link().unwrap_or(rust_src_dir.to_path_buf());
         normalize_path(&rust_src_dir.join("library"), "$SRC_DIR_REAL");
 
-        // Paths into the build directory
-        let test_build_dir = &self.config.build_base;
-        let parent_build_dir = test_build_dir.parent().unwrap().parent().unwrap().parent().unwrap();
-
-        // eg. /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui
-        normalize_path(test_build_dir, "$TEST_BUILD_DIR");
+        // eg.
+        // /home/user/rust/build/x86_64-unknown-linux-gnu/test/ui/<test_dir>/$name.$revision.$mode/
+        normalize_path(&self.output_base_dir(), "$TEST_BUILD_DIR");
         // eg. /home/user/rust/build
-        normalize_path(parent_build_dir, "$BUILD_DIR");
+        normalize_path(&self.config.build_root, "$BUILD_DIR");
 
         if json {
             // escaped newlines in json strings should be readable
@@ -2423,6 +2435,18 @@ impl<'test> TestCx<'test> {
             .into_owned();
 
         normalized = Self::normalize_platform_differences(&normalized);
+
+        // Normalize long type name hash.
+        normalized =
+            static_regex!(r"\$TEST_BUILD_DIR/(?P<filename>[^\.]+).long-type-(?P<hash>\d+).txt")
+                .replace_all(&normalized, |caps: &Captures<'_>| {
+                    format!(
+                        "$TEST_BUILD_DIR/{filename}.long-type-$LONG_TYPE_HASH.txt",
+                        filename = &caps["filename"]
+                    )
+                })
+                .into_owned();
+
         normalized = normalized.replace("\t", "\\t"); // makes tabs visible
 
         // Remove test annotations like `//~ ERROR text` from the output,
@@ -2576,7 +2600,14 @@ impl<'test> TestCx<'test> {
         actual: &str,
         actual_unnormalized: &str,
         expected: &str,
-    ) -> usize {
+    ) -> CompareOutcome {
+        let expected_path =
+            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
+
+        if self.config.bless && actual.is_empty() && expected_path.exists() {
+            self.delete_file(&expected_path);
+        }
+
         let are_different = match (self.force_color_svg(), expected.find('\n'), actual.find('\n')) {
             // FIXME: We ignore the first line of SVG files
             // because the width parameter is non-deterministic.
@@ -2584,7 +2615,7 @@ impl<'test> TestCx<'test> {
             _ => expected != actual,
         };
         if !are_different {
-            return 0;
+            return CompareOutcome::Same;
         }
 
         // Wrapper tools set by `runner` might provide extra output on failure,
@@ -2600,7 +2631,7 @@ impl<'test> TestCx<'test> {
             used.retain(|line| actual_lines.contains(line));
             // check if `expected` contains a subset of the lines of `actual`
             if used.len() == expected_lines.len() && (expected.is_empty() == actual.is_empty()) {
-                return 0;
+                return CompareOutcome::Same;
             }
             if expected_lines.is_empty() {
                 // if we have no lines to check, force a full overwite
@@ -2626,9 +2657,6 @@ impl<'test> TestCx<'test> {
         }
         println!("Saved the actual {stream} to {actual_path:?}");
 
-        let expected_path =
-            expected_output_path(self.testpaths, self.revision, &self.config.compare_mode, stream);
-
         if !self.config.bless {
             if expected.is_empty() {
                 println!("normalized {}:\n{}\n", stream, actual);
@@ -2651,15 +2679,17 @@ impl<'test> TestCx<'test> {
                 self.delete_file(&old);
             }
 
-            if let Err(err) = fs::write(&expected_path, &actual) {
-                self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+            if !actual.is_empty() {
+                if let Err(err) = fs::write(&expected_path, &actual) {
+                    self.fatal(&format!("failed to write {stream} to `{expected_path:?}`: {err}"));
+                }
+                println!("Blessing the {stream} of {test_name} in {expected_path:?}");
             }
-            println!("Blessing the {stream} of {test_name} in {expected_path:?}");
         }
 
         println!("\nThe actual {0} differed from the expected {0}.", stream);
 
-        if self.config.bless { 0 } else { 1 }
+        if self.config.bless { CompareOutcome::Blessed } else { CompareOutcome::Differed }
     }
 
     /// Returns whether to show the full stderr/stdout.
@@ -2884,4 +2914,22 @@ enum AuxType {
     Lib,
     Dylib,
     ProcMacro,
+}
+
+/// Outcome of comparing a stream to a blessed file,
+/// e.g. `.stderr` and `.fixed`.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+enum CompareOutcome {
+    /// Expected and actual outputs are the same
+    Same,
+    /// Outputs differed but were blessed
+    Blessed,
+    /// Outputs differed and an error should be emitted
+    Differed,
+}
+
+impl CompareOutcome {
+    fn should_error(&self) -> bool {
+        matches!(self, CompareOutcome::Differed)
+    }
 }

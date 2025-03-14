@@ -40,6 +40,7 @@ mod issue_6089 {
     impl T2 for S2 {
         #[allow(clippy::needless_lifetimes)]
         fn call_with_mut_self(self: &mut Self) {}
+        //~^ needless_arbitrary_self_type
     }
 }
 

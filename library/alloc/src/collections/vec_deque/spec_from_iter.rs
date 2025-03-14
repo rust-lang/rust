@@ -19,6 +19,7 @@ where
     }
 }
 
+#[cfg(not(test))]
 impl<T> SpecFromIter<T, crate::vec::IntoIter<T>> for VecDeque<T> {
     #[inline]
     fn spec_from_iter(iterator: crate::vec::IntoIter<T>) -> Self {

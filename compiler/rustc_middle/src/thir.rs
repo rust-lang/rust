@@ -11,6 +11,7 @@
 use std::cmp::Ordering;
 use std::fmt;
 use std::ops::Index;
+use std::sync::Arc;
 
 use rustc_abi::{FieldIdx, Integer, Size, VariantIdx};
 use rustc_ast::{AsmMacro, InlineAsmOptions, InlineAsmTemplatePiece};
@@ -19,27 +20,25 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{BindingMode, ByRef, HirId, MatchSource, RangeEnd};
 use rustc_index::{IndexVec, newtype_index};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeVisitable};
-use rustc_middle::middle::region;
-use rustc_middle::mir::interpret::AllocId;
-use rustc_middle::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
-use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::IntegerExt;
-use rustc_middle::ty::{
-    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
-    TyCtxt, UpvarArgs,
-};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use rustc_target::asm::InlineAsmRegOrRegClass;
 use tracing::instrument;
 
+use crate::middle::region;
+use crate::mir::interpret::AllocId;
+use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::ty::adjustment::PointerCoercion;
+use crate::ty::layout::IntegerExt;
+use crate::ty::{
+    self, AdtDef, CanonicalUserType, CanonicalUserTypeAnnotation, FnSig, GenericArgsRef, List, Ty,
+    TyCtxt, UpvarArgs,
+};
+
 pub mod visit;
 
 macro_rules! thir_with_elements {
     (
-        $($field_name:ident: $field_ty:ty,)*
-
-    @elements:
         $($name:ident: $id:ty => $value:ty => $format:literal,)*
     ) => {
         $(
@@ -50,25 +49,24 @@ macro_rules! thir_with_elements {
             }
         )*
 
+        // Note: Making `Thir` implement `Clone` is useful for external tools that need access to
+        // THIR bodies even after the `Steal` query result has been stolen.
+        // One such tool is https://github.com/rust-corpus/qrates/.
         /// A container for a THIR body.
         ///
         /// This can be indexed directly by any THIR index (e.g. [`ExprId`]).
         #[derive(Debug, HashStable, Clone)]
         pub struct Thir<'tcx> {
-            $(
-                pub $field_name: $field_ty,
-            )*
+            pub body_type: BodyTy<'tcx>,
             $(
                 pub $name: IndexVec<$id, $value>,
             )*
         }
 
         impl<'tcx> Thir<'tcx> {
-            pub fn new($($field_name: $field_ty,)*) -> Thir<'tcx> {
+            pub fn new(body_type: BodyTy<'tcx>) -> Thir<'tcx> {
                 Thir {
-                    $(
-                        $field_name,
-                    )*
+                    body_type,
                     $(
                         $name: IndexVec::new(),
                     )*
@@ -88,9 +86,6 @@ macro_rules! thir_with_elements {
 }
 
 thir_with_elements! {
-    body_type: BodyTy<'tcx>,
-
-@elements:
     arms: ArmId => Arm<'tcx> => "a{}",
     blocks: BlockId => Block => "b{}",
     exprs: ExprId => Expr<'tcx> => "e{}",
@@ -102,6 +97,7 @@ thir_with_elements! {
 pub enum BodyTy<'tcx> {
     Const(Ty<'tcx>),
     Fn(FnSig<'tcx>),
+    GlobalAsm(Ty<'tcx>),
 }
 
 /// Description of a type-checked function parameter.
@@ -319,6 +315,14 @@ pub enum ExprKind<'tcx> {
         /// (e.g. `foo(a, b)` in `x.foo(a, b)`).
         fn_span: Span,
     },
+    /// A use expression `x.use`.
+    ByUse {
+        /// The expression on which use is applied.
+        expr: ExprId,
+        /// The span of use, without the dot and receiver
+        /// (e.g. `use` in `x.use`).
+        span: Span,
+    },
     /// A *non-overloaded* dereference.
     Deref {
         arg: ExprId,
@@ -384,7 +388,6 @@ pub enum ExprKind<'tcx> {
     /// A `match` expression.
     Match {
         scrutinee: ExprId,
-        scrutinee_hir_id: HirId,
         arms: Box<[ArmId]>,
         match_source: MatchSource,
     },
@@ -488,6 +491,19 @@ pub enum ExprKind<'tcx> {
         /// Type that the user gave to this expression
         user_ty: UserTy<'tcx>,
         user_ty_span: Span,
+    },
+    /// An unsafe binder cast on a place, e.g. `unwrap_binder!(*ptr)`.
+    PlaceUnwrapUnsafeBinder {
+        source: ExprId,
+    },
+    /// An unsafe binder cast on a value, e.g. `unwrap_binder!(rvalue())`,
+    /// which makes a temporary.
+    ValueUnwrapUnsafeBinder {
+        source: ExprId,
+    },
+    /// Construct an unsafe binder, e.g. `wrap_binder(&ref)`.
+    WrapUnsafeBinder {
+        source: ExprId,
     },
     /// A closure definition.
     Closure(Box<ClosureExpr<'tcx>>),
@@ -601,8 +617,7 @@ pub enum InlineAsmOperand<'tcx> {
         span: Span,
     },
     SymFn {
-        value: mir::Const<'tcx>,
-        span: Span,
+        value: ExprId,
     },
     SymStatic {
         def_id: DefId,
@@ -615,7 +630,7 @@ pub enum InlineAsmOperand<'tcx> {
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
 pub struct FieldPat<'tcx> {
     pub field: FieldIdx,
-    pub pattern: Box<Pat<'tcx>>,
+    pub pattern: Pat<'tcx>,
 }
 
 #[derive(Clone, Debug, HashStable, TypeVisitable)]
@@ -674,9 +689,8 @@ impl<'tcx> Pat<'tcx> {
                 subpatterns.iter().for_each(|field| field.pattern.walk_(it))
             }
             Or { pats } => pats.iter().for_each(|p| p.walk_(it)),
-            Array { box ref prefix, ref slice, box ref suffix }
-            | Slice { box ref prefix, ref slice, box ref suffix } => {
-                prefix.iter().chain(slice.iter()).chain(suffix.iter()).for_each(|p| p.walk_(it))
+            Array { box prefix, slice, box suffix } | Slice { box prefix, slice, box suffix } => {
+                prefix.iter().chain(slice.as_deref()).chain(suffix.iter()).for_each(|p| p.walk_(it))
             }
         }
     }
@@ -833,28 +847,28 @@ pub enum PatKind<'tcx> {
         subpattern: Box<Pat<'tcx>>,
     },
 
-    Range(Box<PatRange<'tcx>>),
+    Range(Arc<PatRange<'tcx>>),
 
     /// Matches against a slice, checking the length and extracting elements.
     /// irrefutable when there is a slice pattern and both `prefix` and `suffix` are empty.
     /// e.g., `&[ref xs @ ..]`.
     Slice {
-        prefix: Box<[Box<Pat<'tcx>>]>,
+        prefix: Box<[Pat<'tcx>]>,
         slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Box<Pat<'tcx>>]>,
+        suffix: Box<[Pat<'tcx>]>,
     },
 
     /// Fixed match against an array; irrefutable.
     Array {
-        prefix: Box<[Box<Pat<'tcx>>]>,
+        prefix: Box<[Pat<'tcx>]>,
         slice: Option<Box<Pat<'tcx>>>,
-        suffix: Box<[Box<Pat<'tcx>>]>,
+        suffix: Box<[Pat<'tcx>]>,
     },
 
     /// An or-pattern, e.g. `p | q`.
     /// Invariant: `pats.len() >= 2`.
     Or {
-        pats: Box<[Box<Pat<'tcx>>]>,
+        pats: Box<[Pat<'tcx>]>,
     },
 
     /// A never pattern `!`.

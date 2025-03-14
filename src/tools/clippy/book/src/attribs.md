@@ -5,7 +5,7 @@ To do this, Clippy provides attributes that can be applied to items in the 3rd p
 
 ## `#[clippy::format_args]`
 
-_Available since Clippy v1.84_
+_Available since Clippy v1.85_
 
 This attribute can be added to a macro that supports `format!`, `println!`, or similar syntax.
 It tells Clippy that the macro is a formatting macro, and that the arguments to the macro

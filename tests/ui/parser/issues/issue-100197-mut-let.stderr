@@ -6,8 +6,9 @@ LL |     mut let _x = 123;
    |
 help: switch the order of `mut` and `let`
    |
-LL |     let mut _x = 123;
-   |     ~~~~~~~
+LL -     mut let _x = 123;
+LL +     let mut _x = 123;
+   |
 
 error: aborting due to 1 previous error
 

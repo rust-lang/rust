@@ -34,6 +34,7 @@ pub enum NativeLibKind {
         as_needed: Option<bool>,
     },
     /// Dynamic library (e.g. `foo.dll` on Windows) without a corresponding import library.
+    /// On Linux, it refers to a generated shared library stub.
     RawDylib,
     /// A macOS-specific kind of dynamic libraries.
     Framework {

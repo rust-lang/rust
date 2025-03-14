@@ -24,10 +24,11 @@ pub trait EraseType: Copy {
 pub type Erase<T: EraseType> = Erased<impl Copy>;
 
 #[inline(always)]
+#[cfg_attr(not(bootstrap), define_opaque(Erase))]
 pub fn erase<T: EraseType>(src: T) -> Erase<T> {
     // Ensure the sizes match
     const {
-        if std::mem::size_of::<T>() != std::mem::size_of::<T::Result>() {
+        if size_of::<T>() != size_of::<T::Result>() {
             panic!("size of T must match erased type T::Result")
         }
     };
@@ -47,6 +48,7 @@ pub fn erase<T: EraseType>(src: T) -> Erase<T> {
 
 /// Restores an erased value.
 #[inline(always)]
+#[cfg_attr(not(bootstrap), define_opaque(Erase))]
 pub fn restore<T: EraseType>(value: Erase<T>) -> T {
     let value: Erased<<T as EraseType>::Result> = value;
     // See comment in `erase` for why we use `transmute_unchecked`.
@@ -101,9 +103,9 @@ impl<T> EraseType for Result<&'_ T, &'_ ty::layout::FnAbiError<'_>> {
     type Result = [u8; size_of::<Result<&'static (), &'static ty::layout::FnAbiError<'static>>>()];
 }
 
-impl<T> EraseType for Result<(&'_ T, rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed> {
+impl<T> EraseType for Result<(&'_ T, crate::thir::ExprId), rustc_errors::ErrorGuaranteed> {
     type Result = [u8; size_of::<
-        Result<(&'static (), rustc_middle::thir::ExprId), rustc_errors::ErrorGuaranteed>,
+        Result<(&'static (), crate::thir::ExprId), rustc_errors::ErrorGuaranteed>,
     >()];
 }
 
@@ -139,14 +141,6 @@ impl EraseType for Result<rustc_abi::TyAndLayout<'_, Ty<'_>>, &ty::layout::Layou
             &'static ty::layout::LayoutError<'static>,
         >,
     >()];
-}
-
-impl EraseType for Result<ty::Const<'_>, mir::interpret::LitToConstError> {
-    type Result = [u8; size_of::<Result<ty::Const<'static>, mir::interpret::LitToConstError>>()];
-}
-
-impl EraseType for Result<mir::Const<'_>, mir::interpret::LitToConstError> {
-    type Result = [u8; size_of::<Result<mir::Const<'static>, mir::interpret::LitToConstError>>()];
 }
 
 impl EraseType for Result<mir::ConstAlloc<'_>, mir::interpret::ErrorHandled> {
@@ -239,9 +233,9 @@ trivial! {
     bool,
     Option<(rustc_span::def_id::DefId, rustc_session::config::EntryFnType)>,
     Option<rustc_ast::expand::allocator::AllocatorKind>,
-    Option<rustc_attr_parsing::ConstStability>,
-    Option<rustc_attr_parsing::DefaultBodyStability>,
-    Option<rustc_attr_parsing::Stability>,
+    Option<rustc_attr_data_structures::ConstStability>,
+    Option<rustc_attr_data_structures::DefaultBodyStability>,
+    Option<rustc_attr_data_structures::Stability>,
     Option<rustc_data_structures::svh::Svh>,
     Option<rustc_hir::def::DefKind>,
     Option<rustc_hir::CoroutineKind>,
@@ -264,10 +258,10 @@ trivial! {
     Result<rustc_middle::traits::EvaluationResult, rustc_middle::traits::OverflowError>,
     rustc_abi::ReprOptions,
     rustc_ast::expand::allocator::AllocatorKind,
-    rustc_attr_parsing::ConstStability,
-    rustc_attr_parsing::DefaultBodyStability,
-    rustc_attr_parsing::Deprecation,
-    rustc_attr_parsing::Stability,
+    rustc_attr_data_structures::ConstStability,
+    rustc_attr_data_structures::DefaultBodyStability,
+    rustc_attr_data_structures::Deprecation,
+    rustc_attr_data_structures::Stability,
     rustc_data_structures::svh::Svh,
     rustc_errors::ErrorGuaranteed,
     rustc_hir::Constness,
@@ -296,7 +290,6 @@ trivial! {
     rustc_middle::mir::interpret::AllocId,
     rustc_middle::mir::interpret::CtfeProvenance,
     rustc_middle::mir::interpret::ErrorHandled,
-    rustc_middle::mir::interpret::LitToConstError,
     rustc_middle::thir::ExprId,
     rustc_middle::traits::CodegenObligationError,
     rustc_middle::traits::EvaluationResult,
@@ -358,6 +351,7 @@ tcx_lifetime! {
     rustc_middle::mir::interpret::GlobalId,
     rustc_middle::mir::interpret::LitToConstInput,
     rustc_middle::mir::interpret::EvalStaticInitializerRawResult,
+    rustc_middle::mir::mono::MonoItemPartitions,
     rustc_middle::traits::query::MethodAutoderefStepsResult,
     rustc_middle::traits::query::type_op::AscribeUserType,
     rustc_middle::traits::query::type_op::Eq,

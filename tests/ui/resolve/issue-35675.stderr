@@ -6,8 +6,9 @@ LL | fn should_return_fruit() -> Apple {
    |
 help: there is an enum variant `Fruit::Apple`; try using the variant's enum
    |
-LL | fn should_return_fruit() -> Fruit {
-   |                             ~~~~~
+LL - fn should_return_fruit() -> Apple {
+LL + fn should_return_fruit() -> Fruit {
+   |
 
 error[E0425]: cannot find function, tuple struct or tuple variant `Apple` in this scope
   --> $DIR/issue-35675.rs:9:5
@@ -57,8 +58,9 @@ LL | fn bar() -> Variant3 {
    |
 help: there is an enum variant `x::Enum::Variant3`; try using the variant's enum
    |
-LL | fn bar() -> x::Enum {
-   |             ~~~~~~~
+LL - fn bar() -> Variant3 {
+LL + fn bar() -> x::Enum {
+   |
 
 error[E0573]: expected type, found variant `Some`
   --> $DIR/issue-35675.rs:28:13

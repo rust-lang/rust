@@ -6,8 +6,9 @@ LL |     E::V::associated_item;
    |
 help: there is an enum variant `E::V`; try using the variant's enum
    |
-LL |     E::associated_item;
-   |     ~
+LL -     E::V::associated_item;
+LL +     E::associated_item;
+   |
 
 error[E0433]: failed to resolve: `V` is a variant, not a module
   --> $DIR/resolve-variant-assoc-item.rs:6:5
@@ -17,8 +18,9 @@ LL |     V::associated_item;
    |
 help: there is an enum variant `E::V`; try using the variant's enum
    |
-LL |     E::associated_item;
-   |     ~
+LL -     V::associated_item;
+LL +     E::associated_item;
+   |
 
 error: aborting due to 2 previous errors
 

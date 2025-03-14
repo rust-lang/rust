@@ -15,7 +15,6 @@ import {
     createTaskFromRunnable,
     createCargoArgs,
 } from "./run";
-import { AstInspector } from "./ast_inspector";
 import {
     isRustDocument,
     isCargoRunnableArgs,
@@ -31,8 +30,8 @@ import type { LanguageClient } from "vscode-languageclient/node";
 import { HOVER_REFERENCE_COMMAND } from "./client";
 import type { DependencyId } from "./dependencies_provider";
 import { log } from "./util";
+import type { SyntaxElement } from "./syntax_tree_provider";
 
-export * from "./ast_inspector";
 export * from "./run";
 
 export function analyzerStatus(ctx: CtxInit): Cmd {
@@ -79,6 +78,7 @@ export function memoryUsage(ctx: CtxInit): Cmd {
         provideTextDocumentContent(_uri: vscode.Uri): vscode.ProviderResult<string> {
             if (!vscode.window.activeTextEditor) return "";
 
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             return ctx.client.sendRequest(ra.memoryUsage).then((mem: any) => {
                 return "Per-query memory usage:\n" + mem + "\n(note: database has been cleared)";
             });
@@ -162,7 +162,7 @@ export function joinLines(ctx: CtxInit): Cmd {
         });
         const textEdits = await client.protocol2CodeConverter.asTextEdits(items);
         await editor.edit((builder) => {
-            textEdits.forEach((edit: any) => {
+            textEdits.forEach((edit: vscode.TextEdit) => {
                 builder.replace(edit.range, edit.newText);
             });
         });
@@ -210,6 +210,7 @@ export function onEnter(ctx: CtxInit): Cmd {
                 ),
                 position: client.code2ProtocolConverter.asPosition(editor.selection.active),
             })
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             .catch((_error: any) => {
                 // client.handleFailedRequest(OnEnterRequest.type, error, null);
                 return null;
@@ -288,13 +289,13 @@ export function openCargoToml(ctx: CtxInit): Cmd {
 
 export function revealDependency(ctx: CtxInit): Cmd {
     return async (editor: RustEditor) => {
-        if (!ctx.dependencies?.isInitialized()) {
+        if (!ctx.dependenciesProvider?.isInitialized()) {
             return;
         }
         const documentPath = editor.document.uri.fsPath;
-        const dep = ctx.dependencies?.getDependency(documentPath);
+        const dep = ctx.dependenciesProvider?.getDependency(documentPath);
         if (dep) {
-            await ctx.treeView?.reveal(dep, { select: true, expand: true });
+            await ctx.dependencyTreeView?.reveal(dep, { select: true, expand: true });
         } else {
             await revealParentChain(editor.document, ctx);
         }
@@ -340,10 +341,10 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
             // a open file referencing the old version
             return;
         }
-    } while (!ctx.dependencies?.contains(documentPath));
+    } while (!ctx.dependenciesProvider?.contains(documentPath));
     parentChain.reverse();
     for (const idx in parentChain) {
-        const treeView = ctx.treeView;
+        const treeView = ctx.dependencyTreeView;
         if (!treeView) {
             continue;
         }
@@ -355,6 +356,71 @@ async function revealParentChain(document: RustDocument, ctx: CtxInit) {
 
 export async function execRevealDependency(e: RustEditor): Promise<void> {
     await vscode.commands.executeCommand("rust-analyzer.revealDependency", e);
+}
+
+export function syntaxTreeReveal(): Cmd {
+    return async (element: SyntaxElement) => {
+        const activeEditor = vscode.window.activeTextEditor;
+
+        if (activeEditor !== undefined) {
+            const newSelection = new vscode.Selection(element.range.start, element.range.end);
+
+            activeEditor.selection = newSelection;
+            activeEditor.revealRange(newSelection);
+        }
+    };
+}
+
+function elementToString(
+    activeDocument: vscode.TextDocument,
+    element: SyntaxElement,
+    depth: number = 0,
+): string {
+    let result = "  ".repeat(depth);
+    const offsets = element.inner?.offsets ?? element.offsets;
+
+    result += `${element.kind}@${offsets.start}..${offsets.end}`;
+
+    if (element.type === "Token") {
+        const text = activeDocument.getText(element.range).replaceAll("\r\n", "\n");
+        // JSON.stringify quotes and escapes the string for us.
+        result += ` ${JSON.stringify(text)}\n`;
+    } else {
+        result += "\n";
+        for (const child of element.children) {
+            result += elementToString(activeDocument, child, depth + 1);
+        }
+    }
+
+    return result;
+}
+
+export function syntaxTreeCopy(): Cmd {
+    return async (element: SyntaxElement) => {
+        const activeDocument = vscode.window.activeTextEditor?.document;
+        if (!activeDocument) {
+            return;
+        }
+
+        const result = elementToString(activeDocument, element);
+        await vscode.env.clipboard.writeText(result);
+    };
+}
+
+export function syntaxTreeHideWhitespace(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.syntaxTreeProvider !== undefined) {
+            await ctx.syntaxTreeProvider.toggleWhitespace();
+        }
+    };
+}
+
+export function syntaxTreeShowWhitespace(ctx: CtxInit): Cmd {
+    return async () => {
+        if (ctx.syntaxTreeProvider !== undefined) {
+            await ctx.syntaxTreeProvider.toggleWhitespace();
+        }
+    };
 }
 
 export function ssr(ctx: CtxInit): Cmd {
@@ -426,89 +492,6 @@ export function serverVersion(ctx: CtxInit): Cmd {
     };
 }
 
-// Opens the virtual file that will show the syntax tree
-//
-// The contents of the file come from the `TextDocumentContentProvider`
-export function syntaxTree(ctx: CtxInit): Cmd {
-    const tdcp = new (class implements vscode.TextDocumentContentProvider {
-        readonly uri = vscode.Uri.parse("rust-analyzer-syntax-tree://syntaxtree/tree.rast");
-        readonly eventEmitter = new vscode.EventEmitter<vscode.Uri>();
-        constructor() {
-            vscode.workspace.onDidChangeTextDocument(
-                this.onDidChangeTextDocument,
-                this,
-                ctx.subscriptions,
-            );
-            vscode.window.onDidChangeActiveTextEditor(
-                this.onDidChangeActiveTextEditor,
-                this,
-                ctx.subscriptions,
-            );
-        }
-
-        private onDidChangeTextDocument(event: vscode.TextDocumentChangeEvent) {
-            if (isRustDocument(event.document)) {
-                // We need to order this after language server updates, but there's no API for that.
-                // Hence, good old sleep().
-                void sleep(10).then(() => this.eventEmitter.fire(this.uri));
-            }
-        }
-        private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
-            if (editor && isRustEditor(editor)) {
-                this.eventEmitter.fire(this.uri);
-            }
-        }
-
-        async provideTextDocumentContent(
-            uri: vscode.Uri,
-            ct: vscode.CancellationToken,
-        ): Promise<string> {
-            const rustEditor = ctx.activeRustEditor;
-            if (!rustEditor) return "";
-            const client = ctx.client;
-
-            // When the range based query is enabled we take the range of the selection
-            const range =
-                uri.query === "range=true" && !rustEditor.selection.isEmpty
-                    ? client.code2ProtocolConverter.asRange(rustEditor.selection)
-                    : null;
-
-            const params = { textDocument: { uri: rustEditor.document.uri.toString() }, range };
-            return client.sendRequest(ra.syntaxTree, params, ct);
-        }
-
-        get onDidChange(): vscode.Event<vscode.Uri> {
-            return this.eventEmitter.event;
-        }
-    })();
-
-    ctx.pushExtCleanup(new AstInspector(ctx));
-    ctx.pushExtCleanup(
-        vscode.workspace.registerTextDocumentContentProvider("rust-analyzer-syntax-tree", tdcp),
-    );
-    ctx.pushExtCleanup(
-        vscode.languages.setLanguageConfiguration("ra_syntax_tree", {
-            brackets: [["[", ")"]],
-        }),
-    );
-
-    return async () => {
-        const editor = vscode.window.activeTextEditor;
-        const rangeEnabled = !!editor && !editor.selection.isEmpty;
-
-        const uri = rangeEnabled ? vscode.Uri.parse(`${tdcp.uri.toString()}?range=true`) : tdcp.uri;
-
-        const document = await vscode.workspace.openTextDocument(uri);
-
-        tdcp.eventEmitter.fire(uri);
-
-        void (await vscode.window.showTextDocument(document, {
-            viewColumn: vscode.ViewColumn.Two,
-            preserveFocus: true,
-        }));
-    };
-}
-
 function viewHirOrMir(ctx: CtxInit, xir: "hir" | "mir"): Cmd {
     const viewXir = xir === "hir" ? "viewHir" : "viewMir";
     const requestType = xir === "hir" ? ra.viewHir : ra.viewMir;
@@ -547,6 +530,7 @@ function viewFileUsingTextDocumentContentProvider(
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor) && shouldUpdate) {
                 this.eventEmitter.fire(this.uri);
@@ -639,6 +623,7 @@ export function viewFileText(ctx: CtxInit): Cmd {
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor)) {
                 this.eventEmitter.fire(this.uri);
@@ -702,6 +687,7 @@ export function viewItemTree(ctx: CtxInit): Cmd {
                 void sleep(10).then(() => this.eventEmitter.fire(this.uri));
             }
         }
+
         private onDidChangeActiveTextEditor(editor: vscode.TextEditor | undefined) {
             if (editor && isRustEditor(editor)) {
                 this.eventEmitter.fire(this.uri);
@@ -1020,9 +1006,8 @@ export function resolveCodeAction(ctx: CtxInit): Cmd {
             ...itemEdit,
             documentChanges: itemEdit.documentChanges?.filter((change) => "kind" in change),
         };
-        const fileSystemEdit = await client.protocol2CodeConverter.asWorkspaceEdit(
-            lcFileSystemEdit,
-        );
+        const fileSystemEdit =
+            await client.protocol2CodeConverter.asWorkspaceEdit(lcFileSystemEdit);
         await vscode.workspace.applyEdit(fileSystemEdit);
 
         // replace all text edits so that we can convert snippet text edits into `vscode.SnippetTextEdit`s
@@ -1139,10 +1124,36 @@ export function peekTests(ctx: CtxInit): Cmd {
     };
 }
 
+function isUpdatingTest(runnable: ra.Runnable): boolean {
+    if (!isCargoRunnableArgs(runnable.args)) {
+        return false;
+    }
+
+    const env = runnable.args.environment;
+    return env ? ["UPDATE_EXPECT", "INSTA_UPDATE", "SNAPSHOTS"].some((key) => key in env) : false;
+}
+
 export function runSingle(ctx: CtxInit): Cmd {
     return async (runnable: ra.Runnable) => {
         const editor = ctx.activeRustEditor;
         if (!editor) return;
+
+        if (isUpdatingTest(runnable) && ctx.config.askBeforeUpdateTest) {
+            const selection = await vscode.window.showInformationMessage(
+                "rust-analyzer",
+                { detail: "Do you want to update tests?", modal: true },
+                "Update Now",
+                "Update (and Don't ask again)",
+            );
+
+            if (selection !== "Update Now" && selection !== "Update (and Don't ask again)") {
+                return;
+            }
+
+            if (selection === "Update (and Don't ask again)") {
+                await ctx.config.setAskBeforeUpdateTest(false);
+            }
+        }
 
         const task = await createTaskFromRunnable(runnable, ctx.config);
         task.group = vscode.TaskGroup.Build;

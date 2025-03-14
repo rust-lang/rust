@@ -8,7 +8,6 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::{HirId, Path, PathSegment};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
@@ -100,7 +99,7 @@ impl StdReexports {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             prev_span: Span::default(),
-            msrv: conf.msrv.clone(),
+            msrv: conf.msrv,
         }
     }
 }
@@ -111,8 +110,8 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
     fn check_path(&mut self, cx: &LateContext<'tcx>, path: &Path<'tcx>, _: HirId) {
         if let Res::Def(_, def_id) = path.res
             && let Some(first_segment) = get_first_segment(path)
-            && is_stable(cx, def_id, &self.msrv)
-            && !in_external_macro(cx.sess(), path.span)
+            && is_stable(cx, def_id, self.msrv)
+            && !path.span.in_external_macro(cx.sess().source_map())
             && !is_from_proc_macro(cx, &first_segment.ident)
         {
             let (lint, used_mod, replace_with) = match first_segment.ident.name {
@@ -154,8 +153,6 @@ impl<'tcx> LateLintPass<'tcx> for StdReexports {
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 /// Returns the first named segment of a [`Path`].
@@ -175,17 +172,17 @@ fn get_first_segment<'tcx>(path: &Path<'tcx>) -> Option<&'tcx PathSegment<'tcx>>
 /// or now stable moves that were once unstable.
 ///
 /// Does not catch individually moved items
-fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: &Msrv) -> bool {
+fn is_stable(cx: &LateContext<'_>, mut def_id: DefId, msrv: Msrv) -> bool {
     loop {
         if let Some(stability) = cx.tcx.lookup_stability(def_id)
             && let StabilityLevel::Stable {
                 since,
-                allowed_through_unstable_modules: false,
+                allowed_through_unstable_modules: None,
             } = stability.level
         {
             let stable = match since {
-                StableSince::Version(v) => msrv.meets(v),
-                StableSince::Current => msrv.current().is_none(),
+                StableSince::Version(v) => msrv.meets(cx, v),
+                StableSince::Current => msrv.current(cx).is_none(),
                 StableSince::Err => false,
             };
 

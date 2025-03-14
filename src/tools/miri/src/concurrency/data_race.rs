@@ -830,7 +830,7 @@ pub trait EvalContextExt<'tcx>: MiriInterpCxExt<'tcx> {
         let success_rate = 1.0 - this.machine.cmpxchg_weak_failure_rate;
         let cmpxchg_success = eq.to_scalar().to_bool()?
             && if can_fail_spuriously {
-                this.machine.rng.get_mut().gen_bool(success_rate)
+                this.machine.rng.get_mut().random_bool(success_rate)
             } else {
                 true
             };

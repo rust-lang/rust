@@ -1,0 +1,21 @@
+error[E0308]: mismatched types
+  --> $DIR/mismatched_args_with_value.rs:10:16
+   |
+LL |     foo::<3, { [1; 2] }>();
+   |                ^^^^^^ expected an array with a size of 3, found one with a size of 2
+
+error[E0308]: mismatched types
+  --> $DIR/mismatched_args_with_value.rs:13:18
+   |
+LL |     bar::<u8, { [2_u16; 2] }>();
+   |                  ^^^^^ expected `u8`, found `u16`
+   |
+help: change the type of the numeric literal from `u16` to `u8`
+   |
+LL -     bar::<u8, { [2_u16; 2] }>();
+LL +     bar::<u8, { [2_u8; 2] }>();
+   |
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0308`.

@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ !has "$.index[*][?(@.name == 'sealed')]"
 mod sealed {
     //@ set sealed_id = "$.index[*][?(@.name=='Sealed')].id"

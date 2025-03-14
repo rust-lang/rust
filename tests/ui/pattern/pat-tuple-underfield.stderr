@@ -36,8 +36,9 @@ LL |         S(_, _) => {}
    |            +++
 help: use `..` to ignore all fields
    |
-LL |         S(..) => {}
-   |           ~~
+LL -         S(_) => {}
+LL +         S(..) => {}
+   |
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple struct has 2 fields
   --> $DIR/pat-tuple-underfield.rs:20:9
@@ -104,8 +105,9 @@ LL |         E::S(_, _) => {}
    |               +++
 help: use `..` to ignore all fields
    |
-LL |         E::S(..) => {}
-   |              ~~
+LL -         E::S(_) => {}
+LL +         E::S(..) => {}
+   |
 
 error[E0023]: this pattern has 0 fields, but the corresponding tuple variant has 2 fields
   --> $DIR/pat-tuple-underfield.rs:44:9
@@ -158,8 +160,9 @@ LL |         Point4(   a   ,     _    , _, _) => {}
    |                                  ++++++
 help: use `..` to ignore the rest of the fields
    |
-LL |         Point4(   a, ..) => {}
-   |                    ~~~~
+LL -         Point4(   a   ,     _    ) => {}
+LL +         Point4(   a, ..) => {}
+   |
 
 error: aborting due to 10 previous errors
 

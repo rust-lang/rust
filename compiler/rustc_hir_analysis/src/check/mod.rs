@@ -62,9 +62,9 @@ a type parameter).
 
 */
 
+pub mod always_applicable;
 mod check;
 mod compare_impl_item;
-pub mod dropck;
 mod entry;
 pub mod intrinsic;
 pub mod intrinsicck;
@@ -79,12 +79,12 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_errors::{Diag, ErrorGuaranteed, pluralize, struct_span_code_err};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::Visitor;
-use rustc_index::bit_set::BitSet;
-use rustc_infer::infer::outlives::env::OutlivesEnvironment;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -114,11 +114,11 @@ pub fn provide(providers: &mut Providers) {
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::Destructor> {
-    tcx.calculate_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_dtor(def_id.to_def_id(), always_applicable::check_drop_impl)
 }
 
 fn adt_async_destructor(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<ty::AsyncDestructor> {
-    tcx.calculate_async_dtor(def_id.to_def_id(), dropck::check_drop_impl)
+    tcx.calculate_async_dtor(def_id.to_def_id(), always_applicable::check_drop_impl)
 }
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
@@ -128,9 +128,9 @@ fn get_owner_return_paths(
     def_id: LocalDefId,
 ) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.local_def_id_to_hir_id(def_id);
-    let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
+    let parent_id = tcx.hir_get_parent_item(hir_id).def_id;
     tcx.hir_node_by_def_id(parent_id).body_id().map(|body_id| {
-        let body = tcx.hir().body(body_id);
+        let body = tcx.hir_body(body_id);
         let mut visitor = ReturnsVisitor::default();
         visitor.visit_body(body);
         (parent_id, visitor)
@@ -146,7 +146,7 @@ pub fn forbid_intrinsic_abi(tcx: TyCtxt<'_>, sp: Span, abi: ExternAbi) {
     }
 }
 
-fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
+pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
     // Only restricted on wasm target for now
     if !tcx.sess.target.is_like_wasm {
         return;
@@ -197,7 +197,7 @@ fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDefId) {
 
 fn report_forbidden_specialization(tcx: TyCtxt<'_>, impl_item: DefId, parent_impl: DefId) {
     let span = tcx.def_span(impl_item);
-    let ident = tcx.item_name(impl_item);
+    let ident = tcx.item_ident(impl_item);
 
     let err = match tcx.span_of_impl(parent_impl) {
         Ok(sp) => errors::ImplNotMarkedDefault::Ok { span, ident, ok_label: sp },
@@ -241,11 +241,11 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label
@@ -297,7 +297,7 @@ fn default_body_is_unstable(
     reason: Option<Symbol>,
     issue: Option<NonZero<u32>>,
 ) {
-    let missing_item_name = tcx.associated_item(item_did).name;
+    let missing_item_name = tcx.item_ident(item_did);
     let (mut some_note, mut none_note, mut reason_str) = (false, false, String::new());
     match reason {
         Some(r) => {
@@ -456,18 +456,14 @@ fn fn_sig_suggestion<'tcx>(
     let mut output = sig.output();
 
     let asyncness = if tcx.asyncness(assoc.def_id).is_async() {
-        output = if let ty::Alias(_, alias_ty) = *output.kind() {
-            tcx.explicit_item_super_predicates(alias_ty.def_id)
+        output = if let ty::Alias(_, alias_ty) = *output.kind()
+            && let Some(output) = tcx
+                .explicit_item_self_bounds(alias_ty.def_id)
                 .iter_instantiated_copied(tcx, alias_ty.args)
                 .find_map(|(bound, _)| {
                     bound.as_projection_clause()?.no_bound_vars()?.term.as_type()
-                })
-                .unwrap_or_else(|| {
-                    span_bug!(
-                        ident.span,
-                        "expected async fn to have `impl Future` output, but it returns {output}"
-                    )
-                })
+                }) {
+            output
         } else {
             span_bug!(
                 ident.span,
@@ -650,13 +646,13 @@ pub fn check_function_signature<'tcx>(
                 }))),
                 err,
                 false,
+                None,
             );
             return Err(diag.emit());
         }
     }
 
-    let outlives_env = OutlivesEnvironment::new(param_env);
-    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, &outlives_env) {
+    if let Err(e) = ocx.resolve_regions_and_report_errors(local_id, param_env, []) {
         return Err(e);
     }
 

@@ -79,5 +79,11 @@ error: lint `clippy::wrong_pub_self_convention` has been removed: `clippy::wrong
 LL | #![warn(clippy::wrong_pub_self_convention)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 13 previous errors
+error: lint `clippy::option_map_or_err_ok` has been removed: `clippy::manual_ok_or` covers this case
+  --> tests/ui/deprecated.rs:18:9
+   |
+LL | #![warn(clippy::option_map_or_err_ok)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 14 previous errors
 

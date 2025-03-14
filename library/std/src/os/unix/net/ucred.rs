@@ -41,15 +41,15 @@ mod impl_linux {
     use libc::{SO_PEERCRED, SOL_SOCKET, c_void, getsockopt, socklen_t, ucred};
 
     use super::UCred;
+    use crate::io;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
-    use crate::{io, mem};
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
-        let ucred_size = mem::size_of::<ucred>();
+        let ucred_size = size_of::<ucred>();
 
         // Trivial sanity checks.
-        assert!(mem::size_of::<u32>() <= mem::size_of::<usize>());
+        assert!(size_of::<u32>() <= size_of::<usize>());
         assert!(ucred_size <= u32::MAX as usize);
 
         let mut ucred_size = ucred_size as socklen_t;
@@ -64,7 +64,7 @@ mod impl_linux {
                 &mut ucred_size,
             );
 
-            if ret == 0 && ucred_size as usize == mem::size_of::<ucred>() {
+            if ret == 0 && ucred_size as usize == size_of::<ucred>() {
                 Ok(UCred { uid: ucred.uid, gid: ucred.gid, pid: Some(ucred.pid) })
             } else {
                 Err(io::Error::last_os_error())
@@ -101,9 +101,9 @@ mod impl_apple {
     use libc::{LOCAL_PEERPID, SOL_LOCAL, c_void, getpeereid, getsockopt, pid_t, socklen_t};
 
     use super::UCred;
+    use crate::io;
     use crate::os::unix::io::AsRawFd;
     use crate::os::unix::net::UnixStream;
-    use crate::{io, mem};
 
     pub fn peer_cred(socket: &UnixStream) -> io::Result<UCred> {
         let mut cred = UCred { uid: 1, gid: 1, pid: None };
@@ -115,7 +115,7 @@ mod impl_apple {
             }
 
             let mut pid: pid_t = 1;
-            let mut pid_size = mem::size_of::<pid_t>() as socklen_t;
+            let mut pid_size = size_of::<pid_t>() as socklen_t;
 
             let ret = getsockopt(
                 socket.as_raw_fd(),
@@ -125,7 +125,7 @@ mod impl_apple {
                 &mut pid_size,
             );
 
-            if ret == 0 && pid_size as usize == mem::size_of::<pid_t>() {
+            if ret == 0 && pid_size as usize == size_of::<pid_t>() {
                 cred.pid = Some(pid);
                 Ok(cred)
             } else {

@@ -9,16 +9,17 @@ fn simple_examples() {
 
     // Simple
     if true {
+        //~^ branches_sharing_code
         println!("Hello World!");
         println!("I'm branch nr: 1");
     } else {
         println!("Hello World!");
         println!("I'm branch nr: 2");
     }
-    //~^^^^^^^ ERROR: all if blocks contain the same code at the start
 
     // Else if
     if x == 0 {
+        //~^ branches_sharing_code
         let y = 9;
         println!("The value y was set to: `{}`", y);
         let _z = y;
@@ -37,11 +38,11 @@ fn simple_examples() {
 
         println!("Ha, Pascal allows you to start the array where you want")
     }
-    //~^^^^^^^^^^^^^^^^^^^ ERROR: all if blocks contain the same code at the start
 
     // Return a value
     let _ = if x == 7 {
-        //~^ ERROR: all if blocks contain the same code at the start
+        //~^ branches_sharing_code
+
         let y = 16;
         println!("What can I say except: \"you're welcome?\"");
         let _ = y;
@@ -60,6 +61,7 @@ fn simple_but_suggestion_is_invalid() {
     // Can't be automatically moved because used_value_name is getting used again
     let used_value_name = 19;
     if x == 10 {
+        //~^ branches_sharing_code
         let used_value_name = "Different type";
         println!("Str: {}", used_value_name);
         let _ = 1;
@@ -68,14 +70,15 @@ fn simple_but_suggestion_is_invalid() {
         println!("Str: {}", used_value_name);
         let _ = 2;
     }
-    //~^^^^^^^^^ ERROR: all if blocks contain the same code at the start
+
     let _ = used_value_name;
 
     // This can be automatically moved as `can_be_overridden` is not used again
     let can_be_overridden = 8;
     let _ = can_be_overridden;
     if x == 11 {
-        //~^ ERROR: all if blocks contain the same code at the start
+        //~^ branches_sharing_code
+
         let can_be_overridden = "Move me";
         println!("I'm also moveable");
         let _ = 111;
@@ -92,7 +95,8 @@ fn check_if_same_than_else_mask() {
 
     #[allow(clippy::if_same_then_else)]
     if x == 2020 {
-        //~^ ERROR: all if blocks contain the same code at the start
+        //~^ branches_sharing_code
+
         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
     } else {
@@ -105,7 +109,7 @@ fn check_if_same_than_else_mask() {
     } else {
         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
     }
-    //~^^^^^ ERROR: this `if` has identical blocks
+    //~^^^^^ if_same_then_else
 }
 
 #[allow(clippy::vec_init_then_push)]

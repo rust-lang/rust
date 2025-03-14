@@ -15,7 +15,7 @@ help: ensure that all possible cases are being handled by adding a match arm wit
    |
 LL ~     match a {
 LL +         _ => todo!(),
-LL +     }
+LL ~     }
    |
 
 error: aborting due to 1 previous error

@@ -1,6 +1,9 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::path_to_local_id;
 use clippy_utils::source::snippet;
-use clippy_utils::visitors::is_local_used;
+use clippy_utils::visitors::{Descend, Visitable, for_each_expr};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::LocalDefId;
@@ -146,17 +149,15 @@ impl<'tcx> LateLintPass<'tcx> for Shadow {
     }
 
     fn check_body(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
-        let hir = cx.tcx.hir();
-        let owner_id = hir.body_owner_def_id(body.id());
-        if !matches!(hir.body_owner_kind(owner_id), BodyOwnerKind::Closure) {
+        let owner_id = cx.tcx.hir_body_owner_def_id(body.id());
+        if !matches!(cx.tcx.hir_body_owner_kind(owner_id), BodyOwnerKind::Closure) {
             self.bindings.push((FxHashMap::default(), owner_id));
         }
     }
 
     fn check_body_post(&mut self, cx: &LateContext<'_>, body: &Body<'_>) {
-        let hir = cx.tcx.hir();
         if !matches!(
-            hir.body_owner_kind(hir.body_owner_def_id(body.id())),
+            cx.tcx.hir_body_owner_kind(cx.tcx.hir_body_owner_def_id(body.id())),
             BodyOwnerKind::Closure
         ) {
             self.bindings.pop();
@@ -175,9 +176,31 @@ fn is_shadow(cx: &LateContext<'_>, owner: LocalDefId, first: ItemLocalId, second
     false
 }
 
+/// Checks if the given local is used, except for in child expression of `except`.
+///
+/// This is a version of [`is_local_used`](clippy_utils::visitors::is_local_used), used to
+/// implement the fix for <https://github.com/rust-lang/rust-clippy/issues/10780>.
+pub fn is_local_used_except<'tcx>(
+    cx: &LateContext<'tcx>,
+    visitable: impl Visitable<'tcx>,
+    id: HirId,
+    except: Option<HirId>,
+) -> bool {
+    for_each_expr(cx, visitable, |e| {
+        if except.is_some_and(|it| it == e.hir_id) {
+            ControlFlow::Continue(Descend::No)
+        } else if path_to_local_id(e, id) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(Descend::Yes)
+        }
+    })
+    .is_some()
+}
+
 fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span) {
     let (lint, msg) = match find_init(cx, pat.hir_id) {
-        Some(expr) if is_self_shadow(cx, pat, expr, shadowed) => {
+        Some((expr, _)) if is_self_shadow(cx, pat, expr, shadowed) => {
             let msg = format!(
                 "`{}` is shadowed by itself in `{}`",
                 snippet(cx, pat.span, "_"),
@@ -185,7 +208,7 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
             );
             (SHADOW_SAME, msg)
         },
-        Some(expr) if is_local_used(cx, expr, shadowed) => {
+        Some((expr, except)) if is_local_used_except(cx, expr, shadowed, except) => {
             let msg = format!("`{}` is shadowed", snippet(cx, pat.span, "_"));
             (SHADOW_REUSE, msg)
         },
@@ -201,9 +224,9 @@ fn lint_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, shadowed: HirId, span: Span)
 
 /// Returns true if the expression is a simple transformation of a local binding such as `&x`
 fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_id: HirId) -> bool {
-    let hir = cx.tcx.hir();
-    let is_direct_binding = hir
-        .parent_iter(pat.hir_id)
+    let is_direct_binding = cx
+        .tcx
+        .hir_parent_iter(pat.hir_id)
         .map_while(|(_id, node)| match node {
             Node::Pat(pat) => Some(pat),
             _ => None,
@@ -232,15 +255,32 @@ fn is_self_shadow(cx: &LateContext<'_>, pat: &Pat<'_>, mut expr: &Expr<'_>, hir_
 
 /// Finds the "init" expression for a pattern: `let <pat> = <init>;` (or `if let`) or
 /// `match <init> { .., <pat> => .., .. }`
-fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
-    for (_, node) in cx.tcx.hir().parent_iter(hir_id) {
+///
+/// For closure arguments passed to a method call, returns the method call, and the `HirId` of the
+/// closure (which will later be skipped). This is for <https://github.com/rust-lang/rust-clippy/issues/10780>
+fn find_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<(&'tcx Expr<'tcx>, Option<HirId>)> {
+    for (hir_id, node) in cx.tcx.hir_parent_iter(hir_id) {
         let init = match node {
-            Node::Arm(_) | Node::Pat(_) => continue,
+            Node::Arm(_) | Node::Pat(_) | Node::PatField(_) | Node::Param(_) => continue,
             Node::Expr(expr) => match expr.kind {
-                ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some(e),
+                ExprKind::Match(e, _, _) | ExprKind::Let(&LetExpr { init: e, .. }) => Some((e, None)),
+                // If we're a closure argument, then a parent call is also an associated item.
+                ExprKind::Closure(_) => {
+                    if let Some((_, node)) = cx.tcx.hir_parent_iter(hir_id).next() {
+                        match node {
+                            Node::Expr(expr) => match expr.kind {
+                                ExprKind::MethodCall(_, _, _, _) | ExprKind::Call(_, _) => Some((expr, Some(hir_id))),
+                                _ => None,
+                            },
+                            _ => None,
+                        }
+                    } else {
+                        None
+                    }
+                },
                 _ => None,
             },
-            Node::LetStmt(local) => local.init,
+            Node::LetStmt(local) => local.init.map(|init| (init, None)),
             _ => None,
         };
         return init;

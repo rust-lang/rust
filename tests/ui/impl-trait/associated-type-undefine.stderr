@@ -1,5 +1,13 @@
+error: unconstrained opaque type
+  --> $DIR/associated-type-undefine.rs:18:16
+   |
+LL |     type Bar = impl Sized;
+   |                ^^^^^^^^^^
+   |
+   = note: `Bar` must be used in combination with a concrete type within the same impl
+
 error[E0308]: mismatched types
-  --> $DIR/associated-type-undefine.rs:23:14
+  --> $DIR/associated-type-undefine.rs:24:14
    |
 LL |     type Bar = impl Sized;
    |                ---------- the expected opaque type
@@ -9,12 +17,7 @@ LL |         ((), ())
    |
    = note: expected opaque type `<() as Foo>::Bar`
                 found unit type `()`
-note: this item must have the opaque type in its signature in order to be able to register hidden types
-  --> $DIR/associated-type-undefine.rs:22:8
-   |
-LL |     fn foo(self) -> (<Self as Foo>::Gat<u32>, <Self as Foo>::Gat<Self>) {
-   |        ^^^
 
-error: aborting due to 1 previous error
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

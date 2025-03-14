@@ -28,32 +28,48 @@ fn should_lint(
 ) {
     let mut v = Vec::<String>::new();
     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
+    //~^ needless_borrowed_reference
 
     let var = 3;
     let thingy = Some(&var);
     if let Some(&ref v) = thingy {}
+    //~^ needless_borrowed_reference
 
     if let &[&ref a, ref b] = slice_of_refs {}
+    //~^ needless_borrowed_reference
 
     let &[ref a, ..] = &array;
+    //~^ needless_borrowed_reference
     let &[ref a, ref b, ..] = &array;
+    //~^ needless_borrowed_reference
 
     if let &[ref a, ref b] = slice {}
+    //~^ needless_borrowed_reference
     if let &[ref a, ref b] = &vec[..] {}
+    //~^ needless_borrowed_reference
 
     if let &[ref a, ref b, ..] = slice {}
+    //~^ needless_borrowed_reference
     if let &[ref a, .., ref b] = slice {}
+    //~^ needless_borrowed_reference
     if let &[.., ref a, ref b] = slice {}
+    //~^ needless_borrowed_reference
 
     if let &[ref a, _] = slice {}
+    //~^ needless_borrowed_reference
 
     if let &(ref a, ref b, ref c) = &tuple {}
+    //~^ needless_borrowed_reference
     if let &(ref a, _, ref c) = &tuple {}
+    //~^ needless_borrowed_reference
     if let &(ref a, ..) = &tuple {}
+    //~^ needless_borrowed_reference
 
     if let &TupleStruct(ref a, ..) = &tuple_struct {}
+    //~^ needless_borrowed_reference
 
     if let &Struct {
+        //~^ needless_borrowed_reference
         ref a,
         b: ref b,
         c: ref renamed,
@@ -61,6 +77,7 @@ fn should_lint(
     {}
 
     if let &Struct { ref a, b: _, .. } = &s {}
+    //~^ needless_borrowed_reference
 }
 
 fn should_not_lint(

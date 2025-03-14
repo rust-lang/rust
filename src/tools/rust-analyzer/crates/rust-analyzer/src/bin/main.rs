@@ -44,11 +44,7 @@ fn actual_main() -> anyhow::Result<ExitCode> {
 
     #[cfg(debug_assertions)]
     if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
-        #[allow(unused_mut)]
-        let mut d = 4;
-        while d == 4 {
-            d = 4;
-        }
+        wait_for_debugger();
     }
 
     if let Err(e) = setup_logging(flags.log_file.clone()) {
@@ -94,6 +90,28 @@ fn actual_main() -> anyhow::Result<ExitCode> {
         flags::RustAnalyzerCmd::RustcTests(cmd) => cmd.run()?,
     }
     Ok(ExitCode::SUCCESS)
+}
+
+#[cfg(debug_assertions)]
+fn wait_for_debugger() {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::System::Diagnostics::Debug::IsDebuggerPresent;
+        // SAFETY: WinAPI generated code that is defensively marked `unsafe` but
+        // in practice can not be used in an unsafe way.
+        while unsafe { IsDebuggerPresent() } == 0 {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        #[allow(unused_mut)]
+        let mut d = 4;
+        while d == 4 {
+            d = 4;
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+    }
 }
 
 fn setup_logging(log_file_flag: Option<PathBuf>) -> anyhow::Result<()> {

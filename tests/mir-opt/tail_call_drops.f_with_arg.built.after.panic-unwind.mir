@@ -77,7 +77,6 @@ fn f_with_arg(_1: String, _2: String) -> () {
 
     bb8: {
         StorageDead(_6);
-        StorageDead(_5);
         drop(_4) -> [return: bb9, unwind: bb23];
     }
 

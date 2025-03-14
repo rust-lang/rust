@@ -13,7 +13,8 @@
                         "directories": [],
                         "files": [
                           "analyzer-decls.h",
-                          "malloc-macro.h"
+                          "malloc-macro.h",
+                          "sarif-path-role.h"
                         ],
                         "license": {
                           "copyright": [
@@ -113,8 +114,12 @@
               {
                 "directories": [],
                 "files": [
+                  "FiraMono-Medium.woff2",
+                  "FiraMono-Regular.woff2",
+                  "FiraSans-Italic.woff2",
                   "FiraSans-LICENSE.txt",
                   "FiraSans-Medium.woff2",
+                  "FiraSans-MediumItalic.woff2",
                   "FiraSans-Regular.woff2"
                 ],
                 "license": {

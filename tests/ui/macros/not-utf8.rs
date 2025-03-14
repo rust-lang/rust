@@ -3,5 +3,5 @@
 //@ reference: input.encoding.invalid
 
 fn foo() {
-    include!("not-utf8.bin")
+    include!("not-utf8.bin");
 }

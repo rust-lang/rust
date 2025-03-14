@@ -2,7 +2,7 @@ error[E0080]: evaluation of `Fail::<T>::C` failed
   --> $DIR/collect-in-promoted-const.rs:9:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-promoted-const.rs:9:19
+   |                   ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -16,7 +16,7 @@ error[E0080]: evaluation of `Fail::<i32>::C` failed
   --> $DIR/collect-in-promoted-const.rs:9:19
    |
 LL |     const C: () = panic!();
-   |                   ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/collect-in-promoted-const.rs:9:19
+   |                   ^^^^^^^^ evaluation panicked: explicit panic
    |
    = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 

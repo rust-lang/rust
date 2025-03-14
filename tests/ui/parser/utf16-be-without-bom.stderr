@@ -110,8 +110,9 @@ LL | ␀f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
    |
 help: consider removing the space to spell keyword `fn`
    |
-LL | ␀fn␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
-   |  ~~
+LL - ␀f␀n␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
+LL + ␀fn␀ ␀m␀a␀i␀n␀(␀)␀ ␀{␀}␀
+   |
 
 error: aborting due to 14 previous errors
 

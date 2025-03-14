@@ -6,8 +6,9 @@ LL | impl T for S；
    |
 help: Unicode character '；' (Fullwidth Semicolon) looks like ';' (Semicolon), but it is not
    |
-LL | impl T for S;
-   |             ~
+LL - impl T for S；
+LL + impl T for S;
+   |
 
 error: expected `{}`, found `;`
   --> $DIR/missing-impl-trait-block-but-not-ascii.rs:8:13

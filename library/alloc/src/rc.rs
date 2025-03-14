@@ -245,6 +245,7 @@ use core::any::Any;
 use core::cell::Cell;
 #[cfg(not(no_global_oom_handling))]
 use core::clone::CloneToUninit;
+use core::clone::UseCloned;
 use core::cmp::Ordering;
 use core::hash::{Hash, Hasher};
 use core::intrinsics::abort;
@@ -252,6 +253,7 @@ use core::intrinsics::abort;
 use core::iter;
 use core::marker::{PhantomData, Unsize};
 use core::mem::{self, ManuallyDrop, align_of_val_raw};
+use core::num::NonZeroUsize;
 use core::ops::{CoerceUnsized, Deref, DerefMut, DerefPure, DispatchFromDyn, LegacyReceiver};
 use core::panic::{RefUnwindSafe, UnwindSafe};
 #[cfg(not(no_global_oom_handling))]
@@ -261,22 +263,16 @@ use core::ptr::{self, NonNull, drop_in_place};
 #[cfg(not(no_global_oom_handling))]
 use core::slice::from_raw_parts_mut;
 use core::{borrow, fmt, hint};
-#[cfg(test)]
-use std::boxed::Box;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::alloc::handle_alloc_error;
 use crate::alloc::{AllocError, Allocator, Global, Layout};
 use crate::borrow::{Cow, ToOwned};
-#[cfg(not(test))]
 use crate::boxed::Box;
 #[cfg(not(no_global_oom_handling))]
 use crate::string::String;
 #[cfg(not(no_global_oom_handling))]
 use crate::vec::Vec;
-
-#[cfg(test)]
-mod tests;
 
 // This is repr(C) to future-proof against possible field-reordering, which
 // would interfere with otherwise safe [into|from]_raw() of transmutable
@@ -308,7 +304,7 @@ fn rc_inner_layout_for_value_layout(layout: Layout) -> Layout {
 ///
 /// [get_mut]: Rc::get_mut
 #[doc(search_unbox)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Rc")]
+#[rustc_diagnostic_item = "Rc"]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_insignificant_dtor]
 pub struct Rc<
@@ -1084,6 +1080,26 @@ impl<T> Rc<[T]> {
             ))
         }
     }
+
+    /// Converts the reference-counted slice into a reference-counted array.
+    ///
+    /// This operation does not reallocate; the underlying array of the slice is simply reinterpreted as an array type.
+    ///
+    /// If `N` is not exactly equal to the length of `self`, then this method returns `None`.
+    #[unstable(feature = "slice_as_array", issue = "133508")]
+    #[inline]
+    #[must_use]
+    pub fn into_array<const N: usize>(self) -> Option<Rc<[T; N]>> {
+        if self.len() == N {
+            let ptr = Self::into_raw(self) as *const [T; N];
+
+            // SAFETY: The underlying array of a slice has the exact same layout as an actual array `[T; N]` if `N` is equal to the slice's length.
+            let me = unsafe { Rc::from_raw(ptr) };
+            Some(me)
+        } else {
+            None
+        }
+    }
 }
 
 impl<T, A: Allocator> Rc<[T], A> {
@@ -1441,18 +1457,18 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// Provides a raw pointer to the data.
     ///
     /// The counts are not affected in any way and the `Rc` is not consumed. The pointer is valid
-    /// for as long there are strong counts in the `Rc`.
+    /// for as long as there are strong counts in the `Rc`.
     ///
     /// # Examples
     ///
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let x = Rc::new("hello".to_owned());
+    /// let x = Rc::new(0);
     /// let y = Rc::clone(&x);
     /// let x_ptr = Rc::as_ptr(&x);
     /// assert_eq!(x_ptr, Rc::as_ptr(&y));
-    /// assert_eq!(unsafe { &*x_ptr }, "hello");
+    /// assert_eq!(unsafe { *x_ptr }, 0);
     /// ```
     #[stable(feature = "weak_into_raw", since = "1.45.0")]
     #[rustc_never_returns_null_ptr]
@@ -1769,7 +1785,7 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     /// let x: Rc<&str> = Rc::new("Hello, world!");
     /// {
     ///     let s = String::from("Oh, no!");
-    ///     let mut y: Rc<&str> = x.clone().into();
+    ///     let mut y: Rc<&str> = x.clone();
     ///     unsafe {
     ///         // this is Undefined Behavior, because x's inner type
     ///         // is &'long str, not &'short str
@@ -2312,6 +2328,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Rc<T, A> {
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Rc<T, A> {}
+
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
@@ -2329,11 +2348,10 @@ impl<T: Default> Default for Rc<T> {
     fn default() -> Rc<T> {
         unsafe {
             Self::from_inner(
-                Box::leak(Box::write(Box::new_uninit(), RcInner {
-                    strong: Cell::new(1),
-                    weak: Cell::new(1),
-                    value: T::default(),
-                }))
+                Box::leak(Box::write(
+                    Box::new_uninit(),
+                    RcInner { strong: Cell::new(1), weak: Cell::new(1), value: T::default() },
+                ))
                 .into(),
             )
         }
@@ -2348,7 +2366,9 @@ impl Default for Rc<str> {
     /// This may or may not share an allocation with other Rcs on the same thread.
     #[inline]
     fn default() -> Self {
-        Rc::from("")
+        let rc = Rc::<[u8]>::default();
+        // `[u8]` has the same layout as `str`.
+        unsafe { Rc::from_raw(Rc::into_raw(rc) as *const str) }
     }
 }
 
@@ -2962,7 +2982,7 @@ impl<T, I: iter::TrustedLen<Item = T>> ToRcSlice<T> for I {
 ///
 /// [`upgrade`]: Weak::upgrade
 #[stable(feature = "rc_weak", since = "1.4.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "RcWeak")]
+#[rustc_diagnostic_item = "RcWeak"]
 pub struct Weak<
     T: ?Sized,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
@@ -3007,12 +3027,7 @@ impl<T> Weak<T> {
     #[rustc_const_stable(feature = "const_weak_new", since = "1.73.0")]
     #[must_use]
     pub const fn new() -> Weak<T> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc: Global,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc: Global }
     }
 }
 
@@ -3034,12 +3049,7 @@ impl<T, A: Allocator> Weak<T, A> {
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
     pub fn new_in(alloc: A) -> Weak<T, A> {
-        Weak {
-            ptr: unsafe {
-                NonNull::new_unchecked(ptr::without_provenance_mut::<RcInner<T>>(usize::MAX))
-            },
-            alloc,
-        }
+        Weak { ptr: NonNull::without_provenance(NonZeroUsize::MAX), alloc }
     }
 }
 
@@ -3484,6 +3494,9 @@ impl<T: ?Sized, A: Allocator + Clone> Clone for Weak<T, A> {
     }
 }
 
+#[unstable(feature = "ergonomic_clones", issue = "132290")]
+impl<T: ?Sized, A: Allocator + Clone> UseCloned for Weak<T, A> {}
+
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized, A: Allocator> fmt::Debug for Weak<T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -3697,7 +3710,11 @@ pub struct UniqueRc<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
 > {
     ptr: NonNull<RcInner<T>>,
-    phantom: PhantomData<RcInner<T>>,
+    // Define the ownership of `RcInner<T>` for drop-check
+    _marker: PhantomData<RcInner<T>>,
+    // Invariance is necessary for soundness: once other `Weak`
+    // references exist, we already have a form of shared mutability!
+    _marker2: PhantomData<*mut T>,
     alloc: A,
 }
 
@@ -3983,7 +4000,7 @@ impl<T, A: Allocator> UniqueRc<T, A> {
             },
             alloc,
         ));
-        Self { ptr: ptr.into(), phantom: PhantomData, alloc }
+        Self { ptr: ptr.into(), _marker: PhantomData, _marker2: PhantomData, alloc }
     }
 }
 

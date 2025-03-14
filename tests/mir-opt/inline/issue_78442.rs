@@ -9,10 +9,9 @@ pub fn bar<P>(
     _baz: P,
 ) {
     // CHECK-LABEL: fn bar(
-    // CHECK: let mut {{.*}}: &fn() {foo};
-    // CHECK: let {{.*}}: fn() {foo};
     // CHECK: (inlined hide_foo)
-    // CHECK-NOT: inlined
+    // CHECK: (inlined <fn() {foo} as Fn<()>>::call - shim(fn() {foo}))
+    // CHECK: (inlined foo)
     hide_foo()();
 }
 

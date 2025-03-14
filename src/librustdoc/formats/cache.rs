@@ -1,5 +1,6 @@
 use std::mem;
 
+use rustc_attr_parsing::StabilityLevel;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIdSet};
 use rustc_middle::ty::{self, TyCtxt};
@@ -139,6 +140,7 @@ struct CacheBuilder<'a, 'tcx> {
     /// This field is used to prevent duplicated impl blocks.
     impl_ids: DefIdMap<DefIdSet>,
     tcx: TyCtxt<'tcx>,
+    is_json_output: bool,
 }
 
 impl Cache {
@@ -183,8 +185,13 @@ impl Cache {
         }
 
         let (krate, mut impl_ids) = {
-            let mut cache_builder =
-                CacheBuilder { tcx, cache: &mut cx.cache, impl_ids: Default::default() };
+            let is_json_output = cx.is_json_output();
+            let mut cache_builder = CacheBuilder {
+                tcx,
+                cache: &mut cx.cache,
+                impl_ids: Default::default(),
+                is_json_output,
+            };
             krate = cache_builder.fold_crate(krate);
             (krate, cache_builder.impl_ids)
         };
@@ -305,7 +312,14 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::MacroItem(..)
             | clean::ProcMacroItem(..)
             | clean::VariantItem(..) => {
-                if !self.cache.stripped_mod {
+                use rustc_data_structures::fx::IndexEntry as Entry;
+
+                let skip_because_unstable = matches!(
+                    item.stability.map(|stab| stab.level),
+                    Some(StabilityLevel::Stable { allowed_through_unstable_modules: Some(_), .. })
+                );
+
+                if (!self.cache.stripped_mod && !skip_because_unstable) || self.is_json_output {
                     // Re-exported items mean that the same id can show up twice
                     // in the rustdoc ast that we're looking at. We know,
                     // however, that a re-exported item doesn't show up in the
@@ -313,15 +327,15 @@ impl DocFolder for CacheBuilder<'_, '_> {
                     // paths map if there was already an entry present and we're
                     // not a public item.
                     let item_def_id = item.item_id.expect_def_id();
-                    if !self.cache.paths.contains_key(&item_def_id)
-                        || self
-                            .cache
-                            .effective_visibilities
-                            .is_directly_public(self.tcx, item_def_id)
-                    {
-                        self.cache
-                            .paths
-                            .insert(item_def_id, (self.cache.stack.clone(), item.type_()));
+                    match self.cache.paths.entry(item_def_id) {
+                        Entry::Vacant(entry) => {
+                            entry.insert((self.cache.stack.clone(), item.type_()));
+                        }
+                        Entry::Occupied(mut entry) => {
+                            if entry.get().0.len() > self.cache.stack.len() {
+                                entry.insert((self.cache.stack.clone(), item.type_()));
+                            }
+                        }
                     }
                 }
             }
@@ -405,7 +419,9 @@ impl DocFolder for CacheBuilder<'_, '_> {
                 }
             }
 
-            if let Some(generics) = i.trait_.as_ref().and_then(|t| t.generics()) {
+            if let Some(trait_) = &i.trait_
+                && let Some(generics) = trait_.generics()
+            {
                 for bound in generics {
                     dids.extend(bound.def_id(self.cache));
                 }
@@ -413,7 +429,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             let impl_item = Impl { impl_item: item };
             let impl_did = impl_item.def_id();
             let trait_did = impl_item.trait_did();
-            if trait_did.map_or(true, |d| self.cache.traits.contains_key(&d)) {
+            if trait_did.is_none_or(|d| self.cache.traits.contains_key(&d)) {
                 for did in dids {
                     if self.impl_ids.entry(did).or_default().insert(impl_did) {
                         self.cache.impls.entry(did).or_default().push(impl_item.clone());

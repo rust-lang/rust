@@ -9,8 +9,9 @@ LL |     format_args!(a!());
    |
 help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |
-LL |         macro_rules! a {
-   |                      ~
+LL -         macro_rules! _a {
+LL +         macro_rules! a {
+   |
 
 error: cannot find macro `a` in this scope
   --> $DIR/expand-full-no-resolution.rs:19:10
@@ -23,8 +24,9 @@ LL |     env!(a!());
    |
 help: the leading underscore in `_a` marks it as unused, consider renaming it to `a`
    |
-LL |         macro_rules! a {
-   |                      ~
+LL -         macro_rules! _a {
+LL +         macro_rules! a {
+   |
 
 error: aborting due to 2 previous errors
 

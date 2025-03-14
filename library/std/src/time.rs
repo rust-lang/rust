@@ -31,9 +31,6 @@
 
 #![stable(feature = "time", since = "1.3.0")]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "time", since = "1.3.0")]
 pub use core::time::Duration;
 #[stable(feature = "duration_checked_float", since = "1.66.0")]
@@ -96,10 +93,16 @@ use crate::sys_common::{FromInner, IntoInner};
 /// use std::time::{Instant, Duration};
 ///
 /// let now = Instant::now();
-/// let max_seconds = u64::MAX / 1_000_000_000;
-/// let duration = Duration::new(max_seconds, 0);
+/// let days_per_10_millennia = 365_2425;
+/// let solar_seconds_per_day = 60 * 60 * 24;
+/// let millenium_in_solar_seconds = 31_556_952_000;
+/// assert_eq!(millenium_in_solar_seconds, days_per_10_millennia * solar_seconds_per_day / 10);
+///
+/// let duration = Duration::new(millenium_in_solar_seconds, 0);
 /// println!("{:?}", now + duration);
 /// ```
+///
+/// For cross-platform code, you can comfortably use durations of up to around one hundred years.
 ///
 /// # Underlying System calls
 ///

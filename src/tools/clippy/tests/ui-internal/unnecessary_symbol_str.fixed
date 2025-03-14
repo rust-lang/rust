@@ -14,8 +14,8 @@ use rustc_span::symbol::{Ident, Symbol};
 
 fn main() {
     Symbol::intern("foo") == rustc_span::sym::clippy;
-    Symbol::intern("foo") == rustc_span::symbol::kw::SelfLower;
-    Symbol::intern("foo") != rustc_span::symbol::kw::SelfUpper;
+    Symbol::intern("foo") == rustc_span::kw::SelfLower;
+    Symbol::intern("foo") != rustc_span::kw::SelfUpper;
     Ident::empty().name == rustc_span::sym::clippy;
     rustc_span::sym::clippy == Ident::empty().name;
 }

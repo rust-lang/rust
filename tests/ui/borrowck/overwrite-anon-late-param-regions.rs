@@ -6,6 +6,7 @@
 #![feature(type_alias_impl_trait)]
 type Opaque2<'a> = impl Sized + 'a;
 
+#[define_opaque(Opaque2)]
 fn test2() -> impl for<'a, 'b> Fn((&'a str, &'b str)) -> (Opaque2<'a>, Opaque2<'a>) {
     |x| x
     //~^ ERROR lifetime may not live long enough

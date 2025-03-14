@@ -138,6 +138,20 @@ impl FixupContext {
         }
     }
 
+    /// Transform this fixup into the one that should apply when printing a
+    /// leftmost subexpression followed by a `.` or `?` token, which confer
+    /// different statement boundary rules compared to other leftmost
+    /// subexpressions.
+    pub(crate) fn leftmost_subexpression_with_dot(self) -> Self {
+        FixupContext {
+            stmt: self.stmt || self.leftmost_subexpression_in_stmt,
+            leftmost_subexpression_in_stmt: false,
+            match_arm: self.match_arm || self.leftmost_subexpression_in_match_arm,
+            leftmost_subexpression_in_match_arm: false,
+            ..self
+        }
+    }
+
     /// Transform this fixup into the one that should apply when printing any
     /// subexpression that is neither a leftmost subexpression nor surrounded in
     /// delimiters.

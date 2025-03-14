@@ -232,7 +232,7 @@ impl<T, A: Allocator> Drop for Drain<'_, T, A> {
             // it from the original vec but also avoid creating a &mut to the front since that could
             // invalidate raw pointers to it which some unsafe code might rely on.
             let vec_ptr = vec.as_mut().as_mut_ptr();
-            let drop_offset = drop_ptr.sub_ptr(vec_ptr);
+            let drop_offset = drop_ptr.offset_from_unsigned(vec_ptr);
             let to_drop = ptr::slice_from_raw_parts_mut(vec_ptr.add(drop_offset), drop_len);
             ptr::drop_in_place(to_drop);
         }

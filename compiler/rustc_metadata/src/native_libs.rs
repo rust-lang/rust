@@ -17,14 +17,21 @@ use rustc_session::search_paths::PathKind;
 use rustc_session::utils::NativeLibKind;
 use rustc_span::def_id::{DefId, LOCAL_CRATE};
 use rustc_span::{Symbol, sym};
-use rustc_target::spec::LinkSelfContainedComponents;
+use rustc_target::spec::{BinaryFormat, LinkSelfContainedComponents};
 
 use crate::{errors, fluent_generated};
 
+/// The fallback directories are passed to linker, but not used when rustc does the search,
+/// because in the latter case the set of fallback directories cannot always be determined
+/// consistently at the moment.
+pub struct NativeLibSearchFallback<'a> {
+    pub self_contained_components: LinkSelfContainedComponents,
+    pub apple_sdk_root: Option<&'a Path>,
+}
+
 pub fn walk_native_lib_search_dirs<R>(
     sess: &Session,
-    self_contained_components: LinkSelfContainedComponents,
-    apple_sdk_root: Option<&Path>,
+    fallback: Option<NativeLibSearchFallback<'_>>,
     mut f: impl FnMut(&Path, bool /*is_framework*/) -> ControlFlow<R>,
 ) -> ControlFlow<R> {
     // Library search paths explicitly supplied by user (`-L` on the command line).
@@ -37,6 +44,11 @@ pub fn walk_native_lib_search_dirs<R>(
             f(&search_path.dir, true)?;
         }
     }
+
+    let Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root }) = fallback
+    else {
+        return ControlFlow::Continue(());
+    };
 
     // The toolchain ships some native library components and self-contained linking was enabled.
     // Add the self-contained library directory to search paths.
@@ -93,23 +105,17 @@ pub fn try_find_native_static_library(
         if os == unix { vec![os] } else { vec![os, unix] }
     };
 
-    // FIXME: Account for self-contained linking settings and Apple SDK.
-    walk_native_lib_search_dirs(
-        sess,
-        LinkSelfContainedComponents::empty(),
-        None,
-        |dir, is_framework| {
-            if !is_framework {
-                for (prefix, suffix) in &formats {
-                    let test = dir.join(format!("{prefix}{name}{suffix}"));
-                    if test.exists() {
-                        return ControlFlow::Break(test);
-                    }
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
                 }
             }
-            ControlFlow::Continue(())
-        },
-    )
+        }
+        ControlFlow::Continue(())
+    })
     .break_value()
 }
 
@@ -132,22 +138,17 @@ pub fn try_find_native_dynamic_library(
         vec![os, meson, mingw]
     };
 
-    walk_native_lib_search_dirs(
-        sess,
-        LinkSelfContainedComponents::empty(),
-        None,
-        |dir, is_framework| {
-            if !is_framework {
-                for (prefix, suffix) in &formats {
-                    let test = dir.join(format!("{prefix}{name}{suffix}"));
-                    if test.exists() {
-                        return ControlFlow::Break(test);
-                    }
+    walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
+        if !is_framework {
+            for (prefix, suffix) in &formats {
+                let test = dir.join(format!("{prefix}{name}{suffix}"));
+                if test.exists() {
+                    return ControlFlow::Break(test);
                 }
             }
-            ControlFlow::Continue(())
-        },
-    )
+        }
+        ControlFlow::Continue(())
+    })
     .break_value()
 }
 
@@ -263,9 +264,26 @@ impl<'tcx> Collector<'tcx> {
                                 NativeLibKind::Framework { as_needed: None }
                             }
                             "raw-dylib" => {
-                                if !sess.target.is_like_windows {
+                                if sess.target.is_like_windows {
+                                    // raw-dylib is stable and working on Windows
+                                } else if sess.target.binary_format == BinaryFormat::Elf
+                                    && features.raw_dylib_elf()
+                                {
+                                    // raw-dylib is unstable on ELF, but the user opted in
+                                } else if sess.target.binary_format == BinaryFormat::Elf
+                                    && sess.is_nightly_build()
+                                {
+                                    feature_err(
+                                        sess,
+                                        sym::raw_dylib_elf,
+                                        span,
+                                        fluent_generated::metadata_raw_dylib_elf_unstable,
+                                    )
+                                    .emit();
+                                } else {
                                     sess.dcx().emit_err(errors::RawDylibOnlyWindows { span });
                                 }
+
                                 NativeLibKind::RawDylib
                             }
                             "link-arg" => {
@@ -450,7 +468,7 @@ impl<'tcx> Collector<'tcx> {
                 (name, kind) = (wasm_import_module, Some(NativeLibKind::WasmImportModule));
             }
             let Some((name, name_span)) = name else {
-                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span });
+                sess.dcx().emit_err(errors::LinkRequiresName { span: m.span() });
                 continue;
             };
 
@@ -485,7 +503,7 @@ impl<'tcx> Collector<'tcx> {
                             let link_ordinal_attr =
                                 self.tcx.get_attr(child_item, sym::link_ordinal).unwrap();
                             sess.dcx().emit_err(errors::LinkOrdinalRawDylib {
-                                span: link_ordinal_attr.span,
+                                span: link_ordinal_attr.span(),
                             });
                         }
                     }

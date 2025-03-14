@@ -5,16 +5,17 @@
 //@ needs-unwind
 //@ ignore-android FIXME #17520
 //@ ignore-openbsd no support for libbacktrace without filename
-//@ ignore-emscripten no panic
 //@ ignore-sgx Backtraces not symbolized
 //@ ignore-fuchsia Backtraces not symbolized
 //@ ignore-msvc the `__rust_{begin,end}_short_backtrace` symbols aren't reliable.
 
 // This is needed to avoid test output differences across std being built with v0 symbols vs legacy
 // symbols.
-//@ normalize-stderr-test: "begin_panic::<&str>" -> "begin_panic"
+//@ normalize-stderr: "begin_panic::<&str>" -> "begin_panic"
+// This variant occurs on macOS with `rust.debuginfo-level = "line-tables-only"` (#133997)
+//@ normalize-stderr: " begin_panic<&str>" -> " std::panicking::begin_panic"
 // And this is for differences between std with and without debuginfo.
-//@ normalize-stderr-test: "\n +at [^\n]+" -> ""
+//@ normalize-stderr: "\n +at [^\n]+" -> ""
 
 #[inline(never)]
 fn __rust_begin_short_backtrace<T, F: FnOnce() -> T>(f: F) -> T {

@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(repr128)]
 #![allow(incomplete_features)]
 

@@ -12,9 +12,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)]
-mod tests;
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::f64::{
@@ -125,7 +122,7 @@ impl f64 {
     #[stable(feature = "round_ties_even", since = "1.77.0")]
     #[inline]
     pub fn round_ties_even(self) -> f64 {
-        unsafe { intrinsics::rintf64(self) }
+        intrinsics::round_ties_even_f64(self)
     }
 
     /// Returns the integer part of `self`.
@@ -210,6 +207,7 @@ impl f64 {
     /// assert_eq!(one_plus_eps * one_minus_eps + minus_one, 0.0);
     /// ```
     #[rustc_allow_incoherent_impl]
+    #[doc(alias = "fma", alias = "fusedMultiplyAdd")]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
@@ -305,8 +303,9 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powi(2) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powi(f64::NAN, 0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -328,8 +327,10 @@ impl f64 {
     /// ```
     /// let x = 2.0_f64;
     /// let abs_difference = (x.powf(2.0) - (x * x)).abs();
+    /// assert!(abs_difference <= f64::EPSILON);
     ///
-    /// assert!(abs_difference < 1e-10);
+    /// assert_eq!(f64::powf(1.0, f64::NAN), 1.0);
+    /// assert_eq!(f64::powf(f64::NAN, 0.0), 1.0);
     /// ```
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
@@ -360,6 +361,7 @@ impl f64 {
     /// assert!(negative.sqrt().is_nan());
     /// assert!(negative_zero.sqrt() == negative_zero);
     /// ```
+    #[doc(alias = "squareRoot")]
     #[rustc_allow_incoherent_impl]
     #[must_use = "method returns a new number and does not mutate the original value"]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1148,5 +1150,69 @@ impl f64 {
         let mut signgamp: i32 = 0;
         let x = unsafe { cmath::lgamma_r(self, &mut signgamp) };
         (x, signgamp)
+    }
+
+    /// Error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erf` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// /// The error function relates what percent of a normal distribution lies
+    /// /// within `x` standard deviations (scaled by `1/sqrt(2)`).
+    /// fn within_standard_deviations(x: f64) -> f64 {
+    ///     (x * std::f64::consts::FRAC_1_SQRT_2).erf() * 100.0
+    /// }
+    ///
+    /// // 68% of a normal distribution is within one standard deviation
+    /// assert!((within_standard_deviations(1.0) - 68.269).abs() < 0.01);
+    /// // 95% of a normal distribution is within two standard deviations
+    /// assert!((within_standard_deviations(2.0) - 95.450).abs() < 0.01);
+    /// // 99.7% of a normal distribution is within three standard deviations
+    /// assert!((within_standard_deviations(3.0) - 99.730).abs() < 0.01);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erf(self) -> f64 {
+        unsafe { cmath::erf(self) }
+    }
+
+    /// Complementary error function.
+    ///
+    /// # Unspecified precision
+    ///
+    /// The precision of this function is non-deterministic. This means it varies by platform,
+    /// Rust version, and can even differ within the same execution from one invocation to the next.
+    ///
+    /// This function currently corresponds to the `erfc` from libc on Unix
+    /// and Windows. Note that this might change in the future.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(float_erf)]
+    /// let x: f64 = 0.123;
+    ///
+    /// let one = x.erf() + x.erfc();
+    /// let abs_difference = (one - 1.0).abs();
+    ///
+    /// assert!(abs_difference <= f64::EPSILON);
+    /// ```
+    #[rustc_allow_incoherent_impl]
+    #[must_use = "method returns a new number and does not mutate the original value"]
+    #[unstable(feature = "float_erf", issue = "136321")]
+    #[inline]
+    pub fn erfc(self) -> f64 {
+        unsafe { cmath::erfc(self) }
     }
 }

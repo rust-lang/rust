@@ -85,6 +85,8 @@ use crate::{
     FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
+pub use self::path_resolution::ResolvePathResultPrefixInfo;
+
 const PREDEFINED_TOOLS: &[SmolStr] = &[
     SmolStr::new_static("clippy"),
     SmolStr::new_static("rustfmt"),
@@ -335,7 +337,7 @@ impl DefMap {
     pub(crate) fn crate_def_map_query(db: &dyn DefDatabase, crate_id: CrateId) -> Arc<DefMap> {
         let crate_graph = db.crate_graph();
         let krate = &crate_graph[crate_id];
-        let name = krate.display_name.as_deref().unwrap_or_default();
+        let name = krate.display_name.as_deref().map(Symbol::as_str).unwrap_or_default();
         let _p = tracing::info_span!("crate_def_map_query", ?name).entered();
 
         let module_data = ModuleData::new(
@@ -615,13 +617,15 @@ impl DefMap {
         (res.resolved_def, res.segment_index)
     }
 
+    /// The first `Option<usize>` points at the `Enum` segment in case of `Enum::Variant`, the second
+    /// points at the unresolved segments.
     pub(crate) fn resolve_path_locally(
         &self,
         db: &dyn DefDatabase,
         original_module: LocalModuleId,
         path: &ModPath,
         shadow: BuiltinShadowMode,
-    ) -> (PerNs, Option<usize>) {
+    ) -> (PerNs, Option<usize>, ResolvePathResultPrefixInfo) {
         let res = self.resolve_path_fp_with_macro_single(
             db,
             ResolveMode::Other,
@@ -630,7 +634,7 @@ impl DefMap {
             shadow,
             None, // Currently this function isn't used for macro resolution.
         );
-        (res.resolved_def, res.segment_index)
+        (res.resolved_def, res.segment_index, res.prefix_info)
     }
 
     /// Ascends the `DefMap` hierarchy and calls `f` with every `DefMap` and containing module.

@@ -8,7 +8,6 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, Node, PathSegmen
 use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceWithHirId};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::lint::in_external_macro;
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::declare_lint_pass;
@@ -231,6 +230,8 @@ impl<'tcx> Delegate<'tcx> for MutationVisitor<'tcx> {
 
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn fake_read(&mut self, _: &PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
@@ -245,9 +246,9 @@ impl<'tcx> UnwrappableVariablesVisitor<'_, 'tcx> {
         let prev_len = self.unwrappables.len();
         for unwrap_info in collect_unwrap_info(self.cx, if_expr, cond, branch, else_branch, true) {
             let mut delegate = MutationVisitor {
-                tcx: self.cx.tcx,
                 is_mutated: false,
                 local_id: unwrap_info.local_id,
+                tcx: self.cx.tcx,
             };
 
             let vis = ExprUseVisitor::for_clippy(self.cx, cond.hir_id.owner.def_id, &mut delegate);
@@ -292,7 +293,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
-        if in_external_macro(self.cx.tcx.sess, expr.span) {
+        if expr.span.in_external_macro(self.cx.tcx.sess.source_map()) {
             return;
         }
         if let Some(higher::If { cond, then, r#else }) = higher::If::hir(expr) {
@@ -317,7 +318,7 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
             {
                 if call_to_unwrap == unwrappable.safe_to_unwrap {
                     let is_entire_condition = unwrappable.is_entire_condition;
-                    let unwrappable_variable_name = self.cx.tcx.hir().name(unwrappable.local_id);
+                    let unwrappable_variable_name = self.cx.tcx.hir_name(unwrappable.local_id);
                     let suggested_pattern = if call_to_unwrap {
                         unwrappable.kind.success_variant_pattern()
                     } else {
@@ -375,8 +376,8 @@ impl<'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'_, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> Self::Map {
-        self.cx.tcx.hir()
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
     }
 }
 
@@ -397,8 +398,8 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
         }
 
         let mut v = UnwrappableVariablesVisitor {
-            cx,
             unwrappables: Vec::new(),
+            cx,
         };
 
         walk_fn(&mut v, kind, decl, body.id(), fn_id);

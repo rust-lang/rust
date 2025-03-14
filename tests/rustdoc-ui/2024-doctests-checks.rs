@@ -1,9 +1,9 @@
 //@ check-pass
 //@ edition: 2024
 //@ compile-flags: --test --test-args=--test-threads=1
-//@ normalize-stdout-test: "tests/rustdoc-ui" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
-//@ normalize-stdout-test: ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"
+//@ normalize-stdout: "tests/rustdoc-ui" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: ".rs:\d+:\d+" -> ".rs:$$LINE:$$COL"
 
 /// ```
 /// let x = 12;

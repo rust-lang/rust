@@ -4,20 +4,13 @@
 
 type Foo = impl std::iter::FromIterator<i32> + PartialEq<Vec<i32>> + std::fmt::Debug;
 
+#[define_opaque(Foo)]
 fn foo(b: bool) -> Foo {
-    if b {
-        vec![42_i32]
-    } else {
-        std::iter::empty().collect()
-    }
+    if b { vec![42_i32] } else { std::iter::empty().collect() }
 }
 
 fn bar(b: bool) -> impl PartialEq<Vec<i32>> + std::fmt::Debug {
-    if b {
-        vec![42_i32]
-    } else {
-        std::iter::empty().collect()
-    }
+    if b { vec![42_i32] } else { std::iter::empty().collect() }
 }
 
 fn main() {

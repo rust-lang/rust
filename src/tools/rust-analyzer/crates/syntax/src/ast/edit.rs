@@ -72,9 +72,9 @@ impl IndentLevel {
     }
 
     /// XXX: this intentionally doesn't change the indent of the very first token.
-    /// Ie, in something like
+    /// For example, in something like:
     /// ```
-    /// fn foo() {
+    /// fn foo() -> i32 {
     ///    92
     /// }
     /// ```
@@ -153,8 +153,8 @@ impl<N: AstNode + Clone> AstNodeEdit for N {}
 #[test]
 fn test_increase_indent() {
     let arm_list = {
-        let arm = make::match_arm(iter::once(make::wildcard_pat().into()), None, make::expr_unit());
-        make::match_arm_list(vec![arm.clone(), arm])
+        let arm = make::match_arm(make::wildcard_pat().into(), None, make::ext::expr_unit());
+        make::match_arm_list([arm.clone(), arm])
     };
     assert_eq!(
         arm_list.syntax().to_string(),

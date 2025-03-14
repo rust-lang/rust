@@ -14,7 +14,7 @@ use ide_db::{
     prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
 };
 use itertools::Itertools;
-use proc_macro_api::{MacroDylib, ProcMacroServer};
+use proc_macro_api::{MacroDylib, ProcMacroClient};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
@@ -42,13 +42,21 @@ pub fn load_workspace_at(
     cargo_config: &CargoConfig,
     load_config: &LoadCargoConfig,
     progress: &dyn Fn(String),
-) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let root = AbsPathBuf::assert_utf8(std::env::current_dir()?.join(root));
     let root = ProjectManifest::discover_single(&root)?;
+    let manifest_path = root.manifest_path().clone();
     let mut workspace = ProjectWorkspace::load(root, cargo_config, progress)?;
 
     if load_config.load_out_dirs_from_check {
         let build_scripts = workspace.run_build_scripts(cargo_config, progress)?;
+        if let Some(error) = build_scripts.error() {
+            tracing::debug!(
+                "Errors occurred while running build scripts for {}: {}",
+                manifest_path,
+                error
+            );
+        }
         workspace.set_build_scripts(build_scripts)
     }
 
@@ -59,7 +67,7 @@ pub fn load_workspace(
     ws: ProjectWorkspace,
     extra_env: &FxHashMap<String, String>,
     load_config: &LoadCargoConfig,
-) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroServer>)> {
+) -> anyhow::Result<(RootDatabase, vfs::Vfs, Option<ProcMacroClient>)> {
     let (sender, receiver) = unbounded();
     let mut vfs = vfs::Vfs::default();
     let mut loader = {
@@ -71,10 +79,10 @@ pub fn load_workspace(
     let proc_macro_server = match &load_config.with_proc_macro_server {
         ProcMacroServerChoice::Sysroot => ws
             .find_sysroot_proc_macro_srv()
-            .and_then(|it| ProcMacroServer::spawn(&it, extra_env).map_err(Into::into))
+            .and_then(|it| ProcMacroClient::spawn(&it, extra_env).map_err(Into::into))
             .map_err(|e| (e, true)),
         ProcMacroServerChoice::Explicit(path) => {
-            ProcMacroServer::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
+            ProcMacroClient::spawn(path, extra_env).map_err(Into::into).map_err(|e| (e, true))
         }
         ProcMacroServerChoice::None => {
             Err((anyhow::format_err!("proc macro server disabled"), false))
@@ -82,7 +90,7 @@ pub fn load_workspace(
     };
     match &proc_macro_server {
         Ok(server) => {
-            tracing::info!(path=%server.path(), "Proc-macro server started")
+            tracing::info!(path=%server.server_path(), "Proc-macro server started")
         }
         Err((e, _)) => {
             tracing::info!(%e, "Failed to start proc-macro server")
@@ -94,7 +102,9 @@ pub fn load_workspace(
             let contents = loader.load_sync(path);
             let path = vfs::VfsPath::from(path.to_path_buf());
             vfs.set_file_contents(path.clone(), contents);
-            vfs.file_id(&path)
+            vfs.file_id(&path).and_then(|(file_id, excluded)| {
+                (excluded == vfs::FileExcluded::No).then_some(file_id)
+            })
         },
         extra_env,
     );
@@ -242,9 +252,6 @@ impl ProjectFolders {
                     }
                 }
 
-                if dirs.include.is_empty() {
-                    continue;
-                }
                 vfs::loader::Entry::Directories(dirs)
             };
 
@@ -259,6 +266,24 @@ impl ProjectFolders {
             fsc.add_file_set(file_set_roots)
         }
 
+        for ws in workspaces.iter() {
+            let mut file_set_roots: Vec<VfsPath> = vec![];
+            let mut entries = vec![];
+
+            for buildfile in ws.buildfiles() {
+                file_set_roots.push(VfsPath::from(buildfile.to_owned()));
+                entries.push(buildfile.to_owned());
+            }
+
+            if !file_set_roots.is_empty() {
+                let entry = vfs::loader::Entry::Files(entries);
+                res.watch.push(res.load.len());
+                res.load.push(entry);
+                local_filesets.push(fsc.len() as u64);
+                fsc.add_file_set(file_set_roots)
+            }
+        }
+
         if let Some(user_config_path) = user_config_dir_path {
             let ratoml_path = {
                 let mut p = user_config_path.to_path_buf();
@@ -267,7 +292,7 @@ impl ProjectFolders {
             };
 
             let file_set_roots = vec![VfsPath::from(ratoml_path.to_owned())];
-            let entry = vfs::loader::Entry::Files(vec![ratoml_path]);
+            let entry = vfs::loader::Entry::Files(vec![ratoml_path.to_owned()]);
 
             res.watch.push(res.load.len());
             res.load.push(entry);
@@ -362,7 +387,7 @@ impl SourceRootConfig {
 
 /// Load the proc-macros for the given lib path, disabling all expanders whose names are in `ignored_macros`.
 pub fn load_proc_macro(
-    server: &ProcMacroServer,
+    server: &ProcMacroClient,
     path: &AbsPath,
     ignored_macros: &[Box<str>],
 ) -> ProcMacroLoadResult {
@@ -439,7 +464,6 @@ fn load_crate_graph(
     let ws_data = crate_graph
         .iter()
         .zip(iter::repeat(From::from(CrateWorkspaceData {
-            proc_macro_cwd: None,
             data_layout: target_layout.clone(),
             toolchain: toolchain.clone(),
         })))
@@ -476,17 +500,17 @@ struct Expander(proc_macro_api::ProcMacro);
 impl ProcMacroExpander for Expander {
     fn expand(
         &self,
-        subtree: &tt::Subtree<Span>,
-        attrs: Option<&tt::Subtree<Span>>,
+        subtree: &tt::TopSubtree<Span>,
+        attrs: Option<&tt::TopSubtree<Span>>,
         env: &Env,
         def_site: Span,
         call_site: Span,
         mixed_site: Span,
         current_dir: Option<String>,
-    ) -> Result<tt::Subtree<Span>, ProcMacroExpansionError> {
+    ) -> Result<tt::TopSubtree<Span>, ProcMacroExpansionError> {
         match self.0.expand(
-            subtree,
-            attrs,
+            subtree.view(),
+            attrs.map(|attrs| attrs.view()),
             env.clone().into(),
             def_site,
             call_site,

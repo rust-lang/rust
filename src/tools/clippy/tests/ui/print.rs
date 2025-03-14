@@ -9,8 +9,7 @@ struct Foo;
 impl Display for Foo {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "{:?}", 43.1415)
-        //~^ ERROR: use of `Debug`-based formatting
-        //~| NOTE: `-D clippy::use-debug` implied by `-D warnings`
+        //~^ use_debug
     }
 }
 
@@ -23,21 +22,21 @@ impl Debug for Foo {
 
 fn main() {
     println!("Hello");
-    //~^ ERROR: use of `println!`
-    //~| NOTE: `-D clippy::print-stdout` implied by `-D warnings`
+    //~^ print_stdout
+
     print!("Hello");
-    //~^ ERROR: use of `print!`
+    //~^ print_stdout
 
     print!("Hello {}", "World");
-    //~^ ERROR: use of `print!`
+    //~^ print_stdout
 
     print!("Hello {:?}", "World");
-    //~^ ERROR: use of `print!`
-    //~| ERROR: use of `Debug`-based formatting
+    //~^ print_stdout
+    //~| use_debug
 
     print!("Hello {:#?}", "#orld");
-    //~^ ERROR: use of `print!`
-    //~| ERROR: use of `Debug`-based formatting
+    //~^ print_stdout
+    //~| use_debug
 
     assert_eq!(42, 1337);
 

@@ -112,7 +112,7 @@ fn fixes(
                 // shouldn't occur
                 _ => continue 'crates,
             };
-            match current.children.iter().find(|(name, _)| name.eq_ident(seg)) {
+            match current.children.iter().find(|(name, _)| name.as_str() == seg) {
                 Some((_, &child)) => current = &crate_def_map[child],
                 None => continue 'crates,
             }
@@ -161,7 +161,7 @@ fn fixes(
             // try finding a parent that has an inline tree from here on
             let mut current = module;
             for s in stack.iter().rev() {
-                match module.children.iter().find(|(name, _)| name.eq_ident(s)) {
+                match module.children.iter().find(|(name, _)| name.as_str() == s) {
                     Some((_, child)) => {
                         current = &crate_def_map[*child];
                     }

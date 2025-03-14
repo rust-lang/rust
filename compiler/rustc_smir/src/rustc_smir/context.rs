@@ -9,7 +9,7 @@ use std::cell::RefCell;
 use std::iter;
 
 use rustc_abi::HasDataLayout;
-use rustc_hir::LangItem;
+use rustc_hir::{Attribute, LangItem};
 use rustc_middle::ty::layout::{
     FnAbiOf, FnAbiOfHelpers, HasTyCtxt, HasTypingEnv, LayoutOf, LayoutOfHelpers,
 };
@@ -243,7 +243,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         }
     }
 
-    fn get_attrs_by_path(
+    fn tool_attrs(
         &self,
         def_id: stable_mir::DefId,
         attr: &[stable_mir::Symbol],
@@ -253,30 +253,40 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let did = tables[def_id];
         let attr_name: Vec<_> = attr.iter().map(|seg| rustc_span::Symbol::intern(&seg)).collect();
         tcx.get_attrs_by_path(did, &attr_name)
-            .map(|attribute| {
-                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
-                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
+            .filter_map(|attribute| {
+                if let Attribute::Unparsed(u) = attribute {
+                    let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
+                    Some(stable_mir::crate_def::Attribute::new(
+                        attr_str,
+                        u.span.stable(&mut *tables),
+                    ))
+                } else {
+                    None
+                }
             })
             .collect()
     }
 
-    fn get_all_attrs(&self, def_id: stable_mir::DefId) -> Vec<stable_mir::crate_def::Attribute> {
+    fn all_tool_attrs(&self, def_id: stable_mir::DefId) -> Vec<stable_mir::crate_def::Attribute> {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let did = tables[def_id];
-        let filter_fn =
-            move |a: &&rustc_hir::Attribute| matches!(a.kind, rustc_hir::AttrKind::Normal(_));
         let attrs_iter = if let Some(did) = did.as_local() {
-            tcx.hir().attrs(tcx.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            tcx.hir_attrs(tcx.local_def_id_to_hir_id(did)).iter()
         } else {
-            tcx.attrs_for_def(did).iter().filter(filter_fn)
+            tcx.attrs_for_def(did).iter()
         };
         attrs_iter
-            .map(|attribute| {
-                let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
-                let span = attribute.span;
-                stable_mir::crate_def::Attribute::new(attr_str, span.stable(&mut *tables))
+            .filter_map(|attribute| {
+                if let Attribute::Unparsed(u) = attribute {
+                    let attr_str = rustc_hir_pretty::attribute_to_string(&tcx, attribute);
+                    Some(stable_mir::crate_def::Attribute::new(
+                        attr_str,
+                        u.span.stable(&mut *tables),
+                    ))
+                } else {
+                    None
+                }
             })
             .collect()
     }
@@ -450,17 +460,15 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let ty = ty::Ty::new_static_str(tcx);
         let bytes = value.as_bytes();
-        let val_tree = ty::ValTree::from_raw_bytes(tcx, bytes);
-
-        let ct = ty::Const::new_value(tcx, val_tree, ty);
-        super::convert::mir_const_from_ty_const(&mut *tables, ct, ty)
+        let valtree = ty::ValTree::from_raw_bytes(tcx, bytes);
+        let cv = ty::Value { ty, valtree };
+        let val = tcx.valtree_to_const_val(cv);
+        mir::Const::from_value(val, ty).stable(&mut tables)
     }
 
     fn new_const_bool(&self, value: bool) -> MirConst {
         let mut tables = self.0.borrow_mut();
-        let ct = ty::Const::from_bool(tables.tcx, value);
-        let ty = tables.tcx.types.bool;
-        super::convert::mir_const_from_ty_const(&mut *tables, ct, ty)
+        mir::Const::from_bool(tables.tcx, value).stable(&mut tables)
     }
 
     fn try_new_const_uint(&self, value: u128, uint_ty: UintTy) -> Result<MirConst, Error> {
@@ -472,13 +480,11 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
             .layout_of(ty::TypingEnv::fully_monomorphized().as_query_input(ty))
             .unwrap()
             .size;
-
-        // We don't use Const::from_bits since it doesn't have any error checking.
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
             Error::new(format!("Value overflow: cannot convert `{value}` to `{ty}`."))
         })?;
-        let ct = ty::Const::new_value(tables.tcx, ValTree::from_scalar_int(scalar), ty);
-        Ok(super::convert::mir_const_from_ty_const(&mut *tables, ct, ty))
+        Ok(mir::Const::from_scalar(tcx, mir::interpret::Scalar::Int(scalar), ty)
+            .stable(&mut tables))
     }
     fn try_new_ty_const_uint(
         &self,
@@ -498,7 +504,7 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let scalar = ScalarInt::try_from_uint(value, size).ok_or_else(|| {
             Error::new(format!("Value overflow: cannot convert `{value}` to `{ty}`."))
         })?;
-        Ok(ty::Const::new_value(tables.tcx, ValTree::from_scalar_int(scalar), ty)
+        Ok(ty::Const::new_value(tcx, ValTree::from_scalar_int(tcx, scalar), ty)
             .stable(&mut *tables))
     }
 
@@ -751,7 +757,9 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         let tcx = tables.tcx;
         let alloc_id = tables.tcx.vtable_allocation((
             ty.internal(&mut *tables, tcx),
-            trait_ref.internal(&mut *tables, tcx),
+            trait_ref
+                .internal(&mut *tables, tcx)
+                .map(|principal| tcx.instantiate_bound_regions_with_erased(principal)),
         ));
         Some(alloc_id.stable(&mut *tables))
     }

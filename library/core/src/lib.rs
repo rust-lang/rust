@@ -44,7 +44,7 @@
 //!    called. The `lang` attribute is called `eh_personality`.
 
 // Since core defines many fundamental lang items, all tests live in a
-// separate crate, libcoretest (library/core/tests), to avoid bizarre issues.
+// separate crate, coretests (library/coretests), to avoid bizarre issues.
 //
 // Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
 // this, both the generated test artifact and the linked libtest (which
@@ -101,19 +101,24 @@
 #![warn(multiple_supertrait_upcastable)]
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
+#![warn(unreachable_pub)]
 // Do not check link redundancy on bootstraping phase
 #![allow(rustdoc::redundant_explicit_links)]
 #![warn(rustdoc::unescaped_backticks)]
 //
 // Library features:
 // tidy-alphabetical-start
-#![cfg_attr(bootstrap, feature(do_not_recommend))]
 #![feature(array_ptr_get)]
 #![feature(asm_experimental_arch)]
+#![feature(bigint_helper_methods)]
+#![feature(bstr)]
+#![feature(bstr_internals)]
+#![feature(closure_track_caller)]
+#![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
-#![feature(const_typed_swap)]
 #![feature(core_intrinsics)]
 #![feature(coverage_attribute)]
+#![feature(disjoint_bitor)]
 #![feature(internal_impls_macro)]
 #![feature(ip)]
 #![feature(is_ascii_octdigit)]
@@ -187,7 +192,6 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![feature(strict_provenance_lints)]
-#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
@@ -198,14 +202,17 @@
 //
 // Target features:
 // tidy-alphabetical-start
+#![feature(aarch64_unstable_target_feature)]
 #![feature(arm_target_feature)]
 #![feature(avx512_target_feature)]
 #![feature(hexagon_target_feature)]
+#![feature(keylocker_x86)]
 #![feature(loongarch_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
 #![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
+#![feature(s390x_target_feature)]
 #![feature(sha512_sm_x86)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
@@ -219,7 +226,7 @@ extern crate self as core;
 
 #[prelude_import]
 #[allow(unused)]
-use prelude::rust_2021::*;
+use prelude::rust_2024::*;
 
 #[cfg(not(test))] // See #65860
 #[macro_use]
@@ -242,6 +249,9 @@ pub mod autodiff {
     #[unstable(feature = "autodiff", issue = "124509")]
     pub use crate::macros::builtin::autodiff;
 }
+
+#[unstable(feature = "contracts", issue = "128044")]
+pub mod contracts;
 
 #[unstable(feature = "cfg_match", issue = "115585")]
 pub use crate::macros::cfg_match;
@@ -335,6 +345,8 @@ pub mod ascii;
 pub mod asserting;
 #[unstable(feature = "async_iterator", issue = "79024")]
 pub mod async_iter;
+#[unstable(feature = "bstr", issue = "134915")]
+pub mod bstr;
 pub mod cell;
 pub mod char;
 pub mod ffi;
@@ -396,7 +408,8 @@ pub mod primitive;
     unused_imports,
     unsafe_op_in_unsafe_fn,
     ambiguous_glob_reexports,
-    deprecated_in_future
+    deprecated_in_future,
+    unreachable_pub
 )]
 #[allow(rustdoc::bare_urls)]
 mod core_arch;

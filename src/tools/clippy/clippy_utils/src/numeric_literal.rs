@@ -125,7 +125,7 @@ impl<'a> NumericLiteral<'a> {
                             integer = &digits[..exp_start];
                         } else {
                             fraction = Some(&digits[integer.len() + 1..exp_start]);
-                        };
+                        }
                         exponent = Some((&digits[exp_start..=i], &digits[i + 1..]));
                         break;
                     },

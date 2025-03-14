@@ -65,7 +65,7 @@ section below.
 
 A RISC-V toolchain can be obtained for Windows/Mac/Linux from the
 [`riscv-gnu-toolchain`](https://github.com/riscv-collab/riscv-gnu-toolchain)
-repostory. Binaries are available via
+repository. Binaries are available via
 [embecosm](https://www.embecosm.com/resources/tool-chain-downloads/#riscv-linux),
 and may also be available from your OS's package manager.
 
@@ -122,7 +122,7 @@ limactl shell riscv
 
 Using [Docker (with BuildKit)](https://docs.docker.com/build/buildkit/) the
 [`riscv64/ubuntu`](https://hub.docker.com/r/riscv64/ubuntu) image can be used
-to buiild or run `riscv64gc-unknown-linux-gnu` binaries.
+to build or run `riscv64gc-unknown-linux-gnu` binaries.
 
 ```bash
 docker run --platform linux/riscv64 -ti --rm --mount "type=bind,src=$(pwd),dst=/checkout" riscv64/ubuntu bash

@@ -22,7 +22,7 @@ pub(super) fn check_as_ptr<'tcx>(
     cx: &LateContext<'tcx>,
     expr: &'tcx Expr<'tcx>,
     receiver: &'tcx Expr<'tcx>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let ExprKind::Lit(lit) = receiver.kind
         && let LitKind::ByteStr(_, StrStyle::Cooked) | LitKind::Str(_, StrStyle::Cooked) = lit.node
@@ -32,7 +32,7 @@ pub(super) fn check_as_ptr<'tcx>(
             |parent| matches!(parent.kind, ExprKind::Call(func, _) if is_c_str_function(cx, func).is_some()),
         )
         && let Some(sugg) = rewrite_as_cstr(cx, lit.span)
-        && msrv.meets(msrvs::C_STR_LITERALS)
+        && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
         span_lint_and_sugg(
             cx,
@@ -65,11 +65,11 @@ fn is_c_str_function(cx: &LateContext<'_>, func: &Expr<'_>) -> Option<Symbol> {
 /// - `CStr::from_bytes_with_nul(..)`
 /// - `CStr::from_bytes_with_nul_unchecked(..)`
 /// - `CStr::from_ptr(..)`
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>], msrv: &Msrv) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, func: &Expr<'_>, args: &[Expr<'_>], msrv: Msrv) {
     if let Some(fn_name) = is_c_str_function(cx, func)
         && let [arg] = args
         && cx.tcx.sess.edition() >= Edition2021
-        && msrv.meets(msrvs::C_STR_LITERALS)
+        && msrv.meets(cx, msrvs::C_STR_LITERALS)
     {
         match fn_name.as_str() {
             name @ ("from_bytes_with_nul" | "from_bytes_with_nul_unchecked")
@@ -187,7 +187,7 @@ fn peel_ptr_cast<'tcx>(e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
 ///      ^ given this `x` expression, returns the `foo(...)` expression
 fn peel_ptr_cast_ancestors<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     let mut prev = e;
-    for (_, node) in cx.tcx.hir().parent_iter(e.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(e.hir_id) {
         if let Node::Expr(e) = node
             && get_cast_target(e).is_some()
         {

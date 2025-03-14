@@ -9,7 +9,6 @@ use rustc_hir::{
     Variant, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
@@ -126,7 +125,7 @@ declare_clippy_lint! {
     ///
     /// [cargo-pgo]: https://github.com/Kobzol/cargo-pgo/blob/main/README.md
     ///
-    #[clippy::version = "1.82.0"]
+    #[clippy::version = "1.84.0"]
     pub ARBITRARY_SOURCE_ITEM_ORDERING,
     restriction,
     "arbitrary source item ordering"
@@ -248,7 +247,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             ItemKind::Enum(enum_def, _generics) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;
                 for variant in enum_def.variants {
-                    if in_external_macro(cx.sess(), variant.span) {
+                    if variant.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -263,7 +262,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             ItemKind::Struct(VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
                 let mut cur_f: Option<&FieldDef<'_>> = None;
                 for field in *fields {
-                    if in_external_macro(cx.sess(), field.span) {
+                    if field.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -281,7 +280,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 let mut cur_t: Option<&TraitItemRef> = None;
 
                 for item in *item_ref {
-                    if in_external_macro(cx.sess(), item.span) {
+                    if item.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -304,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 let mut cur_t: Option<&ImplItemRef> = None;
 
                 for item in trait_impl.items {
-                    if in_external_macro(cx.sess(), item.span) {
+                    if item.span.in_external_macro(cx.sess().source_map()) {
                         continue;
                     }
 
@@ -339,7 +338,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             return;
         }
 
-        let items = module.item_ids.iter().map(|&id| cx.tcx.hir().item(id));
+        let items = module.item_ids.iter().map(|&id| cx.tcx.hir_item(id));
 
         // Iterates over the items within a module.
         //
@@ -348,7 +347,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
         // as no sorting by source map/line of code has to be applied.
         //
         for item in items {
-            if in_external_macro(cx.sess(), item.span) {
+            if item.span.in_external_macro(cx.sess().source_map()) {
                 continue;
             }
 
@@ -363,7 +362,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     }
                 } else if let ItemKind::ForeignMod { .. } = item.kind {
                     continue;
-                } else if let ItemKind::GlobalAsm(_) = item.kind {
+                } else if let ItemKind::GlobalAsm { .. } = item.kind {
                     continue;
                 } else if let ItemKind::Use(path, use_kind) = item.kind {
                     if path.segments.is_empty() {
@@ -428,8 +427,8 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
 
             // Makes a note of the current item for comparison with the next.
             cur_t = Some(CurItem {
-                order: module_level_order,
                 item,
+                order: module_level_order,
                 name: get_item_name(item),
             });
         }
@@ -445,8 +444,8 @@ fn convert_assoc_item_kind(value: AssocItemKind) -> SourceItemOrderingTraitAssoc
     #[allow(clippy::enum_glob_use)] // Very local glob use for legibility.
     use SourceItemOrderingTraitAssocItemKind::*;
     match value {
-        AssocItemKind::Const { .. } => Const,
-        AssocItemKind::Type { .. } => Type,
+        AssocItemKind::Const => Const,
+        AssocItemKind::Type => Type,
         AssocItemKind::Fn { .. } => Fn,
     }
 }
@@ -464,11 +463,11 @@ fn convert_module_item_kind(value: &ItemKind<'_>) -> SourceItemOrderingModuleIte
         ItemKind::Use(..) => Use,
         ItemKind::Static(..) => Static,
         ItemKind::Const(..) => Const,
-        ItemKind::Fn(..) => Fn,
+        ItemKind::Fn { .. } => Fn,
         ItemKind::Macro(..) => Macro,
         ItemKind::Mod(..) => Mod,
         ItemKind::ForeignMod { .. } => ForeignMod,
-        ItemKind::GlobalAsm(..) => GlobalAsm,
+        ItemKind::GlobalAsm { .. } => GlobalAsm,
         ItemKind::TyAlias(..) => TyAlias,
         ItemKind::Enum(..) => Enum,
         ItemKind::Struct(..) => Struct,

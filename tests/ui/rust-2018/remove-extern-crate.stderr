@@ -19,8 +19,9 @@ LL |     extern crate core;
    |
 help: convert it to a `use`
    |
-LL |     use core;
-   |     ~~~
+LL -     extern crate core;
+LL +     use core;
+   |
 
 warning: `extern crate` is not idiomatic in the new edition
   --> $DIR/remove-extern-crate.rs:45:5
@@ -30,8 +31,9 @@ LL |     pub extern crate core;
    |
 help: convert it to a `use`
    |
-LL |     pub use core;
-   |         ~~~
+LL -     pub extern crate core;
+LL +     pub use core;
+   |
 
 warning: 3 warnings emitted
 

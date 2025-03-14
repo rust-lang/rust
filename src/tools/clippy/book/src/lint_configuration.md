@@ -71,6 +71,16 @@ Whether `dbg!` should be allowed in test functions or `#[cfg(test)]`
 * [`dbg_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#dbg_macro)
 
 
+## `allow-expect-in-consts`
+Whether `expect` should be allowed in code always evaluated at compile time
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
+
+
 ## `allow-expect-in-tests`
 Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 
@@ -79,6 +89,16 @@ Whether `expect` should be allowed in test functions or `#[cfg(test)]`
 ---
 **Affected lints:**
 * [`expect_used`](https://rust-lang.github.io/rust-clippy/master/index.html#expect_used)
+
+
+## `allow-indexing-slicing-in-tests`
+Whether `indexing_slicing` should be allowed in test functions or `#[cfg(test)]`
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`indexing_slicing`](https://rust-lang.github.io/rust-clippy/master/index.html#indexing_slicing)
 
 
 ## `allow-mixed-uninlined-format-args`
@@ -98,7 +118,7 @@ Whether to allow `r#""#` when `r""` can be used
 
 ---
 **Affected lints:**
-* [`unnecessary_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#unnecessary_raw_string_hashes)
+* [`needless_raw_string_hashes`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_raw_string_hashes)
 
 
 ## `allow-panic-in-tests`
@@ -152,6 +172,16 @@ default configuration of Clippy. By default, any configuration will replace the 
 ---
 **Affected lints:**
 * [`renamed_function_params`](https://rust-lang.github.io/rust-clippy/master/index.html#renamed_function_params)
+
+
+## `allow-unwrap-in-consts`
+Whether `unwrap` should be allowed in code always evaluated at compile time
+
+**Default Value:** `true`
+
+---
+**Affected lints:**
+* [`unwrap_used`](https://rust-lang.github.io/rust-clippy/master/index.html#unwrap_used)
 
 
 ## `allow-unwrap-in-tests`
@@ -350,6 +380,7 @@ Suppress lints whenever the suggested change would cause breakage for other crat
 * [`linkedlist`](https://rust-lang.github.io/rust-clippy/master/index.html#linkedlist)
 * [`needless_pass_by_ref_mut`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_pass_by_ref_mut)
 * [`option_option`](https://rust-lang.github.io/rust-clippy/master/index.html#option_option)
+* [`owned_cow`](https://rust-lang.github.io/rust-clippy/master/index.html#owned_cow)
 * [`rc_buffer`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_buffer)
 * [`rc_mutex`](https://rust-lang.github.io/rust-clippy/master/index.html#rc_mutex)
 * [`redundant_allocation`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_allocation)
@@ -382,6 +413,16 @@ For internal testing only, ignores the current `publish` settings in the Cargo m
 ---
 **Affected lints:**
 * [`cargo_common_metadata`](https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata)
+
+
+## `check-incompatible-msrv-in-tests`
+Whether to check MSRV compatibility in `#[test]` and `#[cfg(test)]` code.
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`incompatible_msrv`](https://rust-lang.github.io/rust-clippy/master/index.html#incompatible_msrv)
 
 
 ## `check-private-items`
@@ -572,6 +613,33 @@ The maximum size of the `Err`-variant in a `Result` returned from a function
 * [`result_large_err`](https://rust-lang.github.io/rust-clippy/master/index.html#result_large_err)
 
 
+## `lint-inconsistent-struct-field-initializers`
+Whether to suggest reordering constructor fields when initializers are present.
+
+Warnings produced by this configuration aren't necessarily fixed by just reordering the fields. Even if the
+suggested code would compile, it can change semantics if the initializer expressions have side effects. The
+following example [from rust-clippy#11846] shows how the suggestion can run into borrow check errors:
+
+```rust
+struct MyStruct {
+    vector: Vec<u32>,
+    length: usize
+}
+fn main() {
+    let vector = vec![1,2,3];
+    MyStruct { length: vector.len(), vector};
+}
+```
+
+[from rust-clippy#11846]: https://github.com/rust-lang/rust-clippy/issues/11846#issuecomment-1820747924
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`inconsistent_struct_constructor`](https://rust-lang.github.io/rust-clippy/master/index.html#inconsistent_struct_constructor)
+
+
 ## `literal-representation-threshold`
 The lower bound for linting decimal literals
 
@@ -701,19 +769,27 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`from_over_into`](https://rust-lang.github.io/rust-clippy/master/index.html#from_over_into)
 * [`if_then_some_else_none`](https://rust-lang.github.io/rust-clippy/master/index.html#if_then_some_else_none)
 * [`index_refutable_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#index_refutable_slice)
+* [`io_other_error`](https://rust-lang.github.io/rust-clippy/master/index.html#io_other_error)
 * [`iter_kv_map`](https://rust-lang.github.io/rust-clippy/master/index.html#iter_kv_map)
 * [`legacy_numeric_constants`](https://rust-lang.github.io/rust-clippy/master/index.html#legacy_numeric_constants)
+* [`lines_filter_map_ok`](https://rust-lang.github.io/rust-clippy/master/index.html#lines_filter_map_ok)
 * [`manual_bits`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_bits)
 * [`manual_c_str_literals`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_c_str_literals)
 * [`manual_clamp`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_clamp)
+* [`manual_div_ceil`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_div_ceil)
+* [`manual_flatten`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_flatten)
 * [`manual_hash_one`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_hash_one)
 * [`manual_is_ascii_check`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_is_ascii_check)
 * [`manual_let_else`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_let_else)
+* [`manual_midpoint`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_midpoint)
 * [`manual_non_exhaustive`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_non_exhaustive)
+* [`manual_option_as_slice`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_option_as_slice)
 * [`manual_pattern_char_comparison`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_pattern_char_comparison)
 * [`manual_range_contains`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_range_contains)
 * [`manual_rem_euclid`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_rem_euclid)
+* [`manual_repeat_n`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_repeat_n)
 * [`manual_retain`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_retain)
+* [`manual_slice_fill`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_slice_fill)
 * [`manual_split_once`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_split_once)
 * [`manual_str_repeat`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_str_repeat)
 * [`manual_strip`](https://rust-lang.github.io/rust-clippy/master/index.html#manual_strip)
@@ -722,14 +798,18 @@ The minimum rust version that the project supports. Defaults to the `rust-versio
 * [`map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#map_unwrap_or)
 * [`map_with_unused_argument_over_ranges`](https://rust-lang.github.io/rust-clippy/master/index.html#map_with_unused_argument_over_ranges)
 * [`match_like_matches_macro`](https://rust-lang.github.io/rust-clippy/master/index.html#match_like_matches_macro)
+* [`mem_replace_option_with_some`](https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_option_with_some)
 * [`mem_replace_with_default`](https://rust-lang.github.io/rust-clippy/master/index.html#mem_replace_with_default)
 * [`missing_const_for_fn`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_const_for_fn)
 * [`needless_borrow`](https://rust-lang.github.io/rust-clippy/master/index.html#needless_borrow)
+* [`non_std_lazy_statics`](https://rust-lang.github.io/rust-clippy/master/index.html#non_std_lazy_statics)
 * [`option_as_ref_deref`](https://rust-lang.github.io/rust-clippy/master/index.html#option_as_ref_deref)
 * [`option_map_unwrap_or`](https://rust-lang.github.io/rust-clippy/master/index.html#option_map_unwrap_or)
 * [`ptr_as_ptr`](https://rust-lang.github.io/rust-clippy/master/index.html#ptr_as_ptr)
 * [`redundant_field_names`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_field_names)
 * [`redundant_static_lifetimes`](https://rust-lang.github.io/rust-clippy/master/index.html#redundant_static_lifetimes)
+* [`repeat_vec_with_capacity`](https://rust-lang.github.io/rust-clippy/master/index.html#repeat_vec_with_capacity)
+* [`same_item_push`](https://rust-lang.github.io/rust-clippy/master/index.html#same_item_push)
 * [`seek_from_current`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_from_current)
 * [`seek_rewind`](https://rust-lang.github.io/rust-clippy/master/index.html#seek_rewind)
 * [`transmute_ptr_to_ref`](https://rust-lang.github.io/rust-clippy/master/index.html#transmute_ptr_to_ref)

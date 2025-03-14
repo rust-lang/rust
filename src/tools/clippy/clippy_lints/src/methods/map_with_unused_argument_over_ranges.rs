@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{eager_or_lazy, higher, usage};
+use clippy_utils::{eager_or_lazy, higher, std_or_core, usage};
 use rustc_ast::LitKind;
 use rustc_ast::ast::RangeLimits;
 use rustc_data_structures::packed::Pu128;
@@ -19,7 +19,7 @@ fn extract_count_with_applicability(
 ) -> Option<String> {
     let start = range.start?;
     let end = range.end?;
-    // TODO: This doens't handle if either the start or end are negative literals, or if the start is
+    // TODO: This doesn't handle if either the start or end are negative literals, or if the start is
     // not a literal. In the first case, we need to be careful about how we handle computing the
     // count to avoid overflows. In the second, we may need to add parenthesis to make the
     // suggestion correct.
@@ -62,26 +62,27 @@ pub(super) fn check(
     ex: &Expr<'_>,
     receiver: &Expr<'_>,
     arg: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
     method_call_span: Span,
 ) {
     let mut applicability = Applicability::MaybeIncorrect;
     if let Some(range) = higher::Range::hir(receiver)
         && let ExprKind::Closure(Closure { body, .. }) = arg.kind
-        && let body_hir = cx.tcx.hir().body(*body)
+        && let body_hir = cx.tcx.hir_body(*body)
         && let Body {
             params: [param],
             value: body_expr,
         } = body_hir
         && !usage::BindingUsageFinder::are_params_used(cx, body_hir)
         && let Some(count) = extract_count_with_applicability(cx, range, &mut applicability)
+        && let Some(exec_context) = std_or_core(cx)
     {
         let method_to_use_name;
         let new_span;
         let use_take;
 
         if eager_or_lazy::switch_to_eager_eval(cx, body_expr) {
-            if msrv.meets(msrvs::REPEAT_N) {
+            if msrv.meets(cx, msrvs::REPEAT_N) {
                 method_to_use_name = "repeat_n";
                 let body_snippet = snippet_with_applicability(cx, body_expr.span, "..", &mut applicability);
                 new_span = (arg.span, format!("{body_snippet}, {count}"));
@@ -92,7 +93,7 @@ pub(super) fn check(
                 new_span = (arg.span, body_snippet.to_string());
                 use_take = true;
             }
-        } else if msrv.meets(msrvs::REPEAT_WITH) {
+        } else if msrv.meets(cx, msrvs::REPEAT_WITH) {
             method_to_use_name = "repeat_with";
             new_span = (param.span, String::new());
             use_take = true;
@@ -105,7 +106,7 @@ pub(super) fn check(
         let mut parts = vec![
             (
                 receiver.span.to(method_call_span),
-                format!("std::iter::{method_to_use_name}"),
+                format!("{exec_context}::iter::{method_to_use_name}"),
             ),
             new_span,
         ];

@@ -1,4 +1,4 @@
-//@ compile-flags: -Z panic-in-drop=abort -O
+//@ compile-flags: -Z panic-in-drop=abort -Copt-level=3
 //@ ignore-msvc
 
 // Ensure that unwinding code paths are eliminated from the output after

@@ -7,8 +7,9 @@ LL |     f()  :
    = note: if you meant to annotate an expression with a type, the type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 help: use a semicolon instead
    |
-LL |     f()  ;
-   |          ~
+LL -     f()  :
+LL +     f()  ;
+   |
 
 error: aborting due to 1 previous error
 

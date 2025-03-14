@@ -5,7 +5,9 @@
 //!
 //! It is used like this:
 //!
-//! ```
+//! ```ignore
+//! # use hir_def::dyn_map::DynMap;
+//! # use hir_def::dyn_map::Key;
 //! // keys define submaps of a `DynMap`
 //! const STRING_TO_U32: Key<String, u32> = Key::new();
 //! const U32_TO_VEC: Key<u32, Vec<bool>> = Key::new();
@@ -31,9 +33,9 @@ pub mod keys {
 
     use crate::{
         dyn_map::{DynMap, Policy},
-        BlockId, ConstId, EnumId, EnumVariantId, ExternCrateId, FieldId, FunctionId, ImplId,
-        LifetimeParamId, Macro2Id, MacroRulesId, ProcMacroId, StaticId, StructId, TraitAliasId,
-        TraitId, TypeAliasId, TypeOrConstParamId, UnionId, UseId,
+        BlockId, ConstId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId, FieldId, FunctionId,
+        ImplId, LifetimeParamId, Macro2Id, MacroRulesId, ProcMacroId, StaticId, StructId,
+        TraitAliasId, TraitId, TypeAliasId, TypeOrConstParamId, UnionId, UseId,
     };
 
     pub type Key<K, V> = crate::dyn_map::Key<AstPtr<K>, V, AstPtrPolicy<K, V>>;
@@ -44,6 +46,7 @@ pub mod keys {
     pub const STATIC: Key<ast::Static, StaticId> = Key::new();
     pub const TYPE_ALIAS: Key<ast::TypeAlias, TypeAliasId> = Key::new();
     pub const IMPL: Key<ast::Impl, ImplId> = Key::new();
+    pub const EXTERN_BLOCK: Key<ast::ExternBlock, ExternBlockId> = Key::new();
     pub const TRAIT: Key<ast::Trait, TraitId> = Key::new();
     pub const TRAIT_ALIAS: Key<ast::TraitAlias, TraitAliasId> = Key::new();
     pub const STRUCT: Key<ast::Struct, StructId> = Key::new();
@@ -90,7 +93,7 @@ pub mod keys {
             map.map.get::<FxHashMap<AstPtr<AST>, ID>>()?.get(key)
         }
         fn is_empty(map: &DynMap) -> bool {
-            map.map.get::<FxHashMap<AstPtr<AST>, ID>>().map_or(true, |it| it.is_empty())
+            map.map.get::<FxHashMap<AstPtr<AST>, ID>>().is_none_or(|it| it.is_empty())
         }
     }
 }
@@ -141,7 +144,7 @@ impl<K: Hash + Eq + 'static, V: 'static> Policy for (K, V) {
         map.map.get::<FxHashMap<K, V>>()?.get(key)
     }
     fn is_empty(map: &DynMap) -> bool {
-        map.map.get::<FxHashMap<K, V>>().map_or(true, |it| it.is_empty())
+        map.map.get::<FxHashMap<K, V>>().is_none_or(|it| it.is_empty())
     }
 }
 

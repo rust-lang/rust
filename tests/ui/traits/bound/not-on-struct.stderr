@@ -166,8 +166,9 @@ LL + fn g() -> Traitor {
    |
 help: a trait with a similar name exists
    |
-LL | fn g() -> Trait + 'static {
-   |           ~~~~~
+LL - fn g() -> Traitor + 'static {
+LL + fn g() -> Trait + 'static {
+   |
 
 error: aborting due to 11 previous errors
 

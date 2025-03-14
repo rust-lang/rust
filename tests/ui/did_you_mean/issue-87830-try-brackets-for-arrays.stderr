@@ -24,8 +24,9 @@ LL | const BAR: [&str; 3] = {"one", "two", "three"};
    |
 help: to make an array, use square brackets instead of curly braces
    |
-LL | const BAR: [&str; 3] = ["one", "two", "three"];
-   |                        ~                     ~
+LL - const BAR: [&str; 3] = {"one", "two", "three"};
+LL + const BAR: [&str; 3] = ["one", "two", "three"];
+   |
 
 error: this is a block expression, not an array
   --> $DIR/issue-87830-try-brackets-for-arrays.rs:12:5
@@ -35,8 +36,9 @@ LL |     {1, 2, 3};
    |
 help: to make an array, use square brackets instead of curly braces
    |
-LL |     [1, 2, 3];
-   |     ~       ~
+LL -     {1, 2, 3};
+LL +     [1, 2, 3];
+   |
 
 error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
   --> $DIR/issue-87830-try-brackets-for-arrays.rs:17:6

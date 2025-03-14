@@ -41,9 +41,9 @@ pub fn prettify_macro_expansion(
                 } else if let Some(dep) =
                     target_crate.dependencies.iter().find(|dep| dep.crate_id == macro_def_crate)
                 {
-                    make::tokens::ident(&dep.name)
+                    make::tokens::ident(dep.name.as_str())
                 } else if let Some(crate_name) = &crate_graph[macro_def_crate].display_name {
-                    make::tokens::ident(crate_name.crate_name())
+                    make::tokens::ident(crate_name.crate_name().as_str())
                 } else {
                     return dollar_crate.clone();
                 }

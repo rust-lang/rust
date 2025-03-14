@@ -1,12 +1,12 @@
-error: item does not constrain `FooImpl::{opaque#0}`, but has it in its signature
-  --> $DIR/issue-63355.rs:40:8
+error: item does not constrain `FooImpl::{opaque#0}`
+  --> $DIR/issue-63355.rs:43:8
    |
 LL |     fn bar() -> Self::Bar {
    |        ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/issue-63355.rs:29:20
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/issue-63355.rs:30:20
    |
 LL | pub type FooImpl = impl Foo;
    |                    ^^^^^^^^

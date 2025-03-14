@@ -10,14 +10,16 @@
 //! - More information about protocols can be found [here](https://edk2-docs.gitbook.io/edk-ii-uefi-driver-writer-s-guide/3_foundation/36_protocols_and_handles)
 
 use r_efi::efi::{self, Guid};
-use r_efi::protocols::{device_path, device_path_to_text, shell};
+use r_efi::protocols::{device_path, device_path_to_text, service_binding, shell};
 
 use crate::ffi::{OsStr, OsString};
 use crate::io::{self, const_error};
-use crate::mem::{MaybeUninit, size_of};
+use crate::marker::PhantomData;
+use crate::mem::MaybeUninit;
 use crate::os::uefi::env::boot_services;
 use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
 use crate::os::uefi::{self};
+use crate::path::Path;
 use crate::ptr::NonNull;
 use crate::slice;
 use crate::sync::atomic::{AtomicPtr, Ordering};
@@ -156,7 +158,7 @@ pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result
 /// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
 pub(crate) fn image_handle_protocol<T>(protocol_guid: Guid) -> io::Result<NonNull<T>> {
     let system_handle = uefi::env::try_image_handle()
-        .ok_or(io::const_error!(io::ErrorKind::NotFound, "Protocol not found in Image handle"))?;
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "protocol not found in Image handle"))?;
     open_protocol(system_handle, protocol_guid)
 }
 
@@ -176,7 +178,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         };
 
         let path = os_string_from_raw(path_ptr)
-            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "Invalid path"))?;
+            .ok_or(io::const_error!(io::ErrorKind::InvalidData, "invalid path"))?;
 
         if let Some(boot_services) = crate::os::uefi::env::boot_services() {
             let boot_services: NonNull<r_efi::efi::BootServices> = boot_services.cast();
@@ -211,7 +213,7 @@ pub(crate) fn device_path_to_text(path: NonNull<device_path::Protocol>) -> io::R
         }
     }
 
-    Err(io::const_error!(io::ErrorKind::NotFound, "No device path to text protocol found"))
+    Err(io::const_error!(io::ErrorKind::NotFound, "no device path to text protocol found"))
 }
 
 /// Gets RuntimeServices.
@@ -222,14 +224,14 @@ pub(crate) fn runtime_services() -> Option<NonNull<r_efi::efi::RuntimeServices>>
     NonNull::new(runtime_services)
 }
 
-pub(crate) struct DevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
+pub(crate) struct OwnedDevicePath(NonNull<r_efi::protocols::device_path::Protocol>);
 
-impl DevicePath {
+impl OwnedDevicePath {
     pub(crate) fn from_text(p: &OsStr) -> io::Result<Self> {
         fn inner(
             p: &OsStr,
             protocol: NonNull<r_efi::protocols::device_path_from_text::Protocol>,
-        ) -> io::Result<DevicePath> {
+        ) -> io::Result<OwnedDevicePath> {
             let path_vec = p.encode_wide().chain(Some(0)).collect::<Vec<u16>>();
             if path_vec[..path_vec.len() - 1].contains(&0) {
                 return Err(const_error!(
@@ -242,8 +244,8 @@ impl DevicePath {
                 unsafe { ((*protocol.as_ptr()).convert_text_to_device_path)(path_vec.as_ptr()) };
 
             NonNull::new(path)
-                .map(DevicePath)
-                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "Invalid Device Path"))
+                .map(OwnedDevicePath)
+                .ok_or_else(|| const_error!(io::ErrorKind::InvalidFilename, "invalid Device Path"))
         }
 
         static LAST_VALID_HANDLE: AtomicPtr<crate::ffi::c_void> =
@@ -271,22 +273,59 @@ impl DevicePath {
 
         io::Result::Err(const_error!(
             io::ErrorKind::NotFound,
-            "DevicePathFromText Protocol not found"
+            "DevicePathFromText Protocol not found",
         ))
     }
 
-    pub(crate) fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
+    pub(crate) const fn as_ptr(&self) -> *mut r_efi::protocols::device_path::Protocol {
         self.0.as_ptr()
+    }
+
+    pub(crate) const fn borrow<'a>(&'a self) -> BorrowedDevicePath<'a> {
+        BorrowedDevicePath::new(self.0)
     }
 }
 
-impl Drop for DevicePath {
+impl Drop for OwnedDevicePath {
     fn drop(&mut self) {
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
             unsafe {
                 ((*bt.as_ptr()).free_pool)(self.0.as_ptr() as *mut crate::ffi::c_void);
             }
+        }
+    }
+}
+
+impl crate::fmt::Debug for OwnedDevicePath {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        match self.borrow().to_text() {
+            Ok(p) => p.fmt(f),
+            Err(_) => f.debug_struct("OwnedDevicePath").finish_non_exhaustive(),
+        }
+    }
+}
+
+pub(crate) struct BorrowedDevicePath<'a> {
+    protocol: NonNull<r_efi::protocols::device_path::Protocol>,
+    phantom: PhantomData<&'a r_efi::protocols::device_path::Protocol>,
+}
+
+impl<'a> BorrowedDevicePath<'a> {
+    pub(crate) const fn new(protocol: NonNull<r_efi::protocols::device_path::Protocol>) -> Self {
+        Self { protocol, phantom: PhantomData }
+    }
+
+    pub(crate) fn to_text(&self) -> io::Result<OsString> {
+        device_path_to_text(self.protocol)
+    }
+}
+
+impl<'a> crate::fmt::Debug for BorrowedDevicePath<'a> {
+    fn fmt(&self, f: &mut crate::fmt::Formatter<'_>) -> crate::fmt::Result {
+        match self.to_text() {
+            Ok(p) => p.fmt(f),
+            Err(_) => f.debug_struct("BorrowedDevicePath").finish_non_exhaustive(),
         }
     }
 }
@@ -442,4 +481,81 @@ pub(crate) fn open_shell() -> Option<NonNull<shell::Protocol>> {
     }
 
     None
+}
+
+/// Get device path protocol associated with shell mapping.
+///
+/// returns None in case no such mapping is exists
+pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDevicePath<'static>> {
+    let shell =
+        open_shell().ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell not found"))?;
+    let mut path = os_string_to_raw(map.as_os_str())
+        .ok_or(io::const_error!(io::ErrorKind::InvalidFilename, "invalid UEFI shell mapping"))?;
+
+    // The Device Path Protocol pointer returned by UEFI shell is owned by the shell and is not
+    // freed throughout it's lifetime. So it has a 'static lifetime.
+    let protocol = unsafe { ((*shell.as_ptr()).get_device_path_from_map)(path.as_mut_ptr()) };
+    let protocol = NonNull::new(protocol)
+        .ok_or(io::const_error!(io::ErrorKind::NotFound, "UEFI Shell mapping not found"))?;
+
+    Ok(BorrowedDevicePath::new(protocol))
+}
+
+/// Helper for UEFI Protocols which are created and destroyed using
+/// [EFI_SERVICE_BINDING_PROTCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+pub(crate) struct ServiceProtocol {
+    service_guid: r_efi::efi::Guid,
+    handle: NonNull<crate::ffi::c_void>,
+    child_handle: NonNull<crate::ffi::c_void>,
+}
+
+impl ServiceProtocol {
+    #[expect(dead_code)]
+    pub(crate) fn open(service_guid: r_efi::efi::Guid) -> io::Result<Self> {
+        let handles = locate_handles(service_guid)?;
+
+        for handle in handles {
+            if let Ok(protocol) = open_protocol::<service_binding::Protocol>(handle, service_guid) {
+                let Ok(child_handle) = Self::create_child(protocol) else {
+                    continue;
+                };
+
+                return Ok(Self { service_guid, handle, child_handle });
+            }
+        }
+
+        Err(io::const_error!(io::ErrorKind::NotFound, "no service binding protocol found"))
+    }
+
+    #[expect(dead_code)]
+    pub(crate) fn child_handle(&self) -> NonNull<crate::ffi::c_void> {
+        self.child_handle
+    }
+
+    fn create_child(
+        sbp: NonNull<service_binding::Protocol>,
+    ) -> io::Result<NonNull<crate::ffi::c_void>> {
+        let mut child_handle: r_efi::efi::Handle = crate::ptr::null_mut();
+        // SAFETY: A new handle is allocated if a pointer to NULL is passed.
+        let r = unsafe { ((*sbp.as_ptr()).create_child)(sbp.as_ptr(), &mut child_handle) };
+
+        if r.is_error() {
+            Err(crate::io::Error::from_raw_os_error(r.as_usize()))
+        } else {
+            NonNull::new(child_handle)
+                .ok_or(const_error!(io::ErrorKind::Other, "null child handle"))
+        }
+    }
+}
+
+impl Drop for ServiceProtocol {
+    fn drop(&mut self) {
+        if let Ok(sbp) = open_protocol::<service_binding::Protocol>(self.handle, self.service_guid)
+        {
+            // SAFETY: Child handle must be allocated by the current service binding protocol.
+            let _ = unsafe {
+                ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), self.child_handle.as_ptr())
+            };
+        }
+    }
 }

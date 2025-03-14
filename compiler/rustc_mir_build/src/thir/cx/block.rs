@@ -6,9 +6,9 @@ use rustc_middle::ty;
 use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use tracing::debug;
 
-use crate::thir::cx::Cx;
+use crate::thir::cx::ThirBuildCx;
 
-impl<'tcx> Cx<'tcx> {
+impl<'tcx> ThirBuildCx<'tcx> {
     pub(crate) fn mirror_block(&mut self, block: &'tcx hir::Block<'tcx>) -> BlockId {
         // We have to eagerly lower the "spine" of the statements
         // in order to get the lexical scoping correctly.

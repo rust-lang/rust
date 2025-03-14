@@ -11,7 +11,6 @@ impl Xyz {
         foo: &dyn Foo, bar: &'a dyn Foo
     ) -> &dyn Foo //~ ERROR missing lifetime specifier
     {
-        //~^ ERROR explicit lifetime required in the type of `foo` [E0621]
         foo
     }
 }

@@ -1,8 +1,7 @@
 use crate::utils::internal_lints::lint_without_lint_pass::is_lint_ref_type;
 use clippy_utils::diagnostics::span_lint_and_help;
 use regex::Regex;
-use rustc_ast as ast;
-use rustc_hir::{Item, ItemKind, Mutability};
+use rustc_hir::{Attribute, Item, ItemKind, Mutability};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::impl_lint_pass;
 
@@ -51,7 +50,7 @@ impl<'tcx> LateLintPass<'tcx> for AlmostStandardFormulation {
                 .hir()
                 .attrs(item.hir_id())
                 .iter()
-                .filter_map(|attr| ast::Attribute::doc_str(attr).map(|sym| (sym, attr)));
+                .filter_map(|attr| Attribute::doc_str(attr).map(|sym| (sym, attr)));
             if is_lint_ref_type(cx, ty) {
                 for (line, attr) in lines {
                     let cur_line = line.as_str().trim();

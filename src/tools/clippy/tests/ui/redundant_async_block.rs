@@ -11,6 +11,7 @@ async fn func2() -> String {
     let s = String::from("some string");
     let f = async { (*s).to_owned() };
     let x = async { f.await };
+    //~^ redundant_async_block
     x.await
 }
 
@@ -18,13 +19,16 @@ fn main() {
     let fut1 = async { 17 };
     // Lint
     let fut2 = async { fut1.await };
+    //~^ redundant_async_block
 
     let fut1 = async { 25 };
     // Lint
     let fut2 = async move { fut1.await };
+    //~^ redundant_async_block
 
     // Lint
     let fut = async { async { 42 }.await };
+    //~^ redundant_async_block
 
     // Do not lint: not a single expression
     let fut = async {
@@ -41,6 +45,7 @@ fn capture_local() -> impl Future<Output = i32> {
     let fut = async { 17 };
     // Lint
     async move { fut.await }
+    //~^ redundant_async_block
 }
 
 fn capture_local_closure(s: &str) -> impl Future<Output = &str> {
@@ -54,11 +59,13 @@ fn capture_arg(s: &str) -> impl Future<Output = &str> {
     let fut = async move { s };
     // Lint
     async move { fut.await }
+    //~^ redundant_async_block
 }
 
 fn capture_future_arg<T>(f: impl Future<Output = T>) -> impl Future<Output = T> {
     // Lint
     async { f.await }
+    //~^ redundant_async_block
 }
 
 fn capture_func_result<FN, F, T>(f: FN) -> impl Future<Output = T>
@@ -82,6 +89,7 @@ where
 {
     // Lint
     async { async { f().await + 1 }.await }
+    //~^ redundant_async_block
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +153,7 @@ fn all_from_macro() -> impl Future<Output = u32> {
         () => {
             // Lint
             async { async { 42 }.await }
+            //~^ redundant_async_block
         };
     }
     mac!()
@@ -165,6 +174,7 @@ fn safe_parts_from_macro() -> impl Future<Output = u32> {
         ($e: expr) => {
             // Lint
             async { async { $e }.await }
+            //~^ redundant_async_block
         };
     }
     mac!(42)

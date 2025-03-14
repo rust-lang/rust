@@ -21,8 +21,9 @@ LL | fn foo<F: Fn(&char) -> bool + Fn(char) -> bool>(f: F) {
    |                               ^^^^^^^^^^^^^^^^ required by this bound in `foo`
 help: consider adjusting the signature so it does not borrow its argument
    |
-LL |     foo(move |char| v);
-   |               ~~~~
+LL -     foo(move |x| v);
+LL +     foo(move |char| v);
+   |
 
 error: aborting due to 1 previous error
 

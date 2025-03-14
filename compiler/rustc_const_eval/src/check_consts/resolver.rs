@@ -197,11 +197,13 @@ where
             | mir::Rvalue::CopyForDeref(..)
             | mir::Rvalue::ThreadLocalRef(..)
             | mir::Rvalue::Repeat(..)
+            | mir::Rvalue::Len(..)
             | mir::Rvalue::BinaryOp(..)
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
             | mir::Rvalue::Discriminant(..)
-            | mir::Rvalue::Aggregate(..) => {}
+            | mir::Rvalue::Aggregate(..)
+            | mir::Rvalue::WrapUnsafeBinder(..) => {}
         }
     }
 

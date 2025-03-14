@@ -29,7 +29,7 @@ fn float_to_decimal_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
     sign: flt2dec::Sign,
-    precision: usize,
+    precision: u16,
 ) -> Result
 where
     T: flt2dec::DecodableFloat,
@@ -40,7 +40,7 @@ where
         flt2dec::strategy::grisu::format_exact,
         *num,
         sign,
-        precision,
+        precision.into(),
         &mut buf,
         &mut parts,
     );
@@ -55,7 +55,7 @@ fn float_to_decimal_common_shortest<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
     sign: flt2dec::Sign,
-    precision: usize,
+    precision: u16,
 ) -> Result
 where
     T: flt2dec::DecodableFloat,
@@ -68,7 +68,7 @@ where
         flt2dec::strategy::grisu::format_shortest,
         *num,
         sign,
-        precision,
+        precision.into(),
         &mut buf,
         &mut parts,
     );
@@ -101,7 +101,7 @@ fn float_to_exponential_common_exact<T>(
     fmt: &mut Formatter<'_>,
     num: &T,
     sign: flt2dec::Sign,
-    precision: usize,
+    precision: u16,
     upper: bool,
 ) -> Result
 where
@@ -113,7 +113,7 @@ where
         flt2dec::strategy::grisu::format_exact,
         *num,
         sign,
-        precision,
+        precision.into(),
         upper,
         &mut buf,
         &mut parts,

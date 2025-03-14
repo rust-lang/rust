@@ -15,13 +15,13 @@ error: unnecessary `Symbol` to string conversion
   --> tests/ui-internal/unnecessary_symbol_str.rs:17:5
    |
 LL |     Symbol::intern("foo").to_string() == "self";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") == rustc_span::symbol::kw::SelfLower`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") == rustc_span::kw::SelfLower`
 
 error: unnecessary `Symbol` to string conversion
   --> tests/ui-internal/unnecessary_symbol_str.rs:18:5
    |
 LL |     Symbol::intern("foo").to_ident_string() != "Self";
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") != rustc_span::symbol::kw::SelfUpper`
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Symbol::intern("foo") != rustc_span::kw::SelfUpper`
 
 error: unnecessary `Symbol` to string conversion
   --> tests/ui-internal/unnecessary_symbol_str.rs:19:5

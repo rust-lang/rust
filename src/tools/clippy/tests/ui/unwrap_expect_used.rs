@@ -25,9 +25,10 @@ impl<T> OptionExt for Option<T> {
 
 fn main() {
     Some(3).unwrap();
-    //~^ ERROR: used `unwrap()` on an `Option` value
+    //~^ unwrap_used
+
     Some(3).expect("Hello world!");
-    //~^ ERROR: used `expect()` on an `Option` value
+    //~^ expect_used
 
     // Don't trigger on unwrap_err on an option
     Some(3).unwrap_err();
@@ -43,11 +44,25 @@ fn main() {
 
     let a: Result<i32, i32> = Ok(3);
     a.unwrap();
-    //~^ ERROR: used `unwrap()` on a `Result` value
+    //~^ unwrap_used
+
     a.expect("Hello world!");
-    //~^ ERROR: used `expect()` on a `Result` value
+    //~^ expect_used
+
     a.unwrap_err();
-    //~^ ERROR: used `unwrap_err()` on a `Result` value
+    //~^ unwrap_used
+
     a.expect_err("Hello error!");
-    //~^ ERROR: used `expect_err()` on a `Result` value
+    //~^ expect_used
+
+    // Don't trigger in compile time contexts by default
+    const SOME: Option<i32> = Some(3);
+    const UNWRAPPED: i32 = SOME.unwrap();
+    const EXPECTED: i32 = SOME.expect("Not three?");
+    const {
+        SOME.unwrap();
+    }
+    const {
+        SOME.expect("Still not three?");
+    }
 }

@@ -7,28 +7,29 @@ use std::iter;
 #[cfg(feature = "master")]
 use gccjit::FunctionType;
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp};
+#[cfg(feature = "master")]
+use rustc_abi::ExternAbi;
+use rustc_abi::{BackendRepr, HasDataLayout};
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::IntPredicate;
 use rustc_codegen_ssa::errors::InvalidMonomorphization;
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::{PlaceRef, PlaceValue};
+#[cfg(feature = "master")]
+use rustc_codegen_ssa::traits::MiscCodegenMethods;
 use rustc_codegen_ssa::traits::{
-    ArgAbiBuilderMethods, BuilderMethods, ConstCodegenMethods, IntrinsicCallBuilderMethods,
+    ArgAbiBuilderMethods, BaseTypeCodegenMethods, BuilderMethods, ConstCodegenMethods,
+    IntrinsicCallBuilderMethods,
 };
-#[cfg(feature = "master")]
-use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, MiscCodegenMethods};
 use rustc_middle::bug;
-use rustc_middle::ty::layout::LayoutOf;
 #[cfg(feature = "master")]
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv};
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
+use rustc_middle::ty::layout::{HasTypingEnv, LayoutOf};
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::abi::HasDataLayout;
-use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::PanicStrategy;
-#[cfg(feature = "master")]
-use rustc_target::spec::abi::Abi;
 
 #[cfg(feature = "master")]
 use crate::abi::FnAbiGccExt;
@@ -83,14 +84,11 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::ceilf64 => "ceil",
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
-        sym::rintf32 => "rintf",
-        sym::rintf64 => "rint",
-        sym::nearbyintf32 => "nearbyintf",
-        sym::nearbyintf64 => "nearbyint",
+        // We match the LLVM backend and lower this to `rint`.
+        sym::round_ties_even_f32 => "rintf",
+        sym::round_ties_even_f64 => "rint",
         sym::roundf32 => "roundf",
         sym::roundf64 => "round",
-        sym::roundevenf32 => "roundevenf",
-        sym::roundevenf64 => "roundeven",
         sym::abort => "abort",
         _ => return None,
     };
@@ -139,6 +137,18 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                     &args.iter().map(|arg| arg.immediate()).collect::<Vec<_>>(),
                 )
             }
+            sym::fmaf16 => {
+                // TODO(antoyo): use the correct builtin for f16.
+                let func = self.cx.context.get_builtin_function("fmaf");
+                let args: Vec<_> = args
+                    .iter()
+                    .map(|arg| {
+                        self.cx.context.new_cast(self.location, arg.immediate(), self.cx.type_f32())
+                    })
+                    .collect();
+                let result = self.cx.context.new_call(self.location, func, &args);
+                self.cx.context.new_cast(self.location, result, self.cx.type_f16())
+            }
             sym::is_val_statically_known => {
                 let a = args[0].immediate();
                 let builtin = self.context.get_builtin_function("__builtin_constant_p");
@@ -168,14 +178,19 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
             sym::volatile_load | sym::unaligned_volatile_load => {
                 let tp_ty = fn_args.type_at(0);
                 let ptr = args[0].immediate();
+                let layout = self.layout_of(tp_ty);
                 let load = if let PassMode::Cast { cast: ref ty, pad_i32: _ } = fn_abi.ret.mode {
                     let gcc_ty = ty.gcc_type(self);
                     self.volatile_load(gcc_ty, ptr)
                 } else {
-                    self.volatile_load(self.layout_of(tp_ty).gcc_type(self), ptr)
+                    self.volatile_load(layout.gcc_type(self), ptr)
                 };
                 // TODO(antoyo): set alignment.
-                self.to_immediate(load, self.layout_of(tp_ty))
+                if let BackendRepr::Scalar(scalar) = layout.backend_repr {
+                    self.to_immediate_scalar(load, scalar)
+                } else {
+                    load
+                }
             }
             sym::volatile_store => {
                 let dst = args[0].deref(self.cx());
@@ -297,7 +312,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let layout = self.layout_of(tp_ty).layout;
                 let _use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    Uninhabited | Vector { .. } => false,
+                    SimdVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),
@@ -988,7 +1003,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_addo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
@@ -1058,7 +1074,8 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
                     128 => "__rust_i128_subo",
                     _ => unreachable!(),
                 };
-                let (int_result, overflow) = self.operation_with_overflow(func_name, lhs, rhs);
+                let (int_result, overflow) =
+                    self.operation_with_overflow(func_name, lhs, rhs, width);
                 self.llbb().add_assignment(self.location, res, int_result);
                 overflow
             };
@@ -1223,7 +1240,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             tcx.types.unit,
             false,
             rustc_hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(*mut i8, *mut i8) -> ()`
@@ -1234,7 +1251,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
             tcx.types.unit,
             false,
             rustc_hir::Safety::Unsafe,
-            Abi::Rust,
+            ExternAbi::Rust,
         )),
     );
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
@@ -1243,7 +1260,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(
         tcx.types.i32,
         false,
         rustc_hir::Safety::Unsafe,
-        Abi::Rust,
+        ExternAbi::Rust,
     ));
     let rust_try = gen_fn(cx, "__rust_try", rust_fn_sig, codegen);
     cx.rust_try_fn.set(Some(rust_try));

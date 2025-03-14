@@ -2,12 +2,12 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![deny(missing_docs)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(file_buffered)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod assert_dep_graph;
@@ -24,7 +24,7 @@ use rustc_middle::util::Providers;
 #[allow(missing_docs)]
 pub fn provide(providers: &mut Providers) {
     providers.hooks.save_dep_graph =
-        |tcx| tcx.sess.time("serialize_dep_graph", || persist::save_dep_graph(tcx.tcx));
+        |tcx| tcx.sess.time("serialize_dep_graph", || persist::save_dep_graph(tcx));
 }
 
 rustc_fluent_macro::fluent_messages! { "../messages.ftl" }

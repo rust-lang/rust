@@ -1,3 +1,5 @@
+#![crate_name = "bevy_ecs"]
+
 //@ check-pass
 
 // We currently special case bevy from erroring on incorrect implied bounds

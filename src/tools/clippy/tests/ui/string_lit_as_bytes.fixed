@@ -9,16 +9,21 @@ extern crate macro_rules;
 macro_rules! b {
     ($b:literal) => {
         const B: &[u8] = b"warning";
+        //~^ string_lit_as_bytes
     };
 }
 
 fn str_lit_as_bytes() {
     let bs = b"hello there";
+    //~^ string_lit_as_bytes
 
     let bs = br###"raw string with 3# plus " ""###;
+    //~^ string_lit_as_bytes
 
     let bs = b"lit to string".to_vec();
+    //~^ string_lit_as_bytes
     let bs = b"lit to owned".to_vec();
+    //~^ string_lit_as_bytes
 
     b!("warning");
 
@@ -36,8 +41,10 @@ fn str_lit_as_bytes() {
     let current_version = env!("CARGO_PKG_VERSION").as_bytes();
 
     let includestr = include_bytes!("string_lit_as_bytes.rs");
+    //~^ string_lit_as_bytes
 
     let _ = b"string with newline\t\n";
+    //~^ string_lit_as_bytes
 
     let _ = match "x".as_bytes() {
         b"xx" => 0,

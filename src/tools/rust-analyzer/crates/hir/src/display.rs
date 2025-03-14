@@ -1,7 +1,10 @@
 //! HirDisplay implementations for various hir types.
 use either::Either;
 use hir_def::{
-    data::adt::{StructKind, VariantData},
+    data::{
+        adt::{StructKind, VariantData},
+        TraitFlags,
+    },
     generics::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
         WherePredicateTypeTarget,
@@ -20,10 +23,10 @@ use hir_ty::{
 use itertools::Itertools;
 
 use crate::{
-    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Enum, ExternCrateDecl,
-    Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam, Macro, Module,
-    SelfParam, Static, Struct, Trait, TraitAlias, TupleField, TyBuilder, Type, TypeAlias,
-    TypeOrConstParam, TypeParam, Union, Variant,
+    Adt, AsAssocItem, AssocItem, AssocItemContainer, Const, ConstParam, Crate, Enum,
+    ExternCrateDecl, Field, Function, GenericParam, HasCrate, HasVisibility, Impl, LifetimeParam,
+    Macro, Module, SelfParam, Static, Struct, Trait, TraitAlias, TraitRef, TupleField, TyBuilder,
+    Type, TypeAlias, TypeOrConstParam, TypeParam, Union, Variant,
 };
 
 impl HirDisplay for Function {
@@ -77,7 +80,9 @@ impl HirDisplay for Function {
         if data.is_async() {
             f.write_str("async ")?;
         }
-        if self.is_unsafe_to_call(db) {
+        // FIXME: This will show `unsafe` for functions that are `#[target_feature]` but not unsafe
+        // (they are conditionally unsafe to call). We probably should show something else.
+        if self.is_unsafe_to_call(db, None, f.edition()) {
             f.write_str("unsafe ")?;
         }
         if let Some(abi) = &data.abi {
@@ -743,6 +748,12 @@ impl HirDisplay for Static {
     }
 }
 
+impl HirDisplay for TraitRef {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        self.trait_ref.hir_fmt(f)
+    }
+}
+
 impl HirDisplay for Trait {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         write_trait_header(self, f)?;
@@ -785,10 +796,10 @@ impl HirDisplay for Trait {
 fn write_trait_header(trait_: &Trait, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
     write_visibility(trait_.module(f.db).id, trait_.visibility(f.db), f)?;
     let data = f.db.trait_data(trait_.id);
-    if data.is_unsafe {
+    if data.flags.contains(TraitFlags::IS_UNSAFE) {
         f.write_str("unsafe ")?;
     }
-    if data.is_auto {
+    if data.flags.contains(TraitFlags::IS_AUTO) {
         f.write_str("auto ")?;
     }
     write!(f, "trait {}", data.name.display(f.db.upcast(), f.edition()))?;
@@ -837,14 +848,27 @@ impl HirDisplay for TypeAlias {
 
 impl HirDisplay for Module {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
-        // FIXME: Module doesn't have visibility saved in data.
+        match self.parent(f.db) {
+            Some(m) => write_visibility(m.id, self.visibility(f.db), f)?,
+            None => {
+                return match self.krate(f.db).display_name(f.db) {
+                    Some(name) => write!(f, "extern crate {name}"),
+                    None => f.write_str("extern crate {unknown}"),
+                }
+            }
+        }
         match self.name(f.db) {
             Some(name) => write!(f, "mod {}", name.display(f.db.upcast(), f.edition())),
-            None if self.is_crate_root() => match self.krate(f.db).display_name(f.db) {
-                Some(name) => write!(f, "extern crate {name}"),
-                None => f.write_str("extern crate {unknown}"),
-            },
-            None => f.write_str("mod {unnamed}"),
+            None => f.write_str("mod {unknown}"),
+        }
+    }
+}
+
+impl HirDisplay for Crate {
+    fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
+        match self.display_name(f.db) {
+            Some(name) => write!(f, "extern crate {name}"),
+            None => f.write_str("extern crate {unknown}"),
         }
     }
 }

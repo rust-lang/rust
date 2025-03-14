@@ -1,4 +1,3 @@
-//@ build-fail
 #![feature(rustc_attrs)]
 
 //   O --> G --> C --> A
@@ -10,134 +9,126 @@
 //           |-> M --> K
 //                 \-> L
 
-#[rustc_dump_vtable]
 trait A {
-    //~^ error vtable
     fn foo_a(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait B {
-    //~^ error vtable
     fn foo_b(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait C: A + B {
-    //~^ error vtable
     fn foo_c(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait D {
-    //~^ error vtable
     fn foo_d(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait E {
-    //~^ error vtable
     fn foo_e(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait F: D + E {
-    //~^ error vtable
     fn foo_f(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait G: C + F {
     fn foo_g(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait H {
-    //~^ error vtable
     fn foo_h(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait I {
-    //~^ error vtable
     fn foo_i(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait J: H + I {
-    //~^ error vtable
     fn foo_j(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait K {
-    //~^ error vtable
     fn foo_k(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait L {
-    //~^ error vtable
     fn foo_l(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait M: K + L {
-    //~^ error vtable
     fn foo_m(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait N: J + M {
-    //~^ error vtable
     fn foo_n(&self) {}
 }
 
-#[rustc_dump_vtable]
 trait O: G + N {
-    //~^ error vtable
     fn foo_o(&self) {}
 }
 
 struct S;
 
+#[rustc_dump_vtable]
 impl A for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl B for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl C for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl D for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl E for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl F for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl G for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl H for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl I for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl J for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl K for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl L for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl M for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl N for S {}
+//~^ ERROR vtable entries
+
+#[rustc_dump_vtable]
 impl O for S {}
+//~^ ERROR vtable entries
 
-macro_rules! monomorphize_vtable {
-    ($trait:ident) => {{
-        fn foo(_ : &dyn $trait) {}
-        foo(&S);
-    }}
-}
-
-fn main() {
-    monomorphize_vtable!(O);
-
-    monomorphize_vtable!(A);
-    monomorphize_vtable!(B);
-    monomorphize_vtable!(C);
-    monomorphize_vtable!(D);
-    monomorphize_vtable!(E);
-    monomorphize_vtable!(F);
-    monomorphize_vtable!(H);
-    monomorphize_vtable!(I);
-    monomorphize_vtable!(J);
-    monomorphize_vtable!(K);
-    monomorphize_vtable!(L);
-    monomorphize_vtable!(M);
-    monomorphize_vtable!(N);
-}
+fn main() {}

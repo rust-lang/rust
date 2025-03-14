@@ -399,4 +399,38 @@ fn f(s@m::Struct {
 "#,
         )
     }
+
+    #[test]
+    fn editions_between_macros() {
+        check_diagnostics(
+            r#"
+//- /edition2015.rs crate:edition2015 edition:2015
+#[macro_export]
+macro_rules! pass_expr_thorough {
+    ($e:expr) => { $e };
+}
+
+//- /edition2018.rs crate:edition2018 deps:edition2015 edition:2018
+async fn bar() {}
+async fn foo() {
+    edition2015::pass_expr_thorough!(bar().await);
+}
+        "#,
+        );
+        check_diagnostics(
+            r#"
+//- /edition2018.rs crate:edition2018 edition:2018
+pub async fn bar() {}
+#[macro_export]
+macro_rules! make_await {
+    () => { async { $crate::bar().await }; };
+}
+
+//- /edition2015.rs crate:edition2015 deps:edition2018 edition:2015
+fn foo() {
+    edition2018::make_await!();
+}
+        "#,
+        );
+    }
 }

@@ -7,7 +7,7 @@ LL |         self.0 = 32;
 help: consider changing this to be a mutable reference
    |
 LL |     fn zap(&mut self) {
-   |            ~~~~~~~~~
+   |             +++
 
 error[E0594]: cannot assign to `*foo`, which is behind a `&` reference
   --> $DIR/suggest-ref-mut.rs:15:5

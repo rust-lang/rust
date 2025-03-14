@@ -1,8 +1,12 @@
-error[E0253]: `foo` is not directly importable
+error[E0658]: `use` associated items of traits is unstable
   --> $DIR/use-from-trait-xc.rs:5:5
    |
 LL | use use_from_trait_xc::Trait::foo;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0253]: `Assoc` is not directly importable
   --> $DIR/use-from-trait-xc.rs:8:5
@@ -10,11 +14,15 @@ error[E0253]: `Assoc` is not directly importable
 LL | use use_from_trait_xc::Trait::Assoc;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
 
-error[E0253]: `CONST` is not directly importable
+error[E0658]: `use` associated items of traits is unstable
   --> $DIR/use-from-trait-xc.rs:11:5
    |
 LL | use use_from_trait_xc::Trait::CONST;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ cannot be imported directly
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0432]: unresolved import `use_from_trait_xc::Foo`
   --> $DIR/use-from-trait-xc.rs:14:24
@@ -66,5 +74,5 @@ LL | struct Foo;
 
 error: aborting due to 9 previous errors
 
-Some errors have detailed explanations: E0253, E0432, E0603.
+Some errors have detailed explanations: E0253, E0432, E0603, E0658.
 For more information about an error, try `rustc --explain E0253`.

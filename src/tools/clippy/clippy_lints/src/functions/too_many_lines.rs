@@ -3,7 +3,6 @@ use clippy_utils::source::SpanRangeExt;
 use rustc_hir as hir;
 use rustc_hir::intravisit::FnKind;
 use rustc_lint::{LateContext, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_span::Span;
 
 use super::TOO_MANY_LINES;
@@ -17,7 +16,7 @@ pub(super) fn check_fn(
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
     // Don't check closures for `too_many_lines` to avoid duplicated lints.
-    if matches!(kind, FnKind::Closure) || in_external_macro(cx.sess(), span) {
+    if matches!(kind, FnKind::Closure) || span.in_external_macro(cx.sess().source_map()) {
         return;
     }
 

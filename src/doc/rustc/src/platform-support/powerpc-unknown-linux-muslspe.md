@@ -2,8 +2,10 @@
 
 **Tier: 3**
 
-This target is very similar to already existing ones like `powerpc_unknown_linux_musl` and `powerpc_unknown_linux_gnuspe`.
+This target is very similar to already existing ones like `powerpc-unknown-linux-musl` and `powerpc-unknown-linux-gnuspe`.
 This one has PowerPC SPE support for musl. Unfortunately, the last supported gcc version with PowerPC SPE is 8.4.0.
+
+See also [platform support documentation of `powerpc-unknown-linux-gnuspe`](powerpc-unknown-linux-gnuspe.md) for information about PowerPC SPE.
 
 ## Target maintainers
 

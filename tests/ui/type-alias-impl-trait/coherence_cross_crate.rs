@@ -13,6 +13,7 @@ trait OtherTrait {}
 
 type Alias = impl SomeTrait;
 
+#[define_opaque(Alias)]
 fn constrain() -> Alias {
     ()
 }

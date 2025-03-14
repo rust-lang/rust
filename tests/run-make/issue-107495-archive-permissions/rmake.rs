@@ -1,12 +1,9 @@
-#![feature(rustc_private)]
-
-#[cfg(unix)]
-extern crate libc;
-
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::Path;
 
+#[cfg(unix)]
+use run_make_support::libc;
 use run_make_support::{aux_build, rfs};
 
 fn main() {

@@ -2,15 +2,12 @@
 
 use std::path::Path;
 
-use rustc_ast::{self as ast, attr};
+use rustc_ast as ast;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::Session;
-use crate::config::{self, CrateType, Input, OutFileName, OutputFilenames, OutputType};
-use crate::errors::{
-    self, CrateNameDoesNotMatch, CrateNameEmpty, CrateNameInvalid, FileIsNotWriteable,
-    InvalidCharacterInCrateName, InvalidCrateNameHelp,
-};
+use crate::config::{self, CrateType, OutFileName, OutputFilenames, OutputType};
+use crate::errors::{self, CrateNameEmpty, FileIsNotWriteable, InvalidCharacterInCrateName};
 
 pub fn out_filename(
     sess: &Session,
@@ -49,69 +46,31 @@ fn is_writeable(p: &Path) -> bool {
     }
 }
 
-pub fn find_crate_name(sess: &Session, attrs: &[ast::Attribute]) -> Symbol {
-    let validate = |s: Symbol, span: Option<Span>| {
-        validate_crate_name(sess, s, span);
-        s
-    };
-
-    // Look in attributes 100% of the time to make sure the attribute is marked
-    // as used. After doing this, however, we still prioritize a crate name from
-    // the command line over one found in the #[crate_name] attribute. If we
-    // find both we ensure that they're the same later on as well.
-    let attr_crate_name =
-        attr::find_by_name(attrs, sym::crate_name).and_then(|at| at.value_str().map(|s| (at, s)));
-
-    if let Some(ref s) = sess.opts.crate_name {
-        let s = Symbol::intern(s);
-        if let Some((attr, name)) = attr_crate_name {
-            if name != s {
-                sess.dcx().emit_err(CrateNameDoesNotMatch { span: attr.span, s, name });
-            }
-        }
-        return validate(s, None);
-    }
-
-    if let Some((attr, s)) = attr_crate_name {
-        return validate(s, Some(attr.span));
-    }
-    if let Input::File(ref path) = sess.io.input {
-        if let Some(s) = path.file_stem().and_then(|s| s.to_str()) {
-            if s.starts_with('-') {
-                sess.dcx().emit_err(CrateNameInvalid { s });
-            } else {
-                return validate(Symbol::intern(&s.replace('-', "_")), None);
-            }
-        }
-    }
-
-    sym::rust_out
-}
-
-pub fn validate_crate_name(sess: &Session, s: Symbol, sp: Option<Span>) {
+/// Validate the given crate name.
+///
+/// Note that this validation is more permissive than identifier parsing. It considers
+/// non-empty sequences of alphanumeric and underscore characters to be valid crate names.
+/// Most notably, it accepts names starting with a numeric character like `0`!
+///
+/// Furthermore, this shouldn't be taken as the canonical crate name validator.
+/// Other places may use a more restrictive grammar (e.g., identifier or ASCII identifier).
+pub fn validate_crate_name(sess: &Session, crate_name: Symbol, span: Option<Span>) {
     let mut guar = None;
-    {
-        if s.is_empty() {
-            guar = Some(sess.dcx().emit_err(CrateNameEmpty { span: sp }));
+
+    if crate_name.is_empty() {
+        guar = Some(sess.dcx().emit_err(CrateNameEmpty { span }));
+    }
+
+    for c in crate_name.as_str().chars() {
+        if c.is_alphanumeric() || c == '_' {
+            continue;
         }
-        for c in s.as_str().chars() {
-            if c.is_alphanumeric() {
-                continue;
-            }
-            if c == '_' {
-                continue;
-            }
-            guar = Some(sess.dcx().emit_err(InvalidCharacterInCrateName {
-                span: sp,
-                character: c,
-                crate_name: s,
-                crate_name_help: if sp.is_none() {
-                    Some(InvalidCrateNameHelp::AddCrateName)
-                } else {
-                    None
-                },
-            }));
-        }
+        guar = Some(sess.dcx().emit_err(InvalidCharacterInCrateName {
+            span,
+            character: c,
+            crate_name,
+            help: span.is_none().then_some(()),
+        }));
     }
 
     if let Some(guar) = guar {

@@ -65,7 +65,7 @@ pub(super) fn add_locals_header_comment(fx: &mut FunctionCx<'_, '_, '_>) {
     if fx.clif_comments.enabled() {
         fx.add_global_comment(String::new());
         fx.add_global_comment(
-            "kind  local ty                              size align (abi,pref)".to_string(),
+            "kind  local ty                              size align (abi)".to_string(),
         );
     }
 }
@@ -84,14 +84,13 @@ pub(super) fn add_local_place_comments<'tcx>(
     let (kind, extra) = place.debug_comment();
 
     fx.add_global_comment(format!(
-        "{:<5} {:5} {:30} {:4}b {}, {}{}{}",
+        "{:<5} {:5} {:30} {:4}b {}{}{}",
         kind,
         format!("{:?}", local),
         format!("{:?}", ty),
         size.bytes(),
         align.abi.bytes(),
-        align.pref.bytes(),
-        if extra.is_empty() { "" } else { "              " },
+        if extra.is_empty() { "" } else { "                " },
         extra,
     ));
 }

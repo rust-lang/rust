@@ -20,8 +20,13 @@ The target name follow this format: `ARCH[-VENDOR]-nuttx-ABI`, where `ARCH` is t
 
 The following target names are defined:
 
-- `thumbv6m-nuttx-eal`
-- `thumbv7m-nuttx-eal`
+- `aarch64-unknown-nuttx`
+- `armv7a-nuttx-eabi`
+- `armv7a-nuttx-eabihf`
+- `thumbv6m-nuttx-eabi`
+- `thumbv7a-nuttx-eabi`
+- `thumbv7a-nuttx-eabihf`
+- `thumbv7m-nuttx-eabi`
 - `thumbv7em-nuttx-eabi`
 - `thumbv7em-nuttx-eabihf`
 - `thumbv8m.base-nuttx-eabi`

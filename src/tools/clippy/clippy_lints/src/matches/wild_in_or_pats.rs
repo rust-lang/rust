@@ -13,7 +13,7 @@ pub(crate) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, arms: &[Arm<'_>]) {
         && has_non_exhaustive_attr(cx.tcx, *adt_def)
     {
         return;
-    };
+    }
     for arm in arms {
         if let PatKind::Or(fields) = arm.pat.kind {
             // look for multiple fields in this arm that contains at least one Wild pattern

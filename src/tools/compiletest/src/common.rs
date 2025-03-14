@@ -39,17 +39,21 @@ macro_rules! string_enum {
         }
 
         impl FromStr for $name {
-            type Err = ();
+            type Err = String;
 
-            fn from_str(s: &str) -> Result<Self, ()> {
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
                 match s {
                     $($repr => Ok(Self::$variant),)*
-                    _ => Err(()),
+                    _ => Err(format!(concat!("unknown `", stringify!($name), "` variant: `{}`"), s)),
                 }
             }
         }
     }
 }
+
+// Make the macro visible outside of this module, for tests.
+#[cfg(test)]
+pub(crate) use string_enum;
 
 string_enum! {
     #[derive(Clone, Copy, PartialEq, Debug)]
@@ -63,7 +67,7 @@ string_enum! {
         Incremental => "incremental",
         RunMake => "run-make",
         Ui => "ui",
-        JsDocTest => "js-doc-test",
+        RustdocJs => "rustdoc-js",
         MirOpt => "mir-opt",
         Assembly => "assembly",
         CoverageMap => "coverage-map",
@@ -186,6 +190,9 @@ pub struct Config {
     /// The cargo executable.
     pub cargo_path: Option<PathBuf>,
 
+    /// Rustc executable used to compile run-make recipes.
+    pub stage0_rustc_path: Option<PathBuf>,
+
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
@@ -211,16 +218,22 @@ pub struct Config {
     /// `None` then these tests will be ignored.
     pub run_clang_based_tests_with: Option<String>,
 
-    /// The directory containing the tests to run
-    pub src_base: PathBuf,
+    /// The directory containing the sources.
+    pub src_root: PathBuf,
+    /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
+    pub src_test_suite_root: PathBuf,
 
-    /// The directory where programs should be built
-    pub build_base: PathBuf,
+    /// Root build directory (e.g. `build/`).
+    pub build_root: PathBuf,
+    /// Test suite specific build directory (e.g. `build/host/test/ui/`).
+    pub build_test_suite_root: PathBuf,
 
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
 
-    /// The name of the stage being built (stage1, etc)
+    /// The number of the stage under test.
+    pub stage: u32,
+    /// The id of the stage under test (stage1-xxx, etc).
     pub stage_id: String,
 
     /// The test mode, e.g. ui or debuginfo.
@@ -339,7 +352,7 @@ pub struct Config {
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
-    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    /// created in `<test_suite_build_root>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
     /// whether to run `tidy` (html-tidy) when a rustdoc test fails
@@ -468,9 +481,17 @@ impl Config {
     }
 
     pub fn has_asm_support(&self) -> bool {
+        // This should match the stable list in `LoweringContext::lower_inline_asm`.
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
-            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "x86",
+            "x86_64",
+            "arm",
+            "aarch64",
+            "arm64ec",
+            "riscv32",
             "riscv64",
+            "loongarch64",
+            "s390x",
             // These targets require an additional asm_experimental_arch feature.
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
@@ -483,6 +504,17 @@ impl Config {
             nightly_branch: &self.nightly_branch,
             git_merge_commit_email: &self.git_merge_commit_email,
         }
+    }
+
+    pub fn has_subprocess_support(&self) -> bool {
+        // FIXME(#135928): compiletest is always a **host** tool. Building and running an
+        // capability detection executable against the **target** is not trivial. The short term
+        // solution here is to hard-code some targets to allow/deny, unfortunately.
+
+        let unsupported_target = self.target_cfg().env == "sgx"
+            || matches!(self.target_cfg().arch.as_str(), "wasm32" | "wasm64")
+            || self.target_cfg().os == "emscripten";
+        !unsupported_target
     }
 }
 
@@ -500,6 +532,7 @@ pub struct TargetCfgs {
     pub all_abis: HashSet<String>,
     pub all_families: HashSet<String>,
     pub all_pointer_widths: HashSet<String>,
+    pub all_rustc_abis: HashSet<String>,
 }
 
 impl TargetCfgs {
@@ -519,6 +552,9 @@ impl TargetCfgs {
         let mut all_abis = HashSet::new();
         let mut all_families = HashSet::new();
         let mut all_pointer_widths = HashSet::new();
+        // NOTE: for distinction between `abi` and `rustc_abi`, see comment on
+        // `TargetCfg::rustc_abi`.
+        let mut all_rustc_abis = HashSet::new();
 
         // If current target is not included in the `--print=all-target-specs-json` output,
         // we check whether it is a custom target from the user or a synthetic target from bootstrap.
@@ -559,7 +595,9 @@ impl TargetCfgs {
                 all_families.insert(family.clone());
             }
             all_pointer_widths.insert(format!("{}bit", cfg.pointer_width));
-
+            if let Some(rustc_abi) = &cfg.rustc_abi {
+                all_rustc_abis.insert(rustc_abi.clone());
+            }
             all_targets.insert(target.clone());
         }
 
@@ -573,6 +611,7 @@ impl TargetCfgs {
             all_abis,
             all_families,
             all_pointer_widths,
+            all_rustc_abis,
         }
     }
 
@@ -659,6 +698,10 @@ pub struct TargetCfg {
     pub(crate) xray: bool,
     #[serde(default = "default_reloc_model")]
     pub(crate) relocation_model: String,
+    // NOTE: `rustc_abi` should not be confused with `abi`. `rustc_abi` was introduced in #137037 to
+    // make SSE2 *required* by the ABI (kind of a hack to make a target feature *required* via the
+    // target spec).
+    pub(crate) rustc_abi: Option<String>,
 
     // Not present in target cfg json output, additional derived information.
     #[serde(skip)]
@@ -782,12 +825,16 @@ pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
 pub const UI_COVERAGE_MAP: &str = "cov-map";
 
-/// Absolute path to the directory where all output for all tests in the given
-/// `relative_dir` group should reside. Example:
-///   /path/to/build/host-tuple/test/ui/relative/
+/// Absolute path to the directory where all output for all tests in the given `relative_dir` group
+/// should reside. Example:
+///
+/// ```text
+/// /path/to/build/host-tuple/test/ui/relative/
+/// ```
+///
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
-    config.build_base.join(relative_dir)
+    config.build_test_suite_root.join(relative_dir)
 }
 
 /// Generates a unique name for the test, such as `testname.revision.mode`.

@@ -1,20 +1,16 @@
 error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
+  --> $DIR/interpret-in-promoted.rs:13:28
    |
-   = note: entering unreachable code
+LL |     let _x: &'static () = &ub();
+   |                            ^^^^ entering unreachable code
    |
-note: inside `unreachable_unchecked`
-  --> $SRC_DIR/core/src/hint.rs:LL:COL
 note: inside `ub`
   --> $DIR/interpret-in-promoted.rs:7:5
    |
 LL |     std::hint::unreachable_unchecked();
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `FOO`
-  --> $DIR/interpret-in-promoted.rs:13:28
-   |
-LL |     let _x: &'static () = &ub();
-   |                            ^^^^
+note: inside `unreachable_unchecked`
+  --> $SRC_DIR/core/src/hint.rs:LL:COL
 
 note: erroneous constant encountered
   --> $DIR/interpret-in-promoted.rs:13:27

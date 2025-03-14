@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::num::NonZero;
 
-pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob};
+pub(crate) use decoder::{CrateMetadata, CrateNumMap, MetadataBlob, TargetModifiers};
 use decoder::{DecodeContext, Metadata};
 use def_path_hash_map::DefPathHashMapRef;
 use encoder::EncodeContext;
@@ -10,12 +10,13 @@ use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
 use rustc_hir::lang_items::LangItem;
 use rustc_index::IndexVec;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_macros::{
     Decodable, Encodable, MetadataDecodable, MetadataEncodable, TyDecodable, TyEncodable,
 };
@@ -32,7 +33,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{mir, trivially_parameterized_over_tcx};
 use rustc_serialize::opaque::FileEncoder;
-use rustc_session::config::SymbolManglingVersion;
+use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
@@ -282,6 +283,7 @@ pub(crate) struct CrateRoot {
     def_path_hash_map: LazyValue<DefPathHashMapRef<'static>>,
 
     source_map: LazyTable<u32, Option<LazyValue<rustc_span::SourceFile>>>,
+    target_modifiers: LazyArray<TargetModifier>,
 
     compiler_builtins: bool,
     needs_allocator: bool,
@@ -303,9 +305,9 @@ pub(crate) struct RawDefId {
     index: u32,
 }
 
-impl Into<RawDefId> for DefId {
-    fn into(self) -> RawDefId {
-        RawDefId { krate: self.krate.as_u32(), index: self.index.as_u32() }
+impl From<DefId> for RawDefId {
+    fn from(val: DefId) -> Self {
+        RawDefId { krate: val.krate.as_u32(), index: val.index.as_u32() }
     }
 }
 
@@ -386,7 +388,7 @@ define_tables! {
     // corresponding DefPathHash.
     def_path_hashes: Table<DefIndex, u64>,
     explicit_item_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
-    explicit_item_super_predicates: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
+    explicit_item_self_bounds: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     inferred_outlives_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_super_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
     explicit_implied_predicates_of: Table<DefIndex, LazyArray<(ty::Clause<'static>, Span)>>,
@@ -439,7 +441,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
-    rendered_precise_capturing_args: Table<DefIndex, LazyArray<Symbol>>,
+    rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
@@ -450,7 +452,7 @@ define_tables! {
     trait_item_def_id: Table<DefIndex, RawDefId>,
     expn_that_defined: Table<DefIndex, LazyValue<ExpnId>>,
     default_fields: Table<DefIndex, LazyValue<DefId>>,
-    params_in_repr: Table<DefIndex, LazyValue<BitSet<u32>>>,
+    params_in_repr: Table<DefIndex, LazyValue<DenseBitSet<u32>>>,
     repr_options: Table<DefIndex, LazyValue<ReprOptions>>,
     // `def_keys` and `def_path_hashes` represent a lazy version of a
     // `DefPathTable`. This allows us to avoid deserializing an entire

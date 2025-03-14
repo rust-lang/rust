@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_trait_method;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::{is_trait_method, span_contains_comment};
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
@@ -17,10 +17,15 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, recv: &Expr<'_>, map_
         let mut applicability = Applicability::MachineApplicable;
 
         let closure_snippet = snippet_with_applicability(cx, map_arg.span, "..", &mut applicability);
+        let span = expr.span.with_lo(map_span.lo());
+        // If the methods are separated with comments, we don't apply suggestion automatically.
+        if span_contains_comment(cx.tcx.sess.source_map(), span) {
+            applicability = Applicability::Unspecified;
+        }
         span_lint_and_sugg(
             cx,
             MAP_FLATTEN,
-            expr.span.with_lo(map_span.lo()),
+            span,
             format!("called `map(..).flatten()` on `{caller_ty_name}`"),
             format!("try replacing `map` with `{method_to_use}` and remove the `.flatten()`"),
             format!("{method_to_use}({closure_snippet})"),

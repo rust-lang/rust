@@ -19,13 +19,11 @@ pub struct ExpandedMacro {
 //
 // Shows the full macro expansion of the macro at the current caret position.
 //
-// |===
-// | Editor  | Action Name
+// | Editor  | Action Name |
+// |---------|-------------|
+// | VS Code | **rust-analyzer: Expand macro recursively at caret** |
 //
-// | VS Code | **rust-analyzer: Expand macro recursively at caret**
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif[]
+// ![Expand Macro Recursively](https://user-images.githubusercontent.com/48062697/113020648-b3973180-917a-11eb-84a9-ecb921293dc5.gif)
 pub(crate) fn expand_macro(db: &RootDatabase, position: FilePosition) -> Option<ExpandedMacro> {
     let sema = Semantics::new(db);
     let file = sema.parse_guess_edition(position.file_id);
@@ -253,6 +251,7 @@ fn _format(
     let &crate_id = db.relevant_crates(file_id).iter().next()?;
     let edition = db.crate_graph()[crate_id].edition;
 
+    #[allow(clippy::disallowed_methods)]
     let mut cmd = std::process::Command::new(toolchain::Tool::Rustfmt.path());
     cmd.arg("--edition");
     cmd.arg(edition.to_string());
@@ -295,7 +294,7 @@ mod tests {
     use crate::fixture;
 
     #[track_caller]
-    fn check(ra_fixture: &str, expect: Expect) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, pos) = fixture::position(ra_fixture);
         let expansion = analysis.expand_macro(pos).unwrap().unwrap();
         let actual = format!("{}\n{}", expansion.name, expansion.expansion);
@@ -573,7 +572,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}
@@ -599,7 +598,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
     }
 
@@ -614,7 +613,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Copy
-                impl < >core::marker::Copy for Foo< >where{}"#]],
+                impl <>core::marker::Copy for Foo< >where{}"#]],
         );
         check(
             r#"
@@ -625,7 +624,7 @@ struct Foo {}
 "#,
             expect![[r#"
                 Clone
-                impl < >core::clone::Clone for Foo< >where {
+                impl <>core::clone::Clone for Foo< >where {
                     fn clone(&self) -> Self {
                         match self {
                             Foo{}

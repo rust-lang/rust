@@ -739,8 +739,11 @@ LL |              _)
 error[E0451]: field `i` of struct `this_crate::nested::DeprecatedStruct` is private
   --> $DIR/deprecation-lint.rs:280:13
    |
+LL |         let _ = nested::DeprecatedStruct {
+   |                 ------------------------ in this type
+LL |
 LL |             i: 0
-   |             ^^^^ private field
+   |             ^ private field
 
 error: aborting due to 123 previous errors
 

@@ -8,8 +8,9 @@ LL |     let _: A = x.boo();
    |
 help: a type parameter with a similar name exists
    |
-LL |     let _: I = x.boo();
-   |            ~
+LL -     let _: A = x.boo();
+LL +     let _: I = x.boo();
+   |
 help: you might be missing a type parameter
    |
 LL | fn foo2<I: Foo, A>(x: I) {

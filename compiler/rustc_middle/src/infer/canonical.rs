@@ -142,10 +142,6 @@ impl<'tcx, R> QueryResponse<'tcx, R> {
 pub type QueryOutlivesConstraint<'tcx> =
     (ty::OutlivesPredicate<'tcx, GenericArg<'tcx>>, ConstraintCategory<'tcx>);
 
-TrivialTypeTraversalImpls! {
-    crate::infer::canonical::Certainty,
-}
-
 #[derive(Default)]
 pub struct CanonicalParamEnvCache<'tcx> {
     map: Lock<

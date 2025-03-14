@@ -437,6 +437,12 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
         .source_info
         .unwrap_or_else(|| (unknown_file_metadata(cx), UNKNOWN_LINE_NUMBER));
 
+    let discr = discr_value.opt_single_val().map(|value| {
+        let tag_base_type = tag_base_type(cx.tcx, enum_type_and_layout);
+        let size = cx.size_of(tag_base_type);
+        cx.const_uint_big(cx.type_ix(size.bits()), value)
+    });
+
     unsafe {
         llvm::LLVMRustDIBuilderCreateVariantMemberType(
             DIB(cx),
@@ -448,7 +454,7 @@ fn build_enum_variant_member_di_node<'ll, 'tcx>(
             enum_type_and_layout.size.bits(),
             enum_type_and_layout.align.abi.bits() as u32,
             Size::ZERO.bits(),
-            discr_value.opt_single_val().map(|value| cx.const_u128(value)),
+            discr,
             DIFlags::FlagZero,
             variant_member_info.variant_struct_type_di_node,
         )

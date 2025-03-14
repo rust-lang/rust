@@ -1,6 +1,8 @@
-#![feature(lang_items, start, libc)]
+//@ check-pass
+
 #![warn(clippy::box_default)]
 #![no_std]
+#![crate_type = "lib"]
 
 pub struct NotBox<T> {
     _value: T,
@@ -18,16 +20,7 @@ impl<T: Default> Default for NotBox<T> {
     }
 }
 
-#[start]
-fn main(_argc: isize, _argv: *const *const u8) -> isize {
+pub fn main(_argc: isize, _argv: *const *const u8) -> isize {
     let _p = NotBox::new(isize::default());
     0
 }
-
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
-
-#[lang = "eh_personality"]
-extern "C" fn eh_personality() {}

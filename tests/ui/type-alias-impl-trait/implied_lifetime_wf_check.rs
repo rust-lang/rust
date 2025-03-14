@@ -7,6 +7,7 @@
 
 type Alias = impl Sized;
 
+#[define_opaque(Alias)]
 fn constrain() -> Alias {
     1i32
 }

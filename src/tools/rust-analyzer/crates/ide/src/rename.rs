@@ -71,13 +71,11 @@ pub(crate) fn prepare_rename(
 //
 // Renames the item below the cursor and all of its references
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>F2</kbd> |
 //
-// | VS Code | kbd:[F2]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif[]
+// ![Rename](https://user-images.githubusercontent.com/48062697/113065582-055aae80-91b1-11eb-8ade-2b58e6d81883.gif)
 pub(crate) fn rename(
     db: &RootDatabase,
     position: FilePosition,
@@ -227,8 +225,7 @@ fn find_definitions(
                 ast::NameLike::Name(name)
                     if name
                         .syntax()
-                        .parent()
-                        .map_or(false, |it| ast::Rename::can_cast(it.kind()))
+                        .parent().is_some_and(|it| ast::Rename::can_cast(it.kind()))
                         // FIXME: uncomment this once we resolve to usages to extern crate declarations
                         // && name
                         //     .syntax()
@@ -242,7 +239,7 @@ fn find_definitions(
                 ast::NameLike::Name(name) => NameClass::classify(sema, name)
                     .map(|class| match class {
                         NameClass::Definition(it) | NameClass::ConstReference(it) => it,
-                        NameClass::PatFieldShorthand { local_def, field_ref: _ } => {
+                        NameClass::PatFieldShorthand { local_def, field_ref: _, adt_subst: _ } => {
                             Definition::Local(local_def)
                         }
                     })
@@ -250,8 +247,8 @@ fn find_definitions(
                 ast::NameLike::NameRef(name_ref) => {
                     NameRefClass::classify(sema, name_ref)
                         .map(|class| match class {
-                            NameRefClass::Definition(def) => def,
-                            NameRefClass::FieldShorthand { local_ref, field_ref: _ } => {
+                            NameRefClass::Definition(def, _) => def,
+                            NameRefClass::FieldShorthand { local_ref, field_ref: _, adt_subst: _ } => {
                                 Definition::Local(local_ref)
                             }
                             NameRefClass::ExternCrateShorthand { decl, .. } => {
@@ -264,8 +261,7 @@ fn find_definitions(
                         .and_then(|def| {
                             // if the name differs from the definitions name it has to be an alias
                             if def
-                                .name(sema.db)
-                                .map_or(false, |it| !it.eq_ident(name_ref.text().as_str()))
+                                .name(sema.db).is_some_and(|it| it.as_str() != name_ref.text().trim_start_matches("r#"))
                             {
                                 Err(format_err!("Renaming aliases is currently unsupported"))
                             } else {
@@ -276,7 +272,7 @@ fn find_definitions(
                 ast::NameLike::Lifetime(lifetime) => {
                     NameRefClass::classify_lifetime(sema, lifetime)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             _ => None,
                         })
                         .or_else(|| {
@@ -450,6 +446,7 @@ mod tests {
     use expect_test::{expect, Expect};
     use ide_db::source_change::SourceChange;
     use ide_db::text_edit::TextEdit;
+    use itertools::Itertools;
     use stdx::trim_indent;
     use test_utils::assert_eq_text;
 
@@ -458,7 +455,11 @@ mod tests {
     use super::{RangeInfo, RenameError};
 
     #[track_caller]
-    fn check(new_name: &str, ra_fixture_before: &str, ra_fixture_after: &str) {
+    fn check(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_before: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture_after: &str,
+    ) {
         let ra_fixture_after = &trim_indent(ra_fixture_after);
         let (analysis, position) = fixture::position(ra_fixture_before);
         if !ra_fixture_after.starts_with("error: ") {
@@ -496,14 +497,47 @@ mod tests {
         };
     }
 
-    fn check_expect(new_name: &str, ra_fixture: &str, expect: Expect) {
+    #[track_caller]
+    fn check_conflicts(new_name: &str, #[rust_analyzer::rust_fixture] ra_fixture: &str) {
+        let (analysis, position, conflicts) = fixture::annotations(ra_fixture);
+        let source_change = analysis.rename(position, new_name).unwrap().unwrap();
+        let expected_conflicts = conflicts
+            .into_iter()
+            .map(|(file_range, _)| (file_range.file_id, file_range.range))
+            .sorted_unstable_by_key(|(file_id, range)| (*file_id, range.start()))
+            .collect_vec();
+        let found_conflicts = source_change
+            .source_file_edits
+            .iter()
+            .flat_map(|(file_id, (edit, _))| {
+                edit.into_iter()
+                    .filter(|edit| edit.annotation.is_some())
+                    .map(move |edit| (*file_id, edit.delete))
+            })
+            .sorted_unstable_by_key(|(file_id, range)| (*file_id, range.start()))
+            .collect_vec();
+        assert_eq!(
+            expected_conflicts, found_conflicts,
+            "rename conflicts mismatch: {source_change:#?}"
+        );
+    }
+
+    fn check_expect(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change =
             analysis.rename(position, new_name).unwrap().expect("Expect returned a RenameError");
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_expect_will_rename_file(new_name: &str, ra_fixture: &str, expect: Expect) {
+    fn check_expect_will_rename_file(
+        new_name: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+    ) {
         let (analysis, position) = fixture::position(ra_fixture);
         let source_change = analysis
             .will_rename_file(position.file_id, new_name)
@@ -512,7 +546,7 @@ mod tests {
         expect.assert_eq(&filter_expect(source_change))
     }
 
-    fn check_prepare(ra_fixture: &str, expect: Expect) {
+    fn check_prepare(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .prepare_rename(position)
@@ -537,6 +571,37 @@ mod tests {
             "source_file_edits: {:#?}\nfile_system_edits: {:#?}\n",
             source_file_edits, source_change.file_system_edits
         )
+    }
+
+    #[test]
+    fn rename_will_shadow() {
+        check_conflicts(
+            "new_name",
+            r#"
+fn foo() {
+    let mut new_name = 123;
+    let old_name$0 = 456;
+     // ^^^^^^^^
+    new_name = 789 + new_name;
+}
+        "#,
+        );
+    }
+
+    #[test]
+    fn rename_will_be_shadowed() {
+        check_conflicts(
+            "new_name",
+            r#"
+fn foo() {
+    let mut old_name$0 = 456;
+         // ^^^^^^^^
+    let new_name = 123;
+    old_name = 789 + old_name;
+ // ^^^^^^^^         ^^^^^^^^
+}
+        "#,
+        );
     }
 
     #[test]
@@ -1016,6 +1081,7 @@ mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1063,6 +1129,7 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 8..11,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1074,6 +1141,7 @@ use crate::foo$0::FooContent;
                             Indel {
                                 insert: "quux",
                                 delete: 11..14,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1115,6 +1183,7 @@ mod fo$0o;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1163,6 +1232,7 @@ mod outer { mod fo$0o; }
                             Indel {
                                 insert: "bar",
                                 delete: 16..19,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1234,6 +1304,7 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 27..30,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1245,6 +1316,7 @@ pub mod foo$0;
                             Indel {
                                 insert: "foo2",
                                 delete: 8..11,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1300,6 +1372,7 @@ mod quux;
                             Indel {
                                 insert: "foo2",
                                 delete: 4..7,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1433,10 +1506,12 @@ pub fn baz() {}
                             Indel {
                                 insert: "r#fn",
                                 delete: 4..7,
+                                annotation: None,
                             },
                             Indel {
                                 insert: "r#fn",
                                 delete: 22..25,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1501,10 +1576,12 @@ pub fn baz() {}
                             Indel {
                                 insert: "foo",
                                 delete: 4..8,
+                                annotation: None,
                             },
                             Indel {
                                 insert: "foo",
                                 delete: 23..27,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1566,6 +1643,7 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 7..10,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1577,6 +1655,7 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 18..21,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1606,6 +1685,7 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1617,6 +1697,7 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1646,6 +1727,7 @@ fn bar() {
                             Indel {
                                 insert: "r#dyn",
                                 delete: 7..10,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1657,6 +1739,7 @@ fn bar() {
                             Indel {
                                 insert: "dyn",
                                 delete: 18..21,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1693,10 +1776,12 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..10,
+                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 32..35,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1708,6 +1793,7 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..23,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1741,10 +1827,12 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 7..12,
+                                annotation: None,
                             },
                             Indel {
                                 insert: "abc",
                                 delete: 34..39,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1756,6 +1844,7 @@ fn bar() {
                             Indel {
                                 insert: "abc",
                                 delete: 18..21,
+                                annotation: None,
                             },
                         ],
                     ),
@@ -1993,14 +2082,32 @@ impl Foo {
             "foo",
             r#"
 fn f($0self) -> i32 {
-    use self as _;
     self.i
 }
 "#,
             r#"
 fn f(foo: _) -> i32 {
-    use self as _;
     foo.i
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn no_type_value_ns_confuse() {
+        // Test that we don't rename items from different namespaces.
+        check(
+            "bar",
+            r#"
+struct foo {}
+fn f(foo$0: i32) -> i32 {
+    use foo as _;
+}
+"#,
+            r#"
+struct foo {}
+fn f(bar: i32) -> i32 {
+    use foo as _;
 }
 "#,
         );

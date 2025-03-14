@@ -37,11 +37,11 @@ ast_lowering_bad_return_type_notation_inputs =
     .suggestion = remove the input types
 
 ast_lowering_bad_return_type_notation_needs_dots = return type notation arguments must be elided with `..`
-    .suggestion = add `..`
+    .suggestion = use the correct syntax by adding `..` to the arguments
 
 ast_lowering_bad_return_type_notation_output =
     return type not allowed with return type notation
-    .suggestion = remove the return type
+ast_lowering_bad_return_type_notation_output_suggestion = use the right argument notation and remove the return type
 
 ast_lowering_bad_return_type_notation_position = return type notation not allowed in this position yet
 
@@ -88,7 +88,7 @@ ast_lowering_invalid_abi_clobber_abi =
     invalid ABI for `clobber_abi`
     .note = the following ABIs are supported on this target: {$supported_abis}
 
-ast_lowering_invalid_abi_suggestion = did you mean
+ast_lowering_invalid_abi_suggestion = there's a similarly named valid ABI `{$suggestion}`
 
 ast_lowering_invalid_asm_template_modifier_const =
     asm template modifiers are not allowed for `const` arguments
@@ -112,7 +112,8 @@ ast_lowering_invalid_register =
     invalid register `{$reg}`: {$error}
 
 ast_lowering_invalid_register_class =
-    invalid register class `{$reg_class}`: {$error}
+    invalid register class `{$reg_class}`: unknown register class
+    .note = the following register classes are supported on this target: {$supported_register_classes}
 
 ast_lowering_match_arm_with_no_body =
     `match` arm with no body

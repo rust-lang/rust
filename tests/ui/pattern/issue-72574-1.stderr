@@ -7,8 +7,9 @@ LL |         (_a, _x @ ..) => {}
    = help: remove this and bind each tuple field independently
 help: if you don't need to use the contents of _x, discard the tuple's remaining fields
    |
-LL |         (_a, ..) => {}
-   |              ~~
+LL -         (_a, _x @ ..) => {}
+LL +         (_a, ..) => {}
+   |
 
 error: `..` patterns are not allowed here
   --> $DIR/issue-72574-1.rs:4:19

@@ -47,7 +47,6 @@ fn attrs() {
 
 fn test_case() {
     #![test] //~ ERROR inner macro attributes are unstable
-             //~| WARN this was previously accepted
 }
 
 fn main() {}

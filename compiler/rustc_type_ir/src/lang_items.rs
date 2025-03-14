@@ -10,6 +10,7 @@ pub enum TraitSolverLangItem {
     AsyncFnOnce,
     AsyncFnOnceOutput,
     AsyncIterator,
+    BikeshedGuaranteedNoDrop,
     CallOnceFuture,
     CallRefFuture,
     Clone,

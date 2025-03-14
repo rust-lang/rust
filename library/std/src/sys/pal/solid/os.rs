@@ -129,7 +129,7 @@ impl Iterator for Env {
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
 pub fn env() -> Env {
-    extern "C" {
+    unsafe extern "C" {
         static mut environ: *const *const c_char;
     }
 

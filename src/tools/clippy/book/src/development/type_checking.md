@@ -94,7 +94,7 @@ impl LateLintPass<'_> for MyStructLint {
         // Get type of `expr`
         let ty = cx.typeck_results().expr_ty(expr);
         // Match its kind to enter the type
-        match ty.kind {
+        match ty.kind() {
             ty::Adt(adt_def, _) if adt_def.is_struct() => println!("Our `expr` is a struct!"),
             _ => ()
         }

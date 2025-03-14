@@ -35,13 +35,14 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
             TypingMode::Analysis { defining_opaque_types } => {
-                let Some(def_id) = opaque_ty.def_id.as_local() else {
-                    return Err(NoSolution);
+                let Some(def_id) = opaque_ty
+                    .def_id
+                    .as_local()
+                    .filter(|&def_id| defining_opaque_types.contains(&def_id))
+                else {
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
-
-                if !defining_opaque_types.contains(&def_id) {
-                    return Err(NoSolution);
-                }
 
                 // FIXME: This may have issues when the args contain aliases...
                 match uses_unique_placeholders_ignoring_regions(self.cx(), opaque_ty.args) {
@@ -97,15 +98,16 @@ where
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
             }
             TypingMode::PostBorrowckAnalysis { defined_opaque_types } => {
-                let Some(def_id) = opaque_ty.def_id.as_local() else {
-                    return Err(NoSolution);
+                let Some(def_id) = opaque_ty
+                    .def_id
+                    .as_local()
+                    .filter(|&def_id| defined_opaque_types.contains(&def_id))
+                else {
+                    self.structurally_instantiate_normalizes_to_term(goal, goal.predicate.alias);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
                 };
 
-                if !defined_opaque_types.contains(&def_id) {
-                    return Err(NoSolution);
-                }
-
-                let actual = cx.type_of(opaque_ty.def_id).instantiate(cx, opaque_ty.args);
+                let actual = cx.type_of(def_id.into()).instantiate(cx, opaque_ty.args);
                 // FIXME: Actually use a proper binder here instead of relying on `ReErased`.
                 //
                 // This is also probably unsound or sth :shrug:

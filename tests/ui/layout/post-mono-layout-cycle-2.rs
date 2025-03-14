@@ -1,4 +1,4 @@
-//@ build-fail
+//@ check-fail
 //@ edition: 2021
 
 use std::future::Future;

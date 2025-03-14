@@ -13,8 +13,9 @@ LL |     async fn owo(x: ()) {}
               found signature `fn(u8) -> _`
 help: change the parameter type to match the trait
    |
-LL |     async fn owo(_: ()) {}
-   |                     ~~
+LL -     async fn owo(_: u8) {}
+LL +     async fn owo(_: ()) {}
+   |
 
 error: aborting due to 1 previous error
 

@@ -1,6 +1,6 @@
 //@ run-pass
 //@ needs-threads
-//@ ignore-sgx no processes
+//@ needs-subprocess
 
 use std::cell::RefCell;
 use std::env;

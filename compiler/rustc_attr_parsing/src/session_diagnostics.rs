@@ -6,8 +6,15 @@ use rustc_errors::{Applicability, Diag, DiagCtxtHandle, Diagnostic, EmissionGuar
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::{Span, Symbol};
 
-use crate::attributes::util::UnsupportedLiteralReason;
 use crate::fluent_generated as fluent;
+
+pub(crate) enum UnsupportedLiteralReason {
+    Generic,
+    CfgString,
+    CfgBoolean,
+    DeprecatedString,
+    DeprecatedKvPair,
+}
 
 #[derive(Diagnostic)]
 #[diag(attr_parsing_expected_one_cfg_pattern, code = E0536)]
@@ -39,6 +46,21 @@ pub(crate) struct MultipleItem {
 pub(crate) struct IncorrectMetaItem {
     #[primary_span]
     pub span: Span,
+
+    #[subdiagnostic]
+    pub suggestion: Option<IncorrectMetaItemSuggestion>,
+}
+
+#[derive(Subdiagnostic)]
+#[multipart_suggestion(
+    attr_parsing_incorrect_meta_item_suggestion,
+    applicability = "maybe-incorrect"
+)]
+pub(crate) struct IncorrectMetaItemSuggestion {
+    #[suggestion_part(code = "\"")]
+    pub lo: Span,
+    #[suggestion_part(code = "\"")]
+    pub hi: Span,
 }
 
 /// Error code: E0541
@@ -204,21 +226,27 @@ pub(crate) struct UnsupportedLiteral {
 
 impl<'a, G: EmissionGuarantee> Diagnostic<'a, G> for UnsupportedLiteral {
     fn into_diag(self, dcx: DiagCtxtHandle<'a>, level: Level) -> Diag<'a, G> {
-        let mut diag = Diag::new(dcx, level, match self.reason {
-            UnsupportedLiteralReason::Generic => fluent::attr_parsing_unsupported_literal_generic,
-            UnsupportedLiteralReason::CfgString => {
-                fluent::attr_parsing_unsupported_literal_cfg_string
-            }
-            UnsupportedLiteralReason::CfgBoolean => {
-                fluent::attr_parsing_unsupported_literal_cfg_boolean
-            }
-            UnsupportedLiteralReason::DeprecatedString => {
-                fluent::attr_parsing_unsupported_literal_deprecated_string
-            }
-            UnsupportedLiteralReason::DeprecatedKvPair => {
-                fluent::attr_parsing_unsupported_literal_deprecated_kv_pair
-            }
-        });
+        let mut diag = Diag::new(
+            dcx,
+            level,
+            match self.reason {
+                UnsupportedLiteralReason::Generic => {
+                    fluent::attr_parsing_unsupported_literal_generic
+                }
+                UnsupportedLiteralReason::CfgString => {
+                    fluent::attr_parsing_unsupported_literal_cfg_string
+                }
+                UnsupportedLiteralReason::CfgBoolean => {
+                    fluent::attr_parsing_unsupported_literal_cfg_boolean
+                }
+                UnsupportedLiteralReason::DeprecatedString => {
+                    fluent::attr_parsing_unsupported_literal_deprecated_string
+                }
+                UnsupportedLiteralReason::DeprecatedKvPair => {
+                    fluent::attr_parsing_unsupported_literal_deprecated_kv_pair
+                }
+            },
+        );
         diag.span(self.span);
         diag.code(E0565);
         if self.is_bytestr {
@@ -332,13 +360,6 @@ pub(crate) struct RustcPromotablePairing {
 }
 
 #[derive(Diagnostic)]
-#[diag(attr_parsing_rustc_const_stable_indirect_pairing)]
-pub(crate) struct RustcConstStableIndirectPairing {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(attr_parsing_rustc_allowed_unstable_pairing, code = E0789)]
 pub(crate) struct RustcAllowedUnstablePairing {
     #[primary_span]
@@ -414,6 +435,47 @@ pub(crate) struct SoftNoArgs {
 #[derive(Diagnostic)]
 #[diag(attr_parsing_unknown_version_literal)]
 pub(crate) struct UnknownVersionLiteral {
+    #[primary_span]
+    pub span: Span,
+}
+
+// FIXME(jdonszelmann) duplicated from `rustc_passes`, remove once `check_attr` is integrated.
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unused_multiple)]
+pub(crate) struct UnusedMultiple {
+    #[primary_span]
+    #[suggestion(code = "", applicability = "machine-applicable")]
+    pub this: Span,
+    #[note]
+    pub other: Span,
+    pub name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_stability_outside_std, code = E0734)]
+pub(crate) struct StabilityOutsideStd {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_empty_confusables)]
+pub(crate) struct EmptyConfusables {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_repr_ident, code = E0565)]
+pub(crate) struct ReprIdent {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(attr_parsing_unrecognized_repr_hint, code = E0552)]
+#[help]
+pub(crate) struct UnrecognizedReprHint {
     #[primary_span]
     pub span: Span,
 }

@@ -1,12 +1,9 @@
-use crate::spec::{Target, TargetOptions, base};
+use crate::spec::{FloatAbi, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        // It's important we use "gnueabi" and not "musleabi" here. LLVM uses it
-        // to determine the calling convention and float ABI, and it doesn't
-        // support the "musleabi" value.
-        llvm_target: "arm-unknown-linux-gnueabi".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "arm-unknown-linux-musleabi".into(),
+        metadata: TargetMetadata {
             description: Some("Armv6 Linux with musl 1.2.3".into()),
             tier: Some(2),
             host_tools: Some(false),
@@ -17,6 +14,7 @@ pub(crate) fn target() -> Target {
         arch: "arm".into(),
         options: TargetOptions {
             abi: "eabi".into(),
+            llvm_floatabi: Some(FloatAbi::Soft),
             // Most of these settings are copied from the arm_unknown_linux_gnueabi
             // target.
             features: "+strict-align,+v6".into(),

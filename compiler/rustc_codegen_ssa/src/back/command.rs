@@ -13,6 +13,7 @@ pub(crate) struct Command {
     args: Vec<OsString>,
     env: Vec<(OsString, OsString)>,
     env_remove: Vec<OsString>,
+    env_clear: bool,
 }
 
 #[derive(Clone)]
@@ -36,7 +37,13 @@ impl Command {
     }
 
     fn _new(program: Program) -> Command {
-        Command { program, args: Vec::new(), env: Vec::new(), env_remove: Vec::new() }
+        Command {
+            program,
+            args: Vec::new(),
+            env: Vec::new(),
+            env_remove: Vec::new(),
+            env_clear: false,
+        }
     }
 
     pub(crate) fn arg<P: AsRef<OsStr>>(&mut self, arg: P) -> &mut Command {
@@ -79,6 +86,11 @@ impl Command {
         self
     }
 
+    pub(crate) fn env_clear(&mut self) -> &mut Command {
+        self.env_clear = true;
+        self
+    }
+
     fn _env_remove(&mut self, key: &OsStr) {
         self.env_remove.push(key.to_owned());
     }
@@ -106,6 +118,9 @@ impl Command {
         for k in &self.env_remove {
             ret.env_remove(k);
         }
+        if self.env_clear {
+            ret.env_clear();
+        }
         ret
     }
 
@@ -125,13 +140,6 @@ impl Command {
         // We mostly only care about Windows in this method, on Unix the limits
         // can be gargantuan anyway so we're pretty unlikely to hit them
         if cfg!(unix) {
-            return false;
-        }
-
-        // Right now LLD doesn't support the `@` syntax of passing an argument
-        // through files, so regardless of the platform we try to go to the OS
-        // on this one.
-        if let Program::Lld(..) = self.program {
             return false;
         }
 

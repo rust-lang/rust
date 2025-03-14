@@ -13,8 +13,6 @@ use std::marker::DiscriminantKind;
 use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::LocalDefId;
-use rustc_middle::mir::mono::MonoItem;
-use rustc_middle::ty::TyCtxt;
 use rustc_serialize::{Decodable, Encodable};
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
@@ -23,9 +21,10 @@ pub use rustc_type_ir::{TyDecoder, TyEncoder};
 use crate::arena::ArenaAllocatable;
 use crate::infer::canonical::{CanonicalVarInfo, CanonicalVarInfos};
 use crate::mir::interpret::{AllocId, ConstAllocation, CtfeProvenance};
+use crate::mir::mono::MonoItem;
 use crate::mir::{self};
 use crate::traits;
-use crate::ty::{self, AdtDef, GenericArgsRef, Ty};
+use crate::ty::{self, AdtDef, GenericArgsRef, Ty, TyCtxt};
 
 /// The shorthand encoding uses an enum's variant index `usize`
 /// and is offset by this value so it never matches a real variant.
@@ -147,6 +146,12 @@ impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::Pattern<'tcx> {
     }
 }
 
+impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ty::ValTree<'tcx> {
+    fn encode(&self, e: &mut E) {
+        self.0.0.encode(e);
+    }
+}
+
 impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for ConstAllocation<'tcx> {
     fn encode(&self, e: &mut E) {
         self.inner().encode(e)
@@ -219,7 +224,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Ty<'tcx> {
             })
         } else {
             let tcx = decoder.interner();
-            tcx.mk_ty_from_kind(rustc_type_ir::TyKind::decode(decoder))
+            tcx.mk_ty_from_kind(ty::TyKind::decode(decoder))
         }
     }
 }
@@ -356,12 +361,9 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::Pattern<'tcx> {
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> RefDecodable<'tcx, D> for [ty::ValTree<'tcx>] {
-    fn decode(decoder: &mut D) -> &'tcx Self {
-        decoder
-            .interner()
-            .arena
-            .alloc_from_iter((0..decoder.read_usize()).map(|_| Decodable::decode(decoder)))
+impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for ty::ValTree<'tcx> {
+    fn decode(decoder: &mut D) -> Self {
+        decoder.interner().intern_valtree(Decodable::decode(decoder))
     }
 }
 

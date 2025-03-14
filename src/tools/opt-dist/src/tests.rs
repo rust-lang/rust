@@ -69,6 +69,7 @@ change-id = 115898
 
 [rust]
 channel = "{channel}"
+verbose-tests = true
 
 [build]
 rustc = "{rustc}"
@@ -102,13 +103,19 @@ llvm-config = "{llvm_config}"
         "tests/incremental",
         "tests/mir-opt",
         "tests/pretty",
+        "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
         "tests/ui",
         "tests/crashes",
     ];
     for test_path in env.skipped_tests() {
         args.extend(["--skip", test_path]);
     }
-    cmd(&args).env("COMPILETEST_FORCE_STAGE0", "1").run().context("Cannot execute tests")
+    cmd(&args)
+        .env("COMPILETEST_FORCE_STAGE0", "1")
+        // Also run dist-only tests
+        .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
+        .run()
+        .context("Cannot execute tests")
 }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).

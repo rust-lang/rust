@@ -50,9 +50,9 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
     fn check_crate_post(&mut self, cx: &LateContext<'tcx>) {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
-        for id in cx.tcx.hir().items() {
+        for id in cx.tcx.hir_free_items() {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl { .. })
-                && let item = cx.tcx.hir().item(id)
+                && let item = cx.tcx.hir_item(id)
                 && let ItemKind::Impl(Impl {
                     items,
                     of_trait,
@@ -62,10 +62,13 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
-                    map.insert(*res, ExistingName {
-                        impl_methods: BTreeMap::new(),
-                        trait_methods: BTreeMap::new(),
-                    });
+                    map.insert(
+                        *res,
+                        ExistingName {
+                            impl_methods: BTreeMap::new(),
+                            trait_methods: BTreeMap::new(),
+                        },
+                    );
                 }
                 let existing_name = map.get_mut(res).unwrap();
 

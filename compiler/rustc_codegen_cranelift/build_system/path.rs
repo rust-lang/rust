@@ -11,18 +11,9 @@ pub(crate) struct Dirs {
 
 #[doc(hidden)]
 #[derive(Debug, Copy, Clone)]
-pub(crate) enum PathBase {
+enum PathBase {
     Source,
     Build,
-}
-
-impl PathBase {
-    fn to_path(self, dirs: &Dirs) -> PathBuf {
-        match self {
-            PathBase::Source => dirs.source_dir.clone(),
-            PathBase::Build => dirs.build_dir.clone(),
-        }
-    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -41,6 +32,9 @@ impl RelPath {
     }
 
     pub(crate) fn to_path(&self, dirs: &Dirs) -> PathBuf {
-        self.base.to_path(dirs).join(self.suffix)
+        match self.base {
+            PathBase::Source => dirs.source_dir.join(self.suffix),
+            PathBase::Build => dirs.build_dir.join(self.suffix),
+        }
     }
 }

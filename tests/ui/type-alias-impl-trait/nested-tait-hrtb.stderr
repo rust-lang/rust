@@ -1,19 +1,20 @@
 error[E0700]: hidden type for `WithoutLt` captures lifetime that does not appear in bounds
-  --> $DIR/nested-tait-hrtb.rs:7:62
+  --> $DIR/nested-tait-hrtb.rs:8:62
    |
 LL | type WithoutLt = impl Sized;
    |                  ---------- opaque type defined here
+LL | #[define_opaque(WithoutLt)]
 LL | fn without_lt() -> impl for<'a> Trait<'a, Assoc = WithoutLt> {}
    |                             --                               ^^
    |                             |
    |                             hidden type `&'a str` captures the lifetime `'a` as defined here
 
 error[E0792]: expected generic lifetime parameter, found `'a`
-  --> $DIR/nested-tait-hrtb.rs:12:60
+  --> $DIR/nested-tait-hrtb.rs:14:60
    |
 LL | type WithLt<'a> = impl Sized + 'a;
    |             -- this generic parameter must be used with a generic lifetime parameter
-LL |
+...
 LL | fn with_lt() -> impl for<'a> Trait<'a, Assoc = WithLt<'a>> {}
    |                                                            ^^
 

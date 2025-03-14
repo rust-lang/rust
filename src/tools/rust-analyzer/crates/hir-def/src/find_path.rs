@@ -445,6 +445,10 @@ fn find_in_dep(
         };
         cov_mark::hit!(partially_imported);
         if info.is_unstable {
+            if !ctx.cfg.allow_unstable {
+                // the item is unstable and we are not allowed to use unstable items
+                continue;
+            }
             choice.stability = Unstable;
         }
 
@@ -665,11 +669,12 @@ mod tests {
     /// module the cursor is in.
     #[track_caller]
     fn check_found_path_(
-        ra_fixture: &str,
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
         path: &str,
         prefer_prelude: bool,
         prefer_absolute: bool,
         prefer_no_std: bool,
+        allow_unstable: bool,
         expect: Expect,
     ) {
         let (db, pos) = TestDB::with_position(ra_fixture);
@@ -711,7 +716,7 @@ mod tests {
                 module,
                 prefix,
                 ignore_local_imports,
-                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute },
+                ImportPathConfig { prefer_no_std, prefer_prelude, prefer_absolute, allow_unstable },
             );
             format_to!(
                 res,
@@ -727,20 +732,44 @@ mod tests {
         expect.assert_eq(&res);
     }
 
-    fn check_found_path(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, false, false, expect);
+    fn check_found_path(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, false, false, false, false, expect);
     }
 
-    fn check_found_path_prelude(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, true, false, false, expect);
+    fn check_found_path_prelude(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, true, false, false, false, expect);
     }
 
-    fn check_found_path_absolute(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, true, false, expect);
+    fn check_found_path_absolute(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, false, true, false, false, expect);
     }
 
-    fn check_found_path_prefer_no_std(ra_fixture: &str, path: &str, expect: Expect) {
-        check_found_path_(ra_fixture, path, false, false, true, expect);
+    fn check_found_path_prefer_no_std(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, false, false, true, false, expect);
+    }
+
+    fn check_found_path_prefer_no_std_allow_unstable(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        path: &str,
+        expect: Expect,
+    ) {
+        check_found_path_(ra_fixture, path, false, false, true, true, expect);
     }
 
     #[test]
@@ -1935,7 +1964,7 @@ pub mod ops {
 
     #[test]
     fn respect_unstable_modules() {
-        check_found_path_prefer_no_std(
+        check_found_path_prefer_no_std_allow_unstable(
             r#"
 //- /main.rs crate:main deps:std,core
 extern crate std;

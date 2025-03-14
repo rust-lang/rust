@@ -3,7 +3,7 @@
 //! fn g() {
 //! } /* fn g */
 //! ```
-use hir::{HirDisplay, Semantics};
+use hir::{DisplayTarget, HirDisplay, Semantics};
 use ide_db::{FileRange, RootDatabase};
 use span::EditionedFileId;
 use syntax::{
@@ -11,13 +11,17 @@ use syntax::{
     match_ast, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
+use crate::{
+    inlay_hints::LazyProperty, InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig,
+    InlayKind,
+};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
     config: &InlayHintsConfig,
     file_id: EditionedFileId,
+    display_target: DisplayTarget,
     original_node: SyntaxNode,
 ) -> Option<()> {
     let min_lines = config.closing_brace_hints_min_lines?;
@@ -40,9 +44,9 @@ pub(super) fn hints(
                         Some(tr) => format!(
                             "impl {} for {}",
                             tr.name(sema.db).display(sema.db, file_id.edition()),
-                            ty.display_truncated(sema.db, config.max_length, file_id.edition(),
+                            ty.display_truncated(sema.db, config.max_length, display_target,
                         )),
-                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, file_id.edition())),
+                        None => format!("impl {}", ty.display_truncated(sema.db, config.max_length, display_target)),
                     };
                     (hint_text, None)
                 },
@@ -141,7 +145,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBrace,
-        label: InlayHintLabel::simple(label, None, linked_location),
+        label: InlayHintLabel::simple(label, None, linked_location.map(LazyProperty::Computed)),
         text_edit: None,
         position: InlayHintPosition::After,
         pad_left: true,

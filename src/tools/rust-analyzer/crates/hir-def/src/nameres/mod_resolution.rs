@@ -2,13 +2,11 @@
 use arrayvec::ArrayVec;
 use base_db::AnchoredPath;
 use hir_expand::{name::Name, HirFileIdExt};
-use limit::Limit;
 use span::EditionedFileId;
-use syntax::ToSmolStr as _;
 
 use crate::{db::DefDatabase, HirFileId};
 
-static MOD_DEPTH_LIMIT: Limit = Limit::new(32);
+const MOD_DEPTH_LIMIT: usize = 32;
 
 #[derive(Clone, Debug)]
 pub(super) struct ModDir {
@@ -35,7 +33,7 @@ impl ModDir {
         let path = match attr_path {
             None => {
                 let mut path = self.dir_path.clone();
-                path.push(&name.unescaped().display_no_db().to_smolstr());
+                path.push(name.as_str());
                 path
             }
             Some(attr_path) => {
@@ -51,7 +49,7 @@ impl ModDir {
 
     fn child(&self, dir_path: DirPath, root_non_dir_owner: bool) -> Option<ModDir> {
         let depth = self.depth + 1;
-        if MOD_DEPTH_LIMIT.check(depth as usize).is_err() {
+        if depth as usize > MOD_DEPTH_LIMIT {
             tracing::error!("MOD_DEPTH_LIMIT exceeded");
             cov_mark::hit!(circular_mods);
             return None;
@@ -66,7 +64,7 @@ impl ModDir {
         name: &Name,
         attr_path: Option<&str>,
     ) -> Result<(EditionedFileId, bool, ModDir), Box<[String]>> {
-        let name = name.unescaped();
+        let name = name.as_str();
 
         let mut candidate_files = ArrayVec::<_, 2>::new();
         match attr_path {
@@ -74,16 +72,8 @@ impl ModDir {
                 candidate_files.push(self.dir_path.join_attr(attr_path, self.root_non_dir_owner))
             }
             None => {
-                candidate_files.push(format!(
-                    "{}{}.rs",
-                    self.dir_path.0,
-                    name.display(db.upcast())
-                ));
-                candidate_files.push(format!(
-                    "{}{}/mod.rs",
-                    self.dir_path.0,
-                    name.display(db.upcast())
-                ));
+                candidate_files.push(format!("{}{}.rs", self.dir_path.0, name));
+                candidate_files.push(format!("{}{}/mod.rs", self.dir_path.0, name));
             }
         };
 
@@ -97,7 +87,7 @@ impl ModDir {
                 let dir_path = if root_dir_owner {
                     DirPath::empty()
                 } else {
-                    DirPath::new(format!("{}/", name.display(db.upcast())))
+                    DirPath::new(format!("{}/", name))
                 };
                 if let Some(mod_dir) = self.child(dir_path, !root_dir_owner) {
                     return Ok((
@@ -144,7 +134,7 @@ impl DirPath {
     /// So this is the case which doesn't really work I think if we try to be
     /// 100% platform agnostic:
     ///
-    /// ```
+    /// ```ignore
     /// mod a {
     ///     #[path="C://sad/face"]
     ///     mod b { mod c; }

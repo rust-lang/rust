@@ -842,7 +842,7 @@ fn try_rename_file(old_name: &Path, new_name: &Path) -> bool {
         Ok(file) => drop(file),
         Err(e) if matches!(e.kind(), io::ErrorKind::AlreadyExists | io::ErrorKind::NotFound) => return false,
         Err(e) => panic_file(e, new_name, "create"),
-    };
+    }
     match fs::rename(old_name, new_name) {
         Ok(()) => true,
         Err(e) => {
@@ -985,17 +985,23 @@ mod tests {
             Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
         ];
         let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
-        expected.insert("group1".to_string(), vec![
-            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
-            Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
-        ]);
-        expected.insert("group2".to_string(), vec![Lint::new(
-            "should_assert_eq2",
-            "group2",
-            "\"abc\"",
-            "module_name",
-            Range::default(),
-        )]);
+        expected.insert(
+            "group1".to_string(),
+            vec![
+                Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
+                Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
+            ],
+        );
+        expected.insert(
+            "group2".to_string(),
+            vec![Lint::new(
+                "should_assert_eq2",
+                "group2",
+                "\"abc\"",
+                "module_name",
+                Range::default(),
+            )],
+        );
         assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
     }
 }

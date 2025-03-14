@@ -1,4 +1,4 @@
-error[E0271]: expected `test` to be a fn item that returns `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
+error[E0271]: expected `test` to return `Pin<Box<dyn Future<Output = ()>>>`, but it returns `impl Future<Output = ()>`
   --> $DIR/issue-98604.rs:9:5
    |
 LL |     Box::new(test) as AsyncFnPtr;

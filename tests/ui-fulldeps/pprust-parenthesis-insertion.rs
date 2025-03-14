@@ -77,6 +77,9 @@ static EXPRS: &[&str] = &[
     // These mean different things.
     "if let _ = true && false {}",
     "if let _ = (true && false) {}",
+    // Parentheses to call a named field, but not an unnamed field.
+    "(self.fun)()",
+    "self.0()",
     // Conditions end at the first curly brace, so struct expressions need to be
     // parenthesized. Except in a match guard, where conditions end at arrow.
     "if let _ = (Struct {}) {}",
@@ -108,6 +111,10 @@ static EXPRS: &[&str] = &[
     "{ (match 2 {})() - 1 }",
     "{ (match 2 {})[0] - 1 }",
     "{ (loop {}) - 1 }",
+    "match 2 { _ => (loop {}) - 1 }",
+    // No eager statement boundary if followed by `.` or `?`.
+    "{ loop {}.to_string() - 1 }",
+    "match 2 { _ => loop {}.to_string() - 1 }",
     // Angle bracket is eagerly parsed as a path's generic argument list.
     "(2 as T) < U",
     "(2 as T<U>) < V", // FIXME: no parentheses needed.

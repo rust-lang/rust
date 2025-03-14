@@ -17,7 +17,7 @@
 // lldb-command:run
 
 // lldb-command:fr v empty_string
-// lldb-check:[...] empty_string = "" { vec = size=0 }
+// lldb-check:[...] empty_string = ""
 
 // lldb-command:fr v empty_str
 // lldb-check:[...] empty_str = ""

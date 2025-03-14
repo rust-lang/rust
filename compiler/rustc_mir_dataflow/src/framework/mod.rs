@@ -35,10 +35,12 @@
 use std::cmp::Ordering;
 
 use rustc_data_structures::work_queue::WorkQueue;
-use rustc_index::bit_set::{BitSet, MixedBitSet};
+use rustc_index::bit_set::{DenseBitSet, MixedBitSet};
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::bug;
-use rustc_middle::mir::{self, BasicBlock, CallReturnPlaces, Location, TerminatorEdges, traversal};
+use rustc_middle::mir::{
+    self, BasicBlock, CallReturnPlaces, Location, SwitchTargetValue, TerminatorEdges, traversal,
+};
 use rustc_middle::ty::TyCtxt;
 use tracing::error;
 
@@ -65,7 +67,7 @@ pub trait BitSetExt<T> {
     fn contains(&self, elem: T) -> bool;
 }
 
-impl<T: Idx> BitSetExt<T> for BitSet<T> {
+impl<T: Idx> BitSetExt<T> for DenseBitSet<T> {
     fn contains(&self, elem: T) -> bool {
         self.contains(elem)
     }
@@ -220,7 +222,7 @@ pub trait Analysis<'tcx> {
         &mut self,
         _data: &mut Self::SwitchIntData,
         _state: &mut Self::Domain,
-        _edge: SwitchIntTarget,
+        _value: SwitchTargetValue,
     ) {
         unreachable!();
     }
@@ -334,7 +336,7 @@ pub trait GenKill<T> {
     }
 }
 
-impl<T: Idx> GenKill<T> for BitSet<T> {
+impl<T: Idx> GenKill<T> for DenseBitSet<T> {
     fn gen_(&mut self, elem: T) {
         self.insert(elem);
     }
@@ -428,11 +430,6 @@ impl EffectIndex {
             .then_with(|| self.effect.cmp(&other.effect));
         ord == Ordering::Less
     }
-}
-
-pub struct SwitchIntTarget {
-    pub value: Option<u128>,
-    pub target: BasicBlock,
 }
 
 #[cfg(test)]

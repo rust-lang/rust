@@ -1,6 +1,6 @@
-#![cfg_attr(not(bootstrap), allow(rustc::symbol_intern_string_literal))]
+#![allow(rustc::symbol_intern_string_literal)]
 
-use rustc_data_structures::stable_hasher::Hash64;
+use rustc_hashes::Hash64;
 use rustc_span::def_id::{DefPathHash, StableCrateId};
 use rustc_span::edition::Edition;
 use rustc_span::{Symbol, create_session_globals_then};

@@ -240,12 +240,12 @@ impl Visibility {
 
                 if a_ancestors.any(|m| m == mod_b.local_id) {
                     // B is above A
-                    return Some(Visibility::Module(mod_a, expl_b));
+                    return Some(Visibility::Module(mod_a, expl_a));
                 }
 
                 if b_ancestors.any(|m| m == mod_a.local_id) {
                     // A is above B
-                    return Some(Visibility::Module(mod_b, expl_a));
+                    return Some(Visibility::Module(mod_b, expl_b));
                 }
 
                 None

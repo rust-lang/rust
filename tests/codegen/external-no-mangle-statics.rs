@@ -1,6 +1,6 @@
 //@ revisions: lib staticlib
 //@ ignore-emscripten default visibility is hidden
-//@ compile-flags: -O
+//@ compile-flags: -Copt-level=3
 //@ [lib] compile-flags: --crate-type lib
 //@ [staticlib] compile-flags: --crate-type staticlib
 // `#[no_mangle]`d static variables always have external linkage, i.e., no `internal` in their

@@ -7,4 +7,5 @@ fn foo() {
     // raw reference operator
     let _ = &raw mut foo;
     let _ = &raw const foo;
+    let _ = &raw foo;
 }

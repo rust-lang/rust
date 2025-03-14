@@ -5,17 +5,16 @@
 pub trait Foo<T> {}
 impl<T, U> Foo<T> for U {}
 
-mod scope {
-    pub type Scope = impl super::Foo<()>;
+pub type Scope = impl Foo<()>;
 
-    #[allow(unused)]
-    fn infer_scope() -> Scope {
-        ()
-    }
+#[allow(unused)]
+#[define_opaque(Scope)]
+fn infer_scope() -> Scope {
+    ()
 }
 
 #[allow(unused)]
-fn ice() -> impl Foo<scope::Scope> {
+fn ice() -> impl Foo<Scope> {
     loop {}
 }
 

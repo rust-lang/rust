@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-empty-object-type */
 /**
  * This file mirrors `crates/rust-analyzer/src/lsp_ext.rs` declarations.
  */
@@ -47,6 +48,9 @@ export const runFlycheck = new lc.NotificationType<{
 }>("rust-analyzer/runFlycheck");
 export const syntaxTree = new lc.RequestType<SyntaxTreeParams, string, void>(
     "rust-analyzer/syntaxTree",
+);
+export const viewSyntaxTree = new lc.RequestType<ViewSyntaxTreeParams, string, void>(
+    "rust-analyzer/viewSyntaxTree",
 );
 export const viewCrateGraph = new lc.RequestType<ViewCrateGraphParams, string, void>(
     "rust-analyzer/viewCrateGraph",
@@ -157,6 +161,7 @@ export type SyntaxTreeParams = {
     textDocument: lc.TextDocumentIdentifier;
     range: lc.Range | null;
 };
+export type ViewSyntaxTreeParams = { textDocument: lc.TextDocumentIdentifier };
 export type ViewCrateGraphParams = { full: boolean };
 export type ViewItemTreeParams = { textDocument: lc.TextDocumentIdentifier };
 

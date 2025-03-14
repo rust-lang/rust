@@ -1,9 +1,9 @@
-use crate::spec::{StackProbeType, Target, TargetOptions, base};
+use crate::spec::{StackProbeType, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     Target {
-        llvm_target: "riscv32".into(),
-        metadata: crate::spec::TargetMetadata {
+        llvm_target: "riscv32-unknown-linux-gnu".into(),
+        metadata: TargetMetadata {
             description: None,
             tier: Some(3),
             host_tools: Some(false),

@@ -1,5 +1,5 @@
-//! This test checks that we currently need to implement
-//! members, even if their where bounds don't hold for the impl type.
+//! This test checks that we do not need to implement
+//! members, whose `where Self: Sized` bounds don't hold for the impl type.
 
 trait Foo {
     fn foo()
@@ -15,12 +15,28 @@ impl Foo for () {
 impl Foo for i32 {}
 //~^ ERROR: not all trait items implemented, missing: `foo`
 
-// Should be allowed
 impl Foo for dyn std::fmt::Debug {}
-//~^ ERROR: not all trait items implemented, missing: `foo`
 
+#[deny(dead_code)]
 impl Foo for dyn std::fmt::Display {
     fn foo() {}
+    //~^ ERROR this item cannot be used as its where bounds are not satisfied
 }
+
+struct Struct {
+    i: i32,
+    tail: [u8],
+}
+
+impl Foo for Struct {}
+
+// Ensure we only allow known-unsized types to be skipped
+trait Trait {
+    fn foo(self)
+    where
+        Self: Sized;
+}
+impl<T: ?Sized> Trait for T {}
+//~^ ERROR: not all trait items implemented, missing: `foo`
 
 fn main() {}

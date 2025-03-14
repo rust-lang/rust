@@ -8,8 +8,9 @@ LL | fn f(f: dyn FnOnce()) {}
    = help: unsized fn params are gated as an unstable feature
 help: you can use `impl Trait` as the argument type
    |
-LL | fn f(f: impl FnOnce()) {}
-   |         ~~~~
+LL - fn f(f: dyn FnOnce()) {}
+LL + fn f(f: impl FnOnce()) {}
+   |
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn f(f: &dyn FnOnce()) {}

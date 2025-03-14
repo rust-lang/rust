@@ -89,6 +89,7 @@ impl_binder_encode_decode! {
     ty::ExistentialPredicate<I>,
     ty::TraitRef<I>,
     ty::ExistentialTraitRef<I>,
+    ty::HostEffectPredicate<I>,
 }
 
 impl<I: Interner, T> Binder<I, T>
@@ -803,7 +804,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
     #[inline(never)]
     fn region_param_out_of_range(&self, ebr: I::EarlyParamRegion, r: I::Region) -> ! {
         panic!(
-            "const parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
+            "region parameter `{:?}` ({:?}/{}) out of range when instantiating args={:?}",
             ebr,
             r,
             ebr.index(),

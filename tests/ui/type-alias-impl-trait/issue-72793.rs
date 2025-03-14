@@ -3,24 +3,21 @@
 
 #![feature(type_alias_impl_trait)]
 
-mod foo {
-    pub trait T {
-        type Item;
-    }
-
-    pub type Alias<'a> = impl T<Item = &'a ()>;
-
-    struct S;
-    impl<'a> T for &'a S {
-        type Item = &'a ();
-    }
-
-    pub fn filter_positive<'a>() -> Alias<'a> {
-        &S
-    }
+pub trait T {
+    type Item;
 }
 
-use foo::*;
+pub type Alias<'a> = impl T<Item = &'a ()>;
+
+struct S;
+impl<'a> T for &'a S {
+    type Item = &'a ();
+}
+
+#[define_opaque(Alias)]
+pub fn filter_positive<'a>() -> Alias<'a> {
+    &S
+}
 
 fn with_positive(fun: impl Fn(Alias<'_>)) {
     fun(filter_positive());

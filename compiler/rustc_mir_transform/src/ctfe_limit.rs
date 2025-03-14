@@ -36,6 +36,10 @@ impl<'tcx> crate::MirPass<'tcx> for CtfeLimit {
             );
         }
     }
+
+    fn is_required(&self) -> bool {
+        true
+    }
 }
 
 fn has_back_edge(

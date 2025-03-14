@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/with_lifetime.rs:17:5
+  --> $DIR/with_lifetime.rs:18:5
    |
 LL | fn foo<'a>(a: &'a ()) {
    |        -- lifetime `'a` defined here

@@ -222,10 +222,10 @@ pub struct CycleError {
     pub cycle: Vec<QueryInfo>,
 }
 
-/// Checks if the query is already computed and in the cache.
-/// It returns the shard index and a lock guard to the shard,
-/// which will be used if the query is not in the cache and we need
-/// to compute it.
+/// Checks whether there is already a value for this key in the in-memory
+/// query cache, returning that value if present.
+///
+/// (Also performs some associated bookkeeping, if a value was found.)
 #[inline(always)]
 pub fn try_get_cached<Tcx, C>(tcx: Tcx, cache: &C, key: &C::Key) -> Option<C::Value>
 where

@@ -1,5 +1,5 @@
 //@ only-wasm32
-//@ compile-flags: -C panic=unwind
+//@ compile-flags: -C panic=unwind -Z emscripten-wasm-eh
 
 #![crate_type = "lib"]
 #![feature(core_intrinsics)]

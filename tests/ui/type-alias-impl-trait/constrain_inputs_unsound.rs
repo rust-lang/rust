@@ -4,9 +4,12 @@ trait Static: 'static {}
 impl Static for () {}
 
 type Gal<T> = impl Static;
+#[define_opaque(Gal)]
 fn _defining<T>() -> Gal<T> {}
 
-trait Callable<Arg> { type Output; }
+trait Callable<Arg> {
+    type Output;
+}
 
 /// We can infer `<C as Callable<Arg>>::Output: 'static`,
 /// because we know `C: 'static` and `Arg: 'static`,

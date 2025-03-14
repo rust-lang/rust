@@ -5,7 +5,6 @@
 //@ ignore-stage1
 //@ ignore-cross-compile
 //@ ignore-remote
-//@ ignore-windows-gnu mingw has troubles with linking https://github.com/rust-lang/rust/pull/116837
 //@ edition: 2021
 
 #![feature(rustc_private)]

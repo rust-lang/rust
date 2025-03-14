@@ -231,13 +231,19 @@ impl<'tcx> FrameInfo<'tcx> {
     pub fn as_note(&self, tcx: TyCtxt<'tcx>) -> errors::FrameNote {
         let span = self.span;
         if tcx.def_key(self.instance.def_id()).disambiguated_data.data == DefPathData::Closure {
-            errors::FrameNote { where_: "closure", span, instance: String::new(), times: 0 }
+            errors::FrameNote {
+                where_: "closure",
+                span,
+                instance: String::new(),
+                times: 0,
+                has_label: false,
+            }
         } else {
             let instance = format!("{}", self.instance);
             // Note: this triggers a `must_produce_diag` state, which means that if we ever get
             // here we must emit a diagnostic. We should never display a `FrameInfo` unless we
             // actually want to emit a warning or error to the user.
-            errors::FrameNote { where_: "instance", span, instance, times: 0 }
+            errors::FrameNote { where_: "instance", span, instance, times: 0, has_label: false }
         }
     }
 }

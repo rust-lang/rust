@@ -1,5 +1,3 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-
 use rustc_abi::Size;
 
 use crate::concurrency::sync::LAZY_INIT_COOKIE;
@@ -136,8 +134,7 @@ fn mutex_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size>
 
     // Sanity-check this against PTHREAD_MUTEX_INITIALIZER (but only once):
     // the `init` field must start out not equal to INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_mutex_sanity.replace(true) {
         let check_static_initializer = |name| {
             let static_initializer = ecx.eval_path(&["libc", name]);
             let init_field =
@@ -173,7 +170,7 @@ fn mutex_create<'tcx>(
     mutex_ptr: &OpTy<'tcx>,
     kind: MutexKind,
 ) -> InterpResult<'tcx, PthreadMutex> {
-    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    let mutex = ecx.deref_pointer_as(mutex_ptr, ecx.libc_ty_layout("pthread_mutex_t"))?;
     let id = ecx.machine.sync.mutex_create();
     let data = PthreadMutex { mutex_ref: id, kind };
     ecx.lazy_sync_init(&mutex, mutex_init_offset(ecx)?, data.clone())?;
@@ -189,7 +186,7 @@ fn mutex_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let mutex = ecx.deref_pointer(mutex_ptr)?;
+    let mutex = ecx.deref_pointer_as(mutex_ptr, ecx.libc_ty_layout("pthread_mutex_t"))?;
     ecx.lazy_sync_get_data(
         &mutex,
         mutex_init_offset(ecx)?,
@@ -248,8 +245,7 @@ fn rwlock_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size
 
     // Sanity-check this against PTHREAD_RWLOCK_INITIALIZER (but only once):
     // the `init` field must start out not equal to LAZY_INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_rwlock_sanity.replace(true) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_RWLOCK_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
@@ -269,7 +265,7 @@ fn rwlock_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let rwlock = ecx.deref_pointer(rwlock_ptr)?;
+    let rwlock = ecx.deref_pointer_as(rwlock_ptr, ecx.libc_ty_layout("pthread_rwlock_t"))?;
     ecx.lazy_sync_get_data(
         &rwlock,
         rwlock_init_offset(ecx)?,
@@ -357,8 +353,7 @@ fn cond_init_offset<'tcx>(ecx: &MiriInterpCx<'tcx>) -> InterpResult<'tcx, Size> 
 
     // Sanity-check this against PTHREAD_COND_INITIALIZER (but only once):
     // the `init` field must start out not equal to LAZY_INIT_COOKIE.
-    static SANITY: AtomicBool = AtomicBool::new(false);
-    if !SANITY.swap(true, Ordering::Relaxed) {
+    if !ecx.machine.pthread_condvar_sanity.replace(true) {
         let static_initializer = ecx.eval_path(&["libc", "PTHREAD_COND_INITIALIZER"]);
         let init_field = static_initializer.offset(offset, ecx.machine.layouts.u32, ecx).unwrap();
         let init = ecx.read_scalar(&init_field).unwrap().to_u32().unwrap();
@@ -388,7 +383,7 @@ fn cond_create<'tcx>(
     cond_ptr: &OpTy<'tcx>,
     clock: ClockId,
 ) -> InterpResult<'tcx, PthreadCondvar> {
-    let cond = ecx.deref_pointer(cond_ptr)?;
+    let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
     let id = ecx.machine.sync.condvar_create();
     let data = PthreadCondvar { id, clock };
     ecx.lazy_sync_init(&cond, cond_init_offset(ecx)?, data)?;
@@ -402,7 +397,7 @@ fn cond_get_data<'tcx, 'a>(
 where
     'tcx: 'a,
 {
-    let cond = ecx.deref_pointer(cond_ptr)?;
+    let cond = ecx.deref_pointer_as(cond_ptr, ecx.libc_ty_layout("pthread_cond_t"))?;
     ecx.lazy_sync_get_data(
         &cond,
         cond_init_offset(ecx)?,
@@ -765,7 +760,10 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
         let this = self.eval_context_mut();
 
         let clock_id = condattr_get_clock_id(this, attr_op)?;
-        this.write_scalar(Scalar::from_i32(clock_id), &this.deref_pointer(clk_id_op)?)?;
+        this.write_scalar(
+            Scalar::from_i32(clock_id),
+            &this.deref_pointer_as(clk_id_op, this.libc_ty_layout("clockid_t"))?,
+        )?;
 
         interp_ok(())
     }

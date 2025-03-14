@@ -1,4 +1,4 @@
-#![feature(trait_upcasting, type_alias_impl_trait)]
+#![feature(type_alias_impl_trait)]
 
 //@ check-pass
 
@@ -15,6 +15,7 @@ fn test_correct2<'a>(x: &dyn Foo<'a>) {
     let _ = x as &dyn Bar<'_, '_, Tait>;
 }
 
+#[define_opaque(Tait)]
 fn test_correct3<'a>(x: &dyn Foo<'a>, _: Tait) {
     let _ = x as &dyn Bar<'_, '_, ()>;
 }

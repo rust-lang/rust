@@ -97,7 +97,7 @@ impl Handle {
 
         // packs the data into the lower `data_size` bits
         // and packs the discriminant right above the data
-        discriminant << data_size | data
+        (discriminant << data_size) | data
     }
 
     fn new(discriminant: u32, data: u32) -> Option<Self> {

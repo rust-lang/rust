@@ -17,14 +17,12 @@ pub enum Direction {
 //
 // Move item under cursor or selection up and down.
 //
-// |===
-// | Editor  | Action Name
-//
+// | Editor  | Action Name |
+// |---------|-------------|
 // | VS Code | **rust-analyzer: Move item up**
 // | VS Code | **rust-analyzer: Move item down**
-// |===
 //
-// image::https://user-images.githubusercontent.com/48062697/113065576-04298180-91b1-11eb-91ce-4505e99ed598.gif[]
+// ![Move Item](https://user-images.githubusercontent.com/48062697/113065576-04298180-91b1-11eb-91ce-4505e99ed598.gif)
 pub(crate) fn move_item(
     db: &RootDatabase,
     range: FileRange,
@@ -180,7 +178,11 @@ mod tests {
 
     use crate::Direction;
 
-    fn check(ra_fixture: &str, expect: Expect, direction: Direction) {
+    fn check(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        expect: Expect,
+        direction: Direction,
+    ) {
         let (analysis, range) = fixture::range(ra_fixture);
         let edit = analysis.move_item(range, direction).unwrap().unwrap_or_default();
         let mut file = analysis.file_text(range.file_id).unwrap().to_string();

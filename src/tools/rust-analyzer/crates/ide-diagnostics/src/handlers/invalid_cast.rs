@@ -8,7 +8,7 @@ macro_rules! format_ty {
             $fmt,
             $(
                 $arg
-                    .display($ctx.sema.db, $ctx.edition)
+                    .display($ctx.sema.db, $ctx.display_target)
                     .with_closure_style(ClosureStyle::ClosureWithId)
             ),*
         )
@@ -1127,6 +1127,41 @@ fn main() {
     let _wrap = Wrap(unsafe { &mut *(lparam as *mut _) });
 }
         "#,
+        );
+    }
+
+    #[test]
+    fn regression_18682() {
+        check_diagnostics(
+            r#"
+//- minicore: coerce_unsized
+struct Flexible {
+    body: [u8],
+}
+
+trait Field {
+    type Type: ?Sized;
+}
+
+impl Field for Flexible {
+    type Type = [u8];
+}
+
+trait KnownLayout {
+    type MaybeUninit: ?Sized;
+}
+
+
+impl<T> KnownLayout for [T] {
+    type MaybeUninit = [T];
+}
+
+struct ZerocopyKnownLayoutMaybeUninit(<<Flexible as Field>::Type as KnownLayout>::MaybeUninit);
+
+fn test(ptr: *mut [u8]) -> *mut ZerocopyKnownLayoutMaybeUninit {
+    ptr as *mut _
+}
+"#,
         );
     }
 }

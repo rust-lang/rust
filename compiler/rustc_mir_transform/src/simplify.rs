@@ -83,6 +83,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyCfg {
         debug!("SimplifyCfg({:?}) - simplifying {:?}", self.name(), body.source);
         simplify_cfg(body);
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 struct CfgSimplifier<'a, 'tcx> {
@@ -405,6 +409,10 @@ impl<'tcx> crate::MirPass<'tcx> for SimplifyLocals {
             body.local_decls.shrink_to_fit();
         }
     }
+
+    fn is_required(&self) -> bool {
+        false
+    }
 }
 
 pub(super) fn remove_unused_definitions<'tcx>(body: &mut Body<'tcx>) {
@@ -560,9 +568,9 @@ fn remove_unused_definitions_helper(used_locals: &mut UsedLocals, body: &mut Bod
                     }
                     StatementKind::Assign(box (place, _)) => used_locals.is_used(place.local),
 
-                    StatementKind::SetDiscriminant { ref place, .. }
-                    | StatementKind::BackwardIncompatibleDropHint { ref place, reason: _ }
-                    | StatementKind::Deinit(ref place) => used_locals.is_used(place.local),
+                    StatementKind::SetDiscriminant { place, .. }
+                    | StatementKind::BackwardIncompatibleDropHint { place, reason: _ }
+                    | StatementKind::Deinit(place) => used_locals.is_used(place.local),
                     StatementKind::Nop => false,
                     _ => true,
                 };

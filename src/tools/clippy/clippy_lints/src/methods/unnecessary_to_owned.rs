@@ -31,7 +31,7 @@ pub fn check<'tcx>(
     method_name: Symbol,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
     if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id)
         && args.is_empty()
@@ -207,7 +207,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) -> bool {
     if let Some(parent) = get_parent_expr(cx, expr)
         && let Some(callee_def_id) = fn_def_id(cx, parent)
@@ -217,11 +217,14 @@ fn check_into_iter_call_arg(
         && implements_trait(cx, parent_ty, iterator_trait_id, &[])
         && let Some(item_ty) = get_iterator_item_ty(cx, parent_ty)
         && let Some(receiver_snippet) = receiver.span.get_source_text(cx)
+        // If the receiver is a `Cow`, we can't remove the `into_owned` generally, see https://github.com/rust-lang/rust-clippy/issues/13624.
+        && !is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(receiver), sym::Cow)
     {
         if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
             return true;
         }
-        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
+
+        let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(cx, msrvs::ITERATOR_COPIED) {
             "copied"
         } else {
             "cloned"
@@ -491,19 +494,19 @@ fn get_input_traits_and_projections<'tcx>(
 
 #[expect(clippy::too_many_lines)]
 fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<'a>) -> bool {
-    for (_, node) in cx.tcx.hir().parent_iter(expr.hir_id) {
+    for (_, node) in cx.tcx.hir_parent_iter(expr.hir_id) {
         match node {
             Node::Stmt(_) => return true,
-            Node::Block(..) => continue,
+            Node::Block(..) => {},
             Node::Item(item) => {
-                if let ItemKind::Fn(_, _, body_id) = &item.kind
+                if let ItemKind::Fn { body: body_id, .. } = &item.kind
                     && let output_ty = return_ty(cx, item.owner_id)
                     && rustc_hir_typeck::can_coerce(cx.tcx, cx.param_env, item.owner_id.def_id, ty, output_ty)
                 {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
                         return false;
                     }
-                    let body = cx.tcx.hir().body(*body_id);
+                    let body = cx.tcx.hir_body(*body_id);
                     let body_expr = &body.value;
                     let mut count = 0;
                     return find_all_ret_expressions(cx, body_expr, |_| {

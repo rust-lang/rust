@@ -32,6 +32,8 @@
 #![allow(internal_features)]
 #![deny(ffi_unwind_calls)]
 #![warn(rustdoc::unescaped_backticks)]
+#![warn(unreachable_pub)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[unstable(feature = "proc_macro_internals", issue = "27812")]
 #[doc(hidden)]
@@ -419,7 +421,7 @@ pub mod token_stream {
 /// Unquoting is done with `$`, and works by taking the single next ident as the unquoted term.
 /// To quote `$` itself, use `$$`.
 #[unstable(feature = "proc_macro_quote", issue = "54722")]
-#[allow_internal_unstable(proc_macro_def_site, proc_macro_internals)]
+#[allow_internal_unstable(proc_macro_def_site, proc_macro_internals, proc_macro_totokens)]
 #[rustc_builtin_macro]
 pub macro quote($($t:tt)*) {
     /* compiler built-in */

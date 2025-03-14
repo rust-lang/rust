@@ -154,7 +154,8 @@
         target_os = "emscripten",
         target_os = "wasi",
         target_env = "sgx",
-        target_os = "xous"
+        target_os = "xous",
+        target_os = "trusty",
     ))
 ))]
 mod tests;
@@ -217,6 +218,7 @@ use crate::{fmt, fs, str};
 ///
 /// [`wait`]: Child::wait
 #[stable(feature = "process", since = "1.0.0")]
+#[cfg_attr(not(test), rustc_diagnostic_item = "Child")]
 pub struct Child {
     pub(crate) handle: imp::Process,
 
@@ -868,13 +870,17 @@ impl Command {
     ///
     /// # Examples
     ///
+    /// Prevent any inherited `GIT_DIR` variable from changing the target of the `git` command,
+    /// while allowing all other variables, like `GIT_AUTHOR_NAME`.
+    ///
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
-    ///     .env_remove("PATH")
-    ///     .spawn()
-    ///     .expect("ls command failed to start");
+    /// Command::new("git")
+    ///     .arg("commit")
+    ///     .env_remove("GIT_DIR")
+    ///     .spawn()?;
+    /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_remove<K: AsRef<OsStr>>(&mut self, key: K) -> &mut Command {
@@ -896,13 +902,17 @@ impl Command {
     ///
     /// # Examples
     ///
+    /// The behavior of `sort` is affected by `LANG` and `LC_*` environment variables.
+    /// Clearing the environment makes `sort`'s behavior independent of the parent processes' language.
+    ///
     /// ```no_run
     /// use std::process::Command;
     ///
-    /// Command::new("ls")
+    /// Command::new("sort")
+    ///     .arg("file.txt")
     ///     .env_clear()
-    ///     .spawn()
-    ///     .expect("ls command failed to start");
+    ///     .spawn()?;
+    /// # std::io::Result::Ok(())
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn env_clear(&mut self) -> &mut Command {
@@ -1283,13 +1293,13 @@ impl fmt::Debug for Output {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let stdout_utf8 = str::from_utf8(&self.stdout);
         let stdout_debug: &dyn fmt::Debug = match stdout_utf8 {
-            Ok(ref str) => str,
+            Ok(ref s) => s,
             Err(_) => &self.stdout,
         };
 
         let stderr_utf8 = str::from_utf8(&self.stderr);
         let stderr_debug: &dyn fmt::Debug = match stderr_utf8 {
-            Ok(ref str) => str,
+            Ok(ref s) => s,
             Err(_) => &self.stderr,
         };
 
@@ -2107,6 +2117,7 @@ impl Child {
     /// [`ErrorKind`]: io::ErrorKind
     /// [`InvalidInput`]: io::ErrorKind::InvalidInput
     #[stable(feature = "process", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "child_kill")]
     pub fn kill(&mut self) -> io::Result<()> {
         self.handle.kill()
     }
@@ -2127,6 +2138,7 @@ impl Child {
     /// ```
     #[must_use]
     #[stable(feature = "process_id", since = "1.3.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "child_id")]
     pub fn id(&self) -> u32 {
         self.handle.id()
     }
@@ -2310,14 +2322,10 @@ pub fn exit(code: i32) -> ! {
 /// Terminates the process in an abnormal fashion.
 ///
 /// The function will never return and will immediately terminate the current
-/// process in a platform specific "abnormal" manner.
-///
-/// Note that because this function never returns, and that it terminates the
-/// process, no destructors on the current stack or any other thread's stack
-/// will be run.
-///
-/// Rust IO buffers (eg, from `BufWriter`) will not be flushed.
-/// Likewise, C stdio buffers will (on most platforms) not be flushed.
+/// process in a platform specific "abnormal" manner. As a consequence,
+/// no destructors on the current stack or any other thread's stack
+/// will be run, Rust IO buffers (eg, from `BufWriter`) will not be flushed,
+/// and C stdio buffers will (on most platforms) not be flushed.
 ///
 /// This is in contrast to the default behavior of [`panic!`] which unwinds
 /// the current thread's stack and calls all destructors.
@@ -2371,6 +2379,7 @@ pub fn exit(code: i32) -> ! {
 /// [panic hook]: crate::panic::set_hook
 #[stable(feature = "process_abort", since = "1.17.0")]
 #[cold]
+#[cfg_attr(not(test), rustc_diagnostic_item = "process_abort")]
 pub fn abort() -> ! {
     crate::sys::abort_internal();
 }

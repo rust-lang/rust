@@ -6,7 +6,7 @@
 //! dependent crates can use them.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::mir::visit::{NonMutatingUseContext, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Location, Operand, Place, RETURN_PLACE, Terminator, TerminatorKind};
 use rustc_middle::ty::{self, DeducedParamAttrs, Ty, TyCtxt};
@@ -18,13 +18,13 @@ struct DeduceReadOnly {
     /// Each bit is indexed by argument number, starting at zero (so 0 corresponds to local decl
     /// 1). The bit is true if the argument may have been mutated or false if we know it hasn't
     /// been up to the point we're at.
-    mutable_args: BitSet<usize>,
+    mutable_args: DenseBitSet<usize>,
 }
 
 impl DeduceReadOnly {
     /// Returns a new DeduceReadOnly instance.
     fn new(arg_count: usize) -> Self {
-        Self { mutable_args: BitSet::new_empty(arg_count) }
+        Self { mutable_args: DenseBitSet::new_empty(arg_count) }
     }
 }
 
@@ -80,35 +80,6 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
         // `f` passes. Note that function arguments are the only situation in which this problem can
         // arise: every other use of `move` in MIR doesn't actually write to the value it moves
         // from.
-        //
-        // Anyway, right now this situation doesn't actually arise in practice. Instead, the MIR for
-        // that function looks like this:
-        //
-        //      fn f(_1: BigStruct) -> () {
-        //          let mut _0: ();
-        //          let mut _2: BigStruct;
-        //          bb0: {
-        //              _2 = move _1;
-        //              _0 = g(move _2) -> bb1;
-        //          }
-        //          ...
-        //      }
-        //
-        // Because of that extra move that MIR construction inserts, `x` (i.e. `_1`) can *in
-        // practice* safely be marked `readonly`.
-        //
-        // To handle the possibility that other optimizations (for example, destination propagation)
-        // might someday generate MIR like the first example above, we panic upon seeing an argument
-        // to *our* function that is directly moved into *another* function as an argument. Having
-        // eliminated that problematic case, we can safely treat moves as copies in this analysis.
-        //
-        // In the future, if MIR optimizations cause arguments of a caller to be directly moved into
-        // the argument of a callee, we can just add that argument to `mutated_args` instead of
-        // panicking.
-        //
-        // Note that, because the problematic MIR is never actually generated, we can't add a test
-        // case for this.
-
         if let TerminatorKind::Call { ref args, .. } = terminator.kind {
             for arg in args {
                 if let Operand::Move(place) = arg.node {

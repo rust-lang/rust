@@ -67,7 +67,10 @@ mod tests {
 
     use super::ssr_assists;
 
-    fn get_assists(ra_fixture: &str, resolve: AssistResolveStrategy) -> Vec<Assist> {
+    fn get_assists(
+        #[rust_analyzer::rust_fixture] ra_fixture: &str,
+        resolve: AssistResolveStrategy,
+    ) -> Vec<Assist> {
         let (mut db, file_id, range_or_offset) = RootDatabase::with_range_or_offset(ra_fixture);
         let mut local_roots = FxHashSet::default();
         local_roots.insert(test_fixture::WORKSPACE);
@@ -136,6 +139,7 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 33..34,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -144,6 +148,8 @@ mod tests {
                         },
                         file_system_edits: [],
                         is_snippet: false,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: None,
@@ -176,6 +182,7 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 33..34,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -189,6 +196,7 @@ mod tests {
                                         Indel {
                                             insert: "3",
                                             delete: 11..12,
+                                            annotation: None,
                                         },
                                     ],
                                 },
@@ -197,6 +205,8 @@ mod tests {
                         },
                         file_system_edits: [],
                         is_snippet: false,
+                        annotations: {},
+                        next_annotation_id: 0,
                     },
                 ),
                 command: None,

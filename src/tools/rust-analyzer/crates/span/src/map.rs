@@ -208,7 +208,7 @@ impl RealSpanMap {
         Span {
             range: range - offset,
             anchor: SpanAnchor { file_id: self.file_id, ast_id },
-            ctx: SyntaxContextId::ROOT,
+            ctx: SyntaxContextId::root(self.file_id.edition()),
         }
     }
 }

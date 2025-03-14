@@ -276,7 +276,7 @@ LL |     use_bar: bool,
    |     ^^^^^^^^^^^^^
 
 error: field name starts with the struct's name
-  --> tests/ui/struct_fields.rs:342:5
+  --> tests/ui/struct_fields.rs:343:5
    |
 LL |     use_baz: bool,
    |     ^^^^^^^^^^^^^

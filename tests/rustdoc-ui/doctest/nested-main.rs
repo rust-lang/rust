@@ -1,7 +1,7 @@
 //@ check-pass
 //@ compile-flags:--test --test-args=--test-threads=1
-//@ normalize-stdout-test: "tests/rustdoc-ui/doctest" -> "$$DIR"
-//@ normalize-stdout-test: "finished in \d+\.\d+s" -> "finished in $$TIME"
+//@ normalize-stdout: "tests/rustdoc-ui/doctest" -> "$$DIR"
+//@ normalize-stdout: "finished in \d+\.\d+s" -> "finished in $$TIME"
 
 // Regression test for <https://github.com/rust-lang/rust/issues/131893>.
 // It ensures that if a function called `main` is nested, it will not consider

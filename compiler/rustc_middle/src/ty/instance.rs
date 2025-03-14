@@ -5,18 +5,18 @@ use std::path::PathBuf;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
-use rustc_hir::def::Namespace;
+use rustc_hir::def::{CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::bit_set::FiniteBitSet;
 use rustc_macros::{Decodable, Encodable, HashStable, Lift, TyDecodable, TyEncodable};
-use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
 use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, Symbol};
 use tracing::{debug, instrument};
 
 use crate::error;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::print::{FmtPrinter, Printer, shrunk_instance_name};
 use crate::ty::{
     self, EarlyBinder, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable,
@@ -111,8 +111,9 @@ pub enum InstanceKind<'tcx> {
 
     /// Dynamic dispatch to `<dyn Trait as Trait>::fn`.
     ///
-    /// This `InstanceKind` does not have callable MIR. Calls to `Virtual` instances must be
-    /// codegen'd as virtual calls through the vtable.
+    /// This `InstanceKind` may have a callable MIR as the default implementation.
+    /// Calls to `Virtual` instances must be codegen'd as virtual calls through the vtable.
+    /// *This means we might not know exactly what is being called.*
     ///
     /// If this is reified to a `fn` pointer, a `ReifyShim` is used (see `ReifyShim` above for more
     /// details on that).
@@ -202,7 +203,7 @@ impl<'tcx> Instance<'tcx> {
         if !tcx.sess.opts.share_generics()
             // However, if the def_id is marked inline(never), then it's fine to just reuse the
             // upstream monomorphization.
-            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_parsing::InlineAttr::Never
+            && tcx.codegen_fn_attrs(self.def_id()).inline != rustc_attr_data_structures::InlineAttr::Never
         {
             return None;
         }
@@ -328,7 +329,7 @@ impl<'tcx> InstanceKind<'tcx> {
             // We include enums without destructors to allow, say, optimizing
             // drops of `Option::None` before LTO. We also respect the intent of
             // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().map_or(true, |adt_def| {
+            return ty.ty_adt_def().is_none_or(|adt_def| {
                 match *self {
                     ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
                     ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
@@ -498,7 +499,8 @@ impl<'tcx> Instance<'tcx> {
 
     /// Resolves a `(def_id, args)` pair to an (optional) instance -- most commonly,
     /// this is used to find the precise code that will run for a trait method invocation,
-    /// if known.
+    /// if known. This should only be used for functions and consts. If you want to
+    /// resolve an associated type, use [`TyCtxt::try_normalize_erasing_regions`].
     ///
     /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
@@ -527,6 +529,23 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         args: GenericArgsRef<'tcx>,
     ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
+        assert_matches!(
+            tcx.def_kind(def_id),
+            DefKind::Fn
+                | DefKind::AssocFn
+                | DefKind::Const
+                | DefKind::AssocConst
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::Static { .. }
+                | DefKind::Ctor(_, CtorKind::Fn)
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody,
+            "`Instance::try_resolve` should only be used to resolve instances of \
+            functions, statics, and consts; to resolve associated types, use \
+            `try_normalize_erasing_regions`."
+        );
+
         // Rust code can easily create exponentially-long types using only a
         // polynomial recursion depth. Even with the default recursion
         // depth, you can easily get cases that take >2^60 steps to run,

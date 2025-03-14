@@ -181,7 +181,7 @@ fn in_impl<'tcx>(
 ) -> Option<(&'tcx rustc_hir::Ty<'tcx>, &'tcx rustc_hir::Ty<'tcx>)> {
     if let Some(block) = get_enclosing_block(cx, e.hir_id)
         && let Some(impl_def_id) = cx.tcx.impl_of_method(block.hir_id.owner.to_def_id())
-        && let item = cx.tcx.hir().expect_item(impl_def_id.expect_local())
+        && let item = cx.tcx.hir_expect_item(impl_def_id.expect_local())
         && let ItemKind::Impl(item) = &item.kind
         && let Some(of_trait) = &item.of_trait
         && let Some(seg) = of_trait.path.segments.last()
@@ -190,7 +190,8 @@ fn in_impl<'tcx>(
         && let Some(generic_args) = seg.args
         && let Some(GenericArg::Type(other_ty)) = generic_args.args.last()
     {
-        Some((item.self_ty, other_ty))
+        // `_` is not permitted in impl headers
+        Some((item.self_ty, other_ty.as_unambig_ty()))
     } else {
         None
     }
@@ -199,7 +200,7 @@ fn in_impl<'tcx>(
 fn are_equal(cx: &LateContext<'_>, middle_ty: Ty<'_>, hir_ty: &rustc_hir::Ty<'_>) -> bool {
     if let ty::Adt(adt_def, _) = middle_ty.kind()
         && let Some(local_did) = adt_def.did().as_local()
-        && let item = cx.tcx.hir().expect_item(local_did)
+        && let item = cx.tcx.hir_expect_item(local_did)
         && let middle_ty_id = item.owner_id.to_def_id()
         && let TyKind::Path(QPath::Resolved(_, path)) = hir_ty.kind
         && let Res::Def(_, hir_ty_id) = path.res

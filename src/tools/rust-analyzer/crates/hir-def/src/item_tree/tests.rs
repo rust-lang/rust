@@ -4,7 +4,7 @@ use test_fixture::WithFixture;
 
 use crate::{db::DefDatabase, test_db::TestDB};
 
-fn check(ra_fixture: &str, expect: Expect) {
+fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str, expect: Expect) {
     let (db, file_id) = TestDB::with_single_file(ra_fixture);
     let item_tree = db.file_item_tree(file_id.into());
     let pretty = item_tree.pretty_print(&db, Edition::CURRENT);
@@ -270,7 +270,7 @@ m!();
             // AstId: 2
             pub macro m2 { ... }
 
-            // AstId: 3, SyntaxContext: 0, ExpandTo: Items
+            // AstId: 3, SyntaxContext: 2, ExpandTo: Items
             m!(...);
         "#]],
     );

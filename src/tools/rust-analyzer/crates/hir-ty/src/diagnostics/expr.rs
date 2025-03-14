@@ -16,7 +16,6 @@ use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
-use span::Edition;
 use syntax::{
     ast::{self, UnaryOp},
     AstNode,
@@ -31,12 +30,12 @@ use crate::{
         self,
         pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
-    display::HirDisplay,
+    display::{DisplayTarget, HirDisplay},
     Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
-    body::Body,
+    expr_store::Body,
     hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
     LocalFieldId, VariantId,
 };
@@ -295,7 +294,7 @@ impl ExprValidator {
                         path,
                         self.body.expr_path_hygiene(scrutinee_expr),
                     );
-                value_or_partial.map_or(true, |v| !matches!(v, ValueNs::StaticId(_)))
+                value_or_partial.is_none_or(|v| !matches!(v, ValueNs::StaticId(_)))
             }
             Expr::Field { expr, .. } => match self.infer.type_of_expr[*expr].kind(Interner) {
                 TyKind::Adt(adt, ..)
@@ -440,14 +439,16 @@ impl ExprValidator {
                             return;
                         };
                         let root = source_ptr.file_syntax(db.upcast());
-                        let ast::Expr::IfExpr(if_expr) = source_ptr.value.to_node(&root) else {
+                        let either::Left(ast::Expr::IfExpr(if_expr)) =
+                            source_ptr.value.to_node(&root)
+                        else {
                             return;
                         };
                         let mut top_if_expr = if_expr;
                         loop {
                             let parent = top_if_expr.syntax().parent();
                             let has_parent_expr_stmt_or_stmt_list =
-                                parent.as_ref().map_or(false, |node| {
+                                parent.as_ref().is_some_and(|node| {
                                     ast::ExprStmt::can_cast(node.kind())
                                         | ast::StmtList::can_cast(node.kind())
                                 });
@@ -529,7 +530,7 @@ impl FilterMapNextChecker {
                 let is_dyn_trait = self
                     .prev_receiver_ty
                     .as_ref()
-                    .map_or(false, |it| it.strip_references().dyn_trait().is_some());
+                    .is_some_and(|it| it.strip_references().dyn_trait().is_some());
                 if *receiver_expr_id == prev_filter_map_expr_id && !is_dyn_trait {
                     return Some(());
                 }
@@ -631,24 +632,24 @@ fn missing_match_arms<'p>(
     arms_is_empty: bool,
     krate: CrateId,
 ) -> String {
-    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, Edition);
+    struct DisplayWitness<'a, 'p>(&'a WitnessPat<'p>, &'a MatchCheckCtx<'p>, DisplayTarget);
     impl fmt::Display for DisplayWitness<'_, '_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let DisplayWitness(witness, cx, edition) = *self;
+            let DisplayWitness(witness, cx, display_target) = *self;
             let pat = cx.hoist_witness_pat(witness);
-            write!(f, "{}", pat.display(cx.db, edition))
+            write!(f, "{}", pat.display(cx.db, display_target))
         }
     }
 
-    let edition = cx.db.crate_graph()[krate].edition;
     let non_empty_enum = match scrut_ty.as_adt() {
         Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
         _ => false,
     };
+    let display_target = DisplayTarget::from_crate(cx.db, krate);
     if arms_is_empty && !non_empty_enum {
-        format!("type `{}` is non-empty", scrut_ty.display(cx.db, edition))
+        format!("type `{}` is non-empty", scrut_ty.display(cx.db, display_target))
     } else {
-        let pat_display = |witness| DisplayWitness(witness, cx, edition);
+        let pat_display = |witness| DisplayWitness(witness, cx, display_target);
         const LIMIT: usize = 3;
         match &*witnesses {
             [witness] => format!("`{}` not covered", pat_display(witness)),

@@ -49,7 +49,7 @@ impl<'a, T> IntoIterator for &'a mut [T] {
 /// // First, we need a slice to call the `iter` method on:
 /// let slice = &[1, 2, 3];
 ///
-/// // Then we call `iter` on the slice to get the `Iter` struct,
+/// // Then we call `iter` on the slice to get the `Iter` iterator,
 /// // and iterate over it:
 /// for element in slice.iter() {
 ///     println!("{element}");
@@ -107,24 +107,20 @@ impl<'a, T> Iter<'a, T> {
 
     /// Views the underlying data as a subslice of the original data.
     ///
-    /// This has the same lifetime as the original slice, and so the
-    /// iterator can continue to be used while this exists.
-    ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
     /// // First, we need a slice to call the `iter` method on:
-    /// // struct (`&[usize]` here):
     /// let slice = &[1, 2, 3];
     ///
-    /// // Then we call `iter` on the slice to get the `Iter` struct:
+    /// // Then we call `iter` on the slice to get the `Iter` iterator:
     /// let mut iter = slice.iter();
     /// // Here `as_slice` still returns the whole slice, so this prints "[1, 2, 3]":
     /// println!("{:?}", iter.as_slice());
     ///
-    /// // Now, we call the `next` method to remove the first element of the iterator:
+    /// // Now, we call the `next` method to remove the first element from the iterator:
     /// iter.next();
     /// // Here the iterator does not contain the first element of the slice any more,
     /// // so `as_slice` only returns the last two elements of the slice,
@@ -181,7 +177,7 @@ impl<T> AsRef<[T]> for Iter<'_, T> {
 /// // First, we need a slice to call the `iter_mut` method on:
 /// let slice = &mut [1, 2, 3];
 ///
-/// // Then we call `iter_mut` on the slice to get the `IterMut` struct,
+/// // Then we call `iter_mut` on the slice to get the `IterMut` iterator,
 /// // iterate over it and increment each element value:
 /// for element in slice.iter_mut() {
 ///     *element += 1;
@@ -286,25 +282,30 @@ impl<'a, T> IterMut<'a, T> {
 
     /// Views the underlying data as a subslice of the original data.
     ///
-    /// To avoid creating `&mut [T]` references that alias, the returned slice
-    /// borrows its lifetime from the iterator the method is applied on.
-    ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let mut slice: &mut [usize] = &mut [1, 2, 3];
+    /// // First, we need a slice to call the `iter_mut` method on:
+    /// let slice = &mut [1, 2, 3];
     ///
-    /// // First, we get the iterator:
+    /// // Then we call `iter_mut` on the slice to get the `IterMut` iterator:
     /// let mut iter = slice.iter_mut();
-    /// // So if we check what the `as_slice` method returns here, we have "[1, 2, 3]":
-    /// assert_eq!(iter.as_slice(), &[1, 2, 3]);
+    /// // Here `as_slice` still returns the whole slice, so this prints "[1, 2, 3]":
+    /// println!("{:?}", iter.as_slice());
     ///
-    /// // Next, we move to the second element of the slice:
-    /// iter.next();
-    /// // Now `as_slice` returns "[2, 3]":
-    /// assert_eq!(iter.as_slice(), &[2, 3]);
+    /// // Now, we call the `next` method to remove the first element from the iterator
+    /// // and increment its value:
+    /// *iter.next().unwrap() += 1;
+    /// // Here the iterator does not contain the first element of the slice any more,
+    /// // so `as_slice` only returns the last two elements of the slice,
+    /// // and so this prints "[2, 3]":
+    /// println!("{:?}", iter.as_slice());
+    ///
+    /// // The underlying slice still contains three elements, but its first element
+    /// // was increased by 1, so this prints "[2, 2, 3]":
+    /// println!("{:?}", slice);
     /// ```
     #[must_use]
     #[stable(feature = "slice_iter_mut_as_slice", since = "1.53.0")]
@@ -314,9 +315,6 @@ impl<'a, T> IterMut<'a, T> {
     }
 
     /// Views the underlying data as a mutable subslice of the original data.
-    ///
-    /// To avoid creating `&mut [T]` references that alias, the returned slice
-    /// borrows its lifetime from the iterator the method is applied on.
     ///
     /// # Examples
     ///

@@ -65,6 +65,6 @@ impl LateLintPass<'_> for IterOverHashType {
                 expr.span,
                 "iteration over unordered hash-based type",
             );
-        };
+        }
     }
 }

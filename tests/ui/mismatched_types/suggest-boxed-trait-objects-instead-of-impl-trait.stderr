@@ -12,8 +12,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn foo() -> Box<dyn Trait> {
-   |             ~~~~~~~      +
+LL - fn foo() -> impl Trait {
+LL + fn foo() -> Box<dyn Trait> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         Box::new(S)
@@ -34,8 +35,9 @@ LL | |     }
    |
 help: you could change the return type to be a boxed trait object
    |
-LL | fn bar() -> Box<dyn Trait> {
-   |             ~~~~~~~      +
+LL - fn bar() -> impl Trait {
+LL + fn bar() -> Box<dyn Trait> {
+   |
 help: if you change the return type to expect trait objects, box the returned expressions
    |
 LL ~         true => Box::new(S),

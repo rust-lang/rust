@@ -12,11 +12,8 @@ LL | |     )) {}
    = note: `#[warn(anonymous_parameters)]` on by default
 help: try naming the parameter or explicitly ignoring it
    |
-LL ~     fn test(x: u32, _: (
-LL +
-LL +
-LL ~     )) {}
-   |
+LL |     fn test(x: u32, _: (
+   |                     ++
 
 warning: 1 warning emitted
 

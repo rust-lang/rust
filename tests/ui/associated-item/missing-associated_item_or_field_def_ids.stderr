@@ -1,0 +1,25 @@
+error[E0658]: `?Trait` is not permitted in trait object types
+  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:29
+   |
+LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(more_maybe_bounds)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0404]: expected trait, found associated function `Iterator::advance_by`
+  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:30
+   |
+LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^ not a trait
+
+error[E0191]: the value of the associated type `Item` in `Iterator` must be specified
+  --> $DIR/missing-associated_item_or_field_def_ids.rs:3:18
+   |
+LL | fn main() -> dyn Iterator + ?Iterator::advance_by(usize) {
+   |                  ^^^^^^^^ help: specify the associated type: `Iterator<Item = Type>`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0191, E0404, E0658.
+For more information about an error, try `rustc --explain E0191`.

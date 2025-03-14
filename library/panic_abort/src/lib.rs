@@ -15,6 +15,7 @@
 #![feature(staged_api)]
 #![feature(rustc_attrs)]
 #![allow(internal_features)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 #[cfg(target_os = "android")]
 mod android;
@@ -36,16 +37,22 @@ pub unsafe extern "C" fn __rust_panic_cleanup(_: *mut u8) -> *mut (dyn Any + Sen
 pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
     // Android has the ability to attach a message as part of the abort.
     #[cfg(target_os = "android")]
-    android::android_set_abort_message(_payload);
+    unsafe {
+        android::android_set_abort_message(_payload);
+    }
     #[cfg(target_os = "zkvm")]
-    zkvm::zkvm_set_abort_message(_payload);
+    unsafe {
+        zkvm::zkvm_set_abort_message(_payload);
+    }
 
-    abort();
+    unsafe {
+        abort();
+    }
 
     cfg_if::cfg_if! {
         if #[cfg(any(unix, target_os = "solid_asp3"))] {
             unsafe fn abort() -> ! {
-                libc::abort();
+                unsafe { libc::abort(); }
             }
         } else if #[cfg(any(target_os = "hermit",
                             all(target_vendor = "fortanix", target_env = "sgx"),
@@ -54,10 +61,10 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
         ))] {
             unsafe fn abort() -> ! {
                 // call std::sys::abort_internal
-                extern "C" {
+                unsafe extern "C" {
                     pub fn __rust_abort() -> !;
                 }
-                __rust_abort();
+                unsafe { __rust_abort(); }
             }
         } else if #[cfg(all(windows, not(miri)))] {
             // On Windows, use the processor-specific __fastfail mechanism. In Windows 8
@@ -75,11 +82,17 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
                 const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
                 cfg_if::cfg_if! {
                     if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                        core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        unsafe {
+                            core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        }
                     } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                        core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        unsafe {
+                            core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        }
                     } else if #[cfg(any(target_arch = "aarch64", target_arch = "arm64ec"))] {
-                        core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        unsafe {
+                            core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT, options(noreturn, nostack));
+                        }
                     } else {
                         core::intrinsics::abort();
                     }
@@ -87,13 +100,13 @@ pub unsafe fn __rust_start_panic(_payload: &mut dyn PanicPayload) -> u32 {
             }
         } else if #[cfg(target_os = "teeos")] {
             mod teeos {
-                extern "C" {
+                unsafe extern "C" {
                     pub fn TEE_Panic(code: u32) -> !;
                 }
             }
 
             unsafe fn abort() -> ! {
-                teeos::TEE_Panic(1);
+                unsafe { teeos::TEE_Panic(1); }
             }
         } else {
             unsafe fn abort() -> ! {

@@ -1,5 +1,6 @@
 // Verifies that "cfi-normalize-integers" module flag is added.
 //
+//@ add-core-stubs
 //@ revisions: aarch64 x86_64
 //@ [aarch64] compile-flags: --target aarch64-unknown-none
 //@ [aarch64] needs-llvm-components: aarch64
@@ -11,10 +12,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "copy"]
-trait Copy {}
+extern crate minicore;
+use minicore::*;
 
 pub fn foo() {}
 

@@ -64,10 +64,10 @@ pub fn find_param_with_region<'tcx>(
         _ => {}
     }
 
-    let body = hir.maybe_body_owned_by(def_id)?;
+    let body = tcx.hir_maybe_body_owned_by(def_id)?;
 
-    let owner_id = hir.body_owner(body.id());
-    let fn_decl = hir.fn_decl_by_hir_id(owner_id)?;
+    let owner_id = tcx.hir_body_owner(body.id());
+    let fn_decl = tcx.hir_fn_decl_by_hir_id(owner_id)?;
     let poly_fn_sig = tcx.fn_sig(id).instantiate_identity();
 
     let fn_sig = tcx.liberate_late_bound_regions(id, poly_fn_sig);

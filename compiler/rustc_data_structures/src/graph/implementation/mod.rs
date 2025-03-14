@@ -22,7 +22,7 @@
 
 use std::fmt::Debug;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use tracing::debug;
 
 #[cfg(test)]
@@ -193,11 +193,11 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         AdjacentEdges { graph: self, direction, next: first_edge }
     }
 
-    pub fn successor_nodes(&self, source: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
+    pub fn successor_nodes(&self, source: NodeIndex) -> impl Iterator<Item = NodeIndex> {
         self.outgoing_edges(source).targets()
     }
 
-    pub fn predecessor_nodes(&self, target: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
+    pub fn predecessor_nodes(&self, target: NodeIndex) -> impl Iterator<Item = NodeIndex> {
         self.incoming_edges(target).sources()
     }
 
@@ -214,7 +214,7 @@ impl<N: Debug, E: Debug> Graph<N, E> {
         direction: Direction,
         entry_node: NodeIndex,
     ) -> Vec<NodeIndex> {
-        let mut visited = BitSet::new_empty(self.len_nodes());
+        let mut visited = DenseBitSet::new_empty(self.len_nodes());
         let mut stack = vec![];
         let mut result = Vec::with_capacity(self.len_nodes());
         let mut push_node = |stack: &mut Vec<_>, node: NodeIndex| {
@@ -255,11 +255,11 @@ pub struct AdjacentEdges<'g, N, E> {
 }
 
 impl<'g, N: Debug, E: Debug> AdjacentEdges<'g, N, E> {
-    fn targets(self) -> impl Iterator<Item = NodeIndex> + 'g {
+    fn targets(self) -> impl Iterator<Item = NodeIndex> {
         self.map(|(_, edge)| edge.target)
     }
 
-    fn sources(self) -> impl Iterator<Item = NodeIndex> + 'g {
+    fn sources(self) -> impl Iterator<Item = NodeIndex> {
         self.map(|(_, edge)| edge.source)
     }
 }
@@ -287,7 +287,7 @@ impl<'g, N: Debug, E: Debug> Iterator for AdjacentEdges<'g, N, E> {
 pub struct DepthFirstTraversal<'g, N, E> {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
-    visited: BitSet<usize>,
+    visited: DenseBitSet<usize>,
     direction: Direction,
 }
 
@@ -297,7 +297,7 @@ impl<'g, N: Debug, E: Debug> DepthFirstTraversal<'g, N, E> {
         start_node: NodeIndex,
         direction: Direction,
     ) -> Self {
-        let mut visited = BitSet::new_empty(graph.len_nodes());
+        let mut visited = DenseBitSet::new_empty(graph.len_nodes());
         visited.insert(start_node.node_id());
         DepthFirstTraversal { graph, stack: vec![start_node], visited, direction }
     }

@@ -1,4 +1,5 @@
 // ignore-tidy-linelength
+//@ add-core-stubs
 //@ revisions: ENABLE_SVE DISABLE_SVE DISABLE_NEON ENABLE_NEON
 //@ compile-flags: --crate-type=rlib --target=aarch64-unknown-linux-gnu
 //@ needs-llvm-components: aarch64
@@ -22,7 +23,7 @@
 #![feature(no_core, lang_items)]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 pub fn test() {}

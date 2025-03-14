@@ -1,9 +1,9 @@
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_span::def_id::DefPathHash;
 
+use crate::HashIgnoredAttrId;
 use crate::hir::{
-    Attribute, AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes,
-    TraitItemId,
+    AttributeMap, BodyId, Crate, ForeignItemId, ImplItemId, ItemId, OwnerNodes, TraitItemId,
 };
 use crate::hir_id::{HirId, ItemLocalId};
 
@@ -11,9 +11,11 @@ use crate::hir_id::{HirId, ItemLocalId};
 /// This is a hack to allow using the `HashStable_Generic` derive macro
 /// instead of implementing everything in `rustc_middle`.
 pub trait HashStableContext:
-    rustc_ast::HashStableContext + rustc_target::HashStableContext
+    rustc_attr_data_structures::HashStableContext
+    + rustc_ast::HashStableContext
+    + rustc_abi::HashStableContext
 {
-    fn hash_attr(&mut self, _: &Attribute, hasher: &mut StableHasher);
+    fn hash_attr_id(&mut self, id: &HashIgnoredAttrId, hasher: &mut StableHasher);
 }
 
 impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for HirId {
@@ -104,7 +106,7 @@ impl<'tcx, HirCtx: crate::HashStableContext> HashStable<HirCtx> for AttributeMap
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
         // We ignore the `map` since it refers to information included in `opt_hash` which is
         // hashed in the collector and used for the crate hash.
-        let AttributeMap { opt_hash, map: _ } = *self;
+        let AttributeMap { opt_hash, define_opaque: _, map: _ } = *self;
         opt_hash.unwrap().hash_stable(hcx, hasher);
     }
 }
@@ -116,8 +118,8 @@ impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Crate<'_> {
     }
 }
 
-impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for Attribute {
+impl<HirCtx: crate::HashStableContext> HashStable<HirCtx> for HashIgnoredAttrId {
     fn hash_stable(&self, hcx: &mut HirCtx, hasher: &mut StableHasher) {
-        hcx.hash_attr(self, hasher)
+        hcx.hash_attr_id(self, hasher)
     }
 }

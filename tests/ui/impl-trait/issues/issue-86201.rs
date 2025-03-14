@@ -4,10 +4,13 @@
 //@ check-pass
 
 type FunType = impl Fn<()>;
-static STATIC_FN: FunType = some_fn;
+#[define_opaque(FunType)]
+fn foo() -> FunType {
+    some_fn
+}
 
 fn some_fn() {}
 
 fn main() {
-    let _: <FunType as FnOnce<()>>::Output = STATIC_FN();
+    let _: <FunType as FnOnce<()>>::Output = foo()();
 }

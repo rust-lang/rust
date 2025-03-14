@@ -66,7 +66,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeParamMismatch {
                     }) => impl_params.push((path.segments[0].ident.to_string(), path.span)),
                     GenericArg::Type(_) => return,
                     _ => (),
-                };
+                }
             }
 
             // find the type that the Impl is for

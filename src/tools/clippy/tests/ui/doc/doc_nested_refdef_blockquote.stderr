@@ -1,0 +1,148 @@
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:4:7
+   |
+LL | /// > [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+   = note: `-D clippy::doc-nested-refdefs` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::doc_nested_refdefs)]`
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:7:7
+   |
+LL | /// > [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def (title)
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:10:7
+   |
+LL | /// > [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def "title"
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:21:7
+   |
+LL | /// > [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:25:7
+   |
+LL | /// > [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def (title)
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:29:7
+   |
+LL | /// > [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def "title"
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:44:7
+   |
+LL | /// > [link]: def
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:49:7
+   |
+LL | /// > [link]: def (title)
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def (title)
+   |             ++
+
+error: link reference defined in quote
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:54:7
+   |
+LL | /// > [link]: def "title"
+   |       ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > [link][]: def "title"
+   |             ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:119:9
+   |
+LL | /// > - [link]: def
+   |         ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > - [link][]: def
+   |               ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:122:9
+   |
+LL | /// > - [link]: def (title)
+   |         ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > - [link][]: def (title)
+   |               ++
+
+error: link reference defined in list item
+  --> tests/ui/doc/doc_nested_refdef_blockquote.rs:125:9
+   |
+LL | /// > - [link]: def "title"
+   |         ^^^^^^
+   |
+   = help: link definitions are not shown in rendered documentation
+help: for an intra-doc link, add `[]` between the label and the colon
+   |
+LL | /// > - [link][]: def "title"
+   |               ++
+
+error: aborting due to 12 previous errors
+

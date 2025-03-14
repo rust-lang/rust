@@ -28,16 +28,16 @@ impl MyStruct {
 fn main() {
     // Functions
     takes_an_immutable_reference(&mut 42);
-    //~^ ERROR: the function `takes_an_immutable_reference` doesn't need a mutable referen
-    //~| NOTE: `-D clippy::unnecessary-mut-passed` implied by `-D warnings`
+    //~^ unnecessary_mut_passed
+
     let as_ptr: fn(&i32) = takes_an_immutable_reference;
     as_ptr(&mut 42);
-    //~^ ERROR: the function `as_ptr` doesn't need a mutable reference
+    //~^ unnecessary_mut_passed
 
     // Methods
     let my_struct = MyStruct;
     my_struct.takes_an_immutable_reference(&mut 42);
-    //~^ ERROR: the method `takes_an_immutable_reference` doesn't need a mutable reference
+    //~^ unnecessary_mut_passed
 
     // No error
 

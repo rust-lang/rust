@@ -10,6 +10,7 @@ fn reify_as() -> Thunk<impl ContFn> {
 
 type Tait = impl ContFn;
 
+#[define_opaque(Tait)]
 fn reify_as_tait() -> Thunk<Tait> {
     Thunk::new(|mut cont| {
         cont.reify_as();

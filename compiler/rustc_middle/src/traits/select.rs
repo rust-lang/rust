@@ -168,6 +168,8 @@ pub enum SelectionCandidate<'tcx> {
     BuiltinObjectCandidate,
 
     BuiltinUnsizeCandidate,
+
+    BikeshedGuaranteedNoDropCandidate,
 }
 
 /// The result of trait evaluation. The order is important
@@ -259,8 +261,6 @@ impl From<ErrorGuaranteed> for OverflowError {
         OverflowError::Error(e)
     }
 }
-
-TrivialTypeTraversalImpls! { OverflowError }
 
 impl<'tcx> From<OverflowError> for SelectionError<'tcx> {
     fn from(overflow_error: OverflowError) -> SelectionError<'tcx> {

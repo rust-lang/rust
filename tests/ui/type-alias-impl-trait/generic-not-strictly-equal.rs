@@ -20,6 +20,7 @@ fn relate<X>(_: X, _: X) {}
 
 type Opaque<'a> = impl Copy + Captures<'a>;
 
+#[define_opaque(Opaque)]
 fn test<'x>(_: Opaque<'x>) {
     let opaque = None::<Opaque<'_>>; // let's call this lifetime '?1
 

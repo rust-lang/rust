@@ -7,13 +7,14 @@ mod duplicated_attributes;
 mod inline_always;
 mod mixed_attributes_style;
 mod non_minimal_cfg;
+mod repr_attributes;
 mod should_panic_without_expect;
 mod unnecessary_clippy_cfg;
 mod useless_attribute;
 mod utils;
 
 use clippy_config::Conf;
-use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::msrvs::{self, Msrv, MsrvStack};
 use rustc_ast::{self as ast, Attribute, MetaItemInner, MetaItemKind};
 use rustc_hir::{ImplItem, Item, TraitItem};
 use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass};
@@ -274,6 +275,44 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
+    /// Checks for items with `#[repr(packed)]`-attribute without ABI qualification
+    ///
+    /// ### Why is this bad?
+    /// Without qualification, `repr(packed)` implies `repr(Rust)`. The Rust-ABI is inherently unstable.
+    /// While this is fine as long as the type is accessed correctly within Rust-code, most uses
+    /// of `#[repr(packed)]` involve FFI and/or data structures specified by network-protocols or
+    /// other external specifications. In such situations, the unstable Rust-ABI implied in
+    /// `#[repr(packed)]` may lead to future bugs should the Rust-ABI change.
+    ///
+    /// In case you are relying on a well defined and stable memory layout, qualify the type's
+    /// representation using the `C`-ABI. Otherwise, if the type in question is only ever
+    /// accessed from Rust-code according to Rust's rules, use the `Rust`-ABI explicitly.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// #[repr(packed)]
+    /// struct NetworkPacketHeader {
+    ///     header_length: u8,
+    ///     header_version: u16
+    /// }
+    /// ```
+    ///
+    /// Use instead:
+    /// ```no_run
+    /// #[repr(C, packed)]
+    /// struct NetworkPacketHeader {
+    ///     header_length: u8,
+    ///     header_version: u16
+    /// }
+    /// ```
+    #[clippy::version = "1.85.0"]
+    pub REPR_PACKED_WITHOUT_ABI,
+    suspicious,
+    "ensures that `repr(packed)` always comes with a qualified ABI"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
     /// Checks for `any` and `all` combinators in `cfg` with only one condition.
     ///
     /// ### Why is this bad?
@@ -415,47 +454,45 @@ pub struct Attributes {
 
 impl_lint_pass!(Attributes => [
     INLINE_ALWAYS,
+    REPR_PACKED_WITHOUT_ABI,
 ]);
 
 impl Attributes {
     pub fn new(conf: &'static Conf) -> Self {
-        Self {
-            msrv: conf.msrv.clone(),
-        }
+        Self { msrv: conf.msrv }
     }
 }
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(item.hir_id());
+        let attrs = cx.tcx.hir_attrs(item.hir_id());
         if is_relevant_item(cx, item) {
             inline_always::check(cx, item.span, item.ident.name, attrs);
         }
+        repr_attributes::check(cx, item.span, attrs, self.msrv);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         if is_relevant_impl(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
         if is_relevant_trait(cx, item) {
-            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir().attrs(item.hir_id()));
+            inline_always::check(cx, item.span, item.ident.name, cx.tcx.hir_attrs(item.hir_id()));
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }
 
 pub struct EarlyAttributes {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl EarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -474,17 +511,17 @@ impl EarlyLintPass for EarlyAttributes {
         non_minimal_cfg::check(cx, attr);
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }
 
 pub struct PostExpansionEarlyAttributes {
-    msrv: Msrv,
+    msrv: MsrvStack,
 }
 
 impl PostExpansionEarlyAttributes {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
-            msrv: conf.msrv.clone(),
+            msrv: MsrvStack::new(conf.msrv),
         }
     }
 }
@@ -548,5 +585,5 @@ impl EarlyLintPass for PostExpansionEarlyAttributes {
         duplicated_attributes::check(cx, &item.attrs);
     }
 
-    extract_msrv_attr!(EarlyContext);
+    extract_msrv_attr!();
 }

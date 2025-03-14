@@ -44,7 +44,7 @@ impl LateLintPass<'_> for EmptyDrop {
             && let impl_item_hir = child.id.hir_id()
             && let Node::ImplItem(impl_item) = cx.tcx.hir_node(impl_item_hir)
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
-            && let Body { value: func_expr, .. } = cx.tcx.hir().body(*b)
+            && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
             && let func_expr = peel_blocks(func_expr)
             && let ExprKind::Block(block, _) = func_expr.kind
             && block.stmts.is_empty()

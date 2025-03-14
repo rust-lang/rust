@@ -45,8 +45,8 @@ fn test_command_pidfd() {
         .expect_err("pidfd should not have been created");
 
     // exercise the fork/exec path since the earlier attempts may have used pidfd_spawnp()
-    let mut child =
-        unsafe { Command::new("false").pre_exec(|| Ok(())) }.create_pidfd(true).spawn().unwrap();
+    let mut cmd = Command::new("false");
+    let mut child = unsafe { cmd.pre_exec(|| Ok(())) }.create_pidfd(true).spawn().unwrap();
 
     assert!(child.id() > 0 && child.id() < -1i32 as u32);
 

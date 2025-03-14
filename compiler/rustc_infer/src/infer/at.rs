@@ -137,6 +137,7 @@ impl<'a, 'tcx> At<'a, 'tcx> {
                 expected,
                 ty::Contravariant,
                 actual,
+                self.cause.span,
             )
             .map(|goals| self.goals_to_obligations(goals))
         } else {
@@ -163,8 +164,15 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: ToTrace<'tcx>,
     {
         if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(self.infcx, self.param_env, expected, ty::Covariant, actual)
-                .map(|goals| self.goals_to_obligations(goals))
+            NextSolverRelate::relate(
+                self.infcx,
+                self.param_env,
+                expected,
+                ty::Covariant,
+                actual,
+                self.cause.span,
+            )
+            .map(|goals| self.goals_to_obligations(goals))
         } else {
             let mut op = TypeRelating::new(
                 self.infcx,
@@ -208,8 +216,15 @@ impl<'a, 'tcx> At<'a, 'tcx> {
         T: Relate<TyCtxt<'tcx>>,
     {
         if self.infcx.next_trait_solver {
-            NextSolverRelate::relate(self.infcx, self.param_env, expected, ty::Invariant, actual)
-                .map(|goals| self.goals_to_obligations(goals))
+            NextSolverRelate::relate(
+                self.infcx,
+                self.param_env,
+                expected,
+                ty::Invariant,
+                actual,
+                self.cause.span,
+            )
+            .map(|goals| self.goals_to_obligations(goals))
         } else {
             let mut op = TypeRelating::new(
                 self.infcx,
@@ -402,11 +417,35 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialTraitRef<'tcx> {
     }
 }
 
+impl<'tcx> ToTrace<'tcx> for ty::ExistentialTraitRef<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::ExistentialTraitRef(ExpectedFound::new(
+                ty::Binder::dummy(a),
+                ty::Binder::dummy(b),
+            )),
+        }
+    }
+}
+
 impl<'tcx> ToTrace<'tcx> for ty::PolyExistentialProjection<'tcx> {
     fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
             values: ValuePairs::ExistentialProjection(ExpectedFound::new(a, b)),
+        }
+    }
+}
+
+impl<'tcx> ToTrace<'tcx> for ty::ExistentialProjection<'tcx> {
+    fn to_trace(cause: &ObligationCause<'tcx>, a: Self, b: Self) -> TypeTrace<'tcx> {
+        TypeTrace {
+            cause: cause.clone(),
+            values: ValuePairs::ExistentialProjection(ExpectedFound::new(
+                ty::Binder::dummy(a),
+                ty::Binder::dummy(b),
+            )),
         }
     }
 }

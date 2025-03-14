@@ -1,4 +1,4 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
+error[E0803]: cannot infer an appropriate lifetime for lifetime parameter `'d` due to conflicting requirements
   --> $DIR/normalization-bounds-error.rs:12:31
    |
 LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
@@ -36,4 +36,4 @@ LL | fn visit_seq<'d, 'a: 'd>() -> <&'a () as Visitor<'d>>::Value {}
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0495`.
+For more information about this error, try `rustc --explain E0803`.

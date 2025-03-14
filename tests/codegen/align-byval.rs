@@ -1,4 +1,5 @@
 // ignore-tidy-linelength
+//@ add-core-stubs
 //@ revisions:m68k x86_64-linux x86_64-windows i686-linux i686-windows
 
 //@[m68k] compile-flags: --target m68k-unknown-linux-gnu
@@ -16,20 +17,13 @@
 // The only targets that use `byval` are m68k, x86-64, and x86.
 // Note also that Windows mandates a by-ref ABI here, so it does not use byval.
 
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![crate_type = "lib"]
 #![no_std]
 #![no_core]
 
-#[lang = "sized"]
-trait Sized {}
-#[lang = "freeze"]
-trait Freeze {}
-#[lang = "copy"]
-trait Copy {}
-
-impl Copy for i32 {}
-impl Copy for i64 {}
+extern crate minicore;
+use minicore::*;
 
 // This struct can be represented as a pair, so it exercises the OperandValue::Pair
 // codepath in `codegen_argument`.

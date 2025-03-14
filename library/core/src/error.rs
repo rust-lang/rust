@@ -22,6 +22,30 @@ use crate::fmt::{self, Debug, Display, Formatter};
 /// accessing that error via [`Error::source()`]. This makes it possible for the
 /// high-level module to provide its own errors while also revealing some of the
 /// implementation for debugging.
+///
+/// # Example
+///
+/// Implementing the `Error` trait only requires that `Debug` and `Display` are implemented too.
+///
+/// ```
+/// use std::error::Error;
+/// use std::fmt;
+/// use std::path::PathBuf;
+///
+/// #[derive(Debug)]
+/// struct ReadConfigError {
+///     path: PathBuf
+/// }
+///
+/// impl fmt::Display for ReadConfigError {
+///     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+///         let path = self.path.display();
+///         write!(f, "unable to read configuration at {path}")
+///     }
+/// }
+///
+/// impl Error for ReadConfigError {}
+/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
 #[rustc_has_incoherent_inherent_impls]
@@ -1075,5 +1099,5 @@ impl Error for crate::time::TryFromFloatSecsError {}
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
-#[unstable(feature = "get_many_mut", issue = "104642")]
-impl Error for crate::slice::GetManyMutError {}
+#[stable(feature = "get_many_mut", since = "1.86.0")]
+impl Error for crate::slice::GetDisjointMutError {}

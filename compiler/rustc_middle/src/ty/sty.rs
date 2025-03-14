@@ -9,7 +9,6 @@ use std::ops::{ControlFlow, Range};
 
 use hir::def::{CtorKind, DefKind};
 use rustc_abi::{ExternAbi, FIRST_VARIANT, FieldIdx, VariantIdx};
-use rustc_data_structures::captures::Captures;
 use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::LangItem;
@@ -18,7 +17,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, extension
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
 use rustc_type_ir::TyKind::*;
 use rustc_type_ir::visit::TypeVisitableExt;
-use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind};
+use rustc_type_ir::{self as ir, BoundVar, CollectAndApply, DynKind, elaborate};
 use tracing::instrument;
 use ty::util::{AsyncDropGlueMorphology, IntTypeExt};
 
@@ -27,7 +26,7 @@ use crate::infer::canonical::Canonical;
 use crate::ty::InferTy::*;
 use crate::ty::{
     self, AdtDef, BoundRegionKind, Discr, GenericArg, GenericArgs, GenericArgsRef, List, ParamEnv,
-    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+    Region, Ty, TyCtxt, TypeFlags, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
 };
 
 // Re-export and re-parameterize some `I = TyCtxt<'tcx>` types here
@@ -105,7 +104,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> + Captures<'tcx> {
+    ) -> impl Iterator<Item = (VariantIdx, Discr<'tcx>)> {
         self.variant_range(def_id, tcx).map(move |index| {
             (index, Discr { val: index.as_usize() as u128, ty: self.discr_ty(tcx) })
         })
@@ -139,7 +138,7 @@ impl<'tcx> ty::CoroutineArgs<TyCtxt<'tcx>> {
         self,
         def_id: DefId,
         tcx: TyCtxt<'tcx>,
-    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>> + Captures<'tcx>> {
+    ) -> impl Iterator<Item: Iterator<Item = Ty<'tcx>>> {
         let layout = tcx.coroutine_layout(def_id, self.kind_ty()).unwrap();
         layout.variant_fields.iter().map(move |variant| {
             variant.iter().map(move |field| {
@@ -343,6 +342,7 @@ impl ParamConst {
         ParamConst::new(def.index, def.name)
     }
 
+    #[instrument(level = "debug")]
     pub fn find_ty_from_env<'tcx>(self, env: ParamEnv<'tcx>) -> Ty<'tcx> {
         let mut candidates = env.caller_bounds().iter().filter_map(|clause| {
             // `ConstArgHasType` are never desugared to be higher ranked.
@@ -401,7 +401,7 @@ impl<'tcx> Ty<'tcx> {
     /// The more specific methods will often optimize their creation.
     #[allow(rustc::usage_of_ty_tykind)]
     #[inline]
-    pub fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
+    fn new(tcx: TyCtxt<'tcx>, st: TyKind<'tcx>) -> Ty<'tcx> {
         tcx.mk_ty_from_kind(st)
     }
 
@@ -462,7 +462,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn new_param(tcx: TyCtxt<'tcx>, index: u32, name: Symbol) -> Ty<'tcx> {
-        tcx.mk_ty_from_kind(Param(ParamTy { index, name }))
+        Ty::new(tcx, Param(ParamTy { index, name }))
     }
 
     #[inline]
@@ -613,6 +613,41 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn new_adt(tcx: TyCtxt<'tcx>, def: AdtDef<'tcx>, args: GenericArgsRef<'tcx>) -> Ty<'tcx> {
         tcx.debug_assert_args_compatible(def.did(), args);
+        if cfg!(debug_assertions) {
+            match tcx.def_kind(def.did()) {
+                DefKind::Struct | DefKind::Union | DefKind::Enum => {}
+                DefKind::Mod
+                | DefKind::Variant
+                | DefKind::Trait
+                | DefKind::TyAlias
+                | DefKind::ForeignTy
+                | DefKind::TraitAlias
+                | DefKind::AssocTy
+                | DefKind::TyParam
+                | DefKind::Fn
+                | DefKind::Const
+                | DefKind::ConstParam
+                | DefKind::Static { .. }
+                | DefKind::Ctor(..)
+                | DefKind::AssocFn
+                | DefKind::AssocConst
+                | DefKind::Macro(..)
+                | DefKind::ExternCrate
+                | DefKind::Use
+                | DefKind::ForeignMod
+                | DefKind::AnonConst
+                | DefKind::InlineConst
+                | DefKind::OpaqueTy
+                | DefKind::Field
+                | DefKind::LifetimeParam
+                | DefKind::GlobalAsm
+                | DefKind::Impl { .. }
+                | DefKind::Closure
+                | DefKind::SyntheticCoroutineBody => {
+                    bug!("not an adt: {def:?} ({:?})", tcx.def_kind(def.did()))
+                }
+            }
+        }
         Ty::new(tcx, Adt(def, args))
     }
 
@@ -685,6 +720,34 @@ impl<'tcx> Ty<'tcx> {
         reg: ty::Region<'tcx>,
         repr: DynKind,
     ) -> Ty<'tcx> {
+        if cfg!(debug_assertions) {
+            let projection_count = obj.projection_bounds().count();
+            let expected_count: usize = obj
+                .principal_def_id()
+                .into_iter()
+                .flat_map(|principal_def_id| {
+                    // NOTE: This should agree with `needed_associated_types` in
+                    // dyn trait lowering, or else we'll have ICEs.
+                    elaborate::supertraits(
+                        tcx,
+                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                    )
+                    .map(|principal| {
+                        tcx.associated_items(principal.def_id())
+                            .in_definition_order()
+                            .filter(|item| item.kind == ty::AssocKind::Type)
+                            .filter(|item| !item.is_impl_trait_in_trait())
+                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                            .count()
+                    })
+                })
+                .sum();
+            assert_eq!(
+                projection_count, expected_count,
+                "expected {obj:?} to have {expected_count} projections, \
+                but it has {projection_count}"
+            );
+        }
         Ty::new(tcx, Dynamic(obj, reg, repr))
     }
 
@@ -772,7 +835,7 @@ impl<'tcx> Ty<'tcx> {
                 }
             }
         });
-        Ty::new(tcx, Adt(adt_def, args))
+        Ty::new_adt(tcx, adt_def, args)
     }
 
     #[inline]
@@ -1017,6 +1080,18 @@ impl<'tcx> Ty<'tcx> {
         }
     }
 
+    /// Check if type is an `usize`.
+    #[inline]
+    pub fn is_usize(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize))
+    }
+
+    /// Check if type is an `usize` or an integral type variable.
+    #[inline]
+    pub fn is_usize_like(self) -> bool {
+        matches!(self.kind(), Uint(UintTy::Usize) | Infer(IntVar(_)))
+    }
+
     #[inline]
     pub fn is_never(self) -> bool {
         matches!(self.kind(), Never)
@@ -1074,7 +1149,7 @@ impl<'tcx> Ty<'tcx> {
     #[inline]
     pub fn is_param(self, index: u32) -> bool {
         match self.kind() {
-            ty::Param(ref data) => data.index == index,
+            ty::Param(data) => data.index == index,
             _ => false,
         }
     }
@@ -1152,7 +1227,7 @@ impl<'tcx> Ty<'tcx> {
     }
 
     #[inline]
-    pub fn is_unsafe_ptr(self) -> bool {
+    pub fn is_raw_ptr(self) -> bool {
         matches!(self.kind(), RawPtr(_, _))
     }
 
@@ -1160,7 +1235,7 @@ impl<'tcx> Ty<'tcx> {
     /// `Box` is *not* considered a pointer here!
     #[inline]
     pub fn is_any_ptr(self) -> bool {
-        self.is_ref() || self.is_unsafe_ptr() || self.is_fn_ptr()
+        self.is_ref() || self.is_raw_ptr() || self.is_fn_ptr()
     }
 
     #[inline]
@@ -1347,7 +1422,7 @@ impl<'tcx> Ty<'tcx> {
     /// Returns the type and mutability of `*ty`.
     ///
     /// The parameter `explicit` indicates if this is an *explicit* dereference.
-    /// Some types -- notably unsafe ptrs -- can only be dereferenced explicitly.
+    /// Some types -- notably raw ptrs -- can only be dereferenced explicitly.
     pub fn builtin_deref(self, explicit: bool) -> Option<Ty<'tcx>> {
         match *self.kind() {
             _ if let Some(boxed) = self.boxed_ty() => Some(boxed),
@@ -1847,11 +1922,11 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Str | ty::Slice(_) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => false,
 
-            ty::Tuple(tys) => tys.last().map_or(true, |ty| ty.is_trivially_sized(tcx)),
+            ty::Tuple(tys) => tys.last().is_none_or(|ty| ty.is_trivially_sized(tcx)),
 
             ty::Adt(def, args) => def
                 .sized_constraint(tcx)
-                .map_or(true, |ty| ty.instantiate(tcx, args).is_trivially_sized(tcx)),
+                .is_none_or(|ty| ty.instantiate(tcx, args).is_trivially_sized(tcx)),
 
             ty::Alias(..) | ty::Param(_) | ty::Placeholder(..) | ty::Bound(..) => false,
 

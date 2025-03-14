@@ -12,13 +12,11 @@ use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 //
 // Navigates to the impl items of types.
 //
-// |===
-// | Editor  | Shortcut
+// | Editor  | Shortcut |
+// |---------|----------|
+// | VS Code | <kbd>Ctrl+F12</kbd>
 //
-// | VS Code | kbd:[Ctrl+F12]
-// |===
-//
-// image::https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif[]
+// ![Go to Implementation](https://user-images.githubusercontent.com/48062697/113065566-02f85480-91b1-11eb-9288-aaad8abd8841.gif)
 pub(crate) fn goto_implementation(
     db: &RootDatabase,
     FilePosition { file_id, offset }: FilePosition,
@@ -48,7 +46,7 @@ pub(crate) fn goto_implementation(
                     }
                     ast::NameLike::NameRef(name_ref) => NameRefClass::classify(&sema, name_ref)
                         .and_then(|class| match class {
-                            NameRefClass::Definition(def) => Some(def),
+                            NameRefClass::Definition(def, _) => Some(def),
                             NameRefClass::FieldShorthand { .. }
                             | NameRefClass::ExternCrateShorthand { .. } => None,
                         }),
@@ -129,7 +127,7 @@ mod tests {
 
     use crate::fixture;
 
-    fn check(ra_fixture: &str) {
+    fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
 
         let navs = analysis.goto_implementation(position).unwrap().unwrap().info;

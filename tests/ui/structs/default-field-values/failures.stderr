@@ -6,26 +6,11 @@ LL |     Variant {}
    |
    = help: consider a manual implementation of `Default`
 
-error: generic parameters may not be used in const operations
-  --> $DIR/failures.rs:22:23
-   |
-LL |     bat: i32 = <Qux<{ C }> as T>::K,
-   |                       ^ cannot perform const operation using `C`
-   |
-   = help: const parameters may only be used as standalone arguments, i.e. `C`
-   = help: add `#![feature(generic_const_exprs)]` to allow generic const expressions
-
 error: default fields are not supported in tuple structs
   --> $DIR/failures.rs:26:22
    |
 LL | pub struct Rak(i32 = 42);
    |                      ^^ default fields are only supported on structs
-
-error: generic `Self` types are currently not permitted in anonymous constants
-  --> $DIR/failures.rs:20:14
-   |
-LL |     bar: S = Self::S,
-   |              ^^^^
 
 error[E0277]: the trait bound `S: Default` is not satisfied
   --> $DIR/failures.rs:14:5
@@ -112,7 +97,7 @@ LL -     let _ = Rak(.., 0);
 LL +     let _ = Rak(0);
    |
 
-error: aborting due to 9 previous errors
+error: aborting due to 7 previous errors
 
 Some errors have detailed explanations: E0061, E0277, E0308.
 For more information about an error, try `rustc --explain E0061`.

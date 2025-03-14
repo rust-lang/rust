@@ -3,17 +3,14 @@
 
 // Test that the simd_{gather,scatter} intrinsics produce the correct results.
 
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+
+use std::intrinsics::simd::{simd_gather, simd_scatter};
 
 #[repr(simd)]
 #[derive(Copy, Clone, PartialEq, Debug)]
 struct x4<T>(pub [T; 4]);
-
-extern "rust-intrinsic" {
-    fn simd_gather<T, U, V>(x: T, y: U, z: V) -> T;
-    fn simd_scatter<T, U, V>(x: T, y: U, z: V) -> ();
-}
 
 fn main() {
     let mut x = [0_f32, 1., 2., 3., 4., 5., 6., 7.];
@@ -25,12 +22,8 @@ fn main() {
     // reading from *const
     unsafe {
         let pointer = x.as_ptr();
-        let pointers =  x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -40,12 +33,8 @@ fn main() {
     // reading from *mut
     unsafe {
         let pointer = x.as_mut_ptr();
-        let pointers = x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -55,12 +44,8 @@ fn main() {
     // writing to *mut
     unsafe {
         let pointer = x.as_mut_ptr();
-        let pointers = x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let values = x4([42_f32, 43_f32, 44_f32, 45_f32]);
         simd_scatter(values, pointers, mask);
@@ -77,7 +62,7 @@ fn main() {
         &x[4] as *const f32,
         &x[5] as *const f32,
         &x[6] as *const f32,
-        &x[7] as *const f32
+        &x[7] as *const f32,
     ];
 
     let default = x4([y[0], y[0], y[0], y[0]]);
@@ -86,12 +71,8 @@ fn main() {
     // reading from *const
     unsafe {
         let pointer = y.as_ptr();
-        let pointers = x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -101,12 +82,8 @@ fn main() {
     // reading from *mut
     unsafe {
         let pointer = y.as_mut_ptr();
-        let pointers = x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let r_strided = simd_gather(default, pointers, mask);
 
@@ -116,12 +93,8 @@ fn main() {
     // writing to *mut
     unsafe {
         let pointer = y.as_mut_ptr();
-        let pointers = x4([
-            pointer.offset(0),
-            pointer.offset(2),
-            pointer.offset(4),
-            pointer.offset(6)
-        ]);
+        let pointers =
+            x4([pointer.offset(0), pointer.offset(2), pointer.offset(4), pointer.offset(6)]);
 
         let values = x4([y[7], y[6], y[5], y[1]]);
         simd_scatter(values, pointers, mask);
@@ -134,7 +107,7 @@ fn main() {
             &x[4] as *const f32,
             &x[5] as *const f32,
             &x[1] as *const f32,
-            &x[7] as *const f32
+            &x[7] as *const f32,
         ];
         assert_eq!(y, s);
     }

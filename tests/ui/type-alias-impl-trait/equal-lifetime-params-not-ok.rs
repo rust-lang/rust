@@ -7,19 +7,21 @@ impl<T> Trait<'_, '_> for T {}
 
 mod mod1 {
     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+    #[define_opaque(Opaque)]
     fn test<'a>() -> Opaque<'a, 'a> {}
     //~^ ERROR non-defining opaque type use in defining scope
-    //~| ERROR non-defining opaque type use in defining scope
 }
 
 mod mod2 {
     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+    #[define_opaque(Opaque)]
     fn test<'a: 'b, 'b: 'a>() -> Opaque<'a, 'b> {}
     //~^ ERROR non-defining opaque type use in defining scope
 }
 
 mod mod3 {
     type Opaque<'a, 'b> = impl super::Trait<'a, 'b>;
+    #[define_opaque(Opaque)]
     fn test<'a: 'b, 'b: 'a>(a: &'a str) -> Opaque<'a, 'b> { a }
     //~^ ERROR non-defining opaque type use in defining scope
 }
@@ -30,6 +32,7 @@ mod mod3 {
 // it is ambiguous whether `Opaque<'a> := &'a ()` or `Opaque<'a> := &'static ()`
 mod mod4 {
     type Opaque<'a> = impl super::Trait<'a, 'a>;
+    #[define_opaque(Opaque)]
     fn test<'a: 'static>() -> Opaque<'a> {}
     //~^ ERROR expected generic lifetime parameter, found `'static`
 }

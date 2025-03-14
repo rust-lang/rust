@@ -7,8 +7,8 @@ mod tests;
 use std::{iter, ops::ControlFlow};
 
 use hir::{
-    HasAttrs, Local, ModuleSource, Name, PathResolution, ScopeDef, Semantics, SemanticsScope,
-    Symbol, Type, TypeInfo,
+    DisplayTarget, HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution,
+    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     base_db::SourceDatabase, famous_defs::FamousDefs, helpers::is_editable_crate, FilePosition,
@@ -22,6 +22,7 @@ use syntax::{
 };
 
 use crate::{
+    config::AutoImportExclusionType,
     context::analysis::{expand_and_analyze, AnalysisResult},
     CompletionConfig,
 };
@@ -145,6 +146,7 @@ pub(crate) struct PathExprCtx {
     pub(crate) in_condition: bool,
     pub(crate) incomplete_let: bool,
     pub(crate) ref_expr_parent: Option<ast::RefExpr>,
+    pub(crate) after_amp: bool,
     /// The surrounding RecordExpression we are completing a functional update
     pub(crate) is_func_update: Option<ast::RecordExpr>,
     pub(crate) self_param: Option<hir::SelfParam>,
@@ -247,8 +249,8 @@ pub(crate) enum Qualified {
         /// This would be None, if path is not solely made of
         /// `super` segments, e.g.
         ///
-        /// ```rust
-        ///   use super::foo;
+        /// ```ignore
+        /// use super::foo;
         /// ```
         ///
         /// Otherwise it should be Some(count of `super`)
@@ -389,7 +391,7 @@ pub(crate) struct DotAccess {
     pub(crate) ctx: DotAccessExprCtx,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum DotAccessKind {
     Field {
         /// True if the receiver is an integer and there is no ident in the original file after it yet
@@ -401,7 +403,7 @@ pub(crate) enum DotAccessKind {
     },
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct DotAccessExprCtx {
     pub(crate) in_block_expr: bool,
     pub(crate) in_breakable: BreakableKind,
@@ -429,7 +431,7 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) sema: Semantics<'a, RootDatabase>,
     pub(crate) scope: SemanticsScope<'a>,
     pub(crate) db: &'a RootDatabase,
-    pub(crate) config: &'a CompletionConfig,
+    pub(crate) config: &'a CompletionConfig<'a>,
     pub(crate) position: FilePosition,
 
     /// The token before the cursor, in the original file.
@@ -438,10 +440,15 @@ pub(crate) struct CompletionContext<'a> {
     pub(crate) token: SyntaxToken,
     /// The crate of the current file.
     pub(crate) krate: hir::Crate,
+    pub(crate) display_target: DisplayTarget,
     /// The module of the `scope`.
     pub(crate) module: hir::Module,
+    /// The function where we're completing, if inside a function.
+    pub(crate) containing_function: Option<hir::Function>,
     /// Whether nightly toolchain is used. Cached since this is looked up a lot.
-    is_nightly: bool,
+    pub(crate) is_nightly: bool,
+    /// The edition of the current crate
+    // FIXME: This should probably be the crate of the current token?
     pub(crate) edition: Edition,
 
     /// The expected name of what we are completing.
@@ -461,6 +468,17 @@ pub(crate) struct CompletionContext<'a> {
     ///
     /// Here depth will be 2
     pub(crate) depth_from_crate_root: usize,
+
+    /// Traits whose methods will be excluded from flyimport. Flyimport should not suggest
+    /// importing those traits.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_flyimport: FxHashMap<ModuleDef, AutoImportExclusionType>,
+    /// Traits whose methods should always be excluded, even when in scope (compare `exclude_flyimport_traits`).
+    /// They will *not* be excluded, however, if they are available as a generic bound.
+    ///
+    /// Note the trait *themselves* are not excluded, only their methods are.
+    pub(crate) exclude_traits: FxHashSet<hir::Trait>,
 
     /// Whether and how to complete semicolon for unit-returning functions.
     pub(crate) complete_semicolon: CompleteSemicolon,
@@ -519,7 +537,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    /// Checks if an item is visible and not `doc(hidden)` at the completion site.
+    /// Checks if an item is visible, not `doc(hidden)` and stable at the completion site.
     pub(crate) fn is_visible<I>(&self, item: &I) -> Visible
     where
         I: hir::HasVisibility + hir::HasAttrs + hir::HasCrate + Copy,
@@ -553,6 +571,15 @@ impl CompletionContext<'_> {
             return true;
         };
         !attrs.is_unstable() || self.is_nightly
+    }
+
+    pub(crate) fn check_stability_and_hidden<I>(&self, item: I) -> bool
+    where
+        I: hir::HasAttrs + hir::HasCrate,
+    {
+        let defining_crate = item.krate(self.db);
+        let attrs = item.attrs(self.db);
+        self.check_stability(Some(&attrs)) && !self.is_doc_hidden(&attrs, defining_crate)
     }
 
     /// Whether the given trait is an operator trait or not.
@@ -632,6 +659,10 @@ impl CompletionContext<'_> {
         attrs: &hir::Attrs,
         defining_crate: hir::Crate,
     ) -> Visible {
+        if !self.check_stability(Some(attrs)) {
+            return Visible::No;
+        }
+
         if !vis.is_visible_from(self.db, self.module.into()) {
             if !self.config.enable_private_editable {
                 return Visible::No;
@@ -651,7 +682,7 @@ impl CompletionContext<'_> {
         }
     }
 
-    fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
+    pub(crate) fn is_doc_hidden(&self, attrs: &hir::Attrs, defining_crate: hir::Crate) -> bool {
         // `doc(hidden)` items are only completed within the defining crate.
         self.krate != defining_crate && attrs.has_doc_hidden()
     }
@@ -670,7 +701,7 @@ impl<'a> CompletionContext<'a> {
     pub(crate) fn new(
         db: &'a RootDatabase,
         position @ FilePosition { file_id, offset }: FilePosition,
-        config: &'a CompletionConfig,
+        config: &'a CompletionConfig<'a>,
     ) -> Option<(CompletionContext<'a>, CompletionAnalysis)> {
         let _p = tracing::info_span!("CompletionContext::new").entered();
         let sema = Semantics::new(db);
@@ -732,6 +763,7 @@ impl<'a> CompletionContext<'a> {
 
         let krate = scope.krate();
         let module = scope.module();
+        let containing_function = scope.containing_function();
         let edition = krate.edition(db);
 
         let toolchain = db.toolchain_channel(krate.into());
@@ -742,16 +774,52 @@ impl<'a> CompletionContext<'a> {
         let mut locals = FxHashMap::default();
         scope.process_all_names(&mut |name, scope| {
             if let ScopeDef::Local(local) = scope {
+                // synthetic names currently leak out as we lack synthetic hygiene, so filter them
+                // out here
+                if name.as_str().starts_with('<') {
+                    return;
+                }
                 locals.insert(name, local);
             }
         });
 
         let depth_from_crate_root = iter::successors(Some(module), |m| m.parent(db))
-            // `BlockExpr` modules are not count as module depth
+            // `BlockExpr` modules do not count towards module depth
             .filter(|m| !matches!(m.definition_source(db).value, ModuleSource::BlockExpr(_)))
             .count()
             // exclude `m` itself
             .saturating_sub(1);
+
+        let exclude_traits: FxHashSet<_> = config
+            .exclude_traits
+            .iter()
+            .filter_map(|path| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .find_map(|it| match it {
+                        hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
+                        _ => None,
+                    })
+            })
+            .collect();
+
+        let mut exclude_flyimport: FxHashMap<_, _> = config
+            .exclude_flyimport
+            .iter()
+            .flat_map(|(path, kind)| {
+                scope
+                    .resolve_mod_path(&ModPath::from_segments(
+                        hir::PathKind::Plain,
+                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
+                    ))
+                    .map(|it| (it.into_module_def(), *kind))
+            })
+            .collect();
+        exclude_flyimport
+            .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
@@ -800,6 +868,7 @@ impl<'a> CompletionContext<'a> {
             CompleteSemicolon::DoNotComplete
         };
 
+        let display_target = krate.to_display_target(db);
         let ctx = CompletionContext {
             sema,
             scope,
@@ -810,6 +879,7 @@ impl<'a> CompletionContext<'a> {
             token,
             krate,
             module,
+            containing_function,
             is_nightly,
             edition,
             expected_name,
@@ -817,7 +887,10 @@ impl<'a> CompletionContext<'a> {
             qualifier_ctx,
             locals,
             depth_from_crate_root,
+            exclude_flyimport,
+            exclude_traits,
             complete_semicolon,
+            display_target,
         };
         Some((ctx, analysis))
     }

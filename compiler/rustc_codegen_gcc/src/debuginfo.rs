@@ -1,17 +1,17 @@
 use std::ops::Range;
+use std::sync::Arc;
 
 use gccjit::{Location, RValue};
+use rustc_abi::Size;
 use rustc_codegen_ssa::mir::debuginfo::{DebugScope, FunctionDebugContext, VariableKind};
 use rustc_codegen_ssa::traits::{DebugInfoBuilderMethods, DebugInfoCodegenMethods};
-use rustc_data_structures::sync::Lrc;
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::DenseBitSet;
 use rustc_index::{Idx, IndexVec};
 use rustc_middle::mir::{self, Body, SourceScope};
-use rustc_middle::ty::{Instance, PolyExistentialTraitRef, Ty};
+use rustc_middle::ty::{ExistentialTraitRef, Instance, Ty};
 use rustc_session::config::DebugInfo;
 use rustc_span::{BytePos, Pos, SourceFile, SourceFileAndLine, Span, Symbol};
-use rustc_target::abi::Size;
-use rustc_target::abi::call::FnAbi;
+use rustc_target::callconv::FnAbi;
 
 use crate::builder::Builder;
 use crate::context::CodegenCx;
@@ -69,7 +69,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
 ) {
     // Find all scopes with variables defined in them.
     let variables = if cx.sess().opts.debuginfo == DebugInfo::Full {
-        let mut vars = BitSet::new_empty(mir.source_scopes.len());
+        let mut vars = DenseBitSet::new_empty(mir.source_scopes.len());
         // FIXME(eddyb) take into account that arguments always have debuginfo,
         // irrespective of their name (assuming full debuginfo is enabled).
         // NOTE(eddyb) actually, on second thought, those are always in the
@@ -82,7 +82,7 @@ fn compute_mir_scopes<'gcc, 'tcx>(
         // Nothing to emit, of course.
         None
     };
-    let mut instantiated = BitSet::new_empty(mir.source_scopes.len());
+    let mut instantiated = DenseBitSet::new_empty(mir.source_scopes.len());
     // Instantiate all scopes.
     for idx in 0..mir.source_scopes.len() {
         let scope = SourceScope::new(idx);
@@ -101,9 +101,9 @@ fn make_mir_scope<'gcc, 'tcx>(
     cx: &CodegenCx<'gcc, 'tcx>,
     _instance: Instance<'tcx>,
     mir: &Body<'tcx>,
-    variables: &Option<BitSet<SourceScope>>,
+    variables: &Option<DenseBitSet<SourceScope>>,
     debug_context: &mut FunctionDebugContext<'tcx, (), Location<'gcc>>,
-    instantiated: &mut BitSet<SourceScope>,
+    instantiated: &mut DenseBitSet<SourceScope>,
     scope: SourceScope,
 ) {
     if instantiated.contains(scope) {
@@ -113,15 +113,15 @@ fn make_mir_scope<'gcc, 'tcx>(
     let scope_data = &mir.source_scopes[scope];
     let parent_scope = if let Some(parent) = scope_data.parent_scope {
         make_mir_scope(cx, _instance, mir, variables, debug_context, instantiated, parent);
-        debug_context.scopes[parent].unwrap()
+        debug_context.scopes[parent]
     } else {
         // The root is the function itself.
         let file = cx.sess().source_map().lookup_source_file(mir.span.lo());
-        debug_context.scopes[scope] = Some(DebugScope {
+        debug_context.scopes[scope] = DebugScope {
             file_start_pos: file.start_pos,
             file_end_pos: file.end_position(),
-            ..debug_context.scopes[scope].unwrap()
-        });
+            ..debug_context.scopes[scope]
+        };
         instantiated.insert(scope);
         return;
     };
@@ -130,7 +130,7 @@ fn make_mir_scope<'gcc, 'tcx>(
         if !vars.contains(scope) && scope_data.inlined.is_none() {
             // Do not create a DIScope if there are no variables defined in this
             // MIR `SourceScope`, and it's not `inlined`, to avoid debuginfo bloat.
-            debug_context.scopes[scope] = Some(parent_scope);
+            debug_context.scopes[scope] = parent_scope;
             instantiated.insert(scope);
             return;
         }
@@ -157,12 +157,12 @@ fn make_mir_scope<'gcc, 'tcx>(
     // TODO(tempdragon): dbg_scope: Add support for scope extension here.
     inlined_at.or(p_inlined_at);
 
-    debug_context.scopes[scope] = Some(DebugScope {
+    debug_context.scopes[scope] = DebugScope {
         dbg_scope,
         inlined_at,
         file_start_pos: loc.file.start_pos,
         file_end_pos: loc.file.end_position(),
-    });
+    };
     instantiated.insert(scope);
 }
 
@@ -172,7 +172,7 @@ fn make_mir_scope<'gcc, 'tcx>(
 // `lookup_char_pos` return the right information instead.
 pub struct DebugLoc {
     /// Information about the original source file.
-    pub file: Lrc<SourceFile>,
+    pub file: Arc<SourceFile>,
     /// The (1-based) line number.
     pub line: u32,
     /// The (1-based) column number.
@@ -214,7 +214,7 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn create_vtable_debuginfo(
         &self,
         _ty: Ty<'tcx>,
-        _trait_ref: Option<PolyExistentialTraitRef<'tcx>>,
+        _trait_ref: Option<ExistentialTraitRef<'tcx>>,
         _vtable: Self::Value,
     ) {
         // TODO(antoyo)
@@ -232,12 +232,12 @@ impl<'gcc, 'tcx> DebugInfoCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         }
 
         // Initialize fn debug context (including scopes).
-        let empty_scope = Some(DebugScope {
+        let empty_scope = DebugScope {
             dbg_scope: self.dbg_scope_fn(instance, fn_abi, Some(llfn)),
             inlined_at: None,
             file_start_pos: BytePos(0),
             file_end_pos: BytePos(0),
-        });
+        };
         let mut fn_debug_context = FunctionDebugContext {
             scopes: IndexVec::from_elem(empty_scope, mir.source_scopes.as_slice()),
             inlined_function_scopes: Default::default(),

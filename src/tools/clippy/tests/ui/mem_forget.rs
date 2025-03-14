@@ -12,23 +12,19 @@ fn main() {
 
     let six: Arc<i32> = Arc::new(6);
     memstuff::forget(six);
-    //~^ ERROR: usage of `mem::forget` on `Drop` type
-    //~| NOTE: argument has type `std::sync::Arc<i32>`
+    //~^ mem_forget
 
     let seven: Rc<i32> = Rc::new(7);
     std::mem::forget(seven);
-    //~^ ERROR: usage of `mem::forget` on `Drop` type
-    //~| NOTE: argument has type `std::rc::Rc<i32>`
+    //~^ mem_forget
 
     let eight: Vec<i32> = vec![8];
     forgetSomething(eight);
-    //~^ ERROR: usage of `mem::forget` on `Drop` type
-    //~| NOTE: argument has type `std::vec::Vec<i32>`
+    //~^ mem_forget
 
     let string = String::new();
     std::mem::forget(string);
-    //~^ ERROR: usage of `mem::forget` on type with `Drop` fields
-    //~| NOTE: argument has type `std::string::String`
+    //~^ mem_forget
 
     std::mem::forget(7);
 }

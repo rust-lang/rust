@@ -31,7 +31,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         diag: &mut Diag<'_>,
     ) {
         // We look at all the locals. Why locals? Because it's the best thing
-        // I could think of that's correlated with the *instantiated* higer-ranked
+        // I could think of that's correlated with the *instantiated* higher-ranked
         // binder for calls, since we don't really store those anywhere else.
         for ty in self.body.local_decls.iter().map(|local| local.ty) {
             if !ty.has_opaque_types() {
@@ -105,7 +105,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
 
                     if let Some(opaque_def_id) = opaque_def_id.as_local()
                         && let hir::OpaqueTyOrigin::FnReturn { parent, .. } =
-                            tcx.hir().expect_opaque_ty(opaque_def_id).origin
+                            tcx.hir_expect_opaque_ty(opaque_def_id).origin
                     {
                         if let Some(sugg) = impl_trait_overcapture_suggestion(
                             tcx,

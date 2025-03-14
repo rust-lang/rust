@@ -36,7 +36,7 @@ impl Input {
     /// the *previous* token was joint, with mbe, you know whether the *current*
     /// one is joint. This API allows for styles of usage:
     ///
-    /// ```
+    /// ```ignore
     /// // In text:
     /// tokens.was_joint(prev_joint);
     /// tokens.push(curr);
@@ -72,7 +72,7 @@ impl Input {
     }
     pub(crate) fn is_joint(&self, n: usize) -> bool {
         let (idx, b_idx) = self.bit_index(n);
-        self.joint[idx] & 1 << b_idx != 0
+        self.joint[idx] & (1 << b_idx) != 0
     }
 }
 

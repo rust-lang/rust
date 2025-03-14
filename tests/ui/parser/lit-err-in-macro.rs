@@ -1,6 +1,6 @@
 macro_rules! f {
     ($abi:literal) => {
-        extern $abi fn f() {}
+        extern $abi fn f() {} //~ WARN missing_abi
     }
 }
 

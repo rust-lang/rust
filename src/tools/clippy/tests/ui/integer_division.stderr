@@ -9,7 +9,7 @@ LL |     let n = 1 / 2;
    = help: to override `-D warnings` add `#[allow(clippy::integer_division)]`
 
 error: integer division
-  --> tests/ui/integer_division.rs:7:13
+  --> tests/ui/integer_division.rs:8:13
    |
 LL |     let o = 1 / two;
    |             ^^^^^^^
@@ -17,7 +17,7 @@ LL |     let o = 1 / two;
    = help: division of integers may cause loss of precision. consider using floats
 
 error: integer division
-  --> tests/ui/integer_division.rs:9:13
+  --> tests/ui/integer_division.rs:11:13
    |
 LL |     let p = two / 4;
    |             ^^^^^^^

@@ -260,9 +260,9 @@ pub(crate) struct CrateLocator<'a> {
     crate_rejections: CrateRejections,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(crate) struct CratePaths {
-    name: Symbol,
+    pub(crate) name: Symbol,
     source: CrateSource,
 }
 
@@ -272,7 +272,7 @@ impl CratePaths {
     }
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum CrateFlavor {
     Rlib,
     Rmeta,
@@ -290,7 +290,7 @@ impl fmt::Display for CrateFlavor {
 }
 
 impl IntoDiagArg for CrateFlavor {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         match self {
             CrateFlavor::Rlib => DiagArgValue::Str(Cow::Borrowed("rlib")),
             CrateFlavor::Rmeta => DiagArgValue::Str(Cow::Borrowed("rmeta")),
@@ -765,10 +765,10 @@ impl<'a> CrateLocator<'a> {
         self.extract_lib(rlibs, rmetas, dylibs).map(|opt| opt.map(|(_, lib)| lib))
     }
 
-    pub(crate) fn into_error(self, root: Option<CratePaths>) -> CrateError {
+    pub(crate) fn into_error(self, dep_root: Option<CratePaths>) -> CrateError {
         CrateError::LocatorCombined(Box::new(CombinedLocatorError {
             crate_name: self.crate_name,
-            root,
+            dep_root,
             triple: self.tuple,
             dll_prefix: self.target.dll_prefix.to_string(),
             dll_suffix: self.target.dll_suffix.to_string(),
@@ -893,13 +893,13 @@ fn get_flavor_from_path(path: &Path) -> CrateFlavor {
 
 // ------------------------------------------ Error reporting -------------------------------------
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct CrateMismatch {
     path: PathBuf,
     got: String,
 }
 
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 struct CrateRejections {
     via_hash: Vec<CrateMismatch>,
     via_triple: Vec<CrateMismatch>,
@@ -912,15 +912,17 @@ struct CrateRejections {
 /// Candidate rejection reasons collected during crate search.
 /// If no candidate is accepted, then these reasons are presented to the user,
 /// otherwise they are ignored.
+#[derive(Debug)]
 pub(crate) struct CombinedLocatorError {
     crate_name: Symbol,
-    root: Option<CratePaths>,
+    dep_root: Option<CratePaths>,
     triple: TargetTuple,
     dll_prefix: String,
     dll_suffix: String,
     crate_rejections: CrateRejections,
 }
 
+#[derive(Debug)]
 pub(crate) enum CrateError {
     NonAsciiName(Symbol),
     ExternLocationNotExist(Symbol, PathBuf),
@@ -987,7 +989,7 @@ impl CrateError {
             }
             CrateError::LocatorCombined(locator) => {
                 let crate_name = locator.crate_name;
-                let add_info = match &locator.root {
+                let add_info = match &locator.dep_root {
                     None => String::new(),
                     Some(r) => format!(" which `{}` depends on", r.name),
                 };
@@ -1012,7 +1014,7 @@ impl CrateError {
                             path.display()
                         ));
                     }
-                    if let Some(r) = locator.root {
+                    if let Some(r) = locator.dep_root {
                         for path in r.source.paths() {
                             found_crates.push_str(&format!(
                                 "\ncrate `{}`: {}",

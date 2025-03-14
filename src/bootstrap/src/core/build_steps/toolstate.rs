@@ -42,11 +42,15 @@ pub enum ToolState {
 
 impl fmt::Display for ToolState {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", match self {
-            ToolState::TestFail => "test-fail",
-            ToolState::TestPass => "test-pass",
-            ToolState::BuildFail => "build-fail",
-        })
+        write!(
+            f,
+            "{}",
+            match self {
+                ToolState::TestFail => "test-fail",
+                ToolState::TestPass => "test-pass",
+                ToolState::BuildFail => "build-fail",
+            }
+        )
     }
 }
 
@@ -76,10 +80,7 @@ static STABLE_TOOLS: &[(&str, &str)] = &[
 // We do require that we checked whether they build or not on the tools builder,
 // though, as otherwise we will be unable to file an issue if they start
 // failing.
-static NIGHTLY_TOOLS: &[(&str, &str)] = &[
-    ("embedded-book", "src/doc/embedded-book"),
-    // ("rustc-dev-guide", "src/doc/rustc-dev-guide"),
-];
+static NIGHTLY_TOOLS: &[(&str, &str)] = &[("embedded-book", "src/doc/embedded-book")];
 
 fn print_error(tool: &str, submodule: &str) {
     eprintln!();
@@ -353,12 +354,12 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   1. Generate a new Personal access token:
 ///
 ///       * Login to the bot account, and go to Settings -> Developer settings ->
-///           Personal access tokens
+///         Personal access tokens
 ///       * Click "Generate new token"
 ///       * Enable the "public_repo" permission, then click "Generate token"
 ///       * Copy the generated token (should be a 40-digit hexadecimal number).
-///           Save it somewhere secure, as the token would be gone once you leave
-///           the page.
+///         Save it somewhere secure, as the token would be gone once you leave
+///         the page.
 ///
 ///   2. Update the variable group in Azure Pipelines
 ///
@@ -367,7 +368,7 @@ fn read_old_toolstate() -> Vec<RepoState> {
 ///   4. Replace the email address below if the bot account identity is changed
 ///
 ///       * See <https://help.github.com/articles/about-commit-email-addresses/>
-///           if a private email by GitHub is wanted.
+///         if a private email by GitHub is wanted.
 fn commit_toolstate_change(builder: &Builder<'_>, current_toolstate: &ToolstateData) {
     let message = format!("({} CI update)", OS.expect("linux/windows only"));
     let mut success = false;

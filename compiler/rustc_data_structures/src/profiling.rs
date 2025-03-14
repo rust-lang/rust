@@ -861,17 +861,15 @@ fn get_thread_id() -> u32 {
 
 // Memory reporting
 cfg_match! {
-    cfg(windows) => {
+    windows => {
         pub fn get_resident_set_size() -> Option<usize> {
-            use std::mem;
-
             use windows::{
                 Win32::System::ProcessStatus::{K32GetProcessMemoryInfo, PROCESS_MEMORY_COUNTERS},
                 Win32::System::Threading::GetCurrentProcess,
             };
 
             let mut pmc = PROCESS_MEMORY_COUNTERS::default();
-            let pmc_size = mem::size_of_val(&pmc);
+            let pmc_size = size_of_val(&pmc);
             unsafe {
                 K32GetProcessMemoryInfo(
                     GetCurrentProcess(),
@@ -885,11 +883,11 @@ cfg_match! {
             Some(pmc.WorkingSetSize)
         }
     }
-    cfg(target_os = "macos")  => {
+    target_os = "macos" => {
         pub fn get_resident_set_size() -> Option<usize> {
             use libc::{c_int, c_void, getpid, proc_pidinfo, proc_taskinfo, PROC_PIDTASKINFO};
             use std::mem;
-            const PROC_TASKINFO_SIZE: c_int = mem::size_of::<proc_taskinfo>() as c_int;
+            const PROC_TASKINFO_SIZE: c_int = size_of::<proc_taskinfo>() as c_int;
 
             unsafe {
                 let mut info: proc_taskinfo = mem::zeroed();
@@ -904,7 +902,7 @@ cfg_match! {
             }
         }
     }
-    cfg(unix) => {
+    unix => {
         pub fn get_resident_set_size() -> Option<usize> {
             let field = 1;
             let contents = fs::read("/proc/self/statm").ok()?;

@@ -33,6 +33,15 @@ symbols! {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
         // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        //
+        // Notes about `kw::Empty`:
+        // - Its use can blur the lines between "empty symbol" and "no symbol".
+        //   Using `Option<Symbol>` is preferable, where possible, because that
+        //   is unambiguous.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
@@ -104,6 +113,8 @@ symbols! {
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
 
+        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+
         // "Lifetime keywords": regular keywords with a leading `'`.
         // Matching predicates: `is_any_keyword`
         UnderscoreLifetime: "'_",
@@ -118,6 +129,8 @@ symbols! {
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
+        ContractEnsures:  "contract_ensures",
+        ContractRequires: "contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
@@ -188,9 +201,11 @@ symbols! {
         Capture,
         Cell,
         Center,
+        Child,
         Cleanup,
         Clone,
         CoercePointee,
+        CoercePointeeValidated,
         CoerceUnsized,
         Command,
         ConstParamTy,
@@ -247,6 +262,7 @@ symbols! {
         Into,
         IntoFuture,
         IntoIterator,
+        IoBufRead,
         IoLines,
         IoRead,
         IoSeek,
@@ -282,6 +298,7 @@ symbols! {
         OsString,
         Output,
         Param,
+        ParamSet,
         PartialEq,
         PartialOrd,
         Path,
@@ -294,9 +311,15 @@ symbols! {
         ProceduralMasqueradeDummyType,
         Range,
         RangeBounds,
+        RangeCopy,
         RangeFrom,
+        RangeFromCopy,
         RangeFull,
         RangeInclusive,
+        RangeInclusiveCopy,
+        RangeMax,
+        RangeMin,
+        RangeSub,
         RangeTo,
         RangeToInclusive,
         Rc,
@@ -314,8 +337,6 @@ symbols! {
         Right,
         Rust,
         RustaceansAreAwesome,
-        RustcDecodable,
-        RustcEncodable,
         RwLock,
         RwLockReadGuard,
         RwLockWriteGuard,
@@ -329,6 +350,7 @@ symbols! {
         SliceIter,
         Some,
         SpanCtxt,
+        Stdin,
         String,
         StructuralPartialEq,
         SubdiagMessage,
@@ -379,6 +401,7 @@ symbols! {
         abi_avr_interrupt,
         abi_c_cmse_nonsecure_call,
         abi_efiapi,
+        abi_gpu_kernel,
         abi_msp430_interrupt,
         abi_ptx,
         abi_riscv_interrupt,
@@ -501,7 +524,6 @@ symbols! {
         augmented_assignments,
         auto_traits,
         autodiff,
-        autodiff_fallback,
         automatically_derived,
         avx,
         avx512_target_feature,
@@ -511,6 +533,8 @@ symbols! {
         bang,
         begin_panic,
         bench,
+        bevy_ecs,
+        bikeshed_guaranteed_no_drop,
         bin,
         binaryheap_iter,
         bind_by_move_pattern_guards,
@@ -555,6 +579,7 @@ symbols! {
         call_ref_future,
         caller_location,
         capture_disjoint_fields,
+        carrying_mul_add,
         catch_unwind,
         cause,
         cdylib,
@@ -566,9 +591,10 @@ symbols! {
         cfg_accessible,
         cfg_attr,
         cfg_attr_multi,
-        cfg_autodiff_fallback,
         cfg_boolean_literals,
+        cfg_contract_checks,
         cfg_doctest,
+        cfg_emscripten_wasm_eh,
         cfg_eval,
         cfg_fmt_debug,
         cfg_hide,
@@ -589,6 +615,9 @@ symbols! {
         cfi,
         cfi_encoding,
         char,
+        char_is_ascii,
+        child_id,
+        child_kill,
         client,
         clippy,
         clobber_abi,
@@ -614,6 +643,7 @@ symbols! {
         cmp_partialord_lt,
         cmpxchg16b_target_feature,
         cmse_nonsecure_entry,
+        coerce_pointee_validated,
         coerce_unsized,
         cold,
         cold_path,
@@ -676,6 +706,14 @@ symbols! {
         const_ty_placeholder: "<const_ty>",
         constant,
         constructor,
+        contract_build_check_ensures,
+        contract_check_ensures,
+        contract_check_requires,
+        contract_checks,
+        contracts,
+        contracts_ensures,
+        contracts_internals,
+        contracts_requires,
         convert_identity,
         copy,
         copy_closures,
@@ -704,7 +742,6 @@ symbols! {
         coverage,
         coverage_attribute,
         cr,
-        crate_id,
         crate_in_paths,
         crate_local,
         crate_name,
@@ -751,6 +788,7 @@ symbols! {
         default_method_body_is_const,
         default_type_parameter_fallback,
         default_type_params,
+        define_opaque,
         delayed_bug_from_inside_query,
         deny,
         deprecated,
@@ -776,6 +814,7 @@ symbols! {
         discriminant_kind,
         discriminant_type,
         discriminant_value,
+        disjoint_bitor,
         dispatch_from_dyn,
         div,
         div_assign,
@@ -804,6 +843,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
+        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -822,6 +862,7 @@ symbols! {
         emit_enum_variant_arg,
         emit_struct,
         emit_struct_field,
+        emscripten_wasm_eh,
         enable,
         encode,
         end,
@@ -832,6 +873,7 @@ symbols! {
         eprint_macro,
         eprintln_macro,
         eq,
+        ergonomic_clones,
         ermsb_target_feature,
         exact_div,
         except,
@@ -863,6 +905,7 @@ symbols! {
         extern_crate_self,
         extern_in_paths,
         extern_prelude,
+        extern_system_varargs,
         extern_types,
         external,
         external_doc,
@@ -984,6 +1027,7 @@ symbols! {
         from_residual,
         from_size_align_unchecked,
         from_str_method,
+        from_u16,
         from_usize,
         from_yeet,
         fs_create_dir,
@@ -1009,7 +1053,9 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_const_items,
+        generic_const_parameter_types,
         generic_param_attrs,
+        generic_pattern_types,
         get_context,
         global_alloc_ty,
         global_allocator,
@@ -1092,6 +1138,7 @@ symbols! {
         import,
         import_name_type,
         import_shadowing,
+        import_trait_associated_functions,
         imported_main,
         in_band_lifetimes,
         include,
@@ -1148,6 +1195,7 @@ symbols! {
         iterator,
         iterator_collect_fn,
         kcfi,
+        keylocker_x86,
         keyword,
         kind,
         kreg,
@@ -1184,6 +1232,7 @@ symbols! {
         link_section,
         linkage,
         linker,
+        linker_messages,
         lint_reasons,
         literal,
         load,
@@ -1282,6 +1331,7 @@ symbols! {
         mir_drop,
         mir_field,
         mir_goto,
+        mir_len,
         mir_make_place,
         mir_move,
         mir_offset,
@@ -1334,10 +1384,6 @@ symbols! {
         native_link_modifiers_whole_archive,
         natvis_file,
         ne,
-        nearbyintf128,
-        nearbyintf16,
-        nearbyintf32,
-        nearbyintf64,
         needs_allocator,
         needs_drop,
         needs_panic_runtime,
@@ -1361,6 +1407,7 @@ symbols! {
         new_lower_hex,
         new_octal,
         new_pointer,
+        new_range,
         new_unchecked,
         new_upper_exp,
         new_upper_hex,
@@ -1383,7 +1430,6 @@ symbols! {
         no_mangle,
         no_sanitize,
         no_stack_check,
-        no_start,
         no_std,
         nomem,
         non_ascii_idents,
@@ -1442,6 +1488,7 @@ symbols! {
         panic_2015,
         panic_2021,
         panic_abort,
+        panic_any,
         panic_bounds_check,
         panic_cannot_unwind,
         panic_const_add_overflow,
@@ -1471,6 +1518,7 @@ symbols! {
         panic_location,
         panic_misaligned_pointer_dereference,
         panic_nounwind,
+        panic_null_pointer_dereference,
         panic_runtime,
         panic_str_2015,
         panic_unwind,
@@ -1487,9 +1535,10 @@ symbols! {
         path_main_separator,
         path_to_pathbuf,
         pathbuf_as_path,
-        pattern_complexity,
+        pattern_complexity_limit,
         pattern_parentheses,
         pattern_type,
+        pattern_type_range_trait,
         pattern_types,
         permissions_from_mode,
         phantom_data,
@@ -1546,6 +1595,7 @@ symbols! {
         proc_macro_mod,
         proc_macro_non_items,
         proc_macro_path_invoc,
+        process_abort,
         process_exit,
         profiler_builtins,
         profiler_runtime,
@@ -1592,6 +1642,7 @@ symbols! {
         quote,
         range_inclusive_new,
         raw_dylib,
+        raw_dylib_elf,
         raw_eq,
         raw_identifiers,
         raw_ref_op,
@@ -1652,20 +1703,16 @@ symbols! {
         return_position_impl_trait_in_trait,
         return_type_notation,
         rhs,
-        rintf128,
-        rintf16,
-        rintf32,
-        rintf64,
         riscv_target_feature,
         rlib,
         ropi,
         ropi_rwpi: "ropi-rwpi",
         rotate_left,
         rotate_right,
-        roundevenf128,
-        roundevenf16,
-        roundevenf32,
-        roundevenf64,
+        round_ties_even_f128,
+        round_ties_even_f16,
+        round_ties_even_f32,
+        round_ties_even_f64,
         roundf128,
         roundf16,
         roundf32,
@@ -1683,6 +1730,7 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
+        rust_future,
         rust_logo,
         rust_out,
         rustc,
@@ -1695,7 +1743,6 @@ symbols! {
         rustc_as_ptr,
         rustc_attrs,
         rustc_autodiff,
-        rustc_box,
         rustc_builtin_macro,
         rustc_capture_analysis,
         rustc_clean,
@@ -1729,6 +1776,7 @@ symbols! {
         rustc_error,
         rustc_evaluate_where_clauses,
         rustc_expected_cgu_reuse,
+        rustc_force_inline,
         rustc_has_incoherent_inherent_impls,
         rustc_hidden_type_of_opaques,
         rustc_if_this_changed,
@@ -1736,7 +1784,6 @@ symbols! {
         rustc_insignificant_dtor,
         rustc_intrinsic,
         rustc_intrinsic_const_stable_indirect,
-        rustc_intrinsic_must_be_overridden,
         rustc_layout,
         rustc_layout_scalar_valid_range_end,
         rustc_layout_scalar_valid_range_start,
@@ -1850,8 +1897,6 @@ symbols! {
         simd_fma,
         simd_fmax,
         simd_fmin,
-        simd_fpow,
-        simd_fpowi,
         simd_fsin,
         simd_fsqrt,
         simd_gather,
@@ -1888,7 +1933,7 @@ symbols! {
         simd_shl,
         simd_shr,
         simd_shuffle,
-        simd_shuffle_generic,
+        simd_shuffle_const_generic,
         simd_sub,
         simd_trunc,
         simd_with_exposed_provenance,
@@ -1948,6 +1993,10 @@ symbols! {
         str_from_utf8_mut,
         str_from_utf8_unchecked,
         str_from_utf8_unchecked_mut,
+        str_inherent_from_utf8,
+        str_inherent_from_utf8_mut,
+        str_inherent_from_utf8_unchecked,
+        str_inherent_from_utf8_unchecked_mut,
         str_len,
         str_split_whitespace,
         str_starts_with,
@@ -1972,6 +2021,7 @@ symbols! {
         sub_assign,
         sub_with_overflow,
         suggestion,
+        supertrait_item_shadowing,
         surface_async_drop_in_place,
         sym,
         sync,
@@ -2052,13 +2102,14 @@ symbols! {
         type_ascribe,
         type_ascription,
         type_changing_struct_update,
+        type_const,
         type_id,
         type_ir_inherent,
         type_length_limit,
         type_macros,
         type_name,
         type_privacy_lints,
-        typed_swap,
+        typed_swap_nonoverlapping,
         u128,
         u128_legacy_const_max,
         u128_legacy_const_min,
@@ -2148,7 +2199,7 @@ symbols! {
         unwrap,
         unwrap_binder,
         unwrap_or,
-        unwrap_unsafe_binder,
+        use_cloned,
         use_extern_macros,
         use_nested_groups,
         used,
@@ -2179,8 +2230,10 @@ symbols! {
         vec_macro,
         vec_new,
         vec_pop,
+        vec_reserve,
         vec_with_capacity,
         vecdeque_iter,
+        vecdeque_reserve,
         vector,
         version,
         vfp2,
@@ -2202,6 +2255,7 @@ symbols! {
         wasm_abi,
         wasm_import_module,
         wasm_target_feature,
+        where_clause_attrs,
         while_let,
         windows,
         windows_subsystem,
@@ -2238,6 +2292,10 @@ symbols! {
     }
 }
 
+/// Symbols for crates that are part of the stable standard library: `std`, `core`, `alloc`, and
+/// `proc_macro`.
+pub const STDLIB_STABLE_CRATES: &[Symbol] = &[sym::std, sym::core, sym::alloc, sym::proc_macro];
+
 #[derive(Copy, Clone, Eq, HashStable_Generic, Encodable, Decodable)]
 pub struct Ident {
     pub name: Symbol,
@@ -2257,9 +2315,21 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    /// This is best avoided, because it blurs the lines between "empty
+    /// identifier" and "no identifier". Using `Option<Ident>` is preferable,
+    /// where possible, because that is unambiguous.
     #[inline]
     pub fn empty() -> Ident {
         Ident::with_dummy_span(kw::Empty)
+    }
+
+    // For dummy identifiers that are never used and absolutely must be
+    // present, it's better to use `Ident::dummy` than `Ident::Empty`, because
+    // it's clearer that it's intended as a dummy value, and more likely to be
+    // detected if it accidentally does get used.
+    #[inline]
+    pub fn dummy() -> Ident {
+        Ident::with_dummy_span(sym::dummy)
     }
 
     /// Maps a string to an identifier with a dummy span.
@@ -2706,6 +2776,12 @@ impl Ident {
     /// How was it written originally? Did it use the raw form? Let's try to guess.
     pub fn is_raw_guess(self) -> bool {
         self.name.can_be_raw() && self.is_reserved()
+    }
+
+    /// Whether this would be the identifier for a tuple field like `self.0`, as
+    /// opposed to a named field like `self.thing`.
+    pub fn is_numeric(self) -> bool {
+        !self.name.is_empty() && self.as_str().bytes().all(|b| b.is_ascii_digit())
     }
 }
 

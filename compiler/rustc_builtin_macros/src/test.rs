@@ -169,20 +169,26 @@ pub(crate) fn expand_test_or_bench(
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
-        cx.path(sp, vec![
-            test_id,
-            Ident::from_str_and_span("ShouldPanic", sp),
-            Ident::from_str_and_span(name, sp),
-        ])
+        cx.path(
+            sp,
+            vec![
+                test_id,
+                Ident::from_str_and_span("ShouldPanic", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
     };
 
     // creates test::TestType::$name
     let test_type_path = |name| {
-        cx.path(sp, vec![
-            test_id,
-            Ident::from_str_and_span("TestType", sp),
-            Ident::from_str_and_span(name, sp),
-        ])
+        cx.path(
+            sp,
+            vec![
+                test_id,
+                Ident::from_str_and_span("TestType", sp),
+                Ident::from_str_and_span(name, sp),
+            ],
+        )
     };
 
     // creates $name: $expr
@@ -202,39 +208,55 @@ pub(crate) fn expand_test_or_bench(
         // A simple ident for a lambda
         let b = Ident::from_str_and_span("b", attr_sp);
 
-        cx.expr_call(sp, cx.expr_path(test_path("StaticBenchFn")), thin_vec![
-            // #[coverage(off)]
-            // |b| self::test::assert_test_result(
-            coverage_off(cx.lambda1(
-                sp,
-                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
-                    // super::$test_fn(b)
+        cx.expr_call(
+            sp,
+            cx.expr_path(test_path("StaticBenchFn")),
+            thin_vec![
+                // #[coverage(off)]
+                // |b| self::test::assert_test_result(
+                coverage_off(cx.lambda1(
+                    sp,
                     cx.expr_call(
-                        ret_ty_sp,
-                        cx.expr_path(cx.path(sp, vec![item.ident])),
-                        thin_vec![cx.expr_ident(sp, b)],
+                        sp,
+                        cx.expr_path(test_path("assert_test_result")),
+                        thin_vec![
+                            // super::$test_fn(b)
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                thin_vec![cx.expr_ident(sp, b)],
+                            ),
+                        ],
                     ),
-                ],),
-                b,
-            )), // )
-        ])
+                    b,
+                )), // )
+            ],
+        )
     } else {
-        cx.expr_call(sp, cx.expr_path(test_path("StaticTestFn")), thin_vec![
-            // #[coverage(off)]
-            // || {
-            coverage_off(cx.lambda0(
-                sp,
-                // test::assert_test_result(
-                cx.expr_call(sp, cx.expr_path(test_path("assert_test_result")), thin_vec![
-                    // $test_fn()
+        cx.expr_call(
+            sp,
+            cx.expr_path(test_path("StaticTestFn")),
+            thin_vec![
+                // #[coverage(off)]
+                // || {
+                coverage_off(cx.lambda0(
+                    sp,
+                    // test::assert_test_result(
                     cx.expr_call(
-                        ret_ty_sp,
-                        cx.expr_path(cx.path(sp, vec![item.ident])),
-                        ThinVec::new(),
-                    ), // )
-                ],), // }
-            )), // )
-        ])
+                        sp,
+                        cx.expr_path(test_path("assert_test_result")),
+                        thin_vec![
+                            // $test_fn()
+                            cx.expr_call(
+                                ret_ty_sp,
+                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                ThinVec::new(),
+                            ), // )
+                        ],
+                    ), // }
+                )), // )
+            ],
+        )
     };
 
     let test_path_symbol = Symbol::intern(&item_path(
@@ -245,26 +267,30 @@ pub(crate) fn expand_test_or_bench(
 
     let location_info = get_location_info(cx, &item);
 
-    let mut test_const = cx.item(
-        sp,
-        Ident::new(item.ident.name, sp),
-        thin_vec![
-            // #[cfg(test)]
-            cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
-            // #[rustc_test_marker = "test_case_sort_key"]
-            cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-            // #[doc(hidden)]
-            cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
-        ],
-        // const $ident: test::TestDescAndFn =
-        ast::ItemKind::Const(
-            ast::ConstItem {
-                defaultness: ast::Defaultness::Final,
-                generics: ast::Generics::default(),
-                ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
-                // test::TestDescAndFn {
-                expr: Some(
-                    cx.expr_struct(sp, test_path("TestDescAndFn"), thin_vec![
+    let mut test_const =
+        cx.item(
+            sp,
+            Ident::new(item.ident.name, sp),
+            thin_vec![
+                // #[cfg(test)]
+                cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
+                // #[rustc_test_marker = "test_case_sort_key"]
+                cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
+                // #[doc(hidden)]
+                cx.attr_nested_word(sym::doc, sym::hidden, attr_sp),
+            ],
+            // const $ident: test::TestDescAndFn =
+            ast::ItemKind::Const(
+                ast::ConstItem {
+                    defaultness: ast::Defaultness::Final,
+                    generics: ast::Generics::default(),
+                    ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    // test::TestDescAndFn {
+                    expr: Some(
+                        cx.expr_struct(
+                            sp,
+                            test_path("TestDescAndFn"),
+                            thin_vec![
                         // desc: test::TestDesc {
                         field(
                             "desc",
@@ -340,12 +366,13 @@ pub(crate) fn expand_test_or_bench(
                         ),
                         // testfn: test::StaticTestFn(...) | test::StaticBenchFn(...)
                         field("testfn", test_fn), // }
-                    ]), // }
-                ),
-            }
-            .into(),
-        ),
-    );
+                    ],
+                        ), // }
+                    ),
+                }
+                .into(),
+            ),
+        );
     test_const = test_const.map(|mut tc| {
         tc.vis.kind = ast::VisibilityKind::Public;
         tc

@@ -1,5 +1,5 @@
 use crate::concurrency::sync::FutexRef;
-use crate::helpers::check_min_arg_count;
+use crate::helpers::check_min_vararg_count;
 use crate::*;
 
 struct LinuxFutex {
@@ -10,18 +10,10 @@ struct LinuxFutex {
 /// `args` is the arguments *including* the syscall number.
 pub fn futex<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
-    args: &[OpTy<'tcx>],
+    varargs: &[OpTy<'tcx>],
     dest: &MPlaceTy<'tcx>,
 ) -> InterpResult<'tcx> {
-    // The amount of arguments used depends on the type of futex operation.
-    // The full futex syscall takes six arguments (excluding the syscall
-    // number), which is also the maximum amount of arguments a linux syscall
-    // can take on most architectures.
-    // However, not all futex operations use all six arguments. The unused ones
-    // may or may not be left out from the `syscall()` call.
-    // Therefore we don't use `check_arg_count` here, but only check for the
-    // number of arguments to fall within a range.
-    let [_, addr, op, val] = check_min_arg_count("`syscall(SYS_futex, ...)`", args)?;
+    let [addr, op, val] = check_min_vararg_count("`syscall(SYS_futex, ...)`", varargs)?;
 
     // The first three arguments (after the syscall number itself) are the same to all futex operations:
     //     (int *addr, int op, int val).
@@ -55,14 +47,16 @@ pub fn futex<'tcx>(
             let wait_bitset = op & !futex_realtime == futex_wait_bitset;
 
             let (timeout, bitset) = if wait_bitset {
-                let [_, _, _, _, timeout, uaddr2, bitset] =
-                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`", args)?;
+                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
+                    "`syscall(SYS_futex, FUTEX_WAIT_BITSET, ...)`",
+                    varargs,
+                )?;
                 let _timeout = ecx.read_pointer(timeout)?;
                 let _uaddr2 = ecx.read_pointer(uaddr2)?;
                 (timeout, ecx.read_scalar(bitset)?.to_u32()?)
             } else {
-                let [_, _, _, _, timeout] =
-                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", args)?;
+                let [_, _, _, timeout] =
+                    check_min_vararg_count("`syscall(SYS_futex, FUTEX_WAIT, ...)`", varargs)?;
                 (timeout, u32::MAX)
             };
 
@@ -156,14 +150,24 @@ pub fn futex<'tcx>(
                     .futex
                     .clone();
 
+                let dest = dest.clone();
                 ecx.futex_wait(
                     futex_ref,
                     bitset,
                     timeout,
-                    Scalar::from_target_isize(0, ecx), // retval_succ
-                    Scalar::from_target_isize(-1, ecx), // retval_timeout
-                    dest.clone(),
-                    LibcError("ETIMEDOUT"), // errno_timeout
+                    callback!(
+                        @capture<'tcx> {
+                            dest: MPlaceTy<'tcx>,
+                        }
+                        |ecx, unblock: UnblockKind| match unblock {
+                            UnblockKind::Ready => {
+                                ecx.write_int(0, &dest)
+                            }
+                            UnblockKind::TimedOut => {
+                                ecx.set_last_error_and_return(LibcError("ETIMEDOUT"), &dest)
+                            }
+                        }
+                    ),
                 );
             } else {
                 // The futex value doesn't match the expected value, so we return failure
@@ -190,8 +194,10 @@ pub fn futex<'tcx>(
             let futex_ref = futex_ref.futex.clone();
 
             let bitset = if op == futex_wake_bitset {
-                let [_, _, _, _, timeout, uaddr2, bitset] =
-                    check_min_arg_count("`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`", args)?;
+                let [_, _, _, timeout, uaddr2, bitset] = check_min_vararg_count(
+                    "`syscall(SYS_futex, FUTEX_WAKE_BITSET, ...)`",
+                    varargs,
+                )?;
                 let _timeout = ecx.read_pointer(timeout)?;
                 let _uaddr2 = ecx.read_pointer(uaddr2)?;
                 ecx.read_scalar(bitset)?.to_u32()?
@@ -205,16 +211,8 @@ pub fn futex<'tcx>(
             // will see the latest value on addr which could be changed by our caller
             // before doing the syscall.
             ecx.atomic_fence(AtomicFenceOrd::SeqCst)?;
-            let mut n = 0;
-            #[expect(clippy::arithmetic_side_effects)]
-            for _ in 0..val {
-                if ecx.futex_wake(&futex_ref, bitset)? {
-                    n += 1;
-                } else {
-                    break;
-                }
-            }
-            ecx.write_scalar(Scalar::from_target_isize(n, ecx), dest)?;
+            let woken = ecx.futex_wake(&futex_ref, bitset, val.try_into().unwrap())?;
+            ecx.write_scalar(Scalar::from_target_isize(woken.try_into().unwrap(), ecx), dest)?;
         }
         op => throw_unsup_format!("Miri does not support `futex` syscall with op={}", op),
     }

@@ -27,9 +27,6 @@ mod solve;
 
 pub(crate) mod dump;
 
-/// Code for transforming variances.
-mod xform;
-
 pub(crate) fn provide(providers: &mut Providers) {
     *providers = Providers { variances_of, crate_variances, ..*providers };
 }
@@ -201,6 +198,10 @@ fn variance_of_opaque(
             ty::ClauseKind::Trait(ty::TraitPredicate {
                 trait_ref: ty::TraitRef { def_id: _, args, .. },
                 polarity: _,
+            })
+            | ty::ClauseKind::HostEffect(ty::HostEffectPredicate {
+                trait_ref: ty::TraitRef { def_id: _, args, .. },
+                constness: _,
             }) => {
                 for arg in &args[1..] {
                     arg.visit_with(&mut collector);

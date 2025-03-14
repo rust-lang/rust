@@ -16,7 +16,7 @@ pub(crate) fn provide(providers: &mut Providers) {
         }
 
         let local_def_id = def_id.expect_local();
-        let body = tcx.hir().maybe_body_owned_by(local_def_id)?;
+        let body = tcx.hir_maybe_body_owned_by(local_def_id)?;
 
         let mut local_collector = LocalCollector::default();
         local_collector.visit_body(&body);

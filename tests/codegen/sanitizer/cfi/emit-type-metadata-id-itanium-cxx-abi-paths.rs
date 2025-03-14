@@ -9,47 +9,41 @@
 
 extern crate core;
 
-mod defining_module {
-    pub type Type1 = impl Send;
-    pub type Type2 = impl Send;
-    pub type Type3 = impl Send;
-    pub type Type4 = impl Send;
+pub type Type1 = impl Send;
+pub type Type2 = impl Send;
+pub type Type3 = impl Send;
+pub type Type4 = impl Send;
 
-    pub fn foo()
-    where
-        Type1: 'static,
-        Type2: 'static,
-        Type4: 'static,
-    {
-        // Type in extern path
-        extern "C" {
-            fn bar();
-        }
-        let _: Type1 = bar;
-
-        // Type in closure path
-        || {
-            pub struct Foo;
-            let _: Type2 = Foo;
-        };
-
-        // Type in const path
-        const {
-            pub struct Foo;
-            fn bar() -> Type3 {
-                Foo
-            }
-        };
-
-        // Type in impl path
-        struct Foo;
-        impl Foo {
-            fn bar(&self) {}
-        }
-        let _: Type4 = <Foo>::bar;
+#[define_opaque(Type1, Type2, Type4)]
+pub fn foo() {
+    // Type in extern path
+    extern "C" {
+        fn bar();
     }
+    let _: Type1 = bar;
+
+    // Type in closure path
+    || {
+        pub struct Foo;
+        let _: Type2 = Foo;
+    };
+
+    // Type in const path
+    const {
+        pub struct Foo;
+        #[define_opaque(Type3)]
+        fn bar() -> Type3 {
+            Foo
+        }
+    };
+
+    // Type in impl path
+    struct Foo;
+    impl Foo {
+        fn bar(&self) {}
+    }
+    let _: Type4 = <Foo>::bar;
 }
-use defining_module::*;
 
 // Force arguments to be passed by using a reference. Otherwise, they may end up PassMode::Ignore
 
@@ -78,15 +72,15 @@ pub fn foo11(_: &Type4, _: &Type4) {}
 pub fn foo12(_: &Type4, _: &Type4, _: &Type4) {}
 // CHECK: define{{.*}}5foo12{{.*}}!type ![[TYPE12:[0-9]+]] !type !{{[0-9]+}} !type !{{[0-9]+}} !type !{{[0-9]+}}
 
-// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo10{{[{}][{}]}}extern{{[}][}]}}3barEE"}
-// CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo10{{[{}][{}]}}extern{{[}][}]}}3barES0_E"}
-// CHECK: ![[TYPE3]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo10{{[{}][{}]}}extern{{[}][}]}}3barES0_S0_E"}
-// CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo11{{[{}][{}]}}closure{{[}][}]}}3FooEE"}
-// CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_E"}
-// CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_S0_E"}
-// CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo12{{[{}][{}]}}constant{{[}][}]}}3FooEE"}
-// CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_E"}
-// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_S0_E"}
-// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo8{{[{}][{}]}}impl{{[}][}]}}3barEE"}
-// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_E"}
-// CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvNtC{{[[:print:]]+}}_{{[[:print:]]+}}15defining_module3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_S0_E"}
+// CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo10{{[{}][{}]}}extern{{[}][}]}}3barEE"}
+// CHECK: ![[TYPE2]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo10{{[{}][{}]}}extern{{[}][}]}}3barES0_E"}
+// CHECK: ![[TYPE3]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNFNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo10{{[{}][{}]}}extern{{[}][}]}}3barES0_S0_E"}
+// CHECK: ![[TYPE4]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooEE"}
+// CHECK: ![[TYPE5]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_E"}
+// CHECK: ![[TYPE6]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNCNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo11{{[{}][{}]}}closure{{[}][}]}}3FooES0_S0_E"}
+// CHECK: ![[TYPE7]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooEE"}
+// CHECK: ![[TYPE8]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_E"}
+// CHECK: ![[TYPE9]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NtNkNvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo12{{[{}][{}]}}constant{{[}][}]}}3FooES0_S0_E"}
+// CHECK: ![[TYPE10]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barEE"}
+// CHECK: ![[TYPE11]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_E"}
+// CHECK: ![[TYPE12]] = !{i64 0, !"_ZTSFvu3refIu{{[0-9]+}}NvNINvC{{[[:print:]]+}}_{{[[:print:]]+}}3foo8{{[{}][{}]}}impl{{[}][}]}}3barES0_S0_E"}

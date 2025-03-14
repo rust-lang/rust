@@ -483,8 +483,8 @@ impl<I: Interner, const INSTANTIATE_LHS_WITH_INFER: bool, const INSTANTIATE_RHS_
         };
 
         match lhs.kind() {
-            ty::ConstKind::Value(_, lhs_val) => match rhs.kind() {
-                ty::ConstKind::Value(_, rhs_val) => lhs_val == rhs_val,
+            ty::ConstKind::Value(lhs_val) => match rhs.kind() {
+                ty::ConstKind::Value(rhs_val) => lhs_val.valtree() == rhs_val.valtree(),
                 _ => false,
             },
 

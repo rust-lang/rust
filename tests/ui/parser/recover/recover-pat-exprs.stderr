@@ -7,8 +7,9 @@ LL |         x.y => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.y => (),
-   |         ~~~ +++++++++++++
+LL -         x.y => (),
+LL +         val if val == x.y => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.y;
@@ -30,8 +31,9 @@ LL |         x.0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.0 => (),
-   |         ~~~ +++++++++++++
+LL -         x.0 => (),
+LL +         val if val == x.0 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0;
@@ -54,8 +56,9 @@ LL |         x._0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x._0 => (),
-   |         ~~~ ++++++++++++++
+LL -         x._0 => (),
+LL +         val if val == x._0 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._0;
@@ -79,8 +82,9 @@ LL |         x.0.1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.0.1 => (),
-   |         ~~~ +++++++++++++++
+LL -         x.0.1 => (),
+LL +         val if val == x.0.1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0.1;
@@ -104,8 +108,9 @@ LL |         x.4.y.17.__z => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.4.y.17.__z => (),
-   |         ~~~ ++++++++++++++++++++++
+LL -         x.4.y.17.__z => (),
+LL +         val if val == x.4.y.17.__z => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.4.y.17.__z;
@@ -159,8 +164,9 @@ LL |         x[0] => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x[0] => (),
-   |         ~~~ ++++++++++++++
+LL -         x[0] => (),
+LL +         val if val == x[0] => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[0];
@@ -181,8 +187,9 @@ LL |         x[..] => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x[..] => (),
-   |         ~~~ +++++++++++++++
+LL -         x[..] => (),
+LL +         val if val == x[..] => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x[..];
@@ -231,8 +238,9 @@ LL |         x.f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f() => (),
-   |         ~~~ +++++++++++++++
+LL -         x.f() => (),
+LL +         val if val == x.f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f();
@@ -253,8 +261,9 @@ LL |         x._f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x._f() => (),
-   |         ~~~ ++++++++++++++++
+LL -         x._f() => (),
+LL +         val if val == x._f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x._f();
@@ -276,8 +285,9 @@ LL |         x? => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x? => (),
-   |         ~~~ ++++++++++++
+LL -         x? => (),
+LL +         val if val == x? => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x?;
@@ -300,8 +310,9 @@ LL |         ().f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == ().f() => (),
-   |         ~~~ ++++++++++++++++
+LL -         ().f() => (),
+LL +         val if val == ().f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = ().f();
@@ -325,8 +336,9 @@ LL |         (0, x)?.f() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (0, x)?.f() => (),
-   |         ~~~ +++++++++++++++++++++
+LL -         (0, x)?.f() => (),
+LL +         val if val == (0, x)?.f() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (0, x)?.f();
@@ -350,8 +362,9 @@ LL |         x.f().g() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f().g() => (),
-   |         ~~~ +++++++++++++++++++
+LL -         x.f().g() => (),
+LL +         val if val == x.f().g() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().g();
@@ -375,8 +388,9 @@ LL |         0.f()?.g()?? => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 0.f()?.g()?? => (),
-   |         ~~~ ++++++++++++++++++++++
+LL -         0.f()?.g()?? => (),
+LL +         val if val == 0.f()?.g()?? => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0.f()?.g()??;
@@ -400,8 +414,9 @@ LL |         x as usize => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x as usize => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         x as usize => (),
+LL +         val if val == x as usize => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x as usize;
@@ -422,8 +437,9 @@ LL |         0 as usize => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 0 as usize => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         0 as usize => (),
+LL +         val if val == 0 as usize => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 0 as usize;
@@ -445,8 +461,9 @@ LL |         x.f().0.4 as f32 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == x.f().0.4 as f32 => (),
-   |         ~~~ ++++++++++++++++++++++++++
+LL -         x.f().0.4 as f32 => (),
+LL +         val if val == x.f().0.4 as f32 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.f().0.4 as f32;
@@ -469,8 +486,9 @@ LL |         1 + 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == 1 + 1 => (),
-   |         ~~~ +++++++++++++++
+LL -         1 + 1 => (),
+LL +         val if val == 1 + 1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = 1 + 1;
@@ -491,8 +509,9 @@ LL |         (1 + 2) * 3 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (1 + 2) * 3 => (),
-   |         ~~~ +++++++++++++++++++++
+LL -         (1 + 2) * 3 => (),
+LL +         val if val == (1 + 2) * 3 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = (1 + 2) * 3;
@@ -514,8 +533,9 @@ LL |         x.0 > 2 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (x.0 > 2) => (),
-   |         ~~~ +++++++++++++++++++
+LL -         x.0 > 2 => (),
+LL +         val if val == (x.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 > 2;
@@ -539,8 +559,9 @@ LL |         x.0 == 2 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == (x.0 == 2) => (),
-   |         ~~~ ++++++++++++++++++++
+LL -         x.0 == 2 => (),
+LL +         val if val == (x.0 == 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = x.0 == 2;
@@ -564,8 +585,9 @@ LL |         (x, y.0 > 2) if x != 0 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
-LL |         (x, val) if x != 0 && val == (y.0 > 2) => (),
-   |             ~~~            +++++++++++++++++++
+LL -         (x, y.0 > 2) if x != 0 => (),
+LL +         (x, val) if x != 0 && val == (y.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
@@ -586,8 +608,9 @@ LL |         (x, y.0 > 2) if x != 0 || x != 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to the match arm guard
    |
-LL |         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
-   |             ~~~     +                +++++++++++++++++++++
+LL -         (x, y.0 > 2) if x != 0 || x != 1 => (),
+LL +         (x, val) if (x != 0 || x != 1) && val == (y.0 > 2) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.0 > 2;
@@ -626,8 +649,9 @@ LL |         u8::MAX.abs() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == u8::MAX.abs() => (),
-   |         ~~~ +++++++++++++++++++++++
+LL -         u8::MAX.abs() => (),
+LL +         val if val == u8::MAX.abs() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = u8::MAX.abs();
@@ -648,8 +672,9 @@ LL |         z @ w @ v.u() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         z @ w @ val if val == v.u() => (),
-   |                 ~~~ +++++++++++++++
+LL -         z @ w @ v.u() => (),
+LL +         z @ w @ val if val == v.u() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = v.u();
@@ -673,8 +698,9 @@ LL |         y.ilog(3) => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == y.ilog(3) => (),
-   |         ~~~ +++++++++++++++++++
+LL -         y.ilog(3) => (),
+LL +         val if val == y.ilog(3) => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = y.ilog(3);
@@ -698,8 +724,9 @@ LL |         n + 1 => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == n + 1 => (),
-   |         ~~~ +++++++++++++++
+LL -         n + 1 => (),
+LL +         val if val == n + 1 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = n + 1;
@@ -723,8 +750,9 @@ LL |         ("".f() + 14 * 8) => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         (val) if val == "".f() + 14 * 8 => (),
-   |          ~~~  +++++++++++++++++++++++++
+LL -         ("".f() + 14 * 8) => (),
+LL +         (val) if val == "".f() + 14 * 8 => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = "".f() + 14 * 8;
@@ -748,8 +776,9 @@ LL |         f?() => (),
    = note: arbitrary expressions are not allowed in patterns: <https://doc.rust-lang.org/book/ch19-00-patterns.html>
 help: consider moving the expression to a match arm guard
    |
-LL |         val if val == f?() => (),
-   |         ~~~ ++++++++++++++
+LL -         f?() => (),
+LL +         val if val == f?() => (),
+   |
 help: consider extracting the expression into a `const`
    |
 LL +     const VAL: /* Type */ = f?();

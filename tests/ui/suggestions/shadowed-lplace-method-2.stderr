@@ -13,8 +13,9 @@ LL |     *x.foo(0) = ();
    |        ^^^ refers to `X::foo`
 help: you might have meant to call the other method; you can use the fully-qualified path to call it explicitly
    |
-LL |     *<_ as A>::foo(&mut x, 0) = ();
-   |      ++++++++++++++++++  ~
+LL -     *x.foo(0) = ();
+LL +     *<_ as A>::foo(&mut x, 0) = ();
+   |
 help: try wrapping the expression in `X`
    |
 LL |     *x.foo(0) = X { x: () };

@@ -16,12 +16,14 @@ LL |     fn r#struct(&self) {
    |     ^^^^^^^^^^^^^^^^^^
 help: disambiguate the method for candidate #1
    |
-LL |     r#async::r#struct(&r#fn {});
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     r#fn {}.r#struct();
+LL +     r#async::r#struct(&r#fn {});
+   |
 help: disambiguate the method for candidate #2
    |
-LL |     r#await::r#struct(&r#fn {});
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL -     r#fn {}.r#struct();
+LL +     r#await::r#struct(&r#fn {});
+   |
 
 error: aborting due to 1 previous error
 

@@ -5,7 +5,6 @@ use rustc_ast::ast::{Expr, ExprKind};
 use rustc_ast::token::LitKind;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
-use rustc_middle::lint::in_external_macro;
 use rustc_session::impl_lint_pass;
 use rustc_span::{BytePos, Pos, Span};
 use std::iter::once;
@@ -72,7 +71,7 @@ impl RawStrings {
 impl EarlyLintPass for RawStrings {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, expr: &Expr) {
         if let ExprKind::FormatArgs(format_args) = &expr.kind
-            && !in_external_macro(cx.sess(), format_args.span)
+            && !format_args.span.in_external_macro(cx.sess().source_map())
             && format_args.span.check_source_text(cx, |src| src.starts_with('r'))
             && let Some(str) = snippet_opt(cx.sess(), format_args.span)
             && let count_hash = str.bytes().skip(1).take_while(|b| *b == b'#').count()
@@ -95,7 +94,7 @@ impl EarlyLintPass for RawStrings {
                 LitKind::CStrRaw(max) => ("cr", max),
                 _ => return,
             }
-            && !in_external_macro(cx.sess(), expr.span)
+            && !expr.span.in_external_macro(cx.sess().source_map())
             && expr.span.check_source_text(cx, |src| src.starts_with(prefix))
         {
             self.check_raw_string(cx, lit.symbol.as_str(), expr.span, prefix, max, lit.kind.descr());

@@ -24,7 +24,10 @@ error: `size_of_val` is not yet stable as a const intrinsic
 LL |         unstable_intrinsic::size_of_val(&x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add `#![feature(unstable)]` to the crate attributes to enable
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
 
 error: `min_align_of_val` is not yet stable as a const intrinsic
   --> $DIR/const-unstable-intrinsic.rs:20:9
@@ -32,7 +35,10 @@ error: `min_align_of_val` is not yet stable as a const intrinsic
 LL |         unstable_intrinsic::min_align_of_val(&x);
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: add `#![feature(unstable)]` to the crate attributes to enable
+help: add `#![feature(unstable)]` to the crate attributes to enable
+   |
+LL + #![feature(unstable)]
+   |
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
   --> $DIR/const-unstable-intrinsic.rs:24:9
@@ -69,7 +75,7 @@ LL | const fn const_main() {
    |
 
 error: intrinsic `copy::copy` cannot be (indirectly) exposed to stable
-  --> $DIR/const-unstable-intrinsic.rs:53:14
+  --> $DIR/const-unstable-intrinsic.rs:48:14
    |
 LL |     unsafe { copy(src, dst, count) }
    |              ^^^^^^^^^^^^^^^^^^^^^
@@ -77,7 +83,7 @@ LL |     unsafe { copy(src, dst, count) }
    = help: mark the caller as `#[rustc_const_unstable]`, or mark the intrinsic `#[rustc_intrinsic_const_stable_indirect]` (but this requires team approval)
 
 error: const function that might be (indirectly) exposed to stable cannot use `#[feature(local)]`
-  --> $DIR/const-unstable-intrinsic.rs:61:9
+  --> $DIR/const-unstable-intrinsic.rs:56:9
    |
 LL |         super::size_of_val(src);
    |         ^^^^^^^^^^^^^^^^^^^^^^^

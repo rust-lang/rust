@@ -16,8 +16,9 @@ LL |     become a + b;
    |
 help: try using the method directly
    |
-LL |     become (a).add(b);
-   |            + ~~~~~~ +
+LL -     become a + b;
+LL +     become (a).add(b);
+   |
 
 error: `become` does not support operators
   --> $DIR/become-operator.rs:19:12
@@ -37,8 +38,9 @@ LL |     become !x;
    |
 help: try using the method directly
    |
-LL |     become (x).not();
-   |            ~ +++++++
+LL -     become !x;
+LL +     become (x).not();
+   |
 
 error: `become` does not support operators
   --> $DIR/become-operator.rs:27:12
@@ -68,8 +70,9 @@ LL |     become *b ^= 1;
    |
 help: try using the method directly
    |
-LL |     become (*b).bitxor_assign(1);
-   |            +  ~~~~~~~~~~~~~~~~ +
+LL -     become *b ^= 1;
+LL +     become (*b).bitxor_assign(1);
+   |
 
 error: aborting due to 7 previous errors
 

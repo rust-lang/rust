@@ -6,6 +6,7 @@
 struct Bug {
     V1: [(); {
         type F = impl std::future::Future<Output = impl Sized>;
+        #[define_opaque(F)]
         fn concrete_use() -> F {
             //~^ ERROR to be a future that resolves to `u8`, but it resolves to `()`
             async {}

@@ -62,14 +62,17 @@ pub trait Context {
     /// Returns the name of given `DefId`
     fn def_name(&self, def_id: DefId, trimmed: bool) -> Symbol;
 
-    /// Return attributes with the given attribute name.
+    /// Return registered tool attributes with the given attribute name.
     ///
-    /// Single segmented name like `#[inline]` is specified as `&["inline".to_string()]`.
+    /// FIXME(jdonszelmann): may panic on non-tool attributes. After more attribute work, non-tool
+    /// attributes will simply return an empty list.
+    ///
+    /// Single segmented name like `#[clippy]` is specified as `&["clippy".to_string()]`.
     /// Multi-segmented name like `#[rustfmt::skip]` is specified as `&["rustfmt".to_string(), "skip".to_string()]`.
-    fn get_attrs_by_path(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute>;
+    fn tool_attrs(&self, def_id: DefId, attr: &[Symbol]) -> Vec<Attribute>;
 
-    /// Get all attributes of a definition.
-    fn get_all_attrs(&self, def_id: DefId) -> Vec<Attribute>;
+    /// Get all tool attributes of a definition.
+    fn all_tool_attrs(&self, def_id: DefId) -> Vec<Attribute>;
 
     /// Returns printable, human readable form of `Span`
     fn span_to_string(&self, span: Span) -> String;

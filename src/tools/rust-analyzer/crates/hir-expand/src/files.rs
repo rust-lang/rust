@@ -10,7 +10,7 @@ use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange,
 
 use crate::{
     db::{self, ExpandDatabase},
-    map_node_range_up, map_node_range_up_rooted, span_for_offset, MacroFileIdExt,
+    map_node_range_up, map_node_range_up_rooted, span_for_offset, MacroFileIdExt, MacroKind,
 };
 
 /// `InFile<T>` stores a value of `T` inside a particular file/syntax tree.
@@ -276,7 +276,11 @@ impl<SN: Borrow<SyntaxNode>> InFile<SN> {
             HirFileIdRepr::FileId(file_id) => {
                 return Some(InRealFile { file_id, value: self.value.borrow().clone() })
             }
-            HirFileIdRepr::MacroFile(m) if m.is_attr_macro(db) => m,
+            HirFileIdRepr::MacroFile(m)
+                if matches!(m.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn) =>
+            {
+                m
+            }
             _ => return None,
         };
 
@@ -380,14 +384,14 @@ impl InFile<TextRange> {
     ) -> (FileRange, SyntaxContextId) {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => {
-                (FileRange { file_id, range: self.value }, SyntaxContextId::ROOT)
+                (FileRange { file_id, range: self.value }, SyntaxContextId::root(file_id.edition()))
             }
             HirFileIdRepr::MacroFile(mac_file) => {
                 match map_node_range_up(db, &db.expansion_span_map(mac_file), self.value) {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
-                        (loc.kind.original_call_range(db), SyntaxContextId::ROOT)
+                        (loc.kind.original_call_range(db), SyntaxContextId::root(loc.def.edition))
                     }
                 }
             }
@@ -432,9 +436,10 @@ impl InFile<TextRange> {
         db: &dyn db::ExpandDatabase,
     ) -> Option<(FileRange, SyntaxContextId)> {
         match self.file_id.repr() {
-            HirFileIdRepr::FileId(file_id) => {
-                Some((FileRange { file_id, range: self.value }, SyntaxContextId::ROOT))
-            }
+            HirFileIdRepr::FileId(file_id) => Some((
+                FileRange { file_id, range: self.value },
+                SyntaxContextId::root(file_id.edition()),
+            )),
             HirFileIdRepr::MacroFile(mac_file) => {
                 map_node_range_up(db, &db.expansion_span_map(mac_file), self.value)
             }
@@ -452,7 +457,7 @@ impl<N: AstNode> InFile<N> {
             }
             HirFileIdRepr::MacroFile(m) => m,
         };
-        if !file_id.is_attr_macro(db) {
+        if !matches!(file_id.kind(db), MacroKind::Attr | MacroKind::AttrBuiltIn) {
             return None;
         }
 

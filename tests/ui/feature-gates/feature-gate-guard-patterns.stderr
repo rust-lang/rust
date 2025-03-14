@@ -1,5 +1,5 @@
 error: unexpected parentheses surrounding `match` arm pattern
-  --> $DIR/feature-gate-guard-patterns.rs:10:9
+  --> $DIR/feature-gate-guard-patterns.rs:12:9
    |
 LL |         (0 if guard(0)) => {},
    |         ^             ^
@@ -11,7 +11,7 @@ LL +         0 if guard(0) => {},
    |
 
 error[E0425]: cannot find value `x` in this scope
-  --> $DIR/feature-gate-guard-patterns.rs:21:22
+  --> $DIR/feature-gate-guard-patterns.rs:23:22
    |
 LL |     let ((x if guard(x)) | x) = 0;
    |                      ^ not found in this scope
@@ -23,13 +23,13 @@ LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {
    |                                             ^
    |
 help: the binding `x` is available in a different scope in the same function
-  --> $DIR/feature-gate-guard-patterns.rs:21:11
+  --> $DIR/feature-gate-guard-patterns.rs:23:11
    |
 LL |     let ((x if guard(x)) | x) = 0;
    |           ^
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:16:15
+  --> $DIR/feature-gate-guard-patterns.rs:18:15
    |
 LL |         (0 if guard(0)) | 1 => {},
    |               ^^^^^^^^
@@ -40,7 +40,7 @@ LL |         (0 if guard(0)) | 1 => {},
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:21:16
+  --> $DIR/feature-gate-guard-patterns.rs:23:16
    |
 LL |     let ((x if guard(x)) | x) = 0;
    |                ^^^^^^^^
@@ -51,7 +51,7 @@ LL |     let ((x if guard(x)) | x) = 0;
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:25:18
+  --> $DIR/feature-gate-guard-patterns.rs:27:18
    |
 LL |     if let (x if guard(x)) = 0 {}
    |                  ^^^^^^^^
@@ -62,7 +62,7 @@ LL |     if let (x if guard(x)) = 0 {}
    = help: consider using match arm guards
 
 error[E0658]: guard patterns are experimental
-  --> $DIR/feature-gate-guard-patterns.rs:29:21
+  --> $DIR/feature-gate-guard-patterns.rs:30:21
    |
 LL |     while let (x if guard(x)) = 0 {}
    |                     ^^^^^^^^
@@ -94,26 +94,7 @@ LL | fn even_as_function_parameters(((x if guard(x), _) | (_, x)): (i32, i32)) {
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
    = help: consider using match arm guards
 
-warning: irrefutable `if let` pattern
-  --> $DIR/feature-gate-guard-patterns.rs:25:8
-   |
-LL |     if let (x if guard(x)) = 0 {}
-   |        ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this pattern will always match, so the `if let` is useless
-   = help: consider replacing the `if let` with a `let`
-   = note: `#[warn(irrefutable_let_patterns)]` on by default
-
-warning: irrefutable `while let` pattern
-  --> $DIR/feature-gate-guard-patterns.rs:29:11
-   |
-LL |     while let (x if guard(x)) = 0 {}
-   |           ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this pattern will always match, so the loop will never exit
-   = help: consider instead using a `loop { ... }` with a `let` inside it
-
-error: aborting due to 9 previous errors; 2 warnings emitted
+error: aborting due to 9 previous errors
 
 Some errors have detailed explanations: E0425, E0658.
 For more information about an error, try `rustc --explain E0425`.

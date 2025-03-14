@@ -13,7 +13,7 @@ use hir::{
     ModuleDef, Name,
 };
 use hir_def::{
-    body::BodySourceMap,
+    expr_store::BodySourceMap,
     hir::{ExprId, PatId},
     SyntheticSyntax,
 };
@@ -66,14 +66,10 @@ impl flags::AnalysisStats {
                 true => None,
                 false => Some(RustLibSource::Discover),
             },
-            sysroot_query_metadata: match self.no_query_sysroot_metadata {
-                true => project_model::SysrootQueryMetadata::None,
-                false => project_model::SysrootQueryMetadata::CargoMetadata,
-            },
             all_targets: true,
             set_test: !self.no_test,
             cfg_overrides: CfgOverrides {
-                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]).unwrap(),
+                global: CfgDiff::new(vec![CfgAtom::Flag(hir::sym::miri.clone())], vec![]),
                 selective: Default::default(),
             },
             ..Default::default()
@@ -394,6 +390,8 @@ impl flags::AnalysisStats {
 
         for &file_id in &file_ids {
             let sema = hir::Semantics::new(db);
+            let display_target =
+                sema.first_crate_or_default(file_id.file_id()).to_display_target(db);
 
             let parse = sema.parse_guess_edition(file_id.into());
             let file_txt = db.file_text(file_id.into());
@@ -469,8 +467,9 @@ impl flags::AnalysisStats {
                                 prefer_no_std: false,
                                 prefer_prelude: true,
                                 prefer_absolute: false,
+                                allow_unstable: true,
                             },
-                            Edition::LATEST,
+                            display_target,
                         )
                         .unwrap();
                     syntax_hit_found |= trim(&original_text) == trim(&generated);
@@ -644,6 +643,7 @@ impl flags::AnalysisStats {
         for &body_id in bodies {
             let name = body_id.name(db).unwrap_or_else(Name::missing);
             let module = body_id.module(db);
+            let display_target = module.krate().to_display_target(db);
             let full_name = move || {
                 module
                     .krate()
@@ -742,12 +742,12 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db, Edition::LATEST)
+                            ty.display(db, display_target)
                         ));
                     } else {
                         bar.println(format!(
                             "unknown location: {}",
-                            ty.display(db, Edition::LATEST)
+                            ty.display(db, display_target)
                         ));
                     }
                 }
@@ -755,7 +755,7 @@ impl flags::AnalysisStats {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_expr(db, vfs, &sm(), expr_id),
-                        ty.display(db, Edition::LATEST)
+                        ty.display(db, display_target)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_expr(expr_id) {
@@ -770,15 +770,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db, Edition::LATEST),
-                                mismatch.actual.display(db, Edition::LATEST)
+                                mismatch.expected.display(db, display_target),
+                                mismatch.actual.display(db, display_target)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
                                 name.display(db, Edition::LATEST),
-                                mismatch.expected.display(db, Edition::LATEST),
-                                mismatch.actual.display(db, Edition::LATEST)
+                                mismatch.expected.display(db, display_target),
+                                mismatch.actual.display(db, display_target)
                             ));
                         }
                     }
@@ -786,8 +786,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_expr(db, vfs, &sm(), expr_id),
-                            mismatch.expected.display(db, Edition::LATEST),
-                            mismatch.actual.display(db, Edition::LATEST)
+                            mismatch.expected.display(db, display_target),
+                            mismatch.actual.display(db, display_target)
                         );
                     }
                 }
@@ -846,12 +846,12 @@ impl flags::AnalysisStats {
                             start.col,
                             end.line + 1,
                             end.col,
-                            ty.display(db, Edition::LATEST)
+                            ty.display(db, display_target)
                         ));
                     } else {
                         bar.println(format!(
                             "unknown location: {}",
-                            ty.display(db, Edition::LATEST)
+                            ty.display(db, display_target)
                         ));
                     }
                 }
@@ -859,7 +859,7 @@ impl flags::AnalysisStats {
                     println!(
                         r#"{},type,"{}""#,
                         location_csv_pat(db, vfs, &sm(), pat_id),
-                        ty.display(db, Edition::LATEST)
+                        ty.display(db, display_target)
                     );
                 }
                 if let Some(mismatch) = inference_result.type_mismatch_for_pat(pat_id) {
@@ -873,15 +873,15 @@ impl flags::AnalysisStats {
                                 start.col,
                                 end.line + 1,
                                 end.col,
-                                mismatch.expected.display(db, Edition::LATEST),
-                                mismatch.actual.display(db, Edition::LATEST)
+                                mismatch.expected.display(db, display_target),
+                                mismatch.actual.display(db, display_target)
                             ));
                         } else {
                             bar.println(format!(
                                 "{}: Expected {}, got {}",
                                 name.display(db, Edition::LATEST),
-                                mismatch.expected.display(db, Edition::LATEST),
-                                mismatch.actual.display(db, Edition::LATEST)
+                                mismatch.expected.display(db, display_target),
+                                mismatch.actual.display(db, display_target)
                             ));
                         }
                     }
@@ -889,8 +889,8 @@ impl flags::AnalysisStats {
                         println!(
                             r#"{},mismatch,"{}","{}""#,
                             location_csv_pat(db, vfs, &sm(), pat_id),
-                            mismatch.expected.display(db, Edition::LATEST),
-                            mismatch.actual.display(db, Edition::LATEST)
+                            mismatch.expected.display(db, display_target),
+                            mismatch.actual.display(db, display_target)
                         );
                     }
                 }
@@ -1055,6 +1055,7 @@ impl flags::AnalysisStats {
                 &InlayHintsConfig {
                     render_colons: false,
                     type_hints: true,
+                    sized_bound: false,
                     discriminant_hints: ide::DiscriminantHints::Always,
                     parameter_hints: true,
                     generic_parameter_hints: ide::GenericParameterHints {
@@ -1074,6 +1075,7 @@ impl flags::AnalysisStats {
                     param_names_for_lifetime_elision_hints: true,
                     hide_named_constructor_hints: false,
                     hide_closure_initialization_hints: false,
+                    hide_closure_parameter_hints: false,
                     closure_style: hir::ClosureStyle::ImplFn,
                     max_length: Some(25),
                     closing_brace_hints_min_lines: Some(20),

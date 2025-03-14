@@ -208,7 +208,7 @@ fn find_trait_method(
     if let Some(hir::AssocItem::Function(method)) =
         trait_.items(db).into_iter().find(|item: &hir::AssocItem| {
             item.name(db)
-                .map(|name| name.eq_ident(trait_method_name.text().as_str()))
+                .map(|name| name.as_str() == trait_method_name.text().trim_start_matches("r#"))
                 .unwrap_or(false)
         })
     {

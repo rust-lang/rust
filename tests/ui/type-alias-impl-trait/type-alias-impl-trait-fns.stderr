@@ -1,12 +1,12 @@
-error: item does not constrain `TE::{opaque#0}`, but has it in its signature
-  --> $DIR/type-alias-impl-trait-fns.rs:18:4
+error: item does not constrain `TE::{opaque#0}`
+  --> $DIR/type-alias-impl-trait-fns.rs:20:4
    |
 LL | fn bla2() -> TE {
    |    ^^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/type-alias-impl-trait-fns.rs:23:11
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/type-alias-impl-trait-fns.rs:25:11
    |
 LL | type TE = impl MyTrait;
    |           ^^^^^^^^^^^^

@@ -13,49 +13,49 @@ LL |     let x: _ = 1;
    = help: to override `-D warnings` add `#[allow(clippy::let_with_type_underscore)]`
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:16:5
+  --> tests/ui/let_with_type_underscore.rs:17:5
    |
 LL |     let _: _ = 2;
    |     ^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:16:10
+  --> tests/ui/let_with_type_underscore.rs:17:10
    |
 LL |     let _: _ = 2;
    |          ^^^
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:17:5
+  --> tests/ui/let_with_type_underscore.rs:19:5
    |
 LL |     let x: _ = func();
    |     ^^^^^^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:17:10
+  --> tests/ui/let_with_type_underscore.rs:19:10
    |
 LL |     let x: _ = func();
    |          ^^^
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:18:5
+  --> tests/ui/let_with_type_underscore.rs:21:5
    |
 LL |     let x: _;
    |     ^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:18:10
+  --> tests/ui/let_with_type_underscore.rs:21:10
    |
 LL |     let x: _;
    |          ^^^
 
 error: variable declared with type underscore
-  --> tests/ui/let_with_type_underscore.rs:25:5
+  --> tests/ui/let_with_type_underscore.rs:29:5
    |
 LL |     let x : _ = 1;
    |     ^^^^^^^^^^^^^^
    |
 help: remove the explicit type `_` declaration
-  --> tests/ui/let_with_type_underscore.rs:25:10
+  --> tests/ui/let_with_type_underscore.rs:29:10
    |
 LL |     let x : _ = 1;
    |          ^^^^

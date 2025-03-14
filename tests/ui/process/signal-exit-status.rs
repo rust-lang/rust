@@ -1,7 +1,6 @@
 //@ run-pass
-//@ ignore-wasm32 no processes
-//@ ignore-sgx no processes
-//@ ignore-windows
+//@ needs-subprocess
+//@ only-unix (`code()` returns `None` if terminated by a signal on Unix)
 //@ ignore-fuchsia code returned as ZX_TASK_RETCODE_EXCEPTION_KILL, FIXME (#58590)
 
 #![feature(core_intrinsics)]

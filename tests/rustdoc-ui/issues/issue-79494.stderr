@@ -1,8 +1,8 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/issue-79494.rs:5:29
+  --> $DIR/issue-79494.rs:5:33
    |
-LL | const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
-   |                             ^^^^^^^^^^^^^^^^^^^
+LL | pub const ZST: &[u8] = unsafe { std::mem::transmute(1usize) };
+   |                                 ^^^^^^^^^^^^^^^^^^^
    |
    = note: source type: `usize` (64 bits)
    = note: target type: `&[u8]` (128 bits)

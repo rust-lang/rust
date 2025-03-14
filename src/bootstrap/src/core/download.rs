@@ -10,15 +10,16 @@ use build_helper::ci::CiEnv;
 use xz2::bufread::XzDecoder;
 
 use crate::core::config::BUILDER_CONFIG_FILENAME;
+use crate::utils::build_stamp::BuildStamp;
 use crate::utils::exec::{BootstrapCommand, command};
-use crate::utils::helpers::{check_run, exe, hex_encode, move_file, program_out_of_date};
+use crate::utils::helpers::{check_run, exe, hex_encode, move_file};
 use crate::{Config, t};
 
 static SHOULD_FIX_BINS_AND_DYLIBS: OnceLock<bool> = OnceLock::new();
 
 /// `Config::try_run` wrapper for this module to avoid warnings on `try_run`, since we don't have access to a `builder` yet.
 fn try_run(config: &Config, cmd: &mut Command) -> Result<(), ()> {
-    #[allow(deprecated)]
+    #[expect(deprecated)]
     config.try_run(cmd)
 }
 
@@ -46,7 +47,7 @@ impl Config {
         self.verbose > 0
     }
 
-    pub(crate) fn create(&self, path: &Path, s: &str) {
+    pub(crate) fn create<P: AsRef<Path>>(&self, path: P, s: &str) {
         if self.dry_run() {
             return;
         }
@@ -197,8 +198,7 @@ impl Config {
         if !path_is_dylib(fname) {
             // Finally, set the correct .interp for binaries
             let dynamic_linker_path = nix_deps_dir.join("nix-support/dynamic-linker");
-            // FIXME: can we support utf8 here? `args` doesn't accept Vec<u8>, only OsString ...
-            let dynamic_linker = t!(String::from_utf8(t!(fs::read(dynamic_linker_path))));
+            let dynamic_linker = t!(fs::read_to_string(dynamic_linker_path));
             patchelf.args(["--set-interpreter", dynamic_linker.trim_end()]);
         }
 
@@ -427,9 +427,10 @@ impl Config {
         let version = &self.stage0_metadata.compiler.version;
         let host = self.build;
 
-        let clippy_stamp = self.initial_sysroot.join(".clippy-stamp");
+        let clippy_stamp =
+            BuildStamp::new(&self.initial_sysroot).with_prefix("clippy").add_stamp(date);
         let cargo_clippy = self.initial_sysroot.join("bin").join(exe("cargo-clippy", host));
-        if cargo_clippy.exists() && !program_out_of_date(&clippy_stamp, date) {
+        if cargo_clippy.exists() && clippy_stamp.is_up_to_date() {
             return cargo_clippy;
         }
 
@@ -440,18 +441,18 @@ impl Config {
             self.fix_bin_or_dylib(&cargo_clippy.with_file_name(exe("clippy-driver", host)));
         }
 
-        self.create(&clippy_stamp, date);
+        t!(clippy_stamp.write());
         cargo_clippy
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         None
     }
 
     /// NOTE: rustfmt is a completely different toolchain than the bootstrap compiler, so it can't
     /// reuse target directories or artifacts
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn maybe_download_rustfmt(&self) -> Option<PathBuf> {
         use build_helper::stage0_parser::VersionMetadata;
 
@@ -461,8 +462,8 @@ impl Config {
         let host = self.build;
         let bin_root = self.out.join(host).join("rustfmt");
         let rustfmt_path = bin_root.join("bin").join(exe("rustfmt", host));
-        let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
-        if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
+        let rustfmt_stamp = BuildStamp::new(&bin_root).with_prefix("rustfmt").add_stamp(channel);
+        if rustfmt_path.exists() && rustfmt_stamp.is_up_to_date() {
             return Some(rustfmt_path);
         }
 
@@ -493,7 +494,7 @@ impl Config {
             }
         }
 
-        self.create(&rustfmt_stamp, &channel);
+        t!(rustfmt_stamp.write());
         Some(rustfmt_path)
     }
 
@@ -534,10 +535,10 @@ impl Config {
         );
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn download_beta_toolchain(&self) {}
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn download_beta_toolchain(&self) {
         self.verbose(|| println!("downloading stage0 beta artifacts"));
 
@@ -568,10 +569,10 @@ impl Config {
     ) {
         let host = self.build.triple;
         let bin_root = self.out.join(host).join(sysroot);
-        let rustc_stamp = bin_root.join(".rustc-stamp");
+        let rustc_stamp = BuildStamp::new(&bin_root).with_prefix("rustc").add_stamp(stamp_key);
 
         if !bin_root.join("bin").join(exe("rustc", self.build)).exists()
-            || program_out_of_date(&rustc_stamp, stamp_key)
+            || !rustc_stamp.is_up_to_date()
         {
             if bin_root.exists() {
                 t!(fs::remove_dir_all(&bin_root));
@@ -602,7 +603,7 @@ impl Config {
                 }
             }
 
-            t!(fs::write(rustc_stamp, stamp_key));
+            t!(rustc_stamp.write());
         }
     }
 
@@ -714,10 +715,10 @@ download-rustc = false
         self.unpack(&tarball, &bin_root, prefix);
     }
 
-    #[cfg(feature = "bootstrap-self-test")]
+    #[cfg(test)]
     pub(crate) fn maybe_download_ci_llvm(&self) {}
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
         use build_helper::exit;
 
@@ -729,10 +730,10 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_stamp = llvm_root.join(".llvm-stamp");
         let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
-        let key = format!("{}{}", llvm_sha, self.llvm_assertions);
-        if program_out_of_date(&llvm_stamp, &key) && !self.dry_run() {
+        let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
+        let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
+        if !llvm_stamp.is_up_to_date() && !self.dry_run() {
             self.download_ci_llvm(&llvm_sha);
 
             if self.should_fix_bins_and_dylibs() {
@@ -765,7 +766,7 @@ download-rustc = false
                 }
             }
 
-            t!(fs::write(llvm_stamp, key));
+            t!(llvm_stamp.write());
         }
 
         if let Some(config_path) = &self.config {
@@ -789,7 +790,7 @@ download-rustc = false
         };
     }
 
-    #[cfg(not(feature = "bootstrap-self-test"))]
+    #[cfg(not(test))]
     fn download_ci_llvm(&self, llvm_sha: &str) {
         let llvm_assertions = self.llvm_assertions;
 
@@ -824,6 +825,34 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+
+    pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
+        let cache_prefix = format!("gcc-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+
+        let gcc_cache = cache_dst.join(cache_prefix);
+        if !gcc_cache.exists() {
+            t!(fs::create_dir_all(&gcc_cache));
+        }
+        let base = &self.stage0_metadata.config.artifacts_server;
+        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let tarball = gcc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "ERROR: failed to download gcc from ci
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-gcc`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-gcc` in your config.toml:
+
+    [gcc]
+    download-ci-gcc = false
+    ";
+            self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
+        }
+        self.unpack(&tarball, root_dir, "gcc");
     }
 }
 

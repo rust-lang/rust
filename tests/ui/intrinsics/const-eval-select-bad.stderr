@@ -60,7 +60,7 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    = note: expected a function item, found {integer}
    = help: consult the documentation on `const_eval_select` for more information
 
-error[E0271]: expected `bar` to be a fn item that returns `i32`, but it returns `bool`
+error[E0271]: expected `bar` to return `i32`, but it returns `bool`
   --> $DIR/const-eval-select-bad.rs:32:34
    |
 LL |     const_eval_select((1,), foo, bar);

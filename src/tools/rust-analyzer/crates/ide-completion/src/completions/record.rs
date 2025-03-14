@@ -93,7 +93,7 @@ pub(crate) fn add_default_update(
     let default_trait = ctx.famous_defs().core_default_Default();
     let impls_default_trait = default_trait
         .zip(ty.as_ref())
-        .map_or(false, |(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
+        .is_some_and(|(default_trait, ty)| ty.original.impls_trait(ctx.db, default_trait, &[]));
     if impls_default_trait {
         // FIXME: This should make use of scope_def like completions so we get all the other goodies
         // that is we should handle this like actually completing the default function

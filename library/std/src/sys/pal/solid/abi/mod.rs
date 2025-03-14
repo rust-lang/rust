@@ -33,27 +33,27 @@ pub struct SOLID_RTC_TIME {
     pub tm_wday: c_int,
 }
 
-extern "C" {
+unsafe extern "C" {
     pub fn SOLID_RTC_ReadTime(time: *mut SOLID_RTC_TIME) -> c_int;
 }
 
 // `solid_log.h`
-extern "C" {
+unsafe extern "C" {
     pub fn SOLID_LOG_write(s: *const u8, l: usize);
 }
 
 // `solid_mem.h`
-extern "C" {
+unsafe extern "C" {
     pub fn SOLID_TLS_AddDestructor(id: i32, dtor: unsafe extern "C" fn(*mut u8));
 }
 
 // `solid_rng.h`
-extern "C" {
+unsafe extern "C" {
     pub fn SOLID_RNG_SampleRandomBytes(buffer: *mut u8, length: usize) -> c_int;
 }
 
 // `rwlock.h`
-extern "C" {
+unsafe extern "C" {
     pub fn rwl_loc_rdl(id: ID) -> ER;
     pub fn rwl_loc_wrl(id: ID) -> ER;
     pub fn rwl_ploc_rdl(id: ID) -> ER;

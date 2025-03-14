@@ -10,7 +10,7 @@ LL |     foo({});
    = help: to override `-D warnings` add `#[allow(clippy::unit_arg)]`
 
 error: passing a unit value to a function
-  --> tests/ui/unit_arg_empty_blocks.rs:17:5
+  --> tests/ui/unit_arg_empty_blocks.rs:18:5
    |
 LL |     foo3({}, 2, 2);
    |     ^^^^^--^^^^^^^
@@ -18,7 +18,7 @@ LL |     foo3({}, 2, 2);
    |          help: use a unit literal instead: `()`
 
 error: passing unit values to a function
-  --> tests/ui/unit_arg_empty_blocks.rs:18:5
+  --> tests/ui/unit_arg_empty_blocks.rs:20:5
    |
 LL |     taking_two_units({}, foo(0));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -30,7 +30,7 @@ LL ~     taking_two_units((), ());
    |
 
 error: passing unit values to a function
-  --> tests/ui/unit_arg_empty_blocks.rs:19:5
+  --> tests/ui/unit_arg_empty_blocks.rs:22:5
    |
 LL |     taking_three_units({}, foo(0), foo(1));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

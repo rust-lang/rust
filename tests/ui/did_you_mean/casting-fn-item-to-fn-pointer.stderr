@@ -1,0 +1,59 @@
+error[E0277]: a value of type `Vec<(&str, fn())>` cannot be built from an iterator over elements of type `(&str, fn() {foo})`
+  --> $DIR/casting-fn-item-to-fn-pointer.rs:6:59
+   |
+LL |     let _: Vec<(&str, fn())> = [("foo", foo)].into_iter().collect();
+   |                                                           ^^^^^^^ value of type `Vec<(&str, fn())>` cannot be built from `std::iter::Iterator<Item=(&str, fn() {foo})>`
+   |
+   = help: the trait `FromIterator<(&_, fn() {foo})>` is not implemented for `Vec<(&str, fn())>`
+           but trait `FromIterator<(&_, fn())>` is implemented for it
+   = help: for that trait implementation, expected `fn()`, found `fn() {foo}`
+   = note: fn items are distinct from fn pointers
+   = help: consider casting the fn item to a fn pointer: `foo as fn()`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/casting-fn-item-to-fn-pointer.rs:6:47
+   |
+LL |     let _: Vec<(&str, fn())> = [("foo", foo)].into_iter().collect();
+   |                                -------------- ^^^^^^^^^^^ `Iterator::Item` is `(&str, fn() {foo})` here
+   |                                |
+   |                                this expression has type `[(&str, fn() {foo}); 1]`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0277]: a value of type `Vec<fn()>` cannot be built from an iterator over elements of type `fn() {foo}`
+  --> $DIR/casting-fn-item-to-fn-pointer.rs:7:42
+   |
+LL |     let _: Vec<fn()> = [foo].into_iter().collect();
+   |                                          ^^^^^^^ value of type `Vec<fn()>` cannot be built from `std::iter::Iterator<Item=fn() {foo}>`
+   |
+   = help: the trait `FromIterator<fn() {foo}>` is not implemented for `Vec<fn()>`
+           but trait `FromIterator<fn()>` is implemented for it
+   = help: for that trait implementation, expected `fn()`, found `fn() {foo}`
+   = note: fn items are distinct from fn pointers
+   = help: consider casting the fn item to a fn pointer: `foo as fn()`
+note: the method call chain might not have had the expected associated types
+  --> $DIR/casting-fn-item-to-fn-pointer.rs:7:30
+   |
+LL |     let _: Vec<fn()> = [foo].into_iter().collect();
+   |                        ----- ^^^^^^^^^^^ `Iterator::Item` is `fn() {foo}` here
+   |                        |
+   |                        this expression has type `[fn() {foo}; 1]`
+note: required by a bound in `collect`
+  --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
+
+error[E0308]: mismatched types
+  --> $DIR/casting-fn-item-to-fn-pointer.rs:8:24
+   |
+LL |     let _: Vec<fn()> = Vec::from([foo]);
+   |            ---------   ^^^^^^^^^^^^^^^^ expected `Vec<fn()>`, found `Vec<fn() {foo}>`
+   |            |
+   |            expected due to this
+   |
+   = note: expected struct `Vec<fn()>`
+              found struct `Vec<fn() {foo}>`
+   = note: fn items are distinct from fn pointers
+   = help: consider casting the fn item to a fn pointer: `foo as fn()`
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

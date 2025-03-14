@@ -1,5 +1,5 @@
-#![feature(start)]
 #![no_std]
+#![no_main]
 //@compile-flags: -Cpanic=abort
 // windows tls dtors go through libstd right now, thus this test
 // cannot pass. When windows tls dtors go through the special magic
@@ -11,8 +11,8 @@ extern "Rust" {
     fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+#[no_mangle]
+fn miri_start(_argc: isize, _argv: *const *const u8) -> isize {
     unsafe {
         let ptr = miri_alloc(123, 1);
         core::ptr::write_bytes(ptr, 0u8, 123);

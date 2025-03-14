@@ -1,5 +1,6 @@
-use crate::abi::Endian;
-use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetOptions, base};
+use rustc_abi::Endian;
+
+use crate::spec::{Cc, LinkerFlavor, Lld, Target, TargetMetadata, TargetOptions, base};
 
 pub(crate) fn target() -> Target {
     let mut base = base::netbsd::opts();
@@ -9,7 +10,7 @@ pub(crate) fn target() -> Target {
 
     Target {
         llvm_target: "sparc64-unknown-netbsd".into(),
-        metadata: crate::spec::TargetMetadata {
+        metadata: TargetMetadata {
             description: Some("NetBSD/sparc64".into()),
             tier: Some(3),
             host_tools: Some(true),

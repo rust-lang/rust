@@ -242,7 +242,7 @@ pub(crate) fn query_group(args: TokenStream, input: TokenStream) -> TokenStream 
         let tracing = if let QueryStorage::Memoized | QueryStorage::LruMemoized = query.storage {
             let s = format!("{trait_name}::{fn_name}");
             Some(quote! {
-                let _p = tracing::debug_span!(#s, #(#key_names = tracing::field::debug(&#key_names)),*).entered();
+                let _p = tracing::trace_span!(#s, #(#key_names = tracing::field::debug(&#key_names)),*).entered();
             })
         } else {
             None

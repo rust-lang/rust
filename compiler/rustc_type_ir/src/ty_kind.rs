@@ -14,6 +14,7 @@ use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Gen
 use self::TyKind::*;
 pub use self::closure::*;
 use crate::inherent::*;
+#[cfg(feature = "nightly")]
 use crate::visit::TypeVisitable;
 use crate::{self as ty, DebruijnIndex, Interner};
 

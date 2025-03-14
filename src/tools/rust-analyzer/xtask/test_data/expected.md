@@ -2,12 +2,12 @@
 
 Hello!
 
-Commit: [`0123456`](https://github.com/rust-analyzer/rust-analyzer/commit/0123456789abcdef0123456789abcdef01234567) \
-Release: [`2022-01-01`](https://github.com/rust-analyzer/rust-analyzer/releases/2022-01-01)
+Commit: [`0123456`](https://github.com/rust-lang/rust-analyzer/commit/0123456789abcdef0123456789abcdef01234567) \
+Release: [`2022-01-01`](https://github.com/rust-lang/rust-analyzer/releases/2022-01-01)
 
 ## New Features
 
-- **BREAKING** [`#1111`](https://github.com/rust-analyzer/rust-analyzer/pull/1111) shortcut <kbd>ctrl</kbd>+<kbd>r</kbd>
+- **BREAKING** [`#1111`](https://github.com/rust-lang/rust-analyzer/pull/1111) shortcut <kbd>ctrl</kbd>+<kbd>r</kbd>
   - hyphen-prefixed list item
 - nested list item
   - `foo` -> `foofoo`
@@ -65,7 +65,7 @@ Release: [`2022-01-01`](https://github.com/rust-analyzer/rust-analyzer/releases/
 - list item with an inline image
   ![](https://example.com/animation.gif)
 
-The highlight of the month is probably [`#1111`](https://github.com/rust-analyzer/rust-analyzer/pull/1111).
+The highlight of the month is probably [`#1111`](https://github.com/rust-lang/rust-analyzer/pull/1111).
 See [online manual](https://example.com/manual) for more information.
 
 ```bash

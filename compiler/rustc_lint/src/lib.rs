@@ -21,19 +21,18 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
-#![feature(trait_upcasting)]
-#![warn(unreachable_pub)]
+#![feature(try_blocks)]
 // tidy-alphabetical-end
 
 mod async_closures;
@@ -41,6 +40,7 @@ mod async_fn_in_trait;
 pub mod builtin;
 mod context;
 mod dangling;
+mod default_could_be_derived;
 mod deref_into_dyn_supertrait;
 mod drop_forget_useless;
 mod early;
@@ -85,6 +85,7 @@ use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;
 use builtin::*;
 use dangling::*;
+use default_could_be_derived::DefaultCouldBeDerived;
 use deref_into_dyn_supertrait::*;
 use drop_forget_useless::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
@@ -179,6 +180,7 @@ early_lint_methods!(
             UnusedDocComment: UnusedDocComment,
             Expr2024: Expr2024,
             Precedence: Precedence,
+            DoubleNegations: DoubleNegations,
         ]
     ]
 );
@@ -189,6 +191,7 @@ late_lint_methods!(
         BuiltinCombinedModuleLateLintPass,
         [
             ForLoopsOverFallibles: ForLoopsOverFallibles,
+            DefaultCouldBeDerived: DefaultCouldBeDerived::default(),
             DerefIntoDynSupertrait: DerefIntoDynSupertrait,
             DropForgetUseless: DropForgetUseless,
             ImproperCTypesDeclarations: ImproperCTypesDeclarations,
@@ -591,6 +594,16 @@ fn register_builtins(store: &mut LintStore) {
          <https://github.com/rust-lang/rust/pull/125380> for more information",
     );
     store.register_removed("unsupported_calling_conventions", "converted into hard error");
+    store.register_removed(
+        "cenum_impl_drop_cast",
+        "converted into hard error, \
+         see <https://github.com/rust-lang/rust/issues/73333> for more information",
+    );
+    store.register_removed(
+        "ptr_cast_add_auto_to_object",
+        "converted into hard error, see issue #127323 \
+         <https://github.com/rust-lang/rust/issues/127323> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
@@ -618,18 +631,24 @@ fn register_internals(store: &mut LintStore) {
     // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
     // these lints will trigger all of the time - change this once migration to diagnostic structs
     // and translation is completed
-    store.register_group(false, "rustc::internal", None, vec![
-        LintId::of(DEFAULT_HASH_TYPES),
-        LintId::of(POTENTIAL_QUERY_INSTABILITY),
-        LintId::of(UNTRACKED_QUERY_INFORMATION),
-        LintId::of(USAGE_OF_TY_TYKIND),
-        LintId::of(PASS_BY_VALUE),
-        LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
-        LintId::of(USAGE_OF_QUALIFIED_TY),
-        LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
-        LintId::of(BAD_OPT_ACCESS),
-        LintId::of(SPAN_USE_EQ_CTXT),
-    ]);
+    store.register_group(
+        false,
+        "rustc::internal",
+        None,
+        vec![
+            LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(POTENTIAL_QUERY_INSTABILITY),
+            LintId::of(UNTRACKED_QUERY_INFORMATION),
+            LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(PASS_BY_VALUE),
+            LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
+            LintId::of(USAGE_OF_QUALIFIED_TY),
+            LintId::of(NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT),
+            LintId::of(USAGE_OF_TYPE_IR_INHERENT),
+            LintId::of(BAD_OPT_ACCESS),
+            LintId::of(SPAN_USE_EQ_CTXT),
+        ],
+    );
 }
 
 #[cfg(test)]

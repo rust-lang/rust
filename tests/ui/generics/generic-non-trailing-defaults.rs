@@ -5,6 +5,6 @@ struct Vec<A = Heap, T>(A, T);
 
 struct Foo<A, B = Vec<C>, C>(A, B, C);
 //~^ ERROR generic parameters with a default must be trailing
-//~| ERROR generic parameters with a default cannot use
+//~| ERROR generic parameter defaults cannot reference parameters before they are declared
 
 fn main() {}

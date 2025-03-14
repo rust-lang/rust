@@ -155,34 +155,38 @@ Number of file 0 mappings: 1
 Highest counter ID seen: c0
 
 Function name: async::i::{closure#0}
-Raw bytes (63): 0x[01, 01, 02, 07, 15, 0d, 11, 0b, 01, 2c, 13, 04, 0c, 09, 05, 09, 00, 0a, 01, 00, 0e, 00, 18, 05, 00, 1c, 00, 21, 09, 00, 27, 00, 30, 11, 01, 09, 00, 0a, 19, 00, 0e, 00, 17, 1d, 00, 1b, 00, 20, 11, 00, 24, 00, 26, 15, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
+Raw bytes (65): 0x[01, 01, 03, 05, 09, 11, 15, 0d, 11, 0b, 01, 2c, 13, 04, 0c, 09, 05, 09, 00, 0a, 01, 00, 0e, 00, 18, 05, 00, 1c, 00, 21, 09, 00, 27, 00, 30, 15, 01, 09, 00, 0a, 02, 00, 0e, 00, 17, 11, 00, 1b, 00, 20, 15, 00, 24, 00, 26, 06, 01, 0e, 00, 10, 0b, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
-- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(5)
-- expression 1 operands: lhs = Counter(3), rhs = Counter(4)
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(1), rhs = Counter(2)
+- expression 1 operands: lhs = Counter(4), rhs = Counter(5)
+- expression 2 operands: lhs = Counter(3), rhs = Counter(4)
 Number of file 0 mappings: 11
 - Code(Counter(0)) at (prev + 44, 19) to (start + 4, 12)
 - Code(Counter(2)) at (prev + 5, 9) to (start + 0, 10)
 - Code(Counter(0)) at (prev + 0, 14) to (start + 0, 24)
 - Code(Counter(1)) at (prev + 0, 28) to (start + 0, 33)
 - Code(Counter(2)) at (prev + 0, 39) to (start + 0, 48)
-- Code(Counter(4)) at (prev + 1, 9) to (start + 0, 10)
-- Code(Counter(6)) at (prev + 0, 14) to (start + 0, 23)
-- Code(Counter(7)) at (prev + 0, 27) to (start + 0, 32)
-- Code(Counter(4)) at (prev + 0, 36) to (start + 0, 38)
-- Code(Counter(5)) at (prev + 1, 14) to (start + 0, 16)
-- Code(Expression(0, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = ((c3 + c4) + c5)
-Highest counter ID seen: c7
+- Code(Counter(5)) at (prev + 1, 9) to (start + 0, 10)
+- Code(Expression(0, Sub)) at (prev + 0, 14) to (start + 0, 23)
+    = (c1 - c2)
+- Code(Counter(4)) at (prev + 0, 27) to (start + 0, 32)
+- Code(Counter(5)) at (prev + 0, 36) to (start + 0, 38)
+- Code(Expression(1, Sub)) at (prev + 1, 14) to (start + 0, 16)
+    = (c4 - c5)
+- Code(Expression(2, Add)) at (prev + 2, 1) to (start + 0, 2)
+    = (c3 + c4)
+Highest counter ID seen: c5
 
 Function name: async::j
-Raw bytes (58): 0x[01, 01, 02, 07, 0d, 05, 09, 0a, 01, 37, 01, 00, 0d, 01, 0b, 0b, 00, 0c, 05, 01, 09, 00, 0a, 01, 00, 0e, 00, 1b, 05, 00, 1f, 00, 27, 09, 01, 09, 00, 0a, 11, 00, 0e, 00, 1a, 09, 00, 1e, 00, 20, 0d, 01, 0e, 00, 10, 03, 02, 01, 00, 02]
+Raw bytes (60): 0x[01, 01, 03, 01, 05, 01, 0b, 05, 09, 0a, 01, 37, 01, 00, 0d, 01, 0b, 0b, 00, 0c, 05, 01, 09, 00, 0a, 01, 00, 0e, 00, 1b, 05, 00, 1f, 00, 27, 09, 01, 09, 00, 0a, 02, 00, 0e, 00, 1a, 09, 00, 1e, 00, 20, 06, 01, 0e, 00, 10, 01, 02, 01, 00, 02]
 Number of files: 1
 - file 0 => global file 1
-Number of expressions: 2
-- expression 0 operands: lhs = Expression(1, Add), rhs = Counter(3)
-- expression 1 operands: lhs = Counter(1), rhs = Counter(2)
+Number of expressions: 3
+- expression 0 operands: lhs = Counter(0), rhs = Counter(1)
+- expression 1 operands: lhs = Counter(0), rhs = Expression(2, Add)
+- expression 2 operands: lhs = Counter(1), rhs = Counter(2)
 Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 55, 1) to (start + 0, 13)
 - Code(Counter(0)) at (prev + 11, 11) to (start + 0, 12)
@@ -190,12 +194,13 @@ Number of file 0 mappings: 10
 - Code(Counter(0)) at (prev + 0, 14) to (start + 0, 27)
 - Code(Counter(1)) at (prev + 0, 31) to (start + 0, 39)
 - Code(Counter(2)) at (prev + 1, 9) to (start + 0, 10)
-- Code(Counter(4)) at (prev + 0, 14) to (start + 0, 26)
+- Code(Expression(0, Sub)) at (prev + 0, 14) to (start + 0, 26)
+    = (c0 - c1)
 - Code(Counter(2)) at (prev + 0, 30) to (start + 0, 32)
-- Code(Counter(3)) at (prev + 1, 14) to (start + 0, 16)
-- Code(Expression(0, Add)) at (prev + 2, 1) to (start + 0, 2)
-    = ((c1 + c2) + c3)
-Highest counter ID seen: c4
+- Code(Expression(1, Sub)) at (prev + 1, 14) to (start + 0, 16)
+    = (c0 - (c1 + c2))
+- Code(Counter(0)) at (prev + 2, 1) to (start + 0, 2)
+Highest counter ID seen: c2
 
 Function name: async::j::c
 Raw bytes (26): 0x[01, 01, 01, 01, 05, 04, 01, 39, 05, 01, 12, 05, 02, 0d, 00, 0e, 02, 02, 0d, 00, 0e, 01, 02, 05, 00, 06]

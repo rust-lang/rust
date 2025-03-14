@@ -1,7 +1,3 @@
-// tidy-alphabetical-start
-#![warn(unreachable_pub)]
-// tidy-alphabetical-end
-
 use rustc_abi::ExternAbi;
 use rustc_ast::AttrId;
 use rustc_ast::attr::AttributeExt;
@@ -40,6 +36,23 @@ macro_rules! pluralize {
     ("this", $x:expr) => {
         if $x == 1 { "this" } else { "these" }
     };
+}
+
+/// Grammatical tool for displaying messages to end users in a nice form.
+///
+/// Take a list of items and a function to turn those items into a `String`, and output a display
+/// friendly comma separated list of those items.
+// FIXME(estebank): this needs to be changed to go through the translation machinery.
+pub fn listify<T>(list: &[T], fmt: impl Fn(&T) -> String) -> Option<String> {
+    Some(match list {
+        [only] => fmt(&only),
+        [others @ .., last] => format!(
+            "{} and {}",
+            others.iter().map(|i| fmt(i)).collect::<Vec<_>>().join(", "),
+            fmt(&last),
+        ),
+        [] => return None,
+    })
 }
 
 /// Indicates the confidence in the correctness of a suggestion.
@@ -117,8 +130,8 @@ impl LintExpectationId {
     }
 
     pub fn set_lint_index(&mut self, new_lint_index: Option<u16>) {
-        let (LintExpectationId::Unstable { ref mut lint_index, .. }
-        | LintExpectationId::Stable { ref mut lint_index, .. }) = self;
+        let (LintExpectationId::Unstable { lint_index, .. }
+        | LintExpectationId::Stable { lint_index, .. }) = self;
 
         *lint_index = new_lint_index
     }
@@ -161,7 +174,19 @@ impl<HCX: rustc_hir::HashStableContext> ToStableHashKey<HCX> for LintExpectation
 /// Setting for how to handle a lint.
 ///
 /// See: <https://doc.rust-lang.org/rustc/lints/levels.html>
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash, HashStable_Generic)]
+#[derive(
+    Clone,
+    Copy,
+    PartialEq,
+    PartialOrd,
+    Eq,
+    Ord,
+    Debug,
+    Hash,
+    Encodable,
+    Decodable,
+    HashStable_Generic
+)]
 pub enum Level {
     /// The `allow` level will not issue any message.
     Allow,
@@ -222,19 +247,23 @@ impl Level {
 
     /// Converts an `Attribute` to a level.
     pub fn from_attr(attr: &impl AttributeExt) -> Option<Self> {
-        Self::from_symbol(attr.name_or_empty(), Some(attr.id()))
+        Self::from_symbol(attr.name_or_empty(), || Some(attr.id()))
     }
 
     /// Converts a `Symbol` to a level.
-    pub fn from_symbol(s: Symbol, id: Option<AttrId>) -> Option<Self> {
-        match (s, id) {
-            (sym::allow, _) => Some(Level::Allow),
-            (sym::expect, Some(attr_id)) => {
-                Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+    pub fn from_symbol(s: Symbol, id: impl FnOnce() -> Option<AttrId>) -> Option<Self> {
+        match s {
+            sym::allow => Some(Level::Allow),
+            sym::expect => {
+                if let Some(attr_id) = id() {
+                    Some(Level::Expect(LintExpectationId::Unstable { attr_id, lint_index: None }))
+                } else {
+                    None
+                }
             }
-            (sym::warn, _) => Some(Level::Warn),
-            (sym::deny, _) => Some(Level::Deny),
-            (sym::forbid, _) => Some(Level::Forbid),
+            sym::warn => Some(Level::Warn),
+            sym::deny => Some(Level::Deny),
+            sym::forbid => Some(Level::Forbid),
             _ => None,
         }
     }
@@ -783,7 +812,6 @@ pub enum BuiltinLintDiag {
         extern_crate: Symbol,
         local_crate: Symbol,
     },
-    WasmCAbi,
     IllFormedAttributeInput {
         suggestions: Vec<String>,
     },
@@ -791,7 +819,9 @@ pub enum BuiltinLintDiag {
         is_macro: bool,
     },
     OutOfScopeMacroCalls {
+        span: Span,
         path: String,
+        location: String,
     },
     UnexpectedBuiltinCfg {
         cfg: String,
