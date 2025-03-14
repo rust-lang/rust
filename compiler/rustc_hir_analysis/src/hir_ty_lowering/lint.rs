@@ -411,7 +411,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Applicability::MachineApplicable,
             );
             if !is_dyn_compatible {
-                diag.note(format!("`{trait_name}` it is dyn-incompatible, so it can't be `dyn`"));
+                diag.note(format!(
+                    "`{trait_name}` is dyn-incompatible, otherwise a trait object could be used"
+                ));
             } else {
                 // No ampersand in suggestion if it's borrowed already
                 let (dyn_str, paren_dyn_str) =
