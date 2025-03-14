@@ -139,7 +139,7 @@ impl Command {
     pub(crate) fn very_likely_to_exceed_some_spawn_limit(&self) -> bool {
         // We mostly only care about Windows in this method, on Unix the limits
         // can be gargantuan anyway so we're pretty unlikely to hit them
-        if cfg!(unix) {
+        if cfg!(not(windows)) {
             return false;
         }
 
