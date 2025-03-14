@@ -710,6 +710,14 @@ impl AsRef<CStr> for CStr {
     }
 }
 
+impl ops::Deref for CStr {
+    type Target = crate::bstr::ByteStr;
+
+    fn deref(&self) -> &Self::Target {
+        crate::bstr::ByteStr::from_bytes(self.to_bytes())
+    }
+}
+
 /// Calculate the length of a nul-terminated string. Defers to C's `strlen` when possible.
 ///
 /// # Safety
