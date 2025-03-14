@@ -2983,7 +2983,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) else {
+        let span = if let hir::ExprKind::Lit(lit) = &expr.kind { lit.span } else { expr.span };
+        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) else {
             return false;
         };
 
@@ -3078,10 +3079,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
                 let src = src.trim_end_matches(&checked_ty.to_string());
                 let len = src.split('.').next().unwrap().len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             } else {
                 let len = src.trim_end_matches(&checked_ty.to_string()).len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             },
             if expr.precedence() < ExprPrecedence::Unambiguous {
                 // Readd `)`
