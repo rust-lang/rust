@@ -150,6 +150,13 @@ builtin_macros_derive_path_args_list = traits in `#[derive(...)]` don't accept a
 builtin_macros_derive_path_args_value = traits in `#[derive(...)]` don't accept values
     .suggestion = remove the value
 
+builtin_macros_eii_macro_expected_function = `#[{$name}]` is only valid on functions
+builtin_macros_eii_macro_for_expected_list = `#[eii_macro_for(...)]` expects a list of one or two elements
+builtin_macros_eii_macro_for_expected_macro = `#[eii_macro_for(...)]` is only valid on macros
+builtin_macros_eii_macro_for_expected_max_one_argument = `#[{$name}]` expected no arguments or a single argument: `#[{$name}(default)]`
+builtin_macros_eii_macro_for_expected_unsafe = expected this argument to be "unsafe".
+    .note = the second argument is optional
+
 builtin_macros_env_not_defined = environment variable `{$var}` not defined at compile time
     .cargo = Cargo sets build script variables at run time. Use `std::env::var({$var_expr})` instead
     .custom = use `std::env::var({$var_expr})` to read the variable at run time

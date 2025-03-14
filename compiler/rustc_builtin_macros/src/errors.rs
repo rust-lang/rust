@@ -1027,3 +1027,41 @@ pub(crate) struct NonGenericPointee {
     #[primary_span]
     pub span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_macro_for_expected_macro)]
+pub(crate) struct EIIMacroForExpectedMacro {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_macro_for_expected_list)]
+pub(crate) struct EIIMacroForExpectedList {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_macro_for_expected_unsafe)]
+pub(crate) struct EIIMacroForExpectedUnsafe {
+    #[primary_span]
+    #[note]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_macro_expected_function)]
+pub(crate) struct EIIMacroExpectedFunction {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(builtin_macros_eii_macro_for_expected_max_one_argument)]
+pub(crate) struct EIIMacroExpectedMaxOneArgument {
+    #[primary_span]
+    pub span: Span,
+    pub name: String,
+}
