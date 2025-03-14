@@ -494,8 +494,7 @@ fn collect_items_rec<'tcx>(
                                 Err(ErrorHandled::TooGeneric(..)) => {
                                     span_bug!(*op_sp, "asm const cannot be resolved; too generic")
                                 }
-                                Err(err @ ErrorHandled::Reported(..)) => {
-                                    err.emit_note(tcx);
+                                Err(ErrorHandled::Reported(..)) => {
                                     continue;
                                 }
                             }
