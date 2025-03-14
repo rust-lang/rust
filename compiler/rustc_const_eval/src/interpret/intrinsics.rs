@@ -25,10 +25,12 @@ use crate::fluent_generated as fluent;
 
 /// Directly returns an `Allocation` containing an absolute path representation of the given type.
 pub(crate) fn alloc_type_name<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> (AllocId, u64) {
-    let path = crate::util::type_name(tcx, ty);
-    let bytes = path.into_bytes();
-    let len = bytes.len().try_into().unwrap();
-    (tcx.allocate_bytes_dedup(bytes, CTFE_ALLOC_SALT), len)
+    let mut path = crate::util::type_name(tcx, ty);
+    let path_len = path.len().try_into().unwrap();
+    if !path.contains('\0') {
+        path.push('\0');
+    };
+    (tcx.allocate_bytes_dedup(path.into_bytes(), CTFE_ALLOC_SALT), path_len)
 }
 impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
     /// Generates a value of `TypeId` for `ty` in-place.

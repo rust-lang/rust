@@ -37,7 +37,7 @@ fn test_transform() -> ControlFlow<()> {
     let target_fn = *get_item(&items, (ItemKind::Fn, "dummy")).unwrap();
     let instance = Instance::try_from(target_fn).unwrap();
     let body = instance.body().unwrap();
-    check_msg(&body, "oops");
+    check_msg(&body, "oops\0");
 
     let new_msg = "new panic message";
     let new_body = change_panic_msg(body, new_msg);
