@@ -1324,7 +1324,7 @@ fn check_item_fn(
     enter_wf_checking_ctxt(tcx, span, def_id, |wfcx| {
         // does the function have an EiiImpl attribute? that contains the defid of a *macro*
         // that was used to mark the implementation. This is a two step process.
-        for EIIImpl { eii_macro, .. } in
+        for EIIImpl { eii_macro, span, .. } in
             find_attr!(tcx.get_all_attrs(def_id), AttributeKind::EiiImpl(impls) => impls)
                 .into_iter()
                 .flatten()
@@ -1333,7 +1333,13 @@ fn check_item_fn(
             // signature that we'd like to compare the function we're currently checking with
             if let Some(eii_extern_item) = find_attr!(tcx.get_all_attrs(*eii_macro), AttributeKind::EiiMacroFor {eii_extern_item, ..} => *eii_extern_item)
             {
-                let _ = compare_eii_function_types(tcx, def_id, eii_extern_item);
+                let _ = compare_eii_function_types(
+                    tcx,
+                    def_id,
+                    eii_extern_item,
+                    tcx.item_name(*eii_macro),
+                    *span,
+                );
             } else {
                 panic!(
                     "EII impl macro {eii_macro:?} did not have an eii macro for attribute pointing to a function"

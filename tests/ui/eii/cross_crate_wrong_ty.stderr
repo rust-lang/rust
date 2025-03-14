@@ -1,11 +1,8 @@
 error[E0050]: `other` has 0 parameters but #[foo] requires it to have 1
-  --> $DIR/wrong_ty_2.rs:18:1
+  --> $DIR/cross_crate_wrong_ty.rs:11:1
    |
-LL |     safe fn bar(x: u64) -> u64;
-   |                    --- requires 1 parameter
-...
-LL | #[foo]
-   | ------ required because of this attribute
+LL | #[unsafe(cross_crate_eii_declaration::foo)]
+   | ------------------------------------------- required because of this attribute
 LL | fn other() -> u64 {
    | ^^^^^^^^^^^^^^^^^ expected 1 parameter, found 0
 

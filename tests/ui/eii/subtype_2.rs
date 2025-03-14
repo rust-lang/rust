@@ -1,5 +1,4 @@
 //@ compile-flags: --crate-type rlib
-//@ check-pass
 #![feature(eii)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
@@ -17,6 +16,7 @@ unsafe extern "Rust" {
 
 #[foo]
 fn other<'a>(x: &'a u64) -> &'static u64 {
+//~^ ERROR lifetime parameters or bounds `other` do not match the declaration
     &0
 }
 

@@ -2,20 +2,206 @@ use std::borrow::Cow;
 use std::iter;
 
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{Applicability, E0053, E0053, struct_span_code_err, struct_span_code_err};
+use rustc_errors::{
+    Applicability, Applicability, E0050, E0053, E0053, E0053, struct_span_code_err,
+    struct_span_code_err, struct_span_code_err,
+};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, self as hir, HirId, HirId, ItemKind, ItemKind};
+use rustc_hir::{
+    self as hir, self as hir, self as hir, FnSig, HirId, HirId, HirId, ItemKind, ItemKind, ItemKind,
+};
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::{ObligationCause, ObligationCauseCode};
 use rustc_middle::ty;
 use rustc_middle::ty::TyCtxt;
-use rustc_middle::ty::error::{ExpectedFound, TypeError, TypeError};
+use rustc_middle::ty::error::{ExpectedFound, ExpectedFound, TypeError, TypeError, TypeError};
 use rustc_span::{ErrorGuaranteed, Ident, Span};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::regions::InferCtxtRegionExt;
 use rustc_trait_selection::traits::ObligationCtxt;
 use rustc_type_ir::TypingMode;
 use tracing::{debug, instrument};
+
+use super::potentially_plural_count;
+use crate::errors::LifetimesOrBoundsMismatchOnEII;
+
+/// Checks a bunch of different properties of the impl/trait methods for
+/// compatibility, such as asyncness, number of argument, self receiver kind,
+/// and number of early- and late-bound generics.
+fn check_is_structurally_compatible<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    external_impl: LocalDefId,
+    declaration: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    // FIXME(jdonszelmann): check no generics
+    compare_number_of_method_arguments(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
+    check_region_bounds_on_impl_item(tcx, external_impl, declaration, eii_attr_span)?;
+    Ok(())
+}
+
+fn check_region_bounds_on_impl_item<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    external_impl: LocalDefId,
+    declaration: DefId,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    let external_impl_generics = tcx.generics_of(external_impl.to_def_id());
+    let external_impl_params = external_impl_generics.own_counts().lifetimes;
+
+    let declaration_generics = tcx.generics_of(declaration);
+    let declaration_params = declaration_generics.own_counts().lifetimes;
+
+    debug!(?declaration_generics, ?external_impl_generics);
+
+    // Must have same number of early-bound lifetime parameters.
+    // Unfortunately, if the user screws up the bounds, then this
+    // will change classification between early and late. E.g.,
+    // if in trait we have `<'a,'b:'a>`, and in impl we just have
+    // `<'a,'b>`, then we have 2 early-bound lifetime parameters
+    // in trait but 0 in the impl. But if we report "expected 2
+    // but found 0" it's confusing, because it looks like there
+    // are zero. Since I don't quite know how to phrase things at
+    // the moment, give a kind of vague error message.
+    if declaration_params != external_impl_params {
+        let span = tcx
+            .hir_get_generics(external_impl)
+            .expect("expected impl item to have generics or else we can't compare them")
+            .span;
+
+        let mut generics_span = None;
+        let mut bounds_span = vec![];
+        let mut where_span = None;
+        if let Some(declaration_node) = tcx.hir_get_if_local(declaration)
+            && let Some(declaration_generics) = declaration_node.generics()
+        {
+            generics_span = Some(declaration_generics.span);
+            // FIXME: we could potentially look at the impl's bounds to not point at bounds that
+            // *are* present in the impl.
+            for p in declaration_generics.predicates {
+                if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
+                    for b in pred.bounds {
+                        if let hir::GenericBound::Outlives(lt) = b {
+                            bounds_span.push(lt.ident.span);
+                        }
+                    }
+                }
+            }
+            if let Some(declaration_node) = tcx.hir_get_if_local(declaration)
+                && let Some(declaration_generics) = declaration_node.generics()
+            {
+                let mut impl_bounds = 0;
+                for p in declaration_generics.predicates {
+                    if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
+                        for b in pred.bounds {
+                            if let hir::GenericBound::Outlives(_) = b {
+                                impl_bounds += 1;
+                            }
+                        }
+                    }
+                }
+                if impl_bounds == bounds_span.len() {
+                    bounds_span = vec![];
+                } else if declaration_generics.has_where_clause_predicates {
+                    where_span = Some(declaration_generics.where_clause_span);
+                }
+            }
+        }
+        let mut diag = tcx.dcx().create_err(LifetimesOrBoundsMismatchOnEII {
+            span,
+            ident: tcx.item_name(external_impl.to_def_id()),
+            generics_span,
+            bounds_span,
+            where_span,
+        });
+
+        diag.span_label(eii_attr_span, format!("required because of this attribute"));
+        return Err(diag.emit());
+    }
+
+    Ok(())
+}
+
+fn compare_number_of_method_arguments<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    external_impl: LocalDefId,
+    declaration: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
+) -> Result<(), ErrorGuaranteed> {
+    let external_impl_fty = tcx.fn_sig(external_impl);
+    let declaration_fty = tcx.fn_sig(declaration);
+    let declaration_number_args = declaration_fty.skip_binder().inputs().skip_binder().len();
+    let external_impl_number_args = external_impl_fty.skip_binder().inputs().skip_binder().len();
+    let external_impl_name = tcx.item_name(external_impl.to_def_id());
+
+    if declaration_number_args != external_impl_number_args {
+        let declaration_span = declaration
+            .as_local()
+            .and_then(|def_id| {
+                let declaration_sig = get_declaration_sig(tcx, def_id).expect("foreign item sig");
+                let pos = declaration_number_args.saturating_sub(1);
+                declaration_sig.decl.inputs.get(pos).map(|arg| {
+                    if pos == 0 {
+                        arg.span
+                    } else {
+                        arg.span.with_lo(declaration_sig.decl.inputs[0].span.lo())
+                    }
+                })
+            })
+            .or_else(|| tcx.hir().span_if_local(declaration));
+
+        let (external_impl_sig, _, _) = &tcx.hir().expect_item(external_impl).expect_fn();
+        let pos = external_impl_number_args.saturating_sub(1);
+        let impl_span = external_impl_sig
+            .decl
+            .inputs
+            .get(pos)
+            .map(|arg| {
+                if pos == 0 {
+                    arg.span
+                } else {
+                    arg.span.with_lo(external_impl_sig.decl.inputs[0].span.lo())
+                }
+            })
+            .unwrap_or_else(|| tcx.def_span(external_impl));
+
+        let mut err = struct_span_code_err!(
+            tcx.dcx(),
+            impl_span,
+            E0050, // FIXME(jdonszelmann): new error code
+            "`{external_impl_name}` has {} but #[{eii_name}] requires it to have {}",
+            potentially_plural_count(external_impl_number_args, "parameter"),
+            declaration_number_args
+        );
+
+        if let Some(declaration_span) = declaration_span {
+            err.span_label(
+                declaration_span,
+                format!(
+                    "requires {}",
+                    potentially_plural_count(declaration_number_args, "parameter")
+                ),
+            );
+        }
+
+        err.span_label(
+            impl_span,
+            format!(
+                "expected {}, found {}",
+                potentially_plural_count(declaration_number_args, "parameter"),
+                external_impl_number_args
+            ),
+        );
+
+        err.span_label(eii_attr_span, format!("required because of this attribute"));
+
+        return Err(err.emit());
+    }
+
+    Ok(())
+}
 
 // checks whether the signature of some `external_impl`, matches
 // the signature of `declaration`, which it is supposed to be compatible
@@ -24,7 +210,11 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     external_impl: LocalDefId,
     declaration: DefId,
+    eii_name: Symbol,
+    eii_attr_span: Span,
 ) -> Result<(), ErrorGuaranteed> {
+    check_is_structurally_compatible(tcx, external_impl, declaration, eii_name, eii_attr_span)?;
+
     let external_impl_span = tcx.def_span(external_impl);
     let cause = ObligationCause::new(
         external_impl_span,
@@ -52,6 +242,12 @@ pub(crate) fn compare_eii_function_types<'tcx>(
     // type.
 
     let wf_tys = FxIndexSet::default();
+    let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
+
+    let declaration_sig = tcx.fn_sig(declaration).instantiate_identity();
+    let declaration_sig = infcx.enter_forall_and_leak_universe(declaration_sig);
+    let declaration_sig = ocx.normalize(&norm_cause, param_env, declaration_sig);
+
     let external_impl_sig = infcx.instantiate_binder_with_fresh_vars(
         external_impl_span,
         infer::HigherRankedType,
@@ -60,15 +256,8 @@ pub(crate) fn compare_eii_function_types<'tcx>(
             infcx.fresh_args_for_item(external_impl_span, external_impl.to_def_id()),
         ),
     );
-
-    let norm_cause = ObligationCause::misc(external_impl_span, external_impl);
     let external_impl_sig = ocx.normalize(&norm_cause, param_env, external_impl_sig);
     debug!(?external_impl_sig);
-
-    let declaration_sig = tcx.fn_sig(declaration).instantiate_identity();
-    let declaration_sig =
-        tcx.liberate_late_bound_regions(external_impl.to_def_id(), declaration_sig);
-    let declaration_sig = ocx.normalize(&norm_cause, param_env, declaration_sig);
 
     // FIXME: We'd want to keep more accurate spans than "the method signature" when
     // processing the comparison between the trait and impl fn, but we sadly lose them
@@ -201,8 +390,7 @@ fn extract_spans_for_error_reporting<'tcx>(
     };
 
     let declaration_args = declaration.as_local().map(|def_id| {
-        let hir_id: HirId = tcx.local_def_id_to_hir_id(def_id);
-        if let Some(sig) = tcx.hir_fn_sig_by_hir_id(hir_id) {
+        if let Some(sig) = get_declaration_sig(tcx, def_id) {
             sig.decl.inputs.iter().map(|t| t.span).chain(iter::once(sig.decl.output.span()))
         } else {
             panic!("expected {def_id:?} to be a foreign function");
@@ -217,4 +405,9 @@ fn extract_spans_for_error_reporting<'tcx>(
         ),
         _ => (cause.span, tcx.hir().span_if_local(declaration), external_impl_name),
     }
+}
+
+fn get_declaration_sig<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> Option<&'tcx FnSig<'tcx>> {
+    let hir_id: HirId = tcx.local_def_id_to_hir_id(def_id);
+    tcx.hir_fn_sig_by_hir_id(hir_id)
 }
