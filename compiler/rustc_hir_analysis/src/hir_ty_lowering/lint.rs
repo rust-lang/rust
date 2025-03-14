@@ -420,7 +420,7 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     if borrowed { ("dyn ", "(dyn ") } else { ("&dyn ", "&(dyn ") };
 
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _) = self_ty.kind {
-                    // There are more than one trait bound, we need surrounding parentheses.
+                    // There is more than one trait bound, we need surrounding parentheses.
                     vec![
                         (self_ty.span.shrink_to_lo(), paren_dyn_str.to_string()),
                         (self_ty.span.shrink_to_hi(), ")".to_string()),
