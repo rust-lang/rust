@@ -260,19 +260,6 @@ else
   do_make "$RUST_CHECK_TARGET"
 fi
 
-if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  rm -f config.toml
-  $SRC/configure --set change-id=99999999
-
-  # Save the build metrics before we wipe the directory
-  mv build/metrics.json .
-  rm -rf build
-  mkdir build
-  mv metrics.json build
-
-  CARGO_INCREMENTAL=0 ../x check
-fi
-
 echo "::group::sccache stats"
 sccache --show-stats || true
 echo "::endgroup::"
