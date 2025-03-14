@@ -1,4 +1,5 @@
 //@ compile-flags: --crate-type rlib
+//@ check-pass
 #![feature(eii)]
 #![feature(decl_macro)]
 #![feature(rustc_attrs)]
@@ -11,14 +12,14 @@ macro foo() {
 }
 
 unsafe extern "Rust" {
-    safe fn bar<'a, 'b>(x: &'b u64) -> &'a u64;
+    safe fn bar(x: u64) -> u64;
 }
 
 #[foo]
-fn other<'a, 'b>(x: &'b u64) -> &'b u64 {
-    &0
+fn other(x: u64) -> u64 {
+    x
 }
 
 fn main() {
-    bar(&0);
+    bar(0);
 }
