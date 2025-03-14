@@ -465,9 +465,13 @@ impl<T: ?Sized> Copy for &T {}
 /// Notably, this doesn't include all trivially-destructible types for semver
 /// reasons.
 ///
-/// Bikeshed name for now.
+/// Bikeshed name for now. This trait does not do anything other than reflect the
+/// set of types that are allowed within unions for field validity.
 #[unstable(feature = "bikeshed_guaranteed_no_drop", issue = "none")]
 #[lang = "bikeshed_guaranteed_no_drop"]
+#[rustc_deny_explicit_impl]
+#[rustc_do_not_implement_via_object]
+#[doc(hidden)]
 pub trait BikeshedGuaranteedNoDrop {}
 
 /// Types for which it is safe to share references between threads.
