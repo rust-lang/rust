@@ -151,6 +151,16 @@ pub fn debug_assertions() {
     debug_assert_ne!(1, 2);
 }
 
+pub fn partially_const<const N: usize>(n: usize) {
+    //~^ missing_panics_doc
+
+    const {
+        assert!(N > 5);
+    }
+
+    assert!(N > n);
+}
+
 // all function must be triggered the lint.
 // `pub` is required, because the lint does not consider unreachable items
 pub mod issue10240 {

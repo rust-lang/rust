@@ -73,76 +73,88 @@ LL |     assert_ne!(x, 0);
    |     ^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:157:5
+  --> tests/ui/missing_panics_doc.rs:154:1
+   |
+LL | pub fn partially_const<const N: usize>(n: usize) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: first possible panic found here
+  --> tests/ui/missing_panics_doc.rs:161:5
+   |
+LL |     assert!(N > n);
+   |     ^^^^^^^^^^^^^^
+
+error: docs for function which may panic missing `# Panics` section
+  --> tests/ui/missing_panics_doc.rs:167:5
    |
 LL |     pub fn option_unwrap<T>(v: &[T]) -> &T {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:160:9
+  --> tests/ui/missing_panics_doc.rs:170:9
    |
 LL |         o.unwrap()
    |         ^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:163:5
+  --> tests/ui/missing_panics_doc.rs:173:5
    |
 LL |     pub fn option_expect<T>(v: &[T]) -> &T {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:166:9
+  --> tests/ui/missing_panics_doc.rs:176:9
    |
 LL |         o.expect("passed an empty thing")
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:169:5
+  --> tests/ui/missing_panics_doc.rs:179:5
    |
 LL |     pub fn result_unwrap<T>(v: &[T]) -> &T {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:172:9
+  --> tests/ui/missing_panics_doc.rs:182:9
    |
 LL |         res.unwrap()
    |         ^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:175:5
+  --> tests/ui/missing_panics_doc.rs:185:5
    |
 LL |     pub fn result_expect<T>(v: &[T]) -> &T {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:178:9
+  --> tests/ui/missing_panics_doc.rs:188:9
    |
 LL |         res.expect("passed an empty thing")
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:181:5
+  --> tests/ui/missing_panics_doc.rs:191:5
    |
 LL |     pub fn last_unwrap(v: &[u32]) -> u32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:183:10
+  --> tests/ui/missing_panics_doc.rs:193:10
    |
 LL |         *v.last().unwrap()
    |          ^^^^^^^^^^^^^^^^^
 
 error: docs for function which may panic missing `# Panics` section
-  --> tests/ui/missing_panics_doc.rs:186:5
+  --> tests/ui/missing_panics_doc.rs:196:5
    |
 LL |     pub fn last_expect(v: &[u32]) -> u32 {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
-  --> tests/ui/missing_panics_doc.rs:188:10
+  --> tests/ui/missing_panics_doc.rs:198:10
    |
 LL |         *v.last().expect("passed an empty thing")
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to 12 previous errors
+error: aborting due to 13 previous errors
 

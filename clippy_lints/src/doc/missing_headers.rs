@@ -1,7 +1,7 @@
 use super::{DocHeaders, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, MISSING_SAFETY_DOC, UNNECESSARY_SAFETY_DOC};
 use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
-use clippy_utils::ty::{implements_trait_with_env, is_type_diagnostic_item};
+use clippy_utils::ty::{get_type_diagnostic_name, implements_trait_with_env, is_type_diagnostic_item};
 use clippy_utils::visitors::Visitable;
 use clippy_utils::{is_doc_hidden, method_chain_args, return_ty};
 use rustc_hir::intravisit::{self, Visitor};
@@ -51,7 +51,7 @@ pub fn check(
     }
     if !headers.panics
         && let Some(body_id) = body_id
-        && let Some((panic_span, false)) = FindPanicUnwrap::find_span(cx, body_id)
+        && let Some(panic_span) = FindPanicUnwrap::find_span(cx, body_id)
     {
         span_lint_and_note(
             cx,
@@ -98,21 +98,19 @@ pub fn check(
 
 struct FindPanicUnwrap<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,
-    is_const: bool,
     panic_span: Option<Span>,
     typeck_results: &'tcx ty::TypeckResults<'tcx>,
 }
 
 impl<'a, 'tcx> FindPanicUnwrap<'a, 'tcx> {
-    pub fn find_span(cx: &'a LateContext<'tcx>, body_id: BodyId) -> Option<(Span, bool)> {
+    pub fn find_span(cx: &'a LateContext<'tcx>, body_id: BodyId) -> Option<Span> {
         let mut vis = Self {
             cx,
-            is_const: false,
             panic_span: None,
             typeck_results: cx.tcx.typeck_body(body_id),
         };
         cx.tcx.hir_body(body_id).visit(&mut vis);
-        vis.panic_span.map(|el| (el, vis.is_const))
+        vis.panic_span
     }
 }
 
@@ -125,13 +123,13 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
         }
 
         if let Some(macro_call) = root_macro_call_first_node(self.cx, expr) {
-            if is_panic(self.cx, macro_call.def_id)
+            if (is_panic(self.cx, macro_call.def_id)
                 || matches!(
-                    self.cx.tcx.item_name(macro_call.def_id).as_str(),
-                    "assert" | "assert_eq" | "assert_ne"
-                )
+                    self.cx.tcx.get_diagnostic_name(macro_call.def_id),
+                    Some(sym::assert_macro | sym::assert_eq_macro | sym::assert_ne_macro)
+                ))
+                && !self.cx.tcx.hir_is_inside_const_context(expr.hir_id)
             {
-                self.is_const = self.cx.tcx.hir_is_inside_const_context(expr.hir_id);
                 self.panic_span = Some(macro_call.span);
             }
         }
@@ -139,9 +137,10 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
         // check for `unwrap` and `expect` for both `Option` and `Result`
         if let Some(arglists) = method_chain_args(expr, &["unwrap"]).or(method_chain_args(expr, &["expect"])) {
             let receiver_ty = self.typeck_results.expr_ty(arglists[0].0).peel_refs();
-            if is_type_diagnostic_item(self.cx, receiver_ty, sym::Option)
-                || is_type_diagnostic_item(self.cx, receiver_ty, sym::Result)
-            {
+            if matches!(
+                get_type_diagnostic_name(self.cx, receiver_ty),
+                Some(sym::Option | sym::Result)
+            ) {
                 self.panic_span = Some(expr.span);
             }
         }
