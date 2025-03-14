@@ -838,6 +838,21 @@ impl<'a, K, V, S: BuildHasher> Read<'a, K, V, S> {
 
         unsafe { self.table.current().find(hash, eq(key)).map(|(_, bucket)| bucket.as_pair_ref()) }
     }
+
+    /// Gets a reference to an element in the table, using a closure to find the match.
+    #[inline]
+    pub fn get_from_hash(
+        self,
+        hash: u64,
+        mut is_match: impl FnMut(&K) -> bool,
+    ) -> Option<(&'a K, &'a V)> {
+        unsafe {
+            self.table
+                .current()
+                .find(hash, move |(k, _)| is_match(k))
+                .map(|(_, bucket)| bucket.as_pair_ref())
+        }
+    }
 }
 
 impl<'a, K, V, S> Read<'a, K, V, S> {

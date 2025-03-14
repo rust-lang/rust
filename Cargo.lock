@@ -4016,6 +4016,7 @@ dependencies = [
  "either",
  "gsgdt",
  "polonius-engine",
+ "rustc-hash 2.1.1",
  "rustc-rayon-core",
  "rustc_abi",
  "rustc_apfloat",
