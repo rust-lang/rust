@@ -830,7 +830,7 @@ fn remove_line_splices(s: &str) -> String {
         .and_then(|s| s.strip_suffix('"'))
         .unwrap_or_else(|| panic!("expected quoted string, found `{s}`"));
     let mut res = String::with_capacity(s.len());
-    unescape::unescape_unicode(s, unescape::Mode::Str, &mut |range, ch| {
+    unescape::unescape_str(s, |range, ch| {
         if ch.is_ok() {
             res.push_str(&s[range]);
         }
