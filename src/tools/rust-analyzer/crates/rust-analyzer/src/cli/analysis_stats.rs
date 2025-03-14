@@ -118,27 +118,67 @@ impl flags::AnalysisStats {
         }
 
         let mut item_tree_sw = self.stop_watch();
-        let mut num_item_trees = 0;
         let source_roots = krates
             .iter()
             .cloned()
             .map(|krate| db.file_source_root(krate.root_file(db)).source_root_id(db))
             .unique();
+
+        let mut dep_loc = 0;
+        let mut workspace_loc = 0;
+        let mut deps_item_trees = 0;
+        let mut workspace_item_trees = 0;
+
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
-            if !source_root.is_library || self.with_deps {
-                for file_id in source_root.iter() {
-                    if let Some(p) = source_root.path_for_file(&file_id) {
-                        if let Some((_, Some("rs"))) = p.name_and_extension() {
+            for file_id in source_root.iter() {
+                if let Some(p) = source_root.path_for_file(&file_id) {
+                    if let Some((_, Some("rs"))) = p.name_and_extension() {
+                        // measure workspace/project code
+                        if !source_root.is_library || self.with_deps {
+                            let length = db.file_text(file_id).text(db).lines().count();
                             db.file_item_tree(EditionedFileId::current_edition(file_id).into());
-                            num_item_trees += 1;
+
+                            workspace_loc += length;
+                            workspace_item_trees += 1;
+                        } else if self.source_stats {
+                            let length = db.file_text(file_id).text(db).lines().count();
+                            db.file_item_tree(EditionedFileId::current_edition(file_id).into());
+
+                            dep_loc += length;
+                            deps_item_trees += 1
                         }
                     }
                 }
             }
         }
-        eprintln!("  item trees: {num_item_trees}");
+        eprintln!("  item trees: {workspace_item_trees}");
         let item_tree_time = item_tree_sw.elapsed();
+
+        if self.source_stats {
+            eprintln!("Source stats:");
+            eprintln!("  dependency lines of code: {dep_loc}, item trees: {deps_item_trees}");
+            eprintln!(
+                "  workspace lines of code: {workspace_loc}, item trees: {workspace_item_trees}"
+            );
+
+            // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
+            // and ParseMacroExpansionQuery (mcaro expansion "file") size whenever we implement
+            // Salsa's memory usage tracking works with tracked functions.
+
+            // let mut total_file_size = Bytes::default();
+            // for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
+            //     total_file_size += syntax_len(db.parse(e.key).syntax_node())
+            // }
+
+            // let mut total_macro_file_size = Bytes::default();
+            // for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
+            //     let val = db.parse_macro_expansion(e.key).value.0;
+            //     total_macro_file_size += syntax_len(val.syntax_node())
+            // }
+            // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
+        }
+
         eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
         report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
 
@@ -168,6 +208,11 @@ impl flags::AnalysisStats {
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
         let mut file_ids = Vec::new();
+
+        let mut num_traits = 0;
+        let mut num_macro_rules_macros = 0;
+        let mut num_proc_macros = 0;
+
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
                 file_ids.extend(module.as_source_file_id(db));
@@ -189,6 +234,14 @@ impl flags::AnalysisStats {
                             bodies.push(DefWithBody::from(c));
                         }
                         ModuleDef::Static(s) => bodies.push(DefWithBody::from(s)),
+                        ModuleDef::Trait(_) => num_traits += 1,
+                        ModuleDef::Macro(m) => match m.kind(db) {
+                            hir::MacroKind::Declarative => num_macro_rules_macros += 1,
+                            hir::MacroKind::Derive
+                            | hir::MacroKind::Attr
+                            | hir::MacroKind::ProcMacro => num_proc_macros += 1,
+                            _ => (),
+                        },
                         _ => (),
                     };
                 }
@@ -217,6 +270,8 @@ impl flags::AnalysisStats {
                 .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
                 .count(),
         );
+        eprintln!("  traits: {num_traits}, macro_rules macros: {num_macro_rules_macros}, proc_macros: {num_proc_macros}");
+
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
         report_metric("crate def map time", crate_def_map_time.time.as_millis() as u64, "ms");
@@ -263,24 +318,6 @@ impl flags::AnalysisStats {
             report_metric("total instructions", instructions, "#instr");
         }
         report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
-
-        if self.source_stats {
-            // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
-            // and ParseMacroExpansionQuery (mcaro expansion "file") size whenever we implement
-            // Salsa's memory usage tracking works with tracked functions.
-
-            // let mut total_file_size = Bytes::default();
-            // for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
-            //     total_file_size += syntax_len(db.parse(e.key).syntax_node())
-            // }
-
-            // let mut total_macro_file_size = Bytes::default();
-            // for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
-            //     let val = db.parse_macro_expansion(e.key).value.0;
-            //     total_macro_file_size += syntax_len(val.syntax_node())
-            // }
-            // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
-        }
 
         if verbosity.is_verbose() {
             print_memory_usage(host, vfs);
