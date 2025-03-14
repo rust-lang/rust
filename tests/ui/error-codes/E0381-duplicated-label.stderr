@@ -1,5 +1,5 @@
 error[E0381]: used binding `blah` is possibly-uninitialized
-  --> $DIR/duplicate-label-E0381-issue-129274.rs:8:33
+  --> $DIR/E0381-duplicated-label.rs:11:33
    |
 LL |             let blah: Option<String>;
    |                 ---- binding declared here but left uninitialized
