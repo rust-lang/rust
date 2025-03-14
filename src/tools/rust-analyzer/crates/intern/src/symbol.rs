@@ -42,18 +42,6 @@ struct TaggedArcPtr {
 unsafe impl Send for TaggedArcPtr {}
 unsafe impl Sync for TaggedArcPtr {}
 
-impl Ord for TaggedArcPtr {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.as_str().cmp(other.as_str())
-    }
-}
-
-impl PartialOrd for TaggedArcPtr {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 impl TaggedArcPtr {
     const BOOL_BITS: usize = true as usize;
 
@@ -125,7 +113,7 @@ impl TaggedArcPtr {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(PartialEq, Eq, Hash)]
 pub struct Symbol {
     repr: TaggedArcPtr,
 }
