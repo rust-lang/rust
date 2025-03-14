@@ -194,23 +194,13 @@ fn convert_to_from(
         // impl Into<T> for U  ->  impl Into<T> for T
         //                  ~                       ~
         (self_ty.span, into.to_owned()),
-        // fn into(self) -> T  ->  fn from(self) -> T
-        //    ~~~~                    ~~~~
+        // fn into(self: U) -> T  ->  fn from(self) -> T
+        //    ~~~~                       ~~~~
         (impl_item.ident.span, String::from("from")),
+        // fn into([mut] self: U) -> T  ->  fn into([mut] val: T) -> T
+        //               ~~~~~~~                          ~~~~~~
+        (self_ident.span.to(self_param.ty_span), format!("val: {from}")),
     ];
-
-    if self_ident.span.overlaps(self_param.ty_span) {
-        // fn into([mut] self) -> T  ->  fn into([mut] val: T) -> T
-        //               ~~~~                          ~~~~~~
-        suggestions.push((self_ident.span, format!("val: {from}")));
-    } else {
-        // fn into([mut] self: U) -> T  ->  fn into([mut] val: U) -> T
-        //               ~~~~                             ~~~
-        suggestions.push((self_ident.span, String::from("val")));
-        // fn into([mut] val: U) -> T  ->  fn into([mut] val: T) -> T
-        //                    ~                               ~
-        suggestions.push((self_param.ty_span, from.to_owned()));
-    }
 
     if let FnRetTy::Return(_) = sig.decl.output {
         // fn into(self) -> T  ->  fn into(self) -> Self
