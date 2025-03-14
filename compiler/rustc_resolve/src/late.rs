@@ -18,6 +18,7 @@ use rustc_ast::visit::{
 };
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
+use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, DiagArgValue, ErrorGuaranteed, IntoDiagArg, StashKey, Suggestions,
@@ -46,8 +47,6 @@ use crate::{
 mod diagnostics;
 
 type Res = def::Res<NodeId>;
-
-type IdentMap<T> = FxHashMap<Ident, T>;
 
 use diagnostics::{ElisionFnParameter, LifetimeElisionCandidate, MissingLifetime};
 
@@ -273,8 +272,8 @@ impl RibKind<'_> {
 /// resolving, the name is looked up from inside out.
 #[derive(Debug)]
 pub(crate) struct Rib<'ra, R = Res> {
-    pub bindings: IdentMap<R>,
-    pub patterns_with_skipped_bindings: FxHashMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
+    pub bindings: FxHashMap<Ident, R>,
+    pub patterns_with_skipped_bindings: UnordMap<DefId, Vec<(Span, Result<(), ErrorGuaranteed>)>>,
     pub kind: RibKind<'ra>,
 }
 
@@ -1605,12 +1604,12 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         // for better diagnostics.
         let mut forward_ty_ban_rib_const_param_ty = Rib {
             bindings: forward_ty_ban_rib.bindings.clone(),
-            patterns_with_skipped_bindings: FxHashMap::default(),
+            patterns_with_skipped_bindings: Default::default(),
             kind: RibKind::ForwardGenericParamBan(ForwardGenericParamBanReason::ConstParamTy),
         };
         let mut forward_const_ban_rib_const_param_ty = Rib {
             bindings: forward_const_ban_rib.bindings.clone(),
-            patterns_with_skipped_bindings: FxHashMap::default(),
+            patterns_with_skipped_bindings: Default::default(),
             kind: RibKind::ForwardGenericParamBan(ForwardGenericParamBanReason::ConstParamTy),
         };
         // We'll ban these with a `ConstParamTy` rib, so just clear these ribs for better
@@ -2334,7 +2333,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             let local_candidates = self.lifetime_elision_candidates.take();
 
             if let Some(candidates) = local_candidates {
-                let distinct: FxHashSet<_> = candidates.iter().map(|(res, _)| *res).collect();
+                let distinct: UnordSet<_> = candidates.iter().map(|(res, _)| *res).collect();
                 let lifetime_count = distinct.len();
                 if lifetime_count != 0 {
                     parameter_info.push(ElisionFnParameter {
@@ -2358,14 +2357,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     }));
                 }
-                let mut distinct_iter = distinct.into_iter();
-                if let Some(res) = distinct_iter.next() {
+                if !distinct.is_empty() {
                     match elision_lifetime {
                         // We are the first parameter to bind lifetimes.
                         Elision::None => {
-                            if distinct_iter.next().is_none() {
+                            if let Some(res) = distinct.get_only() {
                                 // We have a single lifetime => success.
-                                elision_lifetime = Elision::Param(res)
+                                elision_lifetime = Elision::Param(*res)
                             } else {
                                 // We have multiple lifetimes => error.
                                 elision_lifetime = Elision::Err;
@@ -2890,6 +2888,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         break;
                     }
 
+                    #[allow(rustc::potential_query_instability)] // FIXME
                     seen_bindings
                         .extend(parent_rib.bindings.keys().map(|ident| (*ident, ident.span)));
                 }
@@ -4004,7 +4003,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         }
     }
 
-    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut IdentMap<Res> {
+    fn innermost_rib_bindings(&mut self, ns: Namespace) -> &mut FxHashMap<Ident, Res> {
         &mut self.ribs[ns].last_mut().unwrap().bindings
     }
 
@@ -5202,6 +5201,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
+        #[allow(rustc::potential_query_instability)] // FIXME
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
             self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_LABELS,
