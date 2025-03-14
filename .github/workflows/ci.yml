@@ -241,12 +241,16 @@ jobs:
       - name: postprocess metrics into the summary
         run: |
           if [ -f build/metrics.json ]; then
-            ./build/citool/debug/citool postprocess-metrics build/metrics.json ${GITHUB_STEP_SUMMARY}
+            METRICS=build/metrics.json  
           elif [ -f obj/build/metrics.json ]; then
-            ./build/citool/debug/citool postprocess-metrics obj/build/metrics.json ${GITHUB_STEP_SUMMARY}
+            METRICS=obj/build/metrics.json  
           else
             echo "No metrics.json found"
+            exit 0
           fi
+
+          ./build/citool/debug/citool postprocess-metrics \
+              ${METRICS} ${GITHUB_STEP_SUMMARY}
 
       - name: upload job metrics to DataDog
         if: needs.calculate_matrix.outputs.run_type != 'pr'
