@@ -46,9 +46,6 @@ middle_consider_type_length_limit =
 middle_const_eval_non_int =
     constant evaluation of enum discriminant resulted in non-integer
 
-middle_const_not_used_in_type_alias =
-    const parameter `{$ct}` is part of concrete type but not used in parameter list for the `impl Trait` type alias
-
 middle_deprecated = use of deprecated {$kind} `{$path}`{$has_note ->
         [true] : {$note}
         *[other] {""}

@@ -823,16 +823,32 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         let id_args = GenericArgs::identity_for_item(tcx, def_id);
         debug!(?id_args);
 
-        // This zip may have several times the same lifetime in `args` paired with a different
-        // lifetime from `id_args`. Simply `collect`ing the iterator is the correct behaviour:
-        // it will pick the last one, which is the one we introduced in the impl-trait desugaring.
-        let map = args.iter().zip(id_args).collect();
-        debug!("map = {:#?}", map);
+        let mut mapping = FxHashMap::default();
+        let mut uncaptured_args = FxHashSet::default();
+        for ((arg, identity_arg), &variance) in
+            args.iter().zip(id_args).zip(tcx.variances_of(def_id))
+        {
+            match variance {
+                ty::Invariant => {
+                    mapping.insert(arg, identity_arg);
+                }
+                ty::Bivariant => {
+                    uncaptured_args.insert(arg);
+                }
+                _ => unreachable!(),
+            }
+        }
 
         // Convert the type from the function into a type valid outside
         // the function, by replacing invalid regions with 'static,
         // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
+        self.fold_with(&mut opaque_types::ReverseMapper::new(
+            tcx,
+            mapping,
+            uncaptured_args,
+            self.span,
+            ignore_errors,
+        ))
     }
 }
 

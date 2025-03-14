@@ -1,4 +1,4 @@
-error: type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+error: type parameter `T` is mentioned in hidden type of type alias impl trait, but is not declared in its generic args
   --> $DIR/issue-55872.rs:13:9
    |
 LL |         || ()
