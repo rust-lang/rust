@@ -1,11 +1,12 @@
-use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::msrvs::Msrv;
 use clippy_utils::source::{snippet_with_applicability, snippet_with_context};
 use clippy_utils::sugg::has_enclosing_paren;
-use clippy_utils::{is_expr_temporary_value, is_lint_allowed, msrvs, std_or_core};
+use clippy_utils::{get_parent_expr, is_expr_temporary_value, is_lint_allowed, msrvs, std_or_core};
 use rustc_errors::Applicability;
 use rustc_hir::{BorrowKind, Expr, ExprKind, Mutability, Ty, TyKind};
 use rustc_lint::LateContext;
+use rustc_middle::ty::adjustment::{Adjust, AutoBorrow};
 use rustc_span::BytePos;
 
 use super::BORROW_AS_PTR;
@@ -54,4 +55,26 @@ pub(super) fn check<'tcx>(
         return true;
     }
     false
+}
+
+/// Check for an implicit cast from reference to raw pointer outside an explicit `as`.
+pub(super) fn check_implicit_cast(cx: &LateContext<'_>, expr: &Expr<'_>) {
+    if !expr.span.from_expansion()
+        && let ExprKind::AddrOf(BorrowKind::Ref, _, pointee) = expr.kind
+        && !matches!(get_parent_expr(cx, expr).map(|e| e.kind), Some(ExprKind::Cast(..)))
+        && let [deref, borrow] = cx.typeck_results().expr_adjustments(expr)
+        && matches!(deref.kind, Adjust::Deref(..))
+        && let Adjust::Borrow(AutoBorrow::RawPtr(mutability)) = borrow.kind
+        // Do not suggest taking a raw pointer to a temporary value
+        && !is_expr_temporary_value(cx, pointee)
+    {
+        span_lint_and_then(cx, BORROW_AS_PTR, expr.span, "implicit borrow as raw pointer", |diag| {
+            diag.span_suggestion_verbose(
+                expr.span.until(pointee.span),
+                "use a raw pointer instead",
+                format!("&raw {} ", mutability.ptr_str()),
+                Applicability::MachineApplicable,
+            );
+        });
+    }
 }
