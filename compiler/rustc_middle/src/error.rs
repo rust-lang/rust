@@ -99,14 +99,6 @@ pub(crate) struct RequiresLangItem {
     pub name: Symbol,
 }
 
-#[derive(Diagnostic)]
-#[diag(middle_const_not_used_in_type_alias)]
-pub(super) struct ConstNotUsedTraitAlias {
-    pub ct: String,
-    #[primary_span]
-    pub span: Span,
-}
-
 pub struct CustomSubdiagnostic<'a> {
     pub msg: fn() -> DiagMessage,
     pub add_args: Box<dyn FnOnce(&mut dyn FnMut(DiagArgName, DiagArgValue)) + 'a>,
