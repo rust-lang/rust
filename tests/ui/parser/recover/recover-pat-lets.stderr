@@ -34,10 +34,6 @@ help: consider extracting the expression into a `const`
 LL +     const VAL: /* Type */ = 1 + 1;
 LL ~     let Some(VAL) = x else {
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |     let Some(const { 1 + 1 }) = x else {
-   |              +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-lets.rs:17:17
@@ -51,10 +47,6 @@ help: consider extracting the expression into a `const`
 LL +     const VAL: /* Type */ = 1 + 1;
 LL ~     if let Some(VAL) = x {
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |     if let Some(const { 1 + 1 }) = x {
-   |                 +++++++       +
 
 error: aborting due to 5 previous errors
 
