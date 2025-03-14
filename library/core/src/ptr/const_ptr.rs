@@ -193,7 +193,6 @@ impl<T: ?Sized> *const T {
     /// This is an [Exposed Provenance][crate::ptr#exposed-provenance] API.
     ///
     /// [`with_exposed_provenance`]: with_exposed_provenance
-    #[must_use]
     #[inline(always)]
     #[stable(feature = "exposed_provenance", since = "1.84.0")]
     pub fn expose_provenance(self) -> usize {
