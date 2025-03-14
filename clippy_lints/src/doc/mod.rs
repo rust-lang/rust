@@ -188,6 +188,19 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
+    /// Individual panics within a function can be ignored with `#[expect]` or
+    /// `#[allow]`:
+    ///
+    /// ```no_run
+    /// # use std::num::NonZeroUsize;
+    /// pub fn will_not_panic(x: usize) {
+    ///     #[expect(clippy::missing_panics_doc, reason = "infallible")]
+    ///     let y = NonZeroUsize::new(1).unwrap();
+    ///
+    ///     // If any panics are added in the future the lint will still catch them
+    /// }
+    /// ```
     #[clippy::version = "1.51.0"]
     pub MISSING_PANICS_DOC,
     pedantic,

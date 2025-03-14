@@ -3,7 +3,7 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_note};
 use clippy_utils::macros::{is_panic, root_macro_call_first_node};
 use clippy_utils::ty::{get_type_diagnostic_name, implements_trait_with_env, is_type_diagnostic_item};
 use clippy_utils::visitors::Visitable;
-use clippy_utils::{is_doc_hidden, method_chain_args, return_ty};
+use clippy_utils::{fulfill_or_allowed, is_doc_hidden, method_chain_args, return_ty};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, BodyId, Expr, FnSig, OwnerId, Safety};
 use rustc_lint::LateContext;
@@ -129,6 +129,7 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
                     Some(sym::assert_macro | sym::assert_eq_macro | sym::assert_ne_macro)
                 ))
                 && !self.cx.tcx.hir_is_inside_const_context(expr.hir_id)
+                && !fulfill_or_allowed(self.cx, MISSING_PANICS_DOC, [expr.hir_id])
             {
                 self.panic_span = Some(macro_call.span);
             }
@@ -140,7 +141,8 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
             if matches!(
                 get_type_diagnostic_name(self.cx, receiver_ty),
                 Some(sym::Option | sym::Result)
-            ) {
+            ) && !fulfill_or_allowed(self.cx, MISSING_PANICS_DOC, [expr.hir_id])
+            {
                 self.panic_span = Some(expr.span);
             }
         }
