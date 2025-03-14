@@ -1370,9 +1370,6 @@ impl<'a> Parser<'a> {
 
     /// Parses inline const expressions.
     fn parse_const_block(&mut self, span: Span, pat: bool) -> PResult<'a, P<Expr>> {
-        if pat {
-            self.psess.gated_spans.gate(sym::inline_const_pat, span);
-        }
         self.expect_keyword(exp!(Const))?;
         let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
@@ -1380,7 +1377,17 @@ impl<'a> Parser<'a> {
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
+        let kind = if pat {
+            let guar = self
+                .dcx()
+                .struct_span_err(blk_span, "`inline_const_pat` has been removed")
+                .with_help("use a named `const`-item or an `if`-guard instead")
+                .emit();
+            ExprKind::Err(guar)
+        } else {
+            ExprKind::ConstBlock(anon_const)
+        };
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), kind, attrs))
     }
 
     /// Parses mutability (`mut` or nothing).

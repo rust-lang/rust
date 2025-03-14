@@ -84,10 +84,6 @@ LL +     const VAL: /* Type */ = 2 + _;
 LL ~     match 9 {
 LL ~         4..=(VAL) => ()
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         4..=(const { 2 + _ }) => ()
-   |              +++++++       +
 
 error: aborting due to 11 previous errors
 
