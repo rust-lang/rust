@@ -7,6 +7,7 @@ impl Baz for () {}
 
 type Qux = impl Baz;
 
+#[define_opaque(Qux)]
 fn assign() -> Qux {}
 
 trait Foo {

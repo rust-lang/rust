@@ -12,7 +12,7 @@ use rustc_ast::{AttrArgs, DelimArgs, Expr, ExprKind, LitKind, MetaItemLit, Norma
 use rustc_ast_pretty::pprust;
 use rustc_errors::DiagCtxtHandle;
 use rustc_hir::{self as hir, AttrPath};
-use rustc_span::symbol::{Ident, kw};
+use rustc_span::symbol::{Ident, kw, sym};
 use rustc_span::{ErrorGuaranteed, Span, Symbol};
 
 pub struct SegmentIterator<'a> {
@@ -360,7 +360,7 @@ fn expr_to_lit(dcx: DiagCtxtHandle<'_>, expr: &Expr, span: Span) -> MetaItemLit 
             span,
             "expr in place where literal is expected (builtin attr parsing)",
         );
-        MetaItemLit { symbol: kw::Empty, suffix: None, kind: LitKind::Err(guar), span }
+        MetaItemLit { symbol: sym::dummy, suffix: None, kind: LitKind::Err(guar), span }
     }
 }
 

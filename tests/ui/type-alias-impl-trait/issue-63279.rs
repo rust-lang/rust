@@ -2,6 +2,7 @@
 
 type Closure = impl FnOnce();
 
+#[define_opaque(Closure)]
 fn c() -> Closure {
     //~^ ERROR: expected a `FnOnce()` closure, found `()`
     || -> Closure { || () }

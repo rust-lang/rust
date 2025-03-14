@@ -18,6 +18,7 @@ type Test = Result<i32, i32>; //~ ERROR: layout_of
 
 #[rustc_layout(debug)]
 type T = impl std::fmt::Debug; //~ ERROR: layout_of
+#[define_opaque(T)]
 fn f() -> T {
     0i32
 }

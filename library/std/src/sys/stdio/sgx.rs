@@ -1,6 +1,6 @@
 use fortanix_sgx_abi as abi;
 
-use crate::io;
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
 use crate::sys::fd::FileDesc;
 
 pub struct Stdin(());
@@ -24,6 +24,19 @@ impl io::Read for Stdin {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         with_std_fd(abi::FD_STDIN, |fd| fd.read(buf))
     }
+
+    fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        with_std_fd(abi::FD_STDIN, |fd| fd.read_buf(buf))
+    }
+
+    fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDIN, |fd| fd.read_vectored(bufs))
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl Stdout {
@@ -40,6 +53,15 @@ impl io::Write for Stdout {
     fn flush(&mut self) -> io::Result<()> {
         with_std_fd(abi::FD_STDOUT, |fd| fd.flush())
     }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDOUT, |fd| fd.write_vectored(bufs))
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
+    }
 }
 
 impl Stderr {
@@ -55,6 +77,15 @@ impl io::Write for Stderr {
 
     fn flush(&mut self) -> io::Result<()> {
         with_std_fd(abi::FD_STDERR, |fd| fd.flush())
+    }
+
+    fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        with_std_fd(abi::FD_STDERR, |fd| fd.write_vectored(bufs))
+    }
+
+    #[inline]
+    fn is_write_vectored(&self) -> bool {
+        true
     }
 }
 

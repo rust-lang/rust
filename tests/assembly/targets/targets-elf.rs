@@ -559,6 +559,9 @@
 //@ revisions: wasm32_wasip2
 //@ [wasm32_wasip2] compile-flags: --target wasm32-wasip2
 //@ [wasm32_wasip2] needs-llvm-components: webassembly
+//@ revisions: wasm32_wali_linux_musl
+//@ [wasm32_wali_linux_musl] compile-flags: --target wasm32-wali-linux-musl
+//@ [wasm32_wali_linux_musl] needs-llvm-components: webassembly
 //@ revisions: wasm64_unknown_unknown
 //@ [wasm64_unknown_unknown] compile-flags: --target wasm64-unknown-unknown
 //@ [wasm64_unknown_unknown] needs-llvm-components: webassembly

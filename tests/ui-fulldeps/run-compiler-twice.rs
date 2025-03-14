@@ -46,7 +46,7 @@ fn main() {
 fn compile(code: String, output: PathBuf, sysroot: PathBuf, linker: Option<&Path>) {
     let mut opts = Options::default();
     opts.output_types = OutputTypes::new(&[(OutputType::Exe, None)]);
-    opts.maybe_sysroot = Some(sysroot);
+    opts.sysroot = sysroot;
 
     if let Some(linker) = linker {
         opts.cg.linker = Some(linker.to_owned());

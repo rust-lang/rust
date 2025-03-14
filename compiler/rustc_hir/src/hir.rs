@@ -243,7 +243,7 @@ impl<'hir> PathSegment<'hir> {
     }
 
     pub fn invalid() -> Self {
-        Self::new(Ident::empty(), HirId::INVALID, Res::Err)
+        Self::new(Ident::dummy(), HirId::INVALID, Res::Err)
     }
 
     pub fn args(&self) -> &GenericArgs<'hir> {
@@ -1307,13 +1307,18 @@ impl Attribute {
 #[derive(Debug)]
 pub struct AttributeMap<'tcx> {
     pub map: SortedMap<ItemLocalId, &'tcx [Attribute]>,
+    /// Preprocessed `#[define_opaque]` attribute.
+    pub define_opaque: Option<&'tcx [(Span, LocalDefId)]>,
     // Only present when the crate hash is needed.
     pub opt_hash: Option<Fingerprint>,
 }
 
 impl<'tcx> AttributeMap<'tcx> {
-    pub const EMPTY: &'static AttributeMap<'static> =
-        &AttributeMap { map: SortedMap::new(), opt_hash: Some(Fingerprint::ZERO) };
+    pub const EMPTY: &'static AttributeMap<'static> = &AttributeMap {
+        map: SortedMap::new(),
+        opt_hash: Some(Fingerprint::ZERO),
+        define_opaque: None,
+    };
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
@@ -3368,12 +3373,15 @@ pub struct OpaqueTy<'hir> {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy, HashStable_Generic)]
-pub enum PreciseCapturingArg<'hir> {
-    Lifetime(&'hir Lifetime),
+#[derive(Debug, Clone, Copy, HashStable_Generic, Encodable, Decodable)]
+pub enum PreciseCapturingArgKind<T, U> {
+    Lifetime(T),
     /// Non-lifetime argument (type or const)
-    Param(PreciseCapturingNonLifetimeArg),
+    Param(U),
 }
+
+pub type PreciseCapturingArg<'hir> =
+    PreciseCapturingArgKind<&'hir Lifetime, PreciseCapturingNonLifetimeArg>;
 
 impl PreciseCapturingArg<'_> {
     pub fn hir_id(self) -> HirId {
@@ -4327,16 +4335,6 @@ pub enum OwnerNode<'hir> {
 }
 
 impl<'hir> OwnerNode<'hir> {
-    pub fn ident(&self) -> Option<Ident> {
-        match self {
-            OwnerNode::Item(Item { ident, .. })
-            | OwnerNode::ForeignItem(ForeignItem { ident, .. })
-            | OwnerNode::ImplItem(ImplItem { ident, .. })
-            | OwnerNode::TraitItem(TraitItem { ident, .. }) => Some(*ident),
-            OwnerNode::Crate(..) | OwnerNode::Synthetic => None,
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             OwnerNode::Item(Item { span, .. })

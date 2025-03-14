@@ -107,11 +107,9 @@ fn resolve_associated_item<'tcx>(
     let input = typing_env.as_query_input(trait_ref);
     let vtbl = match tcx.codegen_select_candidate(input) {
         Ok(vtbl) => vtbl,
-        Err(
-            CodegenObligationError::Ambiguity
-            | CodegenObligationError::Unimplemented
-            | CodegenObligationError::FulfillmentError,
-        ) => return Ok(None),
+        Err(CodegenObligationError::Ambiguity | CodegenObligationError::Unimplemented) => {
+            return Ok(None);
+        }
         Err(CodegenObligationError::UnconstrainedParam(guar)) => return Err(guar),
     };
 

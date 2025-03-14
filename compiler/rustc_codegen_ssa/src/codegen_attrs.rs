@@ -1,9 +1,7 @@
 use std::str::FromStr;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::expand::autodiff_attrs::{
-    AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
-};
+use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, DiffActivity, DiffMode};
 use rustc_ast::{MetaItem, MetaItemInner, attr};
 use rustc_attr_parsing::ReprAttr::ReprAlign;
 use rustc_attr_parsing::{AttributeKind, InlineAttr, InstructionSetAttr, OptimizeAttr};
@@ -62,7 +60,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
         );
     }
 
-    let attrs = tcx.hir().attrs(tcx.local_def_id_to_hir_id(did));
+    let attrs = tcx.hir_attrs(tcx.local_def_id_to_hir_id(did));
     let mut codegen_fn_attrs = CodegenFnAttrs::new();
     if tcx.should_inherit_track_caller(did) {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::TRACK_CALLER;
@@ -77,7 +75,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
     // When `no_builtins` is applied at the crate level, we should add the
     // `no-builtins` attribute to each function to ensure it takes effect in LTO.
-    let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
+    let crate_attrs = tcx.hir_attrs(rustc_hir::CRATE_HIR_ID);
     let no_builtins = attr::contains_name(crate_attrs, sym::no_builtins);
     if no_builtins {
         codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_BUILTINS;
@@ -872,15 +870,6 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
                 span_bug!(arg_symbol.span, "invalid input activity");
             }
         }
-    }
-
-    for &input in &arg_activities {
-        if !valid_input_activity(mode, input) {
-            span_bug!(attr.span(), "Invalid input activity {} for {} mode", input, mode);
-        }
-    }
-    if !valid_ret_activity(mode, ret_activity) {
-        span_bug!(attr.span(), "Invalid return activity {} for {} mode", ret_activity, mode);
     }
 
     Some(AutoDiffAttrs { mode, ret_activity, input_activity: arg_activities })

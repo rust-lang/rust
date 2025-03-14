@@ -1,15 +1,15 @@
-error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/no_inferrable_concrete_type.rs:10:12
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/no_inferrable_concrete_type.rs:10:8
    |
-LL |     pub fn bar(x: Foo) -> Foo {
-   |            ^^^
+LL | pub fn bar(x: Foo) -> Foo {
+   |        ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
-  --> $DIR/no_inferrable_concrete_type.rs:7:20
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
+  --> $DIR/no_inferrable_concrete_type.rs:6:16
    |
-LL |     pub type Foo = impl Copy;
-   |                    ^^^^^^^^^
+LL | pub type Foo = impl Copy;
+   |                ^^^^^^^^^
 
 error: aborting due to 1 previous error
 

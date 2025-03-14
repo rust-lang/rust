@@ -111,3 +111,11 @@ pub use crate::macros::builtin::type_ascribe;
     reason = "placeholder syntax for deref patterns"
 )]
 pub use crate::macros::builtin::deref;
+
+#[unstable(
+    feature = "type_alias_impl_trait",
+    issue = "63063",
+    reason = "`type_alias_impl_trait` has open design concerns"
+)]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::define_opaque;

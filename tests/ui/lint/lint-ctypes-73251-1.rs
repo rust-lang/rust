@@ -15,6 +15,7 @@ impl Foo for u32 {
     type Assoc = Qux;
 }
 
+#[define_opaque(Qux)]
 fn assign() -> Qux {
     1
 }

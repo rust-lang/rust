@@ -7,7 +7,6 @@
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod errors;
@@ -41,7 +40,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
 use rustc_span::hygiene::Transparency;
-use rustc_span::{Ident, Span, Symbol, kw, sym};
+use rustc_span::{Ident, Span, Symbol, sym};
 use tracing::debug;
 use {rustc_attr_parsing as attr, rustc_hir as hir};
 
@@ -494,7 +493,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
     ) {
         // Non-opaque macros cannot make other items more accessible than they already are.
         let hir_id = self.tcx.local_def_id_to_hir_id(local_def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
 
         if attr::find_attr!(attrs, AttributeKind::MacroTransparency(x) => *x)
             .unwrap_or(Transparency::fallback(md.macro_rules))
@@ -574,7 +573,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
             // have normal hygiene, so we can treat them like other items without type
             // privacy and mark them reachable.
             DefKind::Macro(_) => {
-                let item = self.tcx.hir().expect_item(def_id);
+                let item = self.tcx.hir_expect_item(def_id);
                 if let hir::ItemKind::Macro(MacroDef { macro_rules: false, .. }, _) = item.kind {
                     if vis.is_accessible_from(module, self.tcx) {
                         self.update(def_id, macro_ev, Level::Reachable);
@@ -598,7 +597,7 @@ impl<'tcx> EmbargoVisitor<'tcx> {
 
             DefKind::Struct | DefKind::Union => {
                 // While structs and unions have type privacy, their fields do not.
-                let item = self.tcx.hir().expect_item(def_id);
+                let item = self.tcx.hir_expect_item(def_id);
                 if let hir::ItemKind::Struct(ref struct_def, _)
                 | hir::ItemKind::Union(ref struct_def, _) = item.kind
                 {
@@ -936,8 +935,8 @@ impl<'tcx> NamePrivacyVisitor<'tcx> {
         }
 
         // definition of the field
-        let ident = Ident::new(kw::Empty, use_ctxt);
-        let def_id = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id).1;
+        let ident = Ident::new(sym::dummy, use_ctxt);
+        let (_, def_id) = self.tcx.adjust_ident_and_get_scope(ident, def.did(), hir_id);
         !field.vis.is_accessible_from(def_id, self.tcx)
     }
 

@@ -11,6 +11,10 @@ note: required by a bound in `needs_trait`
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
+help: consider further restricting the associated type
+   |
+LL | fn foo<T: Assoc>(t: T) where <T as Assoc>::method(..): Trait {
+   |                        +++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `impl Sized { <T as Assoc>::method_with_lt(..) }: Trait` is not satisfied
   --> $DIR/display.rs:16:17
@@ -25,6 +29,10 @@ note: required by a bound in `needs_trait`
    |
 LL | fn needs_trait(_: impl Trait) {}
    |                        ^^^^^ required by this bound in `needs_trait`
+help: consider further restricting the associated type
+   |
+LL | fn foo<T: Assoc>(t: T) where <T as Assoc>::method_with_lt(..): Trait {
+   |                        +++++++++++++++++++++++++++++++++++++++++++++
 
 error[E0277]: the trait bound `impl Sized: Trait` is not satisfied
   --> $DIR/display.rs:18:17

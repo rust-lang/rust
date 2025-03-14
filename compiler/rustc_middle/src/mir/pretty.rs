@@ -653,7 +653,10 @@ fn write_mir_sig(tcx: TyCtxt<'_>, body: &Body<'_>, w: &mut dyn io::Write) -> io:
             write!(w, "static mut ")?
         }
         (_, _) if is_function => write!(w, "fn ")?,
-        (DefKind::AnonConst | DefKind::InlineConst, _) => {} // things like anon const, not an item
+        // things like anon const, not an item
+        (DefKind::AnonConst | DefKind::InlineConst, _) => {}
+        // `global_asm!` have fake bodies, which we may dump after mir-build
+        (DefKind::GlobalAsm, _) => {}
         _ => bug!("Unexpected def kind {:?}", kind),
     }
 
@@ -1200,7 +1203,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {
@@ -1221,7 +1224,7 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                             && let Some(upvars) = tcx.upvars_mentioned(def_id)
                         {
                             for (&var_id, place) in iter::zip(upvars.keys(), places) {
-                                let var_name = tcx.hir().name(var_id);
+                                let var_name = tcx.hir_name(var_id);
                                 struct_fmt.field(var_name.as_str(), place);
                             }
                         } else {

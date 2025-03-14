@@ -1299,7 +1299,7 @@ impl<'tcx> TyCtxtFeed<'tcx, LocalDefId> {
             ),
             bodies,
         })));
-        self.feed_owner_id().hir_attrs(attrs);
+        self.feed_owner_id().hir_attr_map(attrs);
     }
 }
 
@@ -2214,7 +2214,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the origin of the opaque type `def_id`.
     #[instrument(skip(self), level = "trace", ret)]
     pub fn local_opaque_ty_origin(self, def_id: LocalDefId) -> hir::OpaqueTyOrigin<LocalDefId> {
-        self.hir().expect_opaque_ty(def_id).origin
+        self.hir_expect_opaque_ty(def_id).origin
     }
 
     pub fn finish(self) {
@@ -2336,8 +2336,8 @@ macro_rules! sty_debug_print {
                 $(let mut $variant = total;)*
 
                 for shard in tcx.interners.type_.lock_shards() {
-                    let types = shard.keys();
-                    for &InternedInSet(t) in types {
+                    let types = shard.iter();
+                    for &(InternedInSet(t), ()) in types {
                         let variant = match t.internee {
                             ty::Bool | ty::Char | ty::Int(..) | ty::Uint(..) |
                                 ty::Float(..) | ty::Str | ty::Never => continue,
@@ -3118,9 +3118,11 @@ impl<'tcx> TyCtxt<'tcx> {
 
     pub fn late_bound_vars(self, id: HirId) -> &'tcx List<ty::BoundVariableKind> {
         self.mk_bound_variable_kinds(
-            &self.late_bound_vars_map(id.owner).get(&id.local_id).cloned().unwrap_or_else(|| {
-                bug!("No bound vars found for {}", self.hir().node_to_string(id))
-            }),
+            &self
+                .late_bound_vars_map(id.owner)
+                .get(&id.local_id)
+                .cloned()
+                .unwrap_or_else(|| bug!("No bound vars found for {}", self.hir_id_to_string(id))),
         )
     }
 

@@ -18,6 +18,7 @@ mod ex0 {
 mod ex1 {
     type Tait1 = impl Sized;
     //[current]~^ ERROR unconstrained opaque type
+    #[define_opaque(Tait1)]
     fn foo(x: Tait1) -> impl Sized {
         let () = x;
     }
@@ -27,6 +28,7 @@ mod ex2 {
     type Tait1 = impl Sized;
     //[current]~^ ERROR unconstrained opaque type
     type Tait2 = impl Sized;
+    #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
         let () = x;
     }
@@ -38,6 +40,7 @@ mod ex3 {
     trait Something<T> {}
     impl<T, U> Something<U> for T {}
     type Tait2 = impl Something<Tait1>;
+    #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
         let () = x;
     }
@@ -58,6 +61,7 @@ mod ex4 {
     //
     // ambiguity proving `(): Trait<Tait1>`.
     type Tait2 = impl Trait<(), Assoc = impl Trait<Tait1>>;
+    #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
         let () = x;
     }

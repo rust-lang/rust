@@ -10,6 +10,7 @@ use rustc_abi::{FieldIdx, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::svh::Svh;
+use rustc_hir::PreciseCapturingArgKind;
 use rustc_hir::def::{CtorKind, DefKind, DocLinkResMap};
 use rustc_hir::def_id::{CrateNum, DefId, DefIdMap, DefIndex, DefPathHash, StableCrateId};
 use rustc_hir::definitions::DefKey;
@@ -440,7 +441,7 @@ define_tables! {
     coerce_unsized_info: Table<DefIndex, LazyValue<ty::adjustment::CoerceUnsizedInfo>>,
     mir_const_qualif: Table<DefIndex, LazyValue<mir::ConstQualifs>>,
     rendered_const: Table<DefIndex, LazyValue<String>>,
-    rendered_precise_capturing_args: Table<DefIndex, LazyArray<Symbol>>,
+    rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
     fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,

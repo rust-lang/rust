@@ -9,6 +9,7 @@ fn main() {
     //~^ ERROR: item does not constrain
     type Existential = impl Debug;
 
+    #[define_opaque(Existential)]
     fn f() -> Existential {}
     println!("{:?}", f());
 }

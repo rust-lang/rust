@@ -1,5 +1,5 @@
 error[E0119]: conflicting implementations of trait `AnotherTrait` for type `D<_>`
-  --> $DIR/negative-reasoning.rs:19:1
+  --> $DIR/negative-reasoning.rs:20:1
    |
 LL | impl<T: std::fmt::Debug> AnotherTrait for T {}
    | ------------------------------------------- first implementation here

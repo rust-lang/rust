@@ -1,5 +1,5 @@
 error[E0284]: type annotations needed: cannot satisfy `Foo == _`
-  --> $DIR/dont-type_of-tait-in-defining-scope.rs:15:18
+  --> $DIR/dont-type_of-tait-in-defining-scope.rs:16:18
    |
 LL |     needs_send::<Foo>();
    |                  ^^^ cannot satisfy `Foo == _`

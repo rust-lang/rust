@@ -504,12 +504,9 @@ hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by
 
 hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
 
-hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
-    .note = this item must mention the opaque type in its signature in order to be able to register hidden types
-
-hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`, but has it in its signature
-    .note = consider moving the opaque type's declaration and defining uses into a separate module
-    .opaque = this opaque type is in the signature
+hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`
+    .note = consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+    .opaque = this opaque type is supposed to be constrained
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 

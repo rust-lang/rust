@@ -207,6 +207,7 @@ mod msrv {
 mod with_ty_alias {
     type Foo = impl std::fmt::Debug;
 
+    #[define_opaque(Foo)]
     fn foo(_: Foo) {
         let _: Foo = 1;
     }

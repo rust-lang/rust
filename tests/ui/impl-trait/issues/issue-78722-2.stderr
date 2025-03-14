@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/issue-78722-2.rs:16:20
+  --> $DIR/issue-78722-2.rs:17:20
    |
 LL | type F = impl core::future::Future<Output = u8>;
    |          -------------------------------------- the expected future
@@ -10,10 +10,10 @@ LL |         let f: F = async { 1 };
    |                expected due to this
    |
    = note: expected opaque type `F`
-            found `async` block `{async block@$DIR/issue-78722-2.rs:16:20: 16:25}`
+            found `async` block `{async block@$DIR/issue-78722-2.rs:17:20: 17:25}`
 
-error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:13:13: 13:18}` to be a future that resolves to `u8`, but it resolves to `()`
-  --> $DIR/issue-78722-2.rs:11:30
+error[E0271]: expected `{async block@$DIR/issue-78722-2.rs:14:13: 14:18}` to be a future that resolves to `u8`, but it resolves to `()`
+  --> $DIR/issue-78722-2.rs:12:30
    |
 LL |         fn concrete_use() -> F {
    |                              ^ expected `u8`, found `()`

@@ -1,4 +1,4 @@
-use crate::net::test::{next_test_ip4, next_test_ip6};
+use crate::net::test::{compare_ignore_zoneid, next_test_ip4, next_test_ip6};
 use crate::net::*;
 use crate::sync::mpsc::channel;
 use crate::thread;
@@ -46,7 +46,7 @@ fn socket_smoke_test_ip4() {
         let (nread, src) = t!(server.recv_from(&mut buf));
         assert_eq!(nread, 1);
         assert_eq!(buf[0], 99);
-        assert_eq!(src, client_ip);
+        assert_eq!(compare_ignore_zoneid(&src, &client_ip), true);
         rx2.recv().unwrap();
     })
 }
@@ -78,7 +78,9 @@ fn udp_clone_smoke() {
 
         let _t = thread::spawn(move || {
             let mut buf = [0, 0];
-            assert_eq!(sock2.recv_from(&mut buf).unwrap(), (1, addr1));
+            let res = sock2.recv_from(&mut buf).unwrap();
+            assert_eq!(res.0, 1);
+            assert_eq!(compare_ignore_zoneid(&res.1, &addr1), true);
             assert_eq!(buf[0], 1);
             t!(sock2.send_to(&[2], &addr1));
         });
@@ -94,7 +96,9 @@ fn udp_clone_smoke() {
         });
         tx1.send(()).unwrap();
         let mut buf = [0, 0];
-        assert_eq!(sock1.recv_from(&mut buf).unwrap(), (1, addr2));
+        let res = sock1.recv_from(&mut buf).unwrap();
+        assert_eq!(res.0, 1);
+        assert_eq!(compare_ignore_zoneid(&res.1, &addr2), true);
         rx2.recv().unwrap();
     })
 }

@@ -140,7 +140,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub(crate) fn local_ty(&self, span: Span, nid: HirId) -> Ty<'tcx> {
         self.locals.borrow().get(&nid).cloned().unwrap_or_else(|| {
-            span_bug!(span, "no type for local variable {}", self.tcx.hir().node_to_string(nid))
+            span_bug!(span, "no type for local variable {}", self.tcx.hir_id_to_string(nid))
         })
     }
 
@@ -219,6 +219,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         user_self_ty: Option<UserSelfTy<'tcx>>,
     ) {
         debug!("fcx {}", self.tag());
+
+        // Don't write user type annotations for const param types, since we give them
+        // identity args just so that we can trivially substitute their `EarlyBinder`.
+        // We enforce that they match their type in MIR later on.
+        if matches!(self.tcx.def_kind(def_id), DefKind::ConstParam) {
+            return;
+        }
 
         if Self::can_contain_user_lifetime_bounds((args, user_self_ty)) {
             let canonicalized = self.canonicalize_user_type_annotation(ty::UserType::new(
@@ -552,11 +559,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None if let Some(e) = self.tainted_by_errors() => Ty::new_error(self.tcx, e),
             None => {
-                bug!(
-                    "no type for node {} in fcx {}",
-                    self.tcx.hir().node_to_string(id),
-                    self.tag()
-                );
+                bug!("no type for node {} in fcx {}", self.tcx.hir_id_to_string(id), self.tag());
             }
         }
     }
@@ -825,15 +828,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let trait_missing_method =
                     matches!(error, method::MethodError::NoMatch(_)) && ty.normalized.is_trait();
-                if item_name.name != kw::Empty {
-                    self.report_method_error(
-                        hir_id,
-                        ty.normalized,
-                        error,
-                        Expectation::NoExpectation,
-                        trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
-                    );
-                }
+                assert_ne!(item_name.name, kw::Empty);
+                self.report_method_error(
+                    hir_id,
+                    ty.normalized,
+                    error,
+                    Expectation::NoExpectation,
+                    trait_missing_method && span.edition().at_least_rust_2021(), // emits missing method for trait only after edition 2021
+                );
 
                 result
             });

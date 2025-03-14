@@ -8,7 +8,8 @@ mod llvm_enzyme {
     use std::string::String;
 
     use rustc_ast::expand::autodiff_attrs::{
-        AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ty_for_activity,
+        AutoDiffAttrs, DiffActivity, DiffMode, valid_input_activity, valid_ret_activity,
+        valid_ty_for_activity,
     };
     use rustc_ast::ptr::P;
     use rustc_ast::token::{Token, TokenKind};
@@ -247,6 +248,7 @@ mod llvm_enzyme {
             generics: Generics::default(),
             contract: None,
             body: Some(d_body),
+            define_opaque: None,
         });
         let mut rustc_ad_attr =
             P(ast::NormalAttr::from_ident(Ident::with_dummy_span(sym::rustc_autodiff)));
@@ -576,6 +578,8 @@ mod llvm_enzyme {
     //
     // Error handling: If the user provides an invalid configuration (incorrect numbers, types, or
     // both), we emit an error and return the original signature. This allows us to continue parsing.
+    // FIXME(Sa4dUs): make individual activities' span available so errors
+    // can point to only the activity instead of the entire attribute
     fn gen_enzyme_decl(
         ecx: &ExtCtxt<'_>,
         sig: &ast::FnSig,
@@ -623,10 +627,22 @@ mod llvm_enzyme {
                 errors = true;
             }
         }
+
+        if has_ret && !valid_ret_activity(x.mode, x.ret_activity) {
+            dcx.emit_err(errors::AutoDiffInvalidRetAct {
+                span,
+                mode: x.mode.to_string(),
+                act: x.ret_activity.to_string(),
+            });
+            // We don't set `errors = true` to avoid annoying type errors relative
+            // to the expanded macro type signature
+        }
+
         if errors {
             // This is not the right signature, but we can continue parsing.
             return (sig.clone(), new_inputs, idents, true);
         }
+
         let unsafe_activities = x
             .input_activity
             .iter()

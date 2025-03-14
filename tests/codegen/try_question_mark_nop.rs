@@ -17,10 +17,10 @@ use std::ptr::NonNull;
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
     // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: %.2 = select i1 %[[IS_SOME]], i32 %1, i32 undef
+    // TWENTY-NEXT: %[[PAYLOAD:.+]] = select i1 %[[IS_SOME]], i32 %1, i32 undef
     // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
     // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %1, 1
-    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %.2, 1
+    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %[[PAYLOAD]], 1
     // CHECK-NEXT: ret { i32, i32 } [[REG2]]
     match x {
         Some(x) => Some(x),
@@ -33,7 +33,7 @@ pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
 pub fn option_nop_traits_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
     // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: %.1 = select i1 %[[IS_SOME]], i32 %1, i32 undef
+    // TWENTY-NEXT: select i1 %[[IS_SOME]], i32 %1, i32 undef
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: insertvalue { i32, i32 }
     // CHECK-NEXT: ret { i32, i32 }

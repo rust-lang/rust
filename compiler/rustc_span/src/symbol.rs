@@ -33,6 +33,15 @@ symbols! {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
         // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        //
+        // Notes about `kw::Empty`:
+        // - Its use can blur the lines between "empty symbol" and "no symbol".
+        //   Using `Option<Symbol>` is preferable, where possible, because that
+        //   is unambiguous.
+        // - For dummy symbols that are never used and absolutely must be
+        //   present, it's better to use `sym::dummy` than `kw::Empty`, because
+        //   it's clearer that it's intended as a dummy value, and more likely
+        //   to be detected if it accidentally does get used.
         Empty:              "",
         PathRoot:           "{{root}}",
         DollarCrate:        "$crate",
@@ -779,6 +788,7 @@ symbols! {
         default_method_body_is_const,
         default_type_parameter_fallback,
         default_type_params,
+        define_opaque,
         delayed_bug_from_inside_query,
         deny,
         deprecated,
@@ -833,6 +843,7 @@ symbols! {
         drop_types_in_const,
         dropck_eyepatch,
         dropck_parametricity,
+        dummy: "<!dummy!>", // use this instead of `kw::Empty` for symbols that won't be used
         dummy_cgu_name,
         dylib,
         dyn_compatible_for_dispatch,
@@ -1016,6 +1027,7 @@ symbols! {
         from_residual,
         from_size_align_unchecked,
         from_str_method,
+        from_u16,
         from_usize,
         from_yeet,
         fs_create_dir,
@@ -2303,9 +2315,21 @@ impl Ident {
         Ident::new(name, DUMMY_SP)
     }
 
+    /// This is best avoided, because it blurs the lines between "empty
+    /// identifier" and "no identifier". Using `Option<Ident>` is preferable,
+    /// where possible, because that is unambiguous.
     #[inline]
     pub fn empty() -> Ident {
         Ident::with_dummy_span(kw::Empty)
+    }
+
+    // For dummy identifiers that are never used and absolutely must be
+    // present, it's better to use `Ident::dummy` than `Ident::Empty`, because
+    // it's clearer that it's intended as a dummy value, and more likely to be
+    // detected if it accidentally does get used.
+    #[inline]
+    pub fn dummy() -> Ident {
+        Ident::with_dummy_span(sym::dummy)
     }
 
     /// Maps a string to an identifier with a dummy span.
