@@ -66,7 +66,7 @@ impl Step for Std {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
 
         if builder.top_stage == 0 {
-            // Reuse the beta compiler's libstd
+            // Reuse the stage0 libstd
             builder.ensure(compile::Std::new(compiler, target));
             return;
         }
