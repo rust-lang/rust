@@ -28,7 +28,7 @@ LL | | where
 LL | |     Bar: Send,
    | |______________^
 note: ...which requires computing revealed normalized predicates of `foo::{constant#0}`...
-  --> $DIR/in-where-clause.rs:12:9
+  --> $DIR/in-where-clause.rs:13:9
    |
 LL |     [0; 1 + 2]
    |         ^^^^^
