@@ -313,7 +313,7 @@ impl<'a> SymbolCollector<'a> {
                 .to_smolstr(),
         );
         self.with_container_name(impl_name, |s| {
-            for &(ref name, assoc_item_id) in &impl_data.items {
+            for &(ref name, assoc_item_id) in &self.db.impl_items(impl_id).items {
                 s.push_assoc_item(assoc_item_id, name)
             }
         })
@@ -322,7 +322,7 @@ impl<'a> SymbolCollector<'a> {
     fn collect_from_trait(&mut self, trait_id: TraitId) {
         let trait_data = self.db.trait_data(trait_id);
         self.with_container_name(Some(trait_data.name.as_str().into()), |s| {
-            for &(ref name, assoc_item_id) in &trait_data.items {
+            for &(ref name, assoc_item_id) in &self.db.trait_items(trait_id).items {
                 s.push_assoc_item(assoc_item_id, name);
             }
         });

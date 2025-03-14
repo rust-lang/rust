@@ -1,6 +1,6 @@
 //! Completes constants and paths in unqualified patterns.
 
-use hir::{db::DefDatabase, AssocItem, ScopeDef};
+use hir::{AssocItem, ScopeDef};
 use ide_db::syntax_helpers::suggest_name;
 use syntax::ast::Pat;
 
@@ -60,7 +60,7 @@ pub(crate) fn complete_pattern(
     }
 
     let refutable = pattern_ctx.refutability == PatternRefutability::Refutable;
-    let single_variant_enum = |enum_: hir::Enum| ctx.db.enum_data(enum_.into()).variants.len() == 1;
+    let single_variant_enum = |enum_: hir::Enum| enum_.num_variants(ctx.db) == 1;
 
     if let Some(hir::Adt::Enum(e)) =
         ctx.expected_type.as_ref().and_then(|ty| ty.strip_references().as_adt())

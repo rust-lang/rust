@@ -11,7 +11,7 @@ use triomphe::Arc;
 use crate::{
     attr::{Attrs, AttrsWithOwner},
     data::{
-        adt::{EnumData, EnumVariantData, StructData, VariantData},
+        adt::{EnumData, EnumVariantData, EnumVariants, StructData, VariantData},
         ConstData, ExternCrateDeclData, FunctionData, ImplData, Macro2Data, MacroRulesData,
         ProcMacroData, StaticData, TraitAliasData, TraitData, TypeAliasData,
     },
@@ -20,7 +20,11 @@ use crate::{
     import_map::ImportMap,
     item_tree::{AttrOwner, ItemTree, ItemTreeSourceMaps},
     lang_item::{self, LangItem, LangItemTarget, LangItems},
-    nameres::{diagnostics::DefDiagnostics, DefMap, LocalDefMap},
+    nameres::{
+        assoc::{ImplItems, TraitItems},
+        diagnostics::DefDiagnostics,
+        DefMap, LocalDefMap,
+    },
     tt,
     type_ref::TypesSourceMap,
     visibility::{self, Visibility},
@@ -147,48 +151,46 @@ pub trait DefDatabase:
     // region:data
 
     #[salsa::transparent]
+    #[salsa::invoke_actual(VariantData::variant_data_query)]
+    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
+
+    #[salsa::invoke_actual(VariantData::variant_data_with_diagnostics_query)]
+    fn variant_data_with_diagnostics(&self, id: VariantId) -> (Arc<VariantData>, DefDiagnostics);
+
     #[salsa::invoke_actual(StructData::struct_data_query)]
     fn struct_data(&self, id: StructId) -> Arc<StructData>;
 
-    #[salsa::invoke_actual(StructData::struct_data_with_diagnostics_query)]
-    fn struct_data_with_diagnostics(&self, id: StructId) -> (Arc<StructData>, DefDiagnostics);
-
-    #[salsa::transparent]
     #[salsa::invoke_actual(StructData::union_data_query)]
     fn union_data(&self, id: UnionId) -> Arc<StructData>;
-
-    #[salsa::invoke_actual(StructData::union_data_with_diagnostics_query)]
-    fn union_data_with_diagnostics(&self, id: UnionId) -> (Arc<StructData>, DefDiagnostics);
 
     #[salsa::invoke_actual(EnumData::enum_data_query)]
     fn enum_data(&self, e: EnumId) -> Arc<EnumData>;
 
-    #[salsa::transparent]
+    #[salsa::invoke_actual(EnumVariants::enum_variants_query)]
+    fn enum_variants(&self, e: EnumId) -> Arc<EnumVariants>;
+
     #[salsa::invoke_actual(EnumVariantData::enum_variant_data_query)]
     fn enum_variant_data(&self, id: EnumVariantId) -> Arc<EnumVariantData>;
 
-    #[salsa::invoke_actual(EnumVariantData::enum_variant_data_with_diagnostics_query)]
-    fn enum_variant_data_with_diagnostics(
-        &self,
-        id: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, DefDiagnostics);
-
-    #[salsa::transparent]
-    #[salsa::invoke_actual(VariantData::variant_data)]
-    fn variant_data(&self, id: VariantId) -> Arc<VariantData>;
-    #[salsa::transparent]
     #[salsa::invoke_actual(ImplData::impl_data_query)]
     fn impl_data(&self, e: ImplId) -> Arc<ImplData>;
 
-    #[salsa::invoke_actual(ImplData::impl_data_with_diagnostics_query)]
-    fn impl_data_with_diagnostics(&self, e: ImplId) -> (Arc<ImplData>, DefDiagnostics);
-
     #[salsa::transparent]
+    #[salsa::invoke_actual(ImplItems::impl_items_query)]
+    fn impl_items(&self, e: ImplId) -> Arc<ImplItems>;
+
+    #[salsa::invoke_actual(ImplItems::impl_items_with_diagnostics_query)]
+    fn impl_items_with_diagnostics(&self, e: ImplId) -> (Arc<ImplItems>, DefDiagnostics);
+
     #[salsa::invoke_actual(TraitData::trait_data_query)]
     fn trait_data(&self, e: TraitId) -> Arc<TraitData>;
 
-    #[salsa::invoke_actual(TraitData::trait_data_with_diagnostics_query)]
-    fn trait_data_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitData>, DefDiagnostics);
+    #[salsa::transparent]
+    #[salsa::invoke_actual(TraitItems::trait_items_query)]
+    fn trait_items(&self, e: TraitId) -> Arc<TraitItems>;
+
+    #[salsa::invoke_actual(TraitItems::trait_items_with_diagnostics_query)]
+    fn trait_items_with_diagnostics(&self, tr: TraitId) -> (Arc<TraitItems>, DefDiagnostics);
 
     #[salsa::invoke_actual(TraitAliasData::trait_alias_query)]
     fn trait_alias_data(&self, e: TraitAliasId) -> Arc<TraitAliasData>;

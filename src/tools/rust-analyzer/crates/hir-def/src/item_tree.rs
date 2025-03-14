@@ -506,7 +506,7 @@ impl AttrOwner {
 pub enum FieldParent {
     Struct(FileItemTreeId<Struct>),
     Union(FileItemTreeId<Union>),
-    Variant(FileItemTreeId<Variant>),
+    EnumVariant(FileItemTreeId<Variant>),
 }
 
 pub type ItemTreeParamId = Idx<Param>;

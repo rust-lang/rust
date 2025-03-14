@@ -43,7 +43,7 @@ impl CastTy {
                 let (AdtId::EnumId(id), _) = t.as_adt()? else {
                     return None;
                 };
-                let enum_data = table.db.enum_data(id);
+                let enum_data = table.db.enum_variants(id);
                 if enum_data.is_payload_free(table.db.upcast()) {
                     Some(Self::Int(Int::CEnum))
                 } else {
@@ -389,8 +389,8 @@ fn pointer_kind(ty: &Ty, table: &mut InferenceTable<'_>) -> Result<Option<Pointe
                 return Err(());
             };
 
-            let struct_data = table.db.struct_data(id);
-            if let Some((last_field, _)) = struct_data.variant_data.fields().iter().last() {
+            let struct_data = table.db.variant_data(id.into());
+            if let Some((last_field, _)) = struct_data.fields().iter().last() {
                 let last_field_ty =
                     table.db.field_types(id.into())[last_field].clone().substitute(Interner, subst);
                 pointer_kind(&last_field_ty, table)

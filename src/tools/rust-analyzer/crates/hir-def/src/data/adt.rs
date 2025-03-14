@@ -3,18 +3,14 @@
 use base_db::Crate;
 use bitflags::bitflags;
 use cfg::CfgOptions;
-use either::Either;
 
 use hir_expand::name::Name;
 use intern::sym;
 use la_arena::Arena;
-use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
-use rustc_hashes::Hash64;
+use rustc_abi::{IntegerType, ReprOptions};
 use triomphe::Arc;
-use tt::iter::TtElement;
 
 use crate::{
-    builtin_type::{BuiltinInt, BuiltinUint},
     db::DefDatabase,
     hir::Expr,
     item_tree::{
@@ -22,7 +18,6 @@ use crate::{
     },
     lang_item::LangItem,
     nameres::diagnostics::{DefDiagnostic, DefDiagnostics},
-    tt::{Delimiter, DelimiterKind, Leaf, TopSubtree},
     type_ref::{TypeRefId, TypesMap},
     visibility::RawVisibility,
     EnumId, EnumVariantId, LocalFieldId, LocalModuleId, Lookup, StructId, UnionId, VariantId,
@@ -32,7 +27,6 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StructData {
     pub name: Name,
-    pub variant_data: Arc<VariantData>,
     pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
     pub flags: StructFlags,
@@ -61,16 +55,19 @@ bitflags! {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumData {
     pub name: Name,
-    pub variants: Box<[(EnumVariantId, Name)]>,
     pub repr: Option<ReprOptions>,
     pub visibility: RawVisibility,
     pub rustc_has_incoherent_inherent_impls: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EnumVariants {
+    pub variants: Box<[(EnumVariantId, Name)]>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EnumVariantData {
     pub name: Name,
-    pub variant_data: Arc<VariantData>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -78,6 +75,94 @@ pub enum VariantData {
     Record { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Tuple { fields: Arena<FieldData>, types_map: Arc<TypesMap> },
     Unit,
+}
+
+impl VariantData {
+    #[inline]
+    pub(crate) fn variant_data_query(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
+        db.variant_data_with_diagnostics(id).0
+    }
+
+    pub(crate) fn variant_data_with_diagnostics_query(
+        db: &dyn DefDatabase,
+        id: VariantId,
+    ) -> (Arc<VariantData>, DefDiagnostics) {
+        let (shape, types_map, (fields, diagnostics)) = match id {
+            VariantId::EnumVariantId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let parent = loc.parent.lookup(db);
+                let krate = parent.container.krate;
+                let variant = &item_tree[loc.id.value];
+                (
+                    variant.shape,
+                    variant.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        parent.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::EnumVariant(loc.id.value),
+                        &variant.fields,
+                        Some(item_tree[parent.id.value].visibility),
+                    ),
+                )
+            }
+            VariantId::StructId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let krate = loc.container.krate;
+                let strukt = &item_tree[loc.id.value];
+                (
+                    strukt.shape,
+                    strukt.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        loc.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::Struct(loc.id.value),
+                        &strukt.fields,
+                        None,
+                    ),
+                )
+            }
+            VariantId::UnionId(id) => {
+                let loc = id.lookup(db);
+                let item_tree = loc.id.item_tree(db);
+                let krate = loc.container.krate;
+                let union = &item_tree[loc.id.value];
+                (
+                    FieldsShape::Record,
+                    union.types_map.clone(),
+                    lower_fields(
+                        db,
+                        krate,
+                        loc.container.local_id,
+                        loc.id.tree_id(),
+                        &item_tree,
+                        krate.cfg_options(db),
+                        FieldParent::Union(loc.id.value),
+                        &union.fields,
+                        None,
+                    ),
+                )
+            }
+        };
+
+        (
+            Arc::new(match shape {
+                FieldsShape::Record => VariantData::Record { fields, types_map },
+                FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
+                FieldsShape::Unit => VariantData::Unit,
+            }),
+            DefDiagnostics::new(diagnostics),
+        )
+    }
 }
 
 /// A single field of an enum variant or struct
@@ -94,104 +179,12 @@ fn repr_from_value(
     item_tree: &ItemTree,
     of: AttrOwner,
 ) -> Option<ReprOptions> {
-    item_tree.attrs(db, krate, of).by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
-}
-
-fn parse_repr_tt(tt: &TopSubtree) -> Option<ReprOptions> {
-    match tt.top_subtree().delimiter {
-        Delimiter { kind: DelimiterKind::Parenthesis, .. } => {}
-        _ => return None,
-    }
-
-    let mut flags = ReprFlags::empty();
-    let mut int = None;
-    let mut max_align: Option<Align> = None;
-    let mut min_pack: Option<Align> = None;
-
-    let mut tts = tt.iter();
-    while let Some(tt) = tts.next() {
-        if let TtElement::Leaf(Leaf::Ident(ident)) = tt {
-            flags.insert(match &ident.sym {
-                s if *s == sym::packed => {
-                    let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
-                        tts.next();
-                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
-                            lit.symbol.as_str().parse().unwrap_or_default()
-                        } else {
-                            0
-                        }
-                    } else {
-                        0
-                    };
-                    let pack = Align::from_bytes(pack).unwrap_or(Align::ONE);
-                    min_pack =
-                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
-                    ReprFlags::empty()
-                }
-                s if *s == sym::align => {
-                    if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
-                        tts.next();
-                        if let Some(TtElement::Leaf(Leaf::Literal(lit))) = tt_iter.next() {
-                            if let Ok(align) = lit.symbol.as_str().parse() {
-                                let align = Align::from_bytes(align).ok();
-                                max_align = max_align.max(align);
-                            }
-                        }
-                    }
-                    ReprFlags::empty()
-                }
-                s if *s == sym::C => ReprFlags::IS_C,
-                s if *s == sym::transparent => ReprFlags::IS_TRANSPARENT,
-                s if *s == sym::simd => ReprFlags::IS_SIMD,
-                repr => {
-                    if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
-                        .map(Either::Left)
-                        .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
-                    {
-                        int = Some(match builtin {
-                            Either::Left(bi) => match bi {
-                                BuiltinInt::Isize => IntegerType::Pointer(true),
-                                BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
-                                BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
-                                BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
-                                BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
-                                BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
-                            },
-                            Either::Right(bu) => match bu {
-                                BuiltinUint::Usize => IntegerType::Pointer(false),
-                                BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
-                                BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
-                                BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
-                                BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
-                                BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
-                            },
-                        });
-                    }
-                    ReprFlags::empty()
-                }
-            })
-        }
-    }
-
-    Some(ReprOptions {
-        int,
-        align: max_align,
-        pack: min_pack,
-        flags,
-        field_shuffle_seed: Hash64::ZERO,
-    })
+    item_tree.attrs(db, krate, of).repr()
 }
 
 impl StructData {
     #[inline]
     pub(crate) fn struct_data_query(db: &dyn DefDatabase, id: StructId) -> Arc<StructData> {
-        db.struct_data_with_diagnostics(id).0
-    }
-
-    pub(crate) fn struct_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        id: StructId,
-    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -216,44 +209,16 @@ impl StructData {
         }
 
         let strukt = &item_tree[loc.id.value];
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            loc.container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Struct(loc.id.value),
-            &strukt.fields,
-            None,
-        );
-        let types_map = strukt.types_map.clone();
-
-        (
-            Arc::new(StructData {
-                name: strukt.name.clone(),
-                variant_data: Arc::new(match strukt.shape {
-                    FieldsShape::Record => VariantData::Record { fields, types_map },
-                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
-                    FieldsShape::Unit => VariantData::Unit,
-                }),
-                repr,
-                visibility: item_tree[strukt.visibility].clone(),
-                flags,
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+        Arc::new(StructData {
+            name: strukt.name.clone(),
+            repr,
+            visibility: item_tree[strukt.visibility].clone(),
+            flags,
+        })
     }
 
     #[inline]
     pub(crate) fn union_data_query(db: &dyn DefDatabase, id: UnionId) -> Arc<StructData> {
-        db.union_data_with_diagnostics(id).0
-    }
-
-    pub(crate) fn union_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        id: UnionId,
-    ) -> (Arc<StructData>, DefDiagnostics) {
         let loc = id.lookup(db);
         let krate = loc.container.krate;
         let item_tree = loc.id.item_tree(db);
@@ -268,28 +233,53 @@ impl StructData {
         }
 
         let union = &item_tree[loc.id.value];
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            loc.container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Union(loc.id.value),
-            &union.fields,
-            None,
-        );
-        let types_map = union.types_map.clone();
-        (
-            Arc::new(StructData {
-                name: union.name.clone(),
-                variant_data: Arc::new(VariantData::Record { fields, types_map }),
-                repr,
-                visibility: item_tree[union.visibility].clone(),
-                flags,
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+
+        Arc::new(StructData {
+            name: union.name.clone(),
+            repr,
+            visibility: item_tree[union.visibility].clone(),
+            flags,
+        })
+    }
+}
+
+impl EnumVariants {
+    pub(crate) fn enum_variants_query(db: &dyn DefDatabase, e: EnumId) -> Arc<EnumVariants> {
+        let loc = e.lookup(db);
+        let item_tree = loc.id.item_tree(db);
+
+        Arc::new(EnumVariants {
+            variants: loc.container.def_map(db).enum_definitions[&e]
+                .iter()
+                .map(|&id| (id, item_tree[id.lookup(db).id.value].name.clone()))
+                .collect(),
+        })
+    }
+
+    pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
+        let &(id, _) = self.variants.iter().find(|(_id, n)| n == name)?;
+        Some(id)
+    }
+
+    // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
+    pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
+        self.variants.iter().all(|&(v, _)| {
+            // The condition check order is slightly modified from rustc
+            // to improve performance by early returning with relatively fast checks
+            let variant = &db.variant_data(v.into());
+            if !variant.fields().is_empty() {
+                return false;
+            }
+            // The outer if condition is whether this variant has const ctor or not
+            if !matches!(variant.kind(), StructKind::Unit) {
+                let body = db.body(v.into());
+                // A variant with explicit discriminant
+                if body.exprs[body.body_expr] != Expr::Missing {
+                    return false;
+                }
+            }
+            true
+        })
     }
 }
 
@@ -308,19 +298,10 @@ impl EnumData {
 
         Arc::new(EnumData {
             name: enum_.name.clone(),
-            variants: loc.container.def_map(db).enum_definitions[&e]
-                .iter()
-                .map(|&id| (id, item_tree[id.lookup(db).id.value].name.clone()))
-                .collect(),
             repr,
             visibility: item_tree[enum_.visibility].clone(),
             rustc_has_incoherent_inherent_impls,
         })
-    }
-
-    pub fn variant(&self, name: &Name) -> Option<EnumVariantId> {
-        let &(id, _) = self.variants.iter().find(|(_id, n)| n == name)?;
-        Some(id)
     }
 
     pub fn variant_body_type(&self) -> IntegerType {
@@ -328,27 +309,6 @@ impl EnumData {
             Some(ReprOptions { int: Some(builtin), .. }) => builtin,
             _ => IntegerType::Pointer(true),
         }
-    }
-
-    // [Adopted from rustc](https://github.com/rust-lang/rust/blob/bd53aa3bf7a24a70d763182303bd75e5fc51a9af/compiler/rustc_middle/src/ty/adt.rs#L446-L448)
-    pub fn is_payload_free(&self, db: &dyn DefDatabase) -> bool {
-        self.variants.iter().all(|(v, _)| {
-            // The condition check order is slightly modified from rustc
-            // to improve performance by early returning with relatively fast checks
-            let variant = &db.enum_variant_data(*v).variant_data;
-            if !variant.fields().is_empty() {
-                return false;
-            }
-            // The outer if condition is whether this variant has const ctor or not
-            if !matches!(variant.kind(), StructKind::Unit) {
-                let body = db.body((*v).into());
-                // A variant with explicit discriminant
-                if body.exprs[body.body_expr] != Expr::Missing {
-                    return false;
-                }
-            }
-            true
-        })
     }
 }
 
@@ -358,43 +318,11 @@ impl EnumVariantData {
         db: &dyn DefDatabase,
         e: EnumVariantId,
     ) -> Arc<EnumVariantData> {
-        db.enum_variant_data_with_diagnostics(e).0
-    }
-
-    pub(crate) fn enum_variant_data_with_diagnostics_query(
-        db: &dyn DefDatabase,
-        e: EnumVariantId,
-    ) -> (Arc<EnumVariantData>, DefDiagnostics) {
         let loc = e.lookup(db);
-        let container = loc.parent.lookup(db).container;
-        let krate = container.krate;
         let item_tree = loc.id.item_tree(db);
         let variant = &item_tree[loc.id.value];
 
-        let (fields, diagnostics) = lower_fields(
-            db,
-            krate,
-            container.local_id,
-            loc.id.tree_id(),
-            &item_tree,
-            krate.cfg_options(db),
-            FieldParent::Variant(loc.id.value),
-            &variant.fields,
-            Some(item_tree[loc.parent.lookup(db).id.value].visibility),
-        );
-        let types_map = variant.types_map.clone();
-
-        (
-            Arc::new(EnumVariantData {
-                name: variant.name.clone(),
-                variant_data: Arc::new(match variant.shape {
-                    FieldsShape::Record => VariantData::Record { fields, types_map },
-                    FieldsShape::Tuple => VariantData::Tuple { fields, types_map },
-                    FieldsShape::Unit => VariantData::Unit,
-                }),
-            }),
-            DefDiagnostics::new(diagnostics),
-        )
+        Arc::new(EnumVariantData { name: variant.name.clone() })
     }
 }
 
@@ -426,15 +354,6 @@ impl VariantData {
             VariantData::Record { .. } => StructKind::Record,
             VariantData::Tuple { .. } => StructKind::Tuple,
             VariantData::Unit => StructKind::Unit,
-        }
-    }
-
-    #[allow(clippy::self_named_constructors)]
-    pub(crate) fn variant_data(db: &dyn DefDatabase, id: VariantId) -> Arc<VariantData> {
-        match id {
-            VariantId::StructId(it) => db.struct_data(it).variant_data.clone(),
-            VariantId::EnumVariantId(it) => db.enum_variant_data(it).variant_data.clone(),
-            VariantId::UnionId(it) => db.union_data(it).variant_data.clone(),
         }
     }
 }

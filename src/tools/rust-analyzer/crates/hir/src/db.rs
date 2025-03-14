@@ -11,7 +11,7 @@ pub use hir_def::db::DefDatabase;
 //     ExpandProcAttrMacrosQuery, ExprScopesQuery, ExternCrateDeclDataQuery, FieldVisibilitiesQuery,
 //     FieldsAttrsQuery, FieldsAttrsSourceMapQuery, FileItemTreeQuery, FileItemTreeWithSourceMapQuery,
 //     FunctionDataQuery, FunctionVisibilityQuery, GenericParamsQuery,
-//     GenericParamsWithSourceMapQuery, ImplDataWithDiagnosticsQuery, ImportMapQuery,
+//     GenericParamsWithSourceMapQuery, ImplItemsWithDiagnosticsQuery, ImportMapQuery,
 //     IncludeMacroInvocQuery, InternAnonymousConstQuery, InternBlockQuery, InternConstQuery,
 //     InternDatabase, InternDatabaseStorage, InternEnumQuery, InternExternBlockQuery,
 //     InternExternCrateQuery, InternFunctionQuery, InternImplQuery, InternInTypeConstQuery,
@@ -19,7 +19,7 @@ pub use hir_def::db::DefDatabase;
 //     InternStructQuery, InternTraitAliasQuery, InternTraitQuery, InternTypeAliasQuery,
 //     InternUnionQuery, InternUseQuery, LangItemQuery, Macro2DataQuery, MacroDefQuery,
 //     MacroRulesDataQuery, NotableTraitsInDepsQuery, ProcMacroDataQuery, StaticDataQuery,
-//     StructDataWithDiagnosticsQuery, TraitAliasDataQuery, TraitDataWithDiagnosticsQuery,
+//     StructDataWithDiagnosticsQuery, TraitAliasDataQuery, TraitItemsWithDiagnosticsQuery,
 //     TypeAliasDataQuery, UnionDataWithDiagnosticsQuery,
 // };
 pub use hir_expand::db::ExpandDatabase;

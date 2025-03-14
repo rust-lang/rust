@@ -210,7 +210,7 @@ pub(crate) fn deref_by_trait(
     };
     let trait_id = trait_id()?;
     let target = db
-        .trait_data(trait_id)
+        .trait_items(trait_id)
         .associated_type_by_name(&Name::new_symbol_root(sym::Target.clone()))?;
 
     let projection = {

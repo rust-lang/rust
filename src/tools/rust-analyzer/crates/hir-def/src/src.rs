@@ -131,7 +131,7 @@ impl HasChildSource<LocalFieldId> for VariantId {
                 item_tree = lookup.id.item_tree(db);
                 (
                     lookup.source(db).map(|it| it.kind()),
-                    FieldParent::Variant(lookup.id.value),
+                    FieldParent::EnumVariant(lookup.id.value),
                     lookup.parent.lookup(db).container,
                 )
             }

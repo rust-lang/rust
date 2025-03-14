@@ -898,7 +898,7 @@ fn named_associated_type_shorthand_candidates<R>(
 ) -> Option<R> {
     let mut search = |t| {
         all_super_trait_refs(db, t, |t| {
-            let data = db.trait_data(t.hir_trait_id());
+            let data = db.trait_items(t.hir_trait_id());
 
             for (name, assoc_id) in &data.items {
                 if let AssocItemId::TypeAliasId(alias) = assoc_id {
@@ -1068,7 +1068,7 @@ pub(crate) fn generic_predicates_for_param_query(
                     };
 
                     all_super_traits(db.upcast(), tr).iter().any(|tr| {
-                        db.trait_data(*tr).items.iter().any(|(name, item)| {
+                        db.trait_items(*tr).items.iter().any(|(name, item)| {
                             matches!(item, AssocItemId::TypeAliasId(_)) && name == assoc_name
                         })
                     })
@@ -1491,16 +1491,12 @@ fn type_for_static(db: &dyn HirDatabase, def: StaticId) -> Binders<Ty> {
 }
 
 fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnSig {
-    let struct_data = db.struct_data(def);
-    let fields = struct_data.variant_data.fields();
+    let struct_data = db.variant_data(def.into());
+    let fields = struct_data.fields();
     let resolver = def.resolver(db.upcast());
-    let mut ctx = TyLoweringContext::new(
-        db,
-        &resolver,
-        struct_data.variant_data.types_map(),
-        AdtId::from(def).into(),
-    )
-    .with_type_param_mode(ParamLoweringMode::Variable);
+    let mut ctx =
+        TyLoweringContext::new(db, &resolver, struct_data.types_map(), AdtId::from(def).into())
+            .with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(field.type_ref));
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
     Binders::new(
@@ -1511,8 +1507,8 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
 
 /// Build the type of a tuple struct constructor.
 fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Binders<Ty>> {
-    let struct_data = db.struct_data(def);
-    match struct_data.variant_data.kind() {
+    let struct_data = db.variant_data(def.into());
+    match struct_data.kind() {
         StructKind::Record => None,
         StructKind::Unit => Some(type_for_adt(db, def.into())),
         StructKind::Tuple => {
@@ -1528,13 +1524,13 @@ fn type_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> Option<Bi
 }
 
 fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId) -> PolyFnSig {
-    let var_data = db.enum_variant_data(def);
-    let fields = var_data.variant_data.fields();
+    let var_data = db.variant_data(def.into());
+    let fields = var_data.fields();
     let resolver = def.resolver(db.upcast());
     let mut ctx = TyLoweringContext::new(
         db,
         &resolver,
-        var_data.variant_data.types_map(),
+        var_data.types_map(),
         DefWithBodyId::VariantId(def).into(),
     )
     .with_type_param_mode(ParamLoweringMode::Variable);
@@ -1553,7 +1549,7 @@ fn type_for_enum_variant_constructor(
     def: EnumVariantId,
 ) -> Option<Binders<Ty>> {
     let e = def.lookup(db.upcast()).parent;
-    match db.enum_variant_data(def).variant_data.kind() {
+    match db.variant_data(def.into()).kind() {
         StructKind::Record => None,
         StructKind::Unit => Some(type_for_adt(db, e.into())),
         StructKind::Tuple => {

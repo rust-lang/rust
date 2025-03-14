@@ -428,7 +428,7 @@ impl<'a> Ctx<'a> {
         for (idx, attr) in attrs {
             self.add_attrs(
                 AttrOwner::Field(
-                    FieldParent::Variant(FileItemTreeId(id)),
+                    FieldParent::EnumVariant(FileItemTreeId(id)),
                     Idx::from_raw(RawIdx::from_u32(idx as u32)),
                 ),
                 attr,

@@ -492,7 +492,7 @@ impl FilterMapNextChecker {
                 Some(next_function_id),
                 match next_function_id.lookup(db.upcast()).container {
                     ItemContainerId::TraitId(iterator_trait_id) => {
-                        let iterator_trait_items = &db.trait_data(iterator_trait_id).items;
+                        let iterator_trait_items = &db.trait_items(iterator_trait_id).items;
                         iterator_trait_items.iter().find_map(|(name, it)| match it {
                             &AssocItemId::FunctionId(id) if *name == sym::filter_map.clone() => {
                                 Some(id)
@@ -642,7 +642,7 @@ fn missing_match_arms<'p>(
     }
 
     let non_empty_enum = match scrut_ty.as_adt() {
-        Some((AdtId::EnumId(e), _)) => !cx.db.enum_data(e).variants.is_empty(),
+        Some((AdtId::EnumId(e), _)) => !cx.db.enum_variants(e).variants.is_empty(),
         _ => false,
     };
     let display_target = DisplayTarget::from_crate(cx.db, krate);

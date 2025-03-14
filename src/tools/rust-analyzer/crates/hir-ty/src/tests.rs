@@ -439,7 +439,7 @@ pub(crate) fn visit_module(
 ) {
     visit_scope(db, crate_def_map, &crate_def_map[module_id].scope, cb);
     for impl_id in crate_def_map[module_id].scope.impls() {
-        let impl_data = db.impl_data(impl_id);
+        let impl_data = db.impl_items(impl_id);
         for &(_, item) in impl_data.items.iter() {
             match item {
                 AssocItemId::FunctionId(it) => {
@@ -481,14 +481,14 @@ pub(crate) fn visit_module(
                     visit_body(db, &body, cb);
                 }
                 ModuleDefId::AdtId(hir_def::AdtId::EnumId(it)) => {
-                    db.enum_data(it).variants.iter().for_each(|&(it, _)| {
+                    db.enum_variants(it).variants.iter().for_each(|&(it, _)| {
                         let body = db.body(it.into());
                         cb(it.into());
                         visit_body(db, &body, cb);
                     });
                 }
                 ModuleDefId::TraitId(it) => {
-                    let trait_data = db.trait_data(it);
+                    let trait_data = db.trait_items(it);
                     for &(_, item) in trait_data.items.iter() {
                         match item {
                             AssocItemId::FunctionId(it) => cb(it.into()),

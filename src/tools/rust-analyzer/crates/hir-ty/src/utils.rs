@@ -226,7 +226,7 @@ pub(super) fn associated_type_by_name_including_super_traits(
     name: &Name,
 ) -> Option<(TraitRef, TypeAliasId)> {
     all_super_trait_refs(db, trait_ref, |t| {
-        let assoc_type = db.trait_data(t.hir_trait_id()).associated_type_by_name(name)?;
+        let assoc_type = db.trait_items(t.hir_trait_id()).associated_type_by_name(name)?;
         Some((t, assoc_type))
     })
 }
@@ -369,7 +369,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
     let (var_id, var_layout) = match &layout.variants {
         hir_def::layout::Variants::Empty => unreachable!(),
         hir_def::layout::Variants::Single { index } => {
-            (db.enum_data(e).variants[index.0].0, layout)
+            (db.enum_variants(e).variants[index.0].0, layout)
         }
         hir_def::layout::Variants::Multiple { tag, tag_encoding, variants, .. } => {
             let size = tag.size(target_data_layout).bytes_usize();
@@ -379,7 +379,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                 TagEncoding::Direct => {
                     let (var_idx, layout) =
                         variants.iter_enumerated().find_map(|(var_idx, v)| {
-                            let def = db.enum_data(e).variants[var_idx.0].0;
+                            let def = db.enum_variants(e).variants[var_idx.0].0;
                             (db.const_eval_discriminant(def) == Ok(tag)).then_some((def, v))
                         })?;
                     (var_idx, layout)
@@ -392,7 +392,7 @@ pub(crate) fn detect_variant_from_bytes<'a>(
                         .filter(|x| x != untagged_variant)
                         .nth(candidate_tag)
                         .unwrap_or(*untagged_variant);
-                    (db.enum_data(e).variants[variant.0].0, &variants[variant])
+                    (db.enum_variants(e).variants[variant.0].0, &variants[variant])
                 }
             }
         }

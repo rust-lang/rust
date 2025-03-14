@@ -34,7 +34,7 @@ pub(crate) trait ChildBySource {
 
 impl ChildBySource for TraitId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.trait_data(*self);
+        let data = db.trait_items(*self);
 
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
@@ -49,7 +49,7 @@ impl ChildBySource for TraitId {
 
 impl ChildBySource for ImplId {
     fn child_by_source_to(&self, db: &dyn DefDatabase, res: &mut DynMap, file_id: HirFileId) {
-        let data = db.impl_data(*self);
+        let data = db.impl_items(*self);
         // FIXME: Macro calls
         data.attribute_calls().filter(|(ast_id, _)| ast_id.file_id == file_id).for_each(
             |(ast_id, call_id)| {
@@ -182,7 +182,7 @@ impl ChildBySource for EnumId {
         let tree = loc.id.item_tree(db);
         let ast_id_map = db.ast_id_map(loc.id.file_id());
 
-        db.enum_data(*self).variants.iter().for_each(|&(variant, _)| {
+        db.enum_variants(*self).variants.iter().for_each(|&(variant, _)| {
             res[keys::ENUM_VARIANT]
                 .insert(ast_id_map.get(tree[variant.lookup(db).id.value].ast_id), variant);
         });

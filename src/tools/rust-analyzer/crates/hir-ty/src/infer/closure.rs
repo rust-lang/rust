@@ -815,7 +815,7 @@ impl InferenceContext<'_> {
                         {
                             if let Some(deref_fn) = self
                                 .db
-                                .trait_data(deref_trait)
+                                .trait_items(deref_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
                             {
                                 break 'b deref_fn == f;
@@ -963,7 +963,7 @@ impl InferenceContext<'_> {
                 if let Some(variant) = self.result.variant_resolution_for_pat(p) {
                     let adt = variant.adt_id(self.db.upcast());
                     let is_multivariant = match adt {
-                        hir_def::AdtId::EnumId(e) => self.db.enum_data(e).variants.len() != 1,
+                        hir_def::AdtId::EnumId(e) => self.db.enum_variants(e).variants.len() != 1,
                         _ => false,
                     };
                     if is_multivariant {
@@ -1159,7 +1159,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_data(s.into());
                             for field_pat in args.iter() {
                                 let arg = field_pat.pat;
                                 let Some(local_id) = vd.field(&field_pat.name) else {
@@ -1211,7 +1211,7 @@ impl InferenceContext<'_> {
                             self.consume_place(place)
                         }
                         VariantId::StructId(s) => {
-                            let vd = &*self.db.struct_data(s).variant_data;
+                            let vd = &*self.db.variant_data(s.into());
                             let (al, ar) =
                                 args.split_at(ellipsis.map_or(args.len(), |it| it as usize));
                             let fields = vd.fields().iter();

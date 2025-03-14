@@ -134,7 +134,7 @@ impl InferenceContext<'_> {
                         {
                             if let Some(index_fn) = self
                                 .db
-                                .trait_data(index_trait)
+                                .trait_items(index_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::index_mut.clone()))
                             {
                                 *f = index_fn;
@@ -201,7 +201,7 @@ impl InferenceContext<'_> {
                                 mutability = Mutability::Not;
                             } else if let Some(deref_fn) = self
                                 .db
-                                .trait_data(deref_trait)
+                                .trait_items(deref_trait)
                                 .method_by_name(&Name::new_symbol_root(sym::deref_mut.clone()))
                             {
                                 *f = deref_fn;

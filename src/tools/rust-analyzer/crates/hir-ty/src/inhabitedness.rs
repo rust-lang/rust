@@ -98,7 +98,7 @@ impl UninhabitedFrom<'_> {
             AdtId::UnionId(_) => CONTINUE_OPAQUELY_INHABITED,
             AdtId::StructId(s) => self.visit_variant(s.into(), subst),
             AdtId::EnumId(e) => {
-                let enum_data = self.db.enum_data(e);
+                let enum_data = self.db.enum_variants(e);
 
                 for &(variant, _) in enum_data.variants.iter() {
                     let variant_inhabitedness = self.visit_variant(variant.into(), subst);
