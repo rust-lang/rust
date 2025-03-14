@@ -2,7 +2,8 @@
 //@ min-llvm-version: 20
 #![crate_type = "lib"]
 
-// Ensure that a modulo operation with an operand that is known to be a power-of-two is properly optimized.
+// Ensure that a modulo operation with an operand that is known to be
+// a power-of-two is properly optimized.
 
 // CHECK-LABEL: @modulo_with_power_of_two_divisor
 // CHECK: add i64 %divisor, -1
