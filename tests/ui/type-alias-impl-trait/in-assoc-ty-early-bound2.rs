@@ -6,7 +6,7 @@ trait Foo {
 }
 
 impl Foo for () {
-    type Assoc<'a> = impl Sized; //~ ERROR unconstrained opaque type
+    type Assoc<'a> = impl Sized;
     fn bar<'a: 'a>()
     where
         Self::Assoc<'a>:,

@@ -22,7 +22,6 @@ where
     for<'any> F: FnMut(&'any mut ()) -> FutNothing<'any>,
 {
     //~^ ERROR: expected generic lifetime parameter, found `'any`
-    //~| ERROR item does not constrain
 }
 
 fn main() {}

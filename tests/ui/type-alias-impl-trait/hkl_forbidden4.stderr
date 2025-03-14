@@ -11,21 +11,6 @@ note: this opaque type is supposed to be constrained
 LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: item does not constrain `FutNothing::{opaque#0}`
-  --> $DIR/hkl_forbidden4.rs:23:1
-   |
-LL | / {
-...  |
-LL | | }
-   | |_^
-   |
-   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
-note: this opaque type is supposed to be constrained
-  --> $DIR/hkl_forbidden4.rs:10:23
-   |
-LL | type FutNothing<'a> = impl 'a + Future<Output = ()>;
-   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
 error: concrete type differs from previous defining opaque type use
   --> $DIR/hkl_forbidden4.rs:12:1
    |
@@ -54,10 +39,10 @@ LL |   type FutNothing<'a> = impl 'a + Future<Output = ()>;
    |                   -- this generic parameter must be used with a generic lifetime parameter
 ...
 LL | / {
-...  |
+LL | |
 LL | | }
    | |_^
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0792`.
