@@ -54,7 +54,7 @@ use crate::region_infer::values::{LivenessValues, PlaceholderIndex, PlaceholderI
 use crate::session_diagnostics::{MoveUnsized, SimdIntrinsicArgConst};
 use crate::type_check::free_region_relations::{CreateResult, UniversalRegionRelations};
 use crate::universal_regions::{DefiningTy, UniversalRegions};
-use crate::{BorrowckInferCtxt, path_utils};
+use crate::{BorrowCheckRootCtxt, BorrowckInferCtxt, path_utils};
 
 macro_rules! span_mirbug {
     ($context:expr, $elem:expr, $($message:tt)*) => ({
@@ -103,6 +103,7 @@ mod relate_tys;
 /// - `move_data` -- move-data constructed when performing the maybe-init dataflow analysis
 /// - `location_map` -- map between MIR `Location` and `PointIndex`
 pub(crate) fn type_check<'a, 'tcx>(
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     infcx: &BorrowckInferCtxt<'tcx>,
     body: &Body<'tcx>,
     promoted: &IndexSlice<Promoted, Body<'tcx>>,
@@ -153,6 +154,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     };
 
     let mut typeck = TypeChecker {
+        root_cx,
         infcx,
         last_span: body.span,
         body,
@@ -214,6 +216,7 @@ enum FieldAccessError {
 /// way, it accrues region constraints -- these can later be used by
 /// NLL region checking.
 struct TypeChecker<'a, 'tcx> {
+    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
     infcx: &'a BorrowckInferCtxt<'tcx>,
     last_span: Span,
     body: &'a Body<'tcx>,
@@ -2485,7 +2488,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
+        if let Some(closure_requirements) = &self.root_cx.closure_requirements(tcx, def_id) {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,
