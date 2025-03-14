@@ -64,7 +64,9 @@ envs:
 # These jobs automatically inherit envs.pr, to avoid repeating
 # it in each job definition.
 pr:
-  - name: mingw-check
+  - name: mingw-check-1
+    <<: *job-linux-4c
+  - name: mingw-check-2
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
