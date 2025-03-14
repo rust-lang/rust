@@ -958,6 +958,9 @@ If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/util
 [mentions."src/bootstrap/src/core/build_steps/llvm.rs"]
 message = "This PR changes how LLVM is built. Consider updating src/bootstrap/download-ci-llvm-stamp."
 
+[mentions."src/bootstrap/src/core/build_steps/gcc.rs"]
+message = "This PR changes how GCC is built. Consider updating src/bootstrap/download-ci-gcc-stamp."
+
 [mentions."tests/crashes"]
 message = "This PR changes a file inside `tests/crashes`. If a crash was fixed, please move into the corresponding `ui` subdir and add 'Fixes #<issueNr>' to the PR description to autoclose the issue upon merge."
 

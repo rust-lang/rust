@@ -5,6 +5,9 @@
 #[cfg(target_os = "hermit")]
 use hermit_abi as libc;
 
+#[cfg(not(target_os = "trusty"))]
+use crate::fs;
+use crate::io;
 #[cfg(target_os = "hermit")]
 use crate::os::hermit::io::OwnedFd;
 #[cfg(not(target_os = "hermit"))]
@@ -15,8 +18,8 @@ use crate::os::unix::io::AsFd;
 use crate::os::unix::io::OwnedFd;
 #[cfg(target_os = "wasi")]
 use crate::os::wasi::io::OwnedFd;
+#[cfg(not(target_os = "trusty"))]
 use crate::sys_common::{AsInner, IntoInner};
-use crate::{fs, io};
 
 /// Raw file descriptors.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -161,6 +164,7 @@ impl FromRawFd for RawFd {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(target_os = "trusty"))]
 impl AsRawFd for fs::File {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -168,6 +172,7 @@ impl AsRawFd for fs::File {
     }
 }
 #[stable(feature = "from_raw_os", since = "1.1.0")]
+#[cfg(not(target_os = "trusty"))]
 impl FromRawFd for fs::File {
     #[inline]
     unsafe fn from_raw_fd(fd: RawFd) -> fs::File {
@@ -175,6 +180,7 @@ impl FromRawFd for fs::File {
     }
 }
 #[stable(feature = "into_raw_os", since = "1.4.0")]
+#[cfg(not(target_os = "trusty"))]
 impl IntoRawFd for fs::File {
     #[inline]
     fn into_raw_fd(self) -> RawFd {
@@ -183,6 +189,7 @@ impl IntoRawFd for fs::File {
 }
 
 #[stable(feature = "asraw_stdio", since = "1.21.0")]
+#[cfg(not(target_os = "trusty"))]
 impl AsRawFd for io::Stdin {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {
@@ -207,6 +214,7 @@ impl AsRawFd for io::Stderr {
 }
 
 #[stable(feature = "asraw_stdio_locks", since = "1.35.0")]
+#[cfg(not(target_os = "trusty"))]
 impl<'a> AsRawFd for io::StdinLock<'a> {
     #[inline]
     fn as_raw_fd(&self) -> RawFd {

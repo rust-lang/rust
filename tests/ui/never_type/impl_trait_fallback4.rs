@@ -15,6 +15,7 @@ fn foo() -> impl T {
     panic!()
 }
 
+#[define_opaque(Foo)]
 fn a() -> Foo {
     foo()
 }

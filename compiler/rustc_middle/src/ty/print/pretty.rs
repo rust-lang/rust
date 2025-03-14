@@ -63,6 +63,18 @@ thread_local! {
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static RTN_MODE: Cell<RtnMode> = const { Cell::new(RtnMode::ForDiagnostic) };
+}
+
+/// Rendering style for RTN types.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub enum RtnMode {
+    /// Print the RTN type as an impl trait with its path, i.e.e `impl Sized { T::method(..) }`.
+    ForDiagnostic,
+    /// Print the RTN type as an impl trait, i.e. `impl Sized`.
+    ForSignature,
+    /// Print the RTN type as a value path, i.e. `T::method(..): ...`.
+    ForSuggestion,
 }
 
 macro_rules! define_helper {
@@ -123,6 +135,38 @@ define_helper!(
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
 );
+
+#[must_use]
+pub struct RtnModeHelper(RtnMode);
+
+impl RtnModeHelper {
+    pub fn with(mode: RtnMode) -> RtnModeHelper {
+        RtnModeHelper(RTN_MODE.with(|c| c.replace(mode)))
+    }
+}
+
+impl Drop for RtnModeHelper {
+    fn drop(&mut self) {
+        RTN_MODE.with(|c| c.set(self.0))
+    }
+}
+
+/// Print types for the purposes of a suggestion.
+///
+/// Specifically, this will render RPITITs as `T::method(..)` which is suitable for
+/// things like where-clauses.
+pub macro with_types_for_suggestion($e:expr) {{
+    let _guard = $crate::ty::print::pretty::RtnModeHelper::with(RtnMode::ForSuggestion);
+    $e
+}}
+
+/// Print types for the purposes of a signature suggestion.
+///
+/// Specifically, this will render RPITITs as `impl Trait` rather than `T::method(..)`.
+pub macro with_types_for_signature($e:expr) {{
+    let _guard = $crate::ty::print::pretty::RtnModeHelper::with(RtnMode::ForSignature);
+    $e
+}}
 
 /// Avoids running any queries during prints.
 pub macro with_no_queries($e:expr) {{
@@ -1223,22 +1267,6 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
         }
 
-        if self.tcx().features().return_type_notation()
-            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
-                self.tcx().opt_rpitit_info(def_id)
-            && let ty::Alias(_, alias_ty) =
-                self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
-            && alias_ty.def_id == def_id
-            && let generics = self.tcx().generics_of(fn_def_id)
-            // FIXME(return_type_notation): We only support lifetime params for now.
-            && generics.own_params.iter().all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
-        {
-            let num_args = generics.count();
-            write!(self, " {{ ")?;
-            self.print_def_path(fn_def_id, &args[..num_args])?;
-            write!(self, "(..) }}")?;
-        }
-
         Ok(())
     }
 
@@ -1304,6 +1332,46 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             },
             &alias_ty.args[1..],
         )
+    }
+
+    fn pretty_print_rpitit(
+        &mut self,
+        def_id: DefId,
+        args: ty::GenericArgsRef<'tcx>,
+    ) -> Result<(), PrintError> {
+        let fn_args = if self.tcx().features().return_type_notation()
+            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+                self.tcx().opt_rpitit_info(def_id)
+            && let ty::Alias(_, alias_ty) =
+                self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
+            && alias_ty.def_id == def_id
+            && let generics = self.tcx().generics_of(fn_def_id)
+            // FIXME(return_type_notation): We only support lifetime params for now.
+            && generics.own_params.iter().all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
+        {
+            let num_args = generics.count();
+            Some((fn_def_id, &args[..num_args]))
+        } else {
+            None
+        };
+
+        match (fn_args, RTN_MODE.with(|c| c.get())) {
+            (Some((fn_def_id, fn_args)), RtnMode::ForDiagnostic) => {
+                self.pretty_print_opaque_impl_type(def_id, args)?;
+                write!(self, " {{ ")?;
+                self.print_def_path(fn_def_id, fn_args)?;
+                write!(self, "(..) }}")?;
+            }
+            (Some((fn_def_id, fn_args)), RtnMode::ForSuggestion) => {
+                self.print_def_path(fn_def_id, fn_args)?;
+                write!(self, "(..)")?;
+            }
+            _ => {
+                self.pretty_print_opaque_impl_type(def_id, args)?;
+            }
+        }
+
+        Ok(())
     }
 
     fn ty_infer_name(&self, _: ty::TyVid) -> Option<Symbol> {
@@ -3123,21 +3191,20 @@ define_print! {
     ty::AliasTerm<'tcx> {
         match self.kind(cx.tcx()) {
             ty::AliasTermKind::InherentTy => p!(pretty_print_inherent_projection(*self)),
-            ty::AliasTermKind::ProjectionTy
+            ty::AliasTermKind::ProjectionTy => {
+                if !(cx.should_print_verbose() || with_reduced_queries())
+                    && cx.tcx().is_impl_trait_in_trait(self.def_id)
+                {
+                    p!(pretty_print_rpitit(self.def_id, self.args))
+                } else {
+                    p!(print_def_path(self.def_id, self.args));
+                }
+            }
             | ty::AliasTermKind::WeakTy
             | ty::AliasTermKind::OpaqueTy
             | ty::AliasTermKind::UnevaluatedConst
             | ty::AliasTermKind::ProjectionConst => {
-                // If we're printing verbosely, or don't want to invoke queries
-                // (`is_impl_trait_in_trait`), then fall back to printing the def path.
-                // This is likely what you want if you're debugging the compiler anyways.
-                if !(cx.should_print_verbose() || with_reduced_queries())
-                    && cx.tcx().is_impl_trait_in_trait(self.def_id)
-                {
-                    return cx.pretty_print_opaque_impl_type(self.def_id, self.args);
-                } else {
-                    p!(print_def_path(self.def_id, self.args));
-                }
+                p!(print_def_path(self.def_id, self.args));
             }
         }
     }

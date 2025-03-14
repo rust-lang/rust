@@ -25,7 +25,7 @@ use rustc_hir::def_id::{
     CrateNum, DefId, DefIdMap, LocalDefId, LocalDefIdMap, LocalDefIdSet, LocalModDefId,
 };
 use rustc_hir::lang_items::{LangItem, LanguageItems};
-use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, TraitCandidate};
+use rustc_hir::{Crate, ItemLocalId, ItemLocalMap, PreciseCapturingArgKind, TraitCandidate};
 use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
@@ -198,7 +198,7 @@ rustc_queries! {
     ///
     /// This can be conveniently accessed by methods on `tcx.hir()`.
     /// Avoid calling this query directly.
-    query hir_attrs(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
+    query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
         feedable
     }
@@ -1424,7 +1424,7 @@ rustc_queries! {
     }
 
     /// Gets the rendered precise capturing args for an opaque for use in rustdoc.
-    query rendered_precise_capturing_args(def_id: DefId) -> Option<&'tcx [Symbol]> {
+    query rendered_precise_capturing_args(def_id: DefId) -> Option<&'tcx [PreciseCapturingArgKind<Symbol, Symbol>]> {
         desc { |tcx| "rendering precise capturing args for `{}`", tcx.def_path_str(def_id) }
         separate_provide_extern
     }

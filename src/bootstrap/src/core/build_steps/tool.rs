@@ -228,7 +228,6 @@ pub fn prepare_tool_cargo(
     let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
         if path.ends_with("cargo")
-            || path.ends_with("rls")
             || path.ends_with("clippy")
             || path.ends_with("miri")
             || path.ends_with("rustfmt")
@@ -1231,7 +1230,6 @@ tool_extended!(CargoMiri {
     stable: false,
     add_bins_to_sysroot: ["cargo-miri"]
 });
-tool_extended!(Rls { path: "src/tools/rls", tool_name: "rls", stable: true });
 tool_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",

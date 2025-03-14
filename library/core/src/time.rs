@@ -1377,7 +1377,8 @@ impl fmt::Debug for Duration {
                     } else {
                         // We need to add padding. Use the `Formatter::padding` helper function.
                         let default_align = fmt::Alignment::Left;
-                        let post_padding = f.padding(requested_w - actual_w, default_align)?;
+                        let post_padding =
+                            f.padding((requested_w - actual_w) as u16, default_align)?;
                         emit_without_padding(f)?;
                         post_padding.write(f)
                     }

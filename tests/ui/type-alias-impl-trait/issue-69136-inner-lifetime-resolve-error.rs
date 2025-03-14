@@ -19,6 +19,7 @@ impl<T> WithAssoc<T> for () {
 type Return<A> = impl WithAssoc<A, AssocType = impl SomeTrait + 'a>;
 //~^ ERROR use of undeclared lifetime name `'a`
 
+#[define_opaque(Return)]
 fn my_fun<T>() -> Return<T> {}
 
 fn main() {}

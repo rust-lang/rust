@@ -158,7 +158,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
         if options.proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
 
     let sessopts = config::Options {
-        maybe_sysroot: options.maybe_sysroot.clone(),
+        sysroot: options.sysroot.clone(),
         search_paths: options.libs.clone(),
         crate_types,
         lint_opts,
@@ -216,7 +216,7 @@ pub(crate) fn run(dcx: DiagCtxtHandle<'_>, input: Input, options: RustdocOptions
 
         let collector = rustc_interface::create_and_enter_global_ctxt(compiler, krate, |tcx| {
             let crate_name = tcx.crate_name(LOCAL_CRATE).to_string();
-            let crate_attrs = tcx.hir().attrs(CRATE_HIR_ID);
+            let crate_attrs = tcx.hir_attrs(CRATE_HIR_ID);
             let opts = scrape_test_config(crate_name, crate_attrs, args_path);
             let enable_per_target_ignores = options.enable_per_target_ignores;
 

@@ -36,10 +36,10 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(exact_size_is_empty)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::sync::Arc;
@@ -99,6 +99,8 @@ struct LoweringContext<'a, 'hir> {
 
     /// Bodies inside the owner being lowered.
     bodies: Vec<(hir::ItemLocalId, &'hir hir::Body<'hir>)>,
+    /// `#[define_opaque]` attributes
+    define_opaque: Option<&'hir [(Span, LocalDefId)]>,
     /// Attributes inside the owner being lowered.
     attrs: SortedMap<hir::ItemLocalId, &'hir [hir::Attribute]>,
     /// Collect items that were created by lowering the current owner.
@@ -156,6 +158,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
             // HirId handling.
             bodies: Vec::new(),
+            define_opaque: None,
             attrs: SortedMap::default(),
             children: Vec::default(),
             contract_ensures: None,
@@ -548,6 +551,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
+        let current_define_opaque = std::mem::take(&mut self.define_opaque);
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
 
@@ -581,6 +585,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         self.attrs = current_attrs;
         self.bodies = current_bodies;
+        self.define_opaque = current_define_opaque;
         self.ident_and_label_to_local_id = current_ident_and_label_to_local_id;
 
         #[cfg(debug_assertions)]
@@ -600,6 +605,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
         let attrs = std::mem::take(&mut self.attrs);
         let mut bodies = std::mem::take(&mut self.bodies);
+        let define_opaque = std::mem::take(&mut self.define_opaque);
         let trait_map = std::mem::take(&mut self.trait_map);
 
         #[cfg(debug_assertions)]
@@ -619,7 +625,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let num_nodes = self.item_local_id_counter.as_usize();
         let (nodes, parenting) = index::index_hir(self.tcx, node, &bodies, num_nodes);
         let nodes = hir::OwnerNodes { opt_hash_including_bodies, nodes, bodies };
-        let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash };
+        let attrs = hir::AttributeMap { map: attrs, opt_hash: attrs_hash, define_opaque };
 
         self.arena.alloc(hir::OwnerInfo { nodes, parenting, attrs, trait_map })
     }

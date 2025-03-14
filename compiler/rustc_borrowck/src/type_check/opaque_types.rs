@@ -180,6 +180,7 @@ pub(super) fn take_opaques_and_register_member_constraints<'tcx>(
 /// // Equivalent to:
 /// # mod dummy { use super::*;
 /// type FooReturn<'a, T> = impl Foo<'a>;
+/// #[define_opaque(FooReturn)]
 /// fn foo<'a, T>(x: &'a u32, y: T) -> FooReturn<'a, T> {
 ///   (x, y)
 /// }

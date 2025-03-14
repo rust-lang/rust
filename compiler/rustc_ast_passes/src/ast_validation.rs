@@ -917,7 +917,10 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 walk_list!(self, visit_attribute, &item.attrs);
                 return; // Avoid visiting again.
             }
-            ItemKind::Fn(func @ box Fn { defaultness, generics: _, sig, contract: _, body }) => {
+            ItemKind::Fn(
+                func
+                @ box Fn { defaultness, generics: _, sig, contract: _, body, define_opaque: _ },
+            ) => {
                 self.check_defaultness(item.span, *defaultness);
 
                 let is_intrinsic =

@@ -8,7 +8,7 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust core allocation and collections library"
 autotests = false
 autobenches = false
-edition = "2021"
+edition = "2024"
 
 [lib]
 test = false

@@ -2,20 +2,17 @@
 
 //@ check-pass
 
-mod foo {
-    pub trait Trait {}
+pub trait Trait {}
 
-    pub type TAIT = impl Trait;
+pub type TAIT = impl Trait;
 
-    pub struct Concrete;
-    impl Trait for Concrete {}
+pub struct Concrete;
+impl Trait for Concrete {}
 
-    pub fn tait() -> TAIT {
-        Concrete
-    }
+#[define_opaque(TAIT)]
+pub fn tait() -> TAIT {
+    Concrete
 }
-
-use foo::*;
 
 trait OuterTrait {
     type Item;

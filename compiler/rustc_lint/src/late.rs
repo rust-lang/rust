@@ -48,7 +48,7 @@ impl<'tcx, T: LateLintPass<'tcx>> LateContextAndPass<'tcx, T> {
     where
         F: FnOnce(&mut Self),
     {
-        let attrs = self.context.tcx.hir().attrs(id);
+        let attrs = self.context.tcx.hir_attrs(id);
         let prev = self.context.last_node_with_lint_attrs;
         self.context.last_node_with_lint_attrs = id;
         debug!("late context: enter_attrs({:?})", attrs);

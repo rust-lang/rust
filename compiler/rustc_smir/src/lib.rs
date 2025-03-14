@@ -16,7 +16,6 @@
 )]
 #![doc(rust_logo)]
 #![feature(rustdoc_internals)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod rustc_internal;

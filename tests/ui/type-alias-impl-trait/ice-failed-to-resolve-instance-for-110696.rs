@@ -18,6 +18,7 @@ trait MyFrom<T>: Sized {
 trait F {}
 impl F for () {}
 type DummyT<T> = impl F;
+#[define_opaque(DummyT)]
 fn _dummy_t<T>() -> DummyT<T> {}
 
 struct Phantom1<T>(PhantomData<T>);
@@ -25,6 +26,7 @@ struct Phantom2<T>(PhantomData<T>);
 struct Scope<T>(Phantom2<DummyT<T>>);
 
 impl<T> Scope<T> {
+    #[define_opaque(DummyT)]
     fn new() -> Self {
         //~^ ERROR item does not constrain
         unimplemented!()
@@ -41,6 +43,7 @@ impl<T> MyFrom<Phantom2<T>> for Phantom1<T> {
 impl<T: MyFrom<Phantom2<DummyT<U>>>, U> MyIndex<DummyT<T>> for Scope<U> {
     //~^ ERROR the type parameter `T` is not constrained by the impl
     type O = T;
+    #[define_opaque(DummyT)]
     fn my_index(self) -> Self::O {
         MyFrom::my_from(self.0).ok().unwrap()
     }

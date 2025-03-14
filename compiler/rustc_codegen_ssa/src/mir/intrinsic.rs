@@ -62,7 +62,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         let callee_ty = instance.ty(bx.tcx(), bx.typing_env());
 
         let ty::FnDef(def_id, fn_args) = *callee_ty.kind() else {
-            bug!("expected fn item type, found {}", callee_ty);
+            span_bug!(span, "expected fn item type, found {}", callee_ty);
         };
 
         let sig = callee_ty.fn_sig(bx.tcx());
@@ -322,14 +322,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     bx.fptosi(args[0].immediate(), llret_ty)
                 } else {
                     bx.fptoui(args[0].immediate(), llret_ty)
-                }
-            }
-
-            sym::discriminant_value => {
-                if ret_ty.is_integral() {
-                    args[0].deref(bx.cx()).codegen_get_discr(bx, ret_ty)
-                } else {
-                    span_bug!(span, "Invalid discriminant type for `{:?}`", arg_tys[0])
                 }
             }
 

@@ -1,26 +1,26 @@
 error: `Foo` is forbidden as the type of a const generic parameter
-  --> $DIR/opaque_types.rs:7:17
+  --> $DIR/opaque_types.rs:6:17
    |
 LL | fn foo<const C: Foo>() {}
    |                 ^^^
    |
    = note: the only supported types are integers, `bool`, and `char`
 
-error: item does not constrain `Foo::{opaque#0}`, but has it in its signature
-  --> $DIR/opaque_types.rs:7:4
+error: item does not constrain `Foo::{opaque#0}`
+  --> $DIR/opaque_types.rs:6:4
    |
 LL | fn foo<const C: Foo>() {}
    |    ^^^
    |
-   = note: consider moving the opaque type's declaration and defining uses into a separate module
-note: this opaque type is in the signature
+   = note: consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+note: this opaque type is supposed to be constrained
   --> $DIR/opaque_types.rs:3:12
    |
 LL | type Foo = impl Sized;
    |            ^^^^^^^^^^
 
 error[E0308]: mismatched types
-  --> $DIR/opaque_types.rs:12:11
+  --> $DIR/opaque_types.rs:11:11
    |
 LL | type Foo = impl Sized;
    |            ---------- the expected opaque type
@@ -31,106 +31,6 @@ LL |     foo::<42>();
    = note: expected opaque type `Foo`
                      found type `{integer}`
 
-error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
-  --> $DIR/opaque_types.rs:3:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   |
-note: ...which requires computing type of opaque `Foo::{opaque#0}`...
-  --> $DIR/opaque_types.rs:3:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-note: ...which requires type-checking `main`...
-  --> $DIR/opaque_types.rs:11:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-note: ...which requires evaluating type-level constant...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires const-evaluating + checking `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires caching mir of `main::{constant#0}` for CTFE...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires elaborating drops for `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-   = note: ...which requires normalizing `Foo`...
-   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
-note: cycle used when checking that `Foo::{opaque#0}` is well-formed
-  --> $DIR/opaque_types.rs:3:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
+error: aborting due to 3 previous errors
 
-error[E0391]: cycle detected when computing type of opaque `Foo::{opaque#0}`
-  --> $DIR/opaque_types.rs:3:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   |
-note: ...which requires type-checking `main`...
-  --> $DIR/opaque_types.rs:11:1
-   |
-LL | fn main() {
-   | ^^^^^^^^^
-note: ...which requires evaluating type-level constant...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires const-evaluating + checking `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires caching mir of `main::{constant#0}` for CTFE...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires elaborating drops for `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires borrow-checking `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires promoting constants in MIR for `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-note: ...which requires const checking `main::{constant#0}`...
-  --> $DIR/opaque_types.rs:12:11
-   |
-LL |     foo::<42>();
-   |           ^^
-   = note: ...which again requires computing type of opaque `Foo::{opaque#0}`, completing the cycle
-note: cycle used when computing type of `Foo::{opaque#0}`
-  --> $DIR/opaque_types.rs:3:12
-   |
-LL | type Foo = impl Sized;
-   |            ^^^^^^^^^^
-   = note: see https://rustc-dev-guide.rust-lang.org/overview.html#queries and https://rustc-dev-guide.rust-lang.org/query.html for more information
-
-error: aborting due to 5 previous errors
-
-Some errors have detailed explanations: E0308, E0391.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0308`.

@@ -294,8 +294,8 @@ pub struct FormattingOptions {
     flags: u32,
     fill: char,
     align: Option<Alignment>,
-    width: Option<usize>,
-    precision: Option<usize>,
+    width: Option<u16>,
+    precision: Option<u16>,
 }
 
 impl FormattingOptions {
@@ -389,7 +389,7 @@ impl FormattingOptions {
     /// the padding specified by [`FormattingOptions::fill`]/[`FormattingOptions::align`]
     /// will be used to take up the required space.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn width(&mut self, width: Option<usize>) -> &mut Self {
+    pub fn width(&mut self, width: Option<u16>) -> &mut Self {
         self.width = width;
         self
     }
@@ -403,7 +403,7 @@ impl FormattingOptions {
     /// - For floating-point types, this indicates how many digits after the
     /// decimal point should be printed.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub fn precision(&mut self, precision: Option<usize>) -> &mut Self {
+    pub fn precision(&mut self, precision: Option<u16>) -> &mut Self {
         self.precision = precision;
         self
     }
@@ -455,12 +455,12 @@ impl FormattingOptions {
     }
     /// Returns the current width.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn get_width(&self) -> Option<usize> {
+    pub const fn get_width(&self) -> Option<u16> {
         self.width
     }
     /// Returns the current precision.
     #[unstable(feature = "formatting_options", issue = "118117")]
-    pub const fn get_precision(&self) -> Option<usize> {
+    pub const fn get_precision(&self) -> Option<u16> {
         self.precision
     }
     /// Returns the current precision.
@@ -1499,15 +1499,18 @@ unsafe fn run(fmt: &mut Formatter<'_>, arg: &rt::Placeholder, args: &[rt::Argume
     unsafe { value.fmt(fmt) }
 }
 
-unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> {
+unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<u16> {
     match *cnt {
+        #[cfg(bootstrap)]
+        rt::Count::Is(n) => Some(n as u16),
+        #[cfg(not(bootstrap))]
         rt::Count::Is(n) => Some(n),
         rt::Count::Implied => None,
         rt::Count::Param(i) => {
             debug_assert!(i < args.len());
             // SAFETY: cnt and args come from the same Arguments,
             // which guarantees this index is always within bounds.
-            unsafe { args.get_unchecked(i).as_usize() }
+            unsafe { args.get_unchecked(i).as_u16() }
         }
     }
 }
@@ -1516,11 +1519,11 @@ unsafe fn getcount(args: &[rt::Argument<'_>], cnt: &rt::Count) -> Option<usize> 
 #[must_use = "don't forget to write the post padding"]
 pub(crate) struct PostPadding {
     fill: char,
-    padding: usize,
+    padding: u16,
 }
 
 impl PostPadding {
-    fn new(fill: char, padding: usize) -> PostPadding {
+    fn new(fill: char, padding: u16) -> PostPadding {
         PostPadding { fill, padding }
     }
 
@@ -1634,7 +1637,7 @@ impl<'a> Formatter<'a> {
             }
             // Check if we're over the minimum width, if so then we can also
             // just write the bytes.
-            Some(min) if width >= min => {
+            Some(min) if width >= usize::from(min) => {
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)
             }
@@ -1645,7 +1648,7 @@ impl<'a> Formatter<'a> {
                 let old_align =
                     crate::mem::replace(&mut self.options.align, Some(Alignment::Right));
                 write_prefix(self, sign, prefix)?;
-                let post_padding = self.padding(min - width, Alignment::Right)?;
+                let post_padding = self.padding(min - width as u16, Alignment::Right)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)?;
                 self.options.fill = old_fill;
@@ -1654,7 +1657,7 @@ impl<'a> Formatter<'a> {
             }
             // Otherwise, the sign and prefix goes after the padding
             Some(min) => {
-                let post_padding = self.padding(min - width, Alignment::Right)?;
+                let post_padding = self.padding(min - width as u16, Alignment::Right)?;
                 write_prefix(self, sign, prefix)?;
                 self.buf.write_str(buf)?;
                 post_padding.write(self)
@@ -1702,14 +1705,14 @@ impl<'a> Formatter<'a> {
         // string being formatted.
         let (s, char_count) = if let Some(max_char_count) = self.options.precision {
             let mut iter = s.char_indices();
-            let remaining = match iter.advance_by(max_char_count) {
+            let remaining = match iter.advance_by(usize::from(max_char_count)) {
                 Ok(()) => 0,
                 Err(remaining) => remaining.get(),
             };
             // SAFETY: The offset of `.char_indices()` is guaranteed to be
             // in-bounds and between character boundaries.
             let truncated = unsafe { s.get_unchecked(..iter.offset()) };
-            (truncated, max_char_count - remaining)
+            (truncated, usize::from(max_char_count) - remaining)
         } else {
             // Use the optimized char counting algorithm for the full string.
             (s, s.chars().count())
@@ -1717,11 +1720,11 @@ impl<'a> Formatter<'a> {
 
         // The `width` field is more of a minimum width parameter at this point.
         if let Some(width) = self.options.width
-            && char_count < width
+            && char_count < usize::from(width)
         {
             // If we're under the minimum width, then fill up the minimum width
             // with the specified string + some alignment.
-            let post_padding = self.padding(width - char_count, Alignment::Left)?;
+            let post_padding = self.padding(width - char_count as u16, Alignment::Left)?;
             self.buf.write_str(s)?;
             post_padding.write(self)
         } else {
@@ -1737,7 +1740,7 @@ impl<'a> Formatter<'a> {
     /// thing that is being padded.
     pub(crate) fn padding(
         &mut self,
-        padding: usize,
+        padding: u16,
         default: Alignment,
     ) -> result::Result<PostPadding, Error> {
         let align = self.align().unwrap_or(default);
@@ -1777,19 +1780,19 @@ impl<'a> Formatter<'a> {
 
                 // remove the sign from the formatted parts
                 formatted.sign = "";
-                width = width.saturating_sub(sign.len());
+                width = width.saturating_sub(sign.len() as u16);
                 self.options.fill = '0';
                 self.options.align = Some(Alignment::Right);
             }
 
             // remaining parts go through the ordinary padding process.
             let len = formatted.len();
-            let ret = if width <= len {
+            let ret = if usize::from(width) <= len {
                 // no padding
                 // SAFETY: Per the precondition.
                 unsafe { self.write_formatted_parts(&formatted) }
             } else {
-                let post_padding = self.padding(width - len, Alignment::Right)?;
+                let post_padding = self.padding(width - len as u16, Alignment::Right)?;
                 // SAFETY: Per the precondition.
                 unsafe {
                     self.write_formatted_parts(&formatted)?;
@@ -2021,7 +2024,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn width(&self) -> Option<usize> {
-        self.options.width
+        self.options.width.map(|x| x as usize)
     }
 
     /// Returns the optionally specified precision for numeric types.
@@ -2052,7 +2055,7 @@ impl<'a> Formatter<'a> {
     #[must_use]
     #[stable(feature = "fmt_flags", since = "1.5.0")]
     pub fn precision(&self) -> Option<usize> {
-        self.options.precision
+        self.options.precision.map(|x| x as usize)
     }
 
     /// Determines if the `+` flag was specified.
@@ -2792,7 +2795,7 @@ pub(crate) fn pointer_fmt_inner(ptr_addr: usize, f: &mut Formatter<'_>) -> Resul
         f.options.flags |= 1 << (rt::Flag::SignAwareZeroPad as u32);
 
         if f.options.width.is_none() {
-            f.options.width = Some((usize::BITS / 4) as usize + 2);
+            f.options.width = Some((usize::BITS / 4) as u16 + 2);
         }
     }
     f.options.flags |= 1 << (rt::Flag::Alternate as u32);

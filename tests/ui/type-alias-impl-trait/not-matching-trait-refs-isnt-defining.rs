@@ -9,6 +9,7 @@ trait Foo<T> {
 struct DefinesOpaque;
 impl Foo<DefinesOpaque> for () {
     type Assoc = impl Sized;
+    //~^ ERROR: unconstrained opaque type
 
     // This test's return type is `u32`, *not* the opaque that is defined above.
     // Previously we were only checking that the self type of the assoc matched,

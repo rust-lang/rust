@@ -3,10 +3,9 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::AssocCtxt;
 use rustc_ast::*;
 use rustc_errors::ErrorGuaranteed;
-use rustc_hir as hir;
-use rustc_hir::PredicateOrigin;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LocalDefId};
+use rustc_hir::{self as hir, HirId, PredicateOrigin};
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
@@ -209,6 +208,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 generics,
                 body,
                 contract,
+                define_opaque,
                 ..
             }) => {
                 self.with_new_scopes(*fn_sig_span, |this| {
@@ -237,6 +237,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         header: this.lower_fn_header(*header, hir::Safety::Safe, attrs),
                         span: this.lower_span(*fn_sig_span),
                     };
+                    this.lower_define_opaque(hir_id, &define_opaque);
                     hir::ItemKind::Fn { sig, generics, body: body_id, has_body: body.is_some() }
                 })
             }
@@ -779,7 +780,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 );
                 (generics, kind, expr.is_some())
             }
-            AssocItemKind::Fn(box Fn { sig, generics, body: None, .. }) => {
+            AssocItemKind::Fn(box Fn { sig, generics, body: None, define_opaque, .. }) => {
                 // FIXME(contracts): Deny contract here since it won't apply to
                 // any impl method or callees.
                 let names = self.lower_fn_params_to_names(&sig.decl);
@@ -791,9 +792,22 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_kind,
                     attrs,
                 );
+                if define_opaque.is_some() {
+                    self.dcx().span_err(
+                        i.span,
+                        "only trait methods with default bodies can define opaque types",
+                    );
+                }
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Required(names)), false)
             }
-            AssocItemKind::Fn(box Fn { sig, generics, body: Some(body), contract, .. }) => {
+            AssocItemKind::Fn(box Fn {
+                sig,
+                generics,
+                body: Some(body),
+                contract,
+                define_opaque,
+                ..
+            }) => {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
@@ -812,6 +826,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_kind,
                     attrs,
                 );
+                self.lower_define_opaque(hir_id, &define_opaque);
                 (generics, hir::TraitItemKind::Fn(sig, hir::TraitFn::Provided(body_id)), true)
             }
             AssocItemKind::Type(box TyAlias { generics, where_clauses, bounds, ty, .. }) => {
@@ -911,7 +926,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::ImplItemKind::Const(ty, body)
                 },
             ),
-            AssocItemKind::Fn(box Fn { sig, generics, body, contract, .. }) => {
+            AssocItemKind::Fn(box Fn { sig, generics, body, contract, define_opaque, .. }) => {
                 let body_id = self.lower_maybe_coroutine_body(
                     sig.span,
                     i.span,
@@ -930,6 +945,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     sig.header.coroutine_kind,
                     attrs,
                 );
+                self.lower_define_opaque(hir_id, &define_opaque);
 
                 (generics, hir::ImplItemKind::Fn(sig, body_id))
             }
@@ -1655,6 +1671,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
         });
 
         (lowered_generics, res)
+    }
+
+    pub(super) fn lower_define_opaque(
+        &mut self,
+        hir_id: HirId,
+        define_opaque: &Option<ThinVec<(NodeId, Path)>>,
+    ) {
+        assert_eq!(self.define_opaque, None);
+        assert!(hir_id.is_owner());
+        let Some(define_opaque) = define_opaque.as_ref() else {
+            return;
+        };
+        let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
+            let res = self.resolver.get_partial_res(*id).unwrap();
+            let Some(did) = res.expect_full_res().opt_def_id() else {
+                self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
+                return None;
+            };
+            let Some(did) = did.as_local() else {
+                self.dcx().span_err(
+                    path.span,
+                    "only opaque types defined in the local crate can be defined",
+                );
+                return None;
+            };
+            Some((self.lower_span(path.span), did))
+        });
+        let define_opaque = self.arena.alloc_from_iter(define_opaque);
+        self.define_opaque = Some(define_opaque);
     }
 
     pub(super) fn lower_generic_bound_predicate(

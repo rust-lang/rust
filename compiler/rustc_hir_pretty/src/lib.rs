@@ -3,7 +3,6 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;
@@ -118,9 +117,9 @@ impl<'a> State<'a> {
                 self.hardbreak()
             }
             hir::Attribute::Parsed(pa) => {
-                self.word("#[attr=\"");
+                self.word("#[attr = ");
                 pa.print_attribute(self);
-                self.word("\")]");
+                self.word("]");
                 self.hardbreak()
             }
         }
@@ -553,24 +552,6 @@ impl<'a> State<'a> {
         self.word(";")
     }
 
-    fn print_item_type(
-        &mut self,
-        item: &hir::Item<'_>,
-        generics: &hir::Generics<'_>,
-        inner: impl Fn(&mut Self),
-    ) {
-        self.head("type");
-        self.print_ident(item.ident);
-        self.print_generic_params(generics.params);
-        self.end(); // end the inner ibox
-
-        self.print_where_clause(generics);
-        self.space();
-        inner(self);
-        self.word(";");
-        self.end(); // end the outer ibox
-    }
-
     fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
@@ -683,10 +664,17 @@ impl<'a> State<'a> {
                 self.end()
             }
             hir::ItemKind::TyAlias(ty, generics) => {
-                self.print_item_type(item, generics, |state| {
-                    state.word_space("=");
-                    state.print_type(ty);
-                });
+                self.head("type");
+                self.print_ident(item.ident);
+                self.print_generic_params(generics.params);
+                self.end(); // end the inner ibox
+
+                self.print_where_clause(generics);
+                self.space();
+                self.word_space("=");
+                self.print_type(ty);
+                self.word(";");
+                self.end(); // end the outer ibox
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident.name, item.span);

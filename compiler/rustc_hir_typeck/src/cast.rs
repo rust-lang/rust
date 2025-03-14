@@ -32,6 +32,7 @@ use rustc_ast::util::parser::ExprPrecedence;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, Diag, ErrorGuaranteed};
+use rustc_hir::def_id::DefId;
 use rustc_hir::{self as hir, ExprKind};
 use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_macros::{TypeFoldable, TypeVisitable};
@@ -155,7 +156,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug)]
 enum CastError<'tcx> {
     ErrorGuaranteed(ErrorGuaranteed),
 
@@ -182,6 +183,7 @@ enum CastError<'tcx> {
     /// when we're typechecking a type parameter with a ?Sized bound.
     IntToWideCast(Option<&'static str>),
     ForeignNonExhaustiveAdt,
+    PtrPtrAddingAutoTrait(Vec<DefId>),
 }
 
 impl From<ErrorGuaranteed> for CastError<'_> {
@@ -596,6 +598,21 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 .with_note("cannot cast an enum with a non-exhaustive variant when it's defined in another crate")
                 .emit();
             }
+            CastError::PtrPtrAddingAutoTrait(added) => {
+                fcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
+                    span: self.span,
+                    traits_len: added.len(),
+                    traits: {
+                        let mut traits: Vec<_> = added
+                            .into_iter()
+                            .map(|trait_did| fcx.tcx.def_path_str(trait_did))
+                            .collect();
+
+                        traits.sort();
+                        traits.into()
+                    },
+                });
+            }
         }
     }
 
@@ -940,19 +957,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                             .collect::<Vec<_>>();
 
                         if !added.is_empty() {
-                            tcx.dcx().emit_err(errors::PtrCastAddAutoToObject {
-                                span: self.span,
-                                traits_len: added.len(),
-                                traits: {
-                                    let mut traits: Vec<_> = added
-                                        .into_iter()
-                                        .map(|trait_did| tcx.def_path_str(trait_did))
-                                        .collect();
-
-                                    traits.sort();
-                                    traits.into()
-                                },
-                            });
+                            return Err(CastError::PtrPtrAddingAutoTrait(added));
                         }
 
                         Ok(CastKind::PtrPtrCast)

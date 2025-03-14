@@ -85,9 +85,7 @@ impl FromStr for Profile {
             "lib" | "library" => Ok(Profile::Library),
             "compiler" => Ok(Profile::Compiler),
             "maintainer" | "dist" | "user" => Ok(Profile::Dist),
-            "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" | "rls" => {
-                Ok(Profile::Tools)
-            }
+            "tools" | "tool" | "rustdoc" | "clippy" | "miri" | "rustfmt" => Ok(Profile::Tools),
             "none" => Ok(Profile::None),
             "llvm" | "codegen" => Err("the \"llvm\" and \"codegen\" profiles have been removed,\
                 use \"compiler\" instead which has the same functionality"
