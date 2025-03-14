@@ -238,7 +238,7 @@ impl<T: ?Sized> Mutex<T> {
     where
         T: Sized,
     {
-        return self.data.into_inner();
+        self.data.into_inner()
     }
 
     /// Returns a mutable reference to the underlying data.
