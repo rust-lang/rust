@@ -86,6 +86,23 @@ impl<'tcx> InterpCx<'tcx, CompileTimeMachine<'tcx>> {
                     };
                     self.write_discriminant(variant_index, &field_dest)?
                 }
+                sym::size => {
+                    let layout = self.layout_of(ty)?;
+                    let variant_index = if layout.is_sized() {
+                        let (variant, variant_place) = downcast(sym::Some)?;
+                        let size_field_place =
+                            self.project_field(&variant_place, FieldIdx::ZERO)?;
+                        self.write_scalar(
+                            ScalarInt::try_from_target_usize(layout.size.bytes(), self.tcx.tcx)
+                                .unwrap(),
+                            &size_field_place,
+                        )?;
+                        variant
+                    } else {
+                        downcast(sym::None)?.0
+                    };
+                    self.write_discriminant(variant_index, &field_dest)?;
+                }
                 other => span_bug!(self.tcx.span, "unknown `Type` field {other}"),
             }
         }
