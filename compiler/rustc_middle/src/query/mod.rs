@@ -1724,6 +1724,9 @@ rustc_queries! {
         -> Option<&'tcx ItemLocalMap<Box<[TraitCandidate]>>> {
         desc { "getting traits in scope at a block" }
     }
+    query explicitly_defined_opaques(_: hir::OwnerId) -> Option<&'tcx [(Span, LocalDefId)]> {
+        desc { "getting the explicitly defined opaque types"}
+    }
 
     /// Returns whether the impl or associated function has the `default` keyword.
     query defaultness(def_id: DefId) -> hir::Defaultness {

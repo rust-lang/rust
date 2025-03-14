@@ -184,10 +184,10 @@ impl<'tcx> OpaqueTypeCollector<'tcx> {
     #[instrument(level = "trace", skip(self))]
     fn collect_taits_from_defines_attr(&mut self) {
         let hir_id = self.tcx.local_def_id_to_hir_id(self.item);
-        if !hir_id.is_owner() {
+        let Some(owner_id) = hir_id.as_owner() else {
             return;
-        }
-        let Some(defines) = self.tcx.hir_attr_map(hir_id.owner).define_opaque else {
+        };
+        let Some(defines) = self.tcx.explicitly_defined_opaques(owner_id) else {
             return;
         };
         for &(span, define) in defines {

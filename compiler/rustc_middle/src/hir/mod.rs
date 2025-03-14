@@ -238,4 +238,9 @@ pub fn provide(providers: &mut Providers) {
     providers.in_scope_traits_map = |tcx, id| {
         tcx.hir_crate(()).owners[id.def_id].as_owner().map(|owner_info| &owner_info.trait_map)
     };
+    providers.explicitly_defined_opaques = |tcx, id| {
+        tcx.hir_crate(()).owners[id.def_id]
+            .as_owner()
+            .and_then(|owner_info| Some(*owner_info.define_opaque.as_ref()?))
+    };
 }
