@@ -1,0 +1,17 @@
+error[E0053]: function `other` has a type that is incompatible with the declaration
+  --> $DIR/wrong_ty_2.rs:18:1
+   |
+LL | fn other() -> u64 {
+   | ^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+   |
+note: type in declaration
+  --> $DIR/wrong_ty_2.rs:14:5
+   |
+LL |     safe fn bar(x: u64) -> u64;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: expected signature `fn(u64) -> _`
+              found signature `fn() -> _`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0053`.

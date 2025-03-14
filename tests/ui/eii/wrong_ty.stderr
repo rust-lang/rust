@@ -1,16 +1,21 @@
 error[E0053]: function `other` has a type that is incompatible with the declaration
-  --> $DIR/wrong_ty.rs:18:1
+  --> $DIR/wrong_ty.rs:18:13
    |
-LL | fn other() -> u64 {
-   | ^^^^^^^^^^^^^^^^^ incorrect number of function parameters
+LL | fn other(x: usize) -> u64 {
+   |             ^^^^^ expected `u64`, found `usize`
    |
 note: type in declaration
-  --> $DIR/wrong_ty.rs:14:5
+  --> $DIR/wrong_ty.rs:14:20
    |
 LL |     safe fn bar(x: u64) -> u64;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                    ^^^
    = note: expected signature `fn(u64) -> _`
-              found signature `fn() -> _`
+              found signature `fn(usize) -> _`
+help: change the parameter type to match the declaration
+   |
+LL - fn other(x: usize) -> u64 {
+LL + fn other(x: u64) -> u64 {
+   |
 
 error: aborting due to 1 previous error
 

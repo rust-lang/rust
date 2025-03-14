@@ -11,14 +11,15 @@ macro foo() {
 }
 
 unsafe extern "Rust" {
-    safe fn bar<'a, 'b>(x: &'b u64) -> &'a u64;
+    safe fn bar(x: u64) -> u64;
 }
 
 #[foo]
-fn other<'a, 'b>(x: &'b u64) -> &'b u64 {
-    &0
+fn other() -> u64 {
+//~^ ERROR function `other` has a type that is incompatible with the declaration
+    3
 }
 
 fn main() {
-    bar(&0);
+    bar(0);
 }
