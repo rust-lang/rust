@@ -145,6 +145,7 @@ pub struct EIIImpl {
     pub impl_marked_unsafe: bool,
     pub span: Span,
     pub inner_span: Span,
+    pub is_default: bool,
 }
 
 /// Represent parsed, *built in*, inert attributes.

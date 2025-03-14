@@ -23,7 +23,6 @@ use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
     ResolverAstLoweringExt,
 };
-use crate::GenericArgsMode;
 
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
@@ -156,7 +155,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match i {
             ItemKind::Fn(box Fn { eii_impl, .. }) => {
                 let mut eii_impls = ThinVec::new();
-                for EIIImpl { node_id, eii_macro_path, impl_safety, span, inner_span } in eii_impl {
+                for EIIImpl {
+                    node_id,
+                    eii_macro_path,
+                    impl_safety,
+                    span,
+                    inner_span,
+                    is_default,
+                } in eii_impl
+                {
                     let did = self.lower_path_simple_eii(*node_id, eii_macro_path);
                     eii_impls.push(rustc_attr_parsing::EIIImpl {
                         eii_macro: did,
@@ -165,12 +172,18 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         impl_marked_unsafe: self
                             .lower_safety(*impl_safety, hir::Safety::Safe)
                             .is_unsafe(),
+                        is_default: *is_default,
                     })
                 }
 
                 vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(eii_impls))]
             }
-            ItemKind::MacroDef(_, MacroDef { eii_macro_for: Some(EiiMacroFor { extern_item_path, impl_unsafe }), .. }) => {
+            ItemKind::MacroDef(
+                _,
+                MacroDef {
+                    eii_macro_for: Some(EIIMacroFor { extern_item_path, impl_unsafe }), ..
+                },
+            ) => {
                 vec![hir::Attribute::Parsed(AttributeKind::EiiMacroFor {
                     eii_extern_item: self.lower_path_simple_eii(id, extern_item_path),
                     impl_unsafe: *impl_unsafe,
@@ -719,7 +732,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                             this.lower_fn_params_to_idents(fdec),
                         )
                     });
-
 
                 // Unmarked safety in unsafe block defaults to unsafe.
                 let header = self.lower_fn_header(sig.header, hir::Safety::Unsafe, attrs);
