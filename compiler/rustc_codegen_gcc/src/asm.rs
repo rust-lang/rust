@@ -2,7 +2,7 @@
 
 use std::borrow::Cow;
 
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_ast::ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::mir::operand::OperandValue;
 use rustc_codegen_ssa::mir::place::PlaceRef;
@@ -10,8 +10,8 @@ use rustc_codegen_ssa::traits::{
     AsmBuilderMethods, AsmCodegenMethods, BaseTypeCodegenMethods, BuilderMethods,
     GlobalAsmOperandRef, InlineAsmOperandRef,
 };
-use rustc_middle::bug;
 use rustc_middle::ty::Instance;
+use rustc_middle::{bug, mir};
 use rustc_span::Span;
 use rustc_target::asm::*;
 
@@ -858,12 +858,109 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        instance: Instance<'tcx>,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
 
         // Default to Intel syntax on x86
         let att_dialect = matches!(asm_arch, InlineAsmArch::X86 | InlineAsmArch::X86_64)
             && options.contains(InlineAsmOptions::ATT_SYNTAX);
+
+        // Convert all operands to string interpolations
+        let converted_operands = operands
+            .iter()
+            .enumerate()
+            .map(|(operand_idx, operand)| {
+                match *operand {
+                    GlobalAsmOperandRef::Interpolate { ref string } => {
+                        // Const operands get injected directly into the
+                        // template. Note that we don't need to escape $
+                        // here unlike normal inline assembly.
+                        string.to_owned()
+                    }
+                    GlobalAsmOperandRef::ConstPointer { value } => {
+                        let (prov, offset) = value.prov_and_relative_offset();
+                        let global_alloc = self.tcx.global_alloc(prov.alloc_id());
+                        let symbol = 'sym: {
+                            let alloc = match global_alloc {
+                                mir::interpret::GlobalAlloc::Function { instance } => {
+                                    let function = get_fn(self, instance);
+                                    self.add_used_function(function);
+                                    // TODO(@Amanieu): Additional mangling is needed on
+                                    // some targets to add a leading underscore (Mach-O)
+                                    // or byte count suffixes (x86 Windows).
+                                    break 'sym self.tcx.symbol_name(instance).name.to_owned();
+                                }
+                                mir::interpret::GlobalAlloc::VTable(ty, dyn_ty) => self
+                                    .tcx
+                                    .global_alloc(self.tcx.vtable_allocation((
+                                        ty,
+                                        dyn_ty.principal().map(|principal| {
+                                            self.tcx
+                                                .instantiate_bound_regions_with_erased(principal)
+                                        }),
+                                    )))
+                                    .unwrap_memory(),
+                                mir::interpret::GlobalAlloc::Static(def_id) => {
+                                    // TODO(antoyo): set the global variable as used.
+                                    // TODO(@Amanieu): Additional mangling is needed on
+                                    // some targets to add a leading underscore (Mach-O).
+                                    let instance = Instance::mono(self.tcx, def_id);
+                                    break 'sym self.tcx.symbol_name(instance).name.to_owned();
+                                }
+                                mir::interpret::GlobalAlloc::Memory(alloc) => alloc,
+                                mir::interpret::GlobalAlloc::TypeId { .. } => {
+                                    // This is not an actual allocation, just return the offset.
+                                    return format!("{}", offset.bytes());
+                                }
+                            };
+
+                            // For ZSTs directly codegen an aligned pointer.
+                            if alloc.inner().len() == 0 {
+                                assert_eq!(offset.bytes(), 0);
+                                return format!("{}", alloc.inner().align.bytes());
+                            }
+
+                            let asm_name = self.tcx.symbol_name(instance);
+                            let sym_name = format!("{asm_name}.{operand_idx}");
+
+                            let init = crate::consts::const_alloc_to_gcc_uncached(self, alloc);
+                            let alloc = alloc.inner();
+                            let typ = self.val_ty(init).get_aligned(alloc.align.bytes());
+
+                            let global = self.declare_global_with_linkage(
+                                &sym_name,
+                                typ,
+                                GlobalKind::Exported,
+                            );
+                            global.global_set_initializer_rvalue(init);
+                            // TODO(nbdd0121): set unnamed address.
+                            // TODO(nbdd0121): set the global variable as used.
+
+                            sym_name
+                        };
+
+                        let offset = offset.bytes();
+                        if offset != 0 { format!("{symbol}+{offset}") } else { symbol }
+                    }
+                    GlobalAsmOperandRef::SymFn { instance } => {
+                        let function = get_fn(self, instance);
+                        self.add_used_function(function);
+                        // TODO(@Amanieu): Additional mangling is needed on
+                        // some targets to add a leading underscore (Mach-O)
+                        // or byte count suffixes (x86 Windows).
+                        self.tcx.symbol_name(instance).name.to_owned()
+                    }
+                    GlobalAsmOperandRef::SymStatic { def_id } => {
+                        // TODO(antoyo): set the global variable as used.
+                        // TODO(@Amanieu): Additional mangling is needed on
+                        // some targets to add a leading underscore (Mach-O).
+                        let instance = Instance::mono(self.tcx, def_id);
+                        self.tcx.symbol_name(instance).name.to_owned()
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Build the template string
         let mut template_str = ".pushsection .text\n".to_owned();
@@ -888,33 +985,7 @@ impl<'gcc, 'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     }
                 }
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
-                    match operands[operand_idx] {
-                        GlobalAsmOperandRef::Interpolate { ref string } => {
-                            // Const operands get injected directly into the
-                            // template. Note that we don't need to escape %
-                            // here unlike normal inline assembly.
-                            template_str.push_str(string);
-                        }
-
-                        GlobalAsmOperandRef::SymFn { instance } => {
-                            let function = get_fn(self, instance);
-                            self.add_used_function(function);
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O)
-                            // or byte count suffixes (x86 Windows).
-                            let name = self.tcx.symbol_name(instance).name;
-                            template_str.push_str(name);
-                        }
-
-                        GlobalAsmOperandRef::SymStatic { def_id } => {
-                            // TODO(antoyo): set the global variable as used.
-                            // TODO(@Amanieu): Additional mangling is needed on
-                            // some targets to add a leading underscore (Mach-O).
-                            let instance = Instance::mono(self.tcx, def_id);
-                            let name = self.tcx.symbol_name(instance).name;
-                            template_str.push_str(name);
-                        }
-                    }
+                    template_str.push_str(&converted_operands[operand_idx]);
                 }
             }
         }

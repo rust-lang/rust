@@ -7,7 +7,7 @@ use rustc_codegen_ssa::traits::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::layout::TyAndLayout;
-use rustc_middle::{bug, span_bug};
+use rustc_middle::{bug, mir, span_bug};
 use rustc_span::{Pos, Span, Symbol, sym};
 use rustc_target::asm::*;
 use smallvec::SmallVec;
@@ -389,8 +389,118 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        instance: Instance<'tcx>,
     ) {
         let asm_arch = self.tcx.sess.asm_arch.unwrap();
+
+        // Convert all operands to string interpolations
+        let converted_operands = operands
+            .iter()
+            .enumerate()
+            .map(|(operand_idx, operand)| {
+                match *operand {
+                    GlobalAsmOperandRef::Interpolate { ref string } => {
+                        // Const operands get injected directly into the
+                        // template. Note that we don't need to escape $
+                        // here unlike normal inline assembly.
+                        string.to_owned()
+                    }
+                    GlobalAsmOperandRef::ConstPointer { value } => {
+                        let (prov, offset) = value.prov_and_relative_offset();
+                        let global_alloc = self.tcx.global_alloc(prov.alloc_id());
+                        let llval = 'llval: {
+                            let alloc = match global_alloc {
+                                mir::interpret::GlobalAlloc::Function { instance } => {
+                                    break 'llval self.get_fn(instance);
+                                }
+                                mir::interpret::GlobalAlloc::VTable(ty, dyn_ty) => self
+                                    .tcx
+                                    .global_alloc(self.tcx.vtable_allocation((
+                                        ty,
+                                        dyn_ty.principal().map(|principal| {
+                                            self.tcx
+                                                .instantiate_bound_regions_with_erased(principal)
+                                        }),
+                                    )))
+                                    .unwrap_memory(),
+                                mir::interpret::GlobalAlloc::Static(def_id) => {
+                                    break 'llval self
+                                        .renamed_statics
+                                        .borrow()
+                                        .get(&def_id)
+                                        .copied()
+                                        .unwrap_or_else(|| self.get_static(def_id));
+                                }
+                                mir::interpret::GlobalAlloc::Memory(alloc) => alloc,
+                                mir::interpret::GlobalAlloc::TypeId { .. } => {
+                                    // This is not an actual allocation, just return the offset.
+                                    return format!("{}", offset.bytes());
+                                }
+                            };
+                            let alloc = alloc.inner();
+
+                            // For ZSTs directly codegen an aligned pointer.
+                            if alloc.len() == 0 {
+                                assert_eq!(offset.bytes(), 0);
+                                return format!("{}", alloc.align.bytes());
+                            }
+
+                            let asm_name = self.tcx.symbol_name(instance);
+                            let sym_name = format!("{asm_name}.{operand_idx}");
+
+                            let init = crate::consts::const_alloc_to_llvm(
+                                self, alloc, /*static*/ false,
+                            );
+                            let g = self.static_addr_of_mut(init, alloc.align, None);
+                            if alloc.mutability.is_not() {
+                                // NB: we can't use `static_addr_of_impl` here to avoid sharing
+                                // the global, as we need to set name and linkage.
+                                unsafe { llvm::LLVMSetGlobalConstant(g, llvm::True) };
+                            }
+
+                            llvm::set_value_name(g, sym_name.as_bytes());
+
+                            // `static_addr_of_mut` gives us a private global which can't be
+                            // used by global asm. Update it to a hidden internal global instead.
+                            llvm::set_linkage(g, llvm::Linkage::InternalLinkage);
+                            llvm::set_visibility(g, llvm::Visibility::Hidden);
+                            g
+                        };
+                        self.add_compiler_used_global(llval);
+                        let symbol = llvm::build_string(|s| unsafe {
+                            llvm::LLVMRustGetMangledName(llval, s);
+                        })
+                        .expect("symbol is not valid UTF-8");
+
+                        let offset = offset.bytes();
+                        if offset != 0 { format!("{symbol}+{offset}") } else { symbol }
+                    }
+                    GlobalAsmOperandRef::SymFn { instance } => {
+                        let llval = self.get_fn(instance);
+                        self.add_compiler_used_global(llval);
+                        let symbol = llvm::build_string(|s| unsafe {
+                            llvm::LLVMRustGetMangledName(llval, s);
+                        })
+                        .expect("symbol is not valid UTF-8");
+                        symbol
+                    }
+                    GlobalAsmOperandRef::SymStatic { def_id } => {
+                        let llval = self
+                            .renamed_statics
+                            .borrow()
+                            .get(&def_id)
+                            .copied()
+                            .unwrap_or_else(|| self.get_static(def_id));
+                        self.add_compiler_used_global(llval);
+                        let symbol = llvm::build_string(|s| unsafe {
+                            llvm::LLVMRustGetMangledName(llval, s);
+                        })
+                        .expect("symbol is not valid UTF-8");
+                        symbol
+                    }
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Build the template string
         let mut template_str = String::new();
@@ -409,37 +519,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for CodegenCx<'_, 'tcx> {
             match *piece {
                 InlineAsmTemplatePiece::String(ref s) => template_str.push_str(s),
                 InlineAsmTemplatePiece::Placeholder { operand_idx, modifier: _, span: _ } => {
-                    match operands[operand_idx] {
-                        GlobalAsmOperandRef::Interpolate { ref string } => {
-                            // Const operands get injected directly into the
-                            // template. Note that we don't need to escape $
-                            // here unlike normal inline assembly.
-                            template_str.push_str(string);
-                        }
-                        GlobalAsmOperandRef::SymFn { instance } => {
-                            let llval = self.get_fn(instance);
-                            self.add_compiler_used_global(llval);
-                            let symbol = llvm::build_string(|s| unsafe {
-                                llvm::LLVMRustGetMangledName(llval, s);
-                            })
-                            .expect("symbol is not valid UTF-8");
-                            template_str.push_str(&symbol);
-                        }
-                        GlobalAsmOperandRef::SymStatic { def_id } => {
-                            let llval = self
-                                .renamed_statics
-                                .borrow()
-                                .get(&def_id)
-                                .copied()
-                                .unwrap_or_else(|| self.get_static(def_id));
-                            self.add_compiler_used_global(llval);
-                            let symbol = llvm::build_string(|s| unsafe {
-                                llvm::LLVMRustGetMangledName(llval, s);
-                            })
-                            .expect("symbol is not valid UTF-8");
-                            template_str.push_str(&symbol);
-                        }
-                    }
+                    template_str.push_str(&converted_operands[operand_idx])
                 }
             }
         }

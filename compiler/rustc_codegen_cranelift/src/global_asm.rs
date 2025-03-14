@@ -8,10 +8,10 @@ use std::sync::Arc;
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_codegen_ssa::traits::{AsmCodegenMethods, GlobalAsmOperandRef};
-use rustc_middle::ty::TyCtxt;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, HasTyCtxt, HasTypingEnv, LayoutError, LayoutOfHelpers,
 };
+use rustc_middle::ty::{Instance, TyCtxt};
 use rustc_session::config::{OutputFilenames, OutputType};
 use rustc_target::asm::InlineAsmArch;
 
@@ -29,6 +29,7 @@ impl<'tcx> AsmCodegenMethods<'tcx> for GlobalAsmContext<'_, 'tcx> {
         operands: &[GlobalAsmOperandRef<'tcx>],
         options: InlineAsmOptions,
         _line_spans: &[Span],
+        _instance: Instance<'_>,
     ) {
         codegen_global_asm_inner(self.tcx, self.global_asm, template, operands, options);
     }
@@ -131,6 +132,12 @@ fn codegen_global_asm_inner<'tcx>(
                         let instance = Instance::mono(tcx, def_id);
                         let symbol = tcx.symbol_name(instance);
                         global_asm.push_str(symbol.name);
+                    }
+                    GlobalAsmOperandRef::ConstPointer { value: _ } => {
+                        tcx.dcx().span_err(
+                            span,
+                            "asm! and global_asm! const pointer operands are not yet supported",
+                        );
                     }
                 }
             }
