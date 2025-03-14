@@ -361,6 +361,7 @@ docker \
   --env TOOLSTATE_PUBLISH \
   --env RUST_CI_OVERRIDE_RELEASE_CHANNEL \
   --env CI_JOB_NAME="${CI_JOB_NAME-$IMAGE}" \
+  --env CI_JOB_DOC_URL="${CI_JOB_DOC_URL}" \
   --env BASE_COMMIT="$BASE_COMMIT" \
   --env DIST_TRY_BUILD \
   --env PR_CI_JOB \
