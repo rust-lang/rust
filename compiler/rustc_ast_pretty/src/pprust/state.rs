@@ -578,11 +578,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         let mut printed = false;
         for attr in attrs {
             if attr.style == kind {
-                self.print_attribute_inline(attr, is_inline);
-                if is_inline {
-                    self.nbsp();
+                if self.print_attribute_inline(attr, is_inline) {
+                    if is_inline {
+                        self.nbsp();
+                    }
+                    printed = true;
                 }
-                printed = true;
             }
         }
         if printed && trailing_hardbreak && !is_inline {
@@ -591,7 +592,12 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         printed
     }
 
-    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) {
+    fn print_attribute_inline(&mut self, attr: &ast::Attribute, is_inline: bool) -> bool {
+        if attr.has_name(sym::cfg_attr_trace) {
+            // It's not a valid identifier, so avoid printing it
+            // to keep the printed code reasonably parse-able.
+            return false;
+        }
         if !is_inline {
             self.hardbreak_if_not_bol();
         }
@@ -610,6 +616,7 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
                 self.hardbreak()
             }
         }
+        true
     }
 
     fn print_attr_item(&mut self, item: &ast::AttrItem, span: Span) {
@@ -2047,7 +2054,7 @@ impl<'a> State<'a> {
     }
 
     fn print_attribute(&mut self, attr: &ast::Attribute) {
-        self.print_attribute_inline(attr, false)
+        self.print_attribute_inline(attr, false);
     }
 
     fn print_meta_list_item(&mut self, item: &ast::MetaItemInner) {

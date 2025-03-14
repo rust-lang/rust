@@ -336,6 +336,7 @@ impl<'a> AstValidator<'a> {
                     sym::allow,
                     sym::cfg,
                     sym::cfg_attr,
+                    sym::cfg_attr_trace,
                     sym::deny,
                     sym::expect,
                     sym::forbid,
