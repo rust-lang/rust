@@ -21,6 +21,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::ops::{ControlFlow, Deref};
 
+use root_cx::BorrowCheckRootCtxt;
 use rustc_abi::FieldIdx;
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_data_structures::graph::dominators::Dominators;
@@ -45,7 +46,7 @@ use rustc_mir_dataflow::move_paths::{
 };
 use rustc_mir_dataflow::{Analysis, EntryStates, Results, ResultsVisitor, visit_results};
 use rustc_session::lint::builtin::{TAIL_EXPR_DROP_ORDER, UNUSED_MUT};
-use rustc_span::{Span, Symbol};
+use rustc_span::{ErrorGuaranteed, Span, Symbol};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -73,7 +74,6 @@ mod def_use;
 mod diagnostics;
 mod member_constraints;
 mod nll;
-mod opaque_types;
 mod path_utils;
 mod place_ext;
 mod places_conflict;
@@ -81,6 +81,7 @@ mod polonius;
 mod prefixes;
 mod region_infer;
 mod renumber;
+mod root_cx;
 mod session_diagnostics;
 mod type_check;
 mod universal_regions;
@@ -102,44 +103,64 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { mir_borrowck, ..*providers };
 }
 
-fn mir_borrowck(tcx: TyCtxt<'_>, def: LocalDefId) -> &BorrowCheckResult<'_> {
+/// Provider for `query mir_borrowck`. Similar to `typeck`, this must
+/// only be called for typeck roots which will then borrowck all
+/// nested bodies as well.
+fn mir_borrowck(
+    tcx: TyCtxt<'_>,
+    def: LocalDefId,
+) -> Result<&ConcreteOpaqueTypes<'_>, ErrorGuaranteed> {
+    assert!(!tcx.is_typeck_child(def.to_def_id()));
     let (input_body, _) = tcx.mir_promoted(def);
+    debug!("run query mir_borrowck: {}", tcx.def_path_str(def));
+
     let input_body: &Body<'_> = &input_body.borrow();
-    if input_body.should_skip() || input_body.tainted_by_errors.is_some() {
-        debug!("Skipping borrowck because of injected body or tainted body");
-        // Let's make up a borrowck result! Fun times!
-        let result = BorrowCheckResult {
-            concrete_opaque_types: FxIndexMap::default(),
-            closure_requirements: None,
-            used_mut_upvars: SmallVec::new(),
-            tainted_by_errors: input_body.tainted_by_errors,
-        };
-        return tcx.arena.alloc(result);
+    if let Some(guar) = input_body.tainted_by_errors {
+        debug!("Skipping borrowck because of tainted body");
+        Err(guar)
+    } else if input_body.should_skip() {
+        debug!("Skipping borrowck because of injected body");
+        let opaque_types = ConcreteOpaqueTypes(Default::default());
+        Ok(tcx.arena.alloc(opaque_types))
+    } else {
+        let mut root_cx = BorrowCheckRootCtxt::new(tcx, def);
+        let PropagatedBorrowCheckResults { closure_requirements, used_mut_upvars } =
+            do_mir_borrowck(&mut root_cx, def, None).0;
+        debug_assert!(closure_requirements.is_none());
+        debug_assert!(used_mut_upvars.is_empty());
+        root_cx.finalize()
     }
+}
 
-    let borrowck_result = do_mir_borrowck(tcx, def, None).0;
-    debug!("mir_borrowck done");
-
-    tcx.arena.alloc(borrowck_result)
+/// Data propagated to the typeck parent by nested items.
+/// This should always be empty for the typeck root.
+#[derive(Debug)]
+struct PropagatedBorrowCheckResults<'tcx> {
+    closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
+    used_mut_upvars: SmallVec<[FieldIdx; 8]>,
 }
 
 /// Perform the actual borrow checking.
 ///
 /// Use `consumer_options: None` for the default behavior of returning
-/// [`BorrowCheckResult`] only. Otherwise, return [`BodyWithBorrowckFacts`] according
-/// to the given [`ConsumerOptions`].
-#[instrument(skip(tcx), level = "debug")]
+/// [`PropagatedBorrowCheckResults`] only. Otherwise, return [`BodyWithBorrowckFacts`]
+/// according to the given [`ConsumerOptions`].
+///
+/// For nested bodies this should only be called through `root_cx.get_or_insert_nested`.
+#[instrument(skip(root_cx), level = "debug")]
 fn do_mir_borrowck<'tcx>(
-    tcx: TyCtxt<'tcx>,
+    root_cx: &mut BorrowCheckRootCtxt<'tcx>,
     def: LocalDefId,
     consumer_options: Option<ConsumerOptions>,
-) -> (BorrowCheckResult<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+) -> (PropagatedBorrowCheckResults<'tcx>, Option<Box<BodyWithBorrowckFacts<'tcx>>>) {
+    let tcx = root_cx.tcx;
     let infcx = BorrowckInferCtxt::new(tcx, def);
     let (input_body, promoted) = tcx.mir_promoted(def);
     let input_body: &Body<'_> = &input_body.borrow();
     let input_promoted: &IndexSlice<_, _> = &promoted.borrow();
     if let Some(e) = input_body.tainted_by_errors {
         infcx.set_tainted_by_errors(e);
+        root_cx.set_tainted_by_errors(e);
     }
 
     let mut local_names = IndexVec::from_elem(None, &input_body.local_decls);
@@ -185,13 +206,13 @@ fn do_mir_borrowck<'tcx>(
     // Compute non-lexical lifetimes.
     let nll::NllOutput {
         regioncx,
-        concrete_opaque_types,
         polonius_input,
         polonius_output,
         opt_closure_req,
         nll_errors,
         polonius_diagnostics,
     } = nll::compute_regions(
+        root_cx,
         &infcx,
         free_regions,
         body,
@@ -210,26 +231,19 @@ fn do_mir_borrowck<'tcx>(
     // We also have a `#[rustc_regions]` annotation that causes us to dump
     // information.
     let diags_buffer = &mut BorrowckDiagnosticsBuffer::default();
-    nll::dump_annotation(
-        &infcx,
-        body,
-        &regioncx,
-        &opt_closure_req,
-        &concrete_opaque_types,
-        diags_buffer,
-    );
+    nll::dump_annotation(&infcx, body, &regioncx, &opt_closure_req, diags_buffer);
 
     let movable_coroutine =
-        // The first argument is the coroutine type passed by value
-        if let Some(local) = body.local_decls.raw.get(1)
-        // Get the interior types and args which typeck computed
-        && let ty::Coroutine(def_id, _) = *local.ty.kind()
-        && tcx.coroutine_movability(def_id) == hir::Movability::Movable
-    {
-        true
-    } else {
-        false
-    };
+    // The first argument is the coroutine type passed by value
+    if let Some(local) = body.local_decls.raw.get(1)
+    // Get the interior types and args which typeck computed
+    && let ty::Coroutine(def_id, _) = *local.ty.kind()
+    && tcx.coroutine_movability(def_id) == hir::Movability::Movable
+{
+    true
+} else {
+    false
+};
 
     // While promoteds should mostly be correct by construction, we need to check them for
     // invalid moves to detect moving out of arrays:`struct S; fn main() { &([S][0]); }`.
@@ -240,6 +254,7 @@ fn do_mir_borrowck<'tcx>(
         // this check out of `MirBorrowckCtxt`, actually doing so is far from trivial.
         let move_data = MoveData::gather_moves(promoted_body, tcx, |_| true);
         let mut promoted_mbcx = MirBorrowckCtxt {
+            root_cx,
             infcx: &infcx,
             body: promoted_body,
             move_data: &move_data,
@@ -280,6 +295,7 @@ fn do_mir_borrowck<'tcx>(
     }
 
     let mut mbcx = MirBorrowckCtxt {
+        root_cx,
         infcx: &infcx,
         body,
         move_data: &move_data,
@@ -347,13 +363,13 @@ fn do_mir_borrowck<'tcx>(
 
     debug!("mbcx.used_mut: {:?}", mbcx.used_mut);
     mbcx.lint_unused_mut();
-    let tainted_by_errors = mbcx.emit_errors();
+    if let Some(guar) = mbcx.emit_errors() {
+        mbcx.root_cx.set_tainted_by_errors(guar);
+    }
 
-    let result = BorrowCheckResult {
-        concrete_opaque_types: concrete_opaque_types.into_inner(),
+    let result = PropagatedBorrowCheckResults {
         closure_requirements: opt_closure_req,
         used_mut_upvars: mbcx.used_mut_upvars,
-        tainted_by_errors,
     };
 
     let body_with_facts = if consumer_options.is_some() {
@@ -488,6 +504,7 @@ impl<'tcx> Deref for BorrowckInferCtxt<'tcx> {
 }
 
 struct MirBorrowckCtxt<'a, 'infcx, 'tcx> {
+    root_cx: &'a mut BorrowCheckRootCtxt<'tcx>,
     infcx: &'infcx BorrowckInferCtxt<'tcx>,
     body: &'a Body<'tcx>,
     move_data: &'a MoveData<'tcx>,
@@ -1361,11 +1378,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
                     | AggregateKind::CoroutineClosure(def_id, _)
                     | AggregateKind::Coroutine(def_id, _) => {
                         let def_id = def_id.expect_local();
-                        let BorrowCheckResult { used_mut_upvars, .. } =
-                            self.infcx.tcx.mir_borrowck(def_id);
+                        let used_mut_upvars = self.root_cx.used_mut_upvars(def_id);
                         debug!("{:?} used_mut_upvars={:?}", def_id, used_mut_upvars);
-                        for field in used_mut_upvars {
-                            self.propagate_closure_used_mut_upvar(&operands[*field]);
+                        // FIXME: We're cloning the `SmallVec` here to avoid borrowing `root_cx`
+                        // when calling `propagate_closure_used_mut_upvar`. This should ideally
+                        // be unnecessary.
+                        for field in used_mut_upvars.clone() {
+                            self.propagate_closure_used_mut_upvar(&operands[field]);
                         }
                     }
                     AggregateKind::Adt(..)

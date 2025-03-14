@@ -10,7 +10,6 @@ use rustc_index::bit_set::BitMatrix;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{HashStable, TyDecodable, TyEncodable, TypeFoldable, TypeVisitable};
 use rustc_span::{Span, Symbol};
-use smallvec::SmallVec;
 
 use super::{ConstValue, SourceInfo};
 use crate::ty::{self, CoroutineArgsExt, OpaqueHiddenType, Ty, TyCtxt, fold_regions};
@@ -85,16 +84,11 @@ impl Debug for CoroutineLayout<'_> {
     }
 }
 
-#[derive(Debug, TyEncodable, TyDecodable, HashStable)]
-pub struct BorrowCheckResult<'tcx> {
-    /// All the opaque types that are restricted to concrete types
-    /// by this function. Unlike the value in `TypeckResults`, this has
-    /// unerased regions.
-    pub concrete_opaque_types: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
-    pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
-    pub used_mut_upvars: SmallVec<[FieldIdx; 8]>,
-    pub tainted_by_errors: Option<ErrorGuaranteed>,
-}
+/// All the opaque types that are restricted to concrete types
+/// by this function. Unlike the value in `TypeckResults`, this has
+/// unerased regions.
+#[derive(Default, Debug, TyEncodable, TyDecodable, HashStable)]
+pub struct ConcreteOpaqueTypes<'tcx>(pub FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>);
 
 /// The result of the `mir_const_qualif` query.
 ///

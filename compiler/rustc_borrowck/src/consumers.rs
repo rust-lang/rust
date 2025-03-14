@@ -15,6 +15,7 @@ pub use super::polonius::legacy::{
     RichLocation, RustcFacts,
 };
 pub use super::region_infer::RegionInferenceContext;
+use crate::{BorrowCheckRootCtxt, do_mir_borrowck};
 
 /// Options determining the output behavior of [`get_body_with_borrowck_facts`].
 ///
@@ -97,8 +98,9 @@ pub struct BodyWithBorrowckFacts<'tcx> {
 /// *   Polonius is highly unstable, so expect regular changes in its signature or other details.
 pub fn get_body_with_borrowck_facts(
     tcx: TyCtxt<'_>,
-    def: LocalDefId,
+    def_id: LocalDefId,
     options: ConsumerOptions,
 ) -> BodyWithBorrowckFacts<'_> {
-    *super::do_mir_borrowck(tcx, def, Some(options)).1.unwrap()
+    let mut root_cx = BorrowCheckRootCtxt::new(tcx, def_id);
+    *do_mir_borrowck(&mut root_cx, def_id, Some(options)).1.unwrap()
 }
