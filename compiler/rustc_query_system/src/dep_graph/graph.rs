@@ -533,6 +533,8 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
+    /// This encodes a diagnostic by creating a node with an unique index and assoicating
+    /// `diagnostic` with it, for use in the next session.
     #[inline]
     pub fn record_diagnostic<Qcx: QueryContext>(&self, qcx: Qcx, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
@@ -540,6 +542,8 @@ impl<D: Deps> DepGraph<D> {
         }
     }
 
+    /// This forces a diagnostic node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_diagnostic` in the previous session.
     #[inline]
     pub fn force_diagnostic_node<Qcx: QueryContext>(
         &self,
@@ -673,12 +677,15 @@ impl<D: Deps> DepGraphData<D> {
         self.debug_loaded_from_disk.lock().insert(dep_node);
     }
 
+    /// This encodes a diagnostic by creating a node with an unique index and assoicating
+    /// `diagnostic` with it, for use in the next session.
     #[inline]
     fn encode_diagnostic<Qcx: QueryContext>(
         &self,
         qcx: Qcx,
         diagnostic: &DiagInner,
     ) -> DepNodeIndex {
+        // Use `send` so we get an unique index, even though the dep node is not.
         let dep_node_index = self.current.encoder.send(
             DepNode {
                 kind: D::DEP_KIND_SIDE_EFFECT,
@@ -694,6 +701,8 @@ impl<D: Deps> DepGraphData<D> {
         dep_node_index
     }
 
+    /// This forces a diagnostic node green by running its side effect. `prev_index` would
+    /// refer to a node created used `encode_diagnostic` in the previous session.
     #[inline]
     fn force_diagnostic_node<Qcx: QueryContext>(
         &self,
