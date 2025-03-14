@@ -23,7 +23,7 @@ use rustc_middle::ty::{self, TyCtxt, TyEncoder};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
+    QueryCache, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffect, QueryStackFrame,
     force_query,
 };
 use rustc_query_system::{QueryOverflow, QueryOverflowNote};
@@ -89,21 +89,21 @@ impl QueryContext for QueryCtxt<'_> {
     }
 
     // Interactions with on_disk_cache
-    fn load_side_effects(
+    fn load_side_effect(
         self,
         prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffects> {
+    ) -> Option<QuerySideEffect> {
         self.query_system
             .on_disk_cache
             .as_ref()
-            .and_then(|c| c.load_side_effects(self.tcx, prev_dep_node_index))
+            .and_then(|c| c.load_side_effect(self.tcx, prev_dep_node_index))
     }
 
     #[inline(never)]
     #[cold]
-    fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
+    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
         if let Some(c) = self.query_system.on_disk_cache.as_ref() {
-            c.store_side_effects(dep_node_index, side_effects)
+            c.store_side_effect(dep_node_index, side_effect)
         }
     }
 

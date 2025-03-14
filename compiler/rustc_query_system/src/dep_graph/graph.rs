@@ -25,7 +25,7 @@ use super::serialized::{GraphEncoder, SerializedDepGraph, SerializedDepNodeIndex
 use super::{DepContext, DepKind, DepNode, Deps, HasDepContext, WorkProductId};
 use crate::dep_graph::edges::EdgesVec;
 use crate::ich::StableHashingContext;
-use crate::query::{QueryContext, QuerySideEffects};
+use crate::query::{QueryContext, QuerySideEffect};
 
 #[derive(Clone)]
 pub struct DepGraph<D: Deps> {
@@ -689,8 +689,8 @@ impl<D: Deps> DepGraphData<D> {
             // diagnostic.
             std::iter::once(DepNodeIndex::FOREVER_RED_NODE).collect(),
         );
-        let side_effects = QuerySideEffects { diagnostic: diagnostic.clone() };
-        qcx.store_side_effects(dep_node_index, side_effects);
+        let side_effect = QuerySideEffect::Diagnostic(diagnostic.clone());
+        qcx.store_side_effect(dep_node_index, side_effect);
         dep_node_index
     }
 
@@ -701,14 +701,18 @@ impl<D: Deps> DepGraphData<D> {
         prev_index: SerializedDepNodeIndex,
     ) {
         D::with_deps(TaskDepsRef::Ignore, || {
-            let side_effects = qcx.load_side_effects(prev_index).unwrap();
+            let side_effect = qcx.load_side_effect(prev_index).unwrap();
 
-            qcx.dep_context().sess().dcx().emit_diagnostic(side_effects.diagnostic.clone());
+            match &side_effect {
+                QuerySideEffect::Diagnostic(diagnostic) => {
+                    qcx.dep_context().sess().dcx().emit_diagnostic(diagnostic.clone());
+                }
+            }
 
             // Promote the previous diagnostics to the current session.
             let index = self.current.promote_node_and_deps_to_current(&self.previous, prev_index);
             // FIXME: Can this race with a parallel compiler?
-            qcx.store_side_effects(index, side_effects);
+            qcx.store_side_effect(index, side_effect);
 
             // Mark the node as green.
             self.colors.insert(prev_index, DepNodeColor::Green(index));

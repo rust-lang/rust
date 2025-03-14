@@ -11,7 +11,7 @@ use rustc_hir::def_id::{CrateNum, DefId, DefIndex, LOCAL_CRATE, LocalDefId, Stab
 use rustc_hir::definitions::DefPathHash;
 use rustc_index::{Idx, IndexVec};
 use rustc_macros::{Decodable, Encodable};
-use rustc_query_system::query::QuerySideEffects;
+use rustc_query_system::query::QuerySideEffect;
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
@@ -55,9 +55,9 @@ pub struct OnDiskCache {
     // The complete cache data in serialized form.
     serialized_data: RwLock<Option<Mmap>>,
 
-    // Collects all `QuerySideEffects` created during the current compilation
+    // Collects all `QuerySideEffect` created during the current compilation
     // session.
-    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffects>>,
+    current_side_effects: Lock<FxHashMap<DepNodeIndex, QuerySideEffect>>,
 
     file_index_to_stable_id: FxHashMap<SourceFileIndex, EncodedSourceFileId>,
 
@@ -68,7 +68,7 @@ pub struct OnDiskCache {
     // `serialized_data`.
     query_result_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
-    // A map from dep-node to the position of any associated `QuerySideEffects` in
+    // A map from dep-node to the position of any associated `QuerySideEffect` in
     // `serialized_data`.
     prev_side_effects_index: FxHashMap<SerializedDepNodeIndex, AbsoluteBytePos>,
 
@@ -270,10 +270,10 @@ impl OnDiskCache {
                 .current_side_effects
                 .borrow()
                 .iter()
-                .map(|(dep_node_index, side_effects)| {
+                .map(|(dep_node_index, side_effect)| {
                     let pos = AbsoluteBytePos::new(encoder.position());
                     let dep_node_index = SerializedDepNodeIndex::new(dep_node_index.index());
-                    encoder.encode_tagged(dep_node_index, side_effects);
+                    encoder.encode_tagged(dep_node_index, side_effect);
 
                     (dep_node_index, pos)
                 })
@@ -352,23 +352,23 @@ impl OnDiskCache {
         })
     }
 
-    /// Loads a `QuerySideEffects` created during the previous compilation session.
-    pub fn load_side_effects(
+    /// Loads a `QuerySideEffect` created during the previous compilation session.
+    pub fn load_side_effect(
         &self,
         tcx: TyCtxt<'_>,
         dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffects> {
-        let side_effects: Option<QuerySideEffects> =
+    ) -> Option<QuerySideEffect> {
+        let side_effect: Option<QuerySideEffect> =
             self.load_indexed(tcx, dep_node_index, &self.prev_side_effects_index);
-        side_effects
+        side_effect
     }
 
-    /// Stores a `QuerySideEffects` emitted during the current compilation session.
-    /// Anything stored like this will be available via `load_side_effects` in
+    /// Stores a `QuerySideEffect` emitted during the current compilation session.
+    /// Anything stored like this will be available via `load_side_effect` in
     /// the next compilation session.
-    pub fn store_side_effects(&self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects) {
+    pub fn store_side_effect(&self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect) {
         let mut current_side_effects = self.current_side_effects.borrow_mut();
-        let prev = current_side_effects.insert(dep_node_index, side_effects);
+        let prev = current_side_effects.insert(dep_node_index, side_effect);
         debug_assert!(prev.is_none());
     }
 

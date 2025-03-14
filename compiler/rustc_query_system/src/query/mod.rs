@@ -62,18 +62,22 @@ impl QueryStackFrame {
     }
 }
 
-/// Tracks 'side effects' for a particular query.
+/// Track a 'side effects' for a particular query.
 /// This struct is saved to disk along with the query result,
 /// and loaded from disk if we mark the query as green.
 /// This allows us to 'replay' changes to global state
 /// that would otherwise only occur if we actually
 /// executed the query method.
+///
+/// Each side effect gets an unique dep node index which is added
+/// as a dependency of the query which had the effect.
 #[derive(Debug, Encodable, Decodable)]
-pub struct QuerySideEffects {
-    /// Stores any diagnostics emitted during query execution.
-    /// These diagnostics will be re-emitted if we mark
-    /// the query as green.
-    pub(super) diagnostic: DiagInner,
+pub enum QuerySideEffect {
+    /// Stores a diagnostic emitted during query execution.
+    /// This diagnostic will be re-emitted if we mark
+    /// the query as green, as that query will have the side
+    /// effect dep node as a dependency.
+    Diagnostic(DiagInner),
 }
 
 pub trait QueryContext: HasDepContext {
@@ -84,14 +88,14 @@ pub trait QueryContext: HasDepContext {
 
     fn collect_active_jobs(self) -> QueryMap;
 
-    /// Load side effects associated to the node in the previous session.
-    fn load_side_effects(
+    /// Load a side effect associated to the node in the previous session.
+    fn load_side_effect(
         self,
         prev_dep_node_index: SerializedDepNodeIndex,
-    ) -> Option<QuerySideEffects>;
+    ) -> Option<QuerySideEffect>;
 
-    /// Register diagnostics for the given node, for use in next session.
-    fn store_side_effects(self, dep_node_index: DepNodeIndex, side_effects: QuerySideEffects);
+    /// Register a side effect for the given node, for use in next session.
+    fn store_side_effect(self, dep_node_index: DepNodeIndex, side_effect: QuerySideEffect);
 
     /// Executes a job by changing the `ImplicitCtxt` to point to the
     /// new query job while it executes.
