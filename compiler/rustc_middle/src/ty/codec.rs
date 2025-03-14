@@ -501,7 +501,7 @@ impl_decodable_via_ref! {
     &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     &'tcx traits::ImplSource<'tcx, ()>,
     &'tcx mir::Body<'tcx>,
-    &'tcx mir::BorrowCheckResult<'tcx>,
+    &'tcx mir::ConcreteOpaqueTypes<'tcx>,
     &'tcx ty::List<ty::BoundVariableKind>,
     &'tcx ty::ListWithCachedTypeInfo<ty::Clause<'tcx>>,
     &'tcx ty::List<FieldIdx>,

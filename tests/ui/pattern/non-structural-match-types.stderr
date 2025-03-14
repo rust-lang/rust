@@ -1,5 +1,5 @@
 error: constant of non-structural type `Option<fn() {uwu}>` in a pattern
-  --> $DIR/non-structural-match-types.rs:12:9
+  --> $DIR/non-structural-match-types.rs:10:9
    |
 LL | impl<T> AnyOption<T> {
    | --------------------
@@ -11,8 +11,8 @@ LL |         AnyOption::<_>::NONE => {}
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
-error: constant of non-structural type `Option<{closure@$DIR/non-structural-match-types.rs:17:16: 17:18}>` in a pattern
-  --> $DIR/non-structural-match-types.rs:18:9
+error: constant of non-structural type `Option<{closure@$DIR/non-structural-match-types.rs:15:16: 15:18}>` in a pattern
+  --> $DIR/non-structural-match-types.rs:16:9
    |
 LL | impl<T> AnyOption<T> {
    | --------------------
@@ -24,19 +24,5 @@ LL |         AnyOption::<_>::NONE => {}
    |
    = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
 
-error: constant of non-structural type `Option<{async block@$DIR/non-structural-match-types.rs:23:16: 23:21}>` in a pattern
-  --> $DIR/non-structural-match-types.rs:24:9
-   |
-LL | impl<T> AnyOption<T> {
-   | --------------------
-LL |     const NONE: Option<T> = None;
-   |     --------------------- constant defined here
-...
-LL |         AnyOption::<_>::NONE => {}
-   |         ^^^^^^^^^^^^^^^^^^^^ constant of non-structural type
-   |
-   = note: see https://doc.rust-lang.org/stable/std/marker/trait.StructuralPartialEq.html for details
-   = note: `ResumeTy` must be annotated with `#[derive(PartialEq)]` to be usable in patterns
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 

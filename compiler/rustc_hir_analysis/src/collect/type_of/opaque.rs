@@ -226,17 +226,18 @@ impl TaitConstraintLocator<'_> {
         };
 
         // Use borrowck to get the type with unerased regions.
-        let borrowck_results = &self.tcx.mir_borrowck(item_def_id);
-
-        // If the body was tainted, then assume the opaque may have been constrained and just set it to error.
-        if let Some(guar) = borrowck_results.tainted_by_errors {
-            self.found =
-                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
-            return;
-        }
-
-        debug!(?borrowck_results.concrete_opaque_types);
-        if let Some(&concrete_type) = borrowck_results.concrete_opaque_types.get(&self.def_id) {
+        let concrete_opaque_types = match self.tcx.mir_borrowck(item_def_id) {
+            Ok(concrete_opaque_types) => concrete_opaque_types,
+            Err(guar) => {
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
+                });
+                return;
+            }
+        };
+        debug!(?concrete_opaque_types);
+        if let Some(&concrete_type) = concrete_opaque_types.0.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
@@ -316,13 +317,12 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         }
     }
 
-    let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
-    if let Some(mir_opaque_ty) = mir_opaque_ty {
+    let concrete_opaque_types = match tcx.mir_borrowck(owner_def_id) {
+        Ok(concrete_opaque_types) => concrete_opaque_types,
+        Err(guar) => return Ty::new_error(tcx, guar),
+    };
+    if let Some(mir_opaque_ty) = concrete_opaque_types.0.get(&def_id) {
         mir_opaque_ty.ty
-    } else if let Some(guar) = tables.tainted_by_errors {
-        // Some error in the owner fn prevented us from populating
-        // the `concrete_opaque_types` table.
-        Ty::new_error(tcx, guar)
     } else {
         // Fall back to the RPIT we inferred during HIR typeck
         if let Some(hir_opaque_ty) = hir_opaque_ty {
