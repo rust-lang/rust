@@ -20,7 +20,7 @@ use tracing::{debug, instrument};
 // checks whether the signature of some `external_impl`, matches
 // the signature of `declaration`, which it is supposed to be compatible
 // with in order to implement the item.
-pub(crate) fn compare_eii_predicate_entailment<'tcx>(
+pub(crate) fn compare_eii_function_types<'tcx>(
     tcx: TyCtxt<'tcx>,
     external_impl: LocalDefId,
     declaration: DefId,
