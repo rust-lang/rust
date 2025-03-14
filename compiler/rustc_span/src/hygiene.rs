@@ -653,25 +653,26 @@ pub fn walk_chain_collapsed(span: Span, to: Span) -> Span {
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
     // The new contexts that need updating are at the end of the list and have `$crate` as a name.
-    let (len, to_update) = HygieneData::with(|data| {
-        (
-            data.syntax_context_data.len(),
-            data.syntax_context_data
-                .iter()
-                .rev()
-                .take_while(|scdata| scdata.dollar_crate_name == kw::DollarCrate)
-                .count(),
-        )
+    // Also decoding placeholders can be encountered among both old and new contexts.
+    let mut to_update = vec![];
+    HygieneData::with(|data| {
+        for (idx, scdata) in data.syntax_context_data.iter().enumerate().rev() {
+            if scdata.dollar_crate_name == kw::DollarCrate {
+                to_update.push((idx, kw::DollarCrate));
+            } else if !scdata.is_decode_placeholder() {
+                break;
+            }
+        }
     });
     // The callback must be called from outside of the `HygieneData` lock,
     // since it will try to acquire it too.
-    let range_to_update = len - to_update..len;
-    let names: Vec<_> =
-        range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
+    for (idx, name) in &mut to_update {
+        *name = get_name(SyntaxContext::from_usize(*idx));
+    }
     HygieneData::with(|data| {
-        range_to_update.zip(names).for_each(|(idx, name)| {
+        for (idx, name) in to_update {
             data.syntax_context_data[idx].dollar_crate_name = name;
-        })
+        }
     })
 }
 
