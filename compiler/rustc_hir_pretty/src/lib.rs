@@ -2148,9 +2148,11 @@ impl<'a> State<'a> {
                 s.print_implicit_self(&decl.implicit_self);
             } else {
                 if let Some(arg_name) = arg_names.get(i) {
-                    s.word(arg_name.to_string());
-                    s.word(":");
-                    s.space();
+                    if arg_name.name != kw::Empty {
+                        s.word(arg_name.to_string());
+                        s.word(":");
+                        s.space();
+                    }
                 } else if let Some(body_id) = body_id {
                     s.ann.nested(s, Nested::BodyParamPat(body_id, i));
                     s.word(":");
