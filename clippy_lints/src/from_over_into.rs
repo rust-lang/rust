@@ -176,8 +176,8 @@ fn convert_to_from(
         return None;
     };
     let body = cx.tcx.hir_body(body_id);
-    let [input] = body.params else { return None };
-    let PatKind::Binding(.., self_ident, None) = input.pat.kind else {
+    let [self_param] = body.params else { return None };
+    let PatKind::Binding(.., self_ident, None) = self_param.pat.kind else {
         return None;
     };
 
@@ -197,10 +197,20 @@ fn convert_to_from(
         // fn into(self) -> T  ->  fn from(self) -> T
         //    ~~~~                    ~~~~
         (impl_item.ident.span, String::from("from")),
-        // fn into([mut] self) -> T  ->  fn into([mut] v: T) -> T
-        //               ~~~~                          ~~~~
-        (self_ident.span, format!("val: {from}")),
     ];
+
+    if self_ident.span.overlaps(self_param.ty_span) {
+        // fn into([mut] self) -> T  ->  fn into([mut] val: T) -> T
+        //               ~~~~                          ~~~~~~
+        suggestions.push((self_ident.span, format!("val: {from}")));
+    } else {
+        // fn into([mut] self: U) -> T  ->  fn into([mut] val: U) -> T
+        //               ~~~~                             ~~~
+        suggestions.push((self_ident.span, String::from("val")));
+        // fn into([mut] val: U) -> T  ->  fn into([mut] val: T) -> T
+        //                    ~                               ~
+        suggestions.push((self_param.ty_span, from.to_owned()));
+    }
 
     if let FnRetTy::Return(_) = sig.decl.output {
         // fn into(self) -> T  ->  fn into(self) -> Self
