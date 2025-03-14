@@ -11,6 +11,8 @@ use crate::any::TypeId;
 pub struct Type {
     /// Per-type information
     pub kind: TypeKind,
+    /// Size of the type. `None` if it is unsized
+    pub size: Option<usize>,
 }
 
 /// Compute the type information of a concrete type.

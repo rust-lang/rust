@@ -17,19 +17,37 @@ Type {
             ],
         },
     ),
+    size: Some(
+        2,
+    ),
 }
 Type {
     kind: Other,
+    size: Some(
+        4,
+    ),
 }
 Type {
     kind: Other,
+    size: Some(
+        24,
+    ),
 }
 Type {
     kind: Other,
+    size: Some(
+        16,
+    ),
 }
 Type {
     kind: Other,
+    size: Some(
+        16,
+    ),
 }
 Type {
     kind: Other,
+    size: Some(
+        16,
+    ),
 }
