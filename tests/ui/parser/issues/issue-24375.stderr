@@ -16,10 +16,6 @@ LL +     const VAL: /* Type */ = tmp[0];
 LL ~     match z {
 LL ~         VAL => {}
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { tmp[0] } => {}
-   |         +++++++        +
 
 error: aborting due to 1 previous error
 
