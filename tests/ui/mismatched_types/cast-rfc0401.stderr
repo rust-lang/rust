@@ -165,6 +165,14 @@ error[E0607]: cannot cast thin pointer `*const u8` to wide pointer `*const [u8]`
 LL |     let _ = v as *const [u8];
    |             ^^^^^^^^^^^^^^^^
 
+error[E0606]: casting `*const [u8]` as `*const dyn Foo` is invalid
+  --> $DIR/cast-rfc0401.rs:53:13
+   |
+LL |     let _ = fat_v as *const dyn Foo;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the pointers have different metadata
+
 error[E0606]: casting `&dyn Foo` as `*const str` is invalid
   --> $DIR/cast-rfc0401.rs:54:13
    |
@@ -203,6 +211,14 @@ LL |     let _ = fat_sv as usize;
    |
    = help: cast through a thin pointer first
 
+error[E0606]: casting `*const str` as `*const dyn Foo` is invalid
+  --> $DIR/cast-rfc0401.rs:62:13
+   |
+LL |     let _ = a as *const dyn Foo;
+   |             ^^^^^^^^^^^^^^^^^^^
+   |
+   = note: the pointers have different metadata
+
 error[E0606]: casting `*const dyn Foo` as `*const [u16]` is invalid
   --> $DIR/cast-rfc0401.rs:68:13
    |
@@ -219,24 +235,6 @@ LL |     let _ = cf as *const dyn Bar;
    |
    = note: the trait objects may have different vtables
 
-error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/cast-rfc0401.rs:53:13
-   |
-LL |     let _ = fat_v as *const dyn Foo;
-   |             ^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `[u8]`
-   = note: required for the cast from `*const [u8]` to `*const dyn Foo`
-
-error[E0277]: the size for values of type `str` cannot be known at compilation time
-  --> $DIR/cast-rfc0401.rs:62:13
-   |
-LL |     let _ = a as *const dyn Foo;
-   |             ^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `str`
-   = note: required for the cast from `*const str` to `*const dyn Foo`
-
 error[E0606]: casting `&{float}` as `f32` is invalid
   --> $DIR/cast-rfc0401.rs:71:30
    |
@@ -250,5 +248,5 @@ LL |     vec![0.0].iter().map(|s| *s as f32).collect::<Vec<f32>>();
 
 error: aborting due to 34 previous errors
 
-Some errors have detailed explanations: E0054, E0277, E0604, E0605, E0606, E0607, E0609.
+Some errors have detailed explanations: E0054, E0604, E0605, E0606, E0607, E0609.
 For more information about an error, try `rustc --explain E0054`.

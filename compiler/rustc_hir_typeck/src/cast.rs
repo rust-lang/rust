@@ -705,33 +705,44 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             self.report_cast_to_unsized_type(fcx);
         } else if self.expr_ty.references_error() || self.cast_ty.references_error() {
             // No sense in giving duplicate error messages
+        } else if self.expr_ty.is_raw_ptr() && self.cast_ty.is_raw_ptr() {
+            // HACK: We check `may_coerce` first to ensure that the unsizing is
+            // worth committing to. The weird thing is that `coerce_unsized` is
+            // somewhat unreliable; it commits to coercions that are doomed to
+            // fail like `*const W<dyn Trait> -> *const dyn Trait` even though
+            // the pointee is unsized. Here, we want to fall back to a ptr-ptr
+            // cast, so we first check `may_coerce` which also checks that all
+            // of the nested obligations hold first, *then* only commit to the
+            // coercion cast if definitely holds.
+            if fcx.may_coerce(self.expr_ty, self.cast_ty) {
+                self.try_coercion_cast(fcx).expect("`may_coerce` should imply types can coerce");
+                // When casting a raw pointer to another raw pointer, we cannot convert the cast into
+                // a coercion because the pointee types might only differ in regions, which HIR typeck
+                // cannot distinguish. This would cause us to erroneously discard a cast which will
+                // lead to a borrowck error like #113257.
+                // We still did a coercion above to unify inference variables for `ptr as _` casts.
+                // This does cause us to miss some trivial casts in the trivial cast lint.
+            } else {
+                match self.do_check(fcx) {
+                    Ok(k) => {
+                        debug!(" -> {:?}", k);
+                    }
+                    Err(e) => self.report_cast_error(fcx, e),
+                }
+            }
         } else {
             match self.try_coercion_cast(fcx) {
                 Ok(()) => {
-                    if self.expr_ty.is_raw_ptr() && self.cast_ty.is_raw_ptr() {
-                        // When casting a raw pointer to another raw pointer, we cannot convert the cast into
-                        // a coercion because the pointee types might only differ in regions, which HIR typeck
-                        // cannot distinguish. This would cause us to erroneously discard a cast which will
-                        // lead to a borrowck error like #113257.
-                        // We still did a coercion above to unify inference variables for `ptr as _` casts.
-                        // This does cause us to miss some trivial casts in the trivial cast lint.
-                        debug!(" -> PointerCast");
-                    } else {
-                        self.trivial_cast_lint(fcx);
-                        debug!(" -> CoercionCast");
-                        fcx.typeck_results
-                            .borrow_mut()
-                            .set_coercion_cast(self.expr.hir_id.local_id);
+                    self.trivial_cast_lint(fcx);
+                    debug!(" -> CoercionCast");
+                    fcx.typeck_results.borrow_mut().set_coercion_cast(self.expr.hir_id.local_id);
+                }
+                Err(_) => match self.do_check(fcx) {
+                    Ok(k) => {
+                        debug!(" -> {:?}", k);
                     }
-                }
-                Err(_) => {
-                    match self.do_check(fcx) {
-                        Ok(k) => {
-                            debug!(" -> {:?}", k);
-                        }
-                        Err(e) => self.report_cast_error(fcx, e),
-                    };
-                }
+                    Err(e) => self.report_cast_error(fcx, e),
+                },
             };
         }
     }
