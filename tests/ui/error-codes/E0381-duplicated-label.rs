@@ -1,3 +1,6 @@
+//! Regression test for duplicated label in E0381 error message.
+//!
+//! Issue: <https://github.com/rust-lang/rust/issues/129274>
 fn main() {
     fn test() {
         loop {
