@@ -14,9 +14,10 @@ use rustc_hir::{
     self as hir, BindingMode, ByRef, ExprKind, HirId, LangItem, Mutability, Pat, PatExpr,
     PatExprKind, PatKind, expr_needs_parens,
 };
+use rustc_hir_analysis::autoderef::report_autoderef_recursion_limit_error;
 use rustc_infer::infer;
 use rustc_middle::traits::PatternOriginExpr;
-use rustc_middle::ty::{self, Ty, TypeVisitableExt};
+use rustc_middle::ty::{self, AdtDef, Ty, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint::builtin::NON_EXHAUSTIVE_OMITTED_PATTERNS;
 use rustc_session::parse::feature_err;
@@ -29,11 +30,12 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
 use ty::VariantDef;
+use ty::adjustment::PatAdjust;
 
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
 use crate::gather_locals::DeclOrigin;
-use crate::{FnCtxt, LoweredTy, errors};
+use crate::{FnCtxt, errors};
 
 const CANNOT_IMPLICITLY_DEREF_POINTER_TRAIT_OBJ: &str = "\
 This error indicates that a pointer to a trait type cannot be implicitly dereferenced by a \
@@ -160,14 +162,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 /// Mode for adjusting the expected type and binding mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum AdjustMode {
-    /// Peel off all immediate reference types.
-    Peel,
+enum AdjustMode<'tcx> {
+    /// Peel off all immediate reference types. If the `deref_patterns` feature is enabled, this
+    /// also peels library-defined smart pointer ADTs.
+    Peel { kind: PeelKind<'tcx> },
     /// Reset binding mode to the initial mode.
     /// Used for destructuring assignment, where we don't want any match ergonomics.
     Reset,
     /// Pass on the input binding mode and expected type.
     Pass,
+}
+
+/// Restrictions on what types to peel when adjusting the expected type and binding mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum PeelKind<'tcx> {
+    /// Only peel reference types. This is used for explicit deref patterns.
+    RefOnly,
+    /// If `deref_patterns` is enabled, this also peels library-defined smart pointer ADTs, except
+    /// for `until_adt` if the pattern is a constructor. Otherwise this is the same as `RefOnly`.
+    /// See [`ResolvedPat`] for more information.
+    Overloaded { until_adt: Option<AdtDef<'tcx>> },
+}
+
+impl<'tcx> AdjustMode<'tcx> {
+    const fn peel_until_adt(opt_adt_def: Option<AdtDef<'tcx>>) -> AdjustMode<'tcx> {
+        AdjustMode::Peel { kind: PeelKind::Overloaded { until_adt: opt_adt_def } }
+    }
+    const fn peel_all() -> AdjustMode<'tcx> {
+        AdjustMode::peel_until_adt(None)
+    }
 }
 
 /// `ref mut` bindings (explicit or match-ergonomics) are not allowed behind an `&` reference.
@@ -243,6 +266,25 @@ enum InheritedRefMatchRule {
         /// `ref_pat_eat_one_layer_2024_structural` feature gates.
         consider_inherited_ref: bool,
     },
+}
+
+/// When checking patterns containing paths, we need to know the path's resolution to determine
+/// whether to apply match ergonomics and implicitly dereference the scrutinee. For instance, when
+/// the `deref_patterns` feature is enabled and we're matching against a scrutinee of type
+/// `Cow<'a, Option<u8>>`, we insert an implicit dereference to allow the pattern `Some(_)` to type,
+/// but we must not dereference it when checking the pattern `Cow::Borrowed(_)`.
+///
+/// `ResolvedPat` contains the information from resolution needed to determine match ergonomics
+/// adjustments, plus a callback to finish checking the pattern once we know its adjusted type.
+struct ResolvedPat<'tcx, F: ?Sized> {
+    /// For path patterns, this must be `Some(res)`, where `res` is the resolution of the pattern's
+    /// `QPath`. Otherwise, this is `None`.
+    path_res: Option<Res>,
+    /// If applicable, identifies the ADT that the pattern matches against.
+    pat_adt_def: Option<AdtDef<'tcx>>,
+    /// Given the expected type of the scrutinee and the [`PatInfo`] after applying match ergonomics
+    /// adjustments, finish checking the pattern.
+    check: F,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -323,13 +365,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn check_pat(&self, pat: &'tcx Pat<'tcx>, expected: Ty<'tcx>, pat_info: PatInfo<'tcx>) {
         let PatInfo { binding_mode, max_ref_mutbl, top_info: ti, current_depth, .. } = pat_info;
 
-        let path_res = match pat.kind {
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                Some(self.resolve_ty_and_res_fully_qualified_call(qpath, *hir_id, *span))
-            }
-            _ => None,
-        };
-        let adjust_mode = self.calc_adjust_mode(pat, path_res.map(|(res, ..)| res));
+        // For patterns containing paths, we need the path's resolution to determine whether to
+        // implicitly dereference the scrutinee before matching.
+        let resolved_pat: Option<&ResolvedPat<'tcx, dyn Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>>> =
+            match pat.kind {
+                PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
+                    Some { 0: &self.check_pat_path(*hir_id, pat.hir_id, *span, qpath, &ti) }
+                }
+                PatKind::Struct(ref qpath, fields, has_rest_pat) => {
+                    Some { 0: &self.check_pat_struct(pat, qpath, fields, has_rest_pat) }
+                }
+                PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
+                    Some { 0: &self.check_pat_tuple_struct(pat, qpath, subpats, ddpos) }
+                }
+                _ => None,
+            };
+        let adjust_mode = self.calc_adjust_mode(
+            pat,
+            resolved_pat.and_then(|r| r.path_res),
+            resolved_pat.and_then(|r| r.pat_adt_def),
+        );
         let (expected, binding_mode, max_ref_mutbl) =
             self.calc_default_binding_mode(pat, expected, binding_mode, adjust_mode, max_ref_mutbl);
         let pat_info = PatInfo {
@@ -344,16 +399,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Wild | PatKind::Err(_) => expected,
             // We allow any type here; we ensure that the type is uninhabited during match checking.
             PatKind::Never => expected,
-            PatKind::Expr(PatExpr { kind: PatExprKind::Path(qpath), hir_id, span }) => {
-                let ty = self.check_pat_path(
-                    *hir_id,
-                    pat.hir_id,
-                    *span,
-                    qpath,
-                    path_res.unwrap(),
-                    expected,
-                    &pat_info.top_info,
-                );
+            PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), hir_id, .. }) => {
+                let ty = (resolved_pat.unwrap().check)(expected, pat_info);
                 self.write_ty(*hir_id, ty);
                 ty
             }
@@ -364,12 +411,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Binding(ba, var_id, ident, sub) => {
                 self.check_pat_ident(pat, ba, var_id, ident, sub, expected, pat_info)
             }
-            PatKind::TupleStruct(ref qpath, subpats, ddpos) => {
-                self.check_pat_tuple_struct(pat, qpath, subpats, ddpos, expected, pat_info)
-            }
-            PatKind::Struct(ref qpath, fields, has_rest_pat) => {
-                self.check_pat_struct(pat, qpath, fields, has_rest_pat, expected, pat_info)
-            }
+            PatKind::TupleStruct(..) => (resolved_pat.unwrap().check)(expected, pat_info),
+            PatKind::Struct(..) => (resolved_pat.unwrap().check)(expected, pat_info),
             PatKind::Guard(pat, cond) => {
                 self.check_pat(pat, expected, pat_info);
                 self.check_expr_has_type_or_error(cond, self.tcx.types.bool, |_| {});
@@ -393,6 +436,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         self.write_ty(pat.hir_id, ty);
+
+        // If we implicitly inserted overloaded dereferences before matching, check the pattern to
+        // see if the dereferenced types need `DerefMut` bounds.
+        if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
+            && derefed_tys.iter().any(|ty| ty.pat_adjust_kind() == PatAdjust::OverloadedDeref)
+        {
+            self.register_deref_mut_bounds_if_needed(
+                pat.span,
+                pat,
+                derefed_tys.iter().filter(|ty| !ty.is_ref()).copied(),
+            );
+        }
 
         // (note_1): In most of the cases where (note_1) is referenced
         // (literals and constants being the exception), we relate types
@@ -444,7 +499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         pat: &'tcx Pat<'tcx>,
         expected: Ty<'tcx>,
         def_br: ByRef,
-        adjust_mode: AdjustMode,
+        adjust_mode: AdjustMode<'tcx>,
         max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
         #[cfg(debug_assertions)]
@@ -457,14 +512,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match adjust_mode {
             AdjustMode::Pass => (expected, def_br, max_ref_mutbl),
             AdjustMode::Reset => (expected, ByRef::No, MutblCap::Mut),
-            AdjustMode::Peel => self.peel_off_references(pat, expected, def_br, max_ref_mutbl),
+            AdjustMode::Peel { kind } => {
+                self.peel_off_references(pat, kind, expected, def_br, max_ref_mutbl)
+            }
         }
     }
 
     /// How should the binding mode and expected type be adjusted?
     ///
     /// When the pattern is a path pattern, `opt_path_res` must be `Some(res)`.
-    fn calc_adjust_mode(&self, pat: &'tcx Pat<'tcx>, opt_path_res: Option<Res>) -> AdjustMode {
+    /// When the pattern contains a path (such as a struct pattern or tuple struct pattern),
+    /// `pat_adt_def` should be `Some(adt)` if the path resolved to an ADT constructor.
+    fn calc_adjust_mode(
+        &self,
+        pat: &'tcx Pat<'tcx>,
+        opt_path_res: Option<Res>,
+        pat_adt_def: Option<AdtDef<'tcx>>,
+    ) -> AdjustMode<'tcx> {
         // When we perform destructuring assignment, we disable default match bindings, which are
         // unintuitive in this context.
         if !pat.default_binding_modes {
@@ -476,12 +540,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             PatKind::Struct(..)
             | PatKind::TupleStruct(..)
             | PatKind::Tuple(..)
-            | PatKind::Box(_)
-            | PatKind::Deref(_)
             | PatKind::Range(..)
-            | PatKind::Slice(..) => AdjustMode::Peel,
+            | PatKind::Slice(..) => AdjustMode::peel_until_adt(pat_adt_def),
+            // When checking an explicit deref pattern, only peel reference types.
+            // FIXME(deref_patterns): If box patterns and deref patterns need to coexist, box
+            // patterns may want `PeelKind::Overloaded`, stopping on encountering a box.
+            | PatKind::Box(_)
+            | PatKind::Deref(_) => AdjustMode::Peel { kind: PeelKind::RefOnly },
             // A never pattern behaves somewhat like a literal or unit variant.
-            PatKind::Never => AdjustMode::Peel,
+            PatKind::Never => AdjustMode::peel_all(),
             PatKind::Expr(PatExpr { kind: PatExprKind::Path(_), .. }) => match opt_path_res.unwrap() {
                 // These constants can be of a reference type, e.g. `const X: &u8 = &0;`.
                 // Peeling the reference types too early will cause type checking failures.
@@ -491,7 +558,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // could successfully compile. The former being `Self` requires a unit struct.
                 // In either case, and unlike constants, the pattern itself cannot be
                 // a reference type wherefore peeling doesn't give up any expressiveness.
-                _ => AdjustMode::Peel,
+                _ => AdjustMode::peel_until_adt(pat_adt_def),
             },
 
             // String and byte-string literals result in types `&str` and `&[u8]` respectively.
@@ -501,7 +568,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Call `resolve_vars_if_possible` here for inline const blocks.
             PatKind::Expr(lt) => match self.resolve_vars_if_possible(self.check_pat_expr_unadjusted(lt)).kind() {
                 ty::Ref(..) => AdjustMode::Pass,
-                _ => AdjustMode::Peel,
+                // If an inline const pattern has a library-defined pointer-like type and
+                // `deref_patterns` is enabled, don't implicitly add deref patterns for its ADT.
+                // Nothing in the library that implements `DerefPure` supports structural equality,
+                // but we don't check that until `const_to_pat` in THIR construction. By avoiding
+                // type errors here, we can get a more meaningful error there.
+                ty::Adt(adt, _) => AdjustMode::peel_until_adt(Some(*adt)),
+                _ => AdjustMode::peel_all()
             },
 
             // Ref patterns are complicated, we handle them in `check_pat_ref`.
@@ -526,14 +599,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     /// Peel off as many immediately nested `& mut?` from the expected type as possible
     /// and return the new expected type and binding default binding mode.
+    /// If the `deref_patterns` feature is enabled, also peel library-defined pointer-like types.
     /// The adjustments vector, if non-empty is stored in a table.
     fn peel_off_references(
         &self,
         pat: &'tcx Pat<'tcx>,
+        peel_kind: PeelKind<'tcx>,
         expected: Ty<'tcx>,
         mut def_br: ByRef,
         mut max_ref_mutbl: MutblCap,
     ) -> (Ty<'tcx>, ByRef, MutblCap) {
+        let deref_patterns = self.tcx.features().deref_patterns();
         let mut expected = self.try_structurally_resolve_type(pat.span, expected);
         // Peel off as many `&` or `&mut` from the scrutinee type as possible. For example,
         // for `match &&&mut Some(5)` the loop runs three times, aborting when it reaches
@@ -541,27 +617,77 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         //
         // For each ampersand peeled off, update the binding mode and push the original
         // type into the adjustments vector.
+        // When peeling a library-defined type, the default binding mode is not updated.
         //
-        // See the examples in `ui/match-defbm*.rs`.
+        // See the examples in `tests/ui/rfcs/rfc-2005-default-binding-mode/` and
+        // `tests/ui/pattern/deref-patterns/`.
         let mut pat_adjustments = vec![];
-        while let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
-            debug!("inspecting {:?}", expected);
+        loop {
+            let inner_ty = if let ty::Ref(_, inner_ty, inner_mutability) = *expected.kind() {
+                def_br = ByRef::Yes(match def_br {
+                    // If default binding mode is by value, make it `ref` or `ref mut`
+                    // (depending on whether we observe `&` or `&mut`).
+                    ByRef::No |
+                    // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
+                    ByRef::Yes(Mutability::Mut) => inner_mutability,
+                    // Once a `ref`, always a `ref`.
+                    // This is because a `& &mut` cannot mutate the underlying value.
+                    ByRef::Yes(Mutability::Not) => Mutability::Not,
+                });
+                inner_ty
+            } else if deref_patterns
+                && let PeelKind::Overloaded { until_adt } = peel_kind
+                // For simplicity, only apply overloaded derefs if `expected` is a known ADT.
+                // FIXME(deref_patterns): we'll get better diagnostics for users trying to
+                // implicitly deref generics if we allow them here, but primitives, tuples, and
+                // inference vars definitely should be stopped. Figure out what makes most sense.
+                && let ty::Adt(scrutinee_adt, _) = *expected.kind()
+                // Don't peel if the pattern type already matches the scrutinee. E.g., stop here if
+                // matching on a `Cow<'a, T>` scrutinee with a `Cow::Owned(_)` pattern.
+                && until_adt != Some(scrutinee_adt)
+            {
+                // We may reach the recursion limit if a user matches on a type `T` satisfying
+                // `T: Deref<Target = T>`; error gracefully in this case.
+                // FIXME(deref_patterns): If `deref_patterns` stabilizes, it may make sense to move
+                // this check out of this branch. Alternatively, this loop could be implemented with
+                // autoderef and this check removed. For now though, don't break code compiling on
+                // stable with lots of `&`s and a low recursion limit, if anyone's done that.
+                if !self.tcx.recursion_limit().value_within_limit(pat_adjustments.len()) {
+                    let guar = report_autoderef_recursion_limit_error(self.tcx, pat.span, expected);
+                    expected = Ty::new_error(self.tcx, guar);
+                    break;
+                }
 
-            debug!("current discriminant is Ref, inserting implicit deref");
+                // At this point, the pattern isn't able to match `expected` without peeling. Check
+                // that it implements `Deref` before assuming it's a smart pointer, to get a normal
+                // type error instead of a missing impl error if not. This only checks for `Deref`,
+                // not `DerefPure`: we require that too, but we want a trait error if it's missing.
+                if let Some(deref_trait) = self.tcx.lang_items().deref_trait()
+                    && self
+                        .type_implements_trait(deref_trait, [expected], self.param_env)
+                        .may_apply()
+                {
+                    // The scrutinee is a smart pointer; implicitly dereference it. This adds a
+                    // requirement that `expected: DerefPure`.
+                    self.deref_pat_target(pat.span, expected)
+                    // Once we've checked `pat`, we'll add a `DerefMut` bound if it contains any
+                    // `ref mut` bindings. See `Self::register_deref_mut_bounds_if_needed`.
+                } else {
+                    // Bail, so we get a normal type error.
+                    break;
+                }
+            } else {
+                // The scrutinee is a non-reference type and either `deref_patterns` isn't enabled
+                // or `pat` could possibly already match it; stop implicitly dereferencing.
+                break;
+            };
+
+            debug!("inspecting {:?}", expected);
+            debug!("current discriminant can be dereferenced, inserting implicit deref");
             // Preserve the reference type. We'll need it later during THIR lowering.
             pat_adjustments.push(expected);
 
             expected = self.try_structurally_resolve_type(pat.span, inner_ty);
-            def_br = ByRef::Yes(match def_br {
-                // If default binding mode is by value, make it `ref` or `ref mut`
-                // (depending on whether we observe `&` or `&mut`).
-                ByRef::No |
-                // When `ref mut`, stay a `ref mut` (on `&mut`) or downgrade to `ref` (on `&`).
-                ByRef::Yes(Mutability::Mut) => inner_mutability,
-                // Once a `ref`, always a `ref`.
-                // This is because a `& &mut` cannot mutate the underlying value.
-                ByRef::Yes(Mutability::Not) => Mutability::Not,
-            });
         }
 
         if self.downgrade_mut_inside_shared() {
@@ -1150,29 +1276,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &hir::QPath<'tcx>,
         fields: &'tcx [hir::PatField<'tcx>],
         has_rest_pat: bool,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<'tcx, impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         // Resolve the path and check the definition for errors.
-        let (variant, pat_ty) = match self.check_struct_path(qpath, pat.hir_id) {
-            Ok(data) => data,
-            Err(guar) => {
-                let err = Ty::new_error(self.tcx, guar);
-                for field in fields {
-                    self.check_pat(field.pat, err, pat_info);
+        let variant_and_pat_ty = self.check_struct_path(qpath, pat.hir_id);
+        let pat_adt_def = variant_and_pat_ty.ok().and_then(|(_, pat_ty)| pat_ty.ty_adt_def());
+
+        let check = move |expected: Ty<'tcx>, pat_info: PatInfo<'tcx>| -> Ty<'tcx> {
+            let (variant, pat_ty) = match variant_and_pat_ty {
+                Ok(data) => data,
+                Err(guar) => {
+                    let err = Ty::new_error(self.tcx, guar);
+                    for field in fields {
+                        self.check_pat(field.pat, err, pat_info);
+                    }
+                    return err;
                 }
-                return err;
+            };
+
+            // Type-check the path.
+            let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
+
+            // Type-check subpatterns.
+            match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info)
+            {
+                Ok(()) => pat_ty,
+                Err(guar) => Ty::new_error(self.tcx, guar),
             }
         };
 
-        // Type-check the path.
-        let _ = self.demand_eqtype_pat(pat.span, expected, pat_ty, &pat_info.top_info);
-
-        // Type-check subpatterns.
-        match self.check_struct_pat_fields(pat_ty, pat, variant, fields, has_rest_pat, pat_info) {
-            Ok(()) => pat_ty,
-            Err(guar) => Ty::new_error(self.tcx, guar),
-        }
+        ResolvedPat { path_res: None, pat_adt_def, check }
     }
 
     fn check_pat_path(
@@ -1180,33 +1312,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         path_id: HirId,
         pat_id_for_diag: HirId,
         span: Span,
-        qpath: &hir::QPath<'_>,
-        path_resolution: (Res, Option<LoweredTy<'tcx>>, &'tcx [hir::PathSegment<'tcx>]),
-        expected: Ty<'tcx>,
+        qpath: &'tcx hir::QPath<'tcx>,
         ti: &TopInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<'tcx, impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         let tcx = self.tcx;
 
-        // We have already resolved the path.
-        let (res, opt_ty, segments) = path_resolution;
-        match res {
+        let (res, opt_ty, segments) =
+            self.resolve_ty_and_res_fully_qualified_call(qpath, path_id, span);
+        let res_ok = match res {
             Res::Err => {
                 let e =
                     self.dcx().span_delayed_bug(qpath.span(), "`Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
-                return Ty::new_error(tcx, e);
+                Err(e)
             }
             Res::Def(DefKind::AssocFn | DefKind::Ctor(_, CtorKind::Fn) | DefKind::Variant, _) => {
                 let expected = "unit struct, unit variant or constant";
                 let e = report_unexpected_variant_res(tcx, res, None, qpath, span, E0533, expected);
-                return Ty::new_error(tcx, e);
+                Err(e)
             }
             Res::SelfCtor(def_id) => {
                 if let ty::Adt(adt_def, _) = *tcx.type_of(def_id).skip_binder().kind()
                     && adt_def.is_struct()
                     && let Some((CtorKind::Const, _)) = adt_def.non_enum_variant().ctor
                 {
-                    // Ok, we allow unit struct ctors in patterns only.
+                    Ok(()) // Ok, we allow unit struct ctors in patterns only.
                 } else {
                     let e = report_unexpected_variant_res(
                         tcx,
@@ -1217,7 +1347,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         E0533,
                         "unit struct",
                     );
-                    return Ty::new_error(tcx, e);
+                    Err(e)
                 }
             }
             Res::Def(
@@ -1226,19 +1356,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | DefKind::AssocConst
                 | DefKind::ConstParam,
                 _,
-            ) => {} // OK
+            ) => Ok(()), // OK
             _ => bug!("unexpected pattern resolution: {:?}", res),
-        }
+        };
 
         // Type-check the path.
-        let (pat_ty, pat_res) =
-            self.instantiate_value_path(segments, opt_ty, res, span, span, path_id);
-        if let Err(err) =
-            self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
-        {
-            self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
-        }
-        pat_ty
+        let pat_ty_and_res =
+            res_ok.map(|_| self.instantiate_value_path(segments, opt_ty, res, span, span, path_id));
+        let pat_adt_def = pat_ty_and_res.ok().and_then(|(pat_ty, _)| pat_ty.ty_adt_def());
+
+        let check = move |expected, _pat_info| -> Ty<'tcx> {
+            let (pat_ty, pat_res) = match pat_ty_and_res {
+                Ok(pat_ty_and_res) => pat_ty_and_res,
+                Err(guar) => return Ty::new_error(tcx, guar),
+            };
+
+            if let Err(err) =
+                self.demand_suptype_with_origin(&self.pattern_cause(ti, span), expected, pat_ty)
+            {
+                self.emit_bad_pat_path(err, pat_id_for_diag, span, res, pat_res, pat_ty, segments);
+            }
+            pat_ty
+        };
+        ResolvedPat { path_res: Some(res), pat_adt_def, check }
     }
 
     fn maybe_suggest_range_literal(
@@ -1354,97 +1494,108 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         qpath: &'tcx hir::QPath<'tcx>,
         subpats: &'tcx [Pat<'tcx>],
         ddpos: hir::DotDotPos,
-        expected: Ty<'tcx>,
-        pat_info: PatInfo<'tcx>,
-    ) -> Ty<'tcx> {
+    ) -> ResolvedPat<'tcx, impl Fn(Ty<'tcx>, PatInfo<'tcx>) -> Ty<'tcx>> {
         let tcx = self.tcx;
-        let on_error = |e| {
-            for pat in subpats {
-                self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
-            }
-        };
         let report_unexpected_res = |res: Res| {
             let expected = "tuple struct or tuple variant";
-            let e = report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected);
-            on_error(e);
-            e
+            report_unexpected_variant_res(tcx, res, None, qpath, pat.span, E0164, expected)
         };
 
-        // Resolve the path and check the definition for errors.
-        let (res, opt_ty, segments) =
-            self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
-        if res == Res::Err {
-            let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
-            self.set_tainted_by_errors(e);
-            on_error(e);
-            return Ty::new_error(tcx, e);
-        }
-
-        // Type-check the path.
-        let (pat_ty, res) =
-            self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
-        if !pat_ty.is_fn() {
-            let e = report_unexpected_res(res);
-            return Ty::new_error(tcx, e);
-        }
-
-        let variant = match res {
-            Res::Err => {
-                self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+        let pat_ty_and_res_and_variant: Result<(Ty<'_>, Res, &VariantDef), ErrorGuaranteed> = try {
+            // Resolve the path and check the definition for errors.
+            let (res, opt_ty, segments) =
+                self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
+            if res == Res::Err {
+                let e = self.dcx().span_delayed_bug(pat.span, "`Res::Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                do yeet e;
             }
-            Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
-                let e = report_unexpected_res(res);
-                return Ty::new_error(tcx, e);
+
+            // Type-check the path.
+            let (pat_ty, res) =
+                self.instantiate_value_path(segments, opt_ty, res, pat.span, pat.span, pat.hir_id);
+            if !pat_ty.is_fn() {
+                do yeet report_unexpected_res(res);
             }
-            Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
-            _ => bug!("unexpected pattern resolution: {:?}", res),
-        };
 
-        // Replace constructor type with constructed type for tuple struct patterns.
-        let pat_ty = pat_ty.fn_sig(tcx).output();
-        let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
-
-        // Type-check the tuple struct pattern against the expected type.
-        let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
-        let had_err = diag.map_err(|diag| diag.emit());
-
-        // Type-check subpatterns.
-        if subpats.len() == variant.fields.len()
-            || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
-        {
-            let ty::Adt(_, args) = pat_ty.kind() else {
-                bug!("unexpected pattern type {:?}", pat_ty);
+            let variant = match res {
+                Res::Err => {
+                    self.dcx().span_bug(pat.span, "`Res::Err` but no error emitted");
+                }
+                Res::Def(DefKind::AssocConst | DefKind::AssocFn, _) => {
+                    do yeet report_unexpected_res(res);
+                }
+                Res::Def(DefKind::Ctor(_, CtorKind::Fn), _) => tcx.expect_variant_res(res),
+                _ => bug!("unexpected pattern resolution: {:?}", res),
             };
-            for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos) {
-                let field = &variant.fields[FieldIdx::from_usize(i)];
-                let field_ty = self.field_ty(subpat.span, field, args);
-                self.check_pat(subpat, field_ty, pat_info);
 
-                self.tcx.check_stability(
-                    variant.fields[FieldIdx::from_usize(i)].did,
-                    Some(subpat.hir_id),
-                    subpat.span,
-                    None,
+            // Replace constructor type with constructed type for tuple struct patterns.
+            let pat_ty = pat_ty.fn_sig(tcx).output();
+            let pat_ty = pat_ty.no_bound_vars().expect("expected fn type");
+
+            (pat_ty, res, variant)
+        };
+        let pat_adt_def = pat_ty_and_res_and_variant.ok().and_then(|(ty, ..)| ty.ty_adt_def());
+
+        let check = move |expected: Ty<'tcx>, pat_info: PatInfo<'tcx>| -> Ty<'tcx> {
+            let on_error = |e| {
+                for pat in subpats {
+                    self.check_pat(pat, Ty::new_error(tcx, e), pat_info);
+                }
+            };
+            let (pat_ty, res, variant) = match pat_ty_and_res_and_variant {
+                Ok(data) => data,
+                Err(guar) => {
+                    on_error(guar);
+                    return Ty::new_error(tcx, guar);
+                }
+            };
+
+            // Type-check the tuple struct pattern against the expected type.
+            let diag = self.demand_eqtype_pat_diag(pat.span, expected, pat_ty, &pat_info.top_info);
+            let had_err = diag.map_err(|diag| diag.emit());
+
+            // Type-check subpatterns.
+            if subpats.len() == variant.fields.len()
+                || subpats.len() < variant.fields.len() && ddpos.as_opt_usize().is_some()
+            {
+                let ty::Adt(_, args) = pat_ty.kind() else {
+                    bug!("unexpected pattern type {:?}", pat_ty);
+                };
+                for (i, subpat) in subpats.iter().enumerate_and_adjust(variant.fields.len(), ddpos)
+                {
+                    let field = &variant.fields[FieldIdx::from_usize(i)];
+                    let field_ty = self.field_ty(subpat.span, field, args);
+                    self.check_pat(subpat, field_ty, pat_info);
+
+                    self.tcx.check_stability(
+                        variant.fields[FieldIdx::from_usize(i)].did,
+                        Some(subpat.hir_id),
+                        subpat.span,
+                        None,
+                    );
+                }
+                if let Err(e) = had_err {
+                    on_error(e);
+                    return Ty::new_error(tcx, e);
+                }
+            } else {
+                let e = self.emit_err_pat_wrong_number_of_fields(
+                    pat.span,
+                    res,
+                    qpath,
+                    subpats,
+                    &variant.fields.raw,
+                    expected,
+                    had_err,
                 );
-            }
-            if let Err(e) = had_err {
                 on_error(e);
                 return Ty::new_error(tcx, e);
             }
-        } else {
-            let e = self.emit_err_pat_wrong_number_of_fields(
-                pat.span,
-                res,
-                qpath,
-                subpats,
-                &variant.fields.raw,
-                expected,
-                had_err,
-            );
-            on_error(e);
-            return Ty::new_error(tcx, e);
-        }
-        pat_ty
+            pat_ty
+        };
+
+        ResolvedPat { path_res: None, pat_adt_def, check }
     }
 
     fn emit_err_pat_wrong_number_of_fields(
@@ -2287,36 +2438,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Ty<'tcx>,
         pat_info: PatInfo<'tcx>,
     ) -> Ty<'tcx> {
-        let tcx = self.tcx;
+        let target_ty = self.deref_pat_target(span, expected);
+        self.check_pat(inner, target_ty, pat_info);
+        self.register_deref_mut_bounds_if_needed(span, inner, [expected]);
+        expected
+    }
+
+    fn deref_pat_target(&self, span: Span, source_ty: Ty<'tcx>) -> Ty<'tcx> {
         // Register a `DerefPure` bound, which is required by all `deref!()` pats.
+        let tcx = self.tcx;
         self.register_bound(
-            expected,
+            source_ty,
             tcx.require_lang_item(hir::LangItem::DerefPure, Some(span)),
             self.misc(span),
         );
-        // <expected as Deref>::Target
-        let ty = Ty::new_projection(
+        // The expected type for the deref pat's inner pattern is `<expected as Deref>::Target`.
+        let target_ty = Ty::new_projection(
             tcx,
             tcx.require_lang_item(hir::LangItem::DerefTarget, Some(span)),
-            [expected],
+            [source_ty],
         );
-        let ty = self.normalize(span, ty);
-        let ty = self.try_structurally_resolve_type(span, ty);
-        self.check_pat(inner, ty, pat_info);
+        let target_ty = self.normalize(span, target_ty);
+        self.try_structurally_resolve_type(span, target_ty)
+    }
 
-        // Check if the pattern has any `ref mut` bindings, which would require
-        // `DerefMut` to be emitted in MIR building instead of just `Deref`.
-        // We do this *after* checking the inner pattern, since we want to make
-        // sure to apply any match-ergonomics adjustments.
+    /// Check if the interior of a deref pattern (either explicit or implicit) has any `ref mut`
+    /// bindings, which would require `DerefMut` to be emitted in MIR building instead of just
+    /// `Deref`. We do this *after* checking the inner pattern, since we want to make sure to
+    /// account for `ref mut` binding modes inherited from implicitly dereferencing `&mut` refs.
+    fn register_deref_mut_bounds_if_needed(
+        &self,
+        span: Span,
+        inner: &'tcx Pat<'tcx>,
+        derefed_tys: impl IntoIterator<Item = Ty<'tcx>>,
+    ) {
         if self.typeck_results.borrow().pat_has_ref_mut_binding(inner) {
-            self.register_bound(
-                expected,
-                tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
-                self.misc(span),
-            );
+            for mutably_derefed_ty in derefed_tys {
+                self.register_bound(
+                    mutably_derefed_ty,
+                    self.tcx.require_lang_item(hir::LangItem::DerefMut, Some(span)),
+                    self.misc(span),
+                );
+            }
         }
-
-        expected
     }
 
     // Precondition: Pat is Ref(inner)

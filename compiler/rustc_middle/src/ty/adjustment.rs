@@ -214,3 +214,23 @@ pub enum CustomCoerceUnsized {
     /// Records the index of the field being coerced.
     Struct(FieldIdx),
 }
+
+/// Represents implicit coercions of patterns' types, rather than values' types.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PatAdjust {
+    /// An implicit dereference before matching, such as when matching the pattern `0` against a
+    /// scrutinee of type `&u8` or `&mut u8`.
+    // FIXME(deref_patterns): this can also be used for boxes to allow moving out of them
+    BuiltinDeref,
+    /// An implicit call to `Deref(Mut)::deref(_mut)` before matching, such as when matching the
+    /// pattern `[..]` against a scrutinee of type `Vec<T>`.
+    OverloadedDeref,
+}
+
+impl<'tcx> Ty<'tcx> {
+    /// Given an adjusted pattern type (see [`ty::typeck_results::TypeckResults::pat_adjustments`]),
+    /// determine what operation dereferences it, e.g. for building the pattern's THIR.
+    pub fn pat_adjust_kind(self) -> PatAdjust {
+        if self.is_ref() { PatAdjust::BuiltinDeref } else { PatAdjust::OverloadedDeref }
+    }
+}

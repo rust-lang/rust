@@ -17,6 +17,7 @@ use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
+use rustc_middle::ty::adjustment::PatAdjust;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -66,9 +67,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
         // Track the default binding mode for the Rust 2024 migration suggestion.
+        // Implicitly dereferencing references changes the default binding mode, but implicit deref
+        // patterns do not. Only track binding mode changes if a ref type is in the adjustments.
         let mut opt_old_mode_span = None;
         if let Some(s) = &mut self.rust_2024_migration
-            && !adjustments.is_empty()
+            && adjustments.iter().any(|ty| ty.is_ref())
         {
             opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
         }
@@ -103,15 +106,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
-            Box::new(Pat {
-                span: thir_pat.span,
-                ty: *ref_ty,
-                kind: PatKind::Deref { subpattern: thir_pat },
-            })
+            let span = thir_pat.span;
+            let kind = match ref_ty.pat_adjust_kind() {
+                PatAdjust::BuiltinDeref => PatKind::Deref { subpattern: thir_pat },
+                PatAdjust::OverloadedDeref => {
+                    let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
+                    let mutability =
+                        if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                    PatKind::DerefPattern { subpattern: thir_pat, mutability }
+                }
+            };
+            Box::new(Pat { span, ty: *ref_ty, kind })
         });
 
         if let Some(s) = &mut self.rust_2024_migration
-            && !adjustments.is_empty()
+            && adjustments.iter().any(|ty| ty.is_ref())
         {
             s.leave_ref(opt_old_mode_span);
         }
