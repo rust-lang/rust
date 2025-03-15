@@ -489,6 +489,12 @@ impl From<AnonPipe> for Stdio {
     }
 }
 
+impl From<FileDesc> for Stdio {
+    fn from(fd: FileDesc) -> Stdio {
+        Stdio::Fd(fd)
+    }
+}
+
 impl From<File> for Stdio {
     fn from(file: File) -> Stdio {
         Stdio::Fd(file.into_inner())

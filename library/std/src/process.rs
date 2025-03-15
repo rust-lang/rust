@@ -1659,6 +1659,20 @@ impl From<io::Stderr> for Stdio {
     }
 }
 
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeWriter> for Stdio {
+    fn from(pipe: io::PipeWriter) -> Self {
+        Stdio::from_inner(pipe.into_inner().into())
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeReader> for Stdio {
+    fn from(pipe: io::PipeReader) -> Self {
+        Stdio::from_inner(pipe.into_inner().into())
+    }
+}
+
 /// Describes the result of a process after it has terminated.
 ///
 /// This `struct` is used to represent the exit status or other termination of a child process.

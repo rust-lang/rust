@@ -1,5 +1,6 @@
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut};
+use crate::sys_common::{FromInner, IntoInner};
 
 pub struct AnonPipe(!);
 
@@ -53,4 +54,54 @@ impl AnonPipe {
 
 pub fn read2(p1: AnonPipe, _v1: &mut Vec<u8>, _p2: AnonPipe, _v2: &mut Vec<u8>) -> io::Result<()> {
     match p1.0 {}
+}
+
+impl FromInner<!> for AnonPipe {
+    fn from_inner(inner: !) -> Self {
+        inner
+    }
+}
+
+impl IntoInner<!> for AnonPipe {
+    fn into_inner(self) -> ! {
+        self.0
+    }
+}
+
+#[cfg(any(unix, target_os = "hermit", target_os = "wasi"))]
+mod unix_traits {
+    use super::AnonPipe;
+    use crate::os::fd::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
+    use crate::sys_common::FromInner;
+
+    impl AsRawFd for AnonPipe {
+        #[inline]
+        fn as_raw_fd(&self) -> RawFd {
+            self.0
+        }
+    }
+
+    impl AsFd for AnonPipe {
+        fn as_fd(&self) -> BorrowedFd<'_> {
+            self.0
+        }
+    }
+
+    impl IntoRawFd for AnonPipe {
+        fn into_raw_fd(self) -> RawFd {
+            self.0
+        }
+    }
+
+    impl FromRawFd for AnonPipe {
+        unsafe fn from_raw_fd(_: RawFd) -> Self {
+            panic!("creating pipe on this platform is unsupported!")
+        }
+    }
+
+    impl FromInner<OwnedFd> for AnonPipe {
+        fn from_inner(_: OwnedFd) -> Self {
+            panic!("creating pipe on this platform is unsupported!")
+        }
+    }
 }
