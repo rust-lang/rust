@@ -1,4 +1,3 @@
-// skip-filecheck
 //@ test-mir-pass: CopyProp
 
 #![feature(custom_mir, core_intrinsics)]
@@ -8,6 +7,11 @@ use core::intrinsics::mir::*;
 
 #[custom_mir(dialect = "analysis", phase = "post-cleanup")]
 fn f(c: bool) -> bool {
+    // CHECK-LABEL: fn f(
+    // CHECK: bb2: {
+    // CHECK: _2 = copy _3;
+    // CHECK: bb3: {
+    // CHECK: _0 = copy _2;
     mir! {
         let a: bool;
         let b: bool;
