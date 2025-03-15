@@ -18,7 +18,7 @@ a subset of test collections, and merge queue CI will exercise all of the test
 collection.
 </div>
 
-```bash
+```text
 ./x test
 ```
 
@@ -45,7 +45,7 @@ tests. For example, a good "smoke test" that can be used after modifying rustc
 to see if things are generally working correctly would be to exercise the `ui`
 test suite ([`tests/ui`]):
 
-```bash
+```text
 ./x test tests/ui
 ```
 
@@ -53,14 +53,14 @@ Of course, the choice of test suites is
 somewhat arbitrary, and may not suit the task you are doing. For example, if you
 are hacking on debuginfo, you may be better off with the debuginfo test suite:
 
-```bash
+```text
 ./x test tests/debuginfo
 ```
 
 If you only need to test a specific subdirectory of tests for any given test
 suite, you can pass that directory as a filter to `./x test`:
 
-```bash
+```text
 ./x test tests/ui/const-generics
 ```
 
@@ -73,7 +73,7 @@ suite, you can pass that directory as a filter to `./x test`:
 
 Likewise, you can test a single file by passing its path:
 
-```bash
+```text
 ./x test tests/ui/const-generics/const-test.rs
 ```
 
@@ -81,19 +81,19 @@ Likewise, you can test a single file by passing its path:
 have to use the `--test-args` argument as described
 [below](#running-an-individual-test).
 
-```bash
+```text
 ./x test src/tools/miri --test-args tests/fail/uninit/padding-enum.rs
 ```
 
 ### Run only the tidy script
 
-```bash
+```text
 ./x test tidy
 ```
 
 ### Run tests on the standard library
 
-```bash
+```text
 ./x test --stage 0 library/std
 ```
 
@@ -102,13 +102,13 @@ crates, you have to specify those explicitly.
 
 ### Run the tidy script and tests on the standard library
 
-```bash
+```text
 ./x test --stage 0 tidy library/std
 ```
 
 ### Run tests on the standard library using a stage 1 compiler
 
-```bash
+```text
 ./x test --stage 1 library/std
 ```
 
@@ -122,7 +122,7 @@ the tests **usually** work fine with stage 1, there are some limitations.
 
 ### Run all tests using a stage 2 compiler
 
-```bash
+```text
 ./x test --stage 2
 ```
 
@@ -134,13 +134,13 @@ You almost never need to do this; CI will run these tests for you.
 
 You may want to run unit tests on a specific file with following:
 
-```bash
+```text
 ./x test compiler/rustc_data_structures/src/thin_vec/tests.rs
 ```
 
 But unfortunately, it's impossible. You should invoke the following instead:
 
-```bash
+```text
 ./x test compiler/rustc_data_structures/ --test-args thin_vec
 ```
 
@@ -151,7 +151,7 @@ often the test they are trying to fix. As mentioned earlier, you may pass the
 full file path to achieve this, or alternatively one may invoke `x` with the
 `--test-args` option:
 
-```bash
+```text
 ./x test tests/ui --test-args issue-1234
 ```
 
@@ -203,7 +203,7 @@ When `--pass $mode` is passed, these tests will be forced to run under the given
 `$mode` unless the directive `//@ ignore-pass` exists in the test file. For
 example, you can run all the tests in `tests/ui` as `check-pass`:
 
-```bash
+```text
 ./x test tests/ui --pass check
 ```
 
@@ -219,7 +219,7 @@ first look for expected output in `foo.polonius.stderr`, falling back to the
 usual `foo.stderr` if not found. The following will run the UI test suite in
 Polonius mode:
 
-```bash
+```text
 ./x test tests/ui --compare-mode=polonius
 ```
 
@@ -232,7 +232,7 @@ just `.rs` files, so after [creating a rustup
 toolchain](../building/how-to-build-and-run.md#creating-a-rustup-toolchain), you
 can do something like:
 
-```bash
+```text
 rustc +stage1 tests/ui/issue-1234.rs
 ```
 
@@ -252,7 +252,7 @@ execution* so be careful where it is used.
 To do this, first build `remote-test-server` for the remote machine, e.g. for
 RISC-V
 
-```sh
+```text
 ./x build src/tools/remote-test-server --target riscv64gc-unknown-linux-gnu
 ```
 
@@ -264,7 +264,7 @@ On the remote machine, run the `remote-test-server` with the `--bind
 0.0.0.0:12345` flag (and optionally `-v` for verbose output). Output should look
 like this:
 
-```sh
+```text
 $ ./remote-test-server -v --bind 0.0.0.0:12345
 starting test server
 listening on 0.0.0.0:12345!
@@ -278,7 +278,7 @@ restrictive IP address when binding.
 You can test if the `remote-test-server` is working by connecting to it and
 sending `ping\n`. It should reply `pong`:
 
-```sh
+```text
 $ nc $REMOTE_IP 12345
 ping
 pong
@@ -288,7 +288,7 @@ To run tests using the remote runner, set the `TEST_DEVICE_ADDR` environment
 variable then use `x` as usual. For example, to run `ui` tests for a RISC-V
 machine with the IP address `1.2.3.4` use
 
-```sh
+```text
 export TEST_DEVICE_ADDR="1.2.3.4:12345"
 ./x test tests/ui --target riscv64gc-unknown-linux-gnu
 ```
@@ -296,7 +296,7 @@ export TEST_DEVICE_ADDR="1.2.3.4:12345"
 If `remote-test-server` was run with the verbose flag, output on the test
 machine may look something like
 
-```
+```text
 [...]
 run "/tmp/work/test1007/a"
 run "/tmp/work/test1008/a"
@@ -362,21 +362,21 @@ codegen-backends = ["llvm", "gcc"]
 
 Then you need to install libgccjit 12. For example with `apt`:
 
-```bash
-$ apt install libgccjit-12-dev
+```text
+apt install libgccjit-12-dev
 ```
 
 Now you can run the following command:
 
-```bash
-$ ./x test compiler/rustc_codegen_gcc/
+```text
+./x test compiler/rustc_codegen_gcc/
 ```
 
 If it cannot find the `.so` library (if you installed it with `apt` for example), you
 need to pass the library file path with `LIBRARY_PATH`:
 
-```bash
-$ LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
+```text
+LIBRARY_PATH=/usr/lib/gcc/x86_64-linux-gnu/12/ ./x test compiler/rustc_codegen_gcc/
 ```
 
 If you encounter bugs or problems, don't hesitate to open issues on the
