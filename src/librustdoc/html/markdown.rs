@@ -1200,11 +1200,12 @@ impl LangString {
                         data.ignore = Ignore::All;
                         seen_rust_tags = !seen_other_tags;
                     }
-                    LangStringToken::LangToken(x) if x.starts_with("ignore-") => {
-                        if enable_per_target_ignores {
-                            ignores.push(x.trim_start_matches("ignore-").to_owned());
-                            seen_rust_tags = !seen_other_tags;
-                        }
+                    LangStringToken::LangToken(x)
+                        if let Some(ignore) = x.strip_prefix("ignore-")
+                            && enable_per_target_ignores =>
+                    {
+                        ignores.push(ignore.to_owned());
+                        seen_rust_tags = !seen_other_tags;
                     }
                     LangStringToken::LangToken("rust") => {
                         data.rust = true;
@@ -1226,37 +1227,39 @@ impl LangString {
                         data.standalone_crate = true;
                         seen_rust_tags = !seen_other_tags || seen_rust_tags;
                     }
-                    LangStringToken::LangToken(x) if x.starts_with("edition") => {
-                        data.edition = x[7..].parse::<Edition>().ok();
+                    LangStringToken::LangToken(x)
+                        if let Some(edition) = x.strip_prefix("edition") =>
+                    {
+                        data.edition = edition.parse::<Edition>().ok();
                     }
                     LangStringToken::LangToken(x)
-                        if x.starts_with("rust") && x[4..].parse::<Edition>().is_ok() =>
+                        if let Some(edition) = x.strip_prefix("rust")
+                            && edition.parse::<Edition>().is_ok()
+                            && let Some(extra) = extra =>
                     {
-                        if let Some(extra) = extra {
-                            extra.error_invalid_codeblock_attr_with_help(
-                                format!("unknown attribute `{x}`"),
-                                |lint| {
-                                    lint.help(format!(
-                                        "there is an attribute with a similar name: `edition{}`",
-                                        &x[4..],
-                                    ));
-                                },
-                            );
-                        }
+                        extra.error_invalid_codeblock_attr_with_help(
+                            format!("unknown attribute `{x}`"),
+                            |lint| {
+                                lint.help(format!(
+                                    "there is an attribute with a similar name: `edition{edition}`"
+                                ));
+                            },
+                        );
                     }
                     LangStringToken::LangToken(x)
-                        if allow_error_code_check && x.starts_with('E') && x.len() == 5 =>
+                        if allow_error_code_check
+                            && let Some(error_code) = x.strip_prefix('E')
+                            && error_code.len() == 4 =>
                     {
-                        if x[1..].parse::<u32>().is_ok() {
+                        if error_code.parse::<u32>().is_ok() {
                             data.error_codes.push(x.to_owned());
                             seen_rust_tags = !seen_other_tags || seen_rust_tags;
                         } else {
                             seen_other_tags = true;
                         }
                     }
-                    LangStringToken::LangToken(x) if extra.is_some() => {
-                        let s = x.to_lowercase();
-                        if let Some(help) = match s.as_str() {
+                    LangStringToken::LangToken(x) if let Some(extra) = extra => {
+                        if let Some(help) = match x.to_lowercase().as_str() {
                             "compile-fail" | "compile_fail" | "compilefail" => Some(
                                 "use `compile_fail` to invert the results of this test, so that it \
                                 passes if it cannot be compiled and fails if it can",
@@ -1273,33 +1276,27 @@ impl LangString {
                                 "use `test_harness` to run functions marked `#[test]` instead of a \
                                 potentially-implicit `main` function",
                             ),
-                            "standalone" | "standalone_crate" | "standalone-crate" => {
-                                if let Some(extra) = extra
-                                    && extra.sp.at_least_rust_2024()
-                                {
-                                    Some(
-                                        "use `standalone_crate` to compile this code block \
+                            "standalone" | "standalone_crate" | "standalone-crate"
+                                if extra.sp.at_least_rust_2024() =>
+                            {
+                                Some(
+                                    "use `standalone_crate` to compile this code block \
                                         separately",
-                                    )
-                                } else {
-                                    None
-                                }
+                                )
                             }
                             _ => None,
                         } {
-                            if let Some(extra) = extra {
-                                extra.error_invalid_codeblock_attr_with_help(
-                                    format!("unknown attribute `{x}`"),
-                                    |lint| {
-                                        lint.help(help).help(
-                                            "this code block may be skipped during testing, \
+                            extra.error_invalid_codeblock_attr_with_help(
+                                format!("unknown attribute `{x}`"),
+                                |lint| {
+                                    lint.help(help).help(
+                                        "this code block may be skipped during testing, \
                                             because unknown attributes are treated as markers for \
                                             code samples written in other programming languages, \
                                             unless it is also explicitly marked as `rust`",
-                                        );
-                                    },
-                                );
-                            }
+                                    );
+                                },
+                            );
                         }
                         seen_other_tags = true;
                         data.unknown.push(x.to_owned());
