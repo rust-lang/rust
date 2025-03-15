@@ -102,6 +102,10 @@ pub(crate) fn merge_bounds(
                     }
                 }
             },
+            PP::ReturnTypeNotation => {
+                // Cannot merge bounds with RTN.
+                return false;
+            }
         };
         true
     })

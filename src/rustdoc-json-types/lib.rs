@@ -30,7 +30,7 @@ pub type FxHashMap<K, V> = HashMap<K, V>; // re-export for use in src/librustdoc
 /// This integer is incremented with every breaking change to the API,
 /// and is returned along with the JSON blob as [`Crate::format_version`].
 /// Consuming code should assert that this value matches the format version(s) that it supports.
-pub const FORMAT_VERSION: u32 = 41;
+pub const FORMAT_VERSION: u32 = 42;
 
 /// The root of the emitted JSON blob.
 ///
@@ -229,6 +229,8 @@ pub enum GenericArgs {
         /// The output type provided after the `->`, if present.
         output: Option<Type>,
     },
+    /// `T::method(..)`
+    ReturnTypeNotation,
 }
 
 /// One argument in a list of generic arguments to a path segment.

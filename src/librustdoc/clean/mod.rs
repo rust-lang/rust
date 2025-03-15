@@ -1488,6 +1488,9 @@ pub(crate) fn clean_middle_assoc_item(assoc_item: &ty::AssocItem, cx: &mut DocCo
                                 // The only time this happens is if we're inside the rustdoc for Fn(),
                                 // which only has one associated type, which is not a GAT, so whatever.
                             }
+                            GenericArgs::ReturnTypeNotation => {
+                                // Never move these.
+                            }
                         }
                         bounds.extend(mem::take(pred_bounds));
                         false
@@ -2553,36 +2556,42 @@ fn clean_generic_args<'tcx>(
     generic_args: &hir::GenericArgs<'tcx>,
     cx: &mut DocContext<'tcx>,
 ) -> GenericArgs {
-    // FIXME(return_type_notation): Fix RTN parens rendering
-    if let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() {
-        let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect();
-        let output = match output.kind {
-            hir::TyKind::Tup(&[]) => None,
-            _ => Some(Box::new(clean_ty(output, cx))),
-        };
-        GenericArgs::Parenthesized { inputs, output }
-    } else {
-        let args = generic_args
-            .args
-            .iter()
-            .map(|arg| match arg {
-                hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
-                    GenericArg::Lifetime(clean_lifetime(lt, cx))
-                }
-                hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
-                hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
-                hir::GenericArg::Const(ct) => {
-                    GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
-                }
-                hir::GenericArg::Infer(_inf) => GenericArg::Infer,
-            })
-            .collect();
-        let constraints = generic_args
-            .constraints
-            .iter()
-            .map(|c| clean_assoc_item_constraint(c, cx))
-            .collect::<ThinVec<_>>();
-        GenericArgs::AngleBracketed { args, constraints }
+    match generic_args.parenthesized {
+        hir::GenericArgsParentheses::No => {
+            let args = generic_args
+                .args
+                .iter()
+                .map(|arg| match arg {
+                    hir::GenericArg::Lifetime(lt) if !lt.is_anonymous() => {
+                        GenericArg::Lifetime(clean_lifetime(lt, cx))
+                    }
+                    hir::GenericArg::Lifetime(_) => GenericArg::Lifetime(Lifetime::elided()),
+                    hir::GenericArg::Type(ty) => GenericArg::Type(clean_ty(ty.as_unambig_ty(), cx)),
+                    hir::GenericArg::Const(ct) => {
+                        GenericArg::Const(Box::new(clean_const(ct.as_unambig_ct(), cx)))
+                    }
+                    hir::GenericArg::Infer(_inf) => GenericArg::Infer,
+                })
+                .collect();
+            let constraints = generic_args
+                .constraints
+                .iter()
+                .map(|c| clean_assoc_item_constraint(c, cx))
+                .collect::<ThinVec<_>>();
+            GenericArgs::AngleBracketed { args, constraints }
+        }
+        hir::GenericArgsParentheses::ParenSugar => {
+            let Some((inputs, output)) = generic_args.paren_sugar_inputs_output() else {
+                bug!();
+            };
+            let inputs = inputs.iter().map(|x| clean_ty(x, cx)).collect();
+            let output = match output.kind {
+                hir::TyKind::Tup(&[]) => None,
+                _ => Some(Box::new(clean_ty(output, cx))),
+            };
+            GenericArgs::Parenthesized { inputs, output }
+        }
+        hir::GenericArgsParentheses::ReturnTypeNotation => GenericArgs::ReturnTypeNotation,
     }
 }
 

@@ -326,6 +326,7 @@ impl<'a> Validator<'a> {
                     self.check_type(o);
                 }
             }
+            GenericArgs::ReturnTypeNotation => {}
         }
     }
 
