@@ -9,8 +9,24 @@ pub struct Mutex {
 }
 
 impl Mutex {
+    #[cfg(not(target_os = "nuttx"))]
     pub fn new() -> Mutex {
         Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) }
+    }
+
+    #[cfg(target_os = "nuttx")]
+    pub fn new() -> Mutex {
+        // PTHREAD_MUTEX_INITIALIZER is highly configurable on NuttX, so it's
+        // hard to use a hardcoded initializer from libc.
+        // Instead, call pthread_mutex_init() to initialize the mutex with the
+        // default attributes to get the same behavior as PTHREAD_MUTEX_INITIALIZER.
+        let mut mutex = Mutex { inner: UnsafeCell::new(libc::PTHREAD_MUTEX_INITIALIZER) };
+
+        unsafe {
+            libc::pthread_mutex_init(mutex.raw(), core::ptr::null());
+        }
+
+        mutex
     }
 
     pub(super) fn raw(&self) -> *mut libc::pthread_mutex_t {
