@@ -2364,6 +2364,8 @@ pub enum TyPatKind {
     /// A range pattern (e.g., `1...2`, `1..2`, `1..`, `..2`, `1..=2`, `..=2`).
     Range(Option<P<AnonConst>>, Option<P<AnonConst>>, Spanned<RangeEnd>),
 
+    Or(ThinVec<P<TyPat>>),
+
     /// Placeholder for a pattern that wasn't syntactically well formed in some way.
     Err(ErrorGuaranteed),
 }

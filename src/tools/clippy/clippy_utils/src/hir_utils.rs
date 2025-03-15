@@ -1117,6 +1117,11 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_const_arg(s);
                 self.hash_const_arg(e);
             },
+            TyPatKind::Or(variants) => {
+                for variant in variants.iter() {
+                    self.hash_ty_pat(variant)
+                }
+            },
             TyPatKind::Err(_) => {},
         }
     }

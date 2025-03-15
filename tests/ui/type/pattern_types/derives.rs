@@ -1,10 +1,14 @@
-//! Check that pattern types don't implement traits of their base automatically
+//! Check that pattern types don't implement traits of their base automatically.
+//! Exceptions are `Clone` and `Copy`.
 
 #![feature(pattern_types)]
 #![feature(pattern_type_macro)]
 
 use std::pat::pattern_type;
 
+// PartialEq works here as a derive, because internally it calls
+// `==` on the field, which causes coercion to coerce the pattern
+// type to its base type first.
 #[derive(Clone, Copy, PartialEq)]
 #[repr(transparent)]
 struct Nanoseconds(NanoI32);

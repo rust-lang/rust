@@ -463,6 +463,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         )
                     }),
             ),
+            TyPatKind::Or(variants) => {
+                hir::TyPatKind::Or(self.arena.alloc_from_iter(
+                    variants.iter().map(|pat| self.lower_ty_pat_mut(pat, base_type)),
+                ))
+            }
             TyPatKind::Err(guar) => hir::TyPatKind::Err(*guar),
         };
 

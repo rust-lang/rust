@@ -93,10 +93,12 @@ fn const_arg_anon_type_of<'tcx>(icx: &ItemCtxt<'tcx>, arg_hir_id: HirId, span: S
         }
 
         Node::TyPat(pat) => {
-            let hir::TyKind::Pat(ty, p) = tcx.parent_hir_node(pat.hir_id).expect_ty().kind else {
-                bug!()
+            let node = match tcx.parent_hir_node(pat.hir_id) {
+                // Or patterns can be nested one level deep
+                Node::TyPat(p) => tcx.parent_hir_node(p.hir_id),
+                other => other,
             };
-            assert_eq!(p.hir_id, pat.hir_id);
+            let hir::TyKind::Pat(ty, _) = node.expect_ty().kind else { bug!() };
             icx.lower_ty(ty)
         }
 

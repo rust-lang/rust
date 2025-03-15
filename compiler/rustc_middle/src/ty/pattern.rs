@@ -51,6 +51,19 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 
                 write!(f, "..={end}")
             }
+            PatternKind::Or(patterns) => {
+                write!(f, "(")?;
+                let mut first = true;
+                for pat in patterns {
+                    if first {
+                        first = false
+                    } else {
+                        write!(f, " | ")?;
+                    }
+                    write!(f, "{pat:?}")?;
+                }
+                write!(f, ")")
+            }
         }
     }
 }
@@ -59,4 +72,5 @@ impl<'tcx> fmt::Debug for PatternKind<'tcx> {
 #[derive(HashStable, TyEncodable, TyDecodable, TypeVisitable, TypeFoldable)]
 pub enum PatternKind<'tcx> {
     Range { start: ty::Const<'tcx>, end: ty::Const<'tcx> },
+    Or(&'tcx ty::List<Pattern<'tcx>>),
 }

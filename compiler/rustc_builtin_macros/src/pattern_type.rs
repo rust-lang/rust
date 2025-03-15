@@ -1,9 +1,10 @@
 use rustc_ast::ptr::P;
 use rustc_ast::tokenstream::TokenStream;
-use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast};
+use rustc_ast::{AnonConst, DUMMY_NODE_ID, Ty, TyPat, TyPatKind, ast, token};
 use rustc_errors::PResult;
 use rustc_expand::base::{self, DummyResult, ExpandResult, ExtCtxt, MacroExpanderResult};
 use rustc_parse::exp;
+use rustc_parse::parser::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use rustc_span::Span;
 
 pub(crate) fn expand<'cx>(
@@ -26,19 +27,42 @@ fn parse_pat_ty<'a>(cx: &mut ExtCtxt<'a>, stream: TokenStream) -> PResult<'a, (P
 
     let ty = parser.parse_ty()?;
     parser.expect_keyword(exp!(Is))?;
-    let pat = parser.parse_pat_no_top_alt(None, None)?.into_inner();
 
+    let pat = pat_to_ty_pat(
+        cx,
+        parser
+            .parse_pat_no_top_guard(
+                None,
+                RecoverComma::No,
+                RecoverColon::No,
+                CommaRecoveryMode::EitherTupleOrPipe,
+            )?
+            .into_inner(),
+    );
+
+    if parser.token != token::Eof {
+        parser.unexpected()?;
+    }
+
+    Ok((ty, pat))
+}
+
+fn ty_pat(kind: TyPatKind, span: Span) -> P<TyPat> {
+    P(TyPat { id: DUMMY_NODE_ID, kind, span, tokens: None })
+}
+
+fn pat_to_ty_pat(cx: &mut ExtCtxt<'_>, pat: ast::Pat) -> P<TyPat> {
     let kind = match pat.kind {
         ast::PatKind::Range(start, end, include_end) => TyPatKind::Range(
             start.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
             end.map(|value| P(AnonConst { id: DUMMY_NODE_ID, value })),
             include_end,
         ),
+        ast::PatKind::Or(variants) => TyPatKind::Or(
+            variants.into_iter().map(|pat| pat_to_ty_pat(cx, pat.into_inner())).collect(),
+        ),
         ast::PatKind::Err(guar) => TyPatKind::Err(guar),
         _ => TyPatKind::Err(cx.dcx().span_err(pat.span, "pattern not supported in pattern types")),
     };
-
-    let pat = P(TyPat { id: pat.id, kind, span: pat.span, tokens: pat.tokens });
-
-    Ok((ty, pat))
+    ty_pat(kind, pat.span)
 }

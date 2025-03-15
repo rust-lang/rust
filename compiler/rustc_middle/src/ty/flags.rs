@@ -219,12 +219,7 @@ impl FlagComputation {
 
             &ty::Pat(ty, pat) => {
                 self.add_ty(ty);
-                match *pat {
-                    ty::PatternKind::Range { start, end } => {
-                        self.add_const(start);
-                        self.add_const(end);
-                    }
-                }
+                self.add_pat(pat);
             }
 
             &ty::Slice(tt) => self.add_ty(tt),
@@ -254,6 +249,20 @@ impl FlagComputation {
                 self.bound_computation(bound_ty.into(), |computation, ty| {
                     computation.add_ty(ty);
                 })
+            }
+        }
+    }
+
+    fn add_pat(&mut self, pat: ty::Pattern<'_>) {
+        match *pat {
+            ty::PatternKind::Range { start, end } => {
+                self.add_const(start);
+                self.add_const(end);
+            }
+            ty::PatternKind::Or(patterns) => {
+                for pat in patterns {
+                    self.add_pat(pat);
+                }
             }
         }
     }

@@ -565,6 +565,7 @@ pub fn walk_ty_pat<'a, V: Visitor<'a>>(visitor: &mut V, tp: &'a TyPat) -> V::Res
             visit_opt!(visitor, visit_anon_const, start);
             visit_opt!(visitor, visit_anon_const, end);
         }
+        TyPatKind::Or(variants) => walk_list!(visitor, visit_ty_pat, variants),
         TyPatKind::Err(_) => {}
     }
     V::Result::output()

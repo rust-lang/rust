@@ -1166,6 +1166,17 @@ impl<'a> State<'a> {
                     self.print_expr_anon_const(end, &[]);
                 }
             }
+            rustc_ast::TyPatKind::Or(variants) => {
+                let mut first = true;
+                for pat in variants {
+                    if first {
+                        first = false
+                    } else {
+                        self.word(" | ");
+                    }
+                    self.print_ty_pat(pat);
+                }
+            }
             rustc_ast::TyPatKind::Err(_) => {
                 self.popen();
                 self.word("/*ERROR*/");

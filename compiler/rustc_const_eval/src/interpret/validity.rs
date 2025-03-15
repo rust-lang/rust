@@ -1248,6 +1248,10 @@ impl<'rt, 'tcx, M: Machine<'tcx>> ValueVisitor<'tcx, M> for ValidityVisitor<'rt,
                     // Range patterns are precisely reflected into `valid_range` and thus
                     // handled fully by `visit_scalar` (called below).
                     ty::PatternKind::Range { .. } => {},
+
+                    // FIXME(pattern_types): check that the value is covered by one of the variants.
+                    // The layout may pessimistically cover actually illegal ranges.
+                    ty::PatternKind::Or(_patterns) => {}
                 }
             }
             _ => {

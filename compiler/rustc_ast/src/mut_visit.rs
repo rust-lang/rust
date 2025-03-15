@@ -609,6 +609,7 @@ pub fn walk_ty_pat<T: MutVisitor>(vis: &mut T, ty: &mut P<TyPat>) {
             visit_opt(start, |c| vis.visit_anon_const(c));
             visit_opt(end, |c| vis.visit_anon_const(c));
         }
+        TyPatKind::Or(variants) => visit_thin_vec(variants, |p| vis.visit_ty_pat(p)),
         TyPatKind::Err(_) => {}
     }
     visit_lazy_tts(vis, tokens);
