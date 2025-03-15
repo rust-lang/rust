@@ -56,7 +56,7 @@
       bb5: {
           StorageLive(_8);
           _8 = copy ((_2 as Break).0: usize);
-          _0 = const Option::<i32>::None;
+          _0 = Option::<i32>::None;
           StorageDead(_8);
           goto -> bb7;
       }
@@ -76,9 +76,5 @@
 +         _6 = discriminant(_2);
 +         goto -> bb5;
       }
-  }
-  
-  ALLOC0 (size: 8, align: 4) {
-      00 00 00 00 __ __ __ __                         │ ....░░░░
   }
   

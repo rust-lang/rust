@@ -160,7 +160,7 @@
       }
   
       bb11: {
-          _6 = const Option::<usize>::None;
+          _6 = Option::<usize>::None;
           goto -> bb9;
       }
   
@@ -172,9 +172,5 @@
           StorageDead(_25);
           goto -> bb9;
       }
-  }
-  
-  ALLOC0 (size: 16, align: 8) {
-      00 00 00 00 00 00 00 00 __ __ __ __ __ __ __ __ │ ........░░░░░░░░
   }
   

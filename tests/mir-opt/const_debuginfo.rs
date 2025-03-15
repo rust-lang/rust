@@ -8,6 +8,13 @@ struct Point {
     y: u32,
 }
 
+#[repr(u16)]
+enum MyEnum {
+    Foo = 88,
+    Bar = 99,
+    Baz = 111,
+}
+
 // EMIT_MIR const_debuginfo.main.SingleUseConsts.diff
 fn main() {
     // CHECK-LABEL: fn main(
@@ -17,7 +24,7 @@ fn main() {
     // CHECK: debug sum => const 6_u8;
     // CHECK: debug s => const "hello, world!";
     // CHECK: debug f => {{_.*}};
-    // CHECK: debug o => const Option::<u16>::Some(99_u16);
+    // CHECK: debug o => const MyEnum::Bar;
     // CHECK: debug p => const Point
     // CHECK: debug a => const 64_u32;
     let x = 1u8;
@@ -29,7 +36,7 @@ fn main() {
 
     let f = (true, false, 123u32);
 
-    let o = Some(99u16);
+    let o = MyEnum::Bar;
 
     let p = Point { x: 32, y: 32 };
     let a = p.x + p.y;

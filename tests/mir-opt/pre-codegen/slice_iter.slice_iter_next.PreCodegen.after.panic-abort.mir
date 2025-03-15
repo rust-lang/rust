@@ -94,7 +94,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb3: {
-        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        _0 = Option::<&T>::None;
         StorageDead(_7);
         goto -> bb8;
     }
@@ -105,7 +105,7 @@ fn slice_iter_next(_1: &mut std::slice::Iter<'_, T>) -> Option<&T> {
     }
 
     bb5: {
-        _0 = const {transmute(0x0000000000000000): Option<&T>};
+        _0 = Option::<&T>::None;
         goto -> bb8;
     }
 

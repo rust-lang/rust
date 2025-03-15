@@ -32,10 +32,10 @@
                           let _10: (bool, bool, u32);
                           scope 6 {
                               debug f => _10;
-                              let _11: std::option::Option<u16>;
+                              let _11: MyEnum;
                               scope 7 {
 -                                 debug o => _11;
-+                                 debug o => const Option::<u16>::Some(99_u16);
++                                 debug o => const MyEnum::Bar;
                                   let _12: Point;
                                   scope 8 {
 -                                     debug p => _12;
@@ -89,7 +89,7 @@
           StorageLive(_10);
           _10 = (const true, const false, const 123_u32);
           StorageLive(_11);
--         _11 = const Option::<u16>::Some(99_u16);
+-         _11 = const MyEnum::Bar;
 +         nop;
           StorageLive(_12);
 -         _12 = const Point {{ x: 32_u32, y: 32_u32 }};
@@ -120,6 +120,4 @@
   }
   
   ALLOC0 (size: 8, align: 4) { .. }
-  
-  ALLOC1 (size: 4, align: 2) { .. }
   

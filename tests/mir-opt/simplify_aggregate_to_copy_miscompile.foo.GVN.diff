@@ -42,10 +42,8 @@
 +         nop;
           _6 = copy (((*_2) as Some).0: i32);
           StorageLive(_8);
--         _8 = Option::<i32>::None;
--         (*_1) = move _8;
-+         _8 = const Option::<i32>::None;
-+         (*_1) = const Option::<i32>::None;
+          _8 = Option::<i32>::None;
+          (*_1) = move _8;
           StorageDead(_8);
           StorageLive(_9);
           _9 = copy _6;
@@ -64,9 +62,5 @@
           StorageLive(_10);
           unreachable;
       }
-+ }
-+ 
-+ ALLOC0 (size: 8, align: 4) {
-+     00 00 00 00 __ __ __ __                         │ ....░░░░
   }
   

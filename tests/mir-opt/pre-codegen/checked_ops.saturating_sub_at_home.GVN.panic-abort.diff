@@ -33,7 +33,7 @@
       }
   
       bb1: {
-          _3 = const Option::<u32>::None;
+          _3 = Option::<u32>::None;
           goto -> bb3;
       }
   
@@ -81,9 +81,5 @@
           StorageDead(_10);
           goto -> bb4;
       }
-  }
-  
-  ALLOC0 (size: 8, align: 4) {
-      00 00 00 00 __ __ __ __                         │ ....░░░░
   }
   

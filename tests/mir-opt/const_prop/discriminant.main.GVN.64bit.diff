@@ -17,10 +17,9 @@
           StorageLive(_1);
           StorageLive(_2);
           StorageLive(_3);
--         _3 = Option::<bool>::Some(const true);
+          _3 = Option::<bool>::Some(const true);
 -         _4 = discriminant(_3);
 -         switchInt(move _4) -> [1: bb1, otherwise: bb3];
-+         _3 = const Option::<bool>::Some(true);
 +         _4 = const 1_isize;
 +         switchInt(const 1_isize) -> [1: bb1, otherwise: bb3];
       }

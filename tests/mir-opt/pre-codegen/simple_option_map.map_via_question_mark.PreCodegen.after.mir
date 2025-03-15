@@ -37,7 +37,7 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     bb1: {
         StorageDead(_3);
         StorageDead(_2);
-        _0 = const Option::<i32>::None;
+        _0 = Option::<i32>::None;
         StorageDead(_6);
         StorageDead(_4);
         goto -> bb3;
@@ -63,8 +63,4 @@ fn map_via_question_mark(_1: Option<i32>) -> Option<i32> {
     bb4: {
         unreachable;
     }
-}
-
-ALLOC0 (size: 8, align: 4) {
-    00 00 00 00 __ __ __ __                         │ ....░░░░
 }

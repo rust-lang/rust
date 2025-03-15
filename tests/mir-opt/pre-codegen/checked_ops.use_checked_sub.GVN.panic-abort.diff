@@ -55,7 +55,7 @@
       }
   
       bb4: {
-          _3 = const Option::<u32>::None;
+          _3 = Option::<u32>::None;
           goto -> bb6;
       }
   
@@ -79,9 +79,5 @@
       bb7: {
           unreachable;
       }
-  }
-  
-  ALLOC0 (size: 8, align: 4) {
-      00 00 00 00 __ __ __ __                         │ ....░░░░
   }
   

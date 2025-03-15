@@ -21,10 +21,9 @@
           StorageLive(_1);
           _1 = const 0_i32;
           StorageLive(_3);
--         _3 = Option::<u32>::None;
+          _3 = Option::<u32>::None;
 -         _4 = discriminant(_3);
 -         switchInt(move _4) -> [1: bb1, otherwise: bb3];
-+         _3 = const Option::<u32>::None;
 +         _4 = const 0_isize;
 +         switchInt(const 0_isize) -> [1: bb1, otherwise: bb3];
       }

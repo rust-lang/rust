@@ -44,8 +44,7 @@
 -         StorageLive(_1);
 +         nop;
           StorageLive(_2);
--         _2 = Option::<Layout>::None;
-+         _2 = const Option::<Layout>::None;
+          _2 = Option::<Layout>::None;
           StorageLive(_10);
 -         _10 = discriminant(_2);
 -         switchInt(move _10) -> [0: bb2, 1: bb3, otherwise: bb1];

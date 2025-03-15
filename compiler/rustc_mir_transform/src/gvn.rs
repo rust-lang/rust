@@ -1700,6 +1700,21 @@ impl<'tcx> VnState<'_, 'tcx> {
             return Some(ConstOperand { span: DUMMY_SP, user_ty: None, const_: value });
         }
 
+        // When an enum can have a payload, it's not worth turning into a constant.
+        // Making a bunch of EvalCx allocations for `Option::None`s isn't productive
+        // and just makes it harder for subsequent passes to see the Discriminants.
+        // It's still easy for codegen to build the aggregate from the fields, since
+        // for an enum that's just the fields and maybe the constant tag.
+        // (We don't ever make consts for things bigger than a ScalarPair anyway.)
+        if let Value::Aggregate(agg_ty, _, _) = *self.get(index)
+            && let AggregateTy::Def(did, _) = agg_ty
+            && let DefKind::Enum = self.tcx.def_kind(did)
+            && let adt = self.tcx.adt_def(did)
+            && !adt.is_payloadfree()
+        {
+            return None;
+        }
+
         let op = self.evaluated[index].as_ref()?;
         if op.layout.is_unsized() {
             // Do not attempt to propagate unsized locals.
