@@ -53,13 +53,6 @@ envs:
 
   try:
     <<: *production
-    # The following env var activates faster `try` builds in `opt-dist` by, e.g.
-    # - building only the more commonly useful components (we rarely need e.g. rust-docs in try
-    #   builds)
-    # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
-    #
-    # If you *want* these to happen however, temporarily comment it before triggering a try build.
-    DIST_TRY_BUILD: 1
 
   auto:
     <<: *production
