@@ -361,24 +361,26 @@ fn make_format_spec<'hir>(
         zero_pad,
         debug_hex,
     } = &placeholder.format_options;
-    let fill = ctx.expr_char(sp, fill.unwrap_or(' '));
-    let align = ctx.expr_lang_item_type_relative(
-        sp,
-        hir::LangItem::FormatAlignment,
-        match alignment {
-            Some(FormatAlignment::Left) => sym::Left,
-            Some(FormatAlignment::Right) => sym::Right,
-            Some(FormatAlignment::Center) => sym::Center,
-            None => sym::Unknown,
-        },
-    );
-    // This needs to match `Flag` in library/core/src/fmt/rt.rs.
-    let flags: u32 = ((sign == Some(FormatSign::Plus)) as u32)
-        | ((sign == Some(FormatSign::Minus)) as u32) << 1
-        | (alternate as u32) << 2
-        | (zero_pad as u32) << 3
-        | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 4
-        | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 5;
+    let fill = fill.unwrap_or(' ');
+    // These need to match the constants in library/core/src/fmt/rt.rs.
+    let align = match alignment {
+        Some(FormatAlignment::Left) => 0,
+        Some(FormatAlignment::Right) => 1,
+        Some(FormatAlignment::Center) => 2,
+        None => 3,
+    };
+    // This needs to match the constants in library/core/src/fmt/rt.rs.
+    let flags: u32 = fill as u32
+        | ((sign == Some(FormatSign::Plus)) as u32) << 21
+        | ((sign == Some(FormatSign::Minus)) as u32) << 22
+        | (alternate as u32) << 23
+        | (zero_pad as u32) << 24
+        | ((debug_hex == Some(FormatDebugHex::Lower)) as u32) << 25
+        | ((debug_hex == Some(FormatDebugHex::Upper)) as u32) << 26
+        | (width.is_some() as u32) << 27
+        | (precision.is_some() as u32) << 28
+        | align << 29
+        | 1 << 31; // Highest bit always set.
     let flags = ctx.expr_u32(sp, flags);
     let precision = make_count(ctx, sp, precision, argmap);
     let width = make_count(ctx, sp, width, argmap);
@@ -387,7 +389,7 @@ fn make_format_spec<'hir>(
         hir::LangItem::FormatPlaceholder,
         sym::new,
     ));
-    let args = ctx.arena.alloc_from_iter([position, fill, align, flags, precision, width]);
+    let args = ctx.arena.alloc_from_iter([position, flags, precision, width]);
     ctx.expr_call_mut(sp, format_placeholder_new, args)
 }
 
