@@ -872,8 +872,14 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 self.simplify_place_projection(place, location);
                 return self.new_pointer(*place, AddressKind::Address(mutbl));
             }
-            Rvalue::WrapUnsafeBinder(ref mut op, _) => {
-                return self.simplify_operand(op, location);
+            Rvalue::WrapUnsafeBinder(ref mut op, ty) => {
+                let value = self.simplify_operand(op, location)?;
+                Value::Cast {
+                    kind: CastKind::Transmute,
+                    value,
+                    from: op.ty(self.local_decls, self.tcx),
+                    to: ty,
+                }
             }
 
             // Operations.
