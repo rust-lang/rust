@@ -17,10 +17,6 @@ LL ~     match 0 {
 LL |         x => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.y } => (),
-   |         +++++++     +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:6:9
@@ -42,10 +38,6 @@ LL |         x => (),
 LL |         x.y => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 } => (),
-   |         +++++++     +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:7:9
@@ -68,10 +60,6 @@ LL |         x.y => (),
 LL |         x.0 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x._0 } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:8:9
@@ -94,10 +82,6 @@ LL |         x => (),
 LL |         x._0 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0.1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:9:9
@@ -120,10 +104,6 @@ LL |         x => (),
 LL |         x.0.1 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.4.y.17.__z } => (),
-   |         +++++++              +
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `.`
   --> $DIR/recover-pat-exprs.rs:12:12
@@ -173,10 +153,6 @@ LL +     const VAL: /* Type */ = x[0];
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x[0] } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:24:9
@@ -197,10 +173,6 @@ LL ~     match 0 {
 LL |         x[0] => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x[..] } => (),
-   |         +++++++       +
 
 error: expected one of `:`, `;`, `=`, `@`, or `|`, found `[`
   --> $DIR/recover-pat-exprs.rs:27:12
@@ -247,10 +219,6 @@ LL +     const VAL: /* Type */ = x.f();
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f() } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:38:9
@@ -271,10 +239,6 @@ LL ~     match 0 {
 LL |         x.f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x._f() } => (),
-   |         +++++++        +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:39:9
@@ -296,10 +260,6 @@ LL |         x.f() => (),
 LL |         x._f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x? } => (),
-   |         +++++++    +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:40:9
@@ -322,10 +282,6 @@ LL |         x._f() => (),
 LL |         x? => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { ().f() } => (),
-   |         +++++++        +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:41:9
@@ -348,10 +304,6 @@ LL |         x.f() => (),
 LL |         ().f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { (0, x)?.f() } => (),
-   |         +++++++             +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:42:9
@@ -374,10 +326,6 @@ LL |         x.f() => (),
 LL |         (0, x)?.f() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f().g() } => (),
-   |         +++++++           +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:43:9
@@ -400,10 +348,6 @@ LL |         x.f() => (),
 LL |         x.f().g() => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 0.f()?.g()?? } => (),
-   |         +++++++              +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:50:9
@@ -423,10 +367,6 @@ LL +     const VAL: /* Type */ = x as usize;
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x as usize } => (),
-   |         +++++++            +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:51:9
@@ -447,10 +387,6 @@ LL ~     match 0 {
 LL |         x as usize => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 0 as usize } => (),
-   |         +++++++            +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:52:9
@@ -472,10 +408,6 @@ LL |         x as usize => (),
 LL |         0 as usize => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.f().0.4 as f32 } => (),
-   |         +++++++                  +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:59:9
@@ -495,10 +427,6 @@ LL +     const VAL: /* Type */ = 1 + 1;
 LL ~     match 0 {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { 1 + 1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:60:9
@@ -519,10 +447,6 @@ LL ~     match 0 {
 LL |         1 + 1 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { (1 + 2) * 3 } => (),
-   |         +++++++             +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:63:9
@@ -545,10 +469,6 @@ LL |         1 + 1 => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 > 2 } => (),
-   |         +++++++         +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:64:9
@@ -571,10 +491,6 @@ LL |         1 + 1 => (),
 LL |         x.0 > 2 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { x.0 == 2 } => (),
-   |         +++++++          +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:69:13
@@ -594,10 +510,6 @@ LL +     const VAL: /* Type */ = y.0 > 2;
 LL ~     match (0, 0) {
 LL ~         (x, VAL) if x != 0 => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (x, const { y.0 > 2 }) if x != 0 => (),
-   |             +++++++         +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:70:13
@@ -618,10 +530,6 @@ LL ~     match (0, 0) {
 LL |         (x, y.0 > 2) if x != 0 => (),
 LL ~         (x, VAL) if x != 0 || x != 1 => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (x, const { y.0 > 2 }) if x != 0 || x != 1 => (),
-   |             +++++++         +
 
 error: left-hand side of `@` must be a binding
   --> $DIR/recover-pat-exprs.rs:83:9
@@ -658,10 +566,6 @@ LL +     const VAL: /* Type */ = u8::MAX.abs();
 LL ~     match u8::MAX {
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { u8::MAX.abs() } => (),
-   |         +++++++               +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:86:17
@@ -684,10 +588,6 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         z @ w @ VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         z @ w @ const { v.u() } => (),
-   |                 +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:88:9
@@ -710,10 +610,6 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { y.ilog(3) } => (),
-   |         +++++++           +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:90:9
@@ -736,10 +632,6 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { n + 1 } => (),
-   |         +++++++       +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:92:10
@@ -762,10 +654,6 @@ LL |         u8::MAX.abs() => (),
 LL |
 LL ~         (VAL) => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         (const { "".f() + 14 * 8 }) => (),
-   |          +++++++                 +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:95:9
@@ -788,10 +676,6 @@ LL |         u8::MAX.abs() => (),
 LL |         0 | ((1) | 2) | 3 => (),
 LL ~         VAL => (),
    |
-help: consider wrapping the expression in an inline `const` (requires `#![feature(inline_const_pat)]`)
-   |
-LL |         const { f?() } => (),
-   |         +++++++      +
 
 error: expected a pattern, found an expression
   --> $DIR/recover-pat-exprs.rs:101:9
