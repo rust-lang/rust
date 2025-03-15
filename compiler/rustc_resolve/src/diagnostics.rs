@@ -2202,6 +2202,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             });
 
             (format!("use of undeclared type `{ident}`"), suggestion)
+        } else if ident.name == self.tcx().crate_name(0_usize.into()) {
+            (
+                format!("use of unresolved module or unlinked crate `{ident}`"),
+                Some((
+                    vec![(ident.span, String::from("crate"))],
+                    format!(
+                        "the current crate name can not be used in a path, use the keyword `crate` instead"
+                    ),
+                    Applicability::MaybeIncorrect,
+                )),
+            )
         } else {
             let mut suggestion = None;
             if ident.name == sym::alloc {
