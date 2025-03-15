@@ -690,6 +690,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let region = self.next_region_var(infer::BorrowRegion(expr.span));
                 Ty::new_ref(self.tcx, region, ty, mutbl)
             }
+            hir::BorrowKind::Pin => {
+                // See comments in the `hir::BorrowKind::Ref` arm above.
+                let region = self.next_region_var(infer::BorrowRegion(expr.span));
+                Ty::new_pinned_ref(self.tcx, region, ty, mutbl)
+            }
         }
     }
 
