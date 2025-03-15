@@ -1343,6 +1343,9 @@ impl Seek for Arc<File> {
     fn seek(&mut self, pos: SeekFrom) -> io::Result<u64> {
         (&**self).seek(pos)
     }
+    fn stream_position(&mut self) -> io::Result<u64> {
+        (&**self).stream_position()
+    }
 }
 
 impl OpenOptions {
