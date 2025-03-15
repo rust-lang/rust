@@ -225,16 +225,23 @@ fn aggregate_tests(metrics: &JsonRoot) -> TestSuiteData {
             // Poor man's detection of doctests based on the "(line XYZ)" suffix
             let is_doctest = matches!(suite.metadata, TestSuiteMetadata::CargoPackage { .. })
                 && test.name.contains("(line");
-            let test_entry = Test { name: normalize_test_name(&test.name), is_doctest };
+            let test_entry = Test { name: generate_test_name(&test.name, &suite), is_doctest };
             tests.insert(test_entry, test.outcome.clone());
         }
     }
     TestSuiteData { tests }
 }
 
-/// Normalizes Windows-style path delimiters to Unix-style paths.
-fn normalize_test_name(name: &str) -> String {
-    name.replace('\\', "/")
+/// Normalizes Windows-style path delimiters to Unix-style paths
+/// and adds suite metadata to the test name.
+fn generate_test_name(name: &str, suite: &TestSuite) -> String {
+    let name = name.replace('\\', "/");
+    let stage = match suite.metadata {
+        TestSuiteMetadata::CargoPackage { stage, .. } => stage,
+        TestSuiteMetadata::Compiletest { stage, .. } => stage,
+    };
+
+    format!("{name} (stage {stage})")
 }
 
 /// Prints test changes in Markdown format to stdout.
