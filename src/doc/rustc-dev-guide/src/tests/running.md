@@ -296,7 +296,7 @@ export TEST_DEVICE_ADDR="1.2.3.4:12345"
 If `remote-test-server` was run with the verbose flag, output on the test
 machine may look something like
 
-```
+```text
 [...]
 run "/tmp/work/test1007/a"
 run "/tmp/work/test1008/a"
