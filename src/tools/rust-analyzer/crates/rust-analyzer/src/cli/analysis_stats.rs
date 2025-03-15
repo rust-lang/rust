@@ -3,6 +3,7 @@
 
 use std::{
     env, fmt,
+    ops::AddAssign,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -129,6 +130,9 @@ impl flags::AnalysisStats {
         let mut dep_item_trees = 0;
         let mut workspace_item_trees = 0;
 
+        let mut workspace_item_stats = PrettyItemStats::default();
+        let mut dep_item_stats = PrettyItemStats::default();
+
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
             for file_id in source_root.iter() {
@@ -137,16 +141,24 @@ impl flags::AnalysisStats {
                         // measure workspace/project code
                         if !source_root.is_library || self.with_deps {
                             let length = db.file_text(file_id).text(db).lines().count();
-                            db.file_item_tree(EditionedFileId::current_edition(file_id).into());
+                            let item_stats = db
+                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .item_tree_stats()
+                                .into();
 
                             workspace_loc += length;
                             workspace_item_trees += 1;
+                            workspace_item_stats += item_stats;
                         } else {
                             let length = db.file_text(file_id).text(db).lines().count();
-                            db.file_item_tree(EditionedFileId::current_edition(file_id).into());
+                            let item_stats = db
+                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .item_tree_stats()
+                                .into();
 
                             dep_loc += length;
-                            dep_item_trees += 1
+                            dep_item_trees += 1;
+                            dep_item_stats += item_stats;
                         }
                     }
                 }
@@ -161,11 +173,13 @@ impl flags::AnalysisStats {
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
+        eprintln!("  dependency item stats: {}", dep_item_stats);
         eprintln!(
             "  workspace lines of code: {}, item trees: {}",
             UsizeWithUnderscore(workspace_loc),
             UsizeWithUnderscore(workspace_item_trees),
         );
+        eprintln!("  workspace stats: {}", workspace_item_stats);
 
         // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
         // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
@@ -1258,6 +1272,7 @@ fn percentage(n: u64, total: u64) -> u64 {
     (n * 100).checked_div(total).unwrap_or(100)
 }
 
+#[derive(Default, Debug, Eq, PartialEq)]
 struct UsizeWithUnderscore(usize);
 
 impl fmt::Display for UsizeWithUnderscore {
@@ -1279,6 +1294,53 @@ impl fmt::Display for UsizeWithUnderscore {
 
         let result = result.chars().rev().collect::<String>();
         write!(f, "{}", result)
+    }
+}
+
+impl std::ops::AddAssign for UsizeWithUnderscore {
+    fn add_assign(&mut self, other: UsizeWithUnderscore) {
+        self.0 += other.0;
+    }
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct PrettyItemStats {
+    traits: UsizeWithUnderscore,
+    impls: UsizeWithUnderscore,
+    mods: UsizeWithUnderscore,
+    macro_calls: UsizeWithUnderscore,
+    macro_rules: UsizeWithUnderscore,
+}
+
+impl From<hir_def::item_tree::ItemTreeDataStats> for PrettyItemStats {
+    fn from(value: hir_def::item_tree::ItemTreeDataStats) -> Self {
+        Self {
+            traits: UsizeWithUnderscore(value.traits),
+            impls: UsizeWithUnderscore(value.impls),
+            mods: UsizeWithUnderscore(value.mods),
+            macro_calls: UsizeWithUnderscore(value.macro_calls),
+            macro_rules: UsizeWithUnderscore(value.macro_rules),
+        }
+    }
+}
+
+impl AddAssign for PrettyItemStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.traits += rhs.traits;
+        self.impls += rhs.impls;
+        self.mods += rhs.mods;
+        self.macro_calls += rhs.macro_calls;
+        self.macro_rules += rhs.macro_rules;
+    }
+}
+
+impl fmt::Display for PrettyItemStats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "traits: {}, impl: {}, mods: {}, macro calls: {}, macro rules: {}",
+            self.traits, self.impls, self.mods, self.macro_calls, self.macro_rules
+        )
     }
 }
 
