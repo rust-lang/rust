@@ -34,7 +34,7 @@ struct PatCtxt<'a, 'tcx> {
     typeck_results: &'a ty::TypeckResults<'tcx>,
 
     /// Used by the Rust 2024 migration lint.
-    rust_2024_migration: Option<PatMigration<'a>>,
+    rust_2024_migration: Option<PatMigration<'a, 'tcx>>,
 }
 
 pub(super) fn pat_from_hir<'a, 'tcx>(
@@ -66,11 +66,10 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
         // Track the default binding mode for the Rust 2024 migration suggestion.
-        let mut opt_old_mode_span = None;
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            opt_old_mode_span = s.visit_implicit_derefs(pat.span, adjustments);
+            s.visit_implicit_derefs(pat, adjustments);
         }
 
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
@@ -113,7 +112,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         if let Some(s) = &mut self.rust_2024_migration
             && !adjustments.is_empty()
         {
-            s.leave_ref(opt_old_mode_span);
+            s.leave_ref();
         }
 
         adjusted_pat
@@ -307,13 +306,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
                 PatKind::DerefPattern { subpattern: self.lower_pattern(subpattern), mutability }
             }
-            hir::PatKind::Ref(subpattern, _) => {
+            hir::PatKind::Ref(subpattern, mutbl) => {
                 // Track the default binding mode for the Rust 2024 migration suggestion.
-                let opt_old_mode_span =
-                    self.rust_2024_migration.as_mut().and_then(|s| s.visit_explicit_deref());
+                if let Some(s) = &mut self.rust_2024_migration {
+                    s.visit_explicit_deref(pat.span, mutbl, subpattern);
+                }
                 let subpattern = self.lower_pattern(subpattern);
                 if let Some(s) = &mut self.rust_2024_migration {
-                    s.leave_ref(opt_old_mode_span);
+                    s.leave_ref();
                 }
                 PatKind::Deref { subpattern }
             }
@@ -344,8 +344,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     .get(pat.hir_id)
                     .expect("missing binding mode");
 
-                if let Some(s) = &mut self.rust_2024_migration {
-                    s.visit_binding(pat.span, mode, explicit_ba, ident);
+                if let Some(m) = &mut self.rust_2024_migration {
+                    m.visit_binding(pat, mode, explicit_ba, ident);
                 }
 
                 // A ref x pattern is the same node used for x, and as such it has
