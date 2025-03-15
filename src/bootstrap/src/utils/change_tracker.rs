@@ -380,4 +380,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Warning,
         summary: "Removed `src/tools/rls` tool as it was deprecated long time ago.",
     },
+    ChangeInfo {
+        change_id: 137147,
+        severity: ChangeSeverity::Info,
+        summary: "New option `build.exclude` that adds support for excluding test.",
+    },
 ];

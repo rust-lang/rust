@@ -959,6 +959,7 @@ define_config! {
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         ccache: Option<StringOrBool> = "ccache",
+        exclude: Option<Vec<PathBuf>> = "exclude",
     }
 }
 
@@ -1397,22 +1398,6 @@ impl Config {
             "flags.exclude" = ?flags.exclude
         );
 
-        config.skip = flags
-            .skip
-            .into_iter()
-            .chain(flags.exclude)
-            .map(|p| {
-                // Never return top-level path here as it would break `--skip`
-                // logic on rustc's internal test framework which is utilized
-                // by compiletest.
-                if cfg!(windows) {
-                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
-                } else {
-                    p
-                }
-            })
-            .collect();
-
         #[cfg(feature = "tracing")]
         span!(
             target: "CONFIG_HANDLING",
@@ -1658,7 +1643,28 @@ impl Config {
             jobs,
             compiletest_diff_tool,
             mut ccache,
+            exclude,
         } = toml.build.unwrap_or_default();
+
+        let mut paths: Vec<PathBuf> = flags.skip.into_iter().chain(flags.exclude).collect();
+
+        if let Some(exclude) = exclude {
+            paths.extend(exclude);
+        }
+
+        config.skip = paths
+            .into_iter()
+            .map(|p| {
+                // Never return top-level path here as it would break `--skip`
+                // logic on rustc's internal test framework which is utilized
+                // by compiletest.
+                if cfg!(windows) {
+                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
+                } else {
+                    p
+                }
+            })
+            .collect();
 
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
