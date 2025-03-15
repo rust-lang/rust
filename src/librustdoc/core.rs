@@ -250,7 +250,8 @@ pub(crate) fn create_config(
     } else {
         ResolveDocLinks::Exported
     };
-    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
+    let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false)
+        || (cfgs.iter().any(|cfg| cfg == "test") && render_options.document_tests);
     // plays with error output here!
     let sessopts = config::Options {
         sysroot,
@@ -369,7 +370,11 @@ pub(crate) fn run_global_ctxt(
         impl_trait_bounds: Default::default(),
         generated_synthetics: Default::default(),
         auto_traits,
-        cache: Cache::new(render_options.document_private, render_options.document_hidden),
+        cache: Cache::new(
+            render_options.document_private,
+            render_options.document_hidden,
+            render_options.document_tests,
+        ),
         inlined: FxHashSet::default(),
         output_format,
         render_options,
