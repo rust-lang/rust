@@ -1734,21 +1734,22 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         let mut ref_tys = adjustments.iter().peekable();
         while let Some(ref_ty) = ref_tys.next() {
             debug!("applying adjustment to place_with_id={:?}", place_with_id);
-            place_with_id = if ref_ty.is_ref() {
-                self.cat_deref(pat.hir_id, place_with_id)?
-            } else {
-                // This adjustment corresponds to an overloaded deref; it borrows the scrutinee to
-                // call `Deref::deref` or `DerefMut::deref_mut`. Invoke the callback before setting
-                // `place_with_id` to the temporary storing the result of the deref.
-                // HACK(dianne): giving the callback a fake deref pattern makes sure it behaves the
-                // same as it would if this were an explicit deref pattern.
-                op(&place_with_id, &hir::Pat { kind: PatKind::Deref(pat), ..*pat })?;
-                let target_ty = match ref_tys.peek() {
-                    Some(&&target_ty) => target_ty,
-                    // At the end of the deref chain, we get `pat`'s scrutinee.
-                    None => self.pat_ty_unadjusted(pat)?,
-                };
-                self.pat_deref_temp(pat.hir_id, pat, target_ty)?
+            place_with_id = match ref_ty.pat_adjust_kind() {
+                adjustment::PatAdjust::BuiltinDeref => self.cat_deref(pat.hir_id, place_with_id)?,
+                adjustment::PatAdjust::OverloadedDeref => {
+                    // This adjustment corresponds to an overloaded deref; it borrows the scrutinee to
+                    // call `Deref::deref` or `DerefMut::deref_mut`. Invoke the callback before setting
+                    // `place_with_id` to the temporary storing the result of the deref.
+                    // HACK(dianne): giving the callback a fake deref pattern makes sure it behaves the
+                    // same as it would if this were an explicit deref pattern.
+                    op(&place_with_id, &hir::Pat { kind: PatKind::Deref(pat), ..*pat })?;
+                    let target_ty = match ref_tys.peek() {
+                        Some(&&target_ty) => target_ty,
+                        // At the end of the deref chain, we get `pat`'s scrutinee.
+                        None => self.pat_ty_unadjusted(pat)?,
+                    };
+                    self.pat_deref_temp(pat.hir_id, pat, target_ty)?
+                }
             };
         }
         drop(typeck_results); // explicitly release borrow of typeck results, just in case.
