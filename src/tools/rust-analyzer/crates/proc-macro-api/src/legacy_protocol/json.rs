@@ -30,6 +30,5 @@ pub fn write_json(out: &mut impl Write, msg: &str) -> io::Result<()> {
     tracing::debug!("> {}", msg);
     out.write_all(msg.as_bytes())?;
     out.write_all(b"\n")?;
-    out.flush()?;
-    Ok(())
+    out.flush()
 }
