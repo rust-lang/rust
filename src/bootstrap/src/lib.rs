@@ -471,6 +471,10 @@ impl Build {
     /// The given `err_hint` will be shown to the user if the submodule is not
     /// checked out and submodule management is disabled.
     pub fn require_submodule(&self, submodule: &str, err_hint: Option<&str>) {
+        if self.rust_info().is_from_tarball() {
+            return;
+        }
+
         // When testing bootstrap itself, it is much faster to ignore
         // submodules. Almost all Steps work fine without their submodules.
         if cfg!(test) && !self.config.submodules() {

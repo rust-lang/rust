@@ -10,7 +10,7 @@ use rustc_middle::query::Providers;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::parse::feature_err;
 use rustc_span::{Span, Symbol, sym};
-use rustc_target::target_features;
+use rustc_target::target_features::{self, Stability};
 
 use crate::errors;
 
@@ -65,11 +65,16 @@ pub(crate) fn from_target_feature_attr(
             // Only allow target features whose feature gates have been enabled
             // and which are permitted to be toggled.
             if let Err(reason) = stability.toggle_allowed(/*enable*/ true) {
-                tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
-                    span: item.span(),
-                    feature,
-                    reason,
-                });
+                // We skip this error in rustdoc, where we want to allow all target features of
+                // all targets, so we can't check their ABI compatibility and anyway we are not
+                // generating code so "it's fine".
+                if !tcx.sess.opts.actually_rustdoc {
+                    tcx.dcx().emit_err(errors::ForbiddenTargetFeatureAttr {
+                        span: item.span(),
+                        feature,
+                        reason,
+                    });
+                }
             } else if let Some(nightly_feature) = stability.requires_nightly()
                 && !rust_features.enabled(nightly_feature)
             {
@@ -149,11 +154,38 @@ pub(crate) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             let target = &tcx.sess.target;
             if tcx.sess.opts.actually_rustdoc {
-                // rustdoc needs to be able to document functions that use all the features, so
-                // whitelist them all
-                rustc_target::target_features::all_rust_features()
-                    .map(|(a, b)| (a.to_string(), b.compute_toggleability(target)))
-                    .collect()
+                // HACK: rustdoc would like to pretend that we have all the target features, so we
+                // have to merge all the lists into one. To ensure an unstable target never prevents
+                // a stable one from working, we merge the stability info of all instances of the
+                // same target feature name, with the "most stable" taking precedence. And then we
+                // hope that this doesn't cause issues anywhere else in the compiler...
+                let mut result: UnordMap<String, Stability<_>> = Default::default();
+                for (name, stability) in rustc_target::target_features::all_rust_features() {
+                    use std::collections::hash_map::Entry;
+                    match result.entry(name.to_owned()) {
+                        Entry::Vacant(vacant_entry) => {
+                            vacant_entry.insert(stability.compute_toggleability(target));
+                        }
+                        Entry::Occupied(mut occupied_entry) => {
+                            // Merge the two stabilities, "more stable" taking precedence.
+                            match (occupied_entry.get(), &stability) {
+                                (Stability::Stable { .. }, _)
+                                | (
+                                    Stability::Unstable { .. },
+                                    Stability::Unstable { .. } | Stability::Forbidden { .. },
+                                )
+                                | (Stability::Forbidden { .. }, Stability::Forbidden { .. }) => {
+                                    // The stability in the entry is at least as good as the new one, just keep it.
+                                }
+                                _ => {
+                                    // Overwrite stabilite.
+                                    occupied_entry.insert(stability.compute_toggleability(target));
+                                }
+                            }
+                        }
+                    }
+                }
+                result
             } else {
                 tcx.sess
                     .target
