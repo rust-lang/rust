@@ -150,11 +150,24 @@ fn postprocess_metrics(
         return Ok(());
     };
 
-    let parent_metrics =
-        download_job_metrics(&job_name, &parent).context("cannot download parent metrics")?;
-    let job_metrics =
-        HashMap::from([(job_name, JobMetrics { parent: Some(parent_metrics), current: metrics })]);
-    output_test_diffs(job_metrics);
+    // This command is executed also on PR builds, which might not have parent metrics
+    // available, because some PR jobs don't run on auto builds, and PR jobs do not upload metrics
+    // due to missing permissions.
+    // To avoid having to detect if this is a PR job, and to avoid having failed steps in PR jobs,
+    // we simply print an error if the parent metrics were not found, but otherwise exit
+    // successfully.
+    match download_job_metrics(&job_name, &parent).context("cannot download parent metrics") {
+        Ok(parent_metrics) => {
+            let job_metrics = HashMap::from([(
+                job_name,
+                JobMetrics { parent: Some(parent_metrics), current: metrics },
+            )]);
+            output_test_diffs(job_metrics);
+        }
+        Err(error) => {
+            eprintln!("Metrics for job `{job_name}` and commit `{parent}` not found: {error:?}");
+        }
+    }
 
     Ok(())
 }
