@@ -6,7 +6,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -55,7 +55,7 @@ pub(crate) fn convert_match_to_let_else(acc: &mut Assists, ctx: &AssistContext<'
     let extracted_variable_positions = find_extracted_variable(ctx, &extracting_arm)?;
 
     acc.add(
-        AssistId("convert_match_to_let_else", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_match_to_let_else"),
         "Convert match to let-else",
         let_stmt.syntax().text_range(),
         |builder| {

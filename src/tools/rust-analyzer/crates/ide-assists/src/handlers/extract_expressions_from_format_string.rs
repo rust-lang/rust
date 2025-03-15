@@ -53,6 +53,7 @@ pub(crate) fn extract_expressions_from_format_string(
             } else {
                 AssistKind::QuickFix
             },
+            None,
         ),
         "Extract format expressions",
         tt.syntax().text_range(),

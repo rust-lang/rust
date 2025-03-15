@@ -4,7 +4,7 @@ use syntax::{
     ast::{self, Comment, CommentKind, CommentShape, Whitespace, edit::IndentLevel},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: line_to_block
 //
@@ -38,7 +38,7 @@ fn block_to_line(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     let target = comment.syntax().text_range();
 
     acc.add(
-        AssistId("block_to_line", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("block_to_line"),
         "Replace block comment with line comments",
         target,
         |edit| {
@@ -80,7 +80,7 @@ fn line_to_block(acc: &mut Assists, comment: ast::Comment) -> Option<()> {
     );
 
     acc.add(
-        AssistId("line_to_block", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("line_to_block"),
         "Replace line comments with a single block comment",
         target,
         |edit| {

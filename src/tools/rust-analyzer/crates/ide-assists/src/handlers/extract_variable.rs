@@ -13,7 +13,7 @@ use syntax::{
     syntax_editor::Position,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::is_body_const};
+use crate::{AssistContext, AssistId, Assists, utils::is_body_const};
 
 // Assist: extract_variable
 //
@@ -311,7 +311,7 @@ impl ExtractionKind {
             ExtractionKind::Static => "extract_static",
         };
 
-        AssistId(s, AssistKind::RefactorExtract)
+        AssistId::refactor_extract(s)
     }
 
     fn label(&self) -> &'static str {

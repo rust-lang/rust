@@ -5,7 +5,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -68,7 +68,7 @@ pub(crate) fn pull_assignment_up(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
 
     acc.add(
-        AssistId("pull_assignment_up", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("pull_assignment_up"),
         "Pull assignment up",
         tgt.syntax().text_range(),
         move |edit| {

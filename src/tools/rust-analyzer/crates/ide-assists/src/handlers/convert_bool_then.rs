@@ -14,7 +14,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistContext, AssistId, AssistKind, Assists,
+    AssistContext, AssistId, Assists,
     utils::{invert_boolean_expression, unwrap_trivial_block},
 };
 
@@ -73,7 +73,7 @@ pub(crate) fn convert_if_to_bool_then(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = expr.syntax().text_range();
     acc.add(
-        AssistId("convert_if_to_bool_then", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_if_to_bool_then"),
         "Convert `if` expression to `bool::then` call",
         target,
         |builder| {
@@ -181,7 +181,7 @@ pub(crate) fn convert_bool_then_to_if(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = mcall.syntax().text_range();
     acc.add(
-        AssistId("convert_bool_then_to_if", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_bool_then_to_if"),
         "Convert `bool::then` call to `if`",
         target,
         |builder| {

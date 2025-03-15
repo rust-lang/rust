@@ -5,7 +5,7 @@ use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
     FileId, FxHashMap, FxHashSet,
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
 };
@@ -92,7 +92,7 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let old_item_indent = module.body_items[0].indent_level();
 
     acc.add(
-        AssistId("extract_module", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_module"),
         "Extract Module",
         module.text_range,
         |builder| {

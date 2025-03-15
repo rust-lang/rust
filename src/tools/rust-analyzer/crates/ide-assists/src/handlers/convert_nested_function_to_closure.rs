@@ -1,4 +1,4 @@
-use ide_db::assists::{AssistId, AssistKind};
+use ide_db::assists::AssistId;
 use syntax::ast::{self, HasGenericParams, HasName};
 use syntax::{AstNode, SyntaxKind};
 
@@ -44,7 +44,7 @@ pub(crate) fn convert_nested_function_to_closure(
     let param_list = function.param_list()?;
 
     acc.add(
-        AssistId("convert_nested_function_to_closure", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_nested_function_to_closure"),
         "Convert nested function to closure",
         target,
         |edit| {

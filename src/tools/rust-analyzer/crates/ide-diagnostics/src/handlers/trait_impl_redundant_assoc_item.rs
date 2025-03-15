@@ -1,7 +1,7 @@
 use hir::{HasSource, HirDisplay, db::ExpandDatabase};
 use ide_db::text_edit::TextRange;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChangeBuilder,
 };
@@ -97,7 +97,7 @@ fn quickfix_for_redundant_assoc_item(
     add_assoc_item_def(&mut source_change_builder)?;
 
     Some(vec![Assist {
-        id: AssistId("add assoc item def into trait def", AssistKind::QuickFix),
+        id: AssistId::quick_fix("add assoc item def into trait def"),
         label: Label::new("Add assoc item def into trait def".to_owned()),
         group: None,
         target: range,

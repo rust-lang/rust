@@ -1,5 +1,5 @@
 use hir::{AsAssocItem, HasVisibility, ModuleDef, Visibility};
-use ide_db::assists::{AssistId, AssistKind};
+use ide_db::assists::AssistId;
 use itertools::Itertools;
 use stdx::{format_to, to_lower_snake_case};
 use syntax::{
@@ -56,7 +56,7 @@ pub(crate) fn generate_documentation_template(
     let indent_level = IndentLevel::from_node(parent_syntax);
 
     acc.add(
-        AssistId("generate_documentation_template", AssistKind::Generate),
+        AssistId::generate("generate_documentation_template"),
         "Generate a documentation template",
         text_range,
         |builder| {
@@ -115,7 +115,7 @@ pub(crate) fn generate_doc_example(acc: &mut Assists, ctx: &AssistContext<'_>) -
     let indent_level = IndentLevel::from_node(&node);
 
     acc.add(
-        AssistId("generate_doc_example", AssistKind::Generate),
+        AssistId::generate("generate_doc_example"),
         "Generate a documentation example",
         node.text_range(),
         |builder| {

@@ -2,7 +2,7 @@ use ide_db::imports::merge_imports::try_normalize_import;
 use syntax::{AstNode, ast};
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -28,14 +28,9 @@ pub(crate) fn normalize_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
     let normalized_use_item =
         try_normalize_import(&use_item, ctx.config.insert_use.granularity.into())?;
 
-    acc.add(
-        AssistId("normalize_import", AssistKind::RefactorRewrite),
-        "Normalize import",
-        target,
-        |builder| {
-            builder.replace_ast(use_item, normalized_use_item);
-        },
-    )
+    acc.add(AssistId::refactor_rewrite("normalize_import"), "Normalize import", target, |builder| {
+        builder.replace_ast(use_item, normalized_use_item);
+    })
 }
 
 #[cfg(test)]

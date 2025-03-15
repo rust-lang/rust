@@ -4,7 +4,7 @@ use syntax::{
     ast::{self, AstNode},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_trait_bound
 //
@@ -29,7 +29,7 @@ pub(crate) fn flip_trait_bound(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     let target = plus.text_range();
     acc.add(
-        AssistId("flip_trait_bound", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("flip_trait_bound"),
         "Flip trait bounds",
         target,
         |builder| {

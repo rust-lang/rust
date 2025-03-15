@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use syntax::{AstToken, TextRange, TextSize, ast, ast::IsString};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::required_hashes};
+use crate::{AssistContext, AssistId, Assists, utils::required_hashes};
 
 // Assist: make_raw_string
 //
@@ -28,7 +28,7 @@ pub(crate) fn make_raw_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opt
     let value = token.value().ok()?;
     let target = token.syntax().text_range();
     acc.add(
-        AssistId("make_raw_string", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("make_raw_string"),
         "Rewrite as raw string",
         target,
         |edit| {
@@ -67,7 +67,7 @@ pub(crate) fn make_usual_string(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let value = token.value().ok()?;
     let target = token.syntax().text_range();
     acc.add(
-        AssistId("make_usual_string", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("make_usual_string"),
         "Rewrite as regular string",
         target,
         |edit| {
@@ -108,7 +108,7 @@ pub(crate) fn add_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()>
     }
     let text_range = token.syntax().text_range();
     let target = text_range;
-    acc.add(AssistId("add_hash", AssistKind::Refactor), "Add #", target, |edit| {
+    acc.add(AssistId::refactor("add_hash"), "Add #", target, |edit| {
         edit.insert(text_range.start() + TextSize::of('r'), "#");
         edit.insert(text_range.end(), "#");
     })
@@ -150,7 +150,7 @@ pub(crate) fn remove_hash(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         return None;
     }
 
-    acc.add(AssistId("remove_hash", AssistKind::RefactorRewrite), "Remove #", text_range, |edit| {
+    acc.add(AssistId::refactor_rewrite("remove_hash"), "Remove #", text_range, |edit| {
         edit.delete(TextRange::at(text_range.start() + TextSize::of('r'), TextSize::of('#')));
         edit.delete(TextRange::new(text_range.end() - TextSize::of('#'), text_range.end()));
     })

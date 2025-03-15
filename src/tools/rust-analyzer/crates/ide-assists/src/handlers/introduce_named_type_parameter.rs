@@ -2,7 +2,7 @@ use ide_db::syntax_helpers::suggest_name;
 use itertools::Itertools;
 use syntax::ast::{self, AstNode, HasGenericParams, HasName, syntax_factory::SyntaxFactory};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: introduce_named_type_parameter
 //
@@ -27,7 +27,7 @@ pub(crate) fn introduce_named_type_parameter(
     let make = SyntaxFactory::new();
     let target = fn_.syntax().text_range();
     acc.add(
-        AssistId("introduce_named_type_parameter", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("introduce_named_type_parameter"),
         "Replace impl trait with type parameter",
         target,
         |builder| {

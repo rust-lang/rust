@@ -65,7 +65,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
     let insert_location = impl_.syntax().text_range();
 
     acc.add(
-        AssistId("generate_default_from_new", crate::AssistKind::Generate),
+        AssistId::generate("generate_default_from_new"),
         "Generate a Default impl from a new fn",
         insert_location,
         move |builder| {

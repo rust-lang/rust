@@ -1,7 +1,4 @@
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    base_db::AnchoredPathBuf,
-};
+use ide_db::{assists::AssistId, base_db::AnchoredPathBuf};
 use syntax::{AstNode, ToSmolStr, ast};
 
 use crate::{
@@ -43,7 +40,7 @@ pub(crate) fn move_to_mod_rs(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let path = format!("./{module_name}/mod.rs");
     let dst = AnchoredPathBuf { anchor: ctx.file_id().into(), path };
     acc.add(
-        AssistId("move_to_mod_rs", AssistKind::Refactor),
+        AssistId::refactor("move_to_mod_rs"),
         format!("Convert {module_name}.rs to {module_name}/mod.rs"),
         target,
         |builder| {

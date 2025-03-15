@@ -5,7 +5,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: remove_dbg
 //
@@ -42,7 +42,7 @@ pub(crate) fn remove_dbg(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
         macro_calls.into_iter().filter_map(compute_dbg_replacement).collect::<Vec<_>>();
 
     acc.add(
-        AssistId("remove_dbg", AssistKind::QuickFix),
+        AssistId::quick_fix("remove_dbg"),
         "Remove dbg!()",
         replacements.iter().map(|&(range, _)| range).reduce(|acc, range| acc.cover(range))?,
         |builder| {

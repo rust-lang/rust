@@ -6,7 +6,7 @@ use syntax::{
     ast::{self, HasArgList, HasLoopBody, edit_in_place::Indent, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_iter_for_each_to_for
 //
@@ -53,7 +53,7 @@ pub(crate) fn convert_iter_for_each_to_for(
     let range = stmt.as_ref().map_or(method.syntax(), AstNode::syntax).text_range();
 
     acc.add(
-        AssistId("convert_iter_for_each_to_for", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_iter_for_each_to_for"),
         "Replace this `Iterator::for_each` with a for loop",
         range,
         |builder| {
@@ -108,7 +108,7 @@ pub(crate) fn convert_for_loop_with_for_each(
     }
 
     acc.add(
-        AssistId("convert_for_loop_with_for_each", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_for_loop_with_for_each"),
         "Replace this for loop with `Iterator::for_each`",
         for_loop.syntax().text_range(),
         |builder| {

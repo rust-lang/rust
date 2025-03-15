@@ -3,7 +3,7 @@ use syntax::{
     ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils};
+use crate::{AssistContext, AssistId, Assists, utils};
 
 fn insert_impl(impl_: ast::Impl, nominal: &ast::Adt) {
     let indent = nominal.indent_level();
@@ -44,7 +44,7 @@ pub(crate) fn generate_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
     }
 
     acc.add(
-        AssistId("generate_impl", AssistKind::Generate),
+        AssistId::generate("generate_impl"),
         format!("Generate impl for `{name}`"),
         target,
         |edit| {
@@ -90,7 +90,7 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     }
 
     acc.add(
-        AssistId("generate_trait_impl", AssistKind::Generate),
+        AssistId::generate("generate_trait_impl"),
         format!("Generate trait impl for `{name}`"),
         target,
         |edit| {

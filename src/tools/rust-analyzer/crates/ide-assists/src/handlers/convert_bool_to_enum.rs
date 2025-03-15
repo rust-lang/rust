@@ -3,7 +3,7 @@ use hir::ModuleDef;
 use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashSet,
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     defs::Definition,
     helpers::mod_path_to_ast,
     imports::insert_use::{ImportScope, insert_use},
@@ -62,7 +62,7 @@ pub(crate) fn convert_bool_to_enum(acc: &mut Assists, ctx: &AssistContext<'_>) -
 
     let target = name.syntax().text_range();
     acc.add(
-        AssistId("convert_bool_to_enum", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_bool_to_enum"),
         "Convert boolean to enum",
         target,
         |edit| {

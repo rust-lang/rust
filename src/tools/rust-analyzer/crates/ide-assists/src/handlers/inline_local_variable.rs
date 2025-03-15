@@ -10,7 +10,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -74,7 +74,7 @@ pub(crate) fn inline_local_variable(acc: &mut Assists, ctx: &AssistContext<'_>) 
     };
 
     acc.add(
-        AssistId("inline_local_variable", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_local_variable"),
         "Inline variable",
         target.text_range(),
         move |builder| {

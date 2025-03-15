@@ -4,7 +4,7 @@ use either::Either;
 use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    assists::{Assist, AssistId},
     helpers::is_editable_crate,
     label::Label,
     source_change::{SourceChange, SourceChangeBuilder},
@@ -122,7 +122,7 @@ fn add_variant_to_union(
     let mut src_change_builder = SourceChangeBuilder::new(range.file_id);
     src_change_builder.insert(offset, record_field);
     Some(Assist {
-        id: AssistId("add-variant-to-union", AssistKind::QuickFix),
+        id: AssistId::quick_fix("add-variant-to-union"),
         label: Label::new("Add field to union".to_owned()),
         group: None,
         target: error_range.range,
@@ -170,7 +170,7 @@ fn add_field_to_struct_fix(
             // FIXME: Allow for choosing a visibility modifier see https://github.com/rust-lang/rust-analyzer/issues/11563
             src_change_builder.insert(offset, record_field);
             Some(Assist {
-                id: AssistId("add-field-to-record-struct", AssistKind::QuickFix),
+                id: AssistId::quick_fix("add-field-to-record-struct"),
                 label: Label::new("Add field to Record Struct".to_owned()),
                 group: None,
                 target: error_range.range,
@@ -206,7 +206,7 @@ fn add_field_to_struct_fix(
             src_change_builder.replace(semi_colon.text_range(), record_field_list.to_string());
 
             Some(Assist {
-                id: AssistId("convert-unit-struct-to-record-struct", AssistKind::QuickFix),
+                id: AssistId::quick_fix("convert-unit-struct-to-record-struct"),
                 label: Label::new("Convert Unit Struct to Record Struct and add field".to_owned()),
                 group: None,
                 target: error_range.range,
@@ -265,7 +265,7 @@ fn method_fix(
     let expr = expr_ptr.value.to_node(&root);
     let FileRange { range, file_id } = ctx.sema.original_range_opt(expr.syntax())?;
     Some(Assist {
-        id: AssistId("expected-field-found-method-call-fix", AssistKind::QuickFix),
+        id: AssistId::quick_fix("expected-field-found-method-call-fix"),
         label: Label::new("Use parentheses to call the method".to_owned()),
         group: None,
         target: range,

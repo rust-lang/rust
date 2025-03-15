@@ -9,7 +9,7 @@ use syntax::{
     syntax_editor::Position,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_for_loop_to_while_let
 //
@@ -47,7 +47,7 @@ pub(crate) fn convert_for_loop_to_while_let(
     }
 
     acc.add(
-        AssistId("convert_for_loop_to_while_let", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_for_loop_to_while_let"),
         "Replace this for loop with `while let`",
         for_loop.syntax().text_range(),
         |builder| {

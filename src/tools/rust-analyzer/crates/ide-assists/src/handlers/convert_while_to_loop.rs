@@ -12,7 +12,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression_legacy,
 };
@@ -47,7 +47,7 @@ pub(crate) fn convert_while_to_loop(acc: &mut Assists, ctx: &AssistContext<'_>) 
 
     let target = while_expr.syntax().text_range();
     acc.add(
-        AssistId("convert_while_to_loop", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_while_to_loop"),
         "Convert while to loop",
         target,
         |edit| {

@@ -2,7 +2,7 @@ use hir::db::ExpandDatabase;
 use ide_db::syntax_helpers::prettify_macro_expansion;
 use syntax::ast::{self, AstNode};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: inline_macro
 //
@@ -42,7 +42,7 @@ pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     let text_range = unexpanded.syntax().text_range();
 
     acc.add(
-        AssistId("inline_macro", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_macro"),
         "Inline macro".to_owned(),
         text_range,
         |builder| {

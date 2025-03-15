@@ -9,7 +9,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
         DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
@@ -125,101 +125,94 @@ fn add_assist(
     let annotated_name = adt.name()?;
     let label = format!("Convert to manual `impl {replace_trait_path} for {annotated_name}`");
 
-    acc.add(
-        AssistId("replace_derive_with_manual_impl", AssistKind::Refactor),
-        label,
-        target,
-        |builder| {
-            let insert_after = ted::Position::after(builder.make_mut(adt.clone()).syntax());
-            let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
-            let impl_def_with_items =
-                impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
-            update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
+    acc.add(AssistId::refactor("replace_derive_with_manual_impl"), label, target, |builder| {
+        let insert_after = ted::Position::after(builder.make_mut(adt.clone()).syntax());
+        let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
+        let impl_def_with_items =
+            impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
+        update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
 
-            let trait_path = make::ty_path(replace_trait_path.clone());
+        let trait_path = make::ty_path(replace_trait_path.clone());
 
-            match (ctx.config.snippet_cap, impl_def_with_items) {
-                (None, None) => {
-                    let impl_def = generate_trait_impl(adt, trait_path);
-                    if impl_is_unsafe {
-                        ted::insert(
-                            Position::first_child_of(impl_def.syntax()),
-                            make::token(T![unsafe]),
-                        );
-                    }
-
-                    ted::insert_all(
-                        insert_after,
-                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+        match (ctx.config.snippet_cap, impl_def_with_items) {
+            (None, None) => {
+                let impl_def = generate_trait_impl(adt, trait_path);
+                if impl_is_unsafe {
+                    ted::insert(
+                        Position::first_child_of(impl_def.syntax()),
+                        make::token(T![unsafe]),
                     );
                 }
-                (None, Some((impl_def, _))) => {
-                    if impl_is_unsafe {
-                        ted::insert(
-                            Position::first_child_of(impl_def.syntax()),
-                            make::token(T![unsafe]),
-                        );
-                    }
-                    ted::insert_all(
-                        insert_after,
-                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+
+                ted::insert_all(
+                    insert_after,
+                    vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                );
+            }
+            (None, Some((impl_def, _))) => {
+                if impl_is_unsafe {
+                    ted::insert(
+                        Position::first_child_of(impl_def.syntax()),
+                        make::token(T![unsafe]),
                     );
                 }
-                (Some(cap), None) => {
-                    let impl_def = generate_trait_impl(adt, trait_path);
+                ted::insert_all(
+                    insert_after,
+                    vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                );
+            }
+            (Some(cap), None) => {
+                let impl_def = generate_trait_impl(adt, trait_path);
 
-                    if impl_is_unsafe {
-                        ted::insert(
-                            Position::first_child_of(impl_def.syntax()),
-                            make::token(T![unsafe]),
-                        );
-                    }
-
-                    if let Some(l_curly) =
-                        impl_def.assoc_item_list().and_then(|it| it.l_curly_token())
-                    {
-                        builder.add_tabstop_after_token(cap, l_curly);
-                    }
-
-                    ted::insert_all(
-                        insert_after,
-                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                if impl_is_unsafe {
+                    ted::insert(
+                        Position::first_child_of(impl_def.syntax()),
+                        make::token(T![unsafe]),
                     );
                 }
-                (Some(cap), Some((impl_def, first_assoc_item))) => {
-                    let mut added_snippet = false;
 
-                    if impl_is_unsafe {
-                        ted::insert(
-                            Position::first_child_of(impl_def.syntax()),
-                            make::token(T![unsafe]),
-                        );
-                    }
+                if let Some(l_curly) = impl_def.assoc_item_list().and_then(|it| it.l_curly_token())
+                {
+                    builder.add_tabstop_after_token(cap, l_curly);
+                }
 
-                    if let ast::AssocItem::Fn(ref func) = first_assoc_item {
-                        if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
-                        {
-                            if m.syntax().text() == "todo!()" {
-                                // Make the `todo!()` a placeholder
-                                builder.add_placeholder_snippet(cap, m);
-                                added_snippet = true;
-                            }
+                ted::insert_all(
+                    insert_after,
+                    vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                );
+            }
+            (Some(cap), Some((impl_def, first_assoc_item))) => {
+                let mut added_snippet = false;
+
+                if impl_is_unsafe {
+                    ted::insert(
+                        Position::first_child_of(impl_def.syntax()),
+                        make::token(T![unsafe]),
+                    );
+                }
+
+                if let ast::AssocItem::Fn(ref func) = first_assoc_item {
+                    if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast) {
+                        if m.syntax().text() == "todo!()" {
+                            // Make the `todo!()` a placeholder
+                            builder.add_placeholder_snippet(cap, m);
+                            added_snippet = true;
                         }
                     }
-
-                    if !added_snippet {
-                        // If we haven't already added a snippet, add a tabstop before the generated function
-                        builder.add_tabstop_before(cap, first_assoc_item);
-                    }
-
-                    ted::insert_all(
-                        insert_after,
-                        vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
-                    );
                 }
-            };
-        },
-    )
+
+                if !added_snippet {
+                    // If we haven't already added a snippet, add a tabstop before the generated function
+                    builder.add_tabstop_before(cap, first_assoc_item);
+                }
+
+                ted::insert_all(
+                    insert_after,
+                    vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
+                );
+            }
+        };
+    })
 }
 
 fn impl_def_from_trait(

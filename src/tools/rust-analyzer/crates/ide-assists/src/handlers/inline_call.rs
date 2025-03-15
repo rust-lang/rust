@@ -27,7 +27,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -98,7 +98,7 @@ pub(crate) fn inline_into_callers(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     }
 
     acc.add(
-        AssistId("inline_into_callers", AssistKind::RefactorInline),
+        AssistId::refactor_inline("inline_into_callers"),
         "Inline into all callers",
         name.syntax().text_range(),
         |builder| {
@@ -232,21 +232,16 @@ pub(crate) fn inline_call(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     }
 
     let syntax = call_info.node.syntax().clone();
-    acc.add(
-        AssistId("inline_call", AssistKind::RefactorInline),
-        label,
-        syntax.text_range(),
-        |builder| {
-            let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
-            builder.replace_ast(
-                match call_info.node {
-                    ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
-                    ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
-                },
-                replacement,
-            );
-        },
-    )
+    acc.add(AssistId::refactor_inline("inline_call"), label, syntax.text_range(), |builder| {
+        let replacement = inline(&ctx.sema, file_id, function, &fn_body, &params, &call_info);
+        builder.replace_ast(
+            match call_info.node {
+                ast::CallableExpr::Call(it) => ast::Expr::CallExpr(it),
+                ast::CallableExpr::MethodCall(it) => ast::Expr::MethodCallExpr(it),
+            },
+            replacement,
+        );
+    })
 }
 
 struct CallInfo {

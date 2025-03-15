@@ -5,7 +5,7 @@ use syntax::{
     syntax_editor::SyntaxMapping,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_comma
 //
@@ -40,7 +40,7 @@ pub(crate) fn flip_comma(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     }
 
     let target = comma.text_range();
-    acc.add(AssistId("flip_comma", AssistKind::RefactorRewrite), "Flip comma", target, |builder| {
+    acc.add(AssistId::refactor_rewrite("flip_comma"), "Flip comma", target, |builder| {
         let parent = comma.parent().unwrap();
         let mut editor = builder.make_editor(&parent);
 

@@ -13,7 +13,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistContext, AssistId, AssistKind, Assists,
+    AssistContext, AssistId, Assists,
     utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
 };
 
@@ -101,7 +101,7 @@ pub(crate) fn replace_if_let_with_match(acc: &mut Assists, ctx: &AssistContext<'
     let let_ = if pat_seen { " let" } else { "" };
 
     acc.add(
-        AssistId("replace_if_let_with_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_if_let_with_match"),
         format!("Replace if{let_} with match"),
         available_range,
         move |builder| {
@@ -249,7 +249,7 @@ pub(crate) fn replace_match_with_if_let(acc: &mut Assists, ctx: &AssistContext<'
         _ => " let",
     };
     acc.add(
-        AssistId("replace_match_with_if_let", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_match_with_if_let"),
         format!("Replace match with if{let_}"),
         match_expr.syntax().text_range(),
         move |builder| {

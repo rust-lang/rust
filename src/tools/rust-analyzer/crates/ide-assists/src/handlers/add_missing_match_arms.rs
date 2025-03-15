@@ -12,7 +12,7 @@ use syntax::ast::edit_in_place::Indent;
 use syntax::ast::syntax_factory::SyntaxFactory;
 use syntax::ast::{self, AstNode, MatchArmList, MatchExpr, Pat, make};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils};
+use crate::{AssistContext, AssistId, Assists, utils};
 
 // Assist: add_missing_match_arms
 //
@@ -205,7 +205,7 @@ pub(crate) fn add_missing_match_arms(acc: &mut Assists, ctx: &AssistContext<'_>)
     }
 
     acc.add(
-        AssistId("add_missing_match_arms", AssistKind::QuickFix),
+        AssistId::quick_fix("add_missing_match_arms"),
         "Fill match arms",
         ctx.sema.original_range(match_expr.syntax()).range,
         |builder| {

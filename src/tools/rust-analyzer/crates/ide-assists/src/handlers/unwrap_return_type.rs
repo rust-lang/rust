@@ -9,7 +9,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unwrap_option_return_type
 //
@@ -187,7 +187,7 @@ impl UnwrapperKind {
             UnwrapperKind::Result => "unwrap_result_return_type",
         };
 
-        AssistId(s, AssistKind::RefactorRewrite)
+        AssistId::refactor_rewrite(s)
     }
 
     fn label(&self) -> &'static str {

@@ -107,6 +107,36 @@ impl FromStr for AssistKind {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct AssistId(pub &'static str, pub AssistKind, pub Option<usize>);
 
+impl AssistId {
+    pub fn none(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::None, None)
+    }
+
+    pub fn quick_fix(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::QuickFix, None)
+    }
+
+    pub fn generate(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::Generate, None)
+    }
+
+    pub fn refactor(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::Refactor, None)
+    }
+
+    pub fn refactor_extract(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::RefactorExtract, None)
+    }
+
+    pub fn refactor_inline(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::RefactorInline, None)
+    }
+
+    pub fn refactor_rewrite(id: &'static str) -> AssistId {
+        AssistId(id, AssistKind::RefactorRewrite, None)
+    }
+}
+
 /// A way to control how many assist to resolve during the assist resolution.
 /// When an assist is resolved, its edits are calculated that might be costly to always do by default.
 #[derive(Debug)]

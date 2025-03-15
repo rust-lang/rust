@@ -1,4 +1,4 @@
-use ide_db::assists::{AssistId, AssistKind};
+use ide_db::assists::AssistId;
 use syntax::{
     AstNode,
     ast::{self, Expr, HasArgList, make},
@@ -60,7 +60,7 @@ pub(crate) fn replace_with_lazy_method(acc: &mut Assists, ctx: &AssistContext<'_
     )?;
 
     acc.add(
-        AssistId("replace_with_lazy_method", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_with_lazy_method"),
         format!("Replace {method_name} with {method_name_lazy}"),
         call.syntax().text_range(),
         |builder| {
@@ -136,7 +136,7 @@ pub(crate) fn replace_with_eager_method(acc: &mut Assists, ctx: &AssistContext<'
     )?;
 
     acc.add(
-        AssistId("replace_with_eager_method", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_with_eager_method"),
         format!("Replace {method_name} with {method_name_eager}"),
         call.syntax().text_range(),
         |builder| {

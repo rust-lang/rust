@@ -1,5 +1,5 @@
 use ide_db::{
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     defs::Definition,
     search::{FileReference, SearchScope},
     syntax_helpers::suggest_name,
@@ -65,7 +65,7 @@ pub(crate) fn destructure_tuple_binding_impl(
 
     if with_sub_pattern {
         acc.add(
-            AssistId("destructure_tuple_binding_in_sub_pattern", AssistKind::RefactorRewrite),
+            AssistId::refactor_rewrite("destructure_tuple_binding_in_sub_pattern"),
             "Destructure tuple in sub-pattern",
             data.ident_pat.syntax().text_range(),
             |edit| destructure_tuple_edit_impl(ctx, edit, &data, true),
@@ -73,7 +73,7 @@ pub(crate) fn destructure_tuple_binding_impl(
     }
 
     acc.add(
-        AssistId("destructure_tuple_binding", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("destructure_tuple_binding"),
         if with_sub_pattern { "Destructure tuple in place" } else { "Destructure tuple" },
         data.ident_pat.syntax().text_range(),
         |edit| destructure_tuple_edit_impl(ctx, edit, &data, false),
