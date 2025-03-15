@@ -364,7 +364,7 @@ pub fn const_alloc_to_gcc<'gcc>(
         llvals.push(cx.const_bytes(bytes));
     }
 
-    cx.const_struct(&llvals, true)
+    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
 }
 
 fn codegen_static_initializer<'gcc, 'tcx>(

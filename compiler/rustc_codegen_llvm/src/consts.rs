@@ -128,7 +128,7 @@ pub(crate) fn const_alloc_to_llvm<'ll>(
         append_chunks_of_init_and_uninit_bytes(&mut llvals, cx, alloc, range);
     }
 
-    cx.const_struct(&llvals, true)
+    if let &[data] = &*llvals { data } else { cx.const_struct(&llvals, true) }
 }
 
 fn codegen_static_initializer<'ll, 'tcx>(
