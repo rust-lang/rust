@@ -324,13 +324,13 @@ fn exported_symbols_provider_local(
         let is_local_to_current_crate = |ty: Ty<'_>| {
             let no_refs = ty.peel_refs();
             let root_def_id = match no_refs.kind() {
-                rustc_type_ir::Adt(adt_def, _) => adt_def.did(),
-                rustc_type_ir::Closure(closure, _) => *closure,
-                rustc_type_ir::FnDef(def_id, _) => *def_id,
-                rustc_type_ir::Coroutine(def_id, _) => *def_id,
-                rustc_type_ir::CoroutineClosure(def_id, _) => *def_id,
-                rustc_type_ir::CoroutineWitness(def_id, _) => *def_id,
-                rustc_type_ir::Foreign(def_id) => *def_id,
+                rustc_middle::ty::Adt(adt_def, _) => adt_def.did(),
+                rustc_middle::ty::Closure(closure, _) => *closure,
+                rustc_middle::ty::FnDef(def_id, _) => *def_id,
+                rustc_middle::ty::Coroutine(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineClosure(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineWitness(def_id, _) => *def_id,
+                rustc_middle::ty::Foreign(def_id) => *def_id,
                 _ => {
                     return false;
                 }
@@ -406,8 +406,8 @@ fn exported_symbols_provider_local(
                     };
                     let should_export = {
                         let root_identifier = match typ.kind() {
-                            rustc_type_ir::Adt(def, args) => Some((def.did(), args)),
-                            rustc_type_ir::Closure(id, args) => Some((*id, args)),
+                            rustc_middle::ty::Adt(def, args) => Some((def.did(), args)),
+                            rustc_middle::ty::Closure(id, args) => Some((*id, args)),
                             _ => None,
                         };
                         if let Some((did, args)) = root_identifier {
