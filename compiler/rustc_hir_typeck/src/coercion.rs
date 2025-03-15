@@ -48,7 +48,7 @@ use rustc_infer::infer::relate::RelateResult;
 use rustc_infer::infer::{Coercion, DefineOpaqueTypes, InferOk, InferResult};
 use rustc_infer::traits::{
     IfExpressionCause, MatchExpressionArmCause, Obligation, PredicateObligation,
-    PredicateObligations,
+    PredicateObligations, SelectionError,
 };
 use rustc_middle::span_bug;
 use rustc_middle::ty::adjustment::{
@@ -56,12 +56,12 @@ use rustc_middle::ty::adjustment::{
 };
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, AliasTy, GenericArgsRef, Ty, TyCtxt};
-use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
+use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt};
+use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, ErrorGuaranteed, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use rustc_trait_selection::traits::{
-    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+    self, FulfillmentErrorCode, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
 };
 use smallvec::{SmallVec, smallvec};
 use tracing::{debug, instrument};
@@ -600,55 +600,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             ty::TraitRef::new(self.tcx, coerce_unsized_did, [coerce_source, coerce_target]),
         );
 
-        // If the root `Source: CoerceUnsized<Target>` obligation can't possibly hold,
-        // we don't have to assume that this is unsizing coercion (it will always lead to an error)
-        //
-        // However, we don't want to bail early all the time, since the unholdable obligations
-        // may be interesting for diagnostics (such as trying to coerce `&T` to `&dyn Id<This = U>`),
-        // so we only bail if there (likely) is another way to convert the types.
         if !self.infcx.predicate_may_hold(&root_obligation) {
-            if let Some(dyn_metadata_adt_def_id) = self.tcx.lang_items().get(LangItem::DynMetadata)
-                && let Some(metadata_type_def_id) = self.tcx.lang_items().get(LangItem::Metadata)
-            {
-                self.probe(|_| {
-                    let ocx = ObligationCtxt::new(&self.infcx);
-
-                    // returns `true` if `<ty as Pointee>::Metadata` is `DynMetadata<_>`
-                    let has_dyn_trait_metadata = |ty| {
-                        let metadata_ty: Result<_, _> = ocx.structurally_normalize_ty(
-                            &ObligationCause::dummy(),
-                            self.fcx.param_env,
-                            Ty::new_alias(
-                                self.tcx,
-                                ty::AliasTyKind::Projection,
-                                AliasTy::new(self.tcx, metadata_type_def_id, [ty]),
-                            ),
-                        );
-
-                        metadata_ty.is_ok_and(|metadata_ty| {
-                            metadata_ty
-                                .ty_adt_def()
-                                .is_some_and(|d| d.did() == dyn_metadata_adt_def_id)
-                        })
-                    };
-
-                    // If both types are raw pointers to a (wrapper over a) trait object,
-                    // this might be a cast like `*const W<dyn Trait> -> *const dyn Trait`.
-                    // So it's better to bail and try that. (even if the cast is not possible, for
-                    // example due to vtables not matching, cast diagnostic will likely still be better)
-                    //
-                    // N.B. use `target`, not `coerce_target` (the latter is a var)
-                    if let &ty::RawPtr(source_pointee, _) = coerce_source.kind()
-                        && let &ty::RawPtr(target_pointee, _) = target.kind()
-                        && has_dyn_trait_metadata(source_pointee)
-                        && has_dyn_trait_metadata(target_pointee)
-                    {
-                        return Err(TypeError::Mismatch);
-                    }
-
-                    Ok(())
-                })?;
-            }
+            return Err(TypeError::Mismatch);
         }
 
         // Use a FIFO queue for this custom fulfillment procedure.
@@ -725,17 +678,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     return Err(TypeError::Mismatch);
                 }
 
-                // Dyn-compatibility violations or miscellaneous.
+                // Should have been filtered out by the `predicate_may_hold` check.
                 Err(err) => {
-                    let guar = self.err_ctxt().report_selection_error(
-                        obligation.clone(),
-                        &obligation,
-                        &err,
-                    );
-                    self.fcx.set_tainted_by_errors(guar);
-                    // Treat this like an obligation and follow through
-                    // with the unsizing - the lack of a coercion should
-                    // be silent, as it causes a type mismatch later.
+                    debug!("coerce_unsized: early return - selection error: {err:?}");
+                    return Err(TypeError::Mismatch);
                 }
 
                 Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
@@ -1118,6 +1064,50 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             target
         })
+    }
+
+    pub(crate) fn emit_specialized_coerce_unsize_error(
+        &self,
+        span: Span,
+        source: Ty<'tcx>,
+        target: Ty<'tcx>,
+    ) -> Option<ErrorGuaranteed> {
+        let ocx = ObligationCtxt::new_with_diagnostics(self);
+        let coerce_unsized_def_id = self.tcx.require_lang_item(LangItem::CoerceUnsized, Some(span));
+        let unsize_def_id = self.tcx.require_lang_item(LangItem::Unsize, Some(span));
+        ocx.register_obligation(Obligation::new(
+            self.tcx,
+            self.cause(span, ObligationCauseCode::Coercion { source, target }),
+            self.param_env,
+            ty::TraitRef::new(self.tcx, coerce_unsized_def_id, [source, target]),
+        ));
+
+        let mut errors = ocx.select_where_possible();
+        // Retain the errors that don't mention, but also as a HACK we will adjust their
+        // root obligation, too. This is a nasty hack to preserve diagnostic parity that
+        // should probably be fixed by emitting better errors for failed `CoerceUnsized`.
+        errors.retain_mut(|err| {
+            if matches!(
+                err.code,
+                FulfillmentErrorCode::Select(SelectionError::TraitDynIncompatible(_)),
+            ) || err.obligation.predicate.as_trait_clause().is_none_or(|trait_clause| {
+                trait_clause.def_id() != coerce_unsized_def_id
+                    && trait_clause.def_id() != unsize_def_id
+            }) {
+                err.root_obligation = err.obligation.clone();
+                true
+            } else {
+                false
+            }
+        });
+
+        if errors.is_empty() {
+            None
+        } else {
+            let guar = self.err_ctxt().report_fulfillment_errors(errors);
+            self.set_tainted_by_errors(guar);
+            Some(guar)
+        }
     }
 
     /// Probe whether `expr_ty` can be coerced to `target_ty`. This has no side-effects,
@@ -1666,6 +1656,14 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 }
             }
             Err(coercion_error) => {
+                if let Some(_guar) = fcx.emit_specialized_coerce_unsize_error(
+                    cause.span,
+                    expression_ty,
+                    self.merged_ty(),
+                ) {
+                    return;
+                }
+
                 // Mark that we've failed to coerce the types here to suppress
                 // any superfluous errors we might encounter while trying to
                 // emit or provide suggestions on how to fix the initial error.

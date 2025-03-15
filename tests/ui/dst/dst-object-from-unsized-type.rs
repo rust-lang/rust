@@ -17,6 +17,7 @@ fn test2<T: ?Sized + Foo>(t: &T) {
 fn test3() {
     let _: &[&dyn Foo] = &["hi"];
     //~^ ERROR the size for values of type
+    //~| ERROR mismatched types
 }
 
 fn test4(x: &[u8]) {

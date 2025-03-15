@@ -353,6 +353,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                         PointerKind::Thin,
                     )
                     | (PointerKind::Length, PointerKind::Length) => {
+                        if let Some(_guar) = fcx.emit_specialized_coerce_unsize_error(
+                            self.expr.span,
+                            self.expr_ty,
+                            self.cast_ty,
+                        ) {
+                            return;
+                        }
+
                         span_bug!(self.span, "unexpected cast error: {e:?}")
                     }
                 }
@@ -401,6 +409,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::NonScalar => {
+                if let Some(_guar) = fcx.emit_specialized_coerce_unsize_error(
+                    self.expr.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                ) {
+                    return;
+                }
+
                 let mut err = type_error_struct!(
                     fcx.dcx(),
                     self.span,
@@ -550,6 +566,14 @@ impl<'a, 'tcx> CastCheck<'tcx> {
                 err.emit();
             }
             CastError::SizedUnsizedCast => {
+                if let Some(_guar) = fcx.emit_specialized_coerce_unsize_error(
+                    self.expr.span,
+                    self.expr_ty,
+                    self.cast_ty,
+                ) {
+                    return;
+                }
+
                 let cast_ty = fcx.resolve_vars_if_possible(self.cast_ty);
                 let expr_ty = fcx.resolve_vars_if_possible(self.expr_ty);
                 fcx.dcx().emit_err(errors::CastThinPointerToWidePointer {

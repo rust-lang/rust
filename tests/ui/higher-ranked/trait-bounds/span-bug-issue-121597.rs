@@ -16,5 +16,4 @@ fn main() {
     //~| ERROR the trait `Foo` is not dyn compatible
 
     needs_bar(x);
-    //~^ ERROR mismatched types
 }

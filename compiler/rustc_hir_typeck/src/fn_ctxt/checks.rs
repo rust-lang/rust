@@ -972,6 +972,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             true
         });
 
+        // We need to handle type mismatches due to unsizing failures specially.
+        errors.retain(|err| {
+            if let Error::Invalid(
+                provided_idx,
+                expected_idx,
+                Compatibility::Incompatible(Some(_)),
+            ) = *err
+            {
+                let (_, expected_ty) = formal_and_expected_inputs[expected_idx];
+                let (provided_ty, provided_arg_span) = provided_arg_tys[provided_idx];
+
+                if let Some(guar) = self.emit_specialized_coerce_unsize_error(
+                    provided_arg_span,
+                    provided_ty,
+                    expected_ty,
+                ) {
+                    reported = Some(guar);
+                    return false;
+                }
+            }
+
+            true
+        });
+
         // We're done if we found errors, but we already emitted them.
         if let Some(reported) = reported
             && errors.is_empty()

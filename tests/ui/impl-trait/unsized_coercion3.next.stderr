@@ -1,5 +1,5 @@
 error[E0277]: the trait bound `dyn Send: Trait` is not satisfied
-  --> $DIR/unsized_coercion3.rs:13:17
+  --> $DIR/unsized_coercion3.rs:14:17
    |
 LL |         let x = hello();
    |                 ^^^^^^^ the trait `Trait` is not implemented for `dyn Send`

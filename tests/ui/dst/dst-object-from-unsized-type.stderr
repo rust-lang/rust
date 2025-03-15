@@ -37,8 +37,19 @@ LL |     let _: &[&dyn Foo] = &["hi"];
    = help: the trait `Sized` is not implemented for `str`
    = note: required for the cast from `&'static str` to `&dyn Foo`
 
+error[E0308]: mismatched types
+  --> $DIR/dst-object-from-unsized-type.rs:18:26
+   |
+LL |     let _: &[&dyn Foo] = &["hi"];
+   |            -----------   ^^^^^^^ expected `&[&dyn Foo]`, found `&[!; 1]`
+   |            |
+   |            expected due to this
+   |
+   = note: expected reference `&[&dyn Foo]`
+              found reference `&[!; 1]`
+
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/dst-object-from-unsized-type.rs:23:23
+  --> $DIR/dst-object-from-unsized-type.rs:24:23
    |
 LL |     let _: &dyn Foo = x as &dyn Foo;
    |                       ^ doesn't have a size known at compile-time
@@ -46,6 +57,7 @@ LL |     let _: &dyn Foo = x as &dyn Foo;
    = help: the trait `Sized` is not implemented for `[u8]`
    = note: required for the cast from `&[u8]` to `&dyn Foo`
 
-error: aborting due to 4 previous errors
+error: aborting due to 5 previous errors
 
-For more information about this error, try `rustc --explain E0277`.
+Some errors have detailed explanations: E0277, E0308.
+For more information about an error, try `rustc --explain E0277`.

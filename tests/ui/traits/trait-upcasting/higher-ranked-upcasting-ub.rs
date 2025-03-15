@@ -20,7 +20,6 @@ impl<'a> Supertrait<'a, 'a> for () {
 impl<'a> Subtrait<'a, 'a> for () {}
 fn unsound(x: &dyn for<'a> Subtrait<'a, 'a>) -> &dyn for<'a, 'b> Supertrait<'a, 'b> {
     x //~ ERROR mismatched types
-    //[current]~^ ERROR mismatched types
 }
 
 fn transmute<'a, 'b>(x: &'a str) -> &'b str {
