@@ -1277,6 +1277,53 @@ fn main() { fo$0 }
     }
 
     #[test]
+    fn fn_detail_includes_variadics() {
+        check(
+            r#"
+unsafe extern "C" fn foo(a: u32, b: u32, ...) {}
+
+fn main() { fo$0 }
+"#,
+            SymbolKind::Function,
+            expect![[r#"
+                [
+                    CompletionItem {
+                        label: "foo(…)",
+                        detail_left: None,
+                        detail_right: Some(
+                            "unsafe fn(u32, u32, ...)",
+                        ),
+                        source_range: 62..64,
+                        delete: 62..64,
+                        insert: "foo(${1:a}, ${2:b});$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "foo",
+                        detail: "unsafe fn(u32, u32, ...)",
+                        trigger_call_info: true,
+                    },
+                    CompletionItem {
+                        label: "main()",
+                        detail_left: None,
+                        detail_right: Some(
+                            "fn()",
+                        ),
+                        source_range: 62..64,
+                        delete: 62..64,
+                        insert: "main();$0",
+                        kind: SymbolKind(
+                            Function,
+                        ),
+                        lookup: "main",
+                        detail: "fn()",
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
     fn enum_detail_just_name_for_unit() {
         check(
             r#"
