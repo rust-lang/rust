@@ -129,7 +129,7 @@ impl<'tcx> LateLintPass<'tcx> for DefaultCouldBeDerived {
             //     }
             // }
             // where `something()` would have to be a call or path.
-            // We have nothing meaninful to do with this.
+            // We have nothing meaningful to do with this.
             return;
         }
 

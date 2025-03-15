@@ -171,7 +171,7 @@ pub(crate) fn provide(providers: &mut Providers) {
                                     // The stability in the entry is at least as good as the new one, just keep it.
                                 }
                                 _ => {
-                                    // Overwrite stabilite.
+                                    // Overwrite stability.
                                     occupied_entry.insert(stability);
                                 }
                             }

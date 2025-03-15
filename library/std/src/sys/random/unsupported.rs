@@ -6,7 +6,7 @@ pub fn fill_bytes(_: &mut [u8]) {
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     // Use allocation addresses for a bit of randomness. This isn't
-    // particularily secure, but there isn't really an alternative.
+    // particularly secure, but there isn't really an alternative.
     let stack = 0u8;
     let heap = Box::new(0u8);
     let k1 = ptr::from_ref(&stack).addr() as u64;

@@ -6,7 +6,7 @@ use crate::thread::Thread;
 crate::thread_local! {
     /// A thread local linked list of spawn hooks.
     ///
-    /// It is a linked list of Arcs, such that it can very cheaply be inhereted by spawned threads.
+    /// It is a linked list of Arcs, such that it can very cheaply be inherited by spawned threads.
     ///
     /// (That technically makes it a set of linked lists with shared tails, so a linked tree.)
     static SPAWN_HOOKS: Cell<SpawnHooks> = const { Cell::new(SpawnHooks { first: None }) };
