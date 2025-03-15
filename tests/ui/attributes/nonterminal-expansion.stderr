@@ -1,4 +1,4 @@
-error: expected unsuffixed literal, found expression `n!()`
+error: expected unsuffixed literal, found `expr` metavariable
   --> $DIR/nonterminal-expansion.rs:7:22
    |
 LL |         #[repr(align($n))]
@@ -10,15 +10,10 @@ LL | pass_nonterminal!(n!());
    = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0693]: incorrect `repr(align)` attribute format: `align` expects a literal integer as argument
-  --> $DIR/nonterminal-expansion.rs:7:22
+  --> $DIR/nonterminal-expansion.rs:17:19
    |
-LL |         #[repr(align($n))]
-   |                      ^^
-...
 LL | pass_nonterminal!(n!());
-   | ----------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `pass_nonterminal` (in Nightly builds, run with -Z macro-backtrace for more info)
+   |                   ^
 
 error: aborting due to 2 previous errors
 

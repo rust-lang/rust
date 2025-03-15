@@ -5,10 +5,10 @@ macro_rules! generate_field_accesses {
         let s = S(0, (0, 0));
 
         s.$a; // OK
-        { s.$b; } //~ ERROR unexpected token: `1.1`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found literal `1.1`
-        { s.$c; } //~ ERROR unexpected token: `1.1`
-                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found expression `1.1`
+        { s.$b; } //~ ERROR unexpected token: `literal` metavariable
+                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `literal` metavariable
+        { s.$c; } //~ ERROR unexpected token: `expr` metavariable
+                  //~| ERROR expected one of `.`, `;`, `?`, `}`, or an operator, found `expr` metavariable
     };
 }
 

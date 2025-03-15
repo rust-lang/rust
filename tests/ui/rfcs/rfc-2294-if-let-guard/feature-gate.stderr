@@ -124,15 +124,33 @@ LL |     use_expr!((let 0 = 1 && 0 == 0));
    = note: only supported directly in conditions of `if` and `while` expressions
 
 error: expected expression, found `let` statement
-  --> $DIR/feature-gate.rs:62:16
+  --> $DIR/feature-gate.rs:60:16
+   |
+LL |     use_expr!((let 0 = 1 && 0 == 0));
+   |                ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:63:16
    |
 LL |     use_expr!((let 0 = 1));
    |                ^^^
    |
    = note: only supported directly in conditions of `if` and `while` expressions
 
+error: expected expression, found `let` statement
+  --> $DIR/feature-gate.rs:63:16
+   |
+LL |     use_expr!((let 0 = 1));
+   |                ^^^
+   |
+   = note: only supported directly in conditions of `if` and `while` expressions
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
 error: no rules expected keyword `let`
-  --> $DIR/feature-gate.rs:70:15
+  --> $DIR/feature-gate.rs:72:15
    |
 LL |     macro_rules! use_expr {
    |     --------------------- when calling this macro
@@ -202,7 +220,7 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: you can write `if matches!(<expr>, <pattern>)` instead of `if let <pattern> = <expr>`
 
 error[E0658]: `if let` guards are experimental
-  --> $DIR/feature-gate.rs:66:12
+  --> $DIR/feature-gate.rs:68:12
    |
 LL |         () if let 0 = 1 => {}
    |            ^^^^^^^^^^^^
@@ -262,6 +280,6 @@ LL |         () if let Range { start: _, end: _ } = (true..true) && false => {}
    = help: add `#![feature(let_chains)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 23 previous errors
+error: aborting due to 25 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
