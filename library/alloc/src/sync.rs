@@ -1453,10 +1453,13 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1488,12 +1491,15 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1806,10 +1812,13 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
-    /// least 1) for the duration of this method,, and `ptr` must point to a block of memory
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by `alloc`.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1850,12 +1859,15 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`,  the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by `alloc`. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
