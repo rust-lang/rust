@@ -1,5 +1,3 @@
-#![feature(return_type_notation)]
-
 fn function() {}
 
 fn not_a_method()

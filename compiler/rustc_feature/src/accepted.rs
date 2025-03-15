@@ -364,6 +364,8 @@ declare_features! (
     (accepted, result_ffi_guarantees, "1.84.0", Some(110503)),
     /// Allows return-position `impl Trait` in traits.
     (accepted, return_position_impl_trait_in_trait, "1.75.0", Some(91611)),
+    /// Allows bounding the return type of AFIT/RPITIT.
+    (accepted, return_type_notation, "CURRENT_RUSTC_VERSION", Some(109417)),
     /// Allows code like `let x: &'static u32 = &42` to work (RFC 1414).
     (accepted, rvalue_static_promotion, "1.21.0", Some(38865)),
     /// Allows `Self` in type definitions (RFC 2300).

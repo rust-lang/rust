@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(return_type_notation)]
-
 trait Foo {
     async fn bar<T>() {}
 

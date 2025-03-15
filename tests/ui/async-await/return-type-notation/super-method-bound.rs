@@ -1,8 +1,6 @@
 //@ edition:2021
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 trait Super<'a> {
     async fn test();
 }

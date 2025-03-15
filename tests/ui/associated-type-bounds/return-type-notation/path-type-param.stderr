@@ -1,5 +1,5 @@
 error: return type notation is not allowed for functions that have type parameters
-  --> $DIR/path-type-param.rs:9:5
+  --> $DIR/path-type-param.rs:7:5
    |
 LL |     fn method<T>() -> impl Sized;
    |               - type parameter declared here
@@ -8,7 +8,7 @@ LL |     <T as Foo>::method(..): Send,
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: return type notation is not allowed for functions that have type parameters
-  --> $DIR/path-type-param.rs:16:5
+  --> $DIR/path-type-param.rs:14:5
    |
 LL |     fn method<T>() -> impl Sized;
    |               - type parameter declared here

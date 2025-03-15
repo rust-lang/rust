@@ -6,6 +6,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint_defs::builtin::{REFINING_IMPL_TRAIT_INTERNAL, REFINING_IMPL_TRAIT_REACHABLE};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperVisitable, TypeVisitable,
     TypeVisitableExt, TypeVisitor, TypingMode,
@@ -333,7 +334,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
         });
 
     let span = unmatched_bound.unwrap_or(span);
-    tcx.emit_node_span_lint(
+    with_types_for_signature!(tcx.emit_node_span_lint(
         if is_internal { REFINING_IMPL_TRAIT_INTERNAL } else { REFINING_IMPL_TRAIT_REACHABLE },
         tcx.local_def_id_to_hir_id(impl_m_def_id.expect_local()),
         span,
@@ -345,7 +346,7 @@ fn report_mismatched_rpitit_signature<'tcx>(
             return_ty,
             unmatched_bound,
         },
-    );
+    ));
 }
 
 fn type_visibility<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<ty::Visibility<DefId>> {

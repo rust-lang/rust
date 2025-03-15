@@ -1,7 +1,5 @@
 //@ edition: 2021
 
-#![feature(return_type_notation)]
-
 use std::future::Future;
 
 trait Trait {

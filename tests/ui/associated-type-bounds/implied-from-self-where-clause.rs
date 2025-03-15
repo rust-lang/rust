@@ -3,8 +3,6 @@
 
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 trait Foo
 where
     Self::method(..): Send,

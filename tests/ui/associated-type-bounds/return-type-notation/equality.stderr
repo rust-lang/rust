@@ -1,5 +1,5 @@
 error: return type notation is not allowed to use type equality
-  --> $DIR/equality.rs:11:18
+  --> $DIR/equality.rs:9:18
    |
 LL | fn test<T: Trait<method(..) = Box<dyn Future<Output = ()>>>>() {}
    |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

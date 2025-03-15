@@ -377,8 +377,6 @@ impl<'a> Parser<'a> {
                     self.expect(exp!(CloseParen))?;
                     let span = lo.to(self.prev_token.span);
 
-                    self.psess.gated_spans.gate(sym::return_type_notation, span);
-
                     let prev_lo = self.prev_token.span.shrink_to_hi();
                     if self.eat_noexpect(&token::RArrow) {
                         let lo = self.prev_token.span;

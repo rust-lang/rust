@@ -4,7 +4,6 @@
 use std::future::Future;
 use std::task::Poll;
 
-#[allow(async_fn_in_trait)]
 pub trait MyTrait {
     async fn foo(&self) -> i32;
 }

@@ -1,8 +1,6 @@
 //@ check-pass
 
 #![allow(non_camel_case_types)]
-#![feature(return_type_notation)]
-
 trait Foo {
     type test;
 

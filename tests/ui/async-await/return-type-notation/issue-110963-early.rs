@@ -1,8 +1,6 @@
 //@ edition: 2021
 //@ known-bug: #110963
 
-#![feature(return_type_notation)]
-
 trait HealthCheck {
     async fn check<'a: 'a>(&'a mut self) -> bool;
 }

@@ -9,7 +9,7 @@ note: type in trait
    |
 LL |     async fn foo(_: T) -> &'static str;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected signature `fn(_) -> impl Future<Output = &'static str>`
+   = note: expected signature `fn(_) -> impl Future<Output = &'static str> { <MyStruct as MyTrait<T>>::foo(..) }`
               found signature `fn(_) -> impl Future<Output = &'static str>`
 
 error: async associated function in trait cannot be specialized

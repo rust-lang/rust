@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 trait Foo {
     fn borrow(&mut self) -> impl Sized + '_;
 }

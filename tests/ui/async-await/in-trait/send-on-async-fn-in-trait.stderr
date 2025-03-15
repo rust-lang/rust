@@ -1,42 +1,40 @@
-error[E0277]: `impl Future<Output = ()>` cannot be sent between threads safely
-  --> $DIR/send-on-async-fn-in-trait.rs:13:16
+error[E0277]: `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
+  --> $DIR/send-on-async-fn-in-trait.rs:14:16
    |
 LL |     needs_send(T::test());
-   |     ---------- ^^^^^^^^^ `impl Future<Output = ()>` cannot be sent between threads safely
+   |     ---------- ^^^^^^^^^ `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `impl Future<Output = ()>`
+   = help: the trait `Send` is not implemented for `impl Future<Output = ()> { <T as Foo>::test(..) }`
 note: required by a bound in `needs_send`
-  --> $DIR/send-on-async-fn-in-trait.rs:12:27
+  --> $DIR/send-on-async-fn-in-trait.rs:11:23
    |
-LL |     fn needs_send(_: impl Send) {}
-   |                           ^^^^ required by this bound in `needs_send`
-help: `Send` can be made part of the associated future's guarantees for all implementations of `Foo::test`
+LL | fn needs_send(_: impl Send) {}
+   |                       ^^^^ required by this bound in `needs_send`
+help: consider further restricting the associated type
    |
-LL -     async fn test() -> () {}
-LL +     fn test() -> impl std::future::Future<Output = ()> + Send { async {} }
-   |
+LL | fn bar<T: Foo>() where <T as Foo>::test(..): Send {
+   |                  ++++++++++++++++++++++++++++++++
 
-error[E0277]: `impl Future<Output = i32>` cannot be sent between threads safely
-  --> $DIR/send-on-async-fn-in-trait.rs:15:16
+error[E0277]: `impl Future<Output = i32> { <T as Foo>::test2(..) }` cannot be sent between threads safely
+  --> $DIR/send-on-async-fn-in-trait.rs:19:16
    |
 LL |     needs_send(T::test2());
-   |     ---------- ^^^^^^^^^^ `impl Future<Output = i32>` cannot be sent between threads safely
+   |     ---------- ^^^^^^^^^^ `impl Future<Output = i32> { <T as Foo>::test2(..) }` cannot be sent between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `impl Future<Output = i32>`
+   = help: the trait `Send` is not implemented for `impl Future<Output = i32> { <T as Foo>::test2(..) }`
 note: required by a bound in `needs_send`
-  --> $DIR/send-on-async-fn-in-trait.rs:12:27
+  --> $DIR/send-on-async-fn-in-trait.rs:11:23
    |
-LL |     fn needs_send(_: impl Send) {}
-   |                           ^^^^ required by this bound in `needs_send`
-help: `Send` can be made part of the associated future's guarantees for all implementations of `Foo::test2`
+LL | fn needs_send(_: impl Send) {}
+   |                       ^^^^ required by this bound in `needs_send`
+help: consider further restricting the associated type
    |
-LL -     async fn test2() -> i32 { 1 + 2 }
-LL +     fn test2() -> impl std::future::Future<Output = i32> + Send {async { 1 + 2 } }
-   |
+LL | fn bar2<T: Foo>() where <T as Foo>::test2(..): Send {
+   |                   +++++++++++++++++++++++++++++++++
 
 error: aborting due to 2 previous errors
 

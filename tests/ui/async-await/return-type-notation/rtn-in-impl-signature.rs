@@ -1,5 +1,3 @@
-#![feature(return_type_notation)]
-
 // Shouldn't ICE when we have a (bad) RTN in an impl header
 
 trait Super1<'a> {

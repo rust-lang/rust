@@ -13,6 +13,7 @@ use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::BottomUpFolder;
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
     self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -1058,11 +1059,12 @@ fn report_trait_method_mismatch<'tcx>(
                     let ap = Applicability::MachineApplicable;
                     match sig.decl.output {
                         hir::FnRetTy::DefaultReturn(sp) => {
-                            let sugg = format!(" -> {}", trait_sig.output());
+                            let sugg =
+                                with_types_for_signature!(format!(" -> {}", trait_sig.output()));
                             diag.span_suggestion_verbose(sp, msg, sugg, ap);
                         }
                         hir::FnRetTy::Return(hir_ty) => {
-                            let sugg = trait_sig.output();
+                            let sugg = with_types_for_signature!(trait_sig.output().to_string());
                             diag.span_suggestion_verbose(hir_ty.span, msg, sugg, ap);
                         }
                     };

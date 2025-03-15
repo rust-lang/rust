@@ -7,7 +7,7 @@ use foreign_async_fn::Foo;
 fn bar<T: Foo>() {
     fn needs_send(_: impl Send) {}
     needs_send(T::test());
-    //~^ ERROR `impl Future<Output = ()>` cannot be sent between threads safely
+    //~^ ERROR `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
 }
 
 fn main() {}

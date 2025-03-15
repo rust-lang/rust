@@ -12,7 +12,7 @@ note: type in trait
    |
 LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
-   = note: expected signature `fn(&_) -> impl Sized`
+   = note: expected signature `fn(&_) -> impl Sized { <U as Foo>::bar(..) }`
               found signature `fn(&_) -> U`
 help: change the output type to match the trait
    |

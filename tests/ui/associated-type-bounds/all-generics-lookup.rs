@@ -1,7 +1,5 @@
 //@ check-pass
 
-#![feature(return_type_notation)]
-
 trait Trait {
     fn method(&self) -> impl Sized;
 }

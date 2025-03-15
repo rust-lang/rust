@@ -1,5 +1,5 @@
 error: return type notation is not allowed for functions that have type parameters
-  --> $DIR/ty-or-ct-params.rs:13:12
+  --> $DIR/ty-or-ct-params.rs:11:12
    |
 LL |     async fn bar<T>() {}
    |                  - type parameter declared here
@@ -8,7 +8,7 @@ LL |     T: Foo<bar(..): Send, baz(..): Send>,
    |            ^^^^^^^^^^^^^
 
 error: return type notation is not allowed for functions that have const parameters
-  --> $DIR/ty-or-ct-params.rs:13:27
+  --> $DIR/ty-or-ct-params.rs:11:27
    |
 LL |     async fn baz<const N: usize>() {}
    |                  -------------- const parameter declared here

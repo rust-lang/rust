@@ -1339,15 +1339,17 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         def_id: DefId,
         args: ty::GenericArgsRef<'tcx>,
     ) -> Result<(), PrintError> {
-        let fn_args = if self.tcx().features().return_type_notation()
-            && let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
-                self.tcx().opt_rpitit_info(def_id)
+        let fn_args = if let Some(ty::ImplTraitInTraitData::Trait { fn_def_id, .. }) =
+            self.tcx().opt_rpitit_info(def_id)
             && let ty::Alias(_, alias_ty) =
                 self.tcx().fn_sig(fn_def_id).skip_binder().output().skip_binder().kind()
             && alias_ty.def_id == def_id
             && let generics = self.tcx().generics_of(fn_def_id)
             // FIXME(return_type_notation): We only support lifetime params for now.
-            && generics.own_params.iter().all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
+            && generics
+                .own_params
+                .iter()
+                .all(|param| matches!(param.kind, ty::GenericParamDefKind::Lifetime))
         {
             let num_args = generics.count();
             Some((fn_def_id, &args[..num_args]))

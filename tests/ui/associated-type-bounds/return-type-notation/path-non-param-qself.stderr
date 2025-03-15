@@ -1,17 +1,17 @@
 error[E0223]: ambiguous associated function
-  --> $DIR/path-non-param-qself.rs:11:5
+  --> $DIR/path-non-param-qself.rs:9:5
    |
 LL |     <()>::method(..): Send,
    |     ^^^^^^^^^^^^^^^^
 
 error[E0223]: ambiguous associated function
-  --> $DIR/path-non-param-qself.rs:13:5
+  --> $DIR/path-non-param-qself.rs:11:5
    |
 LL |     i32::method(..): Send,
    |     ^^^^^^^^^^^^^^^
 
 error[E0223]: ambiguous associated function
-  --> $DIR/path-non-param-qself.rs:15:5
+  --> $DIR/path-non-param-qself.rs:13:5
    |
 LL |     Adt::method(..): Send,
    |     ^^^^^^^^^^^^^^^

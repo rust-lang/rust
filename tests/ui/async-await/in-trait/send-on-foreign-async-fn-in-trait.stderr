@@ -1,22 +1,21 @@
-error[E0277]: `impl Future<Output = ()>` cannot be sent between threads safely
+error[E0277]: `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
   --> $DIR/send-on-foreign-async-fn-in-trait.rs:9:16
    |
 LL |     needs_send(T::test());
-   |     ---------- ^^^^^^^^^ `impl Future<Output = ()>` cannot be sent between threads safely
+   |     ---------- ^^^^^^^^^ `impl Future<Output = ()> { <T as Foo>::test(..) }` cannot be sent between threads safely
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Send` is not implemented for `impl Future<Output = ()>`
-note: `<T as Foo>::test` is an `async fn` in trait, which does not automatically imply that its future is `Send`
-  --> $DIR/auxiliary/foreign-async-fn.rs:4:5
-   |
-LL |     async fn test();
-   |     ^^^^^^^^^^^^^^^^
+   = help: the trait `Send` is not implemented for `impl Future<Output = ()> { <T as Foo>::test(..) }`
 note: required by a bound in `needs_send`
   --> $DIR/send-on-foreign-async-fn-in-trait.rs:8:27
    |
 LL |     fn needs_send(_: impl Send) {}
    |                           ^^^^ required by this bound in `needs_send`
+help: consider further restricting the associated type
+   |
+LL | fn bar<T: Foo>() where <T as Foo>::test(..): Send {
+   |                  ++++++++++++++++++++++++++++++++
 
 error: aborting due to 1 previous error
 

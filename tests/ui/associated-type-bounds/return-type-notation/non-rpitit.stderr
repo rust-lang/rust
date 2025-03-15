@@ -1,5 +1,5 @@
 error: return type notation used on function that is not `async` and does not return `impl Trait`
-  --> $DIR/non-rpitit.rs:7:19
+  --> $DIR/non-rpitit.rs:5:19
    |
 LL |     fn method() {}
    |     ----------- this function must be `async` or return `impl Trait`
@@ -10,7 +10,7 @@ LL | fn bound<T: Trait<method(..): Send>>() {}
    = note: function returns `()`, which is not compatible with associated type return bounds
 
 error: return type notation used on function that is not `async` and does not return `impl Trait`
-  --> $DIR/non-rpitit.rs:10:30
+  --> $DIR/non-rpitit.rs:8:30
    |
 LL |     fn method() {}
    |     ----------- this function must be `async` or return `impl Trait`
