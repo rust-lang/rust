@@ -41,7 +41,7 @@ use tracing::debug;
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
-use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
+use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
@@ -422,7 +422,7 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         lto_modules
             .into_iter()
             .map(|module| {
-                let mut module =
+                let module =
                     unsafe { module.autodiff(cgcx, autodiff.clone(), config).unwrap_or_else(|e| e.raise()) };
                 let cost = module.cost();
                 (WorkItem::LTO(module), cost)
