@@ -1,8 +1,8 @@
 use libc::{c_int, size_t};
 
+use super::common::*;
 use crate::num::NonZero;
-use crate::sys::process::process_common::*;
-use crate::sys::process::zircon::{Handle, zx_handle_t};
+use crate::sys::pal::fuchsia::*;
 use crate::{fmt, io, mem, ptr};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,8 +58,6 @@ impl Command {
         stdio: ChildPipes,
         maybe_envp: Option<&CStringArray>,
     ) -> io::Result<zx_handle_t> {
-        use crate::sys::process::zircon::*;
-
         let envp = match maybe_envp {
             // None means to clone the current environment, which is done in the
             // flags below.
@@ -152,8 +150,6 @@ impl Process {
     }
 
     pub fn kill(&mut self) -> io::Result<()> {
-        use crate::sys::process::zircon::*;
-
         unsafe {
             zx_cvt(zx_task_kill(self.handle.raw()))?;
         }
@@ -162,8 +158,6 @@ impl Process {
     }
 
     pub fn wait(&mut self) -> io::Result<ExitStatus> {
-        use crate::sys::process::zircon::*;
-
         let mut proc_info: zx_info_process_t = Default::default();
         let mut actual: size_t = 0;
         let mut avail: size_t = 0;
@@ -194,8 +188,6 @@ impl Process {
     }
 
     pub fn try_wait(&mut self) -> io::Result<Option<ExitStatus>> {
-        use crate::sys::process::zircon::*;
-
         let mut proc_info: zx_info_process_t = Default::default();
         let mut actual: size_t = 0;
         let mut avail: size_t = 0;
@@ -251,7 +243,7 @@ impl ExitStatus {
         None
     }
 
-    // FIXME: The actually-Unix implementation in process_unix.rs uses WSTOPSIG, WCOREDUMP et al.
+    // FIXME: The actually-Unix implementation in unix.rs uses WSTOPSIG, WCOREDUMP et al.
     // I infer from the implementation of `success`, `code` and `signal` above that these are not
     // available on Fuchsia.
     //
