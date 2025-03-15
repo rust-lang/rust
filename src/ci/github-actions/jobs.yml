@@ -90,7 +90,7 @@ envs:
     # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
     #
     # If you *want* these to happen however, temporarily comment it before triggering a try build.
-    DIST_TRY_BUILD: 1
+#    DIST_TRY_BUILD: 1
 
   auto:
     <<: *production

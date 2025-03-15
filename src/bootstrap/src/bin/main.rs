@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! bootstrap, the Rust build system
 //!
 //! This is the entry point for the build system used to compile the `rustc`
@@ -5,16 +6,17 @@
 //! parent directory, and otherwise documentation can be found throughout the `build`
 //! directory in each respective module.
 
-use std::fs::{self, OpenOptions};
-use std::io::{self, BufRead, BufReader, IsTerminal, Write};
-use std::str::FromStr;
-use std::{env, process};
-
 use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
     human_readable_changes, t,
 };
 use build_helper::ci::CiEnv;
+use build_helper::git::get_closest_merge_commit;
+use std::fs::{self, OpenOptions};
+use std::io::{self, BufRead, BufReader, IsTerminal, Write};
+use std::process::Command;
+use std::str::FromStr;
+use std::{env, process};
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -34,7 +36,62 @@ fn main() {
     debug!("parsing config based on flags");
     let config = Config::parse(flags);
 
-    let mut build_lock;
+    let merge_commit1 =
+        get_closest_merge_commit(Some(&config.src), &config.git_config(), &[]).unwrap();
+    let merge_commit2 = String::from_utf8(
+        Command::new("git")
+            .args([
+                "rev-list",
+                &format!("--author=bors@rust-lang.org"),
+                "-n1",
+                "--first-parent",
+                "HEAD",
+            ])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    let merge_commit3 = String::from_utf8(
+        Command::new("git")
+            .args([
+                "rev-list",
+                &format!("--author=bors@rust-lang.org"),
+                "-n1",
+                "--first-parent",
+                "HEAD^1",
+            ])
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    let current_commit = String::from_utf8(
+        Command::new("git").arg("rev-parse").arg("HEAD").output().unwrap().stdout,
+    )
+    .unwrap();
+    let git_history = String::from_utf8(
+        Command::new("git")
+            .arg("log")
+            .arg("--oneline")
+            .arg("-n")
+            .arg("20")
+            .arg("--pretty=format:%h %an %ae %s")
+            .output()
+            .unwrap()
+            .stdout,
+    )
+    .unwrap();
+    panic!(
+        r#"
+Merge commit1: {merge_commit1}
+Merge commit2: {merge_commit2}
+Merge commit3: {merge_commit3}
+HEAD: {current_commit}
+{git_history}"#
+    );
+
+    /*let mut build_lock;
     let _build_lock_guard;
 
     if !config.bypass_bootstrap_lock {
@@ -145,7 +202,7 @@ fn main() {
             let mut file = t!(OpenOptions::new().write(true).truncate(true).open(entry.path()));
             t!(file.write_all(lines.join("\n").as_bytes()));
         }
-    }
+    }*/
 }
 
 fn check_version(config: &Config) -> Option<String> {
