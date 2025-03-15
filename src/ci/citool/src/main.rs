@@ -1,7 +1,7 @@
+mod analysis;
 mod cpu_usage;
 mod datadog;
 mod jobs;
-mod merge_report;
 mod metrics;
 mod utils;
 
@@ -14,12 +14,13 @@ use clap::Parser;
 use jobs::JobDatabase;
 use serde_yaml::Value;
 
+use crate::analysis::output_test_diffs;
 use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::jobs::RunType;
-use crate::merge_report::post_merge_report;
-use crate::metrics::postprocess_metrics;
+use crate::metrics::{download_auto_job_metrics, load_metrics};
 use crate::utils::load_env_var;
+use analysis::output_bootstrap_stats;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
@@ -209,10 +210,14 @@ fn main() -> anyhow::Result<()> {
             upload_ci_metrics(&cpu_usage_csv)?;
         }
         Args::PostprocessMetrics { metrics_path } => {
-            postprocess_metrics(&metrics_path)?;
+            let metrics = load_metrics(&metrics_path)?;
+            output_bootstrap_stats(&metrics);
         }
-        Args::PostMergeReport { current: commit, parent } => {
-            post_merge_report(load_db(default_jobs_file)?, parent, commit)?;
+        Args::PostMergeReport { current, parent } => {
+            let db = load_db(default_jobs_file)?;
+            let metrics = download_auto_job_metrics(&db, &parent, &current)?;
+            println!("Comparing {parent} (base) -> {current} (this PR)\n");
+            output_test_diffs(metrics);
         }
     }
 

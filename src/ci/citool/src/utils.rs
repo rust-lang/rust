@@ -9,3 +9,7 @@ pub fn load_env_var(name: &str) -> anyhow::Result<String> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     std::fs::read_to_string(&path).with_context(|| format!("Cannot read file {:?}", path.as_ref()))
 }
+
+pub fn pluralize(text: &str, count: usize) -> String {
+    if count == 1 { text.to_string() } else { format!("{text}s") }
+}

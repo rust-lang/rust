@@ -1,97 +1,135 @@
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use crate::metrics;
+use crate::metrics::{JobMetrics, JobName, get_test_suites};
+use crate::utils::pluralize;
+use build_helper::metrics::{
+    BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
+};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
-use anyhow::Context;
-use build_helper::metrics::{JsonRoot, TestOutcome, TestSuiteMetadata};
-
-use crate::jobs::JobDatabase;
-use crate::metrics::get_test_suites;
-
-type Sha = String;
-type JobName = String;
-
-/// Computes a post merge CI analysis report between the `parent` and `current` commits.
-pub fn post_merge_report(job_db: JobDatabase, parent: Sha, current: Sha) -> anyhow::Result<()> {
-    let jobs = download_all_metrics(&job_db, &parent, &current)?;
-    let aggregated_test_diffs = aggregate_test_diffs(&jobs)?;
-
-    println!("Comparing {parent} (base) -> {current} (this PR)\n");
-    report_test_diffs(aggregated_test_diffs);
-
-    Ok(())
+pub fn output_bootstrap_stats(metrics: &JsonRoot) {
+    if !metrics.invocations.is_empty() {
+        println!("# Bootstrap steps");
+        record_bootstrap_step_durations(&metrics);
+        record_test_suites(&metrics);
+    }
 }
 
-struct JobMetrics {
-    parent: Option<JsonRoot>,
-    current: JsonRoot,
-}
-
-/// Download before/after metrics for all auto jobs in the job database.
-fn download_all_metrics(
-    job_db: &JobDatabase,
-    parent: &str,
-    current: &str,
-) -> anyhow::Result<HashMap<JobName, JobMetrics>> {
-    let mut jobs = HashMap::default();
-
-    for job in &job_db.auto_jobs {
-        eprintln!("Downloading metrics of job {}", job.name);
-        let metrics_parent = match download_job_metrics(&job.name, parent) {
-            Ok(metrics) => Some(metrics),
-            Err(error) => {
-                eprintln!(
-                    r#"Did not find metrics for job `{}` at `{}`: {error:?}.
-Maybe it was newly added?"#,
-                    job.name, parent
-                );
-                None
-            }
-        };
-        let metrics_current = download_job_metrics(&job.name, current)?;
-        jobs.insert(
-            job.name.clone(),
-            JobMetrics { parent: metrics_parent, current: metrics_current },
+fn record_bootstrap_step_durations(metrics: &JsonRoot) {
+    for invocation in &metrics.invocations {
+        let step = BuildStep::from_invocation(invocation);
+        let table = format_build_steps(&step);
+        eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
+        println!(
+            r"<details>
+<summary>{}</summary>
+<pre><code>{table}</code></pre>
+</details>
+",
+            invocation.cmdline
         );
     }
-    Ok(jobs)
+    eprintln!("Recorded {} bootstrap invocation(s)", metrics.invocations.len());
 }
 
-/// Downloads job metrics of the given job for the given commit.
-/// Caches the result on the local disk.
-fn download_job_metrics(job_name: &str, sha: &str) -> anyhow::Result<JsonRoot> {
-    let cache_path = PathBuf::from(".citool-cache").join(sha).join(job_name).join("metrics.json");
-    if let Some(cache_entry) =
-        std::fs::read_to_string(&cache_path).ok().and_then(|data| serde_json::from_str(&data).ok())
-    {
-        return Ok(cache_entry);
+fn record_test_suites(metrics: &JsonRoot) {
+    let suites = metrics::get_test_suites(&metrics);
+
+    if !suites.is_empty() {
+        let aggregated = aggregate_test_suites(&suites);
+        let table = render_table(aggregated);
+        println!("\n# Test results\n");
+        println!("{table}");
+    } else {
+        eprintln!("No test suites found in metrics");
+    }
+}
+
+fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
+    use std::fmt::Write;
+
+    let mut table = "| Test suite | Passed ✅ | Ignored 🚫 | Failed  ❌ |\n".to_string();
+    writeln!(table, "|:------|------:|------:|------:|").unwrap();
+
+    fn compute_pct(value: f64, total: f64) -> f64 {
+        if total == 0.0 { 0.0 } else { value / total }
     }
 
-    let url = get_metrics_url(job_name, sha);
-    let mut response = ureq::get(&url).call()?;
-    if !response.status().is_success() {
-        return Err(anyhow::anyhow!(
-            "Cannot fetch metrics from {url}: {}\n{}",
-            response.status(),
-            response.body_mut().read_to_string()?
-        ));
-    }
-    let data: JsonRoot = response
-        .body_mut()
-        .read_json()
-        .with_context(|| anyhow::anyhow!("cannot deserialize metrics from {url}"))?;
+    fn write_row(
+        buffer: &mut String,
+        name: &str,
+        record: &TestSuiteRecord,
+        surround: &str,
+    ) -> std::fmt::Result {
+        let TestSuiteRecord { passed, ignored, failed } = record;
+        let total = (record.passed + record.ignored + record.failed) as f64;
+        let passed_pct = compute_pct(*passed as f64, total) * 100.0;
+        let ignored_pct = compute_pct(*ignored as f64, total) * 100.0;
+        let failed_pct = compute_pct(*failed as f64, total) * 100.0;
 
-    // Ignore errors if cache cannot be created
-    if std::fs::create_dir_all(cache_path.parent().unwrap()).is_ok() {
-        if let Ok(serialized) = serde_json::to_string(&data) {
-            let _ = std::fs::write(&cache_path, &serialized);
+        write!(buffer, "| {surround}{name}{surround} |")?;
+        write!(buffer, " {surround}{passed} ({passed_pct:.0}%){surround} |")?;
+        write!(buffer, " {surround}{ignored} ({ignored_pct:.0}%){surround} |")?;
+        writeln!(buffer, " {surround}{failed} ({failed_pct:.0}%){surround} |")?;
+
+        Ok(())
+    }
+
+    let mut total = TestSuiteRecord::default();
+    for (name, record) in suites {
+        write_row(&mut table, &name, &record, "").unwrap();
+        total.passed += record.passed;
+        total.ignored += record.ignored;
+        total.failed += record.failed;
+    }
+    write_row(&mut table, "Total", &total, "**").unwrap();
+    table
+}
+
+/// Computes a post merge CI analysis report of test differences
+/// between the `parent` and `current` commits.
+pub fn output_test_diffs(job_metrics: HashMap<JobName, JobMetrics>) {
+    let aggregated_test_diffs = aggregate_test_diffs(&job_metrics);
+    report_test_diffs(aggregated_test_diffs);
+}
+
+#[derive(Default)]
+struct TestSuiteRecord {
+    passed: u64,
+    ignored: u64,
+    failed: u64,
+}
+
+fn test_metadata_name(metadata: &TestSuiteMetadata) -> String {
+    match metadata {
+        TestSuiteMetadata::CargoPackage { crates, stage, .. } => {
+            format!("{} (stage {stage})", crates.join(", "))
+        }
+        TestSuiteMetadata::Compiletest { suite, stage, .. } => {
+            format!("{suite} (stage {stage})")
         }
     }
-    Ok(data)
 }
 
-fn get_metrics_url(job_name: &str, sha: &str) -> String {
-    let suffix = if job_name.ends_with("-alt") { "-alt" } else { "" };
-    format!("https://ci-artifacts.rust-lang.org/rustc-builds{suffix}/{sha}/metrics-{job_name}.json")
+fn aggregate_test_suites(suites: &[&TestSuite]) -> BTreeMap<String, TestSuiteRecord> {
+    let mut records: BTreeMap<String, TestSuiteRecord> = BTreeMap::new();
+    for suite in suites {
+        let name = test_metadata_name(&suite.metadata);
+        let record = records.entry(name).or_default();
+        for test in &suite.tests {
+            match test.outcome {
+                TestOutcome::Passed => {
+                    record.passed += 1;
+                }
+                TestOutcome::Failed => {
+                    record.failed += 1;
+                }
+                TestOutcome::Ignored { .. } => {
+                    record.ignored += 1;
+                }
+            }
+        }
+    }
+    records
 }
 
 /// Represents a difference in the outcome of tests between a base and a current commit.
@@ -101,9 +139,7 @@ struct AggregatedTestDiffs {
     diffs: HashMap<TestDiff, Vec<JobName>>,
 }
 
-fn aggregate_test_diffs(
-    jobs: &HashMap<JobName, JobMetrics>,
-) -> anyhow::Result<AggregatedTestDiffs> {
+fn aggregate_test_diffs(jobs: &HashMap<JobName, JobMetrics>) -> AggregatedTestDiffs {
     let mut diffs: HashMap<TestDiff, Vec<JobName>> = HashMap::new();
 
     // Aggregate test suites
@@ -117,7 +153,7 @@ fn aggregate_test_diffs(
         }
     }
 
-    Ok(AggregatedTestDiffs { diffs })
+    AggregatedTestDiffs { diffs }
 }
 
 #[derive(Eq, PartialEq, Hash, Debug)]
@@ -311,8 +347,4 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
             jobs.iter().map(|j| format!("`{j}`")).collect::<Vec<_>>().join(", ")
         );
     }
-}
-
-fn pluralize(text: &str, count: usize) -> String {
-    if count == 1 { text.to_string() } else { format!("{text}s") }
 }
