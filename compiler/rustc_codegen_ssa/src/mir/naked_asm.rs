@@ -1,23 +1,33 @@
 use rustc_abi::{BackendRepr, Float, Integer, Primitive, RegKind};
 use rustc_attr_parsing::InstructionSetAttr;
 use rustc_hir::def_id::DefId;
-use rustc_middle::mir::mono::{Linkage, MonoItem, MonoItemData, Visibility};
-use rustc_middle::mir::{Body, InlineAsmOperand};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, HasTypingEnv, LayoutOf};
-use rustc_middle::ty::{Instance, Ty, TyCtxt};
+use rustc_middle::mir::mono::{Linkage, MonoItemData, Visibility};
+use rustc_middle::mir::{InlineAsmOperand, START_BLOCK};
+use rustc_middle::ty::layout::{FnAbiOf, LayoutOf, TyAndLayout};
+use rustc_middle::ty::{Instance, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug, ty};
 use rustc_span::sym;
 use rustc_target::callconv::{ArgAbi, FnAbi, PassMode};
 use rustc_target::spec::{BinaryFormat, WasmCAbi};
 
 use crate::common;
-use crate::traits::{AsmCodegenMethods, BuilderMethods, GlobalAsmOperandRef, MiscCodegenMethods};
+use crate::mir::AsmCodegenMethods;
+use crate::traits::GlobalAsmOperandRef;
 
-pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
-    mir: &Body<'tcx>,
+pub fn codegen_naked_asm<
+    'a,
+    'tcx,
+    Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>
+        + FnAbiOf<'tcx, FnAbiOfResult = &'tcx FnAbi<'tcx, Ty<'tcx>>>
+        + AsmCodegenMethods<'tcx>,
+>(
+    cx: &'a mut Cx,
     instance: Instance<'tcx>,
+    item_data: MonoItemData,
 ) {
+    assert!(!instance.args.has_infer());
+    let mir = cx.tcx().instance_mir(instance.def);
+
     let rustc_middle::mir::TerminatorKind::InlineAsm {
         asm_macro: _,
         template,
@@ -26,15 +36,14 @@ pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         line_spans,
         targets: _,
         unwind: _,
-    } = mir.basic_blocks.iter().next().unwrap().terminator().kind
+    } = mir.basic_blocks[START_BLOCK].terminator().kind
     else {
         bug!("#[naked] functions should always terminate with an asm! block")
     };
 
     let operands: Vec<_> =
-        operands.iter().map(|op| inline_to_global_operand::<Bx>(cx, instance, op)).collect();
+        operands.iter().map(|op| inline_to_global_operand::<Cx>(cx, instance, op)).collect();
 
-    let item_data = cx.codegen_unit().items().get(&MonoItem::Fn(instance)).unwrap();
     let name = cx.mangled_name(instance);
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
     let (begin, end) = prefix_and_suffix(cx.tcx(), instance, &name, item_data, fn_abi);
@@ -47,8 +56,8 @@ pub(crate) fn codegen_naked_asm<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     cx.codegen_global_asm(&template_vec, &operands, options, line_spans);
 }
 
-fn inline_to_global_operand<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    cx: &'a Bx::CodegenCx,
+fn inline_to_global_operand<'a, 'tcx, Cx: LayoutOf<'tcx, LayoutOfResult = TyAndLayout<'tcx>>>(
+    cx: &'a Cx,
     instance: Instance<'tcx>,
     op: &InlineAsmOperand<'tcx>,
 ) -> GlobalAsmOperandRef<'tcx> {
@@ -108,7 +117,7 @@ fn prefix_and_suffix<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: Instance<'tcx>,
     asm_name: &str,
-    item_data: &MonoItemData,
+    item_data: MonoItemData,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,
 ) -> (String, String) {
     use std::fmt::Write;
@@ -210,8 +219,10 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {section},\"ax\", {progbits}").unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
-            if let Visibility::Hidden = item_data.visibility {
-                writeln!(begin, ".hidden {asm_name}").unwrap();
+            match item_data.visibility {
+                Visibility::Default => {}
+                Visibility::Protected => writeln!(begin, ".protected {asm_name}").unwrap(),
+                Visibility::Hidden => writeln!(begin, ".hidden {asm_name}").unwrap(),
             }
             writeln!(begin, ".type {asm_name}, {function}").unwrap();
             if !arch_prefix.is_empty() {
@@ -231,8 +242,9 @@ fn prefix_and_suffix<'tcx>(
             writeln!(begin, ".pushsection {},regular,pure_instructions", section).unwrap();
             writeln!(begin, ".balign {align_bytes}").unwrap();
             write_linkage(&mut begin).unwrap();
-            if let Visibility::Hidden = item_data.visibility {
-                writeln!(begin, ".private_extern {asm_name}").unwrap();
+            match item_data.visibility {
+                Visibility::Default | Visibility::Protected => {}
+                Visibility::Hidden => writeln!(begin, ".private_extern {asm_name}").unwrap(),
             }
             writeln!(begin, "{asm_name}:").unwrap();
 
