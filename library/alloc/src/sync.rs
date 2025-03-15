@@ -84,9 +84,29 @@ macro_rules! acquire {
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
 /// exception: you cannot generally obtain a mutable reference to something
-/// inside an `Arc`. If you need to mutate through an `Arc`, use
-/// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
-/// types.
+/// inside an `Arc`. If you do need to mutate through an `Arc`, you have several options:
+///
+/// 1. Use interior mutability with synchronization primitives like [`Mutex`][mutex],
+///    [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
+///
+/// 2. Use clone-on-write semantics with [`Arc::make_mut`] which provides efficient mutation
+///    without requiring interior mutability. This approach clones the data only when
+///    needed (when there are multiple references) and can be more efficient when mutations
+///    are infrequent.
+///
+/// 3. Use [`Arc::get_mut`] when you know your `Arc` is not shared (has a reference count of 1),
+///    which provides direct mutable access to the inner value without any cloning.
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// let mut data = Arc::new(vec![1, 2, 3]);
+///
+/// // This will clone the vector only if there are other references to it
+/// Arc::make_mut(&mut data).push(4);
+///
+/// assert_eq!(*data, vec![1, 2, 3, 4]);
+/// ```
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of pointers, which includes all platforms that support
