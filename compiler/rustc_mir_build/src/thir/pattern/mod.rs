@@ -17,6 +17,7 @@ use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
+use rustc_middle::ty::adjustment::PatAdjust;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
@@ -106,13 +107,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
             debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
             let span = thir_pat.span;
-            // TODO: use an enum to distinguish between builtin and overloaded derefs
-            let kind = if ref_ty.is_ref() {
-                PatKind::Deref { subpattern: thir_pat }
-            } else {
-                let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
-                let mutability = if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
-                PatKind::DerefPattern { subpattern: thir_pat, mutability }
+            let kind = match ref_ty.pat_adjust_kind() {
+                PatAdjust::BuiltinDeref => PatKind::Deref { subpattern: thir_pat },
+                PatAdjust::OverloadedDeref => {
+                    let mutable = self.typeck_results.pat_has_ref_mut_binding(pat);
+                    let mutability =
+                        if mutable { hir::Mutability::Mut } else { hir::Mutability::Not };
+                    PatKind::DerefPattern { subpattern: thir_pat, mutability }
+                }
             };
             Box::new(Pat { span, ty: *ref_ty, kind })
         });

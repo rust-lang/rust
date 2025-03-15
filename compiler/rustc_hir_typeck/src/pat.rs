@@ -30,6 +30,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
 use ty::VariantDef;
+use ty::adjustment::PatAdjust;
 
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
@@ -439,7 +440,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // If we implicitly inserted overloaded dereferences before matching, check the pattern to
         // see if the dereferenced types need `DerefMut` bounds.
         if let Some(derefed_tys) = self.typeck_results.borrow().pat_adjustments().get(pat.hir_id)
-            && derefed_tys.iter().any(|ty| !ty.is_ref())
+            && derefed_tys.iter().any(|ty| ty.pat_adjust_kind() == PatAdjust::OverloadedDeref)
         {
             self.register_deref_mut_bounds_if_needed(
                 pat.span,
