@@ -8,7 +8,7 @@ use intern::{sym, Interned, Symbol};
 
 use mbe::{DelimiterKind, Punct};
 use smallvec::{smallvec, SmallVec};
-use span::{Span, SyntaxContextId};
+use span::{Span, SyntaxContext};
 use syntax::unescape;
 use syntax::{ast, match_ast, AstNode, AstToken, SyntaxNode};
 use syntax_bridge::{desugar_doc_comment_text, syntax_node_to_token_tree, DocCommentDesugarMode};
@@ -210,7 +210,7 @@ pub struct Attr {
     pub id: AttrId,
     pub path: Interned<ModPath>,
     pub input: Option<Box<AttrInput>>,
-    pub ctxt: SyntaxContextId,
+    pub ctxt: SyntaxContext,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -4,7 +4,7 @@
 use intern::sym;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{
-    ErasedFileAstId, Span, SpanAnchor, SyntaxContextId, FIXUP_ERASED_FILE_AST_ID_MARKER,
+    ErasedFileAstId, Span, SpanAnchor, SyntaxContext, FIXUP_ERASED_FILE_AST_ID_MARKER,
     ROOT_ERASED_FILE_AST_ID,
 };
 use stdx::never;
@@ -353,7 +353,7 @@ pub(crate) fn reverse_fixups(tt: &mut TopSubtree, undo_info: &SyntaxFixupUndoInf
         let span = |file_id| Span {
             range: TextRange::empty(TextSize::new(0)),
             anchor: SpanAnchor { file_id, ast_id: ROOT_ERASED_FILE_AST_ID },
-            ctx: SyntaxContextId::root(span::Edition::Edition2015),
+            ctx: SyntaxContext::root(span::Edition::Edition2015),
         };
         delimiter.open = span(delimiter.open.anchor.file_id);
         delimiter.close = span(delimiter.close.anchor.file_id);

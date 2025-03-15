@@ -226,7 +226,7 @@ mod tests {
     use ::tt::IdentIsRaw;
     use expect_test::expect;
     use intern::Symbol;
-    use span::{Edition, SpanAnchor, SyntaxContextId, ROOT_ERASED_FILE_AST_ID};
+    use span::{Edition, SpanAnchor, SyntaxContext, ROOT_ERASED_FILE_AST_ID};
     use syntax::{TextRange, TextSize};
 
     use super::quote;
@@ -240,7 +240,7 @@ mod tests {
             ),
             ast_id: ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContextId::root(Edition::CURRENT),
+        ctx: SyntaxContext::root(Edition::CURRENT),
     };
 
     #[test]

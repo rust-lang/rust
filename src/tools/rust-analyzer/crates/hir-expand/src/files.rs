@@ -4,7 +4,7 @@ use std::borrow::Borrow;
 use either::Either;
 use span::{
     AstIdNode, EditionedFileId, ErasedFileAstId, FileAstId, HirFileId, HirFileIdRepr, MacroFileId,
-    SyntaxContextId,
+    SyntaxContext,
 };
 use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, SyntaxToken, TextRange, TextSize};
 
@@ -311,7 +311,7 @@ impl InFile<&SyntaxNode> {
     pub fn original_file_range_opt(
         self,
         db: &dyn db::ExpandDatabase,
-    ) -> Option<(FileRange, SyntaxContextId)> {
+    ) -> Option<(FileRange, SyntaxContext)> {
         self.borrow().map(SyntaxNode::text_range).original_node_file_range_opt(db)
     }
 }
@@ -376,7 +376,7 @@ impl InFile<SyntaxToken> {
 }
 
 impl InMacroFile<TextSize> {
-    pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> (FileRange, SyntaxContextId) {
+    pub fn original_file_range(self, db: &dyn db::ExpandDatabase) -> (FileRange, SyntaxContext) {
         span_for_offset(db, &db.expansion_span_map(self.file_id), self.value)
     }
 }
@@ -385,17 +385,17 @@ impl InFile<TextRange> {
     pub fn original_node_file_range(
         self,
         db: &dyn db::ExpandDatabase,
-    ) -> (FileRange, SyntaxContextId) {
+    ) -> (FileRange, SyntaxContext) {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => {
-                (FileRange { file_id, range: self.value }, SyntaxContextId::root(file_id.edition()))
+                (FileRange { file_id, range: self.value }, SyntaxContext::root(file_id.edition()))
             }
             HirFileIdRepr::MacroFile(mac_file) => {
                 match map_node_range_up(db, &db.expansion_span_map(mac_file), self.value) {
                     Some(it) => it,
                     None => {
                         let loc = db.lookup_intern_macro_call(mac_file.macro_call_id);
-                        (loc.kind.original_call_range(db), SyntaxContextId::root(loc.def.edition))
+                        (loc.kind.original_call_range(db), SyntaxContext::root(loc.def.edition))
                     }
                 }
             }
@@ -438,11 +438,11 @@ impl InFile<TextRange> {
     pub fn original_node_file_range_opt(
         self,
         db: &dyn db::ExpandDatabase,
-    ) -> Option<(FileRange, SyntaxContextId)> {
+    ) -> Option<(FileRange, SyntaxContext)> {
         match self.file_id.repr() {
             HirFileIdRepr::FileId(file_id) => Some((
                 FileRange { file_id, range: self.value },
-                SyntaxContextId::root(file_id.edition()),
+                SyntaxContext::root(file_id.edition()),
             )),
             HirFileIdRepr::MacroFile(mac_file) => {
                 map_node_range_up(db, &db.expansion_span_map(mac_file), self.value)

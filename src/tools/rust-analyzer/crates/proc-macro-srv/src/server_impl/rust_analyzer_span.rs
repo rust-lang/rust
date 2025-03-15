@@ -428,7 +428,7 @@ impl server::Server for RaSpanServer {
 
 #[cfg(test)]
 mod tests {
-    use span::{EditionedFileId, FileId, SyntaxContextId};
+    use span::{EditionedFileId, FileId, SyntaxContext};
 
     use super::*;
 
@@ -440,7 +440,7 @@ mod tests {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
                 ast_id: span::ErasedFileAstId::from_raw(0),
             },
-            ctx: SyntaxContextId::root(span::Edition::CURRENT),
+            ctx: SyntaxContext::root(span::Edition::CURRENT),
         };
         let s = TokenStream {
             token_trees: vec![
@@ -482,7 +482,7 @@ mod tests {
                 file_id: EditionedFileId::current_edition(FileId::from_raw(0)),
                 ast_id: span::ErasedFileAstId::from_raw(0),
             },
-            ctx: SyntaxContextId::root(span::Edition::CURRENT),
+            ctx: SyntaxContext::root(span::Edition::CURRENT),
         };
         let subtree_paren_a = vec![
             tt::TokenTree::Subtree(tt::Subtree {

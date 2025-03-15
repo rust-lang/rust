@@ -85,7 +85,7 @@ use hir_expand::{
 use item_tree::ExternBlock;
 use la_arena::Idx;
 use nameres::DefMap;
-use span::{AstIdNode, Edition, FileAstId, SyntaxContextId};
+use span::{AstIdNode, Edition, FileAstId, SyntaxContext};
 use stdx::impl_from;
 use syntax::{ast, AstNode};
 
@@ -1451,7 +1451,7 @@ impl<T: AstIdNode> AstIdWithPath<T> {
 fn macro_call_as_call_id(
     db: &dyn ExpandDatabase,
     call: &AstIdWithPath<ast::MacroCall>,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     expand_to: ExpandTo,
     krate: Crate,
     resolver: impl Fn(&path::ModPath) -> Option<MacroDefId> + Copy,
@@ -1473,7 +1473,7 @@ fn macro_call_as_call_id_with_eager(
     db: &dyn ExpandDatabase,
     ast_id: AstId<ast::MacroCall>,
     path: &path::ModPath,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     expand_to: ExpandTo,
     krate: Crate,
     resolver: impl FnOnce(&path::ModPath) -> Option<MacroDefId>,

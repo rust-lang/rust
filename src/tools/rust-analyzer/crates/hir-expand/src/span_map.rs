@@ -1,6 +1,6 @@
 //! Span maps for real files and macro expansions.
 
-use span::{EditionedFileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContextId};
+use span::{EditionedFileId, HirFileId, HirFileIdRepr, MacroFileId, Span, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{ast, AstNode, TextRange};
 use triomphe::Arc;
@@ -9,7 +9,7 @@ pub use span::RealSpanMap;
 
 use crate::{attrs::collect_attrs, db::ExpandDatabase};
 
-pub type ExpansionSpanMap = span::SpanMap<SyntaxContextId>;
+pub type ExpansionSpanMap = span::SpanMap<SyntaxContext>;
 
 /// Spanmap for a macro file or a real file
 #[derive(Clone, Debug, PartialEq, Eq)]

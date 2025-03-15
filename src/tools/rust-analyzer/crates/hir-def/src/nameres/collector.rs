@@ -20,7 +20,7 @@ use intern::{sym, Interned};
 use itertools::{izip, Itertools};
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use span::{Edition, EditionedFileId, FileAstId, SyntaxContextId};
+use span::{Edition, EditionedFileId, FileAstId, SyntaxContext};
 use syntax::ast;
 use triomphe::Arc;
 
@@ -192,13 +192,13 @@ enum MacroDirectiveKind {
     FnLike {
         ast_id: AstIdWithPath<ast::MacroCall>,
         expand_to: ExpandTo,
-        ctxt: SyntaxContextId,
+        ctxt: SyntaxContext,
     },
     Derive {
         ast_id: AstIdWithPath<ast::Adt>,
         derive_attr: AttrId,
         derive_pos: usize,
-        ctxt: SyntaxContextId,
+        ctxt: SyntaxContext,
         /// The "parent" macro it is resolved to.
         derive_macro_id: MacroCallId,
     },

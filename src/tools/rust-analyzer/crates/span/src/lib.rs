@@ -11,9 +11,6 @@ pub use self::{
     map::{RealSpanMap, SpanMap},
 };
 
-// Remove this
-pub use self::hygiene::{SyntaxContext as SyntaxContextId, SyntaxContextUnderlyingData};
-
 pub use syntax::Edition;
 pub use text_size::{TextRange, TextSize};
 pub use vfs::FileId;
@@ -31,7 +28,7 @@ pub const FIXUP_ERASED_FILE_AST_ID_MARKER: ErasedFileAstId =
     // is required to be stable for the proc-macro-server
     ErasedFileAstId::from_raw(!0 - 1);
 
-pub type Span = SpanData<SyntaxContextId>;
+pub type Span = SpanData<SyntaxContext>;
 
 impl Span {
     pub fn cover(self, other: Span) -> Span {

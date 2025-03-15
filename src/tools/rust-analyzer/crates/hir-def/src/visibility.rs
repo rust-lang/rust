@@ -4,7 +4,7 @@ use std::iter;
 
 use intern::Interned;
 use la_arena::ArenaMap;
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -37,7 +37,7 @@ impl RawVisibility {
     pub(crate) fn from_ast(
         db: &dyn DefDatabase,
         node: Option<ast::Visibility>,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
     ) -> RawVisibility {
         let node = match node {
             None => return RawVisibility::private(),
@@ -49,7 +49,7 @@ impl RawVisibility {
     fn from_ast_with_span_map(
         db: &dyn DefDatabase,
         node: ast::Visibility,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
     ) -> RawVisibility {
         let path = match node.kind() {
             ast::VisibilityKind::In(path) => {

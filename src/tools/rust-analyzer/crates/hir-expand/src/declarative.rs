@@ -2,7 +2,7 @@
 
 use base_db::Crate;
 use intern::sym;
-use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContextId};
+use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{ast, AstNode};
 use syntax_bridge::DocCommentDesugarMode;
@@ -100,7 +100,7 @@ impl DeclarativeMacroExpander {
                 _ => None,
             }
         };
-        let ctx_edition = |ctx: SyntaxContextId| {
+        let ctx_edition = |ctx: SyntaxContext| {
             if ctx.is_root() {
                 def_crate.data(db).edition
             } else {
@@ -161,7 +161,7 @@ impl DeclarativeMacroExpander {
         };
         let edition = ctx_edition(match id.file_id.repr() {
             HirFileIdRepr::MacroFile(macro_file) => macro_file.macro_call_id.lookup(db).ctxt,
-            HirFileIdRepr::FileId(file) => SyntaxContextId::root(file.edition()),
+            HirFileIdRepr::FileId(file) => SyntaxContext::root(file.edition()),
         });
         Arc::new(DeclarativeMacroExpander { mac, transparency, edition })
     }
