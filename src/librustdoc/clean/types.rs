@@ -772,7 +772,15 @@ impl Item {
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if keep_as_is {
+                // We have separate pretty-printing logic for `#[repr(..)]` attributes.
+                // For example, there are circumstances where `#[repr(transparent)]` is applied
+                // but should not be publicly shown in rustdoc because it isn't public API.
+                if keep_as_is
+                    && !matches!(
+                        attr,
+                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(..))
+                    )
+                {
                     Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
@@ -786,8 +794,7 @@ impl Item {
                 }
             })
             .collect();
-        if !keep_as_is
-            && let Some(def_id) = self.def_id()
+        if let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
             let adt = tcx.adt_def(def_id);
