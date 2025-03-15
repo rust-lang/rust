@@ -214,8 +214,9 @@ fn setup_config_toml(path: &Path, profile: Profile, config: &Config) {
 
     let latest_change_id = CONFIG_CHANGE_HISTORY.last().unwrap().change_id;
     let settings = format!(
-        "# Includes one of the default files in {PROFILE_DIR}\n\
-    profile = \"{profile}\"\n\
+        "# See bootstrap.example.toml for documentation of available options\n\
+    #\n\
+    profile = \"{profile}\"  # Includes one of the default files in {PROFILE_DIR}\n\
     change-id = {latest_change_id}\n"
     );
 
