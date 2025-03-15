@@ -148,6 +148,10 @@ pub(crate) struct SanitizerCfiGeneralizePointersRequiresCfi;
 pub(crate) struct SanitizerCfiNormalizeIntegersRequiresCfi;
 
 #[derive(Diagnostic)]
+#[diag(session_sanitizer_kcfi_arity_requires_kcfi)]
+pub(crate) struct SanitizerKcfiArityRequiresKcfi;
+
+#[derive(Diagnostic)]
 #[diag(session_sanitizer_kcfi_requires_panic_abort)]
 pub(crate) struct SanitizerKcfiRequiresPanicAbort;
 
