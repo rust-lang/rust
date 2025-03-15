@@ -1091,7 +1091,7 @@ fn walk_generics<T: MutVisitor>(vis: &mut T, generics: &mut Generics) {
 }
 
 fn walk_ty_alias_where_clauses<T: MutVisitor>(vis: &mut T, tawcs: &mut TyAliasWhereClauses) {
-    let TyAliasWhereClauses { before, after, split: _ } = tawcs;
+    let TyAliasWhereClauses { before, after, before_count: _, before_with_attr_count: _ } = tawcs;
     let TyAliasWhereClause { has_where_token: _, span: span_before } = before;
     let TyAliasWhereClause { has_where_token: _, span: span_after } = after;
     vis.visit_span(span_before);
