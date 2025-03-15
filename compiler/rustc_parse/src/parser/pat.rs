@@ -363,7 +363,7 @@ impl<'a> Parser<'a> {
                 self.dcx().emit_err(TrailingVertNotAllowed {
                     span: self.token.span,
                     start: lo,
-                    token: self.token.clone(),
+                    token: self.token,
                     note_double_vert: matches!(self.token.kind, token::OrOr),
                 });
                 self.bump();
@@ -1261,7 +1261,7 @@ impl<'a> Parser<'a> {
                 || *t == token::Dot // e.g. `.5` for recovery;
                 || matches!(t.kind, token::Literal(..) | token::Minus)
                 || t.is_bool_lit()
-                || t.is_whole_expr()
+                || t.is_metavar_expr()
                 || t.is_lifetime() // recover `'a` instead of `'a'`
                 || (self.may_recover() // recover leading `(`
                     && *t == token::OpenDelim(Delimiter::Parenthesis)
@@ -1528,8 +1528,8 @@ impl<'a> Parser<'a> {
                 etc = PatFieldsRest::Rest;
                 let mut etc_sp = self.token.span;
                 if first_etc_and_maybe_comma_span.is_none() {
-                    if let Some(comma_tok) = self
-                        .look_ahead(1, |t| if *t == token::Comma { Some(t.clone()) } else { None })
+                    if let Some(comma_tok) =
+                        self.look_ahead(1, |&t| if t == token::Comma { Some(t) } else { None })
                     {
                         let nw_span = self
                             .psess
