@@ -1976,9 +1976,14 @@ where
 }
 
 #[stable(feature = "extract_if", since = "1.87.0")]
-impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F> {
+impl<T, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
+where
+    T: fmt::Debug,
+    A: Allocator,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ExtractIf").field(&self.list).finish()
+        let peek = self.it.map(|node| unsafe { &node.as_ref().element });
+        f.debug_struct("ExtractIf").field("peek", &peek).finish_non_exhaustive()
     }
 }
 

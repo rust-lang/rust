@@ -1,5 +1,5 @@
 use core::ops::{Range, RangeBounds};
-use core::{ptr, slice};
+use core::{fmt, ptr, slice};
 
 use super::Vec;
 use crate::alloc::{Allocator, Global};
@@ -16,7 +16,6 @@ use crate::alloc::{Allocator, Global};
 /// let iter: std::vec::ExtractIf<'_, _, _> = v.extract_if(.., |x| *x % 2 == 0);
 /// ```
 #[stable(feature = "extract_if", since = "1.87.0")]
-#[derive(Debug)]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
     'a,
@@ -106,5 +105,17 @@ impl<T, F, A: Allocator> Drop for ExtractIf<'_, T, F, A> {
             }
             self.vec.set_len(self.old_len - self.del);
         }
+    }
+}
+
+#[stable(feature = "extract_if", since = "1.87.0")]
+impl<T, F, A> fmt::Debug for ExtractIf<'_, T, F, A>
+where
+    T: fmt::Debug,
+    A: Allocator,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let peek = if self.idx < self.end { self.vec.get(self.idx) } else { None };
+        f.debug_struct("ExtractIf").field("peek", &peek).finish_non_exhaustive()
     }
 }
