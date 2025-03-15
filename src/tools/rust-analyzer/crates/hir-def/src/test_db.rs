@@ -282,8 +282,8 @@ impl TestDB {
             base_db::EditionedFileId::new(db.as_dyn_database(), position.file_id);
 
         let root_syntax_node = db.parse(editioned_file_id_wrapper).syntax_node();
-        let scope_iter = algo::ancestors_at_offset(&root_syntax_node, position.offset)
-            .filter_map(|node| {
+        let scope_iter =
+            algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
                 let expr_id = source_map

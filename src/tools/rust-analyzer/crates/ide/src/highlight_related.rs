@@ -157,7 +157,10 @@ fn highlight_references(
         match resolution.map(Definition::from) {
             Some(def) => iter::once(def).collect(),
             None => {
-                return Some(vec![HighlightedRange { range, category: ReferenceCategory::empty() }]);
+                return Some(vec![HighlightedRange {
+                    range,
+                    category: ReferenceCategory::empty(),
+                }]);
             }
         }
     } else {
