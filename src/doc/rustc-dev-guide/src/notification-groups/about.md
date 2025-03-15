@@ -22,13 +22,15 @@ Here's the list of the notification groups:
 - [Apple](./apple.md)
 - [ARM](./arm.md)
 - [Cleanup Crew](./cleanup-crew.md)
+- [codegen-cranelift](./codegen-cranelift.md)
+- [codegen-gcc](./codegen-gcc.md)
 - [Emscripten](./emscripten.md)
 - [LLVM](./llvm.md)
 - [RISC-V](./risc-v.md)
+- [Rust for Linux](./rust-for-linux.md)
 - [WASI](./wasi.md)
 - [WebAssembly](./wasm.md)
 - [Windows](./windows.md)
-- [Rust for Linux](./rust-for-linux.md)
 
 ## What issues are a good fit for notification groups?
 
@@ -82,9 +84,12 @@ group. For example:
 @rustbot ping apple
 @rustbot ping arm
 @rustbot ping cleanup-crew
+@rustbot ping codegen-cranelift
+@rustbot ping codegen-gcc
 @rustbot ping emscripten
 @rustbot ping llvm
 @rustbot ping risc-v
+@rustbot ping rfl
 @rustbot ping wasi
 @rustbot ping wasm
 @rustbot ping windows
