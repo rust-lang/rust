@@ -360,7 +360,7 @@ impl Sysroot {
             res.packages.remove(idx);
         });
 
-        let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default());
+        let cargo_workspace = CargoWorkspace::new(res, library_manifest, Default::default(), true);
         Some(RustLibSrcWorkspace::Workspace(cargo_workspace))
     }
 }

@@ -35,6 +35,8 @@ pub struct CargoWorkspace {
     target_directory: AbsPathBuf,
     manifest_path: ManifestPath,
     is_virtual_workspace: bool,
+    /// Whether this workspace represents the sysroot workspace.
+    is_sysroot: bool,
     /// Environment variables set in the `.cargo/config` file.
     config_env: Env,
 }
@@ -418,6 +420,7 @@ impl CargoWorkspace {
         mut meta: cargo_metadata::Metadata,
         ws_manifest_path: ManifestPath,
         cargo_config_env: Env,
+        is_sysroot: bool,
     ) -> CargoWorkspace {
         let mut pkg_by_id = FxHashMap::default();
         let mut packages = Arena::default();
@@ -539,6 +542,7 @@ impl CargoWorkspace {
             target_directory,
             manifest_path: ws_manifest_path,
             is_virtual_workspace,
+            is_sysroot,
             config_env: cargo_config_env,
         }
     }
@@ -631,5 +635,9 @@ impl CargoWorkspace {
 
     pub fn env(&self) -> &Env {
         &self.config_env
+    }
+
+    pub fn is_sysroot(&self) -> bool {
+        self.is_sysroot
     }
 }
