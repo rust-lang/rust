@@ -339,6 +339,7 @@ impl From<crate::net::TcpStream> for OwnedFd {
 #[stable(feature = "io_safety", since = "1.63.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpStream {
+    /// Create a `TcpStream` with a [`OwnedFd`] as inner.
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
@@ -369,6 +370,7 @@ impl From<crate::net::TcpListener> for OwnedFd {
 #[stable(feature = "io_safety", since = "1.63.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::TcpListener {
+    /// Create a `TcpListener` with a [`OwnedFd`] as inner.
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
@@ -399,6 +401,7 @@ impl From<crate::net::UdpSocket> for OwnedFd {
 #[stable(feature = "io_safety", since = "1.63.0")]
 #[cfg(not(target_os = "trusty"))]
 impl From<OwnedFd> for crate::net::UdpSocket {
+    /// Create a `UdpSocket` with a [`OwnedFd`] as inner.
     #[inline]
     fn from(owned_fd: OwnedFd) -> Self {
         Self::from_inner(FromInner::from_inner(FromInner::from_inner(FromInner::from_inner(
