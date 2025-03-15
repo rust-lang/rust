@@ -528,7 +528,7 @@ fn ident_difference_expr_with_base_location(
         &strip_non_ident_wrappers(left).kind,
         &strip_non_ident_wrappers(right).kind,
     ) {
-        (Yield(_), Yield(_))
+        (Yield(_, _), Yield(_, _))
         | (Try(_), Try(_))
         | (Paren(_), Paren(_))
         | (Repeat(_, _), Repeat(_, _))

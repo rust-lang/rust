@@ -1813,7 +1813,7 @@ pub fn walk_expr<T: MutVisitor>(vis: &mut T, Expr { kind, id, span, attrs, token
         ExprKind::Paren(expr) => {
             vis.visit_expr(expr);
         }
-        ExprKind::Yield(expr) => {
+        ExprKind::Yield(expr, _) => {
             visit_opt(expr, |expr| vis.visit_expr(expr));
         }
         ExprKind::Try(expr) => vis.visit_expr(expr),

@@ -1269,7 +1269,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             try_visit!(visitor.visit_ty(container));
             walk_list!(visitor, visit_ident, fields.iter());
         }
-        ExprKind::Yield(optional_expression) => {
+        ExprKind::Yield(optional_expression, _) => {
             visit_opt!(visitor, visit_expr, optional_expression);
         }
         ExprKind::Try(subexpression) => try_visit!(visitor.visit_expr(subexpression)),
