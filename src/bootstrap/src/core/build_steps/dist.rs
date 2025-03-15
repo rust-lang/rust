@@ -2378,7 +2378,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 
