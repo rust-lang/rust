@@ -1725,8 +1725,8 @@ impl String {
 
     /// Inserts a string slice into this `String` at a byte position.
     ///
-    /// This is an *O*(*n*) operation as it requires copying every element in the
-    /// buffer.
+    /// If there is space in `self` this will copy `self.len() - idx + string.len()` bytes,
+    /// otherwise will reallocate and copy `self.len() + string.len()` bytes.
     ///
     /// # Panics
     ///
