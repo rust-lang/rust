@@ -239,7 +239,7 @@ fn normalize_test_name(name: &str) -> String {
 
 /// Prints test changes in Markdown format to stdout.
 fn report_test_diffs(diff: AggregatedTestDiffs) {
-    println!("## Test differences");
+    println!("# Test differences");
     if diff.diffs.is_empty() {
         println!("No test diffs found");
         return;
