@@ -9,10 +9,9 @@ use rustc_data_structures::graph::implementation::{
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::{
     self, ReBound, ReEarlyParam, ReErased, ReError, ReLateParam, RePlaceholder, ReStatic, ReVar,
-    Region, RegionVid, Ty, TyCtxt,
+    Region, RegionVid, Ty, TyCtxt, TypeFoldable, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;

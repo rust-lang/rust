@@ -11,9 +11,9 @@ use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, fold_regions};
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, fold_regions,
+};
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;

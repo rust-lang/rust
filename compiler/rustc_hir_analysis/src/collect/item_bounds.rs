@@ -1,14 +1,13 @@
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
 use rustc_hir as hir;
 use rustc_infer::traits::util;
-use rustc_middle::ty::fold::shift_vars;
 use rustc_middle::ty::{
     self, GenericArgs, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    Upcast, shift_vars,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
 use rustc_span::def_id::{DefId, LocalDefId};
-use rustc_type_ir::Upcast;
 use tracing::{debug, instrument};
 
 use super::ItemCtxt;

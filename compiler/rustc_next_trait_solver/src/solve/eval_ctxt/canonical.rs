@@ -12,10 +12,11 @@
 use std::iter;
 
 use rustc_index::IndexVec;
-use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::relate::solver_relating::RelateExt;
-use rustc_type_ir::{self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner};
+use rustc_type_ir::{
+    self as ty, Canonical, CanonicalVarValues, InferCtxtLike, Interner, TypeFoldable,
+};
 use tracing::{debug, instrument, trace};
 
 use crate::canonicalizer::Canonicalizer;

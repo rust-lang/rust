@@ -32,10 +32,9 @@ pub use self::query::*;
 use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
-use crate::ty::visit::TypeVisitableExt;
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypingEnv,
-    UserTypeAnnotationIndex,
+    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
+    TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -791,7 +790,7 @@ impl<T> ClearCrossCrate<T> {
 const TAG_CLEAR_CROSS_CRATE_CLEAR: u8 = 0;
 const TAG_CLEAR_CROSS_CRATE_SET: u8 = 1;
 
-impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
+impl<'tcx, E: TyEncoder<'tcx>, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
     #[inline]
     fn encode(&self, e: &mut E) {
         if E::CLEAR_CROSS_CRATE {
@@ -807,7 +806,7 @@ impl<E: TyEncoder, T: Encodable<E>> Encodable<E> for ClearCrossCrate<T> {
         }
     }
 }
-impl<D: TyDecoder, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
+impl<'tcx, D: TyDecoder<'tcx>, T: Decodable<D>> Decodable<D> for ClearCrossCrate<T> {
     #[inline]
     fn decode(d: &mut D) -> ClearCrossCrate<T> {
         if D::CLEAR_CROSS_CRATE {

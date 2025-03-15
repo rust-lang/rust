@@ -518,8 +518,7 @@ where
     value
 }
 
-impl<'a, 'tcx> TyDecoder for CacheDecoder<'a, 'tcx> {
-    type I = TyCtxt<'tcx>;
+impl<'a, 'tcx> TyDecoder<'tcx> for CacheDecoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]
@@ -943,8 +942,7 @@ impl<'a, 'tcx> SpanEncoder for CacheEncoder<'a, 'tcx> {
     }
 }
 
-impl<'a, 'tcx> TyEncoder for CacheEncoder<'a, 'tcx> {
-    type I = TyCtxt<'tcx>;
+impl<'a, 'tcx> TyEncoder<'tcx> for CacheEncoder<'a, 'tcx> {
     const CLEAR_CROSS_CRATE: bool = false;
 
     #[inline]

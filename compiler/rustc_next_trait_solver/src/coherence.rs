@@ -3,8 +3,9 @@ use std::ops::ControlFlow;
 
 use derive_where::derive_where;
 use rustc_type_ir::inherent::*;
-use rustc_type_ir::visit::{TypeVisitable, TypeVisitableExt, TypeVisitor};
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
+use rustc_type_ir::{
+    self as ty, InferCtxtLike, Interner, TypeVisitable, TypeVisitableExt, TypeVisitor,
+};
 use tracing::instrument;
 
 /// Whether we do the orphan check relative to this crate or to some remote crate.

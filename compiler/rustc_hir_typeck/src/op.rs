@@ -15,7 +15,6 @@ use rustc_span::source_map::Spanned;
 use rustc_span::{Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{FulfillmentError, Obligation, ObligationCtxt};
-use rustc_type_ir::TyKind::*;
 use tracing::debug;
 use {rustc_ast as ast, rustc_hir as hir};
 
@@ -519,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 {
                     suggest_deref_binop(&mut err, lhs_deref_ty);
                 } else if is_assign == IsAssign::No
-                    && let Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
+                    && let ty::Ref(region, lhs_deref_ty, mutbl) = lhs_ty.kind()
                 {
                     if self.type_is_copy_modulo_regions(self.param_env, *lhs_deref_ty) {
                         suggest_deref_binop(&mut err, *lhs_deref_ty);
@@ -536,7 +535,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             None,
                         );
 
-                        if let Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
+                        if let ty::Ref(region, rhs_deref_ty, mutbl) = rhs_ty.kind() {
                             let rhs_inv_mutbl = mutbl.invert();
                             let rhs_inv_mutbl_ty =
                                 Ty::new_ref(self.tcx, *region, *rhs_deref_ty, rhs_inv_mutbl);
@@ -726,12 +725,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             |ty: Ty<'tcx>| ty.ty_adt_def().is_some_and(|ty_def| Some(ty_def.did()) == string_type);
 
         match (lhs_ty.kind(), rhs_ty.kind()) {
-            (&Ref(_, l_ty, _), &Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
-                if (*l_ty.kind() == Str || is_std_string(l_ty))
-                    && (*r_ty.kind() == Str
+            (&ty::Ref(_, l_ty, _), &ty::Ref(_, r_ty, _)) // &str or &String + &str, &String or &&str
+                if (*l_ty.kind() == ty::Str || is_std_string(l_ty))
+                    && (*r_ty.kind() == ty::Str
                         || is_std_string(r_ty)
                         || matches!(
-                            r_ty.kind(), Ref(_, inner_ty, _) if *inner_ty.kind() == Str
+                            r_ty.kind(), ty::Ref(_, inner_ty, _) if *inner_ty.kind() == ty::Str
                         )) =>
             {
                 if let IsAssign::No = is_assign { // Do not supply this message if `&str += &str`
@@ -755,8 +754,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&Ref(_, l_ty, _), &Adt(..)) // Handle `&str` & `&String` + `String`
-                if (*l_ty.kind() == Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
+            (&ty::Ref(_, l_ty, _), &ty::Adt(..)) // Handle `&str` & `&String` + `String`
+                if (*l_ty.kind() == ty::Str || is_std_string(l_ty)) && is_std_string(rhs_ty) =>
             {
                 err.span_label(
                     op.span,
@@ -847,7 +846,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
                     } else {
                         match actual.kind() {
-                            Uint(_) if op == hir::UnOp::Neg => {
+                            ty::Uint(_) if op == hir::UnOp::Neg => {
                                 err.note("unsigned values cannot be negated");
 
                                 if let hir::ExprKind::Unary(
@@ -881,8 +880,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     );
                                 }
                             }
-                            Str | Never | Char | Tuple(_) | Array(_, _) => {}
-                            Ref(_, lty, _) if *lty.kind() == Str => {}
+                            ty::Str | ty::Never | ty::Char | ty::Tuple(_) | ty::Array(_, _) => {}
+                            ty::Ref(_, lty, _) if *lty.kind() == ty::Str => {}
                             _ => {
                                 self.note_unmet_impls_on_type(&mut err, errors, true);
                             }

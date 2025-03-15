@@ -12,10 +12,9 @@ use rustc_hir::{self as hir, AmbigArg, GenericParamKind, ImplItemKind, intravisi
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    self, BottomUpFolder, GenericArgs, GenericParamDefKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
     TypeSuperFoldable, TypeVisitableExt, TypingMode, Upcast,
 };
 use rustc_middle::{bug, span_bug};

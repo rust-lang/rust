@@ -12,10 +12,9 @@ use rustc_errors::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, IntoDiagArg, Level,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
-use rustc_middle::ty::Ty;
 use rustc_middle::ty::layout::LayoutError;
+use rustc_middle::ty::{FloatTy, Ty};
 use rustc_span::{Span, Symbol};
-use rustc_type_ir::FloatTy;
 
 use crate::assert_module_sources::CguReuse;
 use crate::back::command::Command;

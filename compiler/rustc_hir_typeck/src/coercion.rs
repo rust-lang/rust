@@ -55,8 +55,7 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, AliasTy, GenericArgsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, AliasTy, GenericArgsRef, Ty, TyCtxt, TypeVisitableExt};
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;

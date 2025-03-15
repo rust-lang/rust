@@ -68,7 +68,7 @@ pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
     TyCtxtFeed, tls,
 };
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -98,13 +98,14 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty;
+use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
@@ -116,7 +117,6 @@ pub mod codec;
 pub mod error;
 pub mod fast_reject;
 pub mod flags;
-pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
@@ -126,7 +126,6 @@ pub mod relate;
 pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
-pub mod visit;
 pub mod vtable;
 pub mod walk;
 
@@ -138,6 +137,7 @@ mod context;
 mod diagnostics;
 mod elaborate_impl;
 mod erase_regions;
+mod fold;
 mod generic_args;
 mod generics;
 mod impls_ty;
@@ -154,6 +154,7 @@ mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
+mod visit;
 
 // Data types
 
@@ -442,7 +443,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
@@ -549,13 +550,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Term<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
     fn decode(d: &mut D) -> Self {
         let res: TermKind<'tcx> = Decodable::decode(d);
         res.pack()
@@ -938,7 +939,7 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
 
 pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
 
-impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     fn flags(&self) -> TypeFlags {
         (**self).flags()
     }

@@ -3440,7 +3440,6 @@ dependencies = [
  "rustc_symbol_mangling",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "serde_json",
  "smallvec",
  "tempfile",
@@ -3473,7 +3472,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "tracing",
 ]
 
@@ -3736,7 +3734,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "smallvec",
  "tracing",
 ]
@@ -3775,7 +3772,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_trait_selection",
- "rustc_type_ir",
  "smallvec",
  "tracing",
 ]
@@ -3922,7 +3918,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "smallvec",
  "tracing",
  "unicode-security",
@@ -3998,7 +3993,6 @@ dependencies = [
  "rustc_session",
  "rustc_span",
  "rustc_target",
- "rustc_type_ir",
  "tempfile",
  "tracing",
 ]
@@ -4114,7 +4108,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "smallvec",
  "tracing",
 ]
@@ -4538,7 +4531,6 @@ dependencies = [
  "rustc_span",
  "rustc_target",
  "rustc_trait_selection",
- "rustc_type_ir",
  "tracing",
 ]
 

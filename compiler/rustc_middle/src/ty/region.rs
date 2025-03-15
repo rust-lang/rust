@@ -26,7 +26,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Region<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Region<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Region<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.type_flags()
     }
