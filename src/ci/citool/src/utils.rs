@@ -22,7 +22,9 @@ where
 {
     println!(
         r"<details>
-<summary>{summary}</summary>"
+<summary>{summary}</summary>
+
+"
     );
     func();
     println!("</details>\n");

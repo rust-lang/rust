@@ -246,7 +246,6 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
         println!("No test diffs found");
         return;
     }
-    println!("\n{} test {} found\n", diff.diffs.len(), pluralize("difference", diff.diffs.len()));
 
     fn format_outcome(outcome: &TestOutcome) -> String {
         match outcome {
@@ -320,34 +319,42 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
     // Sort diffs by job group and test name
     grouped_diffs.sort_by(|(d1, g1), (d2, g2)| g1.cmp(&g2).then(d1.test.name.cmp(&d2.test.name)));
 
-    for (diff, job_group) in grouped_diffs {
-        println!(
-            "- `{}`: {} ({})",
-            diff.test.name,
-            format_diff(&diff.diff),
-            format_job_group(job_group)
-        );
-    }
+    output_details(
+        &format!("Show {} test {}\n", original_diff_count, pluralize("diff", original_diff_count)),
+        || {
+            for (diff, job_group) in grouped_diffs {
+                println!(
+                    "- `{}`: {} ({})",
+                    diff.test.name,
+                    format_diff(&diff.diff),
+                    format_job_group(job_group)
+                );
+            }
 
-    let extra_diffs = diffs.len().saturating_sub(max_diff_count);
-    if extra_diffs > 0 {
-        println!("\n(and {extra_diffs} additional {})", pluralize("test diff", extra_diffs));
-    }
+            let extra_diffs = diffs.len().saturating_sub(max_diff_count);
+            if extra_diffs > 0 {
+                println!(
+                    "\n(and {extra_diffs} additional {})",
+                    pluralize("test diff", extra_diffs)
+                );
+            }
 
-    if doctest_count > 0 {
-        println!(
-            "\nAdditionally, {doctest_count} doctest {} were found. These are ignored, as they are noisy.",
-            pluralize("diff", doctest_count)
-        );
-    }
+            if doctest_count > 0 {
+                println!(
+                    "\nAdditionally, {doctest_count} doctest {} were found. These are ignored, as they are noisy.",
+                    pluralize("diff", doctest_count)
+                );
+            }
 
-    // Now print the job group index
-    println!("\n**Job group index**\n");
-    for (group, jobs) in job_index.into_iter().enumerate() {
-        println!(
-            "- {}: {}",
-            format_job_group(group as u64),
-            jobs.iter().map(|j| format!("`{j}`")).collect::<Vec<_>>().join(", ")
-        );
-    }
+            // Now print the job group index
+            println!("\n**Job group index**\n");
+            for (group, jobs) in job_index.into_iter().enumerate() {
+                println!(
+                    "- {}: {}",
+                    format_job_group(group as u64),
+                    jobs.iter().map(|j| format!("`{j}`")).collect::<Vec<_>>().join(", ")
+                );
+            }
+        },
+    );
 }

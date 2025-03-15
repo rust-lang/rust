@@ -19,7 +19,7 @@ use crate::cpu_usage::load_cpu_usage;
 use crate::datadog::upload_datadog_metric;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
-use crate::utils::load_env_var;
+use crate::utils::{load_env_var, output_details};
 use analysis::output_bootstrap_stats;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
@@ -159,6 +159,22 @@ fn postprocess_metrics(
     Ok(())
 }
 
+fn post_merge_report(db: JobDatabase, current: String, parent: String) -> anyhow::Result<()> {
+    let metrics = download_auto_job_metrics(&db, &parent, &current)?;
+
+    output_details("What is this?", || {
+        println!(
+            r#"This is an experimental post-merge analysis report that shows differences in
+test outcomes between the merged PR and its parent PR."#
+        );
+    });
+
+    println!("\nComparing {parent} (parent) -> {current} (this PR)\n");
+    output_test_diffs(metrics);
+
+    Ok(())
+}
+
 #[derive(clap::Parser)]
 enum Args {
     /// Calculate a list of jobs that should be executed on CI.
@@ -243,10 +259,7 @@ fn main() -> anyhow::Result<()> {
             postprocess_metrics(metrics_path, parent, job_name)?;
         }
         Args::PostMergeReport { current, parent } => {
-            let db = load_db(default_jobs_file)?;
-            let metrics = download_auto_job_metrics(&db, &parent, &current)?;
-            println!("Comparing {parent} (base) -> {current} (this PR)\n");
-            output_test_diffs(metrics);
+            post_merge_report(load_db(default_jobs_file)?, current, parent)?;
         }
     }
 
