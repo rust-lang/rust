@@ -73,6 +73,7 @@ fn frob() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_poison_wr() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -85,6 +86,7 @@ fn test_rw_arc_poison_wr() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_poison_mapped_w_r() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -98,6 +100,7 @@ fn test_rw_arc_poison_mapped_w_r() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_poison_ww() {
     let arc = Arc::new(RwLock::new(1));
     assert!(!arc.is_poisoned());
@@ -112,6 +115,7 @@ fn test_rw_arc_poison_ww() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_poison_mapped_w_w() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -126,6 +130,7 @@ fn test_rw_arc_poison_mapped_w_w() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_no_poison_rr() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -139,6 +144,7 @@ fn test_rw_arc_no_poison_rr() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_no_poison_mapped_r_r() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -153,6 +159,7 @@ fn test_rw_arc_no_poison_mapped_r_r() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_no_poison_rw() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -166,6 +173,7 @@ fn test_rw_arc_no_poison_rw() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_no_poison_mapped_r_w() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -218,6 +226,7 @@ fn test_rw_arc() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_rw_arc_access_in_unwind() {
     let arc = Arc::new(RwLock::new(1));
     let arc2 = arc.clone();
@@ -316,6 +325,7 @@ fn test_into_inner_drop() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_inner_poison() {
     let m = new_poisoned_rwlock(NonCopy(10));
 
@@ -333,6 +343,7 @@ fn test_get_cloned() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_get_cloned_poison() {
     let m = new_poisoned_rwlock(Cloneable(10));
 
@@ -350,6 +361,7 @@ fn test_get_mut() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_get_mut_poison() {
     let mut m = new_poisoned_rwlock(NonCopy(10));
 
@@ -377,6 +389,7 @@ fn test_set() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_set_poison() {
     fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
     where
@@ -415,6 +428,7 @@ fn test_replace() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_replace_poison() {
     fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
     where
@@ -482,6 +496,7 @@ fn test_mapping_mapped_guard() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_while_mapping_read_unlocked_no_poison() {
     let lock = RwLock::new(());
 
@@ -551,6 +566,7 @@ fn panic_while_mapping_read_unlocked_no_poison() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_while_mapping_write_unlocked_poison() {
     let lock = RwLock::new(());
 
