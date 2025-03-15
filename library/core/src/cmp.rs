@@ -400,7 +400,7 @@ impl Ordering {
     #[inline]
     const fn as_raw(self) -> i8 {
         // FIXME(const-hack): just use `PartialOrd` against `Equal` once that's const
-        crate::intrinsics::discriminant_value(&self)
+        self as i8
     }
 
     /// Returns `true` if the ordering is the `Equal` variant.

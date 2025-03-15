@@ -24,7 +24,7 @@ pub fn demo_le(a: &MultiField, b: &MultiField) -> bool {
     // CHECK: [[B1:_[0-9]+]] = copy ((*_2).1: i16);
     // CHECK: Cmp(move [[A1]], move [[B1]]);
 
-    // CHECK: [[D1:_[0-9]+]] = discriminant({{.+}});
+    // CHECK: [[D1:_[0-9]+]] = copy {{.+}} as i8 (Transmute);
     // CHECK: _0 = Le(move [[D1]], const 0_i8);
     *a <= *b
 }

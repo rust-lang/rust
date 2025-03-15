@@ -1,0 +1,84 @@
+// MIR for `custom_single_variant` after built
+
+fn custom_single_variant(_1: SingleVariantWithCustomDiscriminant, _2: SingleVariantWithCustomDiscriminantAndRepr) -> impl Sized {
+    debug a => _1;
+    debug b => _2;
+    let mut _0: impl Sized;
+    let mut _3: isize;
+    let _4: SingleVariantWithCustomDiscriminant;
+    let mut _5: usize;
+    let _6: SingleVariantWithCustomDiscriminant;
+    let mut _7: i16;
+    let _8: SingleVariantWithCustomDiscriminant;
+    let mut _9: u16;
+    let _10: SingleVariantWithCustomDiscriminant;
+    let mut _11: isize;
+    let _12: SingleVariantWithCustomDiscriminantAndRepr;
+    let mut _13: u16;
+    let mut _14: usize;
+    let _15: SingleVariantWithCustomDiscriminantAndRepr;
+    let mut _16: u16;
+    let mut _17: i16;
+    let _18: SingleVariantWithCustomDiscriminantAndRepr;
+    let mut _19: u16;
+    let mut _20: u16;
+    let _21: SingleVariantWithCustomDiscriminantAndRepr;
+    let mut _22: u16;
+
+    bb0: {
+        StorageLive(_3);
+        StorageLive(_4);
+        _4 = copy _1;
+        _3 = const 42_isize as isize (IntToInt);
+        StorageDead(_4);
+        StorageLive(_5);
+        StorageLive(_6);
+        _6 = copy _1;
+        _5 = const 42_isize as usize (IntToInt);
+        StorageDead(_6);
+        StorageLive(_7);
+        StorageLive(_8);
+        _8 = copy _1;
+        _7 = const 42_isize as i16 (IntToInt);
+        StorageDead(_8);
+        StorageLive(_9);
+        StorageLive(_10);
+        _10 = copy _1;
+        _9 = const 42_isize as u16 (IntToInt);
+        StorageDead(_10);
+        StorageLive(_11);
+        StorageLive(_12);
+        _12 = copy _2;
+        _13 = move _12 as u16 (Transmute);
+        _11 = move _13 as isize (IntToInt);
+        StorageDead(_12);
+        StorageLive(_14);
+        StorageLive(_15);
+        _15 = copy _2;
+        _16 = move _15 as u16 (Transmute);
+        _14 = move _16 as usize (IntToInt);
+        StorageDead(_15);
+        StorageLive(_17);
+        StorageLive(_18);
+        _18 = copy _2;
+        _19 = move _18 as u16 (Transmute);
+        _17 = move _19 as i16 (IntToInt);
+        StorageDead(_18);
+        StorageLive(_20);
+        StorageLive(_21);
+        _21 = copy _2;
+        _22 = move _21 as u16 (Transmute);
+        _20 = move _22 as u16 (IntToInt);
+        StorageDead(_21);
+        _0 = (move _3, move _5, move _7, move _9, move _11, move _14, move _17, move _20);
+        StorageDead(_20);
+        StorageDead(_17);
+        StorageDead(_14);
+        StorageDead(_11);
+        StorageDead(_9);
+        StorageDead(_7);
+        StorageDead(_5);
+        StorageDead(_3);
+        return;
+    }
+}
