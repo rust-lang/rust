@@ -984,3 +984,39 @@ fn test_ptr_metadata_in_const() {
     assert_eq!(SLICE_META, 3);
     assert_eq!(DYN_META.size_of(), 42);
 }
+
+// See <https://github.com/rust-lang/rust/issues/134713>
+const fn ptr_swap_nonoverlapping_is_untyped_inner() {
+    #[repr(C)]
+    struct HasPadding(usize, u8);
+
+    let buf1: [usize; 2] = [1000, 2000];
+    let buf2: [usize; 2] = [3000, 4000];
+
+    // HasPadding and [usize; 2] have the same size and alignment,
+    // so swap_nonoverlapping should treat them the same
+    assert!(size_of::<HasPadding>() == size_of::<[usize; 2]>());
+    assert!(align_of::<HasPadding>() == align_of::<[usize; 2]>());
+
+    let mut b1 = buf1;
+    let mut b2 = buf2;
+    // Safety: b1 and b2 are distinct local variables,
+    // with the same size and alignment as HasPadding.
+    unsafe {
+        std::ptr::swap_nonoverlapping(
+            b1.as_mut_ptr().cast::<HasPadding>(),
+            b2.as_mut_ptr().cast::<HasPadding>(),
+            1,
+        );
+    }
+    assert!(b1[0] == buf2[0]);
+    assert!(b1[1] == buf2[1]);
+    assert!(b2[0] == buf1[0]);
+    assert!(b2[1] == buf1[1]);
+}
+
+#[test]
+fn test_ptr_swap_nonoverlapping_is_untyped() {
+    ptr_swap_nonoverlapping_is_untyped_inner();
+    const { ptr_swap_nonoverlapping_is_untyped_inner() };
+}
