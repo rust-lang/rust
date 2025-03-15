@@ -201,7 +201,7 @@ impl Struct {
     pub(crate) fn delegate(&self, field: Field, acc: &mut Assists, ctx: &AssistContext<'_>) {
         let db = ctx.db();
 
-        for delegee in &field.impls {
+        for (index, delegee) in field.impls.iter().enumerate() {
             let trait_ = match delegee {
                 Delegee::Bound(b) => b,
                 Delegee::Impls(i, _) => i,
@@ -229,7 +229,11 @@ impl Struct {
 
             acc.add_group(
                 &GroupLabel(format!("Generate delegate trait impls for field `{}`", field.name)),
-                AssistId("generate_delegate_trait", ide_db::assists::AssistKind::Generate),
+                AssistId(
+                    "generate_delegate_trait",
+                    ide_db::assists::AssistKind::Generate,
+                    Some(index),
+                ),
                 format!("Generate delegate trait impl `{}` for `{}`", signature, field.name),
                 field.range,
                 |builder| {

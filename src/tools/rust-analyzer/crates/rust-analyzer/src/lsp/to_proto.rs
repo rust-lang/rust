@@ -1514,7 +1514,12 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params, version))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
+                id: format!(
+                    "{}:{}:{index}:{}",
+                    assist.id.0,
+                    assist.id.1.name(),
+                    assist.id.2.map(|x| x.to_string()).unwrap_or("".to_owned())
+                ),
                 code_action_params,
                 version,
             });
