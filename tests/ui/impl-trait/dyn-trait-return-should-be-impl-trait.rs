@@ -6,11 +6,9 @@ impl Trait for u32 {}
 
 fn fuz() -> (usize, Trait) { (42, Struct) }
 //~^ ERROR E0277
-//~| ERROR E0277
 //~| ERROR E0308
 fn bar() -> (usize, dyn Trait) { (42, Struct) }
 //~^ ERROR E0277
-//~| ERROR E0277
 //~| ERROR E0308
 fn bap() -> Trait { Struct }
 //~^ ERROR E0746

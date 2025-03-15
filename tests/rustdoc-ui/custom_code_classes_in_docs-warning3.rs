@@ -2,11 +2,8 @@
 // feature.
 
 #![deny(warnings)]
-#![feature(no_core, lang_items)]
+#![feature(no_core)]
 #![no_core]
-
-#[lang = "sized"]
-trait Sized {}
 
 /// ```{class="}
 /// main;

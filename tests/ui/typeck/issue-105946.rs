@@ -1,5 +1,4 @@
 fn digit() -> str {
-    //~^ ERROR the size for values of type
     return {};
     //~^ ERROR: mismatched types [E0308]
 }
