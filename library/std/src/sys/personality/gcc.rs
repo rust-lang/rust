@@ -248,7 +248,10 @@ cfg_if::cfg_if! {
         }
 
         cfg_if::cfg_if! {
-            if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+            if #[cfg(any(
+                    all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+                    target_os = "cygwin",
+                ))] {
                 /// personality fn called by [Windows Structured Exception Handling][windows-eh]
                 ///
                 /// On x86_64 and AArch64 MinGW targets, the unwinding mechanism is SEH,
