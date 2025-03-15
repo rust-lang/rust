@@ -183,6 +183,20 @@ impl<'tcx> DefiningTy<'tcx> {
             | DefiningTy::GlobalAsm(def_id) => def_id,
         }
     }
+
+    /// Returns the args of the `DefiningTy`. These are equivalent to the identity
+    /// substs of the body, but replaced with region vids.
+    pub(crate) fn args(&self) -> ty::GenericArgsRef<'tcx> {
+        match *self {
+            DefiningTy::Closure(_, args)
+            | DefiningTy::Coroutine(_, args)
+            | DefiningTy::CoroutineClosure(_, args)
+            | DefiningTy::FnDef(_, args)
+            | DefiningTy::Const(_, args)
+            | DefiningTy::InlineConst(_, args) => args,
+            DefiningTy::GlobalAsm(_) => ty::List::empty(),
+        }
+    }
 }
 
 #[derive(Debug)]

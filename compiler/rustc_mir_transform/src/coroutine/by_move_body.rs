@@ -178,7 +178,7 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
                 ),
             };
 
-            (
+            Some((
                 FieldIdx::from_usize(child_field_idx + num_args),
                 (
                     FieldIdx::from_usize(parent_field_idx + num_args),
@@ -186,9 +186,10 @@ pub(crate) fn coroutine_by_move_body_def_id<'tcx>(
                     peel_deref,
                     child_precise_captures,
                 ),
-            )
+            ))
         },
     )
+    .flatten()
     .collect();
 
     if coroutine_kind == ty::ClosureKind::FnOnce {
@@ -312,10 +313,46 @@ impl<'tcx> MutVisitor<'tcx> for MakeByMoveBody<'tcx> {
         self.super_place(place, context, location);
     }
 
+    fn visit_statement(&mut self, statement: &mut mir::Statement<'tcx>, location: mir::Location) {
+        // Remove fake borrows of closure captures if that capture has been
+        // replaced with a by-move version of that capture.
+        //
+        // For example, imagine we capture `Foo` in the parent and `&Foo`
+        // in the child. We will emit two fake borrows like:
+        //
+        // ```
+        //    _2 = &fake shallow (*(_1.0: &Foo));
+        //    _3 = &fake shallow (_1.0: &Foo);
+        // ```
+        //
+        // However, since this transform is responsible for replacing
+        // `_1.0: &Foo` with `_1.0: Foo`, that makes the second fake borrow
+        // obsolete, and we should replace it with a nop.
+        //
+        // As a side-note, we don't actually even care about fake borrows
+        // here at all since they're fully a MIR borrowck artifact, and we
+        // don't need to borrowck by-move MIR bodies. But it's best to preserve
+        // as much as we can between these two bodies :)
+        if let mir::StatementKind::Assign(box (_, rvalue)) = &statement.kind
+            && let mir::Rvalue::Ref(_, mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow), place) =
+                rvalue
+            && let mir::PlaceRef {
+                local: ty::CAPTURE_STRUCT_LOCAL,
+                projection: [mir::ProjectionElem::Field(idx, _)],
+            } = place.as_ref()
+            && let Some(&(_, _, true, _)) = self.field_remapping.get(&idx)
+        {
+            statement.kind = mir::StatementKind::Nop;
+        }
+
+        self.super_statement(statement, location);
+    }
+
     fn visit_local_decl(&mut self, local: mir::Local, local_decl: &mut mir::LocalDecl<'tcx>) {
         // Replace the type of the self arg.
         if local == ty::CAPTURE_STRUCT_LOCAL {
             local_decl.ty = self.by_move_coroutine_ty;
         }
+        self.super_local_decl(local, local_decl);
     }
 }

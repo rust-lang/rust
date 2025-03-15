@@ -1771,6 +1771,22 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 {
                     span_mirbug!(self, constant, "bad static type {:?} ({:?})", constant, terr);
                 }
+            } else if let Const::Ty(_, ct) = constant.const_
+                && let ty::ConstKind::Param(p) = ct.kind()
+            {
+                let body_def_id = self.universal_regions.defining_ty.def_id();
+                let const_param = tcx.generics_of(body_def_id).const_param(p, tcx);
+                self.ascribe_user_type(
+                    constant.const_.ty(),
+                    ty::UserType::new(ty::UserTypeKind::TypeOf(
+                        const_param.def_id,
+                        UserArgs {
+                            args: self.universal_regions.defining_ty.args(),
+                            user_self_ty: None,
+                        },
+                    )),
+                    locations.span(self.body),
+                );
             }
 
             if let ty::FnDef(def_id, args) = *constant.const_.ty().kind() {

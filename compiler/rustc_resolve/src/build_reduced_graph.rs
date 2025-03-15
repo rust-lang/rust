@@ -1115,6 +1115,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
             });
         } else {
+            #[allow(rustc::potential_query_instability)] // FIXME
             for ident in single_imports.iter().cloned() {
                 let result = self.r.maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),

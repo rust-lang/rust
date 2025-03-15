@@ -259,6 +259,12 @@ impl<V: Eq + Hash> UnordSet<V> {
         self.inner.is_empty()
     }
 
+    /// If the set has only one element, returns it, otherwise returns `None`.
+    #[inline]
+    pub fn get_only(&self) -> Option<&V> {
+        if self.inner.len() == 1 { self.inner.iter().next() } else { None }
+    }
+
     #[inline]
     pub fn insert(&mut self, v: V) -> bool {
         self.inner.insert(v)
