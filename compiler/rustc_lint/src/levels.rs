@@ -299,6 +299,11 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
         intravisit::walk_expr(self, e);
     }
 
+    fn visit_pat_field(&mut self, f: &'tcx hir::PatField<'tcx>) -> Self::Result {
+        self.add_id(f.hir_id);
+        intravisit::walk_pat_field(self, f);
+    }
+
     fn visit_expr_field(&mut self, f: &'tcx hir::ExprField<'tcx>) {
         self.add_id(f.hir_id);
         intravisit::walk_expr_field(self, f);

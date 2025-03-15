@@ -24,6 +24,8 @@ pub struct Job {
     /// Free additional disk space in the job, by removing unused packages.
     #[serde(default)]
     pub free_disk: Option<bool>,
+    /// Documentation link to a resource that could help people debug this CI job.
+    pub doc_url: Option<String>,
 }
 
 impl Job {
@@ -103,6 +105,8 @@ struct GithubActionsJob {
     continue_on_error: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     free_disk: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    doc_url: Option<String>,
 }
 
 /// Skip CI jobs that are not supposed to be executed on the given `channel`.
@@ -188,6 +192,7 @@ fn calculate_jobs(
                 env,
                 continue_on_error: job.continue_on_error,
                 free_disk: job.free_disk,
+                doc_url: job.doc_url,
             }
         })
         .collect();

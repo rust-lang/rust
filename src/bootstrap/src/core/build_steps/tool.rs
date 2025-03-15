@@ -209,7 +209,7 @@ impl Step for ToolBuild {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
+#[expect(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -1024,7 +1024,7 @@ pub struct LibcxxVersionTool {
     pub target: TargetSelection,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Clone)]
 pub enum LibcxxVersion {
     Gnu(usize),

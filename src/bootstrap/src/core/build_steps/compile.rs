@@ -67,7 +67,7 @@ impl Std {
         self
     }
 
-    #[allow(clippy::wrong_self_convention)]
+    #[expect(clippy::wrong_self_convention)]
     pub fn is_for_mir_opt_tests(mut self, is_for_mir_opt_tests: bool) -> Self {
         self.is_for_mir_opt_tests = is_for_mir_opt_tests;
         self

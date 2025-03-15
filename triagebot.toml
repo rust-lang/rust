@@ -1115,7 +1115,6 @@ compiler = [
     "@wesleywiser",
 ]
 libs = [
-    "@cuviper",
     "@Mark-Simulacrum",
     "@Amanieu",
     "@Noratrieb",

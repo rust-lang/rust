@@ -19,8 +19,6 @@ use crate::{fmt, io, ptr};
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
-    } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &CStr = c"null:";
     } else if #[cfg(target_os = "vxworks")] {
         const DEV_NULL: &CStr = c"/null";
     } else {

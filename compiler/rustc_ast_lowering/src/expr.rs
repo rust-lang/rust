@@ -351,7 +351,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         rest,
                     )
                 }
-                ExprKind::Yield(opt_expr) => self.lower_expr_yield(e.span, opt_expr.as_deref()),
+                ExprKind::Yield(kind) => self.lower_expr_yield(e.span, kind.expr().map(|x| &**x)),
                 ExprKind::Err(guar) => hir::ExprKind::Err(*guar),
 
                 ExprKind::UnsafeBinderCast(kind, expr, ty) => hir::ExprKind::UnsafeBinderCast(

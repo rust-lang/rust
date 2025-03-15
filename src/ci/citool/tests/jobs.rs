@@ -40,7 +40,7 @@ try-job: dist-i686-msvc"#,
 fn pr_jobs() {
     let stdout = get_matrix("pull_request", "commit", "refs/heads/pr/1234");
     insta::assert_snapshot!(stdout, @r#"
-    jobs=[{"name":"mingw-check","full_name":"PR - mingw-check","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"mingw-check-tidy","full_name":"PR - mingw-check-tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true}]
+    jobs=[{"name":"mingw-check","full_name":"PR - mingw-check","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"free_disk":true},{"name":"mingw-check-tidy","full_name":"PR - mingw-check-tidy","os":"ubuntu-24.04","env":{"PR_CI_JOB":1},"continue_on_error":true,"free_disk":true,"doc_url":"https://foo.bar"}]
     run_type=pr
     "#);
 }

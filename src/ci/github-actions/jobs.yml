@@ -267,11 +267,13 @@ auto:
     # nightly features to compile, and this job would fail if
     # executed on beta and stable.
     only_on_channel: nightly
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
     <<: *job-linux-8c
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
   - name: x86_64-rust-for-linux
+    doc_url: https://rustc-dev-guide.rust-lang.org/tests/rust-for-linux.html
     <<: *job-linux-4c
 
   - name: x86_64-gnu

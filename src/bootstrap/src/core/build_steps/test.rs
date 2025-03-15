@@ -3377,7 +3377,7 @@ impl Step for CodegenCranelift {
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         builder.config.try_run(&mut prepare_cargo.into()).unwrap();
         */
 
@@ -3508,7 +3508,7 @@ impl Step for CodegenGCC {
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare");
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         builder.config.try_run(&mut prepare_cargo.into()).unwrap();
         */
 
