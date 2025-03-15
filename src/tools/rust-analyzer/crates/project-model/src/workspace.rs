@@ -1051,7 +1051,7 @@ fn project_json_to_crate_graph(
                     *edition,
                     display_name.clone(),
                     version.clone(),
-                    Arc::new(cfg_options),
+                    cfg_options,
                     None,
                     env,
                     if let Some(name) = display_name.clone() {
@@ -1341,7 +1341,7 @@ fn detached_file_to_crate_graph(
     }
     cfg_options.insert_atom(sym::rust_analyzer.clone());
     override_cfg.apply(&mut cfg_options, "");
-    let cfg_options = Arc::new(cfg_options);
+    let cfg_options = cfg_options;
 
     let file_id = match load(detached_file) {
         Some(file_id) => file_id,
@@ -1526,7 +1526,7 @@ fn add_target_crate_root(
         edition,
         Some(CrateDisplayName::from_canonical_name(cargo_name)),
         Some(pkg.version.to_string()),
-        Arc::new(cfg_options),
+        cfg_options,
         potential_cfg_options,
         env,
         origin,
@@ -1680,13 +1680,13 @@ fn sysroot_to_crate_graph(
             extend_crate_graph_with_sysroot(crate_graph, sysroot_cg, sysroot_pm)
         }
         RustLibSrcWorkspace::Stitched(stitched) => {
-            let cfg_options = Arc::new({
+            let cfg_options = {
                 let mut cfg_options = CfgOptions::default();
                 cfg_options.extend(rustc_cfg);
                 cfg_options.insert_atom(sym::debug_assertions.clone());
                 cfg_options.insert_atom(sym::miri.clone());
                 cfg_options
-            });
+            };
             let sysroot_crates: FxHashMap<
                 crate::sysroot::stitched::RustLibSrcCrate,
                 CrateBuilderId,

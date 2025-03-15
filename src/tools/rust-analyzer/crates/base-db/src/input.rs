@@ -89,7 +89,7 @@ impl ops::Index<CrateBuilderId> for CrateGraphBuilder {
 pub struct CrateBuilder {
     pub basic: CrateDataBuilder,
     pub extra: ExtraCrateData,
-    pub cfg_options: Arc<CfgOptions>,
+    pub cfg_options: CfgOptions,
     pub env: Env,
     ws_data: Arc<CrateWorkspaceData>,
 }
@@ -403,9 +403,8 @@ pub struct Crate {
     // This is in `Arc` because it is shared for all crates in a workspace.
     #[return_ref]
     pub workspace_data: Arc<CrateWorkspaceData>,
-    // FIXME: Remove this `Arc`.
     #[return_ref]
-    pub cfg_options: Arc<CfgOptions>,
+    pub cfg_options: CfgOptions,
     #[return_ref]
     pub env: Env,
 }
@@ -421,7 +420,7 @@ impl CrateGraphBuilder {
         edition: Edition,
         display_name: Option<CrateDisplayName>,
         version: Option<String>,
-        cfg_options: Arc<CfgOptions>,
+        cfg_options: CfgOptions,
         potential_cfg_options: Option<CfgOptions>,
         mut env: Env,
         origin: CrateOrigin,

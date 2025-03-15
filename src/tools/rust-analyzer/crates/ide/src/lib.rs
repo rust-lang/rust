@@ -250,7 +250,7 @@ impl Analysis {
             Edition::CURRENT,
             None,
             None,
-            Arc::new(cfg_options),
+            cfg_options,
             None,
             Env::default(),
             CrateOrigin::Local { repo: None, name: None },

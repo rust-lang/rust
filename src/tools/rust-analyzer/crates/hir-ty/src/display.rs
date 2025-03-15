@@ -1226,7 +1226,7 @@ impl HirDisplay for Ty {
             TyKind::Adt(AdtId(def_id), parameters) => {
                 f.start_location_link((*def_id).into());
                 match f.display_kind {
-                    DisplayKind::Diagnostics { .. } | DisplayKind::Test { .. } => {
+                    DisplayKind::Diagnostics | DisplayKind::Test => {
                         let name = match *def_id {
                             hir_def::AdtId::StructId(it) => db.struct_data(it).name.clone(),
                             hir_def::AdtId::UnionId(it) => db.union_data(it).name.clone(),
