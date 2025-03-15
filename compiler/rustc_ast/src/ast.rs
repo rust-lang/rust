@@ -3143,6 +3143,10 @@ impl AttrItem {
             || self.path == sym::allow
             || self.path == sym::deny
     }
+
+    pub fn is_cfg_placeholder(&self) -> bool {
+        self.path == sym::rustc_cfg_placeholder
+    }
 }
 
 /// `TraitRef`s appear in impls.

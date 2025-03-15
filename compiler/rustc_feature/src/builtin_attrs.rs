@@ -752,6 +752,12 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         template!(Word, List: r#""...""#), DuplicatesOk,
         EncodeCrossCrate::Yes, INTERNAL_UNSTABLE
     ),
+    // placeholder that replaces `cfg_attr` in the item's attribute list
+    ungated!(
+        rustc_cfg_placeholder, Normal, template!(Word /* irrelevant */), DuplicatesOk,
+        EncodeCrossCrate::No
+    ),
+
 
     // ==========================================================================
     // Internal attributes, Diagnostics related:

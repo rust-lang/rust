@@ -1745,6 +1745,8 @@ symbols! {
         rustc_autodiff,
         rustc_builtin_macro,
         rustc_capture_analysis,
+        // We ensure that the attribute can't be written by end users by adding `-` to the name.
+        rustc_cfg_placeholder: "rustc-cfg-placeholder",
         rustc_clean,
         rustc_coherence_is_core,
         rustc_coinductive,
