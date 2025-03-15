@@ -470,22 +470,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             }
         }
 
-        // Feature gate checking for asm goto.
+        // Feature gate checking for `asm_goto_with_outputs`.
         if let Some((_, op_sp)) =
             operands.iter().find(|(op, _)| matches!(op, hir::InlineAsmOperand::Label { .. }))
         {
-            if !self.tcx.features().asm_goto() {
-                feature_err(
-                    sess,
-                    sym::asm_goto,
-                    *op_sp,
-                    fluent::ast_lowering_unstable_inline_assembly_label_operands,
-                )
-                .emit();
-            }
-
-            // In addition, check if an output operand is used.
-            // This is gated behind an additional feature.
+            // Check if an output operand is used.
             let output_operand_used = operands.iter().any(|(op, _)| {
                 matches!(
                     op,
