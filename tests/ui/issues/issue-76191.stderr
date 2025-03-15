@@ -3,8 +3,6 @@ error[E0080]: evaluation of constant value failed
    |
 LL | const RANGE2: RangeInclusive<i32> = panic!();
    |                                     ^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0308]: mismatched types
   --> $DIR/issue-76191.rs:14:9

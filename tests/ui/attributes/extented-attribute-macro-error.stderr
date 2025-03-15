@@ -3,8 +3,6 @@ error: couldn't read the file
    |
 LL | #![doc = include_str!("../not_existing_file.md")]
    |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: this error originates in the macro `include_str` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

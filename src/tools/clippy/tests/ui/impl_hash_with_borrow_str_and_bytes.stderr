@@ -23,7 +23,6 @@ LL | #[derive(Hash)]
    = note: ... as (`hash("abc") != hash("abc".as_bytes())`
    = help: consider either removing one of the  `Borrow` implementations (`Borrow<str>` or `Borrow<[u8]>`) ...
    = help: ... or not implementing `Hash` for this type
-   = note: this error originates in the derive macro `Hash` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: the semantics of `Borrow<T>` around `Hash` can't be satisfied when both `Borrow<str>` and `Borrow<[u8]>` are implemented
   --> tests/ui/impl_hash_with_borrow_str_and_bytes.rs:117:6

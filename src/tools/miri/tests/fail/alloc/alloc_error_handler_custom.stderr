@@ -21,7 +21,6 @@ note: inside `miri_start`
    |
 LL |     handle_alloc_error(Layout::for_value(&0));
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

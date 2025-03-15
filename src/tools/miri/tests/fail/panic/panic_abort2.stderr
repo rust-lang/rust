@@ -22,7 +22,6 @@ note: inside `main`
    |
 LL |     std::panic!("{}-panicking from libstd", 42);
    | ^
-   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `std::panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

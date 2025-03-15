@@ -6,7 +6,6 @@ LL |     format!(concat!("{foo}"));
    |
    = note: did you intend to capture a variable `foo` from the surrounding scope?
    = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
-   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: there is no argument named `bar`
   --> $DIR/format-args-capture-macro-hygiene.rs:16:13
@@ -16,7 +15,6 @@ LL |     format!(concat!("{ba", "r} {}"), 1);
    |
    = note: did you intend to capture a variable `bar` from the surrounding scope?
    = note: to avoid ambiguity, `format_args!` cannot capture variables when the format string is expanded from a macro
-   = note: this error originates in the macro `concat` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: there is no argument named `foo`
   --> $DIR/format-args-capture-macro-hygiene.rs:7:13

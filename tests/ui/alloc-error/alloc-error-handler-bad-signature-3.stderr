@@ -14,7 +14,6 @@ note: function defined here
    |
 LL | fn oom() -> ! {
    |    ^^^
-   = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 
