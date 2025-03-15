@@ -131,7 +131,7 @@ linker = "/path/to/x86_64-unknown-linux-ohos-clang.sh"
 ## Building the target from source
 
 Instead of using `rustup`, you can instead build a rust toolchain from source.
-Create a `config.toml` with the following contents:
+Create a `bootstrap.toml` with the following contents:
 
 ```toml
 profile = "compiler"

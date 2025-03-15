@@ -85,10 +85,10 @@ llvm-config = "{llvm_config}"
         cargo = cargo_path.to_string().replace('\\', "/"),
         llvm_config = llvm_config.to_string().replace('\\', "/")
     );
-    log::info!("Using following `config.toml` for running tests:\n{config_content}");
+    log::info!("Using following `bootstrap.toml` for running tests:\n{config_content}");
 
     // Simulate a stage 0 compiler with the extracted optimized dist artifacts.
-    with_backed_up_file(Path::new("config.toml"), &config_content, || {
+    with_backed_up_file(Path::new("bootstrap.toml"), &config_content, || {
         let x_py = env.checkout_path().join("x.py");
         let mut args = vec![
             env.python_binary(),
