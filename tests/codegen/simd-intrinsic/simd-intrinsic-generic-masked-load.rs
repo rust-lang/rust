@@ -23,6 +23,19 @@ pub unsafe fn load_f32x2(mask: Vec2<i32>, pointer: *const f32, values: Vec2<f32>
     simd_masked_load(mask, pointer, values)
 }
 
+// CHECK-LABEL: @load_f32x2_unsigned
+#[no_mangle]
+pub unsafe fn load_f32x2_unsigned(
+    mask: Vec2<u32>,
+    pointer: *const f32,
+    values: Vec2<f32>,
+) -> Vec2<f32> {
+    // CHECK: [[A:%[0-9]+]] = lshr <2 x i32> {{.*}}, {{<i32 31, i32 31>|splat \(i32 31\)}}
+    // CHECK: [[B:%[0-9]+]] = trunc <2 x i32> [[A]] to <2 x i1>
+    // CHECK: call <2 x float> @llvm.masked.load.v2f32.p0(ptr {{.*}}, i32 4, <2 x i1> [[B]], <2 x float> {{.*}})
+    simd_masked_load(mask, pointer, values)
+}
+
 // CHECK-LABEL: @load_pf32x4
 #[no_mangle]
 pub unsafe fn load_pf32x4(
