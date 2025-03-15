@@ -18,7 +18,7 @@ impl Foo for S2 {
 
     fn foo<T: Debug>(_: T) -> Self::Item {
         S::<T>(Default::default())
-        //~^ Error type parameter `T` is part of concrete type but not used in parameter list for the `impl Trait` type alias
+        //~^ Error type parameter `T` is mentioned
     }
 }
 
