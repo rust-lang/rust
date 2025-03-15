@@ -29,6 +29,7 @@ use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
 use tracing::{debug, instrument, trace};
 use ty::VariantDef;
+use ty::adjustment::{PatAdjust, PatAdjustment};
 
 use super::report_unexpected_variant_res;
 use crate::expectation::Expectation;
@@ -415,7 +416,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .pat_adjustments_mut()
                     .entry(pat.hir_id)
                     .or_default()
-                    .push(expected);
+                    .push(PatAdjustment { kind: PatAdjust::BuiltinDeref, source: expected });
 
                 let mut binding_mode = ByRef::Yes(match pat_info.binding_mode {
                     // If default binding mode is by value, make it `ref` or `ref mut`
