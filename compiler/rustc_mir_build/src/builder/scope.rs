@@ -305,27 +305,25 @@ impl DropTree {
     }
 
     /// Builds the MIR for a given drop tree.
-    ///
-    /// `blocks` should have the same length as `self.drops`, and may have its
-    /// first value set to some already existing block.
     fn build_mir<'tcx, T: DropTreeBuilder<'tcx>>(
         &mut self,
         cfg: &mut CFG<'tcx>,
-        blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
-    ) {
+        root_node: Option<BasicBlock>,
+    ) -> IndexVec<DropIdx, Option<BasicBlock>> {
         debug!("DropTree::build_mir(drops = {:#?})", self);
-        assert_eq!(blocks.len(), self.drops.len());
 
-        self.assign_blocks::<T>(cfg, blocks);
-        self.link_blocks(cfg, blocks)
+        let mut blocks = self.assign_blocks::<T>(cfg, root_node);
+        self.link_blocks(cfg, &mut blocks);
+
+        blocks
     }
 
     /// Assign blocks for all of the drops in the drop tree that need them.
     fn assign_blocks<'tcx, T: DropTreeBuilder<'tcx>>(
         &mut self,
         cfg: &mut CFG<'tcx>,
-        blocks: &mut IndexVec<DropIdx, Option<BasicBlock>>,
-    ) {
+        root_node: Option<BasicBlock>,
+    ) -> IndexVec<DropIdx, Option<BasicBlock>> {
         // StorageDead statements can share blocks with each other and also with
         // a Drop terminator. We iterate through the drops to find which drops
         // need their own block.
@@ -342,8 +340,11 @@ impl DropTree {
             Own,
         }
 
+        let mut blocks = IndexVec::from_elem(None, &self.drops);
+        blocks[ROOT_NODE] = root_node;
+
         let mut needs_block = IndexVec::from_elem(Block::None, &self.drops);
-        if blocks[ROOT_NODE].is_some() {
+        if root_node.is_some() {
             // In some cases (such as drops for `continue`) the root node
             // already has a block. In this case, make sure that we don't
             // override it.
@@ -385,6 +386,8 @@ impl DropTree {
 
         debug!("assign_blocks: blocks = {:#?}", blocks);
         assert!(entry_points.is_empty());
+
+        blocks
     }
 
     fn link_blocks<'tcx>(
@@ -1574,10 +1577,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         span: Span,
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
-        let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        blocks[ROOT_NODE] = continue_block;
-
-        drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
+        let blocks = drops.build_mir::<ExitScopes>(&mut self.cfg, continue_block);
         let is_coroutine = self.coroutine.is_some();
 
         // Link the exit drop tree to unwind drop tree.
@@ -1633,8 +1633,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         let drops = &mut self.scopes.coroutine_drops;
         let cfg = &mut self.cfg;
         let fn_span = self.fn_span;
-        let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        drops.build_mir::<CoroutineDrop>(cfg, &mut blocks);
+        let blocks = drops.build_mir::<CoroutineDrop>(cfg, None);
         if let Some(root_block) = blocks[ROOT_NODE] {
             cfg.terminate(
                 root_block,
@@ -1670,9 +1669,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
         fn_span: Span,
         resume_block: &mut Option<BasicBlock>,
     ) {
-        let mut blocks = IndexVec::from_elem(None, &drops.drops);
-        blocks[ROOT_NODE] = *resume_block;
-        drops.build_mir::<Unwind>(cfg, &mut blocks);
+        let blocks = drops.build_mir::<Unwind>(cfg, *resume_block);
         if let (None, Some(resume)) = (*resume_block, blocks[ROOT_NODE]) {
             cfg.terminate(resume, SourceInfo::outermost(fn_span), TerminatorKind::UnwindResume);
 
