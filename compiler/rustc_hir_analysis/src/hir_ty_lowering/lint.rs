@@ -411,14 +411,16 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 Applicability::MachineApplicable,
             );
             if !is_dyn_compatible {
-                diag.note(format!("`{trait_name}` it is dyn-incompatible, so it can't be `dyn`"));
+                diag.note(format!(
+                    "`{trait_name}` is dyn-incompatible, otherwise a trait object could be used"
+                ));
             } else {
                 // No ampersand in suggestion if it's borrowed already
                 let (dyn_str, paren_dyn_str) =
                     if borrowed { ("dyn ", "(dyn ") } else { ("&dyn ", "&(dyn ") };
 
                 let sugg = if let hir::TyKind::TraitObject([_, _, ..], _) = self_ty.kind {
-                    // There are more than one trait bound, we need surrounding parentheses.
+                    // There is more than one trait bound, we need surrounding parentheses.
                     vec![
                         (self_ty.span.shrink_to_lo(), paren_dyn_str.to_string()),
                         (self_ty.span.shrink_to_hi(), ")".to_string()),

@@ -1422,7 +1422,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 self.tcx.check_stability(
                     variant.fields[FieldIdx::from_usize(i)].did,
-                    Some(pat.hir_id),
+                    Some(subpat.hir_id),
                     subpat.span,
                     None,
                 );
@@ -1686,7 +1686,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         .get(&ident)
                         .map(|(i, f)| {
                             self.write_field_index(field.hir_id, *i);
-                            self.tcx.check_stability(f.did, Some(pat.hir_id), span, None);
+                            self.tcx.check_stability(f.did, Some(field.hir_id), span, None);
                             self.field_ty(span, f, args)
                         })
                         .unwrap_or_else(|| {
