@@ -76,6 +76,7 @@ mod intrinsic;
 pub mod llvm;
 mod llvm_util;
 mod mono_item;
+mod personality_stub;
 mod type_;
 mod type_of;
 mod va_arg;
@@ -121,6 +122,15 @@ impl ExtraBackendMethods for LlvmCodegenBackend {
         unsafe {
             allocator::codegen(tcx, cx, module_name, kind, alloc_error_handler_kind);
         }
+        module_llvm
+    }
+    fn codegen_personality_stub<'tcx>(&self, tcx: TyCtxt<'tcx>, module_name: &str) -> Self::Module {
+        let mut module_llvm = ModuleLlvm::new_metadata(tcx, module_name);
+
+        unsafe {
+            personality_stub::codegen(tcx, &mut module_llvm, module_name);
+        }
+
         module_llvm
     }
     fn compile_codegen_unit(
