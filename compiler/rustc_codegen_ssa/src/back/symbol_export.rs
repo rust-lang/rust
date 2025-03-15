@@ -376,14 +376,16 @@ fn exported_symbols_provider_local(
                     let should_export = has_generics
                         && (def.as_local().is_some_and(|local_did| {
                             visibilities.public_at_level(local_did).is_some()
-                        }) || types.all(|arg| {
-                            arg.walk().all(|ty| {
-                                let Some(ty) = ty.as_type() else {
-                                    return true;
-                                };
-                                !is_local_to_current_crate(ty)
-                            })
-                        }));
+                        }) || (tcx.codegen_fn_attrs(mono_item.def_id()).inline
+                            != rustc_attr_parsing::InlineAttr::None)
+                            || types.all(|arg| {
+                                arg.walk().all(|ty| {
+                                    let Some(ty) = ty.as_type() else {
+                                        return true;
+                                    };
+                                    !is_local_to_current_crate(ty)
+                                })
+                            }));
 
                     if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
