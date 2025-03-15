@@ -244,6 +244,7 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
         println!("No test diffs found");
         return;
     }
+    println!("\n{} test {} found\n", diff.diffs.len(), pluralize("difference", diff.diffs.len()));
 
     fn format_outcome(outcome: &TestOutcome) -> String {
         match outcome {
