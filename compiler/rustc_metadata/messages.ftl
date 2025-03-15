@@ -69,6 +69,10 @@ metadata_extern_location_not_exist =
 metadata_extern_location_not_file =
     extern location for {$crate_name} is not a file: {$location}
 
+metadata_full_metadata_not_found =
+    only metadata stub found for `{$flavor}` dependency `{$crate_name}`
+    please provide path to the corresponding .rmeta file with full metadata
+
 metadata_fail_create_file_encoder =
     failed to create file encoder: {$err}
 
