@@ -1,8 +1,9 @@
-use rustc_pattern_analysis::constructor::{
+use crate::constructor::{
     Constructor, ConstructorSet, IntRange, MaybeInfiniteInt, RangeEnd, VariantVisibility,
 };
-use rustc_pattern_analysis::usefulness::{PlaceValidity, UsefulnessReport};
-use rustc_pattern_analysis::{MatchArm, PatCx, PrivateUninhabitedField};
+use crate::pat::{DeconstructedPat, WitnessPat};
+use crate::usefulness::{PlaceValidity, UsefulnessReport};
+use crate::{MatchArm, PatCx, PrivateUninhabitedField};
 
 /// Sets up `tracing` for easier debugging. Tries to look like the `rustc` setup.
 fn init_tracing() {
@@ -24,7 +25,7 @@ fn init_tracing() {
 /// A simple set of types.
 #[allow(dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub(super) enum Ty {
+enum Ty {
     /// Booleans
     Bool,
     /// 8-bit unsigned integers
@@ -41,7 +42,7 @@ pub(super) enum Ty {
 
 /// The important logic.
 impl Ty {
-    pub(super) fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
+    fn sub_tys(&self, ctor: &Constructor<Cx>) -> Vec<Self> {
         use Constructor::*;
         match (ctor, *self) {
             (Struct, Ty::Tuple(tys)) => tys.iter().copied().collect(),
@@ -120,24 +121,18 @@ impl Ty {
 }
 
 /// Compute usefulness in our simple context (and set up tracing for easier debugging).
-pub(super) fn compute_match_usefulness<'p>(
+fn compute_match_usefulness<'p>(
     arms: &[MatchArm<'p, Cx>],
     ty: Ty,
     scrut_validity: PlaceValidity,
     complexity_limit: usize,
 ) -> Result<UsefulnessReport<'p, Cx>, ()> {
     init_tracing();
-    rustc_pattern_analysis::usefulness::compute_match_usefulness(
-        &Cx,
-        arms,
-        ty,
-        scrut_validity,
-        complexity_limit,
-    )
+    crate::usefulness::compute_match_usefulness(&Cx, arms, ty, scrut_validity, complexity_limit)
 }
 
 #[derive(Debug)]
-pub(super) struct Cx;
+struct Cx;
 
 /// The context for pattern analysis. Forwards anything interesting to `Ty` methods.
 impl PatCx for Cx {
@@ -211,7 +206,7 @@ macro_rules! pats {
     // Parse `type; ..`
     ($ty:expr; $($rest:tt)*) => {{
         #[allow(unused_imports)]
-        use rustc_pattern_analysis::{
+        use crate::{
             constructor::{Constructor, IntRange, MaybeInfiniteInt, RangeEnd},
             pat::DeconstructedPat,
         };
@@ -340,4 +335,281 @@ macro_rules! pats {
     (@fields(idx:$idx:expr, $($args:tt)*) , $($rest:tt)*) => {{
         pats!(@ctor($($args)*, idx:$idx) $($rest)*);
     }};
+}
+
+fn check(
+    patterns: &[DeconstructedPat<Cx>],
+    complexity_limit: usize,
+) -> Result<UsefulnessReport<'_, Cx>, ()> {
+    let ty = *patterns[0].ty();
+    let arms: Vec<_> =
+        patterns.iter().map(|pat| MatchArm { pat, has_guard: false, arm_data: () }).collect();
+    compute_match_usefulness(arms.as_slice(), ty, PlaceValidity::ValidOnly, complexity_limit)
+}
+
+//---------------------------------------------------------------------------
+// Test the pattern complexity limit.
+//---------------------------------------------------------------------------
+
+/// Analyze a match made of these patterns. Ignore the report; we only care whether we exceeded the
+/// limit or not.
+fn check_complexity(patterns: &[DeconstructedPat<Cx>], complexity_limit: usize) -> Result<(), ()> {
+    check(patterns, complexity_limit).map(|_report| ())
+}
+
+/// Asserts that analyzing this match takes exactly `complexity` steps.
+#[track_caller]
+fn assert_complexity(patterns: Vec<DeconstructedPat<Cx>>, complexity: usize) {
+    assert!(check_complexity(&patterns, complexity).is_ok());
+    assert!(check_complexity(&patterns, complexity - 1).is_err());
+}
+
+/// Construct a match like:
+/// ```ignore(illustrative)
+/// match ... {
+///     BigStruct { field01: true, .. } => {}
+///     BigStruct { field02: true, .. } => {}
+///     BigStruct { field03: true, .. } => {}
+///     BigStruct { field04: true, .. } => {}
+///     ...
+///     _ => {}
+/// }
+/// ```
+fn diagonal_match(arity: usize) -> Vec<DeconstructedPat<Cx>> {
+    let struct_ty = Ty::BigStruct { arity, ty: &Ty::Bool };
+    let mut patterns = vec![];
+    for i in 0..arity {
+        patterns.push(pat!(struct_ty; Struct { .i: true }));
+    }
+    patterns.push(pat!(struct_ty; _));
+    patterns
+}
+
+/// Construct a match like:
+/// ```ignore(illustrative)
+/// match ... {
+///     BigStruct { field01: true, .. } => {}
+///     BigStruct { field02: true, .. } => {}
+///     BigStruct { field03: true, .. } => {}
+///     BigStruct { field04: true, .. } => {}
+///     ...
+///     BigStruct { field01: false, .. } => {}
+///     BigStruct { field02: false, .. } => {}
+///     BigStruct { field03: false, .. } => {}
+///     BigStruct { field04: false, .. } => {}
+///     ...
+///     _ => {}
+/// }
+/// ```
+fn diagonal_exponential_match(arity: usize) -> Vec<DeconstructedPat<Cx>> {
+    let struct_ty = Ty::BigStruct { arity, ty: &Ty::Bool };
+    let mut patterns = vec![];
+    for i in 0..arity {
+        patterns.push(pat!(struct_ty; Struct { .i: true }));
+    }
+    for i in 0..arity {
+        patterns.push(pat!(struct_ty; Struct { .i: false }));
+    }
+    patterns.push(pat!(struct_ty; _));
+    patterns
+}
+
+#[test]
+fn test_diagonal_struct_match() {
+    // These cases are nicely linear: we check `arity` patterns with exactly one `true`, matching
+    // in 2 branches each, and a final pattern with all `false`, matching only the `_` branch.
+    assert_complexity(diagonal_match(20), 41);
+    assert_complexity(diagonal_match(30), 61);
+    // This case goes exponential.
+    assert!(check_complexity(&diagonal_exponential_match(10), 10000).is_err());
+}
+
+/// Construct a match like:
+/// ```ignore(illustrative)
+/// match ... {
+///     BigEnum::Variant1(_) => {}
+///     BigEnum::Variant2(_) => {}
+///     BigEnum::Variant3(_) => {}
+///     ...
+///     _ => {}
+/// }
+/// ```
+fn big_enum(arity: usize) -> Vec<DeconstructedPat<Cx>> {
+    let enum_ty = Ty::BigEnum { arity, ty: &Ty::Bool };
+    let mut patterns = vec![];
+    for i in 0..arity {
+        patterns.push(pat!(enum_ty; Variant.i));
+    }
+    patterns.push(pat!(enum_ty; _));
+    patterns
+}
+
+#[test]
+fn test_big_enum() {
+    // We try 2 branches per variant.
+    assert_complexity(big_enum(20), 40);
+}
+
+//---------------------------------------------------------------------------
+// Test exhaustiveness checking.
+//---------------------------------------------------------------------------
+
+/// Analyze a match made of these patterns.
+fn check_exhaustiveness(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<WitnessPat<Cx>> {
+    let report = check(&patterns, usize::MAX).unwrap();
+    report.non_exhaustiveness_witnesses
+}
+
+#[track_caller]
+fn assert_exhaustive(patterns: Vec<DeconstructedPat<Cx>>) {
+    let witnesses = check_exhaustiveness(patterns);
+    if !witnesses.is_empty() {
+        panic!("non-exhaustive match: missing {witnesses:?}");
+    }
+}
+
+#[track_caller]
+fn assert_non_exhaustive(patterns: Vec<DeconstructedPat<Cx>>) {
+    let witnesses = check_exhaustiveness(patterns);
+    assert!(!witnesses.is_empty())
+}
+
+#[test]
+fn test_int_ranges_exhaustiveness() {
+    let ty = Ty::U8;
+    assert_exhaustive(pats!(ty;
+        0..=255,
+    ));
+    assert_exhaustive(pats!(ty;
+        0..,
+    ));
+    assert_non_exhaustive(pats!(ty;
+        0..255,
+    ));
+    assert_exhaustive(pats!(ty;
+        0..255,
+        255,
+    ));
+    assert_exhaustive(pats!(ty;
+        ..10,
+        10..
+    ));
+}
+
+#[test]
+fn test_nested_exhaustivenss() {
+    let ty = Ty::BigStruct { arity: 2, ty: &Ty::BigEnum { arity: 2, ty: &Ty::Bool } };
+    assert_non_exhaustive(pats!(ty;
+        Struct(Variant.0, _),
+    ));
+    assert_exhaustive(pats!(ty;
+        Struct(Variant.0, _),
+        Struct(Variant.1, _),
+    ));
+    assert_non_exhaustive(pats!(ty;
+        Struct(Variant.0, _),
+        Struct(_, Variant.0),
+    ));
+    assert_exhaustive(pats!(ty;
+        Struct(Variant.0, _),
+        Struct(_, Variant.0),
+        Struct(Variant.1, Variant.1),
+    ));
+}
+
+#[test]
+fn test_empty() {
+    // `TY = Result<bool, !>`
+    const TY: Ty = Ty::Enum(&[Ty::Bool, Ty::Enum(&[])]);
+    assert_exhaustive(pats!(TY;
+        Variant.0,
+    ));
+    let ty = Ty::Tuple(&[Ty::Bool, TY]);
+    assert_exhaustive(pats!(ty;
+        (true, Variant.0),
+        (false, Variant.0),
+    ));
+}
+
+//---------------------------------------------------------------------------
+// Test the computation of arm intersections.
+//---------------------------------------------------------------------------
+
+/// Analyze a match made of these patterns and returns the computed arm intersections.
+fn check_intersections(patterns: Vec<DeconstructedPat<Cx>>) -> Vec<Vec<usize>> {
+    let report = check(&patterns, usize::MAX).unwrap();
+    report.arm_intersections.into_iter().map(|bitset| bitset.iter().collect()).collect()
+}
+
+#[track_caller]
+fn assert_intersects(patterns: Vec<DeconstructedPat<Cx>>, intersects: &[&[usize]]) {
+    let computed_intersects = check_intersections(patterns);
+    assert_eq!(computed_intersects, intersects);
+}
+
+#[test]
+fn test_int_ranges_intersection() {
+    let ty = Ty::U8;
+    assert_intersects(
+        pats!(ty;
+            0..=100,
+            100..,
+        ),
+        &[&[], &[0]],
+    );
+    assert_intersects(
+        pats!(ty;
+            0..=101,
+            100..,
+        ),
+        &[&[], &[0]],
+    );
+    assert_intersects(
+        pats!(ty;
+            0..100,
+            100..,
+        ),
+        &[&[], &[]],
+    );
+}
+
+#[test]
+fn test_nested_intersection() {
+    let ty = Ty::Tuple(&[Ty::Bool; 2]);
+    assert_intersects(
+        pats!(ty;
+            (true, true),
+            (true, _),
+            (_, true),
+        ),
+        &[&[], &[0], &[0, 1]],
+    );
+    // Here we shortcut because `(true, true)` is irrelevant, so we fail to detect the intersection.
+    assert_intersects(
+        pats!(ty;
+            (true, _),
+            (_, true),
+        ),
+        &[&[], &[]],
+    );
+    let ty = Ty::Tuple(&[Ty::Bool; 3]);
+    assert_intersects(
+        pats!(ty;
+            (true, true, _),
+            (true, _, true),
+            (false, _, _),
+        ),
+        &[&[], &[], &[]],
+    );
+    let ty = Ty::Tuple(&[Ty::Bool, Ty::Bool, Ty::U8]);
+    assert_intersects(
+        pats!(ty;
+            (true, _, _),
+            (_, true, 0..10),
+            (_, true, 10..),
+            (_, true, 3),
+            _,
+        ),
+        &[&[], &[], &[], &[1], &[0, 1, 2, 3]],
+    );
 }

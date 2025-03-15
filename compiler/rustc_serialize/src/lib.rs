@@ -16,6 +16,10 @@
 #![feature(rustdoc_internals)]
 // tidy-alphabetical-end
 
+// Allows macros to refer to this crate as `::rustc_serialize`.
+#[cfg(test)]
+extern crate self as rustc_serialize;
+
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod serialize;
