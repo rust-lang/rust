@@ -44,6 +44,7 @@ mod int_macros; // import int_impl!
 mod uint_macros; // import uint_impl!
 
 mod error;
+mod int_format;
 mod int_log10;
 mod int_sqrt;
 mod nonzero;
@@ -64,6 +65,8 @@ pub use error::IntErrorKind;
 pub use error::ParseIntError;
 #[stable(feature = "try_from", since = "1.34.0")]
 pub use error::TryFromIntError;
+#[unstable(feature = "int_format_into", issue = "138215")]
+pub use int_format::NumBuffer;
 #[stable(feature = "generic_nonzero", since = "1.79.0")]
 pub use nonzero::NonZero;
 #[unstable(
