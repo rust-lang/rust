@@ -1,0 +1,259 @@
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:8:5
+   |
+LL | /     ptr::write(
+LL | |
+LL | |         ptr::null_mut() as *mut u32,
+   | |         --------------------------- help: consider using a dangling pointer instead: `core::ptr::NonNull::<u32>::dangling().as_ptr()`
+LL | |         mem::transmute::<[u8; 4], _>([0, 0, 0, 255]),
+LL | |     );
+   | |_____^
+   |
+note: null pointer originate from here
+  --> $DIR/invalid_null_args.rs:10:9
+   |
+LL |         ptr::null_mut() as *mut u32,
+   |         ^^^^^^^^^^^^^^^
+   = note: `#[deny(invalid_null_arguments)]` on by default
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:15:5
+   |
+LL | /     ptr::write(
+LL | |
+LL | |         null_ptr as *mut u32,
+   | |         -------------------- help: consider using a dangling pointer instead: `core::ptr::NonNull::<u32>::dangling().as_ptr()`
+LL | |         mem::transmute::<[u8; 4], _>([0, 0, 0, 255]),
+LL | |     );
+   | |_____^
+   |
+note: null pointer originate from here
+  --> $DIR/invalid_null_args.rs:14:20
+   |
+LL |     let null_ptr = ptr::null_mut();
+   |                    ^^^^^^^^^^^^^^^
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:21:23
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(ptr::null(), 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^
+   |                                                  |
+   |                                                  help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:23:23
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(ptr::null_mut(), 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                                                  |
+   |                                                  help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:25:23
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(0 as *mut _, 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^
+   |                                                  |
+   |                                                  help: consider using a dangling pointer instead: `core::ptr::NonNull::<usize>::dangling().as_ptr()`
+   |
+note: null pointer originate from here
+  --> $DIR/invalid_null_args.rs:25:50
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(0 as *mut _, 0);
+   |                                                  ^
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:27:23
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(mem::transmute(0usize), 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------^^^^
+   |                                                  |
+   |                                                  help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+   |
+note: null pointer originate from here
+  --> $DIR/invalid_null_args.rs:27:65
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts(mem::transmute(0usize), 0);
+   |                                                                 ^^^^^^
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:30:23
+   |
+LL |     let _: &[usize] = std::slice::from_raw_parts_mut(ptr::null_mut(), 0);
+   |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                                                      |
+   |                                                      help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:33:5
+   |
+LL |     ptr::copy::<usize>(ptr::null(), ptr::NonNull::dangling().as_ptr(), 0);
+   |     ^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                        |
+   |                        help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:35:5
+   |
+LL |     ptr::copy::<usize>(ptr::NonNull::dangling().as_ptr(), ptr::null_mut(), 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                                                           |
+   |                                                           help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:38:5
+   |
+LL |     ptr::copy_nonoverlapping::<usize>(ptr::null(), ptr::NonNull::dangling().as_ptr(), 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-----------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                                       |
+   |                                       help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:40:5
+   |
+LL | /     ptr::copy_nonoverlapping::<usize>(
+LL | |
+LL | |         ptr::NonNull::dangling().as_ptr(),
+LL | |         ptr::null_mut(),
+   | |         --------------- help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+LL | |         0
+LL | |     );
+   | |_____^
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:51:17
+   |
+LL |     let _a: A = ptr::read(ptr::null());
+   |                 ^^^^^^^^^^-----------^
+   |                           |
+   |                           help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:53:17
+   |
+LL |     let _a: A = ptr::read(ptr::null_mut());
+   |                 ^^^^^^^^^^---------------^
+   |                           |
+   |                           help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:56:17
+   |
+LL |     let _a: A = ptr::read_unaligned(ptr::null());
+   |                 ^^^^^^^^^^^^^^^^^^^^-----------^
+   |                                     |
+   |                                     help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:58:17
+   |
+LL |     let _a: A = ptr::read_unaligned(ptr::null_mut());
+   |                 ^^^^^^^^^^^^^^^^^^^^---------------^
+   |                                     |
+   |                                     help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:61:17
+   |
+LL |     let _a: A = ptr::read_volatile(ptr::null());
+   |                 ^^^^^^^^^^^^^^^^^^^-----------^
+   |                                    |
+   |                                    help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:63:17
+   |
+LL |     let _a: A = ptr::read_volatile(ptr::null_mut());
+   |                 ^^^^^^^^^^^^^^^^^^^---------------^
+   |                                    |
+   |                                    help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:66:17
+   |
+LL |     let _a: A = ptr::replace(ptr::null_mut(), v);
+   |                 ^^^^^^^^^^^^^---------------^^^^
+   |                              |
+   |                              help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:69:5
+   |
+LL |     ptr::swap::<A>(ptr::null_mut(), &mut v);
+   |     ^^^^^^^^^^^^^^^---------------^^^^^^^^^
+   |                    |
+   |                    help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:71:5
+   |
+LL |     ptr::swap::<A>(&mut v, ptr::null_mut());
+   |     ^^^^^^^^^^^^^^^^^^^^^^^---------------^
+   |                            |
+   |                            help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:74:5
+   |
+LL |     ptr::swap_nonoverlapping::<A>(ptr::null_mut(), &mut v, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^^^^^^^^^
+   |                                   |
+   |                                   help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:76:5
+   |
+LL |     ptr::swap_nonoverlapping::<A>(&mut v, ptr::null_mut(), 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                                           |
+   |                                           help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:79:5
+   |
+LL |     ptr::write(ptr::null_mut(), v);
+   |     ^^^^^^^^^^^---------------^^^^
+   |                |
+   |                help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:82:5
+   |
+LL |     ptr::write_unaligned(ptr::null_mut(), v);
+   |     ^^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                          |
+   |                          help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:85:5
+   |
+LL |     ptr::write_volatile(ptr::null_mut(), v);
+   |     ^^^^^^^^^^^^^^^^^^^^---------------^^^^
+   |                         |
+   |                         help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:88:5
+   |
+LL |     ptr::write_bytes::<usize>(ptr::null_mut(), 42, 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^---------------^^^^^^^^
+   |                               |
+   |                               help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+
+error: calling this function with a null pointer is Undefined Behavior, even if the result of the function is unused
+  --> $DIR/invalid_null_args.rs:93:18
+   |
+LL |     let _a: u8 = ptr::read(const_ptr);
+   |                  ^^^^^^^^^^---------^
+   |                            |
+   |                            help: consider using a dangling pointer instead: `core::ptr::NonNull::dangling().as_ptr()`
+   |
+note: null pointer originate from here
+  --> $DIR/invalid_null_args.rs:14:20
+   |
+LL |     let null_ptr = ptr::null_mut();
+   |                    ^^^^^^^^^^^^^^^
+
+error: aborting due to 27 previous errors
+

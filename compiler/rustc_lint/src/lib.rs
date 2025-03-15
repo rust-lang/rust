@@ -80,6 +80,7 @@ mod types;
 mod unit_bindings;
 mod unqualified_local_imports;
 mod unused;
+mod utils;
 
 use async_closures::AsyncClosureUsage;
 use async_fn_in_trait::AsyncFnInTrait;

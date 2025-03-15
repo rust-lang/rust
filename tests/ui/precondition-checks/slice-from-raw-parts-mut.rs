@@ -3,6 +3,8 @@
 //@ error-pattern: unsafe precondition(s) violated: slice::from_raw_parts_mut requires
 //@ revisions: null misaligned toolarge
 
+#![allow(invalid_null_arguments)]
+
 fn main() {
     unsafe {
         #[cfg(null)]

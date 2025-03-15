@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then, span_lin
 use clippy_utils::source::SpanRangeExt;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
-use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
+use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local};
 use hir::LifetimeName;
 use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
@@ -125,30 +125,7 @@ declare_clippy_lint! {
     "fns that create mutable refs from immutable ref args"
 }
 
-declare_clippy_lint! {
-    /// ### What it does
-    /// This lint checks for invalid usages of `ptr::null`.
-    ///
-    /// ### Why is this bad?
-    /// This causes undefined behavior.
-    ///
-    /// ### Example
-    /// ```ignore
-    /// // Undefined behavior
-    /// unsafe { std::slice::from_raw_parts(ptr::null(), 0); }
-    /// ```
-    ///
-    /// Use instead:
-    /// ```ignore
-    /// unsafe { std::slice::from_raw_parts(NonNull::dangling().as_ptr(), 0); }
-    /// ```
-    #[clippy::version = "1.53.0"]
-    pub INVALID_NULL_PTR_USAGE,
-    correctness,
-    "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"
-}
-
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE]);
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
@@ -268,54 +245,6 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 format!("{non_null_path_snippet}.is_null()"),
                 Applicability::MachineApplicable,
             );
-        } else {
-            check_invalid_ptr_usage(cx, expr);
-        }
-    }
-}
-
-fn check_invalid_ptr_usage<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-    if let ExprKind::Call(fun, args) = expr.kind
-        && let ExprKind::Path(ref qpath) = fun.kind
-        && let Some(fun_def_id) = cx.qpath_res(qpath, fun.hir_id).opt_def_id()
-        && let Some(name) = cx.tcx.get_diagnostic_name(fun_def_id)
-    {
-        // TODO: `ptr_slice_from_raw_parts` and its mutable variant should probably still be linted
-        // conditionally based on how the return value is used, but not universally like the other
-        // functions since there are valid uses for null slice pointers.
-        //
-        // See: https://github.com/rust-lang/rust-clippy/pull/13452/files#r1773772034
-
-        // `arg` positions where null would cause U.B.
-        let arg_indices: &[_] = match name {
-            sym::ptr_read
-            | sym::ptr_read_unaligned
-            | sym::ptr_read_volatile
-            | sym::ptr_replace
-            | sym::ptr_write
-            | sym::ptr_write_bytes
-            | sym::ptr_write_unaligned
-            | sym::ptr_write_volatile
-            | sym::slice_from_raw_parts
-            | sym::slice_from_raw_parts_mut => &[0],
-            sym::ptr_copy | sym::ptr_copy_nonoverlapping | sym::ptr_swap | sym::ptr_swap_nonoverlapping => &[0, 1],
-            _ => return,
-        };
-
-        for &arg_idx in arg_indices {
-            if let Some(arg) = args.get(arg_idx).filter(|arg| is_null_path(cx, arg))
-                && let Some(std_or_core) = std_or_core(cx)
-            {
-                span_lint_and_sugg(
-                    cx,
-                    INVALID_NULL_PTR_USAGE,
-                    arg.span,
-                    "pointer must be non-null",
-                    "change this to",
-                    format!("{std_or_core}::ptr::NonNull::dangling().as_ptr()"),
-                    Applicability::MachineApplicable,
-                );
-            }
         }
     }
 }

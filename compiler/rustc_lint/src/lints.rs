@@ -591,22 +591,46 @@ pub(crate) struct ExpectationNote {
 
 // ptr_nulls.rs
 #[derive(LintDiagnostic)]
-pub(crate) enum PtrNullChecksDiag<'a> {
-    #[diag(lint_ptr_null_checks_fn_ptr)]
-    #[help(lint_help)]
+pub(crate) enum UselessPtrNullChecksDiag<'a> {
+    #[diag(lint_useless_ptr_null_checks_fn_ptr)]
+    #[help]
     FnPtr {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_ref)]
+    #[diag(lint_useless_ptr_null_checks_ref)]
     Ref {
         orig_ty: Ty<'a>,
         #[label]
         label: Span,
     },
-    #[diag(lint_ptr_null_checks_fn_ret)]
+    #[diag(lint_useless_ptr_null_checks_fn_ret)]
     FnRet { fn_name: Ident },
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_invalid_null_arguments)]
+pub(crate) struct InvalidNullArgumentsDiag<'a> {
+    #[note]
+    pub null_span: Option<Span>,
+    #[subdiagnostic]
+    pub suggestion: InvalidNullArgumentsSuggestion<'a>,
+}
+
+#[derive(Subdiagnostic)]
+pub(crate) enum InvalidNullArgumentsSuggestion<'a> {
+    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+    WithoutExplicitType {
+        #[suggestion_part(code = "core::ptr::NonNull::dangling().as_ptr()")]
+        arg_span: Span,
+    },
+    #[multipart_suggestion(lint_suggestion, applicability = "machine-applicable")]
+    WithExplicitType {
+        ty: Ty<'a>,
+        #[suggestion_part(code = "core::ptr::NonNull::<{ty}>::dangling().as_ptr()")]
+        arg_span: Span,
+    },
 }
 
 // for_loops_over_fallibles.rs
