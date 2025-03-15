@@ -176,7 +176,7 @@ auto:
     <<: *job-linux-4c
 
   - name: dist-ohos
-    <<: *job-linux-4c
+    <<: *job-linux-4c-largedisk
 
   - name: dist-powerpc-linux
     <<: *job-linux-4c
