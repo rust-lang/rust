@@ -1,8 +1,9 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
+use rustc_hir::LangItem;
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::{self, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, GenericArg, GenericArgsRef, InstanceKind, TyCtxt, TypeVisitableExt};
 use rustc_session::Limit;
 use rustc_span::sym;
 use tracing::{instrument, trace};
@@ -189,6 +190,18 @@ pub(crate) fn mir_inliner_callees<'tcx>(
                 (*def_id, *generic_args)
             };
             calls.insert(call);
+        }
+        // This query is called on *analysis* MIR, which doesn't have drops elaborated,
+        // let alone any of the later runtime MIR optimizations.
+        if let TerminatorKind::Drop { place, .. } = &terminator.kind {
+            let dropped_ty = place.ty(&body.local_decls, tcx).ty;
+            let param_env = tcx.param_env_reveal_all_normalized(instance.def_id());
+            if dropped_ty.needs_drop(tcx, param_env) {
+                let drop_in_place_fn =
+                    tcx.require_lang_item(LangItem::DropInPlace, Some(terminator.source_info.span));
+                let args = tcx.mk_args(&[GenericArg::from(dropped_ty)]);
+                calls.insert((drop_in_place_fn, args));
+            }
         }
     }
     tcx.arena.alloc_from_iter(calls.iter().copied())
