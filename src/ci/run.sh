@@ -261,5 +261,5 @@ else
 fi
 
 echo "::group::sccache stats"
-sccache --show-stats || true
+sccache --show-adv-stats || true
 echo "::endgroup::"
