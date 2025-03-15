@@ -1,6 +1,6 @@
 use crate::metrics;
 use crate::metrics::{JobMetrics, JobName, get_test_suites};
-use crate::utils::pluralize;
+use crate::utils::{output_details, pluralize};
 use build_helper::metrics::{
     BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
 };
@@ -19,14 +19,9 @@ fn record_bootstrap_step_durations(metrics: &JsonRoot) {
         let step = BuildStep::from_invocation(invocation);
         let table = format_build_steps(&step);
         eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
-        println!(
-            r"<details>
-<summary>{}</summary>
-<pre><code>{table}</code></pre>
-</details>
-",
-            invocation.cmdline
-        );
+        output_details(&invocation.cmdline, || {
+            println!("<pre><code>{table}</code></pre>");
+        });
     }
     eprintln!("Recorded {} bootstrap invocation(s)", metrics.invocations.len());
 }
