@@ -320,6 +320,29 @@ fn exported_symbols_provider_local(
 
         let cgus = tcx.collect_and_partition_mono_items(()).codegen_units;
 
+        let visibilities = tcx.effective_visibilities(());
+        let is_local_to_current_crate = |ty: Ty<'_>| {
+            let no_refs = ty.peel_refs();
+            let root_def_id = match no_refs.kind() {
+                rustc_middle::ty::Adt(adt_def, _) => adt_def.did(),
+                rustc_middle::ty::Closure(closure, _) => *closure,
+                rustc_middle::ty::FnDef(def_id, _) => *def_id,
+                rustc_middle::ty::Coroutine(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineClosure(def_id, _) => *def_id,
+                rustc_middle::ty::CoroutineWitness(def_id, _) => *def_id,
+                rustc_middle::ty::Foreign(def_id) => *def_id,
+                _ => {
+                    return false;
+                }
+            };
+            let Some(root_def_id) = root_def_id.as_local() else {
+                return false;
+            };
+
+            let is_local = visibilities.public_at_level(root_def_id).is_none();
+
+            is_local
+        };
         // The symbols created in this loop are sorted below it
         #[allow(rustc::potential_query_instability)]
         for (mono_item, data) in cgus.iter().flat_map(|cgu| cgu.items().iter()) {
@@ -348,7 +371,23 @@ fn exported_symbols_provider_local(
 
             match *mono_item {
                 MonoItem::Fn(Instance { def: InstanceKind::Item(def), args }) => {
-                    if args.non_erasable_generics().next().is_some() {
+                    let mut types = args.types();
+                    let has_generics = args.non_erasable_generics().next().is_some();
+                    let should_export = has_generics
+                        && (def.as_local().is_some_and(|local_did| {
+                            visibilities.public_at_level(local_did).is_some()
+                        }) || (tcx.codegen_fn_attrs(mono_item.def_id()).inline
+                            != rustc_attr_parsing::InlineAttr::None)
+                            || types.all(|arg| {
+                                arg.walk().all(|ty| {
+                                    let Some(ty) = ty.as_type() else {
+                                        return true;
+                                    };
+                                    !is_local_to_current_crate(ty)
+                                })
+                            }));
+
+                    if should_export {
                         let symbol = ExportedSymbol::Generic(def, args);
                         symbols.push((
                             symbol,
@@ -361,16 +400,41 @@ fn exported_symbols_provider_local(
                     }
                 }
                 MonoItem::Fn(Instance { def: InstanceKind::DropGlue(_, Some(ty)), args }) => {
-                    // A little sanity-check
-                    assert_eq!(args.non_erasable_generics().next(), Some(GenericArgKind::Type(ty)));
-                    symbols.push((
-                        ExportedSymbol::DropGlue(ty),
-                        SymbolExportInfo {
-                            level: SymbolExportLevel::Rust,
-                            kind: SymbolExportKind::Text,
-                            used: false,
-                        },
-                    ));
+                    let Some(GenericArgKind::Type(typ)) = args.non_erasable_generics().next()
+                    else {
+                        bug!("Expected a type argument for drop glue");
+                    };
+                    let should_export = {
+                        let root_identifier = match typ.kind() {
+                            rustc_middle::ty::Adt(def, args) => Some((def.did(), args)),
+                            rustc_middle::ty::Closure(id, args) => Some((*id, args)),
+                            _ => None,
+                        };
+                        if let Some((did, args)) = root_identifier {
+                            did.as_local().is_some_and(|local_did| {
+                                visibilities.public_at_level(local_did).is_some()
+                            }) || args.types().all(|arg| {
+                                arg.walk().all(|ty| {
+                                    let Some(ty) = ty.as_type() else {
+                                        return true;
+                                    };
+                                    !is_local_to_current_crate(ty)
+                                })
+                            })
+                        } else {
+                            true
+                        }
+                    };
+                    if should_export {
+                        symbols.push((
+                            ExportedSymbol::DropGlue(ty),
+                            SymbolExportInfo {
+                                level: SymbolExportLevel::Rust,
+                                kind: SymbolExportKind::Text,
+                                used: false,
+                            },
+                        ));
+                    }
                 }
                 MonoItem::Fn(Instance {
                     def: InstanceKind::AsyncDropGlueCtorShim(_, Some(ty)),
