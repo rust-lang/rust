@@ -5,7 +5,7 @@ use rustc_errors::MultiSpan;
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
 use rustc_lint as lint;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, Ty, TyCtxt};
+use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, TyCtxt};
 use rustc_span::{Ident, Span};
 
 use crate::errors::{Rust2024IncompatiblePat, Rust2024IncompatiblePatSugg};
@@ -93,10 +93,10 @@ impl<'a> PatMigration<'a> {
     pub(super) fn visit_implicit_derefs<'tcx>(
         &mut self,
         pat_span: Span,
-        adjustments: &[Ty<'tcx>],
+        adjustments: &[ty::adjustment::PatAdjustment<'tcx>],
     ) -> Option<(Span, Mutability)> {
-        let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-            let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
+        let implicit_deref_mutbls = adjustments.iter().map(|adjust| {
+            let &ty::Ref(_, _, mutbl) = adjust.source.kind() else {
                 span_bug!(pat_span, "pattern implicitly dereferences a non-ref type");
             };
             mutbl

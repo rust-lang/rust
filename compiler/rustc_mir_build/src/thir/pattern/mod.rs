@@ -18,6 +18,7 @@ use rustc_middle::mir::interpret::LitToConstInput;
 use rustc_middle::thir::{
     Ascription, FieldPat, LocalVarId, Pat, PatKind, PatRange, PatRangeBoundary,
 };
+use rustc_middle::ty::adjustment::PatAdjustment;
 use rustc_middle::ty::layout::IntegerExt;
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
@@ -63,7 +64,7 @@ pub(super) fn pat_from_hir<'a, 'tcx>(
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
-        let adjustments: &[Ty<'tcx>] =
+        let adjustments: &[PatAdjustment<'tcx>] =
             self.typeck_results.pat_adjustments().get(pat.hir_id).map_or(&[], |v| &**v);
 
         // Track the default binding mode for the Rust 2024 migration suggestion.
@@ -102,11 +103,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             _ => self.lower_pattern_unadjusted(pat),
         };
 
-        let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, ref_ty| {
-            debug!("{:?}: wrapping pattern with type {:?}", thir_pat, ref_ty);
+        let adjusted_pat = adjustments.iter().rev().fold(unadjusted_pat, |thir_pat, adjust| {
+            debug!("{:?}: wrapping pattern with type {:?}", thir_pat, adjust);
             Box::new(Pat {
                 span: thir_pat.span,
-                ty: *ref_ty,
+                ty: adjust.source,
                 kind: PatKind::Deref { subpattern: thir_pat },
             })
         });

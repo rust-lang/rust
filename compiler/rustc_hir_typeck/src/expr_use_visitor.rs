@@ -1227,9 +1227,9 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         // actually this is somewhat "disjoint" from the code below
         // that aims to account for `ref x`.
         if let Some(vec) = self.cx.typeck_results().pat_adjustments().get(pat.hir_id) {
-            if let Some(first_ty) = vec.first() {
-                debug!("pat_ty(pat={:?}) found adjusted ty `{:?}`", pat, first_ty);
-                return Ok(*first_ty);
+            if let Some(first_adjust) = vec.first() {
+                debug!("pat_ty(pat={:?}) found adjustment `{:?}`", pat, first_adjust);
+                return Ok(first_adjust.source);
             }
         } else if let PatKind::Ref(subpat, _) = pat.kind
             && self.cx.typeck_results().skipped_ref_pats().contains(pat.hir_id)
