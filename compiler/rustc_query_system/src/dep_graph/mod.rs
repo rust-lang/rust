@@ -58,10 +58,15 @@ pub trait DepContext: Copy {
     /// dep-node or when the query kind outright does not support it.
     #[inline]
     #[instrument(skip(self, frame), level = "debug")]
-    fn try_force_from_dep_node(self, dep_node: DepNode, frame: Option<&MarkFrame<'_>>) -> bool {
+    fn try_force_from_dep_node(
+        self,
+        dep_node: DepNode,
+        prev_index: SerializedDepNodeIndex,
+        frame: Option<&MarkFrame<'_>>,
+    ) -> bool {
         let cb = self.dep_kind_info(dep_node.kind);
         if let Some(f) = cb.force_from_dep_node {
-            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node))) {
+            match panic::catch_unwind(panic::AssertUnwindSafe(|| f(self, dep_node, prev_index))) {
                 Err(value) => {
                     if !value.is::<rustc_errors::FatalErrorMarker>() {
                         print_markframe_trace(self.dep_graph(), frame);
@@ -100,6 +105,9 @@ pub trait Deps {
 
     /// We use this to create a forever-red node.
     const DEP_KIND_RED: DepKind;
+
+    /// We use this to create a side effect node.
+    const DEP_KIND_SIDE_EFFECT: DepKind;
 
     /// This is the highest value a `DepKind` can have. It's used during encoding to
     /// pack information into the unused bits.

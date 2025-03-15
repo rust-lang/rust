@@ -2525,7 +2525,7 @@ written to standard error output)"),
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
-    // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
+    // Diagnostics are considered side-effects of a query (see `QuerySideEffect`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.
     translate_additional_ftl: Option<PathBuf> = (None, parse_opt_pathbuf, [TRACKED],
