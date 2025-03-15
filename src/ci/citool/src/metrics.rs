@@ -1,9 +1,10 @@
+use std::collections::HashMap;
 use std::path::Path;
 
-use crate::jobs::JobDatabase;
 use anyhow::Context;
 use build_helper::metrics::{JsonNode, JsonRoot, TestSuite};
-use std::collections::HashMap;
+
+use crate::jobs::JobDatabase;
 
 pub type JobName = String;
 

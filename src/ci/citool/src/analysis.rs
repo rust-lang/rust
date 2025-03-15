@@ -1,10 +1,12 @@
-use crate::metrics;
-use crate::metrics::{JobMetrics, JobName, get_test_suites};
-use crate::utils::{output_details, pluralize};
+use std::collections::{BTreeMap, HashMap, HashSet};
+
 use build_helper::metrics::{
     BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
 };
-use std::collections::{BTreeMap, HashMap, HashSet};
+
+use crate::metrics;
+use crate::metrics::{JobMetrics, JobName, get_test_suites};
+use crate::utils::{output_details, pluralize};
 
 pub fn output_bootstrap_stats(metrics: &JsonRoot) {
     if !metrics.invocations.is_empty() {

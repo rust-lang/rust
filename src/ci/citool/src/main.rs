@@ -9,6 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use analysis::output_bootstrap_stats;
 use anyhow::Context;
 use clap::Parser;
 use jobs::JobDatabase;
@@ -20,7 +21,6 @@ use crate::datadog::upload_datadog_metric;
 use crate::jobs::RunType;
 use crate::metrics::{JobMetrics, download_auto_job_metrics, download_job_metrics, load_metrics};
 use crate::utils::{load_env_var, output_details};
-use analysis::output_bootstrap_stats;
 
 const CI_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
 const DOCKER_DIRECTORY: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../docker");
