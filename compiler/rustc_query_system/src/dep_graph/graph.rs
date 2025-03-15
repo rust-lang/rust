@@ -538,10 +538,14 @@ impl<D: Deps> DepGraph<D> {
     #[inline]
     pub fn record_diagnostic<Qcx: QueryContext>(&self, qcx: Qcx, diagnostic: &DiagInner) {
         if let Some(ref data) = self.data {
-            self.read_index(data.encode_diagnostic(qcx, diagnostic));
+            D::read_deps(|task_deps| match task_deps {
+                TaskDepsRef::EvalAlways | TaskDepsRef::Ignore => return,
+                TaskDepsRef::Forbid | TaskDepsRef::Allow(..) => {
+                    self.read_index(data.encode_diagnostic(qcx, diagnostic));
+                }
+            })
         }
     }
-
     /// This forces a diagnostic node green by running its side effect. `prev_index` would
     /// refer to a node created used `encode_diagnostic` in the previous session.
     #[inline]
