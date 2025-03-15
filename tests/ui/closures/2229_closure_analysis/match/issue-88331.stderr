@@ -13,7 +13,7 @@ LL | pub struct Opcode(pub u8);
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         Opcode::OP1 => unimplemented!(),
-LL ~         Opcode(0_u8) | Opcode(2_u8..=u8::MAX) => todo!(),
+LL +         Opcode(0_u8) | Opcode(2_u8..=u8::MAX) => todo!()
    |
 
 error[E0004]: non-exhaustive patterns: `Opcode2(Opcode(0_u8))` and `Opcode2(Opcode(2_u8..=u8::MAX))` not covered
@@ -31,7 +31,7 @@ LL | pub struct Opcode2(Opcode);
 help: ensure that all possible cases are being handled by adding a match arm with a wildcard pattern, a match arm with multiple or-patterns as shown, or multiple match arms
    |
 LL ~         Opcode2::OP2=> unimplemented!(),
-LL ~         Opcode2(Opcode(0_u8)) | Opcode2(Opcode(2_u8..=u8::MAX)) => todo!(),
+LL +         Opcode2(Opcode(0_u8)) | Opcode2(Opcode(2_u8..=u8::MAX)) => todo!()
    |
 
 error: aborting due to 2 previous errors

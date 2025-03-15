@@ -18,10 +18,9 @@ LL | |
 LL | |             use std::ops::Add;
 LL | |             0.add(1)
 LL | |         },
-   | |         ^
-   | |         |
-   | |_________this will never be executed
-   |           help: remove this expression
+   | |_________^ this will never be executed
+   |
+   = help: remove the match arm expression
 
 error: mismatched types
   --> $DIR/unused_trait_in_never_pattern_body.rs:3:9
