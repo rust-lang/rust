@@ -1,0 +1,15 @@
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `current_crate_name_in_path`
+  --> $DIR/current-crate-name-in-path.rs:12:5
+   |
+LL | use current_crate_name_in_path::bar::baz;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `current_crate_name_in_path`
+   |
+help: the current crate name can not be used in a path, use the keyword `crate` instead
+   |
+LL - use current_crate_name_in_path::bar::baz;
+LL + use crate::bar::baz;
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0433`.
