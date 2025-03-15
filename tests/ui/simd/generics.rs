@@ -8,18 +8,30 @@ use std::ops;
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct f32x4([f32; 4]);
+impl f32x4 {
+    fn to_array(self) -> [f32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct A<const N: usize>([f32; N]);
+impl<const N: usize> A<N> {
+    fn to_array(self) -> [f32; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct B<T>([T; 4]);
+impl<T> B<T> {
+    fn to_array(self) -> [T; 4] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct C<T, const N: usize>([T; N]);
+impl<T, const N: usize> C<T, N> {
+    fn to_array(self) -> [T; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
 
 fn add<T: ops::Add<Output = T>>(lhs: T, rhs: T) -> T {
     lhs + rhs
@@ -63,18 +75,18 @@ pub fn main() {
 
     // lame-o
     let a = f32x4([1.0f32, 2.0f32, 3.0f32, 4.0f32]);
-    let f32x4([a0, a1, a2, a3]) = add(a, a);
+    let [a0, a1, a2, a3] = add(a, a).to_array();
     assert_eq!(a0, 2.0f32);
     assert_eq!(a1, 4.0f32);
     assert_eq!(a2, 6.0f32);
     assert_eq!(a3, 8.0f32);
 
     let a = A(x);
-    assert_eq!(add(a, a).0, y);
+    assert_eq!(add(a, a).to_array(), y);
 
     let b = B(x);
-    assert_eq!(add(b, b).0, y);
+    assert_eq!(add(b, b).to_array(), y);
 
     let c = C(x);
-    assert_eq!(add(c, c).0, y);
+    assert_eq!(add(c, c).to_array(), y);
 }
