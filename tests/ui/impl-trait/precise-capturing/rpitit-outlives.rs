@@ -3,8 +3,6 @@
 // Ensure that we skip uncaptured args from RPITITs when collecting the regions
 // to enforce member constraints in opaque type inference.
 
-#![feature(precise_capturing_in_traits)]
-
 struct Invariant<T>(*mut T);
 
 trait Foo {
