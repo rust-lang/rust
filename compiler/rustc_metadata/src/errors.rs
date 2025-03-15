@@ -759,8 +759,8 @@ pub struct IncompatibleTargetModifiers {
     pub local_crate: Symbol,
     pub flag_name: String,
     pub flag_name_prefixed: String,
-    pub flag_local_value: String,
-    pub flag_extern_value: String,
+    pub local_descr: String,
+    pub extern_descr: String,
 }
 
 #[derive(Diagnostic)]

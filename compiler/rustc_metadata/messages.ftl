@@ -118,11 +118,11 @@ metadata_incompatible_rustc =
 
 metadata_incompatible_target_modifiers =
     mixing `{$flag_name_prefixed}` will cause an ABI mismatch in crate `{$local_crate}`
-    .note = `{$flag_name_prefixed}={$flag_local_value}` in this crate is incompatible with `{$flag_name_prefixed}={$flag_extern_value}` in dependency `{$extern_crate}`
+    .note = `{$local_descr}` in this crate is incompatible with `{$extern_descr}` in dependency `{$extern_crate}`
     .help = the `{$flag_name_prefixed}` flag modifies the ABI so Rust crates compiled with different values of this flag cannot be used together safely
 
 metadata_incompatible_target_modifiers_help_allow = if you are sure this will not cause problems, you may use `-Cunsafe-allow-abi-mismatch={$flag_name}` to silence this error
-metadata_incompatible_target_modifiers_help_fix = set `{$flag_name_prefixed}={$flag_extern_value}` in this crate or `{$flag_name_prefixed}={$flag_local_value}` in `{$extern_crate}`
+metadata_incompatible_target_modifiers_help_fix = set `{$extern_descr}` in this crate or `{$local_descr}` in `{$extern_crate}`
 
 metadata_incompatible_wasm_link =
     `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
