@@ -4,9 +4,9 @@ use syntax::{TextRange, TextSize};
 use test_fixture::WithFixture;
 
 use crate::display::DisplayTarget;
-use crate::{db::HirDatabase, mir::MirLowerError, test_db::TestDB, Interner, Substitution};
+use crate::{Interner, Substitution, db::HirDatabase, mir::MirLowerError, test_db::TestDB};
 
-use super::{interpret_mir, MirEvalError};
+use super::{MirEvalError, interpret_mir};
 
 fn eval_main(db: &TestDB, file_id: EditionedFileId) -> Result<(String, String), MirEvalError> {
     let module_id = db.module_for_file(file_id);

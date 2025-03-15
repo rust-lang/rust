@@ -1,7 +1,7 @@
 //! The IR of the `#[query_group]` macro.
 
-use quote::{format_ident, quote, ToTokens};
-use syn::{parse_quote, FnArg, Ident, PatType, Path, Receiver, ReturnType, Type};
+use quote::{ToTokens, format_ident, quote};
+use syn::{FnArg, Ident, PatType, Path, Receiver, ReturnType, Type, parse_quote};
 
 pub(crate) struct TrackedQuery {
     pub(crate) trait_name: Ident,

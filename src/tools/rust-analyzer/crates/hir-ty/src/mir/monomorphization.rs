@@ -10,19 +10,19 @@
 use std::mem;
 
 use chalk_ir::{
-    fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
     ConstData, DebruijnIndex,
+    fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable},
 };
 use hir_def::DefWithBodyId;
 use triomphe::Arc;
 
 use crate::{
+    ClosureId, Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
     consteval::{intern_const_scalar, unknown_const},
     db::{HirDatabase, HirDatabaseData, InternedClosure},
     from_placeholder_idx,
-    generics::{generics, Generics},
+    generics::{Generics, generics},
     infer::normalize,
-    ClosureId, Const, Interner, ProjectionTy, Substitution, TraitEnvironment, Ty, TyKind,
 };
 
 use super::{MirBody, MirLowerError, Operand, Rvalue, StatementKind, TerminatorKind};

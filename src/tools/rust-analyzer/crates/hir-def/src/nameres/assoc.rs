@@ -1,25 +1,25 @@
 //! Expansion of associated items
 
 use hir_expand::{
-    name::Name, AstId, ExpandResult, InFile, Intern, Lookup, MacroCallKind, MacroDefKind,
+    AstId, ExpandResult, InFile, Intern, Lookup, MacroCallKind, MacroDefKind, name::Name,
 };
 use smallvec::SmallVec;
 use span::{HirFileId, MacroCallId};
-use syntax::{ast, Parse};
+use syntax::{Parse, ast};
 use triomphe::Arc;
 
 use crate::{
+    AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
+    ItemLoc, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
     db::DefDatabase,
     expander::{Expander, Mark},
     item_tree::{self, AssocItem, ItemTree, ItemTreeId, MacroCall, ModItem, TreeId},
     macro_call_as_call_id,
     nameres::{
+        DefMap, LocalDefMap, MacroSubNs,
         attr_resolution::ResolvedAttr,
         diagnostics::{DefDiagnostic, DefDiagnostics},
-        DefMap, LocalDefMap, MacroSubNs,
     },
-    AssocItemId, AstIdWithPath, ConstLoc, FunctionId, FunctionLoc, ImplId, ItemContainerId,
-    ItemLoc, ModuleId, TraitId, TypeAliasId, TypeAliasLoc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -4,7 +4,7 @@ use expect_test::Expect;
 use span::{EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContext, TokenId};
 use tt::TextRange;
 
-use crate::{dylib, proc_macro_test_dylib_path, EnvSnapshot, ProcMacroSrv};
+use crate::{EnvSnapshot, ProcMacroSrv, dylib, proc_macro_test_dylib_path};
 
 fn parse_string(call_site: TokenId, src: &str) -> crate::server_impl::TokenStream<TokenId> {
     crate::server_impl::TokenStream::with_subtree(crate::server_impl::TopSubtree(

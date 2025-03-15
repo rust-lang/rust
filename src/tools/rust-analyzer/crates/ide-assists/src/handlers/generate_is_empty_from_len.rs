@@ -1,12 +1,12 @@
-use hir::{sym, HasSource, Name};
+use hir::{HasSource, Name, sym};
 use syntax::{
-    ast::{self, HasName},
     AstNode,
+    ast::{self, HasName},
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: generate_is_empty_from_len

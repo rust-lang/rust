@@ -99,11 +99,7 @@ fn fetch_borrowed_types(node: &ast::Adt) -> Option<Vec<ast::RefType>> {
         }
     };
 
-    if ref_types.is_empty() {
-        None
-    } else {
-        Some(ref_types)
-    }
+    if ref_types.is_empty() { None } else { Some(ref_types) }
 }
 
 fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast::RefType>> {
@@ -134,11 +130,7 @@ fn find_ref_types_from_field_list(field_list: &ast::FieldList) -> Option<Vec<ast
             .collect(),
     };
 
-    if ref_types.is_empty() {
-        None
-    } else {
-        Some(ref_types)
-    }
+    if ref_types.is_empty() { None } else { Some(ref_types) }
 }
 
 #[cfg(test)]

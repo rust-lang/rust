@@ -38,8 +38,8 @@ pub(crate) fn macro_def_error(ctx: &DiagnosticsContext<'_>, d: &hir::MacroDefErr
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics, check_diagnostics_with_config},
         DiagnosticsConfig,
+        tests::{check_diagnostics, check_diagnostics_with_config},
     };
 
     #[test]

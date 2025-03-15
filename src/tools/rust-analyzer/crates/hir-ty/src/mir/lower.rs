@@ -2,9 +2,11 @@
 
 use std::{fmt::Write, iter, mem};
 
-use base_db::{salsa::Cycle, Crate};
+use base_db::{Crate, salsa::Cycle};
 use chalk_ir::{BoundVar, ConstData, DebruijnIndex, TyKind};
 use hir_def::{
+    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
+    Lookup, TraitId, TupleId, TypeOrConstParamId,
     data::adt::{StructKind, VariantData},
     expr_store::{Body, HygieneId},
     hir::{
@@ -15,8 +17,6 @@ use hir_def::{
     path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     type_ref::TypesMap,
-    AdtId, DefWithBodyId, EnumVariantId, GeneralConstId, HasModule, ItemContainerId, LocalFieldId,
-    Lookup, TraitId, TupleId, TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use la_arena::ArenaMap;
@@ -27,27 +27,27 @@ use syntax::TextRange;
 use triomphe::Arc;
 
 use crate::{
+    Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
     consteval::ConstEvalError,
     db::{HirDatabase, InternedClosure},
-    display::{hir_display_with_types_map, DisplayTarget, HirDisplay},
+    display::{DisplayTarget, HirDisplay, hir_display_with_types_map},
     error_lifetime,
     generics::generics,
-    infer::{cast::CastTy, unify::InferenceTable, CaptureKind, CapturedItem, TypeMismatch},
+    infer::{CaptureKind, CapturedItem, TypeMismatch, cast::CastTy, unify::InferenceTable},
     inhabitedness::is_ty_uninhabited_from,
     layout::LayoutError,
     mapping::ToChalk,
     mir::{
-        intern_const_scalar, return_slot, AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp,
-        BorrowKind, CastKind, ClosureId, ConstScalar, Either, Expr, FieldId, Idx, InferenceResult,
-        Interner, Local, LocalId, MemoryMap, MirBody, MirSpan, Mutability, Operand, Place,
-        PlaceElem, PointerCast, ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement,
-        StatementKind, Substitution, SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty,
-        UnOp, VariantId,
+        AggregateKind, Arena, BasicBlock, BasicBlockId, BinOp, BorrowKind, CastKind, ClosureId,
+        ConstScalar, Either, Expr, FieldId, Idx, InferenceResult, Interner, Local, LocalId,
+        MemoryMap, MirBody, MirSpan, Mutability, Operand, Place, PlaceElem, PointerCast,
+        ProjectionElem, ProjectionStore, RawIdx, Rvalue, Statement, StatementKind, Substitution,
+        SwitchTargets, Terminator, TerminatorKind, TupleFieldId, Ty, UnOp, VariantId,
+        intern_const_scalar, return_slot,
     },
     static_lifetime,
     traits::FnTrait,
     utils::ClosureSubst,
-    Adjust, Adjustment, AutoBorrow, CallableDefId, TyBuilder, TyExt,
 };
 
 mod as_place;
@@ -518,7 +518,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         let Some(def) = self.owner.as_generic_def_id(self.db.upcast()) else {
                             not_supported!("owner without generic def id");
                         };
-                        let gen = generics(self.db.upcast(), def);
+                        let generics = generics(self.db.upcast(), def);
                         let ty = self.expr_ty_without_adjust(expr_id);
                         self.push_assignment(
                             current,
@@ -528,7 +528,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                                     ty,
                                     value: chalk_ir::ConstValue::BoundVar(BoundVar::new(
                                         DebruijnIndex::INNERMOST,
-                                        gen.type_or_const_param_idx(p.into()).ok_or(
+                                        generics.type_or_const_param_idx(p.into()).ok_or(
                                             MirLowerError::TypeError(
                                                 "fail to lower const generic param",
                                             ),
@@ -1278,7 +1278,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         _ => {
                             return Err(MirLowerError::TypeError(
                                 "Array expression with non array type",
-                            ))
+                            ));
                         }
                     };
                     let Some(values) = elements
@@ -1310,7 +1310,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                         _ => {
                             return Err(MirLowerError::TypeError(
                                 "Array repeat expression with non array type",
-                            ))
+                            ));
                         }
                     };
                     let r = Rvalue::Repeat(init, len);
@@ -1441,7 +1441,7 @@ impl<'ctx> MirLowerCtx<'ctx> {
                 _ => {
                     return Err(MirLowerError::TypeError(
                         "float with size other than 2, 4, 8 or 16 bytes",
-                    ))
+                    ));
                 }
             },
         };
@@ -2173,11 +2173,7 @@ pub fn lower_to_mir(
     ctx.result.locals.alloc(Local { ty: ctx.expr_ty_after_adjustments(root_expr) });
     let binding_picker = |b: BindingId| {
         let owner = ctx.body.binding_owners.get(&b).copied();
-        if root_expr == body.body_expr {
-            owner.is_none()
-        } else {
-            owner == Some(root_expr)
-        }
+        if root_expr == body.body_expr { owner.is_none() } else { owner == Some(root_expr) }
     };
     // 1 to param_len is for params
     // FIXME: replace with let chain once it becomes stable

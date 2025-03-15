@@ -8,26 +8,27 @@ use std::mem;
 use base_db::Crate;
 use either::Either;
 use hir_expand::{
+    InFile, MacroDefId,
     mod_path::tool_path,
     name::{AsName, Name},
     span_map::{ExpansionSpanMap, SpanMap},
-    InFile, MacroDefId,
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
 use span::AstIdMap;
 use stdx::never;
 use syntax::{
+    AstNode, AstPtr, AstToken as _, SyntaxNodePtr,
     ast::{
         self, ArrayExprKind, AstChildren, BlockExpr, HasArgList, HasAttrs, HasGenericArgs,
         HasLoopBody, HasName, RangeItem, SlicePatComponents,
     },
-    AstNode, AstPtr, AstToken as _, SyntaxNodePtr,
 };
 use text_size::TextSize;
 use triomphe::Arc;
 
 use crate::{
+    AdtId, BlockId, BlockLoc, ConstBlockLoc, DefWithBodyId, MacroId, ModuleDefId, UnresolvedMacro,
     attr::Attrs,
     builtin_type::BuiltinUint,
     data::adt::StructKind,
@@ -38,14 +39,14 @@ use crate::{
         ExpressionStoreDiagnostics, ExpressionStoreSourceMap, HygieneId, LabelPtr, PatPtr,
     },
     hir::{
+        Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
+        Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
+        RecordFieldPat, RecordLitField, Statement,
         format_args::{
             self, FormatAlignment, FormatArgs, FormatArgsPiece, FormatArgument, FormatArgumentKind,
             FormatArgumentsCollector, FormatCount, FormatDebugHex, FormatOptions,
             FormatPlaceholder, FormatSign, FormatTrait,
         },
-        Array, Binding, BindingAnnotation, BindingId, BindingProblems, CaptureBy, ClosureKind,
-        Expr, ExprId, Item, Label, LabelId, Literal, MatchArm, Movability, OffsetOf, Pat, PatId,
-        RecordFieldPat, RecordLitField, Statement,
     },
     item_scope::BuiltinShadowMode,
     lang_item::LangItem,
@@ -53,7 +54,6 @@ use crate::{
     nameres::{DefMap, LocalDefMap, MacroSubNs},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness, TypeRef},
-    AdtId, BlockId, BlockLoc, ConstBlockLoc, DefWithBodyId, MacroId, ModuleDefId, UnresolvedMacro,
 };
 
 type FxIndexSet<K> = indexmap::IndexSet<K, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -641,11 +641,7 @@ impl ExprCollector<'_> {
                 let expr = self.collect_expr_opt(e.expr());
                 let raw_tok = e.raw_token().is_some();
                 let mutability = if raw_tok {
-                    if e.mut_token().is_some() {
-                        Mutability::Mut
-                    } else {
-                        Mutability::Shared
-                    }
+                    if e.mut_token().is_some() { Mutability::Mut } else { Mutability::Shared }
                 } else {
                     Mutability::from_mutable(e.mut_token().is_some())
                 };
@@ -2041,7 +2037,7 @@ impl ExprCollector<'_> {
                 return match l.kind() {
                     ast::LiteralKind::String(s) => Some((s, true)),
                     _ => None,
-                }
+                };
             }
             _ => return None,
         };

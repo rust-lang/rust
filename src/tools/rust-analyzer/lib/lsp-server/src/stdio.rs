@@ -5,7 +5,7 @@ use std::{
 
 use log::debug;
 
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 
 use crate::Message;
 

@@ -5,7 +5,7 @@ use proc_macro::bridge;
 use libloading::Library;
 
 use crate::{
-    dylib::LoadProcMacroDylibError, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan,
+    ProcMacroKind, ProcMacroSrvSpan, dylib::LoadProcMacroDylibError, server_impl::TopSubtree,
 };
 
 #[repr(transparent)]

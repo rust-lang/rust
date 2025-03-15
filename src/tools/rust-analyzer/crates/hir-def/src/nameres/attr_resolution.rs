@@ -2,20 +2,20 @@
 
 use base_db::Crate;
 use hir_expand::{
+    MacroCallId, MacroCallKind, MacroDefId,
     attrs::{Attr, AttrId, AttrInput},
     inert_attr_macro::find_builtin_attr_idx,
-    MacroCallId, MacroCallKind, MacroDefId,
 };
 use span::SyntaxContext;
 use syntax::ast;
 use triomphe::Arc;
 
 use crate::{
+    AstIdWithPath, LocalModuleId, MacroId, UnresolvedMacro,
     db::DefDatabase,
     item_scope::BuiltinShadowMode,
-    nameres::{path_resolution::ResolveMode, LocalDefMap},
+    nameres::{LocalDefMap, path_resolution::ResolveMode},
     path::{self, ModPath, PathKind},
-    AstIdWithPath, LocalModuleId, MacroId, UnresolvedMacro,
 };
 
 use super::{DefMap, MacroSubNs};

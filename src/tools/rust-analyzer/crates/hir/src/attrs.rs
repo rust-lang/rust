@@ -3,12 +3,12 @@
 use std::ops::ControlFlow;
 
 use hir_def::{
+    AssocItemId, AttrDefId, ModuleDefId,
     attr::AttrsWithOwner,
     item_scope::ItemInNs,
     path::{ModPath, Path},
     per_ns::Namespace,
     resolver::{HasResolver, Resolver, TypeNs},
-    AssocItemId, AttrDefId, ModuleDefId,
 };
 use hir_expand::{mod_path::PathKind, name::Name};
 use hir_ty::{db::HirDatabase, method_resolution};
@@ -273,11 +273,7 @@ fn resolve_impl_trait_item(
             // disambiguation) so we just pick the first one we find as well.
             result = as_module_def_if_namespace_matches(assoc_item_id.into(), ns);
 
-            if result.is_some() {
-                ControlFlow::Break(())
-            } else {
-                ControlFlow::Continue(())
-            }
+            if result.is_some() { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
         },
     );
 

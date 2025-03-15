@@ -5,11 +5,11 @@ use ide_db::{FxHashMap, FxHashSet};
 use itertools::Itertools;
 use parser::Edition;
 use syntax::{
-    ast::{self, AstNode, AstToken},
     SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange, TextSize,
+    ast::{self, AstNode, AstToken},
 };
 
-use crate::{fragments, resolving::ResolvedRule, Match, SsrMatches};
+use crate::{Match, SsrMatches, fragments, resolving::ResolvedRule};
 
 /// Returns a text edit that will replace each match in `matches` with its corresponding replacement
 /// template. Placeholders in the template will have been substituted with whatever they matched to

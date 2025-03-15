@@ -3,25 +3,26 @@ use std::iter;
 use either::Either;
 use hir::{HasCrate, Module, ModuleDef, Name, Variant};
 use ide_db::{
+    FxHashSet, RootDatabase,
     defs::Definition,
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope, InsertUseConfig},
+    imports::insert_use::{ImportScope, InsertUseConfig, insert_use},
     path_transform::PathTransform,
     search::FileReference,
-    FxHashSet, RootDatabase,
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
-        HasName, HasVisibility,
-    },
-    match_ast, ted, Edition, SyntaxElement,
+    Edition, SyntaxElement,
     SyntaxKind::*,
     SyntaxNode, T,
+    ast::{
+        self, AstNode, HasAttrs, HasGenericParams, HasName, HasVisibility, edit::IndentLevel,
+        edit_in_place::Indent, make,
+    },
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: extract_struct_from_enum_variant
 //

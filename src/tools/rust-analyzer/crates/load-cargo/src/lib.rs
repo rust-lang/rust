@@ -4,23 +4,24 @@
 // to run rust-analyzer as a library.
 use std::{collections::hash_map::Entry, mem, path::Path, sync};
 
-use crossbeam_channel::{unbounded, Receiver};
+use crossbeam_channel::{Receiver, unbounded};
 use hir_expand::proc_macro::{
     ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind, ProcMacroLoadResult,
     ProcMacrosBuilder,
 };
 use ide_db::{
+    ChangeWithProcMacros, FxHashMap, RootDatabase,
     base_db::{CrateGraphBuilder, Env, SourceRoot, SourceRootId},
-    prime_caches, ChangeWithProcMacros, FxHashMap, RootDatabase,
+    prime_caches,
 };
 use itertools::Itertools;
 use proc_macro_api::{MacroDylib, ProcMacroClient};
 use project_model::{CargoConfig, PackageRoot, ProjectManifest, ProjectWorkspace};
 use span::Span;
 use vfs::{
+    AbsPath, AbsPathBuf, VfsPath,
     file_set::FileSetConfig,
     loader::{Handle, LoadingProgress},
-    AbsPath, AbsPathBuf, VfsPath,
 };
 
 #[derive(Debug)]
@@ -626,7 +627,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 2, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
 
         assert_eq!(vc, vec![(SourceRootId(2), SourceRootId(1)), (SourceRootId(3), SourceRootId(1))])
     }
@@ -641,7 +642,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
 
         assert_eq!(vc, vec![(SourceRootId(3), SourceRootId(1)),])
     }
@@ -656,7 +657,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1, 3] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
 
         assert_eq!(vc, vec![(SourceRootId(3), SourceRootId(1)),])
     }
@@ -672,7 +673,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
 
         assert_eq!(vc, vec![(SourceRootId(1), SourceRootId(0)),])
     }
@@ -688,7 +689,7 @@ mod tests {
         let fsc = builder.build();
         let src = SourceRootConfig { fsc, local_filesets: vec![0, 1] };
         let mut vc = src.source_root_parent_map().into_iter().collect::<Vec<_>>();
-        vc.sort_by(|x, y| x.0 .0.cmp(&y.0 .0));
+        vc.sort_by(|x, y| x.0.0.cmp(&y.0.0));
 
         assert_eq!(vc, vec![(SourceRootId(1), SourceRootId(0)),])
     }

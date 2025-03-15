@@ -2,9 +2,9 @@ use hir::Type;
 use ide_db::FxHashMap;
 use std::iter::successors;
 use syntax::{
+    Direction,
     algo::neighbor,
     ast::{self, AstNode, HasName},
-    Direction,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists, TextRange};

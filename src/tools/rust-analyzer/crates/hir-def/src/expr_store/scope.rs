@@ -1,13 +1,13 @@
 //! Name resolution for expressions.
-use hir_expand::{name::Name, MacroDefId};
+use hir_expand::{MacroDefId, name::Name};
 use la_arena::{Arena, ArenaMap, Idx, IdxRange, RawIdx};
 use triomphe::Arc;
 
 use crate::{
+    BlockId, ConstBlockId, DefWithBodyId,
     db::DefDatabase,
     expr_store::{Body, ExpressionStore, HygieneId},
     hir::{Binding, BindingId, Expr, ExprId, Item, LabelId, Pat, PatId, Statement},
-    BlockId, ConstBlockId, DefWithBodyId,
 };
 
 pub type ScopeId = Idx<ScopeData>;
@@ -325,14 +325,14 @@ fn compute_expr_scopes(
 #[cfg(test)]
 mod tests {
     use base_db::RootQueryDb;
-    use hir_expand::{name::AsName, InFile};
+    use hir_expand::{InFile, name::AsName};
     use salsa::AsDynDatabase;
     use span::FileId;
-    use syntax::{algo::find_node_at_offset, ast, AstNode};
+    use syntax::{AstNode, algo::find_node_at_offset, ast};
     use test_fixture::WithFixture;
     use test_utils::{assert_eq_text, extract_offset};
 
-    use crate::{db::DefDatabase, test_db::TestDB, FunctionId, ModuleDefId};
+    use crate::{FunctionId, ModuleDefId, db::DefDatabase, test_db::TestDB};
 
     fn find_function(db: &TestDB, file_id: FileId) -> FunctionId {
         let krate = db.test_crate();

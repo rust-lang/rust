@@ -15,8 +15,8 @@ use ide::{
     Snippet, SnippetScope, SourceRootId,
 };
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
     SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig, PrefixKind},
 };
 use itertools::{Either, Itertools};
 use paths::{Utf8Path, Utf8PathBuf};
@@ -27,8 +27,8 @@ use project_model::{
 use rustc_hash::{FxHashMap, FxHashSet};
 use semver::Version;
 use serde::{
-    de::{DeserializeOwned, Error},
     Deserialize, Serialize,
+    de::{DeserializeOwned, Error},
 };
 use stdx::format_to_acc;
 use triomphe::Arc;
@@ -1104,10 +1104,10 @@ impl Config {
             config
                 .client_config
                 .1
-                 .0
+                .0
                 .iter()
-                .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1 .0.iter()))
-                .chain(config.ratoml_file.values().flat_map(|it| it.1 .0.iter()))
+                .chain(config.user_config.as_ref().into_iter().flat_map(|it| it.1.0.iter()))
+                .chain(config.ratoml_file.values().flat_map(|it| it.1.0.iter()))
                 .chain(config.validation_errors.0.iter())
                 .cloned()
                 .collect(),

@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use syntax::{
-    ast::{self, edit::IndentLevel, Comment, CommentKind, CommentShape, Whitespace},
     AstToken, Direction, SyntaxElement, TextRange,
+    ast::{self, Comment, CommentKind, CommentShape, Whitespace, edit::IndentLevel},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -167,11 +167,7 @@ pub(crate) fn line_comment_text(indentation: IndentLevel, comm: ast::Comment) ->
     let contents = contents_without_prefix.strip_prefix(' ').unwrap_or(contents_without_prefix);
 
     // Don't add the indentation if the line is empty
-    if contents.is_empty() {
-        contents.to_owned()
-    } else {
-        indentation.to_string() + contents
-    }
+    if contents.is_empty() { contents.to_owned() } else { indentation.to_string() + contents }
 }
 
 #[cfg(test)]

@@ -17,8 +17,8 @@ use std::marker::PhantomData;
 use either::Either;
 
 use crate::{
-    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
     SyntaxKind,
+    syntax_node::{SyntaxNode, SyntaxNodeChildren, SyntaxToken},
 };
 
 pub use self::{

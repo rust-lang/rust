@@ -2,7 +2,7 @@
 
 use hir::TraitRef;
 use syntax::{
-    ast::{self, edit::AstNodeEdit, make, AstNode, BinaryOp, CmpOp, HasName, LogicOp},
+    ast::{self, AstNode, BinaryOp, CmpOp, HasName, LogicOp, edit::AstNodeEdit, make},
     ted,
 };
 

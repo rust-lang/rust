@@ -10,17 +10,19 @@ pub(crate) mod type_alias;
 pub(crate) mod union_literal;
 pub(crate) mod variant;
 
-use hir::{sym, AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type};
+use hir::{AsAssocItem, HasAttrs, HirDisplay, ModuleDef, ScopeDef, Type, sym};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
+    RootDatabase, SnippetCap, SymbolKind,
     documentation::{Documentation, HasDocs},
     helpers::item_name,
     imports::import_assets::LocatedImport,
-    RootDatabase, SnippetCap, SymbolKind,
 };
-use syntax::{ast, format_smolstr, AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr};
+use syntax::{AstNode, SmolStr, SyntaxKind, TextRange, ToSmolStr, ast, format_smolstr};
 
 use crate::{
+    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
+    CompletionRelevance,
     context::{DotAccess, DotAccessKind, PathCompletionCtx, PathKind, PatternContext},
     item::{Builder, CompletionRelevanceTypeMatch},
     render::{
@@ -28,8 +30,6 @@ use crate::{
         literal::render_variant_lit,
         macro_::{render_macro, render_macro_pat},
     },
-    CompletionContext, CompletionItem, CompletionItemKind, CompletionItemRefMode,
-    CompletionRelevance,
 };
 /// Interface for data and methods required for items rendering.
 #[derive(Debug, Clone)]
@@ -683,14 +683,14 @@ fn path_ref_match(
 mod tests {
     use std::cmp;
 
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use ide_db::SymbolKind;
     use itertools::Itertools;
 
     use crate::{
-        item::CompletionRelevanceTypeMatch,
-        tests::{check_edit, do_completion, get_all_items, TEST_CONFIG},
         CompletionItem, CompletionItemKind, CompletionRelevance, CompletionRelevancePostfixMatch,
+        item::CompletionRelevanceTypeMatch,
+        tests::{TEST_CONFIG, check_edit, do_completion, get_all_items},
     };
 
     #[track_caller]

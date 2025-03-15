@@ -7,26 +7,26 @@ use std::{iter, ops::Not};
 
 use either::Either;
 use hir::{
-    db::DefDatabase, DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem,
-    Semantics,
+    DisplayTarget, GenericDef, GenericSubstitution, HasCrate, HasSource, LangItem, Semantics,
+    db::DefDatabase,
 };
 use ide_db::{
+    FileRange, FxIndexSet, Ranker, RootDatabase,
     defs::{Definition, IdentClass, NameRefClass, OperatorClass},
     famous_defs::FamousDefs,
     helpers::pick_best_token,
-    FileRange, FxIndexSet, Ranker, RootDatabase,
 };
-use itertools::{multizip, Itertools};
+use itertools::{Itertools, multizip};
 use span::Edition;
-use syntax::{ast, AstNode, SyntaxKind::*, SyntaxNode, T};
+use syntax::{AstNode, SyntaxKind::*, SyntaxNode, T, ast};
 
 use crate::{
+    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
     doc_links::token_as_doc_comment,
     markdown_remove::remove_markdown,
     markup::Markup,
     navigation_target::UpmappingResult,
     runnables::{runnable_fn, runnable_mod},
-    FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
 };
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HoverConfig {
@@ -512,7 +512,7 @@ fn show_implementations_action(db: &RootDatabase, def: Definition) -> Option<Hov
 
     let adt = match def {
         Definition::Trait(it) => {
-            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action)
+            return it.try_to_nav(db).map(UpmappingResult::call_site).map(to_action);
         }
         Definition::Adt(it) => Some(it),
         Definition::SelfType(it) => it.self_ty(db).as_adt(),

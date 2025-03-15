@@ -6,17 +6,17 @@ use base_db::{
     Crate, CrateGraphBuilder, CratesMap, FileSourceRootInput, FileText, RootQueryDb,
     SourceDatabase, SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
-use hir_expand::{db::ExpandDatabase, files::FilePosition, InFile};
+use hir_expand::{InFile, db::ExpandDatabase, files::FilePosition};
 use salsa::{AsDynDatabase, Durability};
 use span::{EditionedFileId, FileId};
-use syntax::{algo, ast, AstNode};
+use syntax::{AstNode, algo, ast};
 use triomphe::Arc;
 
 use crate::{
+    LocalModuleId, Lookup, ModuleDefId, ModuleId,
     db::DefDatabase,
     nameres::{DefMap, ModuleSource},
     src::HasSource,
-    LocalModuleId, Lookup, ModuleDefId, ModuleId,
 };
 
 #[salsa::db]
@@ -281,9 +281,9 @@ impl TestDB {
         let editioned_file_id_wrapper =
             base_db::EditionedFileId::new(db.as_dyn_database(), position.file_id);
 
-        let root = db.parse(editioned_file_id_wrapper);
-        let scope_iter = algo::ancestors_at_offset(&root.syntax_node(), position.offset)
-            .filter_map(|node| {
+        let root_syntax_node = db.parse(editioned_file_id_wrapper).syntax_node();
+        let scope_iter =
+            algo::ancestors_at_offset(&root_syntax_node, position.offset).filter_map(|node| {
                 let block = ast::BlockExpr::cast(node)?;
                 let expr = ast::Expr::from(block);
                 let expr_id = source_map

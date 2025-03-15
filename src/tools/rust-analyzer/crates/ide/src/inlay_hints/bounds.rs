@@ -1,7 +1,7 @@
 //! Implementation of trait bound hints.
 //!
 //! Currently this renders the implied `Sized` bound.
-use ide_db::{famous_defs::FamousDefs, FileRange};
+use ide_db::{FileRange, famous_defs::FamousDefs};
 
 use span::EditionedFileId;
 use syntax::ast::{self, AstNode, HasTypeBounds};
@@ -86,7 +86,7 @@ mod tests {
 
     use crate::inlay_hints::InlayHintsConfig;
 
-    use crate::inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG};
+    use crate::inlay_hints::tests::{DISABLED_CONFIG, check_expect, check_with_config};
 
     #[track_caller]
     fn check(#[rust_analyzer::rust_fixture] ra_fixture: &str) {

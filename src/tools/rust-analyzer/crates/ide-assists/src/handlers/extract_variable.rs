@@ -1,19 +1,19 @@
 use hir::{HirDisplay, TypeInfo};
 use ide_db::{
     assists::GroupLabel,
-    syntax_helpers::{suggest_name, LexedStr},
+    syntax_helpers::{LexedStr, suggest_name},
 };
 use syntax::{
+    NodeOrToken, SyntaxKind, SyntaxNode, T,
     algo::ancestors_at_offset,
     ast::{
-        self, edit::IndentLevel, edit_in_place::Indent, make, syntax_factory::SyntaxFactory,
-        AstNode,
+        self, AstNode, edit::IndentLevel, edit_in_place::Indent, make,
+        syntax_factory::SyntaxFactory,
     },
     syntax_editor::Position,
-    NodeOrToken, SyntaxKind, SyntaxNode, T,
 };
 
-use crate::{utils::is_body_const, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils::is_body_const};
 
 // Assist: extract_variable
 //

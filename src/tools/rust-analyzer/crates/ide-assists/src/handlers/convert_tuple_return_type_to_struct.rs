@@ -1,18 +1,19 @@
 use either::Either;
 use hir::ModuleDef;
 use ide_db::{
+    FxHashSet,
     assists::{AssistId, AssistKind},
     defs::Definition,
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope},
+    imports::insert_use::{ImportScope, insert_use},
     search::{FileReference, UsageSearchResult},
     source_change::SourceChangeBuilder,
     syntax_helpers::node_ext::{for_each_tail_expr, walk_expr},
-    FxHashSet,
 };
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, make, HasName},
-    match_ast, ted, AstNode, SyntaxNode,
+    AstNode, SyntaxNode,
+    ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, make},
+    match_ast, ted,
 };
 
 use crate::assist_context::{AssistContext, Assists};

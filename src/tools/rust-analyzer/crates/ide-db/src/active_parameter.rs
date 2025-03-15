@@ -4,8 +4,9 @@ use either::Either;
 use hir::{InFile, Semantics, Type};
 use parser::T;
 use syntax::{
+    AstNode, NodeOrToken, SyntaxToken,
     ast::{self, AstChildren, HasArgList, HasAttrs, HasName},
-    match_ast, AstNode, NodeOrToken, SyntaxToken,
+    match_ast,
 };
 
 use crate::RootDatabase;

@@ -17,7 +17,7 @@ pub mod type_ref;
 
 use std::fmt;
 
-use hir_expand::{name::Name, MacroDefId};
+use hir_expand::{MacroDefId, name::Name};
 use intern::Symbol;
 use la_arena::Idx;
 use rustc_apfloat::ieee::{Half as f16, Quad as f128};
@@ -25,10 +25,10 @@ use syntax::ast;
 use type_ref::TypeRefId;
 
 use crate::{
+    BlockId, ConstBlockId,
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinUint},
     path::{GenericArgs, Path},
     type_ref::{Mutability, Rawness},
-    BlockId, ConstBlockId,
 };
 
 pub use syntax::ast::{ArithOp, BinaryOp, CmpOp, LogicOp, Ordering, RangeOp, UnaryOp};
@@ -137,11 +137,7 @@ pub enum LiteralOrConst {
 
 impl Literal {
     pub fn negate(self) -> Option<Self> {
-        if let Literal::Int(i, k) = self {
-            Some(Literal::Int(-i, k))
-        } else {
-            None
-        }
+        if let Literal::Int(i, k) = self { Some(Literal::Int(-i, k)) } else { None }
     }
 }
 

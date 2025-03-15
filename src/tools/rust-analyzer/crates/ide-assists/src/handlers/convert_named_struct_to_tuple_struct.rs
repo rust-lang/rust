@@ -2,11 +2,12 @@ use either::Either;
 use ide_db::{defs::Definition, search::FileReference};
 use itertools::Itertools;
 use syntax::{
+    SyntaxKind,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted, SyntaxKind,
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_named_struct_to_tuple_struct
 //

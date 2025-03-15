@@ -8,8 +8,8 @@ use stdx::format_to;
 use syntax::AstNode;
 
 use crate::{
-    syntax_highlighting::{highlight, HighlightConfig},
     FileId, RootDatabase,
+    syntax_highlighting::{HighlightConfig, highlight},
 };
 
 pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: bool) -> String {

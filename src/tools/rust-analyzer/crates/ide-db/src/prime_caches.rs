@@ -6,14 +6,14 @@ mod topologic_sort;
 
 use std::time::Duration;
 
-use hir::{db::DefDatabase, Symbol};
+use hir::{Symbol, db::DefDatabase};
 use itertools::Itertools;
 use salsa::{Cancelled, Database};
 
 use crate::{
+    FxIndexMap, RootDatabase,
     base_db::{Crate, RootQueryDb},
     symbol_index::SymbolsDatabase,
-    FxIndexMap, RootDatabase,
 };
 
 /// We're indexing many crates.

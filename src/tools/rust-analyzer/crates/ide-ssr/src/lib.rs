@@ -83,11 +83,11 @@ use hir::{FileRange, Semantics};
 use ide_db::symbol_index::SymbolsDatabase;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    base_db::{salsa::AsDynDatabase, SourceDatabase},
     EditionedFileId, FileId, FxHashMap, RootDatabase,
+    base_db::{SourceDatabase, salsa::AsDynDatabase},
 };
 use resolving::ResolvedRule;
-use syntax::{ast, AstNode, SyntaxNode, TextRange};
+use syntax::{AstNode, SyntaxNode, TextRange, ast};
 
 // A structured search replace rule. Create by calling `parse` on a str.
 #[derive(Debug)]

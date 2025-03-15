@@ -4,10 +4,10 @@ use std::process::{Command, Stdio};
 use std::thread;
 use std::time::Duration;
 
-use anyhow::{bail, Context as _};
+use anyhow::{Context as _, bail};
 use directories::ProjectDirs;
 use stdx::JodChild;
-use xshell::{cmd, Shell};
+use xshell::{Shell, cmd};
 
 use crate::{date_iso, flags, is_release_tag, project_root};
 
@@ -188,7 +188,9 @@ impl flags::RustcPush {
                 Expected {head}, got {fetch_head}."
             );
         }
-        println!("Confirmed that the push round-trips back to rust-analyzer properly. Please create a rustc PR:");
+        println!(
+            "Confirmed that the push round-trips back to rust-analyzer properly. Please create a rustc PR:"
+        );
         // https://github.com/github-linguist/linguist/compare/master...octocat:linguist:master
         let fork_path = rust_fork.replace('/', ":");
         println!(
@@ -201,8 +203,7 @@ impl flags::RustcPush {
 }
 
 /// Used for rustc syncs.
-const JOSH_FILTER: &str =
-    ":rev(55d9a533b309119c8acd13061581b43ae8840823:prefix=src/tools/rust-analyzer):/src/tools/rust-analyzer";
+const JOSH_FILTER: &str = ":rev(55d9a533b309119c8acd13061581b43ae8840823:prefix=src/tools/rust-analyzer):/src/tools/rust-analyzer";
 const JOSH_PORT: &str = "42042";
 
 fn start_josh() -> anyhow::Result<impl Drop> {

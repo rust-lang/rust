@@ -1,17 +1,17 @@
 use chalk_ir::{AdtId, TyKind};
 use either::Either;
 use hir_def::db::DefDatabase;
-use project_model::{toolchain_info::QueryConfig, Sysroot};
+use project_model::{Sysroot, toolchain_info::QueryConfig};
 use rustc_hash::FxHashMap;
 use syntax::ToSmolStr;
 use test_fixture::WithFixture;
 use triomphe::Arc;
 
 use crate::{
+    Interner, Substitution,
     db::HirDatabase,
     layout::{Layout, LayoutError},
     test_db::TestDB,
-    Interner, Substitution,
 };
 
 mod closure;

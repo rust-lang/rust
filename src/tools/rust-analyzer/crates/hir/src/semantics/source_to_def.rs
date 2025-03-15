@@ -88,30 +88,30 @@
 use base_db::{RootQueryDb, Upcast};
 use either::Either;
 use hir_def::{
-    dyn_map::{
-        keys::{self, Key},
-        DynMap,
-    },
-    hir::{BindingId, Expr, LabelId},
     AdtId, BlockId, ConstId, ConstParamId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId,
     ExternCrateId, FieldId, FunctionId, GenericDefId, GenericParamId, ImplId, LifetimeParamId,
     Lookup, MacroId, ModuleId, StaticId, StructId, TraitAliasId, TraitId, TypeAliasId, TypeParamId,
     UnionId, UseId, VariantId,
+    dyn_map::{
+        DynMap,
+        keys::{self, Key},
+    },
+    hir::{BindingId, Expr, LabelId},
 };
 use hir_expand::{
-    attrs::AttrId, name::AsName, ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId,
-    MacroFileId, MacroFileIdExt,
+    ExpansionInfo, HirFileId, HirFileIdExt, InMacroFile, MacroCallId, MacroFileId, MacroFileIdExt,
+    attrs::AttrId, name::AsName,
 };
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{EditionedFileId, FileId};
 use stdx::impl_from;
 use syntax::{
-    ast::{self, HasName},
     AstNode, AstPtr, SyntaxNode,
+    ast::{self, HasName},
 };
 
-use crate::{db::HirDatabase, semantics::child_by_source::ChildBySource, InFile, InlineAsmOperand};
+use crate::{InFile, InlineAsmOperand, db::HirDatabase, semantics::child_by_source::ChildBySource};
 
 #[derive(Default)]
 pub(super) struct SourceToDefCache {

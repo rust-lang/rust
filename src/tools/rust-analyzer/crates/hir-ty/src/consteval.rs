@@ -1,14 +1,14 @@
 //! Constant evaluation details
 
 use base_db::Crate;
-use chalk_ir::{cast::Cast, BoundVar, DebruijnIndex};
+use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast};
 use hir_def::{
+    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
     expr_store::{Body, HygieneId},
     hir::{Expr, ExprId},
     path::Path,
     resolver::{Resolver, ValueNs},
     type_ref::LiteralConstRef,
-    ConstBlockLoc, EnumVariantId, GeneralConstId, HasModule as _, StaticId,
 };
 use hir_expand::Lookup;
 use salsa::Cycle;
@@ -16,17 +16,18 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
+    Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap, Substitution,
+    TraitEnvironment, Ty, TyBuilder,
     db::{HirDatabase, HirDatabaseData},
     display::DisplayTarget,
     generics::Generics,
     infer::InferenceContext,
     lower::ParamLoweringMode,
     mir::monomorphize_mir_body_bad,
-    to_placeholder_idx, Const, ConstData, ConstScalar, ConstValue, GenericArg, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyBuilder,
+    to_placeholder_idx,
 };
 
-use super::mir::{interpret_mir, lower_to_mir, pad16, MirEvalError, MirLowerError};
+use super::mir::{MirEvalError, MirLowerError, interpret_mir, lower_to_mir, pad16};
 
 /// Extension trait for [`Const`]
 pub trait ConstExt {

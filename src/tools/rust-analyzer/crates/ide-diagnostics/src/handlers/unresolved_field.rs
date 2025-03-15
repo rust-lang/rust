@@ -1,7 +1,7 @@
 use std::iter;
 
 use either::Either;
-use hir::{db::ExpandDatabase, Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union};
+use hir::{Adt, FileRange, HasSource, HirDisplay, InFile, Struct, Union, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     assists::{Assist, AssistId, AssistKind},
@@ -10,16 +10,15 @@ use ide_db::{
     source_change::{SourceChange, SourceChangeBuilder},
 };
 use syntax::{
-    algo,
-    ast::{self, edit::IndentLevel, make, FieldList, Name, Visibility},
-    AstNode, AstPtr, Direction, SyntaxKind, TextSize,
+    AstNode, AstPtr, Direction, SyntaxKind, TextSize, algo,
+    ast::{self, FieldList, Name, Visibility, edit::IndentLevel, make},
 };
 use syntax::{
-    ast::{edit::AstNodeEdit, Type},
     SyntaxNode,
+    ast::{Type, edit::AstNodeEdit},
 };
 
-use crate::{adjusted_display_range, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, adjusted_display_range};
 
 // Diagnostic: unresolved-field
 //
@@ -62,11 +61,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedField) -> Option<Vec<A
         fixes.extend(method_fix(ctx, &d.expr));
     }
     fixes.extend(field_fix(ctx, d));
-    if fixes.is_empty() {
-        None
-    } else {
-        Some(fixes)
-    }
+    if fixes.is_empty() { None } else { Some(fixes) }
 }
 
 // FIXME: Add Snippet Support
@@ -285,11 +280,11 @@ fn method_fix(
 mod tests {
 
     use crate::{
+        DiagnosticsConfig,
         tests::{
             check_diagnostics, check_diagnostics_with_config, check_diagnostics_with_disabled,
             check_fix, check_no_fix,
         },
-        DiagnosticsConfig,
     };
 
     #[test]

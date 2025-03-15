@@ -1,6 +1,6 @@
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit, make, AstNode, HasAttrs},
     T,
+    ast::{self, AstNode, HasAttrs, edit_in_place::AttrsOwnerEdit, make},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

@@ -2,19 +2,19 @@ use hir::{InFile, MacroFileIdExt, ModuleDef};
 use ide_db::{helpers::mod_path_to_ast, imports::import_assets::NameToImport, items_locator};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, HasName},
-    ted,
     SyntaxKind::WHITESPACE,
     T,
+    ast::{self, AstNode, HasName, make},
+    ted,
 };
 
 use crate::{
+    AssistId, AssistKind,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::{
-        add_trait_assoc_items_to_impl, filter_assoc_items, gen_trait_fn_body, generate_trait_impl,
-        DefaultMethods, IgnoreAssocItems,
+        DefaultMethods, IgnoreAssocItems, add_trait_assoc_items_to_impl, filter_assoc_items,
+        gen_trait_fn_body, generate_trait_impl,
     },
-    AssistId, AssistKind,
 };
 
 // Assist: replace_derive_with_manual_impl

@@ -4,12 +4,12 @@ use std::iter;
 
 use hir::{HirFileIdExt, Module};
 use ide_db::{
-    base_db::{SourceDatabase, VfsPath},
     FxHashSet, RootDatabase, SymbolKind,
+    base_db::{SourceDatabase, VfsPath},
 };
-use syntax::{ast, AstNode, SyntaxKind};
+use syntax::{AstNode, SyntaxKind, ast};
 
-use crate::{context::CompletionContext, CompletionItem, Completions};
+use crate::{CompletionItem, Completions, context::CompletionContext};
 
 /// Complete mod declaration, i.e. `mod $0;`
 pub(crate) fn complete_mod(

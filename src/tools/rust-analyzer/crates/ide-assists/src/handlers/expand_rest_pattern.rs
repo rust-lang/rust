@@ -1,8 +1,9 @@
 use hir::{PathResolution, StructKind};
 use ide_db::syntax_helpers::suggest_name::NameGenerator;
 use syntax::{
+    AstNode, ToSmolStr,
     ast::{self, make},
-    match_ast, AstNode, ToSmolStr,
+    match_ast,
 };
 
 use crate::{AssistContext, AssistId, Assists};

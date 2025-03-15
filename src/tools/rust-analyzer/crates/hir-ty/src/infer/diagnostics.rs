@@ -6,13 +6,13 @@ use std::cell::RefCell;
 use std::ops::{Deref, DerefMut};
 
 use either::Either;
-use hir_def::{hir::ExprOrPatId, path::Path, resolver::Resolver, type_ref::TypesMap, TypeOwnerId};
+use hir_def::{TypeOwnerId, hir::ExprOrPatId, path::Path, resolver::Resolver, type_ref::TypesMap};
 use la_arena::{Idx, RawIdx};
 
 use crate::{
+    InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringContext, TyLoweringDiagnostic,
     db::HirDatabase,
     lower::path::{PathDiagnosticCallback, PathLoweringContext},
-    InferenceDiagnostic, InferenceTyDiagnosticSource, TyLoweringContext, TyLoweringDiagnostic,
 };
 
 // Unfortunately, this struct needs to use interior mutability (but we encapsulate it)

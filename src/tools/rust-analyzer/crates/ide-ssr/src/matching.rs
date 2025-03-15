@@ -2,16 +2,16 @@
 //! process of matching, placeholder values are recorded.
 
 use crate::{
+    SsrMatches,
     parsing::{Constraint, NodeKind, Placeholder, Var},
     resolving::{ResolvedPattern, ResolvedRule, UfcsCallInfo},
-    SsrMatches,
 };
 use hir::{FileRange, ImportPathConfig, Semantics};
-use ide_db::{base_db::RootQueryDb, FxHashMap};
+use ide_db::{FxHashMap, base_db::RootQueryDb};
 use std::{cell::Cell, iter::Peekable};
 use syntax::{
-    ast::{self, AstNode, AstToken, HasGenericArgs},
     SmolStr, SyntaxElement, SyntaxElementChildren, SyntaxKind, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, AstToken, HasGenericArgs},
 };
 
 // Creates a match error. If we're currently attempting to match some code that we thought we were

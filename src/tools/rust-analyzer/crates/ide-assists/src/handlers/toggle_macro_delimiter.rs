@@ -1,7 +1,8 @@
 use ide_db::assists::{AssistId, AssistKind};
 use syntax::{
+    AstNode, T,
     ast::{self, make},
-    ted, AstNode, T,
+    ted,
 };
 
 use crate::{AssistContext, Assists};

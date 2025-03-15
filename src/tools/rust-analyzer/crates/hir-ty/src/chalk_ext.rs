@@ -1,22 +1,22 @@
 //! Various extensions traits for Chalk types.
 
 use chalk_ir::{
-    cast::Cast, FloatTy, IntTy, Mutability, Scalar, TyVariableKind, TypeOutlives, UintTy,
+    FloatTy, IntTy, Mutability, Scalar, TyVariableKind, TypeOutlives, UintTy, cast::Cast,
 };
 use hir_def::{
+    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
     builtin_type::{BuiltinFloat, BuiltinInt, BuiltinType, BuiltinUint},
     generics::TypeOrConstParamData,
     lang_item::LangItem,
     type_ref::Rawness,
-    DefWithBodyId, FunctionId, GenericDefId, HasModule, ItemContainerId, Lookup, TraitId,
 };
 
 use crate::{
-    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst, AdtId,
-    AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds, ClosureId,
-    DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, Canonical, CanonicalVarKinds,
+    ClosureId, DynTy, FnPointer, ImplTraitId, InEnvironment, Interner, Lifetime, ProjectionTy,
     QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, TypeFlags, WhereClause,
+    db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
+    from_placeholder_idx, generics::generics, to_chalk_trait_id, utils::ClosureSubst,
 };
 
 pub trait TyExt {

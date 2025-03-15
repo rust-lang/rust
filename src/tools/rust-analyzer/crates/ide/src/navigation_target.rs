@@ -5,19 +5,20 @@ use std::fmt;
 use arrayvec::ArrayVec;
 use either::Either;
 use hir::{
-    db::ExpandDatabase, symbols::FileSymbol, AssocItem, FieldSource, HasContainer, HasCrate,
-    HasSource, HirDisplay, HirFileId, InFile, LocalSource, ModuleSource,
+    AssocItem, FieldSource, HasContainer, HasCrate, HasSource, HirDisplay, HirFileId, InFile,
+    LocalSource, ModuleSource, db::ExpandDatabase, symbols::FileSymbol,
 };
 use ide_db::{
+    FileId, FileRange, RootDatabase, SymbolKind,
     defs::Definition,
     documentation::{Documentation, HasDocs},
-    FileId, FileRange, RootDatabase, SymbolKind,
 };
 use span::Edition;
 use stdx::never;
 use syntax::{
+    AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
     ast::{self, HasName},
-    format_smolstr, AstNode, SmolStr, SyntaxNode, TextRange, ToSmolStr,
+    format_smolstr,
 };
 
 /// `NavigationTarget` represents an element in the editor's UI which you can
@@ -953,7 +954,7 @@ fn orig_range_r(
 mod tests {
     use expect_test::expect;
 
-    use crate::{fixture, Query};
+    use crate::{Query, fixture};
 
     #[test]
     fn test_nav_for_symbol() {

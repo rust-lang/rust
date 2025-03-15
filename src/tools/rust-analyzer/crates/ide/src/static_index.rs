@@ -1,25 +1,25 @@
 //! This module provides `StaticIndex` which is used for powering
 //! read-only code browsers and emitting LSIF
 
-use hir::{db::HirDatabase, Crate, HirFileIdExt, Module, Semantics};
+use hir::{Crate, HirFileIdExt, Module, Semantics, db::HirDatabase};
 use ide_db::{
+    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
     base_db::{RootQueryDb, SourceDatabase, VfsPath},
     defs::Definition,
     documentation::Documentation,
     famous_defs::FamousDefs,
     helpers::get_definition,
-    FileId, FileRange, FxHashMap, FxHashSet, RootDatabase,
 };
 use span::Edition;
-use syntax::{AstNode, SyntaxKind::*, SyntaxNode, TextRange, T};
+use syntax::{AstNode, SyntaxKind::*, SyntaxNode, T, TextRange};
 
 use crate::navigation_target::UpmappingResult;
 use crate::{
-    hover::{hover_for_definition, SubstTyLen},
-    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
-    moniker::{def_to_kind, def_to_moniker, MonikerResult, SymbolInformationKind},
-    parent_module::crates_for,
     Analysis, Fold, HoverConfig, HoverResult, InlayHint, InlayHintsConfig, TryToNav,
+    hover::{SubstTyLen, hover_for_definition},
+    inlay_hints::{AdjustmentHintsMode, InlayFieldsToResolve},
+    moniker::{MonikerResult, SymbolInformationKind, def_to_kind, def_to_moniker},
+    parent_module::crates_for,
 };
 
 /// A static representation of fully analyzed source code.
@@ -307,8 +307,8 @@ impl StaticIndex<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{fixture, StaticIndex};
-    use ide_db::{base_db::VfsPath, FileRange, FxHashSet};
+    use crate::{StaticIndex, fixture};
+    use ide_db::{FileRange, FxHashSet, base_db::VfsPath};
     use syntax::TextSize;
 
     use super::VendoredLibrariesConfig;

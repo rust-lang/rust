@@ -455,11 +455,7 @@ pub(crate) fn map_rust_diagnostic_to_lsp(
                             .cloned()
                             .chain(subdiagnostics.iter().map(|sub| sub.related.clone()))
                             .collect::<Vec<_>>();
-                        if info.is_empty() {
-                            None
-                        } else {
-                            Some(info)
-                        }
+                        if info.is_empty() { None } else { Some(info) }
                     },
                     tags: if tags.is_empty() { None } else { Some(tags.clone()) },
                     data: Some(serde_json::json!({ "rendered": rd.rendered })),
@@ -528,7 +524,7 @@ mod tests {
 
     use super::*;
 
-    use expect_test::{expect_file, ExpectFile};
+    use expect_test::{ExpectFile, expect_file};
     use lsp_types::ClientCapabilities;
     use paths::Utf8Path;
 

@@ -16,16 +16,16 @@
 mod on_enter;
 
 use ide_db::{
-    base_db::{salsa::AsDynDatabase, RootQueryDb},
     FilePosition, RootDatabase,
+    base_db::{RootQueryDb, salsa::AsDynDatabase},
 };
 use span::{Edition, EditionedFileId};
 use std::iter;
 
 use syntax::{
-    algo::{ancestors_at_offset, find_node_at_offset},
-    ast::{self, edit::IndentLevel, AstToken},
     AstNode, Parse, SourceFile, SyntaxKind, TextRange, TextSize,
+    algo::{ancestors_at_offset, find_node_at_offset},
+    ast::{self, AstToken, edit::IndentLevel},
 };
 
 use ide_db::text_edit::TextEdit;

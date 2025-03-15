@@ -2,7 +2,7 @@
 
 use proc_macro::bridge;
 
-use crate::server_impl::{delim_to_external, literal_kind_to_external, TopSubtree};
+use crate::server_impl::{TopSubtree, delim_to_external, literal_kind_to_external};
 
 #[derive(Clone)]
 pub struct TokenStream<S> {

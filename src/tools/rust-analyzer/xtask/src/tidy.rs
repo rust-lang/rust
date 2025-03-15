@@ -46,7 +46,7 @@ lsp/ext.rs was changed without touching lsp-extensions.md.
 Expected hash: {expected_hash:x}
 Actual hash:   {actual_hash:x}
 
-Please adjust docs/dev/lsp-extensions.md.
+Please adjust docs/book/src/contributing/lsp-extensions.md.
 "
         )
     }
@@ -184,8 +184,7 @@ Zlib
 }
 
 fn check_test_attrs(path: &Path, text: &str) {
-    let panic_rule =
-        "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
+    let panic_rule = "https://github.com/rust-lang/rust-analyzer/blob/master/docs/book/src/contributing/style.md#should_panic";
     let need_panic: &[&str] = &[
         // This file.
         "slow-tests/tidy.rs",

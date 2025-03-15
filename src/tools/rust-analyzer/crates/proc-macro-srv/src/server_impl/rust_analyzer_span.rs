@@ -11,10 +11,10 @@ use std::{
 
 use intern::Symbol;
 use proc_macro::bridge::{self, server};
-use span::{FileId, Span, FIXUP_ERASED_FILE_AST_ID_MARKER};
+use span::{FIXUP_ERASED_FILE_AST_ID_MARKER, FileId, Span};
 use tt::{TextRange, TextSize};
 
-use crate::server_impl::{literal_kind_to_internal, token_stream::TokenStreamBuilder, TopSubtree};
+use crate::server_impl::{TopSubtree, literal_kind_to_internal, token_stream::TokenStreamBuilder};
 mod tt {
     pub use tt::*;
 

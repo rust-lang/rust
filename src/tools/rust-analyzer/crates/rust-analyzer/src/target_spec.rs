@@ -264,12 +264,13 @@ mod tests {
 
     use ide::Edition;
     use syntax::{
-        ast::{self, AstNode},
         SmolStr,
+        ast::{self, AstNode},
     };
     use syntax_bridge::{
-        dummy_test_span_utils::{DummyTestSpanMap, DUMMY},
-        syntax_node_to_token_tree, DocCommentDesugarMode,
+        DocCommentDesugarMode,
+        dummy_test_span_utils::{DUMMY, DummyTestSpanMap},
+        syntax_node_to_token_tree,
     };
 
     fn check(cfg: &str, expected_features: &[&str]) {

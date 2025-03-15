@@ -1,8 +1,8 @@
 use hir::Semantics;
 use ide_db::RootDatabase;
-use syntax::ast::RangeItem;
-use syntax::ast::{edit::AstNodeEdit, AstNode, HasName, LetStmt, Name, Pat};
 use syntax::T;
+use syntax::ast::RangeItem;
+use syntax::ast::{AstNode, HasName, LetStmt, Name, Pat, edit::AstNodeEdit};
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
 
@@ -162,11 +162,7 @@ fn binders_to_str(binders: &[(Name, bool)], addmut: bool) -> String {
         .iter()
         .map(
             |(ident, ismut)| {
-                if *ismut && addmut {
-                    format!("mut {ident}")
-                } else {
-                    ident.to_string()
-                }
+                if *ismut && addmut { format!("mut {ident}") } else { ident.to_string() }
             },
         )
         .collect::<Vec<_>>()

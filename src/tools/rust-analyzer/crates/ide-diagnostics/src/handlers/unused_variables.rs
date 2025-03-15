@@ -1,10 +1,10 @@
 use hir::Name;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
+    FileRange, RootDatabase,
     assists::{Assist, AssistId, AssistKind},
     label::Label,
     source_change::SourceChange,
-    FileRange, RootDatabase,
 };
 use syntax::{Edition, TextRange};
 

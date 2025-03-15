@@ -3,9 +3,9 @@
 use std::{cmp, ops::Bound};
 
 use hir_def::{
+    AdtId, VariantId,
     data::adt::VariantData,
     layout::{Integer, ReprOptions, TargetDataLayout},
-    AdtId, VariantId,
 };
 use intern::sym;
 use rustc_index::IndexVec;
@@ -14,10 +14,10 @@ use smallvec::SmallVec;
 use triomphe::Arc;
 
 use crate::{
+    Substitution, TraitEnvironment,
     db::HirDatabase,
     lang_items::is_unsafe_cell,
-    layout::{field_ty, Layout, LayoutError},
-    Substitution, TraitEnvironment,
+    layout::{Layout, LayoutError, field_ty},
 };
 
 use super::{HirDatabaseData, LayoutCx};

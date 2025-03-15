@@ -3,22 +3,22 @@
 use std::{collections::hash_map::Entry, fmt::Display, iter};
 
 use crate::{
+    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
+    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
     consteval::usize_const,
     db::HirDatabase,
     display::{DisplayTarget, HirDisplay},
-    infer::{normalize, PointerCast},
+    infer::{PointerCast, normalize},
     lang_items::is_box,
     mapping::ToChalk,
-    CallableDefId, ClosureId, Const, ConstScalar, InferenceResult, Interner, MemoryMap,
-    Substitution, TraitEnvironment, Ty, TyExt, TyKind,
 };
 use base_db::Crate;
 use chalk_ir::Mutability;
 use either::Either;
 use hir_def::{
+    DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
     expr_store::Body,
     hir::{BindingAnnotation, BindingId, Expr, ExprId, Ordering, PatId},
-    DefWithBodyId, FieldId, StaticId, TupleFieldId, UnionId, VariantId,
 };
 use la_arena::{Arena, ArenaMap, Idx, RawIdx};
 
@@ -28,17 +28,17 @@ mod lower;
 mod monomorphization;
 mod pretty;
 
-pub use borrowck::{borrowck_query, BorrowckResult, MutabilityReason};
+pub use borrowck::{BorrowckResult, MutabilityReason, borrowck_query};
 pub use eval::{
-    interpret_mir, pad16, render_const_using_debug_impl, Evaluator, MirEvalError, VTableMap,
+    Evaluator, MirEvalError, VTableMap, interpret_mir, pad16, render_const_using_debug_impl,
 };
-pub use lower::{lower_to_mir, mir_body_for_closure_query, mir_body_query, MirLowerError};
+pub use lower::{MirLowerError, lower_to_mir, mir_body_for_closure_query, mir_body_query};
 pub use monomorphization::{
     monomorphize_mir_body_bad, monomorphized_mir_body_for_closure_query,
     monomorphized_mir_body_query,
 };
 use rustc_hash::FxHashMap;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use stdx::{impl_from, never};
 
 pub(crate) use lower::mir_body_recover;

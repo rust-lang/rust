@@ -5,33 +5,33 @@ use std::{hash::Hash, iter};
 
 use base_db::Crate;
 use chalk_ir::{
-    fold::{FallibleTypeFolder, Shift},
     DebruijnIndex,
+    fold::{FallibleTypeFolder, Shift},
 };
 use hir_def::{
+    EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
+    TypeOrConstParamId,
     db::DefDatabase,
     generics::{WherePredicate, WherePredicateTypeTarget},
     lang_item::LangItem,
     resolver::{HasResolver, TypeNs},
     type_ref::{TraitBoundModifier, TypeRef},
-    EnumId, EnumVariantId, FunctionId, Lookup, OpaqueInternableThing, TraitId, TypeAliasId,
-    TypeOrConstParamId,
 };
 use hir_expand::name::Name;
 use intern::sym;
 use rustc_abi::TargetDataLayout;
 use rustc_hash::FxHashSet;
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use span::Edition;
 use stdx::never;
 
 use crate::{
+    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TargetFeatures, TraitRef,
+    TraitRefExt, Ty, WhereClause,
     consteval::unknown_const,
     db::HirDatabase,
     layout::{Layout, TagEncoding},
     mir::pad16,
-    ChalkTraitId, Const, ConstScalar, GenericArg, Interner, Substitution, TargetFeatures, TraitRef,
-    TraitRefExt, Ty, WhereClause,
 };
 
 pub(crate) fn fn_traits(db: &dyn DefDatabase, krate: Crate) -> impl Iterator<Item = TraitId> + '_ {
@@ -315,11 +315,7 @@ pub fn is_fn_unsafe_to_call(
             } else {
                 // Function in an `extern` block are always unsafe to call, except when
                 // it is marked as `safe`.
-                if data.is_safe() {
-                    Unsafety::Safe
-                } else {
-                    Unsafety::Unsafe
-                }
+                if data.is_safe() { Unsafety::Safe } else { Unsafety::Unsafe }
             }
         }
         _ => Unsafety::Safe,

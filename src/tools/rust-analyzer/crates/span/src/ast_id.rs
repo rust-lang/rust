@@ -14,7 +14,7 @@ use std::{
 
 use la_arena::{Arena, Idx, RawIdx};
 use rustc_hash::FxHasher;
-use syntax::{ast, AstNode, AstPtr, SyntaxNode, SyntaxNodePtr};
+use syntax::{AstNode, AstPtr, SyntaxNode, SyntaxNodePtr, ast};
 
 /// See crates\hir-expand\src\ast_id_map.rs
 /// This is a type erased FileAstId.

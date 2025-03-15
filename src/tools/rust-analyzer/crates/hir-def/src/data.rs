@@ -4,19 +4,19 @@ pub mod adt;
 
 use base_db::Crate;
 use hir_expand::name::Name;
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use la_arena::{Idx, RawIdx};
 use triomphe::Arc;
 
 use crate::{
+    ConstId, ExternCrateId, FunctionId, HasModule, ImplId, ItemContainerId, ItemLoc, Lookup,
+    Macro2Id, MacroRulesId, ProcMacroId, StaticId, TraitAliasId, TraitId, TypeAliasId,
     db::DefDatabase,
     item_tree::{self, FnFlags, ModItem},
-    nameres::proc_macro::{parse_macro_name_and_helper_attrs, ProcMacroKind},
+    nameres::proc_macro::{ProcMacroKind, parse_macro_name_and_helper_attrs},
     path::ImportAlias,
     type_ref::{TraitRef, TypeBound, TypeRefId, TypesMap},
     visibility::RawVisibility,
-    ConstId, ExternCrateId, FunctionId, HasModule, ImplId, ItemContainerId, ItemLoc, Lookup,
-    Macro2Id, MacroRulesId, ProcMacroId, StaticId, TraitAliasId, TraitId, TypeAliasId,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -431,11 +431,7 @@ impl ExternCrateDeclData {
             Some(krate)
         } else {
             krate.data(db).dependencies.iter().find_map(|dep| {
-                if dep.name.symbol() == name.symbol() {
-                    Some(dep.crate_id)
-                } else {
-                    None
-                }
+                if dep.name.symbol() == name.symbol() { Some(dep.crate_id) } else { None }
             })
         };
 

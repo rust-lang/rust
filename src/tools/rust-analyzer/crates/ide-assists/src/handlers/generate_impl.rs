@@ -1,9 +1,9 @@
 use syntax::{
-    ast::{self, edit_in_place::Indent, make, AstNode, HasName},
+    ast::{self, AstNode, HasName, edit_in_place::Indent, make},
     ted,
 };
 
-use crate::{utils, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils};
 
 fn insert_impl(impl_: ast::Impl, nominal: &ast::Adt) {
     let indent = nominal.indent_level();

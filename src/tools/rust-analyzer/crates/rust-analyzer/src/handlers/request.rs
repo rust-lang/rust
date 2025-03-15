@@ -5,7 +5,7 @@ use std::{fs, io::Write as _, ops::Not, process::Stdio};
 
 use anyhow::Context;
 
-use base64::{prelude::BASE64_STANDARD, Engine};
+use base64::{Engine, prelude::BASE64_STANDARD};
 use ide::{
     AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, CompletionFieldsToResolve,
     FilePosition, FileRange, HoverAction, HoverGotoTypeData, InlayFieldsToResolve, Query,
@@ -38,14 +38,13 @@ use crate::{
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
-        completion_item_hash,
+        LspError, completion_item_hash,
         ext::{
             InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
             InternalTestingFetchConfigResponse,
         },
         from_proto, to_proto,
         utils::{all_edits_are_disjoint, invalid_params_error},
-        LspError,
     },
     lsp_ext::{
         self, CrateInfoResult, ExternalDocsPair, ExternalDocsResponse, FetchDependencyListParams,
@@ -1671,11 +1670,13 @@ pub(crate) fn handle_ssr(
     params: lsp_ext::SsrParams,
 ) -> anyhow::Result<lsp_types::WorkspaceEdit> {
     let _p = tracing::info_span!("handle_ssr").entered();
-    let selections = try_default!(params
-        .selections
-        .iter()
-        .map(|range| from_proto::file_range(&snap, &params.position.text_document, *range))
-        .collect::<Result<Option<Vec<_>>, _>>()?);
+    let selections = try_default!(
+        params
+            .selections
+            .iter()
+            .map(|range| from_proto::file_range(&snap, &params.position.text_document, *range))
+            .collect::<Result<Option<Vec<_>>, _>>()?
+    );
     let position = try_default!(from_proto::file_position(&snap, params.position)?);
     let source_change = snap.analysis.structural_search_replace(
         &params.query,
@@ -2277,11 +2278,7 @@ fn run_rustfmt(
     let current_dir = match text_document.uri.to_file_path() {
         Ok(mut path) => {
             // pop off file name
-            if path.pop() && path.is_dir() {
-                path
-            } else {
-                std::env::current_dir()?
-            }
+            if path.pop() && path.is_dir() { path } else { std::env::current_dir()? }
         }
         Err(_) => {
             tracing::error!(

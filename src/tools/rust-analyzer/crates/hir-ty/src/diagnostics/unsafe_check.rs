@@ -5,18 +5,18 @@ use std::mem;
 
 use either::Either;
 use hir_def::{
+    AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
     expr_store::Body,
     hir::{Expr, ExprId, ExprOrPatId, Pat, PatId, Statement, UnaryOp},
     path::Path,
     resolver::{HasResolver, ResolveValueResult, Resolver, ValueNs},
     type_ref::Rawness,
-    AdtId, DefWithBodyId, FieldId, FunctionId, VariantId,
 };
 use span::Edition;
 
 use crate::{
-    db::HirDatabase, utils::is_fn_unsafe_to_call, InferenceResult, Interner, TargetFeatures, TyExt,
-    TyKind,
+    InferenceResult, Interner, TargetFeatures, TyExt, TyKind, db::HirDatabase,
+    utils::is_fn_unsafe_to_call,
 };
 
 #[derive(Debug, Default)]

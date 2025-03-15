@@ -97,11 +97,7 @@ impl VfsPath {
     /// Returns [`None`] if the path is a root or prefix.
     pub fn parent(&self) -> Option<VfsPath> {
         let mut parent = self.clone();
-        if parent.pop() {
-            Some(parent)
-        } else {
-            None
-        }
+        if parent.pop() { Some(parent) } else { None }
     }
 
     /// Returns `self`'s base name and file extension.

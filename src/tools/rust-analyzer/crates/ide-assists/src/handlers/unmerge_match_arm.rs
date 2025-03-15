@@ -1,8 +1,8 @@
 use syntax::{
-    algo::neighbor,
-    ast::{self, edit::IndentLevel, make, AstNode},
-    ted::{self, Position},
     Direction, SyntaxKind, T,
+    algo::neighbor,
+    ast::{self, AstNode, edit::IndentLevel, make},
+    ted::{self, Position},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

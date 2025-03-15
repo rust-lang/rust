@@ -5,22 +5,22 @@
 use std::sync::LazyLock;
 
 use ide_db::{
+    FxHashMap, SymbolKind,
     generated::lints::{
-        Lint, CLIPPY_LINTS, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, FEATURES, RUSTDOC_LINTS,
+        CLIPPY_LINT_GROUPS, CLIPPY_LINTS, DEFAULT_LINTS, FEATURES, Lint, RUSTDOC_LINTS,
     },
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    FxHashMap, SymbolKind,
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, AttrKind},
     AstNode, Edition, SyntaxKind, T,
+    ast::{self, AttrKind},
 };
 
 use crate::{
+    Completions,
     context::{AttrCtx, CompletionContext, PathCompletionCtx, Qualified},
     item::CompletionItem,
-    Completions,
 };
 
 mod cfg;

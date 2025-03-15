@@ -11,7 +11,7 @@ use std::{
 };
 
 use dashmap::{DashMap, SharedValue};
-use hashbrown::{hash_map::RawEntryMut, HashMap};
+use hashbrown::{HashMap, hash_map::RawEntryMut};
 use rustc_hash::FxHasher;
 use triomphe::Arc;
 
@@ -160,7 +160,7 @@ impl Symbol {
                         SharedValue::new(()),
                     )
                     .0
-                     .0,
+                    .0,
                 ),
             },
         }
@@ -236,7 +236,7 @@ impl Symbol {
             RawEntryMut::Vacant(_) => unreachable!(),
         }
         .0
-         .0;
+        .0;
         // SAFETY: We're dropping, we have ownership.
         ManuallyDrop::into_inner(unsafe { ptr.try_as_arc_owned().unwrap() });
         debug_assert_eq!(Arc::count(arc), 1);

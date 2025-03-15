@@ -11,11 +11,11 @@ use std::ops::Range;
 use parser::{Edition, Reparser};
 
 use crate::{
-    parsing::build_tree,
-    syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
     SyntaxError,
     SyntaxKind::*,
-    TextRange, TextSize, T,
+    T, TextRange, TextSize,
+    parsing::build_tree,
+    syntax_node::{GreenNode, GreenToken, NodeOrToken, SyntaxElement, SyntaxNode},
 };
 
 pub(crate) fn incremental_reparse(

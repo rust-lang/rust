@@ -1,11 +1,11 @@
 use std::time::Instant;
 
-use expect_test::{expect_file, ExpectFile};
+use expect_test::{ExpectFile, expect_file};
 use ide_db::SymbolKind;
 use span::Edition;
-use test_utils::{bench, bench_fixture, skip_slow_tests, AssertLinear};
+use test_utils::{AssertLinear, bench, bench_fixture, skip_slow_tests};
 
-use crate::{fixture, FileRange, HighlightConfig, HlTag, TextRange};
+use crate::{FileRange, HighlightConfig, HlTag, TextRange, fixture};
 
 const HL_CONFIG: HighlightConfig = HighlightConfig {
     strings: true,

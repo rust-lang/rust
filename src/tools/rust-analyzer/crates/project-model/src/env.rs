@@ -4,7 +4,7 @@ use paths::Utf8Path;
 use rustc_hash::FxHashMap;
 use toolchain::Tool;
 
-use crate::{utf8_stdout, ManifestPath, PackageData, Sysroot, TargetKind};
+use crate::{ManifestPath, PackageData, Sysroot, TargetKind, utf8_stdout};
 
 /// Recreates the compile-time environment variables that Cargo sets.
 ///

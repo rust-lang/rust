@@ -1,11 +1,12 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
+    SyntaxKind, SyntaxNode,
     ast::{self, AstNode, HasAttrs, HasGenericParams, HasVisibility},
-    match_ast, ted, SyntaxKind, SyntaxNode,
+    match_ast, ted,
 };
 
-use crate::{assist_context::SourceChangeBuilder, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_tuple_struct_to_named_struct
 //

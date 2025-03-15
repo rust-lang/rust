@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     db::ExpandDatabase,
-    hygiene::{marks_rev, SyntaxContextExt, Transparency},
+    hygiene::{SyntaxContextExt, Transparency, marks_rev},
     name::{AsName, Name},
     tt,
 };
@@ -15,7 +15,7 @@ use base_db::Crate;
 use intern::sym;
 use smallvec::SmallVec;
 use span::{Edition, SyntaxContext};
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ModPath {

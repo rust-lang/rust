@@ -2,24 +2,25 @@
 use std::iter;
 
 use hir::{ExpandResult, Semantics, Type, TypeInfo, Variant};
-use ide_db::{active_parameter::ActiveParameter, RootDatabase};
+use ide_db::{RootDatabase, active_parameter::ActiveParameter};
 use itertools::Either;
 use syntax::{
+    AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken,
+    T, TextRange, TextSize,
     algo::{self, ancestors_at_offset, find_node_at_offset, non_trivia_sibling},
     ast::{
         self, AttrKind, HasArgList, HasGenericArgs, HasGenericParams, HasLoopBody, HasName,
         NameOrNameRef,
     },
-    match_ast, AstNode, AstToken, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
-    SyntaxToken, TextRange, TextSize, T,
+    match_ast,
 };
 
 use crate::context::{
-    AttrCtx, BreakableKind, CompletionAnalysis, DotAccess, DotAccessExprCtx, DotAccessKind,
-    ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind, NameRefContext,
-    NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind, PatternContext,
-    PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget, TypeLocation,
-    COMPLETION_MARKER,
+    AttrCtx, BreakableKind, COMPLETION_MARKER, CompletionAnalysis, DotAccess, DotAccessExprCtx,
+    DotAccessKind, ItemListKind, LifetimeContext, LifetimeKind, NameContext, NameKind,
+    NameRefContext, NameRefKind, ParamContext, ParamKind, PathCompletionCtx, PathExprCtx, PathKind,
+    PatternContext, PatternRefutability, Qualified, QualifierCtx, TypeAscriptionTarget,
+    TypeLocation,
 };
 
 #[derive(Debug)]

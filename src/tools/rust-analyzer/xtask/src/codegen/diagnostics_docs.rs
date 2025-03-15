@@ -3,7 +3,7 @@
 use std::{fmt, fs, io, path::PathBuf};
 
 use crate::{
-    codegen::{add_preamble, CommentBlock, Location},
+    codegen::{CommentBlock, Location, add_preamble},
     project_root,
     util::list_rust_files,
 };

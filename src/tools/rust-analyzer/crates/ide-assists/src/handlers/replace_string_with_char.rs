@@ -1,9 +1,8 @@
 use syntax::{
-    ast,
-    ast::IsString,
     AstToken,
     SyntaxKind::{CHAR, STRING},
-    TextRange, TextSize,
+    TextRange, TextSize, ast,
+    ast::IsString,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

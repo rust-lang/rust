@@ -62,7 +62,7 @@ use std::ops::Deref;
 
 use base_db::Crate;
 use hir_expand::{
-    name::Name, proc_macro::ProcMacroKind, ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId,
+    ErasedAstId, HirFileId, InFile, MacroCallId, MacroDefId, name::Name, proc_macro::ProcMacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -70,11 +70,13 @@ use la_arena::Arena;
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::{Edition, EditionedFileId, FileAstId, FileId, ROOT_ERASED_FILE_AST_ID};
 use stdx::format_to;
-use syntax::{ast, AstNode, SmolStr, SyntaxNode, ToSmolStr};
+use syntax::{AstNode, SmolStr, SyntaxNode, ToSmolStr, ast};
 use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
+    AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
+    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
     db::DefDatabase,
     item_scope::{BuiltinShadowMode, ItemScope},
     item_tree::{ItemTreeId, Mod, TreeId},
@@ -82,8 +84,6 @@ use crate::{
     path::ModPath,
     per_ns::PerNs,
     visibility::{Visibility, VisibilityExplicitness},
-    AstId, BlockId, BlockLoc, CrateRootModuleId, EnumId, EnumVariantId, ExternCrateId, FunctionId,
-    FxIndexMap, LocalModuleId, Lookup, MacroExpander, MacroId, ModuleId, ProcMacroId, UseId,
 };
 
 pub use self::path_resolution::ResolvePathResultPrefixInfo;

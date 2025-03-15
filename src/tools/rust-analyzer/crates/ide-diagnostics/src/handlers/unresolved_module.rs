@@ -1,9 +1,9 @@
-use hir::{db::ExpandDatabase, HirFileIdExt};
+use hir::{HirFileIdExt, db::ExpandDatabase};
 use ide_db::{assists::Assist, base_db::AnchoredPathBuf, source_change::FileSystemEdit};
 use itertools::Itertools;
 use syntax::AstNode;
 
-use crate::{fix, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: unresolved-module
 //

@@ -1,13 +1,13 @@
 use ide_db::syntax_helpers::node_ext::is_pattern_cond;
 use syntax::{
-    ast::{self, AstNode},
     T,
+    ast::{self, AstNode},
 };
 
 use crate::{
+    AssistId, AssistKind,
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression_legacy,
-    AssistId, AssistKind,
 };
 
 // Assist: invert_if

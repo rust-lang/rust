@@ -7,13 +7,14 @@ use ide_db::{
 };
 use stdx::never;
 use syntax::{
-    ast::{self, make, Use, UseTree, VisibilityKind},
-    ted, AstNode, Direction, SyntaxNode, SyntaxToken, T,
+    AstNode, Direction, SyntaxNode, SyntaxToken, T,
+    ast::{self, Use, UseTree, VisibilityKind, make},
+    ted,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: expand_glob_import

@@ -6,28 +6,29 @@ mod tests;
 mod intra_doc_links;
 
 use pulldown_cmark::{BrokenLink, CowStr, Event, InlineStr, LinkType, Options, Parser, Tag};
-use pulldown_cmark_to_cmark::{cmark_resume_with_options, Options as CMarkOptions};
+use pulldown_cmark_to_cmark::{Options as CMarkOptions, cmark_resume_with_options};
 use stdx::format_to;
 use url::Url;
 
-use hir::{db::HirDatabase, sym, Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs};
+use hir::{Adt, AsAssocItem, AssocItem, AssocItemContainer, HasAttrs, db::HirDatabase, sym};
 use ide_db::{
+    RootDatabase,
     base_db::{CrateOrigin, LangCrateOrigin, ReleaseChannel, RootQueryDb},
     defs::{Definition, NameClass, NameRefClass},
-    documentation::{docs_with_rangemap, Documentation, HasDocs},
+    documentation::{Documentation, HasDocs, docs_with_rangemap},
     helpers::pick_best_token,
-    RootDatabase,
 };
 use syntax::{
-    ast::{self, IsString},
-    match_ast, AstNode, AstToken,
+    AstNode, AstToken,
     SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, T,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize,
+    ast::{self, IsString},
+    match_ast,
 };
 
 use crate::{
-    doc_links::intra_doc_links::{parse_intra_doc_link, strip_prefixes_suffixes},
     FilePosition, Semantics,
+    doc_links::intra_doc_links::{parse_intra_doc_link, strip_prefixes_suffixes},
 };
 
 /// Web and local links to an item's documentation.

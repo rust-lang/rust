@@ -7,7 +7,7 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, FieldExpr, HasName, IdentPat},
+    ast::{self, AstNode, FieldExpr, HasName, IdentPat, make},
     ted,
 };
 

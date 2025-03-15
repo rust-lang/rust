@@ -4,7 +4,7 @@
 use ide_db::famous_defs::FamousDefs;
 use ide_db::text_edit::{TextRange, TextSize};
 use span::EditionedFileId;
-use stdx::{never, TupleExt};
+use stdx::{TupleExt, never};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -96,8 +96,8 @@ pub(super) fn hints(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[test]

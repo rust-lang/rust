@@ -5,24 +5,24 @@ mod format_like;
 use base_db::SourceDatabase;
 use hir::{ItemInNs, Semantics};
 use ide_db::{
+    RootDatabase, SnippetCap,
     documentation::{Documentation, HasDocs},
     imports::insert_use::ImportScope,
     text_edit::TextEdit,
     ty_filter::TryEnum,
-    RootDatabase, SnippetCap,
 };
 use stdx::never;
 use syntax::{
-    ast::{self, AstNode, AstToken},
     SyntaxKind::{BLOCK_EXPR, EXPR_STMT, FOR_EXPR, IF_EXPR, LOOP_EXPR, STMT_LIST, WHILE_EXPR},
     TextRange, TextSize,
+    ast::{self, AstNode, AstToken},
 };
 
 use crate::{
+    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
     completions::postfix::format_like::add_format_like_completions,
     context::{BreakableKind, CompletionContext, DotAccess, DotAccessKind},
     item::{Builder, CompletionRelevancePostfixMatch},
-    CompletionItem, CompletionItemKind, CompletionRelevance, Completions, SnippetScope,
 };
 
 pub(crate) fn complete_postfix(
@@ -414,8 +414,8 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        tests::{check, check_edit, check_edit_with_config, TEST_CONFIG},
         CompletionConfig, Snippet,
+        tests::{TEST_CONFIG, check, check_edit, check_edit_with_config},
     };
 
     #[test]
@@ -697,15 +697,17 @@ fn main() {
     #[test]
     fn custom_postfix_completion() {
         let config = CompletionConfig {
-            snippets: vec![Snippet::new(
-                &[],
-                &["break".into()],
-                &["ControlFlow::Break(${receiver})".into()],
-                "",
-                &["core::ops::ControlFlow".into()],
-                crate::SnippetScope::Expr,
-            )
-            .unwrap()],
+            snippets: vec![
+                Snippet::new(
+                    &[],
+                    &["break".into()],
+                    &["ControlFlow::Break(${receiver})".into()],
+                    "",
+                    &["core::ops::ControlFlow".into()],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap(),
+            ],
             ..TEST_CONFIG
         };
 

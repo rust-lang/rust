@@ -20,16 +20,16 @@
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::Crate;
 use span::SyntaxContext;
-use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
+use syntax::{Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent, ted};
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
+    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
+    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
     ast::{self, AstNode},
     db::ExpandDatabase,
     mod_path::ModPath,
-    AstId, EagerCallInfo, ExpandError, ExpandResult, ExpandTo, ExpansionSpanMap, InFile,
-    MacroCallId, MacroCallKind, MacroCallLoc, MacroDefId, MacroDefKind,
 };
 
 pub fn expand_eager_macro_input(

@@ -9,10 +9,10 @@ use queries::{
     GeneratedInputStruct, InputQuery, InputSetter, InputSetterWithDurability, Intern, Lookup,
     Queries, SetterKind, TrackedQuery, Transparent,
 };
-use quote::{format_ident, quote, ToTokens};
+use quote::{ToTokens, format_ident, quote};
 use syn::spanned::Spanned;
 use syn::visit_mut::VisitMut;
-use syn::{parse_quote, Attribute, FnArg, ItemTrait, Path, TraitItem, TraitItemFn};
+use syn::{Attribute, FnArg, ItemTrait, Path, TraitItem, TraitItemFn, parse_quote};
 
 mod queries;
 
@@ -310,13 +310,13 @@ pub(crate) fn query_group_impl(
                     return Err(syn::Error::new(
                         path.span(),
                         "Interned queries cannot be used with an `#[invoke]`".to_string(),
-                    ))
+                    ));
                 }
                 (QueryKind::Input, Some(path)) => {
                     return Err(syn::Error::new(
                         path.span(),
                         "Inputs cannot be used with an `#[invoke]`".to_string(),
-                    ))
+                    ));
                 }
             }
         }

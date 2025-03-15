@@ -4,23 +4,23 @@ use std::{borrow::Cow, fmt, ops};
 use base_db::Crate;
 use cfg::CfgExpr;
 use either::Either;
-use intern::{sym, Interned, Symbol};
+use intern::{Interned, Symbol, sym};
 
 use mbe::{DelimiterKind, Punct};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use span::{Span, SyntaxContext};
 use syntax::unescape;
-use syntax::{ast, match_ast, AstNode, AstToken, SyntaxNode};
-use syntax_bridge::{desugar_doc_comment_text, syntax_node_to_token_tree, DocCommentDesugarMode};
+use syntax::{AstNode, AstToken, SyntaxNode, ast, match_ast};
+use syntax_bridge::{DocCommentDesugarMode, desugar_doc_comment_text, syntax_node_to_token_tree};
 use triomphe::ThinArc;
 
 use crate::name::Name;
 use crate::{
+    InFile,
     db::ExpandDatabase,
     mod_path::ModPath,
     span_map::SpanMapRef,
-    tt::{self, token_to_literal, TopSubtree},
-    InFile,
+    tt::{self, TopSubtree, token_to_literal},
 };
 
 /// Syntactical attributes, without filtering of `cfg_attr`s.

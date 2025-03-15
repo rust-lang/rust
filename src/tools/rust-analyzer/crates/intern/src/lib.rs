@@ -10,7 +10,7 @@ use std::{
 };
 
 use dashmap::{DashMap, SharedValue};
-use hashbrown::{hash_map::RawEntryMut, HashMap};
+use hashbrown::{HashMap, hash_map::RawEntryMut};
 use rustc_hash::FxHasher;
 use triomphe::Arc;
 
@@ -21,7 +21,7 @@ type Guard<T> = dashmap::RwLockWriteGuard<
 >;
 
 mod symbol;
-pub use self::symbol::{symbols as sym, Symbol};
+pub use self::symbol::{Symbol, symbols as sym};
 
 pub struct Interned<T: Internable + ?Sized> {
     arc: Arc<T>,

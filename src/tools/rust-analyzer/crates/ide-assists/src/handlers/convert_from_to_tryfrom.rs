@@ -1,7 +1,7 @@
 use ide_db::{famous_defs::FamousDefs, traits::resolve_target_trait};
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, AstNode, HasGenericArgs, HasName},
+    ast::{self, AstNode, HasGenericArgs, HasName, make},
     ted,
 };
 

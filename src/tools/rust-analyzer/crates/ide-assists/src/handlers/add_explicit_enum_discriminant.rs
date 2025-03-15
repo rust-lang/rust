@@ -1,10 +1,10 @@
 use hir::Semantics;
 use ide_db::{
+    RootDatabase,
     assists::{AssistId, AssistKind},
     source_change::SourceChangeBuilder,
-    RootDatabase,
 };
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::{AssistContext, Assists};
 

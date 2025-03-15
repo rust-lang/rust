@@ -3,23 +3,24 @@
 use std::{cell::OnceCell, collections::hash_map::Entry};
 
 use hir_expand::{
+    HirFileId,
     mod_path::path,
     name::AsName,
     span_map::{SpanMap, SpanMapRef},
-    HirFileId,
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContext};
 use stdx::thin_vec::ThinVec;
 use syntax::{
-    ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
     AstNode,
+    ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
 };
 use triomphe::Arc;
 
 use crate::{
+    LocalLifetimeParamId, LocalTypeOrConstParamId,
     db::DefDatabase,
     generics::{GenericParams, GenericParamsCollector},
     item_tree::{
@@ -38,7 +39,6 @@ use crate::{
         TypesMap, TypesSourceMap,
     },
     visibility::RawVisibility,
-    LocalLifetimeParamId, LocalTypeOrConstParamId,
 };
 
 fn id<N>(index: Idx<N>) -> FileItemTreeId<N> {
@@ -931,8 +931,7 @@ impl<'a> Ctx<'a> {
 
 fn desugar_future_path(ctx: &mut LowerCtx<'_>, orig: TypeRefId) -> PathId {
     let path = path![core::future::Future];
-    let mut generic_args: Vec<_> =
-        std::iter::repeat(None).take(path.segments().len() - 1).collect();
+    let mut generic_args: Vec<_> = std::iter::repeat_n(None, path.segments().len() - 1).collect();
     let binding = AssociatedTypeBinding {
         name: Name::new_symbol_root(sym::Output.clone()),
         args: None,

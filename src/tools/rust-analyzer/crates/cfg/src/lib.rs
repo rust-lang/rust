@@ -9,7 +9,7 @@ use std::fmt;
 
 use rustc_hash::FxHashSet;
 
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 
 pub use cfg_expr::{CfgAtom, CfgExpr};
 pub use dnf::DnfExpr;

@@ -23,8 +23,8 @@ mod tests;
 
 use span::{Edition, Span, SyntaxContext};
 use syntax_bridge::to_parser_input;
-use tt::iter::TtIter;
 use tt::DelimSpan;
+use tt::iter::TtIter;
 
 use std::fmt;
 use std::sync::Arc;

@@ -3,28 +3,27 @@
 use std::ops::ControlFlow;
 
 use chalk_ir::{
+    DebruijnIndex,
     cast::Cast,
     visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
-    DebruijnIndex,
 };
 use chalk_solve::rust_ir::InlineBound;
 use hir_def::{
-    data::TraitFlags, lang_item::LangItem, AssocItemId, ConstId, FunctionId, GenericDefId,
-    HasModule, TraitId, TypeAliasId,
+    AssocItemId, ConstId, FunctionId, GenericDefId, HasModule, TraitId, TypeAliasId,
+    data::TraitFlags, lang_item::LangItem,
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 
 use crate::{
-    all_super_traits,
+    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
+    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause, all_super_traits,
     db::HirDatabase,
     from_assoc_type_id, from_chalk_trait_id,
     generics::{generics, trait_self_param_idx},
     lower::callable_item_sig,
     to_assoc_type_id, to_chalk_trait_id,
     utils::elaborate_clause_supertraits,
-    AliasEq, AliasTy, Binders, BoundVar, CallableSig, GoalData, ImplTraitId, Interner, OpaqueTyId,
-    ProjectionTyExt, Solution, Substitution, TraitRef, Ty, TyKind, WhereClause,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -558,11 +557,7 @@ fn receiver_for_self_ty(db: &dyn HirDatabase, func: FunctionId, ty: Ty) -> Optio
     let subst = Substitution::from_iter(
         Interner,
         subst.iter(Interner).enumerate().map(|(idx, arg)| {
-            if idx == trait_self_idx {
-                ty.clone().cast(Interner)
-            } else {
-                arg.clone()
-            }
+            if idx == trait_self_idx { ty.clone().cast(Interner) } else { arg.clone() }
         }),
     );
     let sig = callable_item_sig(db, func.into());

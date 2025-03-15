@@ -16,14 +16,14 @@ use ide::{
     FilePosition, TextSize,
 };
 use ide_db::{
-    imports::insert_use::{ImportGranularity, InsertUseConfig},
     SnippetCap,
+    imports::insert_use::{ImportGranularity, InsertUseConfig},
 };
 use project_model::CargoConfig;
 use test_utils::project_root;
 use vfs::{AbsPathBuf, VfsPath};
 
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
 #[track_caller]
 fn file_id(vfs: &vfs::Vfs, path: &VfsPath) -> vfs::FileId {

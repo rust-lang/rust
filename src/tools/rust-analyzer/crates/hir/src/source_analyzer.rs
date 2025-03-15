@@ -8,48 +8,49 @@
 use std::iter::{self, once};
 
 use crate::{
-    db::HirDatabase, semantics::PathResolution, Adt, AssocItem, BindingMode, BuiltinAttr,
-    BuiltinType, Callable, Const, DeriveHelper, Field, Function, GenericSubstitution, Local, Macro,
-    ModuleDef, Static, Struct, ToolModule, Trait, TraitAlias, TupleField, Type, TypeAlias, Variant,
+    Adt, AssocItem, BindingMode, BuiltinAttr, BuiltinType, Callable, Const, DeriveHelper, Field,
+    Function, GenericSubstitution, Local, Macro, ModuleDef, Static, Struct, ToolModule, Trait,
+    TraitAlias, TupleField, Type, TypeAlias, Variant, db::HirDatabase, semantics::PathResolution,
 };
 use either::Either;
 use hir_def::{
+    AsMacroCall, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId,
+    ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StructId, TraitId, VariantId,
     expr_store::{
-        scope::{ExprScopes, ScopeId},
         Body, BodySourceMap, HygieneId,
+        scope::{ExprScopes, ScopeId},
     },
     hir::{BindingId, Expr, ExprId, ExprOrPatId, Pat},
     lang_item::LangItem,
     lower::LowerCtx,
     nameres::MacroSubNs,
     path::{ModPath, Path, PathKind},
-    resolver::{resolver_for_scope, Resolver, TypeNs, ValueNs},
+    resolver::{Resolver, TypeNs, ValueNs, resolver_for_scope},
     type_ref::{Mutability, TypesMap, TypesSourceMap},
-    AsMacroCall, AssocItemId, CallableDefId, ConstId, DefWithBodyId, FieldId, FunctionId,
-    ItemContainerId, LocalFieldId, Lookup, ModuleDefId, StructId, TraitId, VariantId,
 };
 use hir_expand::{
+    HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
     mod_path::path,
     name::{AsName, Name},
-    HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
 };
 use hir_ty::{
+    Adjustment, InferenceResult, Interner, Substitution, TraitEnvironment, Ty, TyExt, TyKind,
+    TyLoweringContext,
     diagnostics::{
-        record_literal_missing_fields, record_pattern_missing_fields, unsafe_operations,
-        InsideUnsafeBlock,
+        InsideUnsafeBlock, record_literal_missing_fields, record_pattern_missing_fields,
+        unsafe_operations,
     },
     from_assoc_type_id,
     lang_items::lang_items_for_bin_op,
-    method_resolution, Adjustment, InferenceResult, Interner, Substitution, TraitEnvironment, Ty,
-    TyExt, TyKind, TyLoweringContext,
+    method_resolution,
 };
 use intern::sym;
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::ast::{RangeItem, RangeOp};
 use syntax::{
-    ast::{self, AstNode},
     SyntaxKind, SyntaxNode, TextRange, TextSize,
+    ast::{self, AstNode},
 };
 use triomphe::Arc;
 
@@ -147,11 +148,7 @@ impl SourceAnalyzer {
 
     fn binding_id_of_pat(&self, pat: &ast::IdentPat) -> Option<BindingId> {
         let pat_id = self.pat_id(&pat.clone().into())?;
-        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id.as_pat()?] {
-            Some(id)
-        } else {
-            None
-        }
+        if let Pat::Bind { id, .. } = self.body()?.pats[pat_id.as_pat()?] { Some(id) } else { None }
     }
 
     fn expand_expr(
@@ -504,11 +501,7 @@ impl SourceAnalyzer {
                             LangItem::DerefMut,
                             &Name::new_symbol_root(sym::deref_mut.clone()),
                         )?;
-                        if func == deref_mut {
-                            Some((deref_mut_trait, deref_mut))
-                        } else {
-                            None
-                        }
+                        if func == deref_mut { Some((deref_mut_trait, deref_mut)) } else { None }
                     })
                     .unwrap_or((deref_trait, deref))
             }
@@ -550,11 +543,7 @@ impl SourceAnalyzer {
                     LangItem::IndexMut,
                     &Name::new_symbol_root(sym::index_mut.clone()),
                 )?;
-                if func == index_mut_fn {
-                    Some((index_mut_trait, index_mut_fn))
-                } else {
-                    None
-                }
+                if func == index_mut_fn { Some((index_mut_trait, index_mut_fn)) } else { None }
             })
             .unwrap_or((index_trait, index_fn));
         // HACK: subst for all methods coincides with that for their trait because the methods

@@ -1,10 +1,9 @@
 use ide_db::source_change::SourceChangeBuilder;
 use itertools::Itertools;
 use syntax::{
-    algo,
-    ast::{self, make, AstNode},
+    NodeOrToken, SyntaxToken, T, TextRange, algo,
+    ast::{self, AstNode, make},
     ted::{self, Position},
-    NodeOrToken, SyntaxToken, TextRange, T,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};
@@ -296,11 +295,7 @@ fn unwrap_cfg_attr(acc: &mut Assists, attr: ast::Attr) -> Option<()> {
             continue;
         }
         let Some(attr_name) = tt.into_token().and_then(|token| {
-            if token.kind() == T![ident] {
-                Some(make::ext::ident_path(token.text()))
-            } else {
-                None
-            }
+            if token.kind() == T![ident] { Some(make::ext::ident_path(token.text())) } else { None }
         }) else {
             continue;
         };

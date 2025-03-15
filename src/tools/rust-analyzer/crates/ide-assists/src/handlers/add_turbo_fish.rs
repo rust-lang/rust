@@ -1,14 +1,14 @@
 use either::Either;
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
-    ast::{self, make, syntax_factory::SyntaxFactory, HasArgList, HasGenericArgs},
-    syntax_editor::Position,
     AstNode,
+    ast::{self, HasArgList, HasGenericArgs, make, syntax_factory::SyntaxFactory},
+    syntax_editor::Position,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: add_turbo_fish
@@ -71,7 +71,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     let def = match NameRefClass::classify(&ctx.sema, &name_ref)? {
         NameRefClass::Definition(def, _) => def,
         NameRefClass::FieldShorthand { .. } | NameRefClass::ExternCrateShorthand { .. } => {
-            return None
+            return None;
         }
     };
     let fun = match def {

@@ -5,11 +5,11 @@ use std::cell::Cell;
 use drop_bomb::DropBomb;
 
 use crate::{
-    event::Event,
-    input::Input,
     Edition,
     SyntaxKind::{self, EOF, ERROR, TOMBSTONE},
-    TokenSet, T,
+    T, TokenSet,
+    event::Event,
+    input::Input,
 };
 
 /// `Parser` struct provides the low-level API for

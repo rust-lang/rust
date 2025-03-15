@@ -9,22 +9,22 @@
 //! where parent follows the same scheme.
 use std::ops;
 
-use chalk_ir::{cast::Cast as _, BoundVar, DebruijnIndex};
+use chalk_ir::{BoundVar, DebruijnIndex, cast::Cast as _};
 use hir_def::{
+    ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId,
+    LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
     db::DefDatabase,
     generics::{
         GenericParamDataRef, GenericParams, LifetimeParamData, TypeOrConstParamData,
         TypeParamProvenance,
     },
     type_ref::TypesMap,
-    ConstParamId, GenericDefId, GenericParamId, ItemContainerId, LifetimeParamId,
-    LocalLifetimeParamId, LocalTypeOrConstParamId, Lookup, TypeOrConstParamId, TypeParamId,
 };
 use itertools::chain;
 use stdx::TupleExt;
 use triomphe::Arc;
 
-use crate::{db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx, Interner, Substitution};
+use crate::{Interner, Substitution, db::HirDatabase, lt_to_placeholder_idx, to_placeholder_idx};
 
 pub fn generics(db: &dyn DefDatabase, def: GenericDefId) -> Generics {
     let parent_generics = parent_generic_def(db, def).map(|def| Box::new(generics(db, def)));

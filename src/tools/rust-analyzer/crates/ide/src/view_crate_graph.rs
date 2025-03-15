@@ -1,9 +1,9 @@
 use dot::{Id, LabelText};
 use ide_db::{
+    FxHashMap, RootDatabase,
     base_db::{
         BuiltCrateData, BuiltDependency, Crate, ExtraCrateData, RootQueryDb, SourceDatabase,
     },
-    FxHashMap, RootDatabase,
 };
 
 // Feature: View Crate Graph

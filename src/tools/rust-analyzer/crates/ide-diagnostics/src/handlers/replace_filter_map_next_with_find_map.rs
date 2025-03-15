@@ -1,12 +1,12 @@
-use hir::{db::ExpandDatabase, HirFileIdExt, InFile};
+use hir::{HirFileIdExt, InFile, db::ExpandDatabase};
 use ide_db::source_change::SourceChange;
 use ide_db::text_edit::TextEdit;
 use syntax::{
-    ast::{self, HasArgList},
     AstNode, TextRange,
+    ast::{self, HasArgList},
 };
 
-use crate::{fix, Assist, Diagnostic, DiagnosticCode, DiagnosticsContext};
+use crate::{Assist, Diagnostic, DiagnosticCode, DiagnosticsContext, fix};
 
 // Diagnostic: replace-filter-map-next-with-find-map
 //
@@ -56,8 +56,8 @@ fn fixes(
 #[cfg(test)]
 mod tests {
     use crate::{
-        tests::{check_diagnostics_with_config, check_fix},
         DiagnosticsConfig,
+        tests::{check_diagnostics_with_config, check_fix},
     };
 
     #[track_caller]

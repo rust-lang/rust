@@ -3,8 +3,8 @@
 use itertools::Itertools;
 
 use crate::{
-    syntax_editor::Element, AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode,
-    SyntaxToken, TextRange, TextSize,
+    AstNode, Direction, NodeOrToken, SyntaxElement, SyntaxKind, SyntaxNode, SyntaxToken, TextRange,
+    TextSize, syntax_editor::Element,
 };
 
 /// Returns ancestors of the node at the offset, sorted by length. This should

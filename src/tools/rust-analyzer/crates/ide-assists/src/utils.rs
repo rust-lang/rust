@@ -2,29 +2,29 @@
 
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{
-    db::{ExpandDatabase, HirDatabase},
     DisplayTarget, HasAttrs as HirHasAttrs, HirDisplay, InFile, ModuleDef, PathResolution,
     Semantics,
+    db::{ExpandDatabase, HirDatabase},
 };
 use ide_db::{
+    RootDatabase,
     famous_defs::FamousDefs,
     path_transform::PathTransform,
     syntax_helpers::{node_ext::preorder_expr, prettify_macro_expansion},
-    RootDatabase,
 };
 use stdx::format_to;
 use syntax::{
+    AstNode, AstToken, Direction, NodeOrToken, SourceFile,
+    SyntaxKind::*,
+    SyntaxNode, SyntaxToken, T, TextRange, TextSize, WalkEvent,
     ast::{
-        self,
+        self, HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
         edit::{AstNodeEdit, IndentLevel},
         edit_in_place::{AttrsOwnerEdit, Indent, Removable},
         make,
         syntax_factory::SyntaxFactory,
-        HasArgList, HasAttrs, HasGenericParams, HasName, HasTypeBounds, Whitespace,
     },
-    ted, AstNode, AstToken, Direction, NodeOrToken, SourceFile,
-    SyntaxKind::*,
-    SyntaxNode, SyntaxToken, TextRange, TextSize, WalkEvent, T,
+    ted,
 };
 
 use crate::assist_context::{AssistContext, SourceChangeBuilder};
@@ -82,11 +82,7 @@ pub fn test_related_attribute_syn(fn_def: &ast::Fn) -> Option<ast::Attr> {
     fn_def.attrs().find_map(|attr| {
         let path = attr.path()?;
         let text = path.syntax().text().to_string();
-        if text.starts_with("test") || text.ends_with("test") {
-            Some(attr)
-        } else {
-            None
-        }
+        if text.starts_with("test") || text.ends_with("test") { Some(attr) } else { None }
     })
 }
 
@@ -498,11 +494,7 @@ pub(crate) fn find_struct_impl(
         };
         let not_trait_impl = blk.trait_(db).is_none();
 
-        if !(same_ty && not_trait_impl) {
-            None
-        } else {
-            Some(impl_blk)
-        }
+        if !(same_ty && not_trait_impl) { None } else { Some(impl_blk) }
     });
 
     if let Some(ref impl_blk) = block {

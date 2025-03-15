@@ -3,11 +3,11 @@ use std::cmp::Ordering;
 use itertools::Itertools;
 
 use syntax::{
-    ast::{self, HasName},
     AstNode, SyntaxNode,
+    ast::{self, HasName},
 };
 
-use crate::{utils::get_methods, AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, AssistKind, Assists, utils::get_methods};
 
 // Assist: sort_items
 //

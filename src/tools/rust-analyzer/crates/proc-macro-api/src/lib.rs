@@ -17,9 +17,9 @@ use std::{fmt, io, sync::Arc, time::SystemTime};
 
 use crate::{
     legacy_protocol::msg::{
-        deserialize_span_data_index_map, flat::serialize_span_data_index_map, ExpandMacro,
-        ExpandMacroData, ExpnGlobals, FlatTree, PanicMessage, Request, Response, SpanDataIndexMap,
-        HAS_GLOBAL_SPANS, RUST_ANALYZER_SPAN_SUPPORT,
+        ExpandMacro, ExpandMacroData, ExpnGlobals, FlatTree, HAS_GLOBAL_SPANS, PanicMessage,
+        RUST_ANALYZER_SPAN_SUPPORT, Request, Response, SpanDataIndexMap,
+        deserialize_span_data_index_map, flat::serialize_span_data_index_map,
     },
     process::ProcMacroServerProcess,
 };
@@ -102,7 +102,7 @@ impl ProcMacroClient {
     pub fn spawn(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-            + Clone,
+        + Clone,
     ) -> io::Result<ProcMacroClient> {
         let process = ProcMacroServerProcess::run(process_path, env)?;
         Ok(ProcMacroClient { process: Arc::new(process), path: process_path.to_owned() })

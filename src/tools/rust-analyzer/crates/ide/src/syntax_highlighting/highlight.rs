@@ -5,21 +5,21 @@ use std::ops::ControlFlow;
 use either::Either;
 use hir::{AsAssocItem, HasVisibility, MacroFileIdExt, Semantics};
 use ide_db::{
+    FxHashMap, RootDatabase, SymbolKind,
     defs::{Definition, IdentClass, NameClass, NameRefClass},
     syntax_helpers::node_ext::walk_pat,
-    FxHashMap, RootDatabase, SymbolKind,
 };
 use span::Edition;
 use stdx::hash_once;
 use syntax::{
-    ast, match_ast, AstNode, AstPtr, AstToken, NodeOrToken,
+    AstNode, AstPtr, AstToken, NodeOrToken,
     SyntaxKind::{self, *},
-    SyntaxNode, SyntaxNodePtr, SyntaxToken, T,
+    SyntaxNode, SyntaxNodePtr, SyntaxToken, T, ast, match_ast,
 };
 
 use crate::{
-    syntax_highlighting::tags::{HlOperator, HlPunct},
     Highlight, HlMod, HlTag,
+    syntax_highlighting::tags::{HlOperator, HlPunct},
 };
 
 pub(super) fn token(
@@ -143,11 +143,7 @@ fn punctuation(
             let ptr = operator_parent
                 .as_ref()
                 .and_then(|it| AstPtr::try_from_raw(SyntaxNodePtr::new(it)));
-            if ptr.is_some_and(is_unsafe_node) {
-                h | HlMod::Unsafe
-            } else {
-                h
-            }
+            if ptr.is_some_and(is_unsafe_node) { h | HlMod::Unsafe } else { h }
         }
         (T![-], PREFIX_EXPR) => {
             let prefix_expr =
@@ -223,11 +219,7 @@ fn punctuation(
                 let is_unsafe = is_unsafe_macro
                     || operator_parent
                         .and_then(|it| {
-                            if ast::ArgList::can_cast(it.kind()) {
-                                it.parent()
-                            } else {
-                                Some(it)
-                            }
+                            if ast::ArgList::can_cast(it.kind()) { it.parent() } else { Some(it) }
                         })
                         .and_then(|it| AstPtr::try_from_raw(SyntaxNodePtr::new(&it)))
                         .is_some_and(is_unsafe_node);
@@ -296,7 +288,7 @@ fn highlight_name_ref(
     let name_class = match NameRefClass::classify(sema, &name_ref) {
         Some(name_kind) => name_kind,
         None if syntactic_name_ref_highlighting => {
-            return highlight_name_ref_by_syntax(name_ref, sema, krate, is_unsafe_node)
+            return highlight_name_ref_by_syntax(name_ref, sema, krate, is_unsafe_node);
         }
         // FIXME: This is required for helper attributes used by proc-macros, as those do not map down
         // to anything when used.
@@ -818,11 +810,7 @@ fn highlight_name_ref_by_syntax(
             let h = HlTag::Symbol(SymbolKind::Field);
             let is_unsafe = ast::Expr::cast(parent)
                 .is_some_and(|it| is_unsafe_node(AstPtr::new(&it).wrap_left()));
-            if is_unsafe {
-                h | HlMod::Unsafe
-            } else {
-                h.into()
-            }
+            if is_unsafe { h | HlMod::Unsafe } else { h.into() }
         }
         RECORD_EXPR_FIELD | RECORD_PAT_FIELD => HlTag::Symbol(SymbolKind::Field).into(),
         PATH_SEGMENT => {

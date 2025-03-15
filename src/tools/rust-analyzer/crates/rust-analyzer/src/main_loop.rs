@@ -9,22 +9,22 @@ use std::{
 };
 
 use always_assert::always;
-use crossbeam_channel::{select, Receiver};
+use crossbeam_channel::{Receiver, select};
 use ide_db::base_db::{SourceDatabase, VfsPath};
 use lsp_server::{Connection, Notification, Request};
-use lsp_types::{notification::Notification as _, TextDocumentIdentifier};
+use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
-use tracing::{error, span, Level};
-use vfs::{loader::LoadingProgress, AbsPathBuf, FileId};
+use tracing::{Level, error, span};
+use vfs::{AbsPathBuf, FileId, loader::LoadingProgress};
 
 use crate::{
     config::Config,
-    diagnostics::{fetch_native_diagnostics, DiagnosticsGeneration, NativeDiagnosticsFetchKind},
+    diagnostics::{DiagnosticsGeneration, NativeDiagnosticsFetchKind, fetch_native_diagnostics},
     discover::{DiscoverArgument, DiscoverCommand, DiscoverProjectMessage},
     flycheck::{self, FlycheckMessage},
     global_state::{
-        file_id_to_url, url_to_file_id, FetchBuildDataResponse, FetchWorkspaceRequest,
-        FetchWorkspaceResponse, GlobalState,
+        FetchBuildDataResponse, FetchWorkspaceRequest, FetchWorkspaceResponse, GlobalState,
+        file_id_to_url, url_to_file_id,
     },
     hack_recover_crate_name,
     handlers::{
@@ -33,7 +33,7 @@ use crate::{
     },
     lsp::{
         from_proto, to_proto,
-        utils::{notification_is, Progress},
+        utils::{Progress, notification_is},
     },
     lsp_ext,
     reload::{BuildDataProgress, ProcMacroProgress, ProjectWorkspaceProgress},
@@ -519,7 +519,9 @@ impl GlobalState {
 
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
-            tracing::warn!("overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}");
+            tracing::warn!(
+                "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
+            );
             self.poke_rust_analyzer_developer(format!(
                 "overly long loop turn took {loop_duration:?} (event handling took {event_handling_duration:?}): {event_dbg_msg}"
             ));

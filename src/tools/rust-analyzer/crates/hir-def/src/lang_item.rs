@@ -3,13 +3,13 @@
 //! This attribute to tell the compiler about semi built-in std library
 //! features, such as Fn family of traits.
 use hir_expand::name::Name;
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
 use triomphe::Arc;
 
 use crate::{
-    db::DefDatabase, path::Path, AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId,
-    FunctionId, ImplId, ModuleDefId, StaticId, StructId, TraitId, TypeAliasId, UnionId,
+    AdtId, AssocItemId, AttrDefId, Crate, EnumId, EnumVariantId, FunctionId, ImplId, ModuleDefId,
+    StaticId, StructId, TraitId, TypeAliasId, UnionId, db::DefDatabase, path::Path,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -164,11 +164,7 @@ impl LangItems {
             }
         }
 
-        if lang_items.items.is_empty() {
-            None
-        } else {
-            Some(Arc::new(lang_items))
-        }
+        if lang_items.items.is_empty() { None } else { Some(Arc::new(lang_items)) }
     }
 
     /// Salsa query. Look for a lang item, starting from the specified crate and recursively
@@ -230,11 +226,7 @@ pub(crate) fn crate_notable_traits(db: &dyn DefDatabase, krate: Crate) -> Option
         }
     }
 
-    if traits.is_empty() {
-        None
-    } else {
-        Some(traits.into_iter().collect())
-    }
+    if traits.is_empty() { None } else { Some(traits.into_iter().collect()) }
 }
 
 pub enum GenericRequirement {

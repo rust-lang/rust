@@ -5,8 +5,8 @@ use itertools::Itertools;
 use span::Edition;
 
 use crate::{
-    chalk_db, db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, mapping::from_chalk,
-    CallableDefId, Interner, ProjectionTyExt,
+    CallableDefId, Interner, ProjectionTyExt, chalk_db, db::HirDatabase, from_assoc_type_id,
+    from_chalk_trait_id, mapping::from_chalk,
 };
 use hir_def::{AdtId, ItemContainerId, Lookup, TypeAliasId};
 
@@ -131,11 +131,7 @@ mod unsafe_tls {
     pub(crate) fn with_current_program<R>(
         op: impl for<'a> FnOnce(Option<&'a DebugContext<'a>>) -> R,
     ) -> R {
-        if PROGRAM.is_set() {
-            PROGRAM.with(|prog| op(Some(prog)))
-        } else {
-            op(None)
-        }
+        if PROGRAM.is_set() { PROGRAM.with(|prog| op(Some(prog))) } else { op(None) }
     }
 
     pub(crate) fn set_current_program<OP, R>(p: &dyn HirDatabase, op: OP) -> R

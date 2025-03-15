@@ -3,25 +3,25 @@
 use std::{borrow::Cow, cell::RefCell, fmt::Write, iter, mem, ops::Range};
 
 use base_db::Crate;
-use chalk_ir::{cast::Cast, Mutability};
+use chalk_ir::{Mutability, cast::Cast};
 use either::Either;
 use hir_def::{
+    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
+    VariantId,
     builtin_type::BuiltinType,
     data::adt::{StructFlags, VariantData},
     expr_store::HygieneId,
     lang_item::LangItem,
     layout::{TagEncoding, Variants},
     resolver::{HasResolver, TypeNs, ValueNs},
-    AdtId, DefWithBodyId, EnumVariantId, FunctionId, HasModule, ItemContainerId, Lookup, StaticId,
-    VariantId,
 };
-use hir_expand::{mod_path::path, name::Name, HirFileIdExt, InFile};
+use hir_expand::{HirFileIdExt, InFile, mod_path::path, name::Name};
 use intern::sym;
 use la_arena::ArenaMap;
 use rustc_abi::TargetDataLayout;
 use rustc_apfloat::{
-    ieee::{Half as f16, Quad as f128},
     Float,
+    ieee::{Half as f16, Quad as f128},
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use span::FileId;
@@ -30,7 +30,9 @@ use syntax::{SyntaxNodePtr, TextRange};
 use triomphe::Arc;
 
 use crate::{
-    consteval::{intern_const_scalar, try_const_usize, ConstEvalError},
+    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
+    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    consteval::{ConstEvalError, intern_const_scalar, try_const_usize},
     db::{HirDatabase, InternedClosure},
     display::{ClosureStyle, DisplayTarget, HirDisplay},
     infer::PointerCast,
@@ -39,15 +41,13 @@ use crate::{
     method_resolution::{is_dyn_method, lookup_impl_const},
     static_lifetime,
     traits::FnTrait,
-    utils::{detect_variant_from_bytes, ClosureSubst},
-    CallableDefId, ClosureId, ComplexMemoryMap, Const, ConstData, ConstScalar, FnDefId, Interner,
-    MemoryMap, Substitution, TraitEnvironment, Ty, TyBuilder, TyExt, TyKind,
+    utils::{ClosureSubst, detect_variant_from_bytes},
 };
 
 use super::{
-    return_slot, AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError,
-    MirSpan, Operand, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
-    TerminatorKind, UnOp,
+    AggregateKind, BasicBlockId, BinOp, CastKind, LocalId, MirBody, MirLowerError, MirSpan,
+    Operand, Place, PlaceElem, ProjectionElem, ProjectionStore, Rvalue, StatementKind,
+    TerminatorKind, UnOp, return_slot,
 };
 
 mod shim;
@@ -825,7 +825,7 @@ impl Evaluator<'_> {
                                 _ => {
                                     return Err(MirEvalError::InternalError(
                                         "mismatched layout".into(),
-                                    ))
+                                    ));
                                 }
                             }]
                         }
@@ -1119,7 +1119,7 @@ impl Evaluator<'_> {
                 "Stack overflow. Tried to grow stack to {stack_size} bytes"
             )));
         }
-        self.stack.extend(iter::repeat(0).take(stack_size));
+        self.stack.extend(std::iter::repeat_n(0, stack_size));
         Ok((locals, prev_stack_pointer))
     }
 
@@ -1864,7 +1864,7 @@ impl Evaluator<'_> {
                             "encoded tag ({offset}, {size}, {value}) is out of bounds 0..{size}"
                         )
                         .into(),
-                    ))
+                    ));
                 }
             }
         }
@@ -1876,7 +1876,7 @@ impl Evaluator<'_> {
                 None => {
                     return Err(MirEvalError::InternalError(
                         format!("field offset ({offset}) is out of bounds 0..{size}").into(),
-                    ))
+                    ));
                 }
             }
         }
@@ -2054,7 +2054,7 @@ impl Evaluator<'_> {
             _ => {
                 return Err(MirEvalError::UndefinedBehavior(format!(
                     "invalid memory write at address {addr:?}"
-                )))
+                )));
             }
         }
 
@@ -2122,7 +2122,7 @@ impl Evaluator<'_> {
             return Err(MirEvalError::Panic(format!("Memory allocation of {size} bytes failed")));
         }
         let pos = self.heap.len();
-        self.heap.extend(iter::repeat(0).take(size));
+        self.heap.extend(std::iter::repeat_n(0, size));
         Ok(Address::Heap(pos))
     }
 
@@ -2618,13 +2618,10 @@ impl Evaluator<'_> {
                 let ty = ty.clone().cast(Interner);
                 let generics_for_target = Substitution::from_iter(
                     Interner,
-                    generic_args.iter(Interner).enumerate().map(|(i, it)| {
-                        if i == self_ty_idx {
-                            &ty
-                        } else {
-                            it
-                        }
-                    }),
+                    generic_args
+                        .iter(Interner)
+                        .enumerate()
+                        .map(|(i, it)| if i == self_ty_idx { &ty } else { it }),
                 );
                 self.exec_fn_with_args(
                     def,

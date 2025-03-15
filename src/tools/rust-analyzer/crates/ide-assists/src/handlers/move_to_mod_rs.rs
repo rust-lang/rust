@@ -2,7 +2,7 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     base_db::AnchoredPathBuf,
 };
-use syntax::{ast, AstNode, ToSmolStr};
+use syntax::{AstNode, ToSmolStr, ast};
 
 use crate::{
     assist_context::{AssistContext, Assists},

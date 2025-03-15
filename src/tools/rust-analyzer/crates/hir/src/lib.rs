@@ -42,7 +42,12 @@ use arrayvec::ArrayVec;
 use base_db::{CrateDisplayName, CrateOrigin, LangCrateOrigin};
 use either::Either;
 use hir_def::{
-    data::{adt::VariantData, TraitFlags},
+    AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
+    CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
+    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstId, ItemContainerId,
+    LifetimeParamId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
+    SyntheticSyntax, TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
+    data::{TraitFlags, adt::VariantData},
     expr_store::ExpressionStoreDiagnostics,
     generics::{LifetimeParamData, TypeOrConstParamData, TypeParamProvenance},
     hir::{BindingAnnotation, BindingId, Expr, ExprId, ExprOrPatId, LabelId, Pat},
@@ -54,30 +59,24 @@ use hir_def::{
     per_ns::PerNs,
     resolver::{HasResolver, Resolver},
     type_ref::TypesSourceMap,
-    AdtId, AssocItemId, AssocItemLoc, AttrDefId, CallableDefId, ConstId, ConstParamId,
-    CrateRootModuleId, DefWithBodyId, EnumId, EnumVariantId, ExternBlockId, ExternCrateId,
-    FunctionId, GenericDefId, GenericParamId, HasModule, ImplId, InTypeConstId, ItemContainerId,
-    LifetimeParamId, LocalFieldId, Lookup, MacroExpander, MacroId, ModuleId, StaticId, StructId,
-    SyntheticSyntax, TraitAliasId, TupleId, TypeAliasId, TypeOrConstParamId, TypeParamId, UnionId,
 };
 use hir_expand::{
-    attrs::collect_attrs, proc_macro::ProcMacroKind, AstId, MacroCallKind, RenderedExpandError,
-    ValueResult,
+    AstId, MacroCallKind, RenderedExpandError, ValueResult, attrs::collect_attrs,
+    proc_macro::ProcMacroKind,
 };
 use hir_ty::{
-    all_super_traits, autoderef, check_orphan_rules,
-    consteval::{try_const_usize, unknown_const_as_generic, ConstExt},
+    AliasTy, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
+    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
+    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyLoweringDiagnostic,
+    ValueTyDefId, WhereClause, all_super_traits, autoderef, check_orphan_rules,
+    consteval::{ConstExt, try_const_usize, unknown_const_as_generic},
     diagnostics::BodyValidationDiagnostic,
     direct_super_traits, error_lifetime, known_const_to_ast,
     layout::{Layout as TyLayout, RustcEnumVariantIdx, RustcFieldIdx, TagEncoding},
     method_resolution,
-    mir::{interpret_mir, MutBorrowKind},
+    mir::{MutBorrowKind, interpret_mir},
     primitive::UintTy,
     traits::FnTrait,
-    AliasTy, CallableSig, Canonical, CanonicalVarKinds, Cast, ClosureId, GenericArg,
-    GenericArgData, Interner, ParamKind, QuantifiedWhereClause, Scalar, Substitution,
-    TraitEnvironment, TraitRefExt, Ty, TyBuilder, TyDefId, TyExt, TyKind, TyLoweringDiagnostic,
-    ValueTyDefId, WhereClause,
 };
 use itertools::Itertools;
 use nameres::diagnostics::DefDiagnosticKind;
@@ -86,15 +85,16 @@ use smallvec::SmallVec;
 use span::{Edition, EditionedFileId, FileId, MacroCallId};
 use stdx::{format_to, impl_from, never};
 use syntax::{
+    AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, T, TextRange, ToSmolStr,
     ast::{self, HasAttrs as _, HasGenericParams, HasName},
-    format_smolstr, AstNode, AstPtr, SmolStr, SyntaxNode, SyntaxNodePtr, TextRange, ToSmolStr, T,
+    format_smolstr,
 };
 use triomphe::{Arc, ThinArc};
 
 use crate::db::{DefDatabase, HirDatabase};
 
 pub use crate::{
-    attrs::{resolve_doc_path_on, HasAttrs},
+    attrs::{HasAttrs, resolve_doc_path_on},
     diagnostics::*,
     has_source::HasSource,
     semantics::{
@@ -114,6 +114,7 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
+        ImportPathConfig,
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         data::adt::StructKind,
         find_path::PrefixKind,
@@ -124,12 +125,12 @@ pub use {
         per_ns::Namespace,
         type_ref::{Mutability, TypeRef},
         visibility::Visibility,
-        ImportPathConfig,
         // FIXME: This is here since some queries take it as input that are used
         // outside of hir.
         {ModuleDefId, TraitId},
     },
     hir_expand::{
+        ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt, MacroKind,
         attrs::{Attr, AttrId},
         change::ChangeWithProcMacros,
         files::{
@@ -137,15 +138,16 @@ pub use {
             HirFileRange, InFile, InFileWrapper, InMacroFile, InRealFile, MacroFilePosition,
             MacroFileRange,
         },
-        hygiene::{marks_rev, SyntaxContextExt},
+        hygiene::{SyntaxContextExt, marks_rev},
         inert_attr_macro::AttributeTemplate,
         mod_path::tool_path,
         name::Name,
         prettify_macro_expansion,
         proc_macro::{ProcMacros, ProcMacrosBuilder},
-        tt, ExpandResult, HirFileId, HirFileIdExt, MacroFileId, MacroFileIdExt, MacroKind,
+        tt,
     },
     hir_ty::{
+        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
         consteval::ConstEvalError,
         diagnostics::UnsafetyReason,
         display::{ClosureStyle, DisplayTarget, HirDisplay, HirDisplayError, HirWrite},
@@ -153,11 +155,10 @@ pub use {
         layout::LayoutError,
         method_resolution::TyFingerprint,
         mir::{MirEvalError, MirLowerError},
-        CastError, DropGlue, FnAbi, PointerCast, Safety, Variance,
     },
     // FIXME: Properly encapsulate mir
-    hir_ty::{mir, Interner as ChalkTyInterner},
-    intern::{sym, Symbol},
+    hir_ty::{Interner as ChalkTyInterner, mir},
+    intern::{Symbol, sym},
 };
 
 // These are negative re-exports: pub using these names is forbidden, they
@@ -587,11 +588,7 @@ impl Module {
                 if let Some(m) = visible_from {
                     let filtered =
                         def.filter_visibility(|vis| vis.is_visible_from(db.upcast(), m.id));
-                    if filtered.is_none() && !def.is_none() {
-                        None
-                    } else {
-                        Some((name, filtered))
-                    }
+                    if filtered.is_none() && !def.is_none() { None } else { Some((name, filtered)) }
                 } else {
                     Some((name, def))
                 }
@@ -1759,19 +1756,11 @@ impl Adt {
     }
 
     pub fn as_struct(&self) -> Option<Struct> {
-        if let Self::Struct(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
+        if let Self::Struct(v) = self { Some(*v) } else { None }
     }
 
     pub fn as_enum(&self) -> Option<Enum> {
-        if let Self::Enum(v) = self {
-            Some(*v)
-        } else {
-            None
-        }
+        if let Self::Enum(v) = self { Some(*v) } else { None }
     }
 }
 
@@ -5080,11 +5069,7 @@ impl Type {
         let projection = TyBuilder::assoc_type_projection(db, alias.id, Some(parent_subst)).build();
 
         let ty = db.normalize_projection(projection, self.env.clone());
-        if ty.is_unknown() {
-            None
-        } else {
-            Some(self.derived(ty))
-        }
+        if ty.is_unknown() { None } else { Some(self.derived(ty)) }
     }
 
     pub fn is_copy(&self, db: &dyn HirDatabase) -> bool {
@@ -5261,7 +5246,10 @@ impl Type {
 
     /// Returns types that this type dereferences to (including this type itself). The returned
     /// iterator won't yield the same type more than once even if the deref chain contains a cycle.
-    pub fn autoderef(&self, db: &dyn HirDatabase) -> impl Iterator<Item = Type> + '_ {
+    pub fn autoderef<'db>(
+        &self,
+        db: &'db dyn HirDatabase,
+    ) -> impl Iterator<Item = Type> + use<'_, 'db> {
         self.autoderef_(db).map(move |ty| self.derived(ty))
     }
 
@@ -5637,7 +5625,10 @@ impl Type {
             .map(Trait::from)
     }
 
-    pub fn as_impl_traits(&self, db: &dyn HirDatabase) -> Option<impl Iterator<Item = Trait>> {
+    pub fn as_impl_traits(
+        &self,
+        db: &dyn HirDatabase,
+    ) -> Option<impl Iterator<Item = Trait> + use<>> {
         self.ty.impl_trait_bounds(db).map(|it| {
             it.into_iter().filter_map(|pred| match pred.skip_binders() {
                 hir_ty::WhereClause::Implemented(trait_ref) => {

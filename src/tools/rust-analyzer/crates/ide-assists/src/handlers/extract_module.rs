@@ -4,23 +4,24 @@ use either::Either;
 use hir::{HasSource, HirFileIdExt, ModuleSource};
 use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
+    FileId, FxHashMap, FxHashSet,
     assists::{AssistId, AssistKind},
     defs::{Definition, NameClass, NameRefClass},
     search::{FileReference, SearchScope},
-    FileId, FxHashMap, FxHashSet,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
 use syntax::{
-    algo::find_node_at_range,
-    ast::{
-        self,
-        edit::{AstNodeEdit, IndentLevel},
-        make, HasVisibility,
-    },
-    match_ast, ted, AstNode,
+    AstNode,
     SyntaxKind::{self, WHITESPACE},
     SyntaxNode, TextRange, TextSize,
+    algo::find_node_at_range,
+    ast::{
+        self, HasVisibility,
+        edit::{AstNodeEdit, IndentLevel},
+        make,
+    },
+    match_ast, ted,
 };
 
 use crate::{AssistContext, Assists};
@@ -1167,8 +1168,8 @@ mod modname {
     }
 
     #[test]
-    fn test_extract_module_for_impl_not_having_corresponding_adt_in_selection_and_not_in_same_mod_but_with_super(
-    ) {
+    fn test_extract_module_for_impl_not_having_corresponding_adt_in_selection_and_not_in_same_mod_but_with_super()
+     {
         check_assist(
             extract_module,
             r"

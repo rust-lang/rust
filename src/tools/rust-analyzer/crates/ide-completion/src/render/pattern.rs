@@ -1,17 +1,17 @@
 //! Renderer for patterns.
 
-use hir::{db::HirDatabase, Name, StructKind};
-use ide_db::{documentation::HasDocs, SnippetCap};
+use hir::{Name, StructKind, db::HirDatabase};
+use ide_db::{SnippetCap, documentation::HasDocs};
 use itertools::Itertools;
 use syntax::{Edition, SmolStr, ToSmolStr};
 
 use crate::{
+    CompletionItem, CompletionItemKind,
     context::{ParamContext, ParamKind, PathCompletionCtx, PatternContext},
     render::{
-        variant::{format_literal_label, format_literal_lookup, visible_fields},
         RenderContext,
+        variant::{format_literal_label, format_literal_lookup, visible_fields},
     },
-    CompletionItem, CompletionItemKind,
 };
 
 pub(crate) fn render_struct_pat(

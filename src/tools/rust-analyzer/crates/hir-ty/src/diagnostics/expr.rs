@@ -8,36 +8,36 @@ use base_db::Crate;
 use chalk_solve::rust_ir::AdtKind;
 use either::Either;
 use hir_def::{
+    AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
     lang_item::LangItem,
     resolver::{HasResolver, ValueNs},
-    AdtId, AssocItemId, DefWithBodyId, HasModule, ItemContainerId, Lookup,
 };
 use intern::sym;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use rustc_pattern_analysis::constructor::Constructor;
 use syntax::{
-    ast::{self, UnaryOp},
     AstNode,
+    ast::{self, UnaryOp},
 };
 use tracing::debug;
 use triomphe::Arc;
 use typed_arena::Arena;
 
 use crate::{
+    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
     db::HirDatabase,
     diagnostics::match_check::{
         self,
         pat_analysis::{self, DeconstructedPat, MatchCheckCtx, WitnessPat},
     },
     display::{DisplayTarget, HirDisplay},
-    Adjust, InferenceResult, Interner, Ty, TyExt, TyKind,
 };
 
 pub(crate) use hir_def::{
+    LocalFieldId, VariantId,
     expr_store::Body,
     hir::{Expr, ExprId, MatchArm, Pat, PatId, Statement},
-    LocalFieldId, VariantId,
 };
 
 pub enum BodyValidationDiagnostic {

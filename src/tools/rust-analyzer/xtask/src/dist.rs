@@ -5,10 +5,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use flate2::{write::GzEncoder, Compression};
+use flate2::{Compression, write::GzEncoder};
 use time::OffsetDateTime;
-use xshell::{cmd, Shell};
-use zip::{write::FileOptions, DateTime, ZipWriter};
+use xshell::{Shell, cmd};
+use zip::{DateTime, ZipWriter, write::FileOptions};
 
 use crate::{
     date_iso,

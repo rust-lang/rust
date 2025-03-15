@@ -5,17 +5,17 @@ use std::{fmt, mem};
 use hir::Mutability;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    documentation::Documentation, imports::import_assets::LocatedImport, RootDatabase, SnippetCap,
-    SymbolKind,
+    RootDatabase, SnippetCap, SymbolKind, documentation::Documentation,
+    imports::import_assets::LocatedImport,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
 use stdx::{format_to, impl_from, never};
-use syntax::{format_smolstr, Edition, SmolStr, TextRange, TextSize};
+use syntax::{Edition, SmolStr, TextRange, TextSize, format_smolstr};
 
 use crate::{
     context::{CompletionContext, PathCompletionCtx},
-    render::{render_path_resolution, RenderContext},
+    render::{RenderContext, render_path_resolution},
 };
 
 /// `CompletionItem` describes a single completion entity which expands to 1 or more entries in the

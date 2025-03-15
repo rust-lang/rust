@@ -4,8 +4,9 @@
 use std::{fmt, iter, ops};
 
 use crate::{
-    ast::{self, make, AstNode},
-    ted, AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+    AstToken, NodeOrToken, SyntaxElement, SyntaxNode, SyntaxToken,
+    ast::{self, AstNode, make},
+    ted,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

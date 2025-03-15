@@ -1,7 +1,7 @@
 //! Context for lowering paths.
 use std::{cell::OnceCell, mem};
 
-use hir_expand::{span_map::SpanMap, AstId, HirFileId, InFile};
+use hir_expand::{AstId, HirFileId, InFile, span_map::SpanMap};
 use span::{AstIdMap, AstIdNode, Edition, EditionedFileId, FileId, RealSpanMap};
 use stdx::thin_vec::ThinVec;
 use syntax::ast;

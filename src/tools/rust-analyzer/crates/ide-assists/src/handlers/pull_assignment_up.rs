@@ -1,11 +1,12 @@
 use syntax::{
+    AstNode,
     ast::{self, make},
-    ted, AstNode,
+    ted,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: pull_assignment_up

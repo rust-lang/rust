@@ -2,8 +2,8 @@
 
 use std::cmp::Ordering;
 
-use crate::consteval::try_const_usize;
 use crate::TyKind;
+use crate::consteval::try_const_usize;
 
 use super::*;
 
@@ -127,7 +127,7 @@ impl Evaluator<'_> {
                         Ordering::Greater => ["ge", "gt", "ne"].contains(&name),
                     };
                     let result = if result { 255 } else { 0 };
-                    destination_bytes.extend(std::iter::repeat(result).take(dest_size));
+                    destination_bytes.extend(std::iter::repeat_n(result, dest_size));
                 }
 
                 destination.write_from_bytes(self, &destination_bytes)
@@ -164,7 +164,7 @@ impl Evaluator<'_> {
                     None => {
                         return Err(MirEvalError::InternalError(
                             "simd type with unevaluatable len param".into(),
-                        ))
+                        ));
                     }
                 };
                 let (left_len, _) = self.detect_simd_ty(&left.ty)?;
@@ -179,7 +179,7 @@ impl Evaluator<'_> {
                         None => {
                             return Err(MirEvalError::InternalError(
                                 "out of bound access in simd shuffle".into(),
-                            ))
+                            ));
                         }
                     };
                     result.extend(val);

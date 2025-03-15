@@ -11,14 +11,14 @@ use paths::AbsPath;
 use stdx::JodChild;
 
 use crate::{
+    ProcMacroKind, ServerError,
     legacy_protocol::{
         json::{read_json, write_json},
         msg::{
-            Message, Request, Response, ServerConfig, SpanMode, CURRENT_API_VERSION,
-            RUST_ANALYZER_SPAN_SUPPORT,
+            CURRENT_API_VERSION, Message, RUST_ANALYZER_SPAN_SUPPORT, Request, Response,
+            ServerConfig, SpanMode,
         },
     },
-    ProcMacroKind, ServerError,
 };
 
 #[derive(Debug)]
@@ -43,7 +43,7 @@ impl ProcMacroServerProcess {
     pub(crate) fn run(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
-            + Clone,
+        + Clone,
     ) -> io::Result<ProcMacroServerProcess> {
         let create_srv = || {
             let mut process = Process::run(process_path, env.clone())?;

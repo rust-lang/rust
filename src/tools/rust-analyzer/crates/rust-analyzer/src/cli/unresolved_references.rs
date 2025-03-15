@@ -1,14 +1,14 @@
 //! Reports references in code that the IDE layer cannot resolve.
-use hir::{db::HirDatabase, sym, AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics};
+use hir::{AnyDiagnostic, Crate, HirFileIdExt as _, Module, Semantics, db::HirDatabase, sym};
 use ide::{AnalysisHost, RootDatabase, TextRange};
 use ide_db::{
-    base_db::{salsa::AsDynDatabase, SourceDatabase},
-    defs::NameRefClass,
     EditionedFileId, FxHashSet, LineIndexDatabase as _,
+    base_db::{SourceDatabase, salsa::AsDynDatabase},
+    defs::NameRefClass,
 };
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use parser::SyntaxKind;
-use syntax::{ast, AstNode, WalkEvent};
+use syntax::{AstNode, WalkEvent, ast};
 use vfs::FileId;
 
 use crate::cli::flags;

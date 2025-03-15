@@ -9,7 +9,7 @@ use libloading::Library;
 use object::Object;
 use paths::{Utf8Path, Utf8PathBuf};
 
-use crate::{proc_macros::ProcMacros, server_impl::TopSubtree, ProcMacroKind, ProcMacroSrvSpan};
+use crate::{ProcMacroKind, ProcMacroSrvSpan, proc_macros::ProcMacros, server_impl::TopSubtree};
 
 /// Loads dynamic library in platform dependent manner.
 ///

@@ -7,7 +7,7 @@ use base_db::{
     SourceRoot, SourceRootId, SourceRootInput, Upcast,
 };
 
-use hir_def::{db::DefDatabase, ModuleId};
+use hir_def::{ModuleId, db::DefDatabase};
 use hir_expand::db::ExpandDatabase;
 use rustc_hash::FxHashMap;
 use salsa::{AsDynDatabase, Durability};

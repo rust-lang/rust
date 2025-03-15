@@ -4,8 +4,8 @@ use std::io;
 use proc_macro_api::legacy_protocol::{
     json::{read_json, write_json},
     msg::{
-        self, deserialize_span_data_index_map, serialize_span_data_index_map, ExpandMacroData,
-        ExpnGlobals, Message, SpanMode, TokenId, CURRENT_API_VERSION,
+        self, CURRENT_API_VERSION, ExpandMacroData, ExpnGlobals, Message, SpanMode, TokenId,
+        deserialize_span_data_index_map, serialize_span_data_index_map,
     },
 };
 use proc_macro_srv::EnvSnapshot;

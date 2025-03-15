@@ -1,7 +1,7 @@
-use hir::{db::DefDatabase, Semantics};
+use hir::{Semantics, db::DefDatabase};
 use ide_db::{
-    base_db::{Crate, RootQueryDb, Upcast},
     FileId, FilePosition, RootDatabase,
+    base_db::{Crate, RootQueryDb, Upcast},
 };
 use itertools::Itertools;
 use syntax::{

@@ -1,9 +1,9 @@
 //! Logic for validating block expressions i.e. `ast::BlockExpr`.
 
 use crate::{
-    ast::{self, AstNode, HasAttrs},
     SyntaxError,
     SyntaxKind::*,
+    ast::{self, AstNode, HasAttrs},
 };
 
 pub(crate) fn validate_block_expr(block: ast::BlockExpr, errors: &mut Vec<SyntaxError>) {

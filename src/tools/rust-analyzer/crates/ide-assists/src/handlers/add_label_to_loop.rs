@@ -1,7 +1,7 @@
 use ide_db::syntax_helpers::node_ext::for_each_break_and_continue_expr;
 use syntax::{
-    ast::{self, AstNode, HasLoopBody},
     T,
+    ast::{self, AstNode, HasLoopBody},
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

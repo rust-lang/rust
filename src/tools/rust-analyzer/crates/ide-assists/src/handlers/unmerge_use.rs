@@ -1,12 +1,12 @@
 use syntax::{
-    ast::{self, edit_in_place::Removable, make, HasVisibility},
-    ted::{self, Position},
     AstNode, SyntaxKind,
+    ast::{self, HasVisibility, edit_in_place::Removable, make},
+    ted::{self, Position},
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: unmerge_use

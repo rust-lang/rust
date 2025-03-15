@@ -3,20 +3,20 @@
 use std::ops::ControlFlow;
 
 use hir::{
-    db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig,
-    ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
-    SemanticsScope, Trait, TyFingerprint, Type,
+    AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig, ItemInNs,
+    ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
+    SemanticsScope, Trait, TyFingerprint, Type, db::HirDatabase,
 };
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use syntax::{
-    ast::{self, make, HasName},
     AstNode, SyntaxNode,
+    ast::{self, HasName, make},
 };
 
 use crate::{
-    items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
     FxIndexSet, RootDatabase,
+    items_locator::{self, AssocSearchMode, DEFAULT_QUERY_SEARCH_LIMIT},
 };
 
 /// A candidate for import, derived during various IDE activities:
@@ -433,7 +433,7 @@ fn validate_resolvable(
                     false => ControlFlow::Continue(()),
                 },
             )
-            .map(|item| LocatedImport::new(import_path_candidate, resolved_qualifier, item))
+            .map(|item| LocatedImport::new(import_path_candidate, resolved_qualifier, item));
         }
         // FIXME
         ModuleDef::Trait(_) => return None,

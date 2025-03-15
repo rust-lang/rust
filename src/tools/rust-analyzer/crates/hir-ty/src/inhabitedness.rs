@@ -2,14 +2,14 @@
 use std::ops::ControlFlow::{self, Break, Continue};
 
 use chalk_ir::{
-    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
     DebruijnIndex,
+    visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor},
 };
-use hir_def::{visibility::Visibility, AdtId, EnumVariantId, ModuleId, VariantId};
+use hir_def::{AdtId, EnumVariantId, ModuleId, VariantId, visibility::Visibility};
 use rustc_hash::FxHashSet;
 
 use crate::{
-    consteval::try_const_usize, db::HirDatabase, Binders, Interner, Substitution, Ty, TyKind,
+    Binders, Interner, Substitution, Ty, TyKind, consteval::try_const_usize, db::HirDatabase,
 };
 
 // FIXME: Turn this into a query, it can be quite slow

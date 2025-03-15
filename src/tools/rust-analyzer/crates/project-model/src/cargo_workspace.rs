@@ -596,7 +596,7 @@ impl CargoWorkspace {
         // this pkg is inside this cargo workspace, fallback to workspace root
         if found {
             return Some(vec![
-                ManifestPath::try_from(self.workspace_root().join("Cargo.toml")).ok()?
+                ManifestPath::try_from(self.workspace_root().join("Cargo.toml")).ok()?,
             ]);
         }
 

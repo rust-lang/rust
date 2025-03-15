@@ -4,18 +4,18 @@
 //! ```
 use std::iter;
 
-use ide_db::{famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty, FxHashMap};
+use ide_db::{FxHashMap, famous_defs::FamousDefs, syntax_helpers::node_ext::walk_ty};
 use itertools::Itertools;
 use span::EditionedFileId;
+use syntax::{SmolStr, format_smolstr};
 use syntax::{
-    ast::{self, AstNode, HasGenericParams, HasName},
     SyntaxKind, SyntaxToken,
+    ast::{self, AstNode, HasGenericParams, HasName},
 };
-use syntax::{format_smolstr, SmolStr};
 
 use crate::{
-    inlay_hints::InlayHintCtx, InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind,
-    LifetimeElisionHints,
+    InlayHint, InlayHintPosition, InlayHintsConfig, InlayKind, LifetimeElisionHints,
+    inlay_hints::InlayHintCtx,
 };
 
 pub(super) fn fn_hints(
@@ -268,13 +268,14 @@ fn hints_(
         ctx.lifetime_stacks.iter().flat_map(|it| it.iter()).cloned().zip(iter::repeat(0)).collect();
     // allocate names
     let mut gen_idx_name = {
-        let mut gen = (0u8..).map(|idx| match idx {
+        let mut generic = (0u8..).map(|idx| match idx {
             idx if idx < 10 => SmolStr::from_iter(['\'', (idx + 48) as char]),
             idx => format_smolstr!("'{idx}"),
         });
         let ctx = &*ctx;
         move || {
-            gen.by_ref()
+            generic
+                .by_ref()
                 .find(|s| ctx.lifetime_stacks.iter().flat_map(|it| it.iter()).all(|n| n != s))
                 .unwrap_or_default()
         }
@@ -406,8 +407,8 @@ fn hints_(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check, check_with_config, TEST_CONFIG},
         InlayHintsConfig, LifetimeElisionHints,
+        inlay_hints::tests::{TEST_CONFIG, check, check_with_config},
     };
 
     #[test]

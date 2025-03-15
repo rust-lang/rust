@@ -8,6 +8,7 @@ use base_db::{
 };
 use cfg::CfgOptions;
 use hir_expand::{
+    FileRange,
     change::ChangeWithProcMacros,
     db::ExpandDatabase,
     files::FilePosition,
@@ -16,15 +17,14 @@ use hir_expand::{
     },
     quote,
     tt::{Leaf, TokenTree, TopSubtree, TopSubtreeBuilder, TtElement, TtIter},
-    FileRange,
 };
-use intern::{sym, Symbol};
+use intern::{Symbol, sym};
 use rustc_hash::FxHashMap;
 use span::{Edition, EditionedFileId, FileId, Span};
 use stdx::itertools::Itertools;
 use test_utils::{
-    extract_range_or_offset, Fixture, FixtureWithProjectMeta, RangeOrOffset, CURSOR_MARKER,
-    ESCAPED_CURSOR_MARKER,
+    CURSOR_MARKER, ESCAPED_CURSOR_MARKER, Fixture, FixtureWithProjectMeta, RangeOrOffset,
+    extract_range_or_offset,
 };
 use triomphe::Arc;
 

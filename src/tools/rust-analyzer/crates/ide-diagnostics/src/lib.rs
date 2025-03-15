@@ -82,24 +82,24 @@ use std::{collections::hash_map, iter, sync::LazyLock};
 
 use either::Either;
 use hir::{
-    db::ExpandDatabase, diagnostics::AnyDiagnostic, Crate, DisplayTarget, HirFileId, InFile,
-    Semantics,
+    Crate, DisplayTarget, HirFileId, InFile, Semantics, db::ExpandDatabase,
+    diagnostics::AnyDiagnostic,
 };
 use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
+    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
     assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
     base_db::{ReleaseChannel, RootQueryDb as _},
-    generated::lints::{Lint, LintGroup, CLIPPY_LINT_GROUPS, DEFAULT_LINTS, DEFAULT_LINT_GROUPS},
+    generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
     label::Label,
     source_change::SourceChange,
     syntax_helpers::node_ext::parse_tt_as_comma_sep_paths,
-    EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
 };
 use itertools::Itertools;
 use syntax::{
+    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, T, TextRange,
     ast::{self, AstNode, HasAttrs},
-    AstPtr, Edition, NodeOrToken, SmolStr, SyntaxKind, SyntaxNode, SyntaxNodePtr, TextRange, T,
 };
 
 // FIXME: Make this an enum
@@ -780,9 +780,9 @@ fn fill_lint_attrs(
                     }
                 });
 
-                let all_matching_groups = lint_groups(&diag.code, edition)
-                    .iter()
-                    .filter_map(|lint_group| cached.get(lint_group));
+                let lints = lint_groups(&diag.code, edition);
+                let all_matching_groups =
+                    lints.iter().filter_map(|lint_group| cached.get(lint_group));
                 let cached_severity =
                     all_matching_groups.min_by_key(|it| it.depth).map(|it| it.severity);
 

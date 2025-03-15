@@ -8,23 +8,23 @@ use std::{
 
 use cfg::{CfgAtom, CfgDiff};
 use hir::{
-    db::{DefDatabase, ExpandDatabase, HirDatabase},
     Adt, AssocItem, Crate, DefWithBody, HasSource, HirDisplay, HirFileIdExt, ImportPathConfig,
     ModuleDef, Name,
+    db::{DefDatabase, ExpandDatabase, HirDatabase},
 };
 use hir_def::{
+    SyntheticSyntax,
     expr_store::BodySourceMap,
     hir::{ExprId, PatId},
-    SyntheticSyntax,
 };
 use hir_ty::{Interner, Substitution, TyExt, TypeFlags};
 use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
-use ide_db::{base_db::SourceDatabase, EditionedFileId, LineIndexDatabase, SnippetCap};
+use ide_db::{EditionedFileId, LineIndexDatabase, SnippetCap, base_db::SourceDatabase};
 use itertools::Itertools;
-use load_cargo::{load_workspace, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use oorandom::Rand32;
 use profile::StopWatch;
 use project_model::{CargoConfig, CfgOverrides, ProjectManifest, ProjectWorkspace, RustLibSource};
@@ -34,10 +34,11 @@ use syntax::AstNode;
 use vfs::{AbsPathBuf, Vfs, VfsPath};
 
 use crate::cli::{
+    Verbosity,
     flags::{self, OutputFormat},
     full_name_of_item, print_memory_usage,
     progress_report::ProgressReport,
-    report_metric, Verbosity,
+    report_metric,
 };
 
 impl flags::AnalysisStats {

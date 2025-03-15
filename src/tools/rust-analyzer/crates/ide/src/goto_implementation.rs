@@ -1,10 +1,10 @@
 use hir::{AsAssocItem, Impl, Semantics};
 use ide_db::{
+    RootDatabase,
     defs::{Definition, NameClass, NameRefClass},
     helpers::pick_best_token,
-    RootDatabase,
 };
-use syntax::{ast, AstNode, SyntaxKind::*, T};
+use syntax::{AstNode, SyntaxKind::*, T, ast};
 
 use crate::{FilePosition, NavigationTarget, RangeInfo, TryToNav};
 

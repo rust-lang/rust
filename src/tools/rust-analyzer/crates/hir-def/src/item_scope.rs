@@ -4,22 +4,22 @@
 use std::sync::LazyLock;
 
 use base_db::Crate;
-use hir_expand::{attrs::AttrId, db::ExpandDatabase, name::Name, AstId, MacroCallId};
+use hir_expand::{AstId, MacroCallId, attrs::AttrId, db::ExpandDatabase, name::Name};
 use indexmap::map::Entry;
 use itertools::Itertools;
 use la_arena::Idx;
 use rustc_hash::{FxHashMap, FxHashSet};
-use smallvec::{smallvec, SmallVec};
+use smallvec::{SmallVec, smallvec};
 use span::Edition;
 use stdx::format_to;
 use syntax::ast;
 
 use crate::{
+    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
+    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
     db::DefDatabase,
     per_ns::{Item, MacrosItem, PerNs, TypesItem, ValuesItem},
     visibility::{Visibility, VisibilityExplicitness},
-    AdtId, BuiltinType, ConstId, ExternBlockId, ExternCrateId, FxIndexMap, HasModule, ImplId,
-    LocalModuleId, Lookup, MacroId, ModuleDefId, ModuleId, TraitId, UseId,
 };
 
 #[derive(Debug, Default)]

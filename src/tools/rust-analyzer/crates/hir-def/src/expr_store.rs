@@ -12,16 +12,17 @@ use std::ops::{Deref, Index};
 
 use cfg::{CfgExpr, CfgOptions};
 use either::Either;
-use hir_expand::{name::Name, ExpandError, InFile};
+use hir_expand::{ExpandError, InFile, name::Name};
 use la_arena::{Arena, ArenaMap};
 use rustc_hash::FxHashMap;
 use smallvec::SmallVec;
 use span::{Edition, MacroFileId, SyntaxContext};
-use syntax::{ast, AstPtr, SyntaxNodePtr};
+use syntax::{AstPtr, SyntaxNodePtr, ast};
 use triomphe::Arc;
 use tt::TextRange;
 
 use crate::{
+    BlockId, DefWithBodyId, Lookup, SyntheticSyntax,
     db::DefDatabase,
     hir::{
         Array, AsmOperand, Binding, BindingId, Expr, ExprId, ExprOrPatId, Label, LabelId, Pat,
@@ -30,7 +31,6 @@ use crate::{
     nameres::DefMap,
     path::{ModPath, Path},
     type_ref::{TypeRef, TypeRefId, TypesMap, TypesSourceMap},
-    BlockId, DefWithBodyId, Lookup, SyntheticSyntax,
 };
 
 pub use self::body::{Body, BodySourceMap};

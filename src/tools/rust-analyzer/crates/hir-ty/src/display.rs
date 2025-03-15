@@ -11,6 +11,8 @@ use base_db::Crate;
 use chalk_ir::{BoundVar, Safety, TyKind};
 use either::Either;
 use hir_def::{
+    GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
+    ModuleId, TraitId,
     data::adt::VariantData,
     db::DefDatabase,
     find_path::{self, PrefixKind},
@@ -23,16 +25,14 @@ use hir_def::{
         TraitBoundModifier, TypeBound, TypeRef, TypeRefId, TypesMap, TypesSourceMap, UseArgRef,
     },
     visibility::Visibility,
-    GenericDefId, HasModule, ImportPathConfig, ItemContainerId, LocalFieldId, Lookup, ModuleDefId,
-    ModuleId, TraitId,
 };
 use hir_expand::name::Name;
-use intern::{sym, Internable, Interned};
+use intern::{Internable, Interned, sym};
 use itertools::Itertools;
 use la_arena::ArenaMap;
 use rustc_apfloat::{
-    ieee::{Half as f16, Quad as f128},
     Float,
+    ieee::{Half as f16, Quad as f128},
 };
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
@@ -41,6 +41,11 @@ use stdx::never;
 use triomphe::Arc;
 
 use crate::{
+    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const,
+    ConstScalar, ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime,
+    LifetimeData, LifetimeOutlives, MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
+    QuantifiedWhereClause, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty,
+    TyExt, WhereClause,
     consteval::try_const_usize,
     db::{HirDatabase, InternedClosure},
     from_assoc_type_id, from_foreign_def_id, from_placeholder_idx,
@@ -51,12 +56,7 @@ use crate::{
     mapping::from_chalk,
     mir::pad16,
     primitive, to_assoc_type_id,
-    utils::{self, detect_variant_from_bytes, ClosureSubst},
-    AdtId, AliasEq, AliasTy, Binders, CallableDefId, CallableSig, ConcreteConst, Const,
-    ConstScalar, ConstValue, DomainGoal, FnAbi, GenericArg, ImplTraitId, Interner, Lifetime,
-    LifetimeData, LifetimeOutlives, MemoryMap, Mutability, OpaqueTy, ProjectionTy, ProjectionTyExt,
-    QuantifiedWhereClause, Scalar, Substitution, TraitEnvironment, TraitRef, TraitRefExt, Ty,
-    TyExt, WhereClause,
+    utils::{self, ClosureSubst, detect_variant_from_bytes},
 };
 
 pub trait HirWrite: fmt::Write {
@@ -529,7 +529,9 @@ where
             Err(HirDisplayError::FmtError) => Err(fmt::Error),
             Err(HirDisplayError::DisplaySourceCodeError(_)) => {
                 // This should never happen
-                panic!("HirDisplay::hir_fmt failed with DisplaySourceCodeError when calling Display::fmt!")
+                panic!(
+                    "HirDisplay::hir_fmt failed with DisplaySourceCodeError when calling Display::fmt!"
+                )
             }
         }
     }
@@ -1381,7 +1383,7 @@ impl HirDisplay for Ty {
                 match f.closure_style {
                     ClosureStyle::Hide => return write!(f, "{TYPE_HINT_TRUNCATION}"),
                     ClosureStyle::ClosureWithId => {
-                        return write!(f, "{{closure#{:?}}}", id.0.as_u32())
+                        return write!(f, "{{closure#{:?}}}", id.0.as_u32());
                     }
                     ClosureStyle::ClosureWithSubst => {
                         write!(f, "{{closure#{:?}}}", id.0.as_u32())?;

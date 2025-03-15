@@ -2,19 +2,19 @@ use std::iter::successors;
 
 use either::Either;
 use ide_db::{
+    RootDatabase,
     defs::NameClass,
     syntax_helpers::node_ext::{is_pattern_cond, single_let},
     ty_filter::TryEnum,
-    RootDatabase,
 };
 use syntax::{
-    ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory, HasName},
-    AstNode, TextRange, T,
+    AstNode, T, TextRange,
+    ast::{self, HasName, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
 use crate::{
-    utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
     AssistContext, AssistId, AssistKind, Assists,
+    utils::{does_pat_match_variant, does_pat_variant_nested_or_literal, unwrap_trivial_block},
 };
 
 // Assist: replace_if_let_with_match

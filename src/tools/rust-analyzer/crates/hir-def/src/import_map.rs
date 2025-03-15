@@ -3,21 +3,21 @@
 use std::fmt;
 
 use base_db::Crate;
-use fst::{raw::IndexedValue, Automaton, Streamer};
+use fst::{Automaton, Streamer, raw::IndexedValue};
 use hir_expand::name::Name;
 use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
-use stdx::{format_to, TupleExt};
+use stdx::{TupleExt, format_to};
 use triomphe::Arc;
 
 use crate::{
+    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::DefMap,
     visibility::Visibility,
-    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
 };
 
 /// Item import details stored in the `ImportMap`.
@@ -155,11 +155,7 @@ impl ImportMap {
 
             let visible_items = mod_data.scope.entries().filter_map(|(name, per_ns)| {
                 let per_ns = per_ns.filter_visibility(|vis| vis == Visibility::Public);
-                if per_ns.is_none() {
-                    None
-                } else {
-                    Some((name, per_ns))
-                }
+                if per_ns.is_none() { None } else { Some((name, per_ns)) }
             });
 
             for (name, per_ns) in visible_items {
@@ -474,10 +470,10 @@ fn search_maps(
 #[cfg(test)]
 mod tests {
     use base_db::{RootQueryDb, Upcast};
-    use expect_test::{expect, Expect};
+    use expect_test::{Expect, expect};
     use test_fixture::WithFixture;
 
-    use crate::{test_db::TestDB, ItemContainerId, Lookup};
+    use crate::{ItemContainerId, Lookup, test_db::TestDB};
 
     use super::*;
 

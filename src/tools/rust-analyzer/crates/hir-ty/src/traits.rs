@@ -3,14 +3,14 @@
 use core::fmt;
 use std::env::var;
 
-use chalk_ir::{fold::TypeFoldable, DebruijnIndex, GoalData};
+use chalk_ir::{DebruijnIndex, GoalData, fold::TypeFoldable};
 use chalk_recursive::Cache;
-use chalk_solve::{logging_db::LoggingRustIrDatabase, rust_ir, Solver};
+use chalk_solve::{Solver, logging_db::LoggingRustIrDatabase, rust_ir};
 
 use base_db::Crate;
 use hir_def::{
-    lang_item::{LangItem, LangItemTarget},
     BlockId, TraitId,
+    lang_item::{LangItem, LangItemTarget},
 };
 use hir_expand::name::Name;
 use intern::sym;
@@ -19,9 +19,9 @@ use stdx::{never, panic_context};
 use triomphe::Arc;
 
 use crate::{
-    db::HirDatabase, infer::unify::InferenceTable, utils::UnevaluatedConstEvaluatorFolder, AliasEq,
-    AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment, Interner, ProjectionTy,
-    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause,
+    AliasEq, AliasTy, Canonical, DomainGoal, Goal, Guidance, InEnvironment, Interner, ProjectionTy,
+    ProjectionTyExt, Solution, TraitRefExt, Ty, TyKind, TypeFlags, WhereClause, db::HirDatabase,
+    infer::unify::InferenceTable, utils::UnevaluatedConstEvaluatorFolder,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
@@ -190,11 +190,7 @@ fn solve(
 
     // don't set the TLS for Chalk unless Chalk debugging is active, to make
     // extra sure we only use it for debugging
-    if is_chalk_debug() {
-        crate::tls::set_current_program(db, solve)
-    } else {
-        solve()
-    }
+    if is_chalk_debug() { crate::tls::set_current_program(db, solve) } else { solve() }
 }
 
 struct LoggingRustIrDatabaseLoggingOnDrop<'a>(LoggingRustIrDatabase<Interner, ChalkContext<'a>>);

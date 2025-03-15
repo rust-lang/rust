@@ -5,7 +5,7 @@ resolver = "2"
 
 [workspace.package]
 rust-version = "1.85"
-edition = "2021"
+edition = "2024"
 license = "MIT OR Apache-2.0"
 authors = ["rust-analyzer team"]
 repository = "https://github.com/rust-lang/rust-analyzer"

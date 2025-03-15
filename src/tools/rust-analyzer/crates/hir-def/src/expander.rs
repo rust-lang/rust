@@ -6,17 +6,17 @@ use base_db::Crate;
 use cfg::CfgOptions;
 use drop_bomb::DropBomb;
 use hir_expand::{
-    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandErrorKind,
-    ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
+    ExpandError, ExpandErrorKind, ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
+    attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap,
 };
 use span::{Edition, SyntaxContext};
-use syntax::{ast, Parse};
+use syntax::{Parse, ast};
 use triomphe::Arc;
 
 use crate::type_ref::{TypesMap, TypesSourceMap};
 use crate::{
-    attr::Attrs, db::DefDatabase, lower::LowerCtx, path::Path, AsMacroCall, MacroId, ModuleId,
-    UnresolvedMacro,
+    AsMacroCall, MacroId, ModuleId, UnresolvedMacro, attr::Attrs, db::DefDatabase, lower::LowerCtx,
+    path::Path,
 };
 
 #[derive(Debug)]
@@ -84,11 +84,7 @@ impl Expander {
             }
         });
 
-        if let Some(err) = unresolved_macro_err {
-            Err(err)
-        } else {
-            Ok(result)
-        }
+        if let Some(err) = unresolved_macro_err { Err(err) } else { Ok(result) }
     }
 
     pub fn enter_expand_id<T: ast::AstNode>(

@@ -14,7 +14,9 @@ use main_loop::run;
 fn main() -> std::io::Result<()> {
     let v = std::env::var("RUST_ANALYZER_INTERNALS_DO_NOT_USE");
     if v.is_err() {
-        eprintln!("This is an IDE implementation detail, you can use this tool by exporting RUST_ANALYZER_INTERNALS_DO_NOT_USE.");
+        eprintln!(
+            "This is an IDE implementation detail, you can use this tool by exporting RUST_ANALYZER_INTERNALS_DO_NOT_USE."
+        );
         eprintln!(
             "Note that this tool's API is highly unstable and may break without prior notice"
         );

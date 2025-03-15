@@ -3,7 +3,7 @@ use ide_db::{
     assists::{AssistId, AssistKind},
     famous_defs::FamousDefs,
 };
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::assist_context::{AssistContext, Assists};
 

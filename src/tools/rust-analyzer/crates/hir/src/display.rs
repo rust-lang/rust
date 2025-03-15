@@ -1,9 +1,10 @@
 //! HirDisplay implementations for various hir types.
 use either::Either;
 use hir_def::{
+    AdtId, GenericDefId,
     data::{
-        adt::{StructKind, VariantData},
         TraitFlags,
+        adt::{StructKind, VariantData},
     },
     generics::{
         GenericParams, TypeOrConstParamData, TypeParamProvenance, WherePredicate,
@@ -11,14 +12,13 @@ use hir_def::{
     },
     lang_item::LangItem,
     type_ref::{TypeBound, TypeRef},
-    AdtId, GenericDefId,
 };
 use hir_ty::{
-    display::{
-        hir_display_with_types_map, write_bounds_like_dyn_trait_with_prefix, write_visibility,
-        HirDisplay, HirDisplayError, HirDisplayWithTypesMap, HirFormatter, SizedByDefault,
-    },
     AliasEq, AliasTy, Interner, ProjectionTyExt, TraitRefExt, TyKind, WhereClause,
+    display::{
+        HirDisplay, HirDisplayError, HirDisplayWithTypesMap, HirFormatter, SizedByDefault,
+        hir_display_with_types_map, write_bounds_like_dyn_trait_with_prefix, write_visibility,
+    },
 };
 use itertools::Itertools;
 
@@ -854,7 +854,7 @@ impl HirDisplay for Module {
                 return match self.krate(f.db).display_name(f.db) {
                     Some(name) => write!(f, "extern crate {name}"),
                     None => f.write_str("extern crate {unknown}"),
-                }
+                };
             }
         }
         match self.name(f.db) {

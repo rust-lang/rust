@@ -2,8 +2,8 @@
 
 use std::{env, path::PathBuf, str};
 
-use anyhow::{bail, format_err, Context};
-use xshell::{cmd, Shell};
+use anyhow::{Context, bail, format_err};
+use xshell::{Shell, cmd};
 
 use crate::flags::{self, Malloc};
 
@@ -135,7 +135,10 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
     let features = opts.malloc.to_features();
     let profile = if opts.dev_rel { "dev-rel" } else { "release" };
 
-    let cmd = cmd!(sh, "cargo install --path crates/rust-analyzer --profile={profile} --locked --force --features force-always-assert {features...}");
+    let cmd = cmd!(
+        sh,
+        "cargo install --path crates/rust-analyzer --profile={profile} --locked --force --features force-always-assert {features...}"
+    );
     cmd.run()?;
     Ok(())
 }
@@ -143,7 +146,10 @@ fn install_server(sh: &Shell, opts: ServerOpt) -> anyhow::Result<()> {
 fn install_proc_macro_server(sh: &Shell, opts: ProcMacroServerOpt) -> anyhow::Result<()> {
     let profile = if opts.dev_rel { "dev-rel" } else { "release" };
 
-    let cmd = cmd!(sh, "cargo +nightly install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi");
+    let cmd = cmd!(
+        sh,
+        "cargo +nightly install --path crates/proc-macro-srv-cli --profile={profile} --locked --force --features sysroot-abi"
+    );
     cmd.run()?;
     Ok(())
 }

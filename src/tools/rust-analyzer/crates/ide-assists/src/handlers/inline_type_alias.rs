@@ -10,13 +10,14 @@ use ide_db::{
 };
 use itertools::Itertools;
 use syntax::{
-    ast::{self, make, HasGenericParams, HasName},
-    ted, AstNode, NodeOrToken, SyntaxNode,
+    AstNode, NodeOrToken, SyntaxNode,
+    ast::{self, HasGenericParams, HasName, make},
+    ted,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 use super::inline_call::split_refs_and_uses;

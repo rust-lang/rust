@@ -3,12 +3,12 @@
 mod overly_long_real_world_cases;
 
 use ide_db::{
-    assists::AssistResolveStrategy, base_db::SourceDatabase, LineIndexDatabase, RootDatabase,
+    LineIndexDatabase, RootDatabase, assists::AssistResolveStrategy, base_db::SourceDatabase,
 };
 use itertools::Itertools;
 use stdx::trim_indent;
 use test_fixture::WithFixture;
-use test_utils::{assert_eq_text, extract_annotations, MiniCore};
+use test_utils::{MiniCore, assert_eq_text, extract_annotations};
 
 use crate::{DiagnosticsConfig, ExprFillDefaultMode, Severity};
 

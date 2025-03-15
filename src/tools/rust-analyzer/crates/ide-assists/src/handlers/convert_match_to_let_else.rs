@@ -1,12 +1,13 @@
 use ide_db::defs::{Definition, NameRefClass};
 use syntax::{
+    AstNode, SyntaxNode,
     ast::{self, HasName, Name},
-    ted, AstNode, SyntaxNode,
+    ted,
 };
 
 use crate::{
-    assist_context::{AssistContext, Assists},
     AssistId, AssistKind,
+    assist_context::{AssistContext, Assists},
 };
 
 // Assist: convert_match_to_let_else

@@ -1,9 +1,9 @@
 //! Applies structured search replace rules from the command line.
 
 use anyhow::Context;
-use ide_db::{base_db::SourceDatabase, EditionedFileId};
+use ide_db::{EditionedFileId, base_db::SourceDatabase};
 use ide_ssr::MatchFinder;
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 use project_model::{CargoConfig, RustLibSource};
 
 use crate::cli::flags;

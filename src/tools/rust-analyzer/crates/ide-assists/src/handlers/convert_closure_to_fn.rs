@@ -1,23 +1,24 @@
 use either::Either;
 use hir::{CaptureKind, ClosureCapture, FileRangeWrapper, HirDisplay};
 use ide_db::{
+    FxHashSet,
     assists::{AssistId, AssistKind},
     base_db::SourceDatabase,
     defs::Definition,
     search::FileReferenceNode,
     source_change::SourceChangeBuilder,
-    FxHashSet,
 };
 use stdx::format_to;
 use syntax::{
+    AstNode, Direction, SyntaxKind, SyntaxNode, T, TextSize, ToSmolStr,
     algo::{skip_trivia_token, skip_whitespace_token},
     ast::{
-        self,
+        self, HasArgList, HasGenericParams, HasName,
         edit::{AstNodeEdit, IndentLevel},
-        make, HasArgList, HasGenericParams, HasName,
+        make,
     },
     hacks::parse_expr_from_str,
-    ted, AstNode, Direction, SyntaxKind, SyntaxNode, TextSize, ToSmolStr, T,
+    ted,
 };
 
 use crate::assist_context::{AssistContext, Assists};

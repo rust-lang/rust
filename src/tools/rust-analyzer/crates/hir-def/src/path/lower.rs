@@ -8,7 +8,7 @@ use hir_expand::{
     mod_path::resolve_crate_root,
     name::{AsName, Name},
 };
-use intern::{sym, Interned};
+use intern::{Interned, sym};
 use stdx::thin_vec::EmptyOptimizedThinVec;
 use syntax::ast::{self, AstNode, HasGenericArgs, HasTypeBounds};
 

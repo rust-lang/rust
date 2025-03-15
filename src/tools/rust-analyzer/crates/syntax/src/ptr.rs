@@ -16,7 +16,7 @@ use std::{
 
 use rowan::TextRange;
 
-use crate::{syntax_node::RustLanguage, AstNode, SyntaxNode};
+use crate::{AstNode, SyntaxNode, syntax_node::RustLanguage};
 
 /// A "pointer" to a [`SyntaxNode`], via location in the source code.
 pub type SyntaxNodePtr = rowan::ast::SyntaxNodePtr<RustLanguage>;
@@ -118,7 +118,7 @@ impl<N: AstNode> From<AstPtr<N>> for SyntaxNodePtr {
 
 #[test]
 fn test_local_syntax_ptr() {
-    use crate::{ast, AstNode, SourceFile};
+    use crate::{AstNode, SourceFile, ast};
 
     let file = SourceFile::parse("struct Foo { f: u32, }", parser::Edition::CURRENT).ok().unwrap();
     let field = file.syntax().descendants().find_map(ast::RecordField::cast).unwrap();

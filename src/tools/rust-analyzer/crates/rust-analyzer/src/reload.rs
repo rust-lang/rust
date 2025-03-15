@@ -15,13 +15,13 @@
 // FIXME: This is a mess that needs some untangling work
 use std::{iter, mem};
 
-use hir::{db::DefDatabase, ChangeWithProcMacros, ProcMacrosBuilder};
+use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
-    base_db::{salsa::Durability, CrateGraphBuilder, ProcMacroPaths, RootQueryDb},
     FxHashMap,
+    base_db::{CrateGraphBuilder, ProcMacroPaths, RootQueryDb, salsa::Durability},
 };
 use itertools::Itertools;
-use load_cargo::{load_proc_macro, ProjectFolders};
+use load_cargo::{ProjectFolders, load_proc_macro};
 use lsp_types::FileSystemWatcher;
 use proc_macro_api::ProcMacroClient;
 use project_model::{ManifestPath, ProjectWorkspace, ProjectWorkspaceKind, WorkspaceBuildScripts};
@@ -820,11 +820,7 @@ impl GlobalState {
             }
         }
 
-        if buf.is_empty() {
-            Ok(())
-        } else {
-            Err(buf)
-        }
+        if buf.is_empty() { Ok(()) } else { Err(buf) }
     }
 
     fn reload_flycheck(&mut self) {

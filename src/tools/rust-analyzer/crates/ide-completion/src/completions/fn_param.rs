@@ -3,14 +3,14 @@
 use hir::HirDisplay;
 use ide_db::FxHashMap;
 use syntax::{
-    algo,
+    AstNode, Direction, SyntaxKind, TextRange, TextSize, algo,
     ast::{self, HasModuleItem},
-    match_ast, AstNode, Direction, SyntaxKind, TextRange, TextSize,
+    match_ast,
 };
 
 use crate::{
-    context::{ParamContext, ParamKind, PatternContext},
     CompletionContext, CompletionItem, CompletionItemKind, Completions,
+    context::{ParamContext, ParamKind, PatternContext},
 };
 
 // FIXME: Make this a submodule of [`pattern`]

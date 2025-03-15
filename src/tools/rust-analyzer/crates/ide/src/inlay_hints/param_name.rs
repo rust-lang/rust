@@ -6,13 +6,13 @@
 
 use either::Either;
 use hir::{Callable, Semantics};
-use ide_db::{famous_defs::FamousDefs, RootDatabase};
+use ide_db::{RootDatabase, famous_defs::FamousDefs};
 
 use span::EditionedFileId;
 use stdx::to_lower_snake_case;
 use syntax::{
-    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
     ToSmolStr,
+    ast::{self, AstNode, HasArgList, HasName, UnaryOp},
 };
 
 use crate::{InlayHint, InlayHintLabel, InlayHintPosition, InlayHintsConfig, InlayKind};
@@ -257,8 +257,8 @@ fn is_adt_constructor_similar_to_param_name(
 #[cfg(test)]
 mod tests {
     use crate::{
-        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
         InlayHintsConfig,
+        inlay_hints::tests::{DISABLED_CONFIG, check_with_config},
     };
 
     #[track_caller]

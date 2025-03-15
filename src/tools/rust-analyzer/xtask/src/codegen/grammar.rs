@@ -718,11 +718,7 @@ impl Field {
 
 fn clean_token_name(name: &str) -> String {
     let cleaned = name.trim_start_matches(['@', '#', '?']);
-    if cleaned.is_empty() {
-        name.to_owned()
-    } else {
-        cleaned.to_owned()
-    }
+    if cleaned.is_empty() { name.to_owned() } else { cleaned.to_owned() }
 }
 
 fn lower(grammar: &Grammar) -> AstSrc {

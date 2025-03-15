@@ -4,10 +4,10 @@
 use project_model::{CargoConfig, RustLibSource};
 use rustc_hash::FxHashSet;
 
-use hir::{db::HirDatabase, sym, Crate, HirFileIdExt, Module};
+use hir::{Crate, HirFileIdExt, Module, db::HirDatabase, sym};
 use ide::{AnalysisHost, AssistResolveStrategy, Diagnostic, DiagnosticsConfig, Severity};
-use ide_db::{base_db::SourceDatabase, LineIndexDatabase};
-use load_cargo::{load_workspace_at, LoadCargoConfig, ProcMacroServerChoice};
+use ide_db::{LineIndexDatabase, base_db::SourceDatabase};
+use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace_at};
 
 use crate::cli::flags;
 

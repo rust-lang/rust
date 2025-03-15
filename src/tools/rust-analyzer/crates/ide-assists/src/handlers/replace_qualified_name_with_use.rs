@@ -1,11 +1,12 @@
 use hir::AsAssocItem;
 use ide_db::{
     helpers::mod_path_to_ast,
-    imports::insert_use::{insert_use, ImportScope},
+    imports::insert_use::{ImportScope, insert_use},
 };
 use syntax::{
-    ast::{self, make, HasGenericArgs},
-    match_ast, ted, AstNode, Edition, SyntaxNode,
+    AstNode, Edition, SyntaxNode,
+    ast::{self, HasGenericArgs, make},
+    match_ast, ted,
 };
 
 use crate::{AssistContext, AssistId, AssistKind, Assists};

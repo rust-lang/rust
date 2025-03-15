@@ -1,7 +1,7 @@
 //! Tools to work with format string literals for the `format_args!` family of macros.
 use syntax::{
-    ast::{self, IsString},
     AstNode, AstToken, TextRange, TextSize,
+    ast::{self, IsString},
 };
 
 // FIXME: This can probably be re-implemented via the HIR?

@@ -3,7 +3,7 @@
 use base_db::Crate;
 use rustc_hash::FxHashMap;
 use syntax::NodeOrToken;
-use syntax::{ast::make, SyntaxNode};
+use syntax::{SyntaxNode, ast::make};
 
 use crate::{db::ExpandDatabase, span_map::ExpansionSpanMap};
 

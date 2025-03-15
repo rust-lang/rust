@@ -1,6 +1,6 @@
-use hir::{db::HirDatabase, AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef};
+use hir::{AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef, db::HirDatabase};
 use ide_db::assists::{AssistId, AssistKind};
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 
 use crate::{
     assist_context::{AssistContext, Assists},

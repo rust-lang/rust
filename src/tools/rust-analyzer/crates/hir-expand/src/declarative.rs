@@ -4,15 +4,16 @@ use base_db::Crate;
 use intern::sym;
 use span::{Edition, HirFileIdRepr, MacroCallId, Span, SyntaxContext};
 use stdx::TupleExt;
-use syntax::{ast, AstNode};
+use syntax::{AstNode, ast};
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
 
 use crate::{
+    AstId, ExpandError, ExpandErrorKind, ExpandResult, Lookup,
     attrs::RawAttrs,
     db::ExpandDatabase,
-    hygiene::{apply_mark, Transparency},
-    tt, AstId, ExpandError, ExpandErrorKind, ExpandResult, Lookup,
+    hygiene::{Transparency, apply_mark},
+    tt,
 };
 
 /// Old-style `macro_rules` or the new macros 2.0

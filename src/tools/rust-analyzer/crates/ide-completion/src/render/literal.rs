@@ -1,23 +1,22 @@
 //! Renderer for `enum` variants.
 
-use hir::{db::HirDatabase, StructKind};
+use hir::{StructKind, db::HirDatabase};
 use ide_db::{
-    documentation::{Documentation, HasDocs},
     SymbolKind,
+    documentation::{Documentation, HasDocs},
 };
 
 use crate::{
+    CompletionItemKind, CompletionRelevance, CompletionRelevanceReturnType,
     context::{CompletionContext, PathCompletionCtx, PathKind},
     item::{Builder, CompletionItem, CompletionRelevanceFn},
     render::{
-        compute_type_match,
+        RenderContext, compute_type_match,
         variant::{
-            format_literal_label, format_literal_lookup, render_record_lit, render_tuple_lit,
-            visible_fields, RenderedLiteral,
+            RenderedLiteral, format_literal_label, format_literal_lookup, render_record_lit,
+            render_tuple_lit, visible_fields,
         },
-        RenderContext,
     },
-    CompletionItemKind, CompletionRelevance, CompletionRelevanceReturnType,
 };
 
 pub(crate) fn render_variant_lit(
@@ -164,11 +163,7 @@ impl Variant {
             Variant::Struct(it) => visible_fields(ctx, &fields, it)?,
             Variant::EnumVariant(it) => visible_fields(ctx, &fields, it)?,
         };
-        if !fields_omitted {
-            Some(visible_fields)
-        } else {
-            None
-        }
+        if !fields_omitted { Some(visible_fields) } else { None }
     }
 
     fn kind(self, db: &dyn HirDatabase) -> StructKind {
