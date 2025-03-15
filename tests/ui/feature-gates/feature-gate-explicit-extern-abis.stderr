@@ -1,0 +1,10 @@
+warning: extern declarations without an explicit ABI are deprecated
+  --> $DIR/feature-gate-explicit-extern-abis.rs:4:1
+   |
+LL | extern fn _foo() {}
+   | ^^^^^^ help: explicitly specify the "C" ABI: `extern "C"`
+   |
+   = note: `#[warn(missing_abi)]` on by default
+
+warning: 1 warning emitted
+
