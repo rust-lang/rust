@@ -12,11 +12,9 @@
 #![unstable(feature = "f128", issue = "116909")]
 
 use crate::convert::FloatToInt;
-#[cfg(not(test))]
-use crate::intrinsics;
-use crate::mem;
 use crate::num::FpCategory;
 use crate::panic::const_assert;
+use crate::{intrinsics, mem};
 
 /// Basic mathematical constants.
 #[unstable(feature = "f128", issue = "116909")]
@@ -138,7 +136,6 @@ pub mod consts {
     pub const LN_10: f128 = 2.30258509299404568401799145468436420760110148862877297603333_f128;
 }
 
-#[cfg(not(test))]
 impl f128 {
     // FIXME(f16_f128): almost all methods in this `impl` are missing examples and a const
     // implementation. Add these once we can run code on all platforms and have f16/f128 in CTFE.

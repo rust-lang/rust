@@ -1481,7 +1481,7 @@ pub macro PartialOrd($item:item) {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "cmp_min")]
+#[rustc_diagnostic_item = "cmp_min"]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     v1.min(v2)
 }
@@ -1573,7 +1573,7 @@ pub fn min_by_key<T, F: FnMut(&T) -> K, K: Ord>(v1: T, v2: T, mut f: F) -> T {
 #[inline]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "cmp_max")]
+#[rustc_diagnostic_item = "cmp_max"]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     v1.max(v2)
 }

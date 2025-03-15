@@ -18,7 +18,7 @@ mod num;
 mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
+#[rustc_diagnostic_item = "Alignment"]
 /// Possible alignments returned by `Formatter::align`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {

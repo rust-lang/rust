@@ -97,7 +97,6 @@ enum Direction {
     Back,
 }
 
-#[cfg(not(test))]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///
@@ -1045,7 +1044,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_iter")]
+    #[rustc_diagnostic_item = "slice_iter"]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
@@ -4844,7 +4843,6 @@ impl<T, const N: usize> [[T; N]] {
     }
 }
 
-#[cfg(not(test))]
 impl [f32] {
     /// Sorts the slice of floats.
     ///
@@ -4873,7 +4871,6 @@ impl [f32] {
     }
 }
 
-#[cfg(not(test))]
 impl [f64] {
     /// Sorts the slice of floats.
     ///

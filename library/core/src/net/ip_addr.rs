@@ -25,7 +25,7 @@ use crate::ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, Not};
 /// assert_eq!(localhost_v4.is_ipv6(), false);
 /// assert_eq!(localhost_v4.is_ipv4(), true);
 /// ```
-#[cfg_attr(not(test), rustc_diagnostic_item = "IpAddr")]
+#[rustc_diagnostic_item = "IpAddr"]
 #[stable(feature = "ip_addr", since = "1.7.0")]
 #[derive(Copy, Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum IpAddr {
