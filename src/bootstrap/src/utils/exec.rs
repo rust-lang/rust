@@ -125,7 +125,7 @@ impl BootstrapCommand {
         Self { failure_behavior: BehaviorOnFailure::DelayFail, ..self }
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn fail_fast(self) -> Self {
         Self { failure_behavior: BehaviorOnFailure::Exit, ..self }
     }
@@ -280,7 +280,7 @@ impl CommandOutput {
         !self.is_success()
     }
 
-    #[allow(dead_code)]
+    #[expect(dead_code)]
     pub fn status(&self) -> Option<ExitStatus> {
         match self.status {
             CommandStatus::Finished(status) => Some(status),
@@ -332,7 +332,6 @@ impl Default for CommandOutput {
 
 /// Helper trait to format both Command and BootstrapCommand as a short execution line,
 /// without all the other details (e.g. environment variables).
-#[allow(unused)]
 pub trait FormatShortCmd {
     fn format_short_cmd(&self) -> String;
 }

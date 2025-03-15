@@ -68,6 +68,7 @@ jobs:
     timeout-minutes: 360
     env:
       CI_JOB_NAME: ${{ matrix.name }}
+      CI_JOB_DOC_URL: ${{ matrix.doc_url }}
       CARGO_REGISTRIES_CRATES_IO_PROTOCOL: sparse
       # commit of PR sha or commit sha. `GITHUB_SHA` is not accurate for PRs.
       HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -190,8 +191,20 @@ jobs:
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
       - name: run the build
-        # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
-        run: src/ci/scripts/run-build-from-ci.sh 2>&1
+        run: |
+          set +e
+          # Redirect stderr to stdout to avoid reordering the two streams in the GHA logs.
+          src/ci/scripts/run-build-from-ci.sh 2>&1
+          STATUS=$?
+          set -e
+
+          if [[ "$STATUS" -ne 0 && -n "$CI_JOB_DOC_URL" ]]; then
+            echo "****************************************************************************"
+            echo "To find more information about this job, visit the following URL:"
+            echo "$CI_JOB_DOC_URL"
+            echo "****************************************************************************"
+          fi
+          exit ${STATUS}
         env:
           AWS_ACCESS_KEY_ID: ${{ env.CACHES_AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets[format('AWS_SECRET_ACCESS_KEY_{0}', env.CACHES_AWS_ACCESS_KEY_ID)] }}

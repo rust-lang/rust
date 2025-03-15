@@ -29,6 +29,7 @@ fn main() {
         FromStr::from_str(&env::args().nth(4).expect("need concurrency"))
             .expect("concurrency must be a number");
 
+    let root_manifest = root_path.join("Cargo.toml");
     let src_path = root_path.join("src");
     let tests_path = root_path.join("tests");
     let library_path = root_path.join("library");
@@ -137,6 +138,7 @@ fn main() {
         check!(edition, &compiler_path);
         check!(edition, &library_path);
 
+        check!(alphabetical, &root_manifest);
         check!(alphabetical, &src_path);
         check!(alphabetical, &tests_path);
         check!(alphabetical, &compiler_path);

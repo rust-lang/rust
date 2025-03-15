@@ -1840,7 +1840,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
                 let ty = self.pat_ty_adjusted(subpat)?;
                 let ty = Ty::new_ref(self.cx.tcx(), re_erased, ty, mutability);
                 // A deref pattern generates a temporary.
-                let place = self.cat_rvalue(pat.hir_id, ty);
+                let base = self.cat_rvalue(pat.hir_id, ty);
+                let place = self.cat_deref(pat.hir_id, base)?;
                 self.cat_pattern(place, subpat, op)?;
             }
 
