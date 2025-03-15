@@ -4,7 +4,8 @@ warning: unexpected `cfg` condition name: `list_all_well_known_cfgs`
 LL | #[cfg(list_all_well_known_cfgs)]
    |       ^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = help: expected names are: `clippy`
+   = help: expected names are: `c_char_type`
+`clippy`
 `contract_checks`
 `debug_assertions`
 `doc`
