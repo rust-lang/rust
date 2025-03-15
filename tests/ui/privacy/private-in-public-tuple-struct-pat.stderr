@@ -1,0 +1,38 @@
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:25:9
+   |
+LL |         m::PubStruct(_) => {}
+   |         ^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:26:9
+   |
+LL |         m::PubStruct(..) => {}
+   |         ^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:30:9
+   |
+LL |         m::PubEnum::Variant(_) => {}
+   |         ^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:31:9
+   |
+LL |         m::PubEnum::Variant(..) => {}
+   |         ^^^^^^^^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:34:13
+   |
+LL |     let _ = m::PubStruct;
+   |             ^^^^^^^^^^^^ private type
+
+error: type `Priv` is private
+  --> $DIR/private-in-public-tuple-struct-pat.rs:35:13
+   |
+LL |     let _ = m::PubEnum::Variant;
+   |             ^^^^^^^^^^^^^^^^^^^ private type
+
+error: aborting due to 6 previous errors
+
