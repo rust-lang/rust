@@ -242,12 +242,6 @@ impl server::Span for TokenIdServer {
     fn source_file(&mut self, _span: Self::Span) -> Self::SourceFile {
         SourceFile {}
     }
-    fn save_span(&mut self, _span: Self::Span) -> usize {
-        0
-    }
-    fn recover_proc_macro_span(&mut self, _id: usize) -> Self::Span {
-        self.call_site
-    }
     /// Recent feature, not yet in the proc_macro
     ///
     /// See PR:
