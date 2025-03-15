@@ -153,11 +153,6 @@ error[E0080]: evaluation of constant value failed
    |
 LL |     ptr.read();
    |     ^^^^^^^^^^ accessing memory based on pointer with alignment 1, but alignment 4 is required
-   |
-note: inside `std::ptr::const_ptr::<impl *const u32>::read`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
 
 error: aborting due to 15 previous errors
 
