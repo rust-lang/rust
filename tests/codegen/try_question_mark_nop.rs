@@ -63,6 +63,57 @@ pub fn result_nop_traits_32(x: Result<i32, u32>) -> Result<i32, u32> {
     try { x? }
 }
 
+// CHECK-LABEL: @control_flow_nop_match_32
+#[no_mangle]
+pub fn control_flow_nop_match_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, u32> {
+    // CHECK: start:
+    // CHECK-NEXT: insertvalue { i32, i32 }
+    // CHECK-NEXT: insertvalue { i32, i32 }
+    // CHECK-NEXT: ret { i32, i32 }
+    match x {
+        Continue(x) => Continue(x),
+        Break(x) => Break(x),
+    }
+}
+
+// CHECK-LABEL: @control_flow_nop_traits_32
+#[no_mangle]
+pub fn control_flow_nop_traits_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, u32> {
+    // CHECK: start:
+    // CHECK-NEXT: insertvalue { i32, i32 }
+    // CHECK-NEXT: insertvalue { i32, i32 }
+    // CHECK-NEXT: ret { i32, i32 }
+    try { x? }
+}
+
+// CHECK-LABEL: @option_nop_match_64
+#[no_mangle]
+pub fn option_nop_match_64(x: Option<u64>) -> Option<u64> {
+    // CHECK: start:
+    // TWENTY-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
+    // TWENTY-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
+    // CHECK-NEXT: [[REG1:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } poison, i64 %0, 0
+    // NINETEEN-NEXT: [[REG2:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } [[REG1]], i64 %1, 1
+    // TWENTY-NEXT: [[REG2:%[0-9a-zA-Z_.]+]] = insertvalue { i64, i64 } [[REG1]], i64 %[[SEL]], 1
+    // CHECK-NEXT: ret { i64, i64 } [[REG2]]
+    match x {
+        Some(x) => Some(x),
+        None => None,
+    }
+}
+
+// CHECK-LABEL: @option_nop_traits_64
+#[no_mangle]
+pub fn option_nop_traits_64(x: Option<u64>) -> Option<u64> {
+    // CHECK: start:
+    // TWENTY-NEXT: %[[TRUNC:[0-9]+]] = trunc nuw i64 %0 to i1
+    // TWENTY-NEXT: %[[SEL:\.[0-9]+]] = select i1 %[[TRUNC]], i64 %1, i64 undef
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: ret { i64, i64 }
+    try { x? }
+}
+
 // CHECK-LABEL: @result_nop_match_64
 #[no_mangle]
 pub fn result_nop_match_64(x: Result<i64, u64>) -> Result<i64, u64> {
@@ -86,6 +137,79 @@ pub fn result_nop_traits_64(x: Result<i64, u64>) -> Result<i64, u64> {
     try { x? }
 }
 
+// CHECK-LABEL: @control_flow_nop_match_64
+#[no_mangle]
+pub fn control_flow_nop_match_64(x: ControlFlow<i64, u64>) -> ControlFlow<i64, u64> {
+    // CHECK: start:
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: ret { i64, i64 }
+    match x {
+        Continue(x) => Continue(x),
+        Break(x) => Break(x),
+    }
+}
+
+// CHECK-LABEL: @control_flow_nop_traits_64
+#[no_mangle]
+pub fn control_flow_nop_traits_64(x: ControlFlow<i64, u64>) -> ControlFlow<i64, u64> {
+    // CHECK: start:
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: insertvalue { i64, i64 }
+    // CHECK-NEXT: ret { i64, i64 }
+    try { x? }
+}
+
+// CHECK-LABEL: @result_nop_match_128
+#[no_mangle]
+pub fn result_nop_match_128(x: Result<i128, u128>) -> Result<i128, u128> {
+    // CHECK: start:
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: ret void
+    match x {
+        Ok(x) => Ok(x),
+        Err(x) => Err(x),
+    }
+}
+
+// CHECK-LABEL: @result_nop_traits_128
+#[no_mangle]
+pub fn result_nop_traits_128(x: Result<i128, u128>) -> Result<i128, u128> {
+    // CHECK: start:
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: ret void
+    try { x? }
+}
+
+// CHECK-LABEL: @control_flow_nop_match_128
+#[no_mangle]
+pub fn control_flow_nop_match_128(x: ControlFlow<i128, u128>) -> ControlFlow<i128, u128> {
+    // CHECK: start:
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: ret void
+    match x {
+        Continue(x) => Continue(x),
+        Break(x) => Break(x),
+    }
+}
+
+// CHECK-LABEL: @control_flow_nop_traits_128
+#[no_mangle]
+pub fn control_flow_nop_traits_128(x: ControlFlow<i128, u128>) -> ControlFlow<i128, u128> {
+    // CHECK: start:
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: store i128
+    // CHECK-NEXT: ret void
+    try { x? }
+}
+
 // CHECK-LABEL: @result_nop_match_ptr
 #[no_mangle]
 pub fn result_nop_match_ptr(x: Result<usize, Box<()>>) -> Result<usize, Box<()>> {
@@ -106,28 +230,5 @@ pub fn result_nop_traits_ptr(x: Result<u64, NonNull<()>>) -> Result<u64, NonNull
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: insertvalue { i{{[0-9]+}}, ptr }
     // CHECK-NEXT: ret
-    try { x? }
-}
-
-// CHECK-LABEL: @control_flow_nop_match_32
-#[no_mangle]
-pub fn control_flow_nop_match_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, u32> {
-    // CHECK: start:
-    // CHECK-NEXT: insertvalue { i32, i32 }
-    // CHECK-NEXT: insertvalue { i32, i32 }
-    // CHECK-NEXT: ret { i32, i32 }
-    match x {
-        Continue(x) => Continue(x),
-        Break(x) => Break(x),
-    }
-}
-
-// CHECK-LABEL: @control_flow_nop_traits_32
-#[no_mangle]
-pub fn control_flow_nop_traits_32(x: ControlFlow<i32, u32>) -> ControlFlow<i32, u32> {
-    // CHECK: start:
-    // CHECK-NEXT: insertvalue { i32, i32 }
-    // CHECK-NEXT: insertvalue { i32, i32 }
-    // CHECK-NEXT: ret { i32, i32 }
     try { x? }
 }
