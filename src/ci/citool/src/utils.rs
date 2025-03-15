@@ -9,3 +9,23 @@ pub fn load_env_var(name: &str) -> anyhow::Result<String> {
 pub fn read_to_string<P: AsRef<Path>>(path: P) -> anyhow::Result<String> {
     std::fs::read_to_string(&path).with_context(|| format!("Cannot read file {:?}", path.as_ref()))
 }
+
+pub fn pluralize(text: &str, count: usize) -> String {
+    if count == 1 { text.to_string() } else { format!("{text}s") }
+}
+
+/// Outputs a HTML <details> section with the provided summary.
+/// Output printed by `func` will be contained within the section.
+pub fn output_details<F>(summary: &str, func: F)
+where
+    F: FnOnce(),
+{
+    println!(
+        r"<details>
+<summary>{summary}</summary>
+
+"
+    );
+    func();
+    println!("</details>\n");
+}
