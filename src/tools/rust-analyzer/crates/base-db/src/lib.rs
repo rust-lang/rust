@@ -86,7 +86,7 @@ impl Files {
         let files = Arc::clone(&self.files);
         match files.entry(file_id) {
             Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_text(db).to(Arc::from(text));
+                occupied.get_mut().set_text(db).with_durability(durability).to(Arc::from(text));
             }
             Entry::Vacant(vacant) => {
                 let text =
@@ -116,7 +116,7 @@ impl Files {
         let source_roots = Arc::clone(&self.source_roots);
         match source_roots.entry(source_root_id) {
             Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_source_root(db).to(source_root);
+                occupied.get_mut().set_source_root(db).with_durability(durability).to(source_root);
             }
             Entry::Vacant(vacant) => {
                 let source_root =
@@ -145,7 +145,11 @@ impl Files {
         // let db = self;
         match file_source_roots.entry(id) {
             Entry::Occupied(mut occupied) => {
-                occupied.get_mut().set_source_root_id(db).to(source_root_id);
+                occupied
+                    .get_mut()
+                    .set_source_root_id(db)
+                    .with_durability(durability)
+                    .to(source_root_id);
             }
             Entry::Vacant(vacant) => {
                 let file_source_root =
