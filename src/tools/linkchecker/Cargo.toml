@@ -9,4 +9,4 @@ path = "main.rs"
 
 [dependencies]
 regex = "1"
-html5ever = "0.27.0"
+html5ever = "0.29.0"
