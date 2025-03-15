@@ -725,16 +725,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 // Dyn-compatibility violations or miscellaneous.
-                Err(err) => {
-                    let guar = self.err_ctxt().report_selection_error(
-                        obligation.clone(),
-                        &obligation,
-                        &err,
-                    );
-                    self.fcx.set_tainted_by_errors(guar);
-                    // Treat this like an obligation and follow through
-                    // with the unsizing - the lack of a coercion should
-                    // be silent, as it causes a type mismatch later.
+                Err(_) => {
+                    // Previously we reported an error here; instead of doing that,
+                    // we just register the failing obligation which will be reported
+                    // in the outer selection loop.
+                    coercion.obligations.push(obligation);
                 }
 
                 Ok(Some(impl_source)) => queue.extend(impl_source.nested_obligations()),
