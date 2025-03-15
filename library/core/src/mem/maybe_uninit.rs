@@ -4,11 +4,15 @@ use crate::{fmt, intrinsics, ptr, slice};
 
 /// A wrapper type to construct uninitialized instances of `T`.
 ///
+/// A `MaybeUninit<T>` is like a `T`, but without the requirement that it is properly initialized as a `T`.
+/// Dropping a `MaybeUninit<T>` does nothing, even if properly initialized as a `T`, because
+/// the compiler relies on the type system to decide how to drop variables. Thus, if a `MaybeUninit<T>`
+/// should be dropped like a `T`, it should be converted to a `T` with `assume_init` or similar.
+///
 /// # Initialization invariant
 ///
-/// The compiler, in general, assumes that a variable is properly initialized
-/// according to the requirements of the variable's type. For example, a variable of
-/// reference type must be aligned and non-null. This is an invariant that must
+/// Every variable must be properly initialized according to the requirements of its type.
+/// For example, a variable of reference type must be aligned and non-null. This is an invariant that must
 /// *always* be upheld, even in unsafe code. As a consequence, zero-initializing a
 /// variable of reference type causes instantaneous [undefined behavior][ub],
 /// no matter whether that reference ever gets used to access memory:
@@ -308,7 +312,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { value: ManuallyDrop::new(val) }
     }
 
-    /// Creates a new `MaybeUninit<T>` in an uninitialized state.
+    /// Creates a new uninitialized `MaybeUninit<T>`.
     ///
     /// Note that dropping a `MaybeUninit<T>` will never call `T`'s drop code.
     /// It is your responsibility to make sure `T` gets dropped if it got initialized.
@@ -331,8 +335,7 @@ impl<T> MaybeUninit<T> {
         MaybeUninit { uninit: () }
     }
 
-    /// Creates a new `MaybeUninit<T>` in an uninitialized state, with the memory being
-    /// filled with `0` bytes. It depends on `T` whether that already makes for
+    /// Creates a new zero-filled `MaybeUninit<T>`. It depends on `T` whether that already makes for
     /// proper initialization. For example, `MaybeUninit<usize>::zeroed()` is initialized,
     /// but `MaybeUninit<&'static i32>::zeroed()` is not because references must not
     /// be null.
@@ -391,14 +394,11 @@ impl<T> MaybeUninit<T> {
     /// For your convenience, this also returns a mutable reference to the
     /// (now safely initialized) contents of `self`.
     ///
-    /// As the content is stored inside a `MaybeUninit`, the destructor is not
-    /// run for the inner data if the MaybeUninit leaves scope without a call to
-    /// [`assume_init`], [`assume_init_drop`], or similar. Code that receives
-    /// the mutable reference returned by this function needs to keep this in
-    /// mind. The safety model of Rust regards leaks as safe, but they are
-    /// usually still undesirable. This being said, the mutable reference
-    /// behaves like any other mutable reference would, so assigning a new value
-    /// to it will drop the old content.
+    /// Keep in mind, that the value, as it is wrapped in a `MaybeUninit`,
+    /// will not be dropped when its wrapper is. You can make sure the value is dropped by unwrapping
+    /// it with a call to [`assume_init`], or by dropping it directly with [`assume_init_drop`].
+    /// While the value is also dropped when the returned mutable reference is assigned a new value,
+    /// the new value is then subject to the same rules, as now the new value is wrapped in a `MaybeUninit`.
     ///
     /// [`assume_init`]: Self::assume_init
     /// [`assume_init_drop`]: Self::assume_init_drop
@@ -434,7 +434,7 @@ impl<T> MaybeUninit<T> {
     /// # // FIXME(https://github.com/rust-lang/miri/issues/3670):
     /// # // use -Zmiri-disable-leak-check instead of unleaking in tests meant to leak.
     /// # unsafe { MaybeUninit::assume_init_drop(&mut x); }
-    /// // This leaks the contained string:
+    /// // This leaks the initialized string:
     /// x.write("hello".to_string());
     /// // x is initialized now:
     /// let s = unsafe { x.assume_init() };
@@ -509,7 +509,7 @@ impl<T> MaybeUninit<T> {
     /// ```
     ///
     /// (Notice that the rules around references to uninitialized data are not finalized yet, but
-    /// until they are, it is advisable to avoid them.)
+    /// until they are, it is advisable to avoid references to uninitialized data.)
     #[stable(feature = "maybe_uninit", since = "1.36.0")]
     #[rustc_const_stable(feature = "const_maybe_uninit_as_ptr", since = "1.59.0")]
     #[rustc_as_ptr]
@@ -561,16 +561,17 @@ impl<T> MaybeUninit<T> {
         self as *mut _ as *mut T
     }
 
-    /// Extracts the value from the `MaybeUninit<T>` container. This is a great way
+    /// Converts an initialized `MaybeUninit<T>` into a `T`. This is a great way
     /// to ensure that the data will get dropped, because the resulting `T` is
     /// subject to the usual drop handling.
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes immediate undefined
-    /// behavior. The [type-level documentation][inv] contains more information about
-    /// this initialization invariant.
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before converting it into a `T`. Calling this when the `T` value of the `MaybeUninit<T>`
+    /// is not yet fully initialized causes immediate undefined behavior.
+    ///
+    /// The [type-level documentation][inv] contains more information about this initialization invariant.
     ///
     /// [inv]: #initialization-invariant
     ///
@@ -620,17 +621,19 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Reads the value from the `MaybeUninit<T>` container. The resulting `T` is subject
-    /// to the usual drop handling.
+    /// Reads the `T` value of the `MaybeUninit<T>`. The result is an ordinary `T` which,
+    /// just like all `T` values, is subject to the usual drop handling.
     ///
     /// Whenever possible, it is preferable to use [`assume_init`] instead, which
     /// prevents duplicating the content of the `MaybeUninit<T>`.
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is in an initialized
-    /// state. Calling this when the content is not yet fully initialized causes undefined
-    /// behavior. The [type-level documentation][inv] contains more information about
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before reading the `T` value of the `MaybeUninit<T>`. Calling this when the `T` value
+    /// of the `MaybeUninit<T>` is not yet fully initialized causes immediate undefined behavior.
+    ///
+    /// The [type-level documentation][inv] contains more information about
     /// this initialization invariant.
     ///
     /// Moreover, similar to the [`ptr::read`] function, this function creates a
@@ -690,16 +693,16 @@ impl<T> MaybeUninit<T> {
         }
     }
 
-    /// Drops the contained value in place.
+    /// Drops the `T` value of the `MaybeUninit<T>` in place, like [`ptr::drop_in_place`].
     ///
     /// If you have ownership of the `MaybeUninit`, you can also use
     /// [`assume_init`] as an alternative.
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that the `MaybeUninit<T>` really is
-    /// in an initialized state. Calling this when the content is not yet fully
-    /// initialized causes undefined behavior.
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before dropping the `T` value of the `MaybeUninit<T>`. Calling this when the `T` value
+    /// of the `MaybeUninit<T>` is not yet fully initialized causes immediate undefined behavior.
     ///
     /// On top of that, all additional invariants of the type `T` must be
     /// satisfied, as the `Drop` implementation of `T` (or its members) may
@@ -727,9 +730,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Safety
     ///
-    /// Calling this when the content is not yet fully initialized causes undefined
-    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
-    /// is in an initialized state.
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before getting a reference to the `T` value of the `MaybeUninit<T>`. Calling this when the `T` value
+    /// of the `MaybeUninit<T>` is not yet fully initialized causes immediate undefined behavior.
     ///
     /// # Examples
     ///
@@ -795,10 +798,9 @@ impl<T> MaybeUninit<T> {
     ///
     /// # Safety
     ///
-    /// Calling this when the content is not yet fully initialized causes undefined
-    /// behavior: it is up to the caller to guarantee that the `MaybeUninit<T>` really
-    /// is in an initialized state. For instance, `.assume_init_mut()` cannot be used to
-    /// initialize a `MaybeUninit`.
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before getting a mutable reference to the `T` value of the `MaybeUninit<T>`. Calling this when the `T` value
+    /// of the `MaybeUninit<T>` is not yet fully initialized causes immediate undefined behavior.
     ///
     /// # Examples
     ///
@@ -909,7 +911,7 @@ impl<T> MaybeUninit<T> {
     /// # Safety
     ///
     /// It is up to the caller to guarantee that all elements of the array are
-    /// in an initialized state.
+    /// properly initialized.
     ///
     /// # Examples
     ///
@@ -946,8 +948,7 @@ impl<T> MaybeUninit<T> {
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
     ///
-    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
-    /// contain padding bytes which are left uninitialized.
+    /// Note that a value may still contain uninitialized padding bytes even if it has been fully initialized.
     ///
     /// # Examples
     ///
@@ -972,8 +973,7 @@ impl<T> MaybeUninit<T> {
     /// Returns the contents of this `MaybeUninit` as a mutable slice of potentially uninitialized
     /// bytes.
     ///
-    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
-    /// contain padding bytes which are left uninitialized.
+    /// Note that a value may still contain uninitialized padding bytes even if it has been fully initialized.
     ///
     /// # Examples
     ///
@@ -1065,8 +1065,9 @@ impl<T> MaybeUninit<T> {
         this.write_clone_of_slice(src)
     }
 
-    /// Fills a slice with elements by cloning `value`, returning a mutable reference to the now
-    /// initialized contents of the slice.
+    /// Fills a `&mut [MaybeUninit<T>]` with clones of the given value of type `T`.
+    /// Returns a `&mut [T]` to the so initialized slice.
+    ///
     /// Any previously initialized elements will not be dropped.
     ///
     /// This is similar to [`slice::fill`].
@@ -1244,8 +1245,8 @@ impl<T> MaybeUninit<T> {
 }
 
 impl<T> [MaybeUninit<T>] {
-    /// Copies the elements from `src` to `self`,
-    /// returning a mutable reference to the now initialized contents of `self`.
+    /// Copies all elements from a `&[T]` to this `[MaybeUninit<T>]`.
+    /// Returns a `&mut [T]` to the so initialized array.
     ///
     /// If `T` does not implement `Copy`, use [`write_clone_of_slice`] instead.
     ///
@@ -1301,13 +1302,14 @@ impl<T> [MaybeUninit<T>] {
         unsafe { self.assume_init_mut() }
     }
 
-    /// Clones the elements from `src` to `self`,
-    /// returning a mutable reference to the now initialized contents of `self`.
+    /// Clones all elements from a `&[T]` to this `[MaybeUninit<T>]`.
+    /// Returns a `&mut [T]` to the so initialized array.
     /// Any already initialized elements will not be dropped.
     ///
     /// If `T` implements `Copy`, use [`write_copy_of_slice`] instead.
     ///
-    /// This is similar to [`slice::clone_from_slice`] but does not drop existing elements.
+    /// This is similar to [`slice::clone_from_slice`] but cannot drop existing `MaybeUninit<T>`,
+    /// as it cannot know if any of them was initialized.
     ///
     /// # Panics
     ///
@@ -1382,8 +1384,7 @@ impl<T> [MaybeUninit<T>] {
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.
     ///
-    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
-    /// contain padding bytes which are left uninitialized.
+    /// Note that a value may still contain uninitialized padding bytes even if it has been fully initialized.
     ///
     /// # Examples
     ///
@@ -1409,8 +1410,7 @@ impl<T> [MaybeUninit<T>] {
     /// Returns the contents of this `MaybeUninit` slice as a mutable slice of potentially
     /// uninitialized bytes.
     ///
-    /// Note that even if the contents of a `MaybeUninit` have been initialized, the value may still
-    /// contain padding bytes which are left uninitialized.
+    /// Note that a value may still contain uninitialized padding bytes even if it has been fully initialized.
     ///
     /// # Examples
     ///
@@ -1439,13 +1439,13 @@ impl<T> [MaybeUninit<T>] {
         }
     }
 
-    /// Drops the contained values in place.
+    /// Assumes all elements have been fully initialized and drops them in place, like [`ptr::drop_in_place`].
     ///
     /// # Safety
     ///
-    /// It is up to the caller to guarantee that every `MaybeUninit<T>` in the slice
-    /// really is in an initialized state. Calling this when the content is not yet
-    /// fully initialized causes undefined behavior.
+    /// It is up to the caller to ensure that the `MaybeUninit<T>` has been fully initialized,
+    /// before calling. Calling this when any of the `T` elements of the `[MaybeUninit<T>]`
+    /// has not yet been fully initialized causes immediate undefined behavior.
     ///
     /// On top of that, all additional invariants of the type `T` must be
     /// satisfied, as the `Drop` implementation of `T` (or its members) may
@@ -1470,9 +1470,9 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// # Safety
     ///
-    /// Calling this when the content is not yet fully initialized causes undefined
+    /// Calling this when the elements have not been fully initialized causes undefined
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in
-    /// the slice really is in an initialized state.
+    /// the slice really is properly initialized.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
     pub const unsafe fn assume_init_ref(&self) -> &[T] {
@@ -1487,9 +1487,9 @@ impl<T> [MaybeUninit<T>] {
     ///
     /// # Safety
     ///
-    /// Calling this when the content is not yet fully initialized causes undefined
+    /// Calling this when the elements have not been fully initialized causes undefined
     /// behavior: it is up to the caller to guarantee that every `MaybeUninit<T>` in the
-    /// slice really is in an initialized state. For instance, `.assume_init_mut()` cannot
+    /// slice really is properly initialized. For instance, `.assume_init_mut()` cannot
     /// be used to initialize a `MaybeUninit` slice.
     #[unstable(feature = "maybe_uninit_slice", issue = "63569")]
     #[inline(always)]
