@@ -22,6 +22,7 @@ use rustc_span::{Symbol, sym};
 use tracing::{debug, instrument};
 use {rustc_abi as abi, rustc_hir as hir};
 
+use rustc_infer::traits::ObligationCause;
 use crate::errors::{NonPrimitiveSimdType, OversizedSimdType, ZeroLengthSimdType};
 
 mod invariant;
@@ -318,7 +319,7 @@ fn layout_of_uncached<'tcx>(
                             // error.
                             match tcx.try_normalize_erasing_regions(
                                 cx.typing_env,
-                                tcx.struct_tail_raw(pointee, |ty| ty, || {}),
+                                tcx.struct_tail_raw(pointee, |ty| ty, || {}, ObligationCause::dummy()),
                             ) {
                                 Ok(_) => {}
                                 Err(better_err) => {
