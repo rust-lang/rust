@@ -1,10 +1,6 @@
 //! Ensure E0433 suggests replacing the crate's name with `crate` when the
 //! current crate's name is used in a path.
 
-//@ edition:2018
-// Rust 2018 is needed for the updated crate/module path system and `crate`
-// keyword.
-
 mod bar {
     pub fn baz() {}
 }

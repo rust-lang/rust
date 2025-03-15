@@ -1,5 +1,5 @@
 error[E0433]: failed to resolve: use of unresolved module or unlinked crate `current_crate_name_in_path`
-  --> $DIR/current-crate-name-in-path.rs:12:5
+  --> $DIR/current-crate-name-in-path.rs:8:5
    |
 LL | use current_crate_name_in_path::bar::baz;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^ use of unresolved module or unlinked crate `current_crate_name_in_path`
