@@ -9,7 +9,7 @@ pub(super) struct SetValZST;
 /// Returns `true` only for type `SetValZST`, `false` for all other types (blanket implementation).
 /// `TypeId` requires a `'static` lifetime, use of this trait avoids that restriction.
 ///
-/// [`TypeId`]: std::any::TypeId
+/// [`TypeId`]: core::any::TypeId
 pub(super) trait IsSetVal {
     fn is_set_val() -> bool;
 }

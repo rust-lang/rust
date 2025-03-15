@@ -109,7 +109,6 @@ pub use core::prelude::v1::deref;
     issue = "63063",
     reason = "`type_alias_impl_trait` has open design concerns"
 )]
-#[cfg(not(bootstrap))]
 pub use core::prelude::v1::define_opaque;
 
 // The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated

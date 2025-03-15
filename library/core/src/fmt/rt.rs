@@ -47,10 +47,6 @@ pub enum Alignment {
 #[derive(Copy, Clone)]
 pub enum Count {
     /// Specified with a literal number, stores the value
-    #[cfg(bootstrap)]
-    Is(usize),
-    /// Specified with a literal number, stores the value
-    #[cfg(not(bootstrap))]
     Is(u16),
     /// Specified using `$` and `*` syntaxes, stores the index into `args`
     Param(usize),

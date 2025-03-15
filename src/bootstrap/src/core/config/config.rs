@@ -2381,10 +2381,12 @@ impl Config {
             || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
+            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix => {
+                flags.stage.or(check_stage).unwrap_or(1)
+            }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
+                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Build => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
@@ -2399,8 +2401,6 @@ impl Config {
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
-            | Subcommand::Clippy { .. }
-            | Subcommand::Fix
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }

@@ -153,14 +153,16 @@ impl Step for Std {
         let target = self.target;
         let compiler = self.compiler;
 
+        // We already have std ready to be used for stage 0.
+        if compiler.stage == 0 {
+            builder.ensure(StdLink::from_std(self, compiler));
+
+            return;
+        }
+
         // When using `download-rustc`, we already have artifacts for the host available. Don't
         // recompile them.
-        if builder.download_rustc() && builder.is_builder_target(target)
-            // NOTE: the beta compiler may generate different artifacts than the downloaded compiler, so
-            // its artifacts can't be reused.
-            && compiler.stage != 0
-            && !self.force_recompile
-        {
+        if builder.download_rustc() && builder.is_builder_target(target) && !self.force_recompile {
             let sysroot = builder.ensure(Sysroot { compiler, force_recompile: false });
             cp_rustc_component_to_ci_sysroot(
                 builder,
@@ -190,10 +192,17 @@ impl Step for Std {
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
-        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let mut compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         trace!(?compiler_to_use);
 
-        if compiler_to_use != compiler {
+        if compiler_to_use != compiler
+            // Never uplift std unless we have compiled stage 2; if stage 2 is compiled,
+            // uplift it from there.
+            //
+            // FIXME: improve `fn compiler_for` to avoid adding stage condition here.
+            && compiler.stage > 2
+        {
+            compiler_to_use.stage = 2;
             trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
             builder.ensure(Std::new(compiler_to_use, target));
@@ -757,23 +766,16 @@ impl Step for StdLink {
             (libdir, hostdir)
         };
 
-        add_to_sysroot(
-            builder,
-            &libdir,
-            &hostdir,
-            &build_stamp::libstd_stamp(builder, compiler, target),
-        );
+        let is_downloaded_beta_stage0 = builder
+            .build
+            .config
+            .initial_rustc
+            .starts_with(builder.out.join(compiler.host).join("stage0/bin"));
 
         // Special case for stage0, to make `rustup toolchain link` and `x dist --stage 0`
         // work for stage0-sysroot. We only do this if the stage0 compiler comes from beta,
         // and is not set to a custom path.
-        if compiler.stage == 0
-            && builder
-                .build
-                .config
-                .initial_rustc
-                .starts_with(builder.out.join(compiler.host).join("stage0/bin"))
-        {
+        if compiler.stage == 0 && is_downloaded_beta_stage0 {
             // Copy bin files from stage0/bin to stage0-sysroot/bin
             let sysroot = builder.out.join(compiler.host).join("stage0-sysroot");
 
@@ -783,18 +785,8 @@ impl Step for StdLink {
             t!(fs::create_dir_all(&sysroot_bin_dir));
             builder.cp_link_r(&stage0_bin_dir, &sysroot_bin_dir);
 
-            // Copy all files from stage0/lib to stage0-sysroot/lib
             let stage0_lib_dir = builder.out.join(host).join("stage0/lib");
-            if let Ok(files) = fs::read_dir(stage0_lib_dir) {
-                for file in files {
-                    let file = t!(file);
-                    let path = file.path();
-                    if path.is_file() {
-                        builder
-                            .copy_link(&path, &sysroot.join("lib").join(path.file_name().unwrap()));
-                    }
-                }
-            }
+            builder.cp_link_r(&stage0_lib_dir, &sysroot.join("lib"));
 
             // Copy codegen-backends from stage0
             let sysroot_codegen_backends = builder.sysroot_codegen_backends(compiler);
@@ -808,6 +800,16 @@ impl Step for StdLink {
             if stage0_codegen_backends.exists() {
                 builder.cp_link_r(&stage0_codegen_backends, &sysroot_codegen_backends);
             }
+        } else if compiler.stage == 0 {
+            let sysroot = builder.out.join(compiler.host.triple).join("stage0-sysroot");
+            builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
+        } else {
+            add_to_sysroot(
+                builder,
+                &libdir,
+                &hostdir,
+                &build_stamp::libstd_stamp(builder, compiler, target),
+            );
         }
     }
 }
@@ -1030,7 +1032,7 @@ impl Step for Rustc {
         let compiler = self.compiler;
         let target = self.target;
 
-        // NOTE: the ABI of the beta compiler is different from the ABI of the downloaded compiler,
+        // NOTE: the ABI of the stage0 compiler is different from the ABI of the downloaded compiler,
         // so its artifacts can't be reused.
         if builder.download_rustc() && compiler.stage != 0 {
             trace!(stage = compiler.stage, "`download_rustc` requested");
@@ -1785,9 +1787,9 @@ impl Step for Sysroot {
         t!(fs::create_dir_all(&sysroot));
 
         // In some cases(see https://github.com/rust-lang/rust/issues/109314), when the stage0
-        // compiler relies on more recent version of LLVM than the beta compiler, it may not
+        // compiler relies on more recent version of LLVM than the stage0 compiler, it may not
         // be able to locate the correct LLVM in the sysroot. This situation typically occurs
-        // when we upgrade LLVM version while the beta compiler continues to use an older version.
+        // when we upgrade LLVM version while the stage0 compiler continues to use an older version.
         //
         // Make sure to add the correct version of LLVM into the stage0 sysroot.
         if compiler.stage == 0 {
