@@ -23,9 +23,6 @@ use std::fmt;
 
 use crate::{Edition, MacroCallId};
 
-// Recursive expansion of interned macro
-// ======================================
-
 /// A syntax context describes a hierarchy tracking order of macro definitions.
 #[derive(Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
 pub struct SyntaxContext(
@@ -33,22 +30,21 @@ pub struct SyntaxContext(
     std::marker::PhantomData<&'static salsa::plumbing::interned::Value<SyntaxContext>>,
 );
 
-/// The underlying data interned by Salsa.
-#[derive(Clone, Eq, Debug)]
-pub struct SyntaxContextUnderlyingData {
-    pub outer_expn: Option<MacroCallId>,
-    pub outer_transparency: Transparency,
-    pub edition: Edition,
-    pub parent: SyntaxContext,
-    pub opaque: SyntaxContext,
-    pub opaque_and_semitransparent: SyntaxContext,
-}
-
 const _: () = {
     use salsa::plumbing as zalsa_;
     use salsa::plumbing::interned as zalsa_struct_;
 
-    impl PartialEq for SyntaxContextUnderlyingData {
+    #[derive(Clone, Eq, Debug)]
+    pub struct SyntaxContextData {
+        outer_expn: Option<MacroCallId>,
+        outer_transparency: Transparency,
+        edition: Edition,
+        parent: SyntaxContext,
+        opaque: SyntaxContext,
+        opaque_and_semitransparent: SyntaxContext,
+    }
+
+    impl PartialEq for SyntaxContextData {
         fn eq(&self, other: &Self) -> bool {
             self.outer_expn == other.outer_expn
                 && self.outer_transparency == other.outer_transparency
@@ -57,7 +53,7 @@ const _: () = {
         }
     }
 
-    impl std::hash::Hash for SyntaxContextUnderlyingData {
+    impl std::hash::Hash for SyntaxContextData {
         fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
             self.outer_expn.hash(state);
             self.outer_transparency.hash(state);
@@ -71,7 +67,7 @@ const _: () = {
     struct StructKey<'db, T0, T1, T2, T3>(T0, T1, T2, T3, std::marker::PhantomData<&'db ()>);
 
     impl<'db, T0, T1, T2, T3> zalsa_::interned::HashEqLike<StructKey<'db, T0, T1, T2, T3>>
-        for SyntaxContextUnderlyingData
+        for SyntaxContextData
     where
         Option<MacroCallId>: zalsa_::interned::HashEqLike<T0>,
         Transparency: zalsa_::interned::HashEqLike<T1>,
@@ -93,7 +89,7 @@ const _: () = {
     }
     impl zalsa_struct_::Configuration for SyntaxContext {
         const DEBUG_NAME: &'static str = "SyntaxContextData";
-        type Fields<'a> = SyntaxContextUnderlyingData;
+        type Fields<'a> = SyntaxContextData;
         type Struct<'a> = SyntaxContext;
         fn struct_from_id<'db>(id: salsa::Id) -> Self::Struct<'db> {
             SyntaxContext(id, std::marker::PhantomData)
@@ -189,7 +185,7 @@ const _: () = {
                     parent,
                     std::marker::PhantomData,
                 ),
-                |id, data| SyntaxContextUnderlyingData {
+                |id, data| SyntaxContextData {
                     outer_expn: zalsa_::interned::Lookup::into_owned(data.0),
                     outer_transparency: zalsa_::interned::Lookup::into_owned(data.1),
                     edition: zalsa_::interned::Lookup::into_owned(data.2),

@@ -7,7 +7,7 @@ use intern::{sym, Symbol};
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
 use smallvec::{smallvec, SmallVec};
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use triomphe::Arc;
 
 use crate::{
@@ -903,7 +903,7 @@ impl Resolver {
 fn handle_macro_def_scope(
     db: &dyn DefDatabase,
     hygiene_id: &mut HygieneId,
-    hygiene_info: &mut Option<(SyntaxContextId, MacroDefId)>,
+    hygiene_info: &mut Option<(SyntaxContext, MacroDefId)>,
     macro_id: &MacroDefId,
 ) {
     if let Some((parent_ctx, label_macro_id)) = hygiene_info {
@@ -924,7 +924,7 @@ fn handle_macro_def_scope(
 fn hygiene_info(
     db: &dyn DefDatabase,
     hygiene_id: HygieneId,
-) -> Option<(SyntaxContextId, MacroDefId)> {
+) -> Option<(SyntaxContext, MacroDefId)> {
     if !hygiene_id.is_root() {
         let ctx = hygiene_id.lookup();
         ctx.outer_expn(db).map(|expansion| {

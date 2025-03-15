@@ -37,7 +37,7 @@ use base_db::Crate;
 use either::Either;
 use span::{
     Edition, EditionedFileId, ErasedFileAstId, FileAstId, HirFileIdRepr, Span, SpanAnchor,
-    SyntaxContextId,
+    SyntaxContext,
 };
 use syntax::{
     ast::{self, AstNode},
@@ -252,7 +252,7 @@ pub struct MacroCallLoc {
     pub def: MacroDefId,
     pub krate: Crate,
     pub kind: MacroCallKind,
-    pub ctxt: SyntaxContextId,
+    pub ctxt: SyntaxContext,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -527,7 +527,7 @@ impl MacroDefId {
         db: &dyn ExpandDatabase,
         krate: Crate,
         kind: MacroCallKind,
-        ctxt: SyntaxContextId,
+        ctxt: SyntaxContext,
     ) -> MacroCallId {
         db.intern_macro_call(MacroCallLoc { def: self, krate, kind, ctxt })
     }
@@ -683,7 +683,7 @@ impl MacroCallLoc {
 }
 
 impl MacroCallKind {
-    fn descr(&self) -> &'static str {
+    pub fn descr(&self) -> &'static str {
         match self {
             MacroCallKind::FnLike { .. } => "macro call",
             MacroCallKind::Derive { .. } => "derive macro",
@@ -831,7 +831,7 @@ impl ExpansionInfo {
     pub fn map_range_down_exact(
         &self,
         span: Span,
-    ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContextId)> + '_>> {
+    ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContext)> + '_>> {
         let tokens = self.exp_map.ranges_with_span_exact(span).flat_map(move |(range, ctx)| {
             self.expanded.value.covering_element(range).into_token().zip(Some(ctx))
         });
@@ -846,7 +846,7 @@ impl ExpansionInfo {
     pub fn map_range_down(
         &self,
         span: Span,
-    ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContextId)> + '_>> {
+    ) -> Option<InMacroFile<impl Iterator<Item = (SyntaxToken, SyntaxContext)> + '_>> {
         let tokens = self.exp_map.ranges_with_span(span).flat_map(move |(range, ctx)| {
             self.expanded.value.covering_element(range).into_token().zip(Some(ctx))
         });
@@ -859,7 +859,7 @@ impl ExpansionInfo {
         &self,
         db: &dyn ExpandDatabase,
         offset: TextSize,
-    ) -> (FileRange, SyntaxContextId) {
+    ) -> (FileRange, SyntaxContext) {
         debug_assert!(self.expanded.value.text_range().contains(offset));
         span_for_offset(db, &self.exp_map, offset)
     }
@@ -869,7 +869,7 @@ impl ExpansionInfo {
         &self,
         db: &dyn ExpandDatabase,
         range: TextRange,
-    ) -> Option<(FileRange, SyntaxContextId)> {
+    ) -> Option<(FileRange, SyntaxContext)> {
         debug_assert!(self.expanded.value.text_range().contains_range(range));
         map_node_range_up(db, &self.exp_map, range)
     }
@@ -953,7 +953,7 @@ pub fn map_node_range_up(
     db: &dyn ExpandDatabase,
     exp_map: &ExpansionSpanMap,
     range: TextRange,
-) -> Option<(FileRange, SyntaxContextId)> {
+) -> Option<(FileRange, SyntaxContext)> {
     let mut spans = exp_map.spans_for_range(range);
     let Span { range, anchor, ctx } = spans.next()?;
     let mut start = range.start();
@@ -980,7 +980,7 @@ pub fn map_node_range_up_aggregated(
     db: &dyn ExpandDatabase,
     exp_map: &ExpansionSpanMap,
     range: TextRange,
-) -> FxHashMap<(SpanAnchor, SyntaxContextId), TextRange> {
+) -> FxHashMap<(SpanAnchor, SyntaxContext), TextRange> {
     let mut map = FxHashMap::default();
     for span in exp_map.spans_for_range(range) {
         let range = map.entry((span.anchor, span.ctx)).or_insert_with(|| span.range);
@@ -1002,7 +1002,7 @@ pub fn span_for_offset(
     db: &dyn ExpandDatabase,
     exp_map: &ExpansionSpanMap,
     offset: TextSize,
-) -> (FileRange, SyntaxContextId) {
+) -> (FileRange, SyntaxContext) {
     let span = exp_map.span_at(offset);
     let anchor_offset = db
         .ast_id_map(span.anchor.file_id.into())

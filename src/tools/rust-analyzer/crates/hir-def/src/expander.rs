@@ -9,7 +9,7 @@ use hir_expand::{
     attrs::RawAttrs, mod_path::ModPath, span_map::SpanMap, ExpandError, ExpandErrorKind,
     ExpandResult, HirFileId, InFile, Lookup, MacroCallId,
 };
-use span::{Edition, SyntaxContextId};
+use span::{Edition, SyntaxContext};
 use syntax::{ast, Parse};
 use triomphe::Arc;
 
@@ -57,9 +57,9 @@ impl Expander {
         self.module.krate
     }
 
-    pub fn syntax_context(&self) -> SyntaxContextId {
+    pub fn syntax_context(&self) -> SyntaxContext {
         // FIXME:
-        SyntaxContextId::root(Edition::CURRENT)
+        SyntaxContext::root(Edition::CURRENT)
     }
 
     pub fn enter_expand<T: ast::AstNode>(

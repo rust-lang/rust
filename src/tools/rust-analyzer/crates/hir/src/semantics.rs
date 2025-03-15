@@ -36,7 +36,7 @@ use intern::{sym, Symbol};
 use itertools::Itertools;
 use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::{smallvec, SmallVec};
-use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContextId};
+use span::{AstIdMap, EditionedFileId, FileId, HirFileIdRepr, SyntaxContext};
 use stdx::TupleExt;
 use syntax::{
     algo::skip_trivia_token,
@@ -877,7 +877,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_cb(
         &self,
         token: SyntaxToken,
-        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContextId),
+        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContext),
     ) {
         if let Ok(token) = self.wrap_token_infile(token).into_real_file() {
             self.descend_into_macros_impl(token, &mut |t, ctx| {
@@ -921,7 +921,7 @@ impl<'db> SemanticsImpl<'db> {
     pub fn descend_into_macros_breakable<T>(
         &self,
         token: InRealFile<SyntaxToken>,
-        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContextId) -> ControlFlow<T>,
+        mut cb: impl FnMut(InFile<SyntaxToken>, SyntaxContext) -> ControlFlow<T>,
     ) -> Option<T> {
         self.descend_into_macros_impl(token.clone(), &mut cb)
     }
@@ -979,7 +979,7 @@ impl<'db> SemanticsImpl<'db> {
     fn descend_into_macros_impl<T>(
         &self,
         InRealFile { value: token, file_id }: InRealFile<SyntaxToken>,
-        f: &mut dyn FnMut(InFile<SyntaxToken>, SyntaxContextId) -> ControlFlow<T>,
+        f: &mut dyn FnMut(InFile<SyntaxToken>, SyntaxContext) -> ControlFlow<T>,
     ) -> Option<T> {
         let _p = tracing::info_span!("descend_into_macros_impl").entered();
 
@@ -1016,7 +1016,7 @@ impl<'db> SemanticsImpl<'db> {
             None => {
                 stack.push((
                     file_id.into(),
-                    smallvec![(token, SyntaxContextId::root(file_id.edition()))],
+                    smallvec![(token, SyntaxContext::root(file_id.edition()))],
                 ));
             }
         }

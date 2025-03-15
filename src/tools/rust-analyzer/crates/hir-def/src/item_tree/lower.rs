@@ -11,7 +11,7 @@ use hir_expand::{
 use intern::{sym, Symbol};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
-use span::{AstIdMap, SyntaxContextId};
+use span::{AstIdMap, SyntaxContext};
 use stdx::thin_vec::ThinVec;
 use syntax::{
     ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
@@ -968,7 +968,7 @@ impl UseTreeLowering<'_> {
     fn lower_use_tree(
         &mut self,
         tree: ast::UseTree,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
     ) -> Option<UseTree> {
         if let Some(use_tree_list) = tree.use_tree_list() {
             let prefix = match tree.path() {
@@ -1035,7 +1035,7 @@ impl UseTreeLowering<'_> {
 pub(crate) fn lower_use_tree(
     db: &dyn DefDatabase,
     tree: ast::UseTree,
-    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
 ) -> Option<(UseTree, Arena<ast::UseTree>)> {
     let mut lowering = UseTreeLowering { db, mapping: Arena::new() };
     let tree = lowering.lower_use_tree(tree, span_for_range)?;

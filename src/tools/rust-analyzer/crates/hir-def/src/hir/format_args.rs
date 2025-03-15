@@ -4,7 +4,7 @@ use either::Either;
 use hir_expand::name::Name;
 use intern::Symbol;
 use rustc_parse_format as parse;
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use stdx::TupleExt;
 use syntax::{
     ast::{self, IsString},
@@ -176,7 +176,7 @@ pub(crate) fn parse(
     is_direct_literal: bool,
     mut synth: impl FnMut(Name, Option<TextRange>) -> ExprId,
     mut record_usage: impl FnMut(Name, Option<TextRange>),
-    call_ctx: SyntaxContextId,
+    call_ctx: SyntaxContext,
 ) -> FormatArgs {
     let Ok(text) = s.value() else {
         return FormatArgs {

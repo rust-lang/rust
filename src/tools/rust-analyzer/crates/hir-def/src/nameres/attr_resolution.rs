@@ -6,7 +6,7 @@ use hir_expand::{
     inert_attr_macro::find_builtin_attr_idx,
     MacroCallId, MacroCallKind, MacroDefId,
 };
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use syntax::ast;
 use triomphe::Arc;
 
@@ -137,7 +137,7 @@ pub(super) fn derive_macro_as_call_id(
     item_attr: &AstIdWithPath<ast::Adt>,
     derive_attr_index: AttrId,
     derive_pos: u32,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     krate: Crate,
     resolver: impl Fn(&path::ModPath) -> Option<(MacroId, MacroDefId)>,
     derive_macro_id: MacroCallId,

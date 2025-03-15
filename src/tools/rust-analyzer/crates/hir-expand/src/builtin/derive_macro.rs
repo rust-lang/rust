@@ -4,7 +4,7 @@ use intern::sym;
 use itertools::{izip, Itertools};
 use parser::SyntaxKind;
 use rustc_hash::FxHashSet;
-use span::{Edition, MacroCallId, Span, SyntaxContextId};
+use span::{Edition, MacroCallId, Span, SyntaxContext};
 use stdx::never;
 use syntax_bridge::DocCommentDesugarMode;
 use tracing::debug;
@@ -237,7 +237,7 @@ fn parse_adt(
 
 fn parse_adt_from_syntax(
     adt: &ast::Adt,
-    tm: &span::SpanMap<SyntaxContextId>,
+    tm: &span::SpanMap<SyntaxContext>,
     call_site: Span,
 ) -> Result<BasicAdtInfo, ExpandError> {
     let (name, generic_param_list, where_clause, shape) = match &adt {
@@ -389,7 +389,7 @@ fn to_adt_syntax(
     db: &dyn ExpandDatabase,
     tt: &tt::TopSubtree,
     call_site: Span,
-) -> Result<(ast::Adt, span::SpanMap<SyntaxContextId>), ExpandError> {
+) -> Result<(ast::Adt, span::SpanMap<SyntaxContext>), ExpandError> {
     let (parsed, tm) = crate::db::token_tree_to_syntax_node(
         db,
         tt,

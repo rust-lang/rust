@@ -154,7 +154,7 @@ impl CrateProcMacros {
     /// Fetch the [`CustomProcMacroExpander`]s and their corresponding names for the given crate.
     pub fn list(
         &self,
-        def_site_ctx: span::SyntaxContextId,
+        def_site_ctx: span::SyntaxContext,
     ) -> Option<Box<[(crate::name::Name, CustomProcMacroExpander, bool)]>> {
         match &self.0 {
             Ok(proc_macros) => Some(

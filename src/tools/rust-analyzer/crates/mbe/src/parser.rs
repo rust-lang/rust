@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use arrayvec::ArrayVec;
 use intern::{sym, Symbol};
-use span::{Edition, Span, SyntaxContextId};
+use span::{Edition, Span, SyntaxContext};
 use tt::iter::{TtElement, TtIter};
 
 use crate::ParseError;
@@ -28,14 +28,14 @@ pub(crate) struct MetaTemplate(pub(crate) Box<[Op]>);
 
 impl MetaTemplate {
     pub(crate) fn parse_pattern(
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        edition: impl Copy + Fn(SyntaxContext) -> Edition,
         pattern: TtIter<'_, Span>,
     ) -> Result<Self, ParseError> {
         MetaTemplate::parse(edition, pattern, Mode::Pattern)
     }
 
     pub(crate) fn parse_template(
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        edition: impl Copy + Fn(SyntaxContext) -> Edition,
         template: TtIter<'_, Span>,
     ) -> Result<Self, ParseError> {
         MetaTemplate::parse(edition, template, Mode::Template)
@@ -46,7 +46,7 @@ impl MetaTemplate {
     }
 
     fn parse(
-        edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+        edition: impl Copy + Fn(SyntaxContext) -> Edition,
         mut src: TtIter<'_, Span>,
         mode: Mode,
     ) -> Result<Self, ParseError> {
@@ -179,7 +179,7 @@ enum Mode {
 }
 
 fn next_op(
-    edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+    edition: impl Copy + Fn(SyntaxContext) -> Edition,
     first_peeked: TtElement<'_, Span>,
     src: &mut TtIter<'_, Span>,
     mode: Mode,
@@ -287,7 +287,7 @@ fn next_op(
 }
 
 fn eat_fragment_kind(
-    edition: impl Copy + Fn(SyntaxContextId) -> Edition,
+    edition: impl Copy + Fn(SyntaxContext) -> Edition,
     src: &mut TtIter<'_, Span>,
     mode: Mode,
 ) -> Result<Option<MetaVarKind>, ParseError> {

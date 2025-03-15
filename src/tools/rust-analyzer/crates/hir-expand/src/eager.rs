@@ -19,7 +19,7 @@
 //!
 //! See the full discussion : <https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler/topic/Eager.20expansion.20of.20built-in.20macros>
 use base_db::Crate;
-use span::SyntaxContextId;
+use span::SyntaxContext;
 use syntax::{ted, Parse, SyntaxElement, SyntaxNode, TextSize, WalkEvent};
 use syntax_bridge::DocCommentDesugarMode;
 use triomphe::Arc;
@@ -38,7 +38,7 @@ pub fn expand_eager_macro_input(
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
     def: MacroDefId,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<MacroCallId>> {
     let expand_to = ExpandTo::from_call_site(macro_call);
@@ -116,7 +116,7 @@ fn lazy_expand(
     macro_call: &ast::MacroCall,
     ast_id: AstId<ast::MacroCall>,
     krate: Crate,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
 ) -> ExpandResult<(InFile<Parse<SyntaxNode>>, Arc<ExpansionSpanMap>)> {
     let expand_to = ExpandTo::from_call_site(macro_call);
     let id = def.make_call(
@@ -138,7 +138,7 @@ fn eager_macro_recur(
     mut offset: TextSize,
     curr: InFile<SyntaxNode>,
     krate: Crate,
-    call_site: SyntaxContextId,
+    call_site: SyntaxContext,
     macro_resolver: &dyn Fn(&ModPath) -> Option<MacroDefId>,
 ) -> ExpandResult<Option<(SyntaxNode, TextSize)>> {
     let original = curr.value.clone_for_update();

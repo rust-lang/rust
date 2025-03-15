@@ -3,7 +3,7 @@
 use std::fmt;
 
 use intern::{sym, Symbol};
-use span::{Edition, SyntaxContextId};
+use span::{Edition, SyntaxContext};
 use syntax::utils::is_raw_identifier;
 use syntax::{ast, format_smolstr};
 
@@ -74,7 +74,7 @@ impl Name {
         Name { symbol: Symbol::intern(text), ctx: () }
     }
 
-    pub fn new(text: &str, mut ctx: SyntaxContextId) -> Name {
+    pub fn new(text: &str, mut ctx: SyntaxContext) -> Name {
         // For comparisons etc. we remove the edition, because sometimes we search for some `Name`
         // and we don't know which edition it came from.
         // Can't do that for all `SyntaxContextId`s because it breaks Salsa.
@@ -88,7 +88,7 @@ impl Name {
 
     pub fn new_root(text: &str) -> Name {
         // The edition doesn't matter for hygiene.
-        Self::new(text, SyntaxContextId::root(Edition::Edition2015))
+        Self::new(text, SyntaxContext::root(Edition::Edition2015))
     }
 
     pub fn new_tuple_field(idx: usize) -> Name {
@@ -122,7 +122,7 @@ impl Name {
         }
     }
 
-    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContextId) -> Self {
+    pub fn new_symbol(symbol: Symbol, ctx: SyntaxContext) -> Self {
         debug_assert!(!symbol.as_str().starts_with("r#"));
         _ = ctx;
         Self { symbol, ctx: () }
@@ -130,7 +130,7 @@ impl Name {
 
     // FIXME: This needs to go once we have hygiene
     pub fn new_symbol_root(sym: Symbol) -> Self {
-        Self::new_symbol(sym, SyntaxContextId::root(Edition::Edition2015))
+        Self::new_symbol(sym, SyntaxContext::root(Edition::Edition2015))
     }
 
     /// A fake name for things missing in the source code.

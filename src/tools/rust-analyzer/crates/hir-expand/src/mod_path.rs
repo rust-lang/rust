@@ -14,7 +14,7 @@ use crate::{
 use base_db::Crate;
 use intern::sym;
 use smallvec::SmallVec;
-use span::{Edition, SyntaxContextId};
+use span::{Edition, SyntaxContext};
 use syntax::{ast, AstNode};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,7 +44,7 @@ impl ModPath {
     pub fn from_src(
         db: &dyn ExpandDatabase,
         path: ast::Path,
-        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+        span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
     ) -> Option<ModPath> {
         convert_path(db, path, span_for_range)
     }
@@ -209,7 +209,7 @@ fn display_fmt_path(
 fn convert_path(
     db: &dyn ExpandDatabase,
     path: ast::Path,
-    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContextId,
+    span_for_range: &mut dyn FnMut(::tt::TextRange) -> SyntaxContext,
 ) -> Option<ModPath> {
     let mut segments = path.segments();
 
@@ -333,7 +333,7 @@ fn convert_path_tt(db: &dyn ExpandDatabase, tt: tt::TokenTreesView<'_>) -> Optio
     Some(ModPath { kind, segments })
 }
 
-pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContextId) -> Option<Crate> {
+pub fn resolve_crate_root(db: &dyn ExpandDatabase, mut ctxt: SyntaxContext) -> Option<Crate> {
     // When resolving `$crate` from a `macro_rules!` invoked in a `macro`,
     // we don't want to pretend that the `macro_rules!` definition is in the `macro`
     // as described in `SyntaxContextId::apply_mark`, so we ignore prepended opaque marks.

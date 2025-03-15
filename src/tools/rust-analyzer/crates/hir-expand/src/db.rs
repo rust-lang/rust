@@ -7,7 +7,7 @@ use rustc_hash::FxHashSet;
 use salsa::plumbing::AsId;
 use span::{
     AstIdMap, Edition, EditionedFileId, HirFileId, HirFileIdRepr, MacroCallId, MacroFileId, Span,
-    SyntaxContextId,
+    SyntaxContext,
 };
 use syntax::{ast, AstNode, Parse, SyntaxElement, SyntaxError, SyntaxNode, SyntaxToken, T};
 use syntax_bridge::{syntax_node_to_token_tree, DocCommentDesugarMode};
@@ -97,10 +97,6 @@ pub trait ExpandDatabase: RootQueryDb {
     #[salsa::transparent]
     fn lookup_intern_macro_call(&self, macro_call: MacroCallId) -> MacroCallLoc;
 
-    #[salsa::transparent]
-    #[salsa::invoke(crate::hygiene::dump_syntax_contexts)]
-    fn dump_syntax_contexts(&self) -> String;
-
     /// Lowers syntactic macro call to a token tree representation. That's a firewall
     /// query, only typing in the macro call itself changes the returned
     /// subtree.
@@ -149,7 +145,7 @@ pub trait ExpandDatabase: RootQueryDb {
     ) -> Option<Arc<ExpandResult<Arc<[SyntaxError]>>>>;
 
     #[salsa::transparent]
-    fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContextId;
+    fn syntax_context(&self, file: HirFileId, edition: Edition) -> SyntaxContext;
 }
 
 #[salsa::interned(no_lifetime, id = span::MacroCallId)]
@@ -165,14 +161,14 @@ fn lookup_intern_macro_call(db: &dyn ExpandDatabase, macro_call: MacroCallId) ->
     MacroCallWrapper::ingredient(db).data(db.as_dyn_database(), macro_call.as_id()).0.clone()
 }
 
-#[salsa::interned(no_lifetime, id = span::SyntaxContextId)]
+#[salsa::interned(no_lifetime, id = span::SyntaxContext)]
 pub struct SyntaxContextWrapper {
-    pub data: SyntaxContextId,
+    pub data: SyntaxContext,
 }
 
-fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) -> SyntaxContextId {
+fn syntax_context(db: &dyn ExpandDatabase, file: HirFileId, edition: Edition) -> SyntaxContext {
     match file.repr() {
-        HirFileIdRepr::FileId(_) => SyntaxContextId::root(edition),
+        HirFileIdRepr::FileId(_) => SyntaxContext::root(edition),
         HirFileIdRepr::MacroFile(m) => {
             let kind = db.lookup_intern_macro_call(m.macro_call_id).kind;
             db.macro_arg_considering_derives(m.macro_call_id, &kind).2.ctx

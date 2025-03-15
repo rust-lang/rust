@@ -4,7 +4,7 @@ use ide_db::{
     base_db::Crate, helpers::pick_best_token, syntax_helpers::prettify_macro_expansion, FileId,
     RootDatabase,
 };
-use span::{Edition, SpanMap, SyntaxContextId, TextRange, TextSize};
+use span::{Edition, SpanMap, SyntaxContext, TextRange, TextSize};
 use stdx::format_to;
 use syntax::{ast, ted, AstNode, NodeOrToken, SyntaxKind, SyntaxNode, T};
 
@@ -142,7 +142,7 @@ fn expand_macro_recur(
     sema: &Semantics<'_, RootDatabase>,
     macro_call: &ast::Item,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContextId>,
+    result_span_map: &mut SpanMap<SyntaxContext>,
     offset_in_original_node: TextSize,
 ) -> Option<SyntaxNode> {
     let ExpandResult { value: expanded, err } = match macro_call {
@@ -170,7 +170,7 @@ fn expand(
     sema: &Semantics<'_, RootDatabase>,
     expanded: SyntaxNode,
     error: &mut String,
-    result_span_map: &mut SpanMap<SyntaxContextId>,
+    result_span_map: &mut SpanMap<SyntaxContext>,
     mut offset_in_original_node: i32,
 ) -> SyntaxNode {
     let children = expanded.descendants().filter_map(ast::Item::cast);
@@ -207,7 +207,7 @@ fn format(
     kind: SyntaxKind,
     file_id: FileId,
     expanded: SyntaxNode,
-    span_map: &SpanMap<SyntaxContextId>,
+    span_map: &SpanMap<SyntaxContext>,
     krate: Crate,
 ) -> String {
     let expansion = prettify_macro_expansion(db, expanded, span_map, krate).to_string();

@@ -45,7 +45,7 @@ impl<S: Copy, SM: SpanMapper<S>> SpanMapper<S> for &SM {
 /// Dummy things for testing where spans don't matter.
 pub mod dummy_test_span_utils {
 
-    use span::{Span, SyntaxContextId};
+    use span::{Span, SyntaxContext};
 
     use super::*;
 
@@ -58,7 +58,7 @@ pub mod dummy_test_span_utils {
             ),
             ast_id: span::ROOT_ERASED_FILE_AST_ID,
         },
-        ctx: SyntaxContextId::root(Edition::CURRENT),
+        ctx: SyntaxContext::root(Edition::CURRENT),
     };
 
     pub struct DummyTestSpanMap;
@@ -74,7 +74,7 @@ pub mod dummy_test_span_utils {
                     ),
                     ast_id: span::ROOT_ERASED_FILE_AST_ID,
                 },
-                ctx: SyntaxContextId::root(Edition::CURRENT),
+                ctx: SyntaxContext::root(Edition::CURRENT),
             }
         }
     }

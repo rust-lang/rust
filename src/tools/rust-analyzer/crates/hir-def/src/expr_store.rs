@@ -37,13 +37,13 @@ pub use self::body::{Body, BodySourceMap};
 
 /// A wrapper around [`span::SyntaxContextId`] that is intended only for comparisons.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct HygieneId(span::SyntaxContextId);
+pub struct HygieneId(span::SyntaxContext);
 
 impl HygieneId {
     // The edition doesn't matter here, we only use this for comparisons and to lookup the macro.
-    pub const ROOT: Self = Self(span::SyntaxContextId::root(Edition::Edition2015));
+    pub const ROOT: Self = Self(span::SyntaxContext::root(Edition::Edition2015));
 
-    pub fn new(mut ctx: span::SyntaxContextId) -> Self {
+    pub fn new(mut ctx: span::SyntaxContext) -> Self {
         // See `Name` for why we're doing that.
         ctx.remove_root_edition();
         Self(ctx)

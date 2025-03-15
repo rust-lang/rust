@@ -3,7 +3,7 @@
 // FIXME: Move more of the nameres independent tests from
 // crates\hir-def\src\macro_expansion_tests\mod.rs to this
 use expect_test::expect;
-use span::{Edition, EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContextId};
+use span::{Edition, EditionedFileId, ErasedFileAstId, FileId, Span, SpanAnchor, SyntaxContext};
 use stdx::format_to;
 use tt::{TextRange, TextSize};
 
@@ -26,7 +26,7 @@ fn check_(
             file_id: EditionedFileId::new(FileId::from_raw(0), def_edition),
             ast_id: ErasedFileAstId::from_raw(0),
         },
-        SyntaxContextId::root(Edition::CURRENT),
+        SyntaxContext::root(Edition::CURRENT),
         decl,
     )
     .unwrap();
@@ -42,7 +42,7 @@ fn check_(
     let arg_tt = syntax_bridge::parse_to_token_tree(
         call_edition,
         call_anchor,
-        SyntaxContextId::root(Edition::CURRENT),
+        SyntaxContext::root(Edition::CURRENT),
         arg,
     )
     .unwrap();
@@ -52,7 +52,7 @@ fn check_(
         Span {
             range: TextRange::up_to(TextSize::of(arg)),
             anchor: call_anchor,
-            ctx: SyntaxContextId::root(Edition::CURRENT),
+            ctx: SyntaxContext::root(Edition::CURRENT),
         },
         def_edition,
     );
