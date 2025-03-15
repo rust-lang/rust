@@ -113,7 +113,6 @@
 #![feature(bigint_helper_methods)]
 #![feature(bstr)]
 #![feature(bstr_internals)]
-#![feature(closure_track_caller)]
 #![feature(const_carrying_mul_add)]
 #![feature(const_eval_select)]
 #![feature(core_intrinsics)]

@@ -434,6 +434,7 @@ language_item_table! {
     // Experimental lang items for implementing contract pre- and post-condition checking.
     ContractBuildCheckEnsures, sym::contract_build_check_ensures, contract_build_check_ensures_fn, Target::Fn, GenericRequirement::None;
     ContractCheckRequires,     sym::contract_check_requires,      contract_check_requires_fn,      Target::Fn, GenericRequirement::None;
+    ContractCheckEnsures,     sym::contract_check_ensures,      contract_check_ensures_fn,      Target::Fn, GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item
