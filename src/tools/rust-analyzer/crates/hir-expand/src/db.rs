@@ -61,6 +61,7 @@ pub trait ExpandDatabase: RootQueryDb {
     #[salsa::input]
     fn proc_macros(&self) -> Arc<ProcMacros>;
 
+    /// Incrementality query to prevent queries from directly depending on `ExpandDatabase::proc_macros`.
     #[salsa::invoke_actual(crate::proc_macro::proc_macros_for_crate)]
     fn proc_macros_for_crate(&self, krate: Crate) -> Option<Arc<CrateProcMacros>>;
 
