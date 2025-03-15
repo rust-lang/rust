@@ -82,15 +82,13 @@ envs:
     AWS_REGION: us-west-1
     TOOLSTATE_PUBLISH: 1
 
+  # Try builds started through `@bors try` (without specifying custom jobs
+  # in the PR description) will be passed the `DIST_TRY_BUILD` environment
+  # variable by citool.
+  # This tells the `opt-dist` tool to skip building certain components
+  # and skip running tests, so that the try build finishes faster.
   try:
     <<: *production
-    # The following env var activates faster `try` builds in `opt-dist` by, e.g.
-    # - building only the more commonly useful components (we rarely need e.g. rust-docs in try
-    #   builds)
-    # - not running `opt-dist`'s post-optimization smoke tests on the resulting toolchain
-    #
-    # If you *want* these to happen however, temporarily comment it before triggering a try build.
-    DIST_TRY_BUILD: 1
 
   auto:
     <<: *production
