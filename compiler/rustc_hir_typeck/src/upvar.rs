@@ -1862,8 +1862,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 ///
 /// (1.) Are we borrowing data owned by the parent closure? We can determine if
 /// that is the case by checking if the parent capture is by move, EXCEPT if we
-/// apply a deref projection, which means we're reborrowing a reference that we
-/// captured by move.
+/// apply a deref projection of an immutable reference, reborrows of immutable
+/// references which aren't restricted to the LUB of the lifetimes of the deref
+/// chain. This is why `&'short mut &'long T` can be reborrowed as `&'long T`.
 ///
 /// ```rust
 /// let x = &1i32; // Let's call this lifetime `'1`.
@@ -1902,10 +1903,22 @@ fn should_reborrow_from_env_of_parent_coroutine_closure<'tcx>(
 ) -> bool {
     // (1.)
     (!parent_capture.is_by_ref()
-        && !matches!(
-            child_capture.place.projections.get(parent_capture.place.projections.len()),
-            Some(Projection { kind: ProjectionKind::Deref, .. })
-        ))
+        // This is just inlined `place.deref_tys()` but truncated to just
+        // the child projections. Namely, look for a `&T` deref, since we
+        // can always extend `&'short mut &'long T` to `&'long T`.
+        && !child_capture
+            .place
+            .projections
+            .iter()
+            .enumerate()
+            .skip(parent_capture.place.projections.len())
+            .any(|(idx, proj)| {
+                matches!(proj.kind, ProjectionKind::Deref)
+                    && matches!(
+                        child_capture.place.ty_before_projection(idx).kind(),
+                        ty::Ref(.., ty::Mutability::Not)
+                    )
+            }))
         // (2.)
         || matches!(child_capture.info.capture_kind, UpvarCapture::ByRef(ty::BorrowKind::Mutable))
 }
