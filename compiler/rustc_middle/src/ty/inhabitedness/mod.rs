@@ -107,7 +107,7 @@ impl<'tcx> Ty<'tcx> {
             // For now, unions are always considered inhabited
             Adt(adt, _) if adt.is_union() => InhabitedPredicate::True,
             // Non-exhaustive ADTs from other crates are always considered inhabited
-            Adt(adt, _) if adt.is_variant_list_non_exhaustive() && !adt.did().is_local() => {
+            Adt(adt, _) if adt.variant_list_has_applicable_non_exhaustive() => {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,

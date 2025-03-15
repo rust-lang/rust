@@ -20,7 +20,7 @@ use rustc_middle::hir::place::ProjectionKind;
 pub use rustc_middle::hir::place::{Place, PlaceBase, PlaceWithHirId, Projection};
 use rustc_middle::mir::FakeReadCause;
 use rustc_middle::ty::{
-    self, AdtKind, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
+    self, BorrowKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _, adjustment,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
@@ -1899,14 +1899,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
             // to assume that more cases will be added to the variant in the future. This mean
             // that we should handle non-exhaustive SingleVariant the same way we would handle
             // a MultiVariant.
-            // If the variant is not local it must be defined in another crate.
-            let is_non_exhaustive = match def.adt_kind() {
-                AdtKind::Struct | AdtKind::Union => {
-                    def.non_enum_variant().is_field_list_non_exhaustive()
-                }
-                AdtKind::Enum => def.is_variant_list_non_exhaustive(),
-            };
-            def.variants().len() > 1 || (!def.did().is_local() && is_non_exhaustive)
+            def.variants().len() > 1 || def.variant_list_has_applicable_non_exhaustive()
         } else {
             false
         }

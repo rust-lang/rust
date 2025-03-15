@@ -43,7 +43,6 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeAndMut, TypeVisitableExt, VariantDef, elaborate};
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::{DUMMY_SP, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use tracing::{debug, instrument};
@@ -805,7 +804,7 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             _ => return Err(CastError::NonScalar),
         };
         if let ty::Adt(adt_def, _) = *self.expr_ty.kind()
-            && adt_def.did().krate != LOCAL_CRATE
+            && !adt_def.did().is_local()
             && adt_def.variants().iter().any(VariantDef::is_field_list_non_exhaustive)
         {
             return Err(CastError::ForeignNonExhaustiveAdt);

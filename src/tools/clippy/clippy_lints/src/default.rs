@@ -134,7 +134,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 && let ty::Adt(adt, args) = *binding_type.kind()
                 && adt.is_struct()
                 && let variant = adt.non_enum_variant()
-                && (adt.did().is_local() || !variant.is_field_list_non_exhaustive())
+                && !variant.field_list_has_applicable_non_exhaustive()
                 && let module_did = cx.tcx.parent_module(stmt.hir_id)
                 && variant
                     .fields
