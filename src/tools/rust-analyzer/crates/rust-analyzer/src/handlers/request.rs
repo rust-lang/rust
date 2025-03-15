@@ -1480,7 +1480,7 @@ pub(crate) fn handle_code_action_resolve(
 ) -> anyhow::Result<lsp_ext::CodeAction> {
     let _p = tracing::info_span!("handle_code_action_resolve").entered();
     let Some(params) = code_action.data.take() else {
-        return Err(invalid_params_error("code action without data".to_owned()).into());
+        return Ok(code_action);
     };
 
     let file_id = from_proto::file_id(&snap, &params.code_action_params.text_document.uri)?
