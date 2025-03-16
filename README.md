@@ -21,11 +21,16 @@ standard library, and documentation.
 
 ## Why Rust?
 
-- **Performance:** Fast and memory-efficient, suitable for critical services, embedded devices, and easily integrated with other languages.
+- **Performance:** Fast and memory-efficient, suitable for critical services,
+  embedded devices, and easily integrated with other languages.
 
-- **Reliability:** Our rich type system and ownership model ensure memory and thread safety, reducing bugs at compile-time.
+- **Reliability:** Our rich type system and ownership model ensure memory and
+  thread safety, reducing bugs at compile-time.
 
-- **Productivity:** Comprehensive documentation, a compiler committed to providing great diagnostics, and advanced tooling including package manager and build tool ([Cargo]), auto-formatter ([rustfmt]), linter ([Clippy]) and editor support ([rust-analyzer]).
+- **Productivity:** Comprehensive documentation, a compiler committed to
+  providing great diagnostics, and advanced tooling including package manager
+  and build tool ([Cargo]), auto-formatter ([rustfmt]), linter ([Clippy]) and
+  editor support ([rust-analyzer]).
 
 [Cargo]: https://github.com/rust-lang/cargo
 [rustfmt]: https://github.com/rust-lang/rustfmt
