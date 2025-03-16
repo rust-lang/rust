@@ -89,9 +89,11 @@ target | notes
 -------|-------
 `aarch64-pc-windows-msvc` | ARM64 Windows MSVC
 `aarch64-unknown-linux-musl` | ARM64 Linux with musl 1.2.3
+[`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | ARM64 OpenHarmony
 `arm-unknown-linux-gnueabi` | Armv6 Linux (kernel 3.2, glibc 2.17)
 `arm-unknown-linux-gnueabihf` | Armv6 Linux, hardfloat (kernel 3.2, glibc 2.17)
 `armv7-unknown-linux-gnueabihf` | Armv7-A Linux, hardfloat (kernel 3.2, glibc 2.17)
+[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | Armv7-A OpenHarmony
 [`loongarch64-unknown-linux-gnu`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, glibc 2.36)
 [`loongarch64-unknown-linux-musl`](platform-support/loongarch-linux.md) | LoongArch64 Linux, LP64D ABI (kernel 5.19, musl 1.2.5)
 `powerpc-unknown-linux-gnu` | PowerPC Linux (kernel 3.2, glibc 2.17)
@@ -104,6 +106,7 @@ target | notes
 [`x86_64-unknown-freebsd`](platform-support/freebsd.md) | 64-bit x86 FreeBSD
 [`x86_64-unknown-illumos`](platform-support/illumos.md) | illumos
 `x86_64-unknown-linux-musl` | 64-bit Linux with musl 1.2.3
+[`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | x86_64 OpenHarmony
 [`x86_64-unknown-netbsd`](platform-support/netbsd.md) | NetBSD/amd64
 
 ## Tier 2 without Host Tools
@@ -142,7 +145,6 @@ target | std | notes
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ARM64 MinGW (Windows 10+), LLVM ABI
 [`aarch64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | ARM64 Fuchsia
-[`aarch64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | ARM64 OpenHarmony
 `aarch64-unknown-none` | * | Bare ARM64, hardfloat
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
 [`aarch64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | ARM64 UEFI
@@ -158,7 +160,6 @@ target | std | notes
 `armv7-unknown-linux-gnueabi` | ✓ | Armv7-A Linux (kernel 4.15, glibc 2.27)
 `armv7-unknown-linux-musleabi` | ✓ | Armv7-A Linux with musl 1.2.3
 `armv7-unknown-linux-musleabihf` | ✓ | Armv7-A Linux with musl 1.2.3, hardfloat
-[`armv7-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | Armv7-A OpenHarmony
 [`armv7a-none-eabi`](platform-support/arm-none-eabi.md) | * | Bare Armv7-A
 [`armv7r-none-eabi`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R
 [`armv7r-none-eabihf`](platform-support/armv7r-none-eabi.md) | * | Bare Armv7-R, hardfloat
@@ -204,7 +205,6 @@ target | std | notes
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | 64-bit x86 MinGW (Windows 10+), LLVM ABI
 [`x86_64-unknown-fuchsia`](platform-support/fuchsia.md) | ✓ | 64-bit x86 Fuchsia
 `x86_64-unknown-linux-gnux32` | ✓ | 64-bit Linux (x32 ABI) (kernel 4.15, glibc 2.27)
-[`x86_64-unknown-linux-ohos`](platform-support/openharmony.md) | ✓ | x86_64 OpenHarmony
 [`x86_64-unknown-none`](platform-support/x86_64-unknown-none.md) | * | Freestanding/bare-metal x86_64, softfloat
 [`x86_64-unknown-redox`](platform-support/redox.md) | ✓ | Redox OS
 [`x86_64-unknown-uefi`](platform-support/unknown-uefi.md) | ? | 64-bit UEFI

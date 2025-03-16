@@ -5,8 +5,7 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-measureme = "11"
-rustc_attr_data_structures = { path = "../rustc_attr_data_structures" }
+measureme = "12.0.1"
 rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_hashes = { path = "../rustc_hashes" }
