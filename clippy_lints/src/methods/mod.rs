@@ -4447,13 +4447,13 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// fn foo(values: &[u8]) -> bool {
-    ///    values.iter().any(|&v| v == 10)
+    ///     values.iter().any(|&v| v == 10)
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
     /// fn foo(values: &[u8]) -> bool {
-    ///    values.contains(&10)
+    ///     values.contains(&10)
     /// }
     /// ```
     #[clippy::version = "1.86.0"]

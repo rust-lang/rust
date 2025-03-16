@@ -230,7 +230,7 @@ fn expr_return_none_or_err(
 ///
 /// ```ignore
 /// if option.is_none() {
-///    return None;
+///     return None;
 /// }
 /// ```
 ///

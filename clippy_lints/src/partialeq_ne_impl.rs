@@ -19,8 +19,8 @@ declare_clippy_lint! {
     /// struct Foo;
     ///
     /// impl PartialEq for Foo {
-    ///    fn eq(&self, other: &Foo) -> bool { true }
-    ///    fn ne(&self, other: &Foo) -> bool { !(self == other) }
+    ///     fn eq(&self, other: &Foo) -> bool { true }
+    ///     fn ne(&self, other: &Foo) -> bool { !(self == other) }
     /// }
     /// ```
     #[clippy::version = "pre 1.29.0"]
