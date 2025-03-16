@@ -3431,15 +3431,15 @@ impl<'a> Parser<'a> {
     fn parse_match_arm_guard(&mut self) -> PResult<'a, Option<P<Expr>>> {
         // Used to check the `let_chains` and `if_let_guard` features mostly by scanning
         // `&&` tokens.
-        fn check_let_expr(expr: &Expr) -> (bool, bool) {
+        fn has_let_expr(expr: &Expr) -> bool {
             match &expr.kind {
                 ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
-                    let lhs_rslt = check_let_expr(lhs);
-                    let rhs_rslt = check_let_expr(rhs);
-                    (lhs_rslt.0 || rhs_rslt.0, false)
+                    let lhs_rslt = has_let_expr(lhs);
+                    let rhs_rslt = has_let_expr(rhs);
+                    lhs_rslt || rhs_rslt
                 }
-                ExprKind::Let(..) => (true, true),
-                _ => (false, true),
+                ExprKind::Let(..) => true,
+                _ => false,
             }
         }
         if !self.eat_keyword(exp!(If)) {
@@ -3452,12 +3452,21 @@ impl<'a> Parser<'a> {
 
         CondChecker::new(self).visit_expr(&mut cond);
 
-        let (has_let_expr, does_not_have_bin_op) = check_let_expr(&cond);
-        if has_let_expr {
-            if does_not_have_bin_op {
-                // Remove the last feature gating of a `let` expression since it's stable.
-                self.psess.gated_spans.ungate_last(sym::let_chains, cond.span);
+        if has_let_expr(&cond) {
+            // Let chains are allowed in match guards, but only there
+            fn ungate_let_exprs(this: &mut Parser<'_>, expr: &Expr) {
+                match &expr.kind {
+                    ExprKind::Binary(BinOp { node: BinOpKind::And, .. }, lhs, rhs) => {
+                        ungate_let_exprs(this, rhs);
+                        ungate_let_exprs(this, lhs);
+                    }
+                    ExprKind::Let(..) => {
+                        this.psess.gated_spans.ungate_last(sym::let_chains, expr.span)
+                    }
+                    _ => (),
+                }
             }
+            ungate_let_exprs(self, &cond);
             let span = if_span.to(cond.span);
             self.psess.gated_spans.gate(sym::if_let_guard, span);
         }
