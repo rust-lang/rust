@@ -44,7 +44,7 @@ pub mod sigpipe;
 
 pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     // tidy-alphabetical-start
-    ("all-target-specs-json", PrintKind::AllTargetSpecs),
+    ("all-target-specs-json", PrintKind::AllTargetSpecsJson),
     ("calling-conventions", PrintKind::CallingConventions),
     ("cfg", PrintKind::Cfg),
     ("check-cfg", PrintKind::CheckCfg),
@@ -63,7 +63,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("target-features", PrintKind::TargetFeatures),
     ("target-libdir", PrintKind::TargetLibdir),
     ("target-list", PrintKind::TargetList),
-    ("target-spec-json", PrintKind::TargetSpec),
+    ("target-spec-json", PrintKind::TargetSpecJson),
     ("tls-models", PrintKind::TlsModels),
     // tidy-alphabetical-end
 ];
@@ -874,7 +874,7 @@ pub struct PrintRequest {
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintKind {
     // tidy-alphabetical-start
-    AllTargetSpecs,
+    AllTargetSpecsJson,
     CallingConventions,
     Cfg,
     CheckCfg,
@@ -893,7 +893,7 @@ pub enum PrintKind {
     TargetFeatures,
     TargetLibdir,
     TargetList,
-    TargetSpec,
+    TargetSpecJson,
     TlsModels,
     // tidy-alphabetical-end
 }
@@ -2063,7 +2063,7 @@ fn check_print_request_stability(
     (print_name, print_kind): (&str, PrintKind),
 ) {
     match print_kind {
-        PrintKind::AllTargetSpecs | PrintKind::CheckCfg | PrintKind::TargetSpec
+        PrintKind::AllTargetSpecsJson | PrintKind::CheckCfg | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>
         {
             early_dcx.early_fatal(format!(
