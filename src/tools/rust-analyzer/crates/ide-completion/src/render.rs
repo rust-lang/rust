@@ -334,7 +334,7 @@ pub(crate) fn render_expr(
             continue;
         };
 
-        item.add_import(LocatedImport::new(path, trait_item, trait_item));
+        item.add_import(LocatedImport::new_no_completion(path, trait_item, trait_item));
     }
 
     Some(item)

@@ -2,7 +2,7 @@
 
 use std::ops::ControlFlow;
 
-use hir::{Name, PathCandidateCallback, ScopeDef, sym};
+use hir::{Complete, Name, PathCandidateCallback, ScopeDef, sym};
 use ide_db::FxHashSet;
 use syntax::ast;
 
@@ -33,10 +33,10 @@ where
     fn on_trait_item(&mut self, item: hir::AssocItem) -> ControlFlow<()> {
         // The excluded check needs to come before the `seen` test, so that if we see the same method twice,
         // once as inherent and once not, we will include it.
-        if item
-            .container_trait(self.ctx.db)
-            .is_none_or(|trait_| !self.ctx.exclude_traits.contains(&trait_))
-            && self.seen.insert(item)
+        if item.container_trait(self.ctx.db).is_none_or(|trait_| {
+            !self.ctx.exclude_traits.contains(&trait_)
+                && trait_.complete(self.ctx.db) != Complete::IgnoreMethods
+        }) && self.seen.insert(item)
         {
             (self.add_assoc_item)(self.acc, item);
         }
@@ -104,7 +104,9 @@ pub(crate) fn complete_expr_path(
             .iter()
             .copied()
             .map(hir::Trait::from)
-            .filter(|it| !ctx.exclude_traits.contains(it))
+            .filter(|it| {
+                !ctx.exclude_traits.contains(it) && it.complete(ctx.db) != Complete::IgnoreMethods
+            })
             .flat_map(|it| it.items(ctx.sema.db))
             .for_each(|item| add_assoc_item(acc, item)),
         Qualified::TypeAnchor { trait_: Some(trait_), .. } => {

@@ -558,7 +558,7 @@ impl<'a> DeclValidator<'a> {
 
     fn validate_static(&mut self, static_id: StaticId) {
         let data = self.db.static_data(static_id);
-        if data.is_extern {
+        if data.is_extern() {
             cov_mark::hit!(extern_static_incorrect_case_ignored);
             return;
         }

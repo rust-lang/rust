@@ -9,11 +9,11 @@ use itertools::Itertools;
 use rustc_hash::FxHashSet;
 use smallvec::SmallVec;
 use span::Edition;
-use stdx::{TupleExt, format_to};
+use stdx::format_to;
 use triomphe::Arc;
 
 use crate::{
-    AssocItemId, FxIndexMap, ModuleDefId, ModuleId, TraitId,
+    AssocItemId, AttrDefId, Complete, FxIndexMap, ModuleDefId, ModuleId, TraitId,
     db::DefDatabase,
     item_scope::{ImportOrExternCrate, ItemInNs},
     nameres::DefMap,
@@ -31,6 +31,8 @@ pub struct ImportInfo {
     pub is_doc_hidden: bool,
     /// Whether this item is annotated with `#[unstable(..)]`.
     pub is_unstable: bool,
+    /// The value of `#[rust_analyzer::completions(...)]`, if exists.
+    pub complete: Complete,
 }
 
 /// A map from publicly exported items to its name.
@@ -172,16 +174,22 @@ impl ImportMap {
                             ItemInNs::Macros(id) => Some(id.into()),
                         }
                     };
-                    let (is_doc_hidden, is_unstable) = attr_id.map_or((false, false), |attr_id| {
-                        let attrs = db.attrs(attr_id);
-                        (attrs.has_doc_hidden(), attrs.is_unstable())
-                    });
+                    let (is_doc_hidden, is_unstable, do_not_complete) = match attr_id {
+                        None => (false, false, Complete::Yes),
+                        Some(attr_id) => {
+                            let attrs = db.attrs(attr_id);
+                            let do_not_complete =
+                                Complete::extract(matches!(attr_id, AttrDefId::TraitId(_)), &attrs);
+                            (attrs.has_doc_hidden(), attrs.is_unstable(), do_not_complete)
+                        }
+                    };
 
                     let import_info = ImportInfo {
                         name: name.clone(),
                         container: module,
                         is_doc_hidden,
                         is_unstable,
+                        complete: do_not_complete,
                     };
 
                     if let Some(ModuleDefId::TraitId(tr)) = item.as_module_def_id() {
@@ -235,12 +243,17 @@ impl ImportMap {
                 ItemInNs::Values(module_def_id)
             };
 
-            let attrs = &db.attrs(item.into());
+            let attr_id = item.into();
+            let attrs = &db.attrs(attr_id);
+            let item_do_not_complete = Complete::extract(false, attrs);
+            let do_not_complete =
+                Complete::for_trait_item(trait_import_info.complete, item_do_not_complete);
             let assoc_item_info = ImportInfo {
                 container: trait_import_info.container,
                 name: assoc_item_name.clone(),
                 is_doc_hidden: attrs.has_doc_hidden(),
                 is_unstable: attrs.is_unstable(),
+                complete: do_not_complete,
             };
 
             let (infos, _) =
@@ -398,7 +411,7 @@ pub fn search_dependencies(
     db: &dyn DefDatabase,
     krate: Crate,
     query: &Query,
-) -> FxHashSet<ItemInNs> {
+) -> FxHashSet<(ItemInNs, Complete)> {
     let _p = tracing::info_span!("search_dependencies", ?query).entered();
 
     let import_maps: Vec<_> =
@@ -439,7 +452,7 @@ fn search_maps(
     import_maps: &[Arc<ImportMap>],
     mut stream: fst::map::Union<'_>,
     query: &Query,
-) -> FxHashSet<ItemInNs> {
+) -> FxHashSet<(ItemInNs, Complete)> {
     let mut res = FxHashSet::default();
     while let Some((_, indexed_values)) = stream.next() {
         for &IndexedValue { index: import_map_idx, value } in indexed_values {
@@ -459,8 +472,9 @@ fn search_maps(
                 })
                 .filter(|&(_, info)| {
                     query.search_mode.check(&query.query, query.case_sensitive, info.name.as_str())
-                });
-            res.extend(iter.map(TupleExt::head));
+                })
+                .map(|(item, import_info)| (item, import_info.complete));
+            res.extend(iter);
         }
     }
 
@@ -521,7 +535,7 @@ mod tests {
 
         let actual = search_dependencies(db.upcast(), krate, &query)
             .into_iter()
-            .filter_map(|dependency| {
+            .filter_map(|(dependency, _)| {
                 let dependency_krate = dependency.krate(db.upcast())?;
                 let dependency_imports = db.import_map(dependency_krate);
 

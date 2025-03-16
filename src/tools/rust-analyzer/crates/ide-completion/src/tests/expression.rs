@@ -1555,7 +1555,10 @@ fn main() {
 #[test]
 fn excluded_trait_method_is_excluded() {
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}
@@ -1575,23 +1578,20 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me bar() (as ExcludedTrait) fn(&self)
-            me baz() (as ExcludedTrait) fn(&self)
-            me foo() (as ExcludedTrait) fn(&self)
-            me inherent()               fn(&self)
-            sn box                 Box::new(expr)
-            sn call                function(expr)
-            sn const                     const {}
-            sn dbg                     dbg!(expr)
-            sn dbgr                   dbg!(&expr)
-            sn deref                        *expr
-            sn let                            let
-            sn letm                       let mut
-            sn match                match expr {}
-            sn ref                          &expr
-            sn refm                     &mut expr
-            sn return                 return expr
-            sn unsafe                   unsafe {}
+            me inherent() fn(&self)
+            sn box   Box::new(expr)
+            sn call  function(expr)
+            sn const       const {}
+            sn dbg       dbg!(expr)
+            sn dbgr     dbg!(&expr)
+            sn deref          *expr
+            sn let              let
+            sn letm         let mut
+            sn match  match expr {}
+            sn ref            &expr
+            sn refm       &mut expr
+            sn return   return expr
+            sn unsafe     unsafe {}
         "#]],
     );
 }
@@ -1599,7 +1599,10 @@ fn foo() {
 #[test]
 fn excluded_trait_not_excluded_when_inherent() {
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}
@@ -1633,7 +1636,10 @@ fn foo(v: &dyn ExcludedTrait) {
         "#]],
     );
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}
@@ -1667,7 +1673,10 @@ fn foo(v: impl ExcludedTrait) {
         "#]],
     );
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}
@@ -1706,7 +1715,7 @@ fn foo<T: ExcludedTrait>(v: T) {
 fn excluded_trait_method_is_excluded_from_flyimport() {
     check_with_config(
         CompletionConfig {
-            exclude_traits: &["test::module2::ExcludedTrait".to_owned()],
+            exclude_traits: &["ra_test_fixture::module2::ExcludedTrait".to_owned()],
             ..TEST_CONFIG
         },
         r#"
@@ -1730,23 +1739,20 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me bar() (use module2::ExcludedTrait) fn(&self)
-            me baz() (use module2::ExcludedTrait) fn(&self)
-            me foo() (use module2::ExcludedTrait) fn(&self)
-            me inherent()                         fn(&self)
-            sn box                           Box::new(expr)
-            sn call                          function(expr)
-            sn const                               const {}
-            sn dbg                               dbg!(expr)
-            sn dbgr                             dbg!(&expr)
-            sn deref                                  *expr
-            sn let                                      let
-            sn letm                                 let mut
-            sn match                          match expr {}
-            sn ref                                    &expr
-            sn refm                               &mut expr
-            sn return                           return expr
-            sn unsafe                             unsafe {}
+            me inherent() fn(&self)
+            sn box   Box::new(expr)
+            sn call  function(expr)
+            sn const       const {}
+            sn dbg       dbg!(expr)
+            sn dbgr     dbg!(&expr)
+            sn deref          *expr
+            sn let              let
+            sn letm         let mut
+            sn match  match expr {}
+            sn ref            &expr
+            sn refm       &mut expr
+            sn return   return expr
+            sn unsafe     unsafe {}
         "#]],
     );
 }
@@ -1756,7 +1762,7 @@ fn flyimport_excluded_trait_method_is_excluded_from_flyimport() {
     check_with_config(
         CompletionConfig {
             exclude_flyimport: vec![(
-                "test::module2::ExcludedTrait".to_owned(),
+                "ra_test_fixture::module2::ExcludedTrait".to_owned(),
                 AutoImportExclusionType::Methods,
             )],
             ..TEST_CONFIG
@@ -1782,23 +1788,20 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me bar() (use module2::ExcludedTrait) fn(&self)
-            me baz() (use module2::ExcludedTrait) fn(&self)
-            me foo() (use module2::ExcludedTrait) fn(&self)
-            me inherent()                         fn(&self)
-            sn box                           Box::new(expr)
-            sn call                          function(expr)
-            sn const                               const {}
-            sn dbg                               dbg!(expr)
-            sn dbgr                             dbg!(&expr)
-            sn deref                                  *expr
-            sn let                                      let
-            sn letm                                 let mut
-            sn match                          match expr {}
-            sn ref                                    &expr
-            sn refm                               &mut expr
-            sn return                           return expr
-            sn unsafe                             unsafe {}
+            me inherent() fn(&self)
+            sn box   Box::new(expr)
+            sn call  function(expr)
+            sn const       const {}
+            sn dbg       dbg!(expr)
+            sn dbgr     dbg!(&expr)
+            sn deref          *expr
+            sn let              let
+            sn letm         let mut
+            sn match  match expr {}
+            sn ref            &expr
+            sn refm       &mut expr
+            sn return   return expr
+            sn unsafe     unsafe {}
         "#]],
     );
 }
@@ -1806,7 +1809,10 @@ fn foo() {
 #[test]
 fn excluded_trait_method_is_excluded_from_path_completion() {
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 pub trait ExcludedTrait {
     fn foo(&self) {}
@@ -1826,10 +1832,7 @@ fn foo() {
 }
         "#,
         expect![[r#"
-            me bar(…) (as ExcludedTrait) fn(&self)
-            me baz(…) (as ExcludedTrait) fn(&self)
-            me foo(…) (as ExcludedTrait) fn(&self)
-            me inherent(…)               fn(&self)
+            me inherent(…) fn(&self)
         "#]],
     );
 }
@@ -1837,7 +1840,10 @@ fn foo() {
 #[test]
 fn excluded_trait_method_is_not_excluded_when_trait_is_specified() {
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 pub trait ExcludedTrait {
     fn foo(&self) {}
@@ -1863,7 +1869,10 @@ fn foo() {
             "#]],
     );
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 pub trait ExcludedTrait {
     fn foo(&self) {}
@@ -1893,7 +1902,10 @@ fn foo() {
 #[test]
 fn excluded_trait_not_excluded_when_inherent_path() {
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}
@@ -1914,7 +1926,10 @@ fn foo() {
         "#]],
     );
     check_with_config(
-        CompletionConfig { exclude_traits: &["test::ExcludedTrait".to_owned()], ..TEST_CONFIG },
+        CompletionConfig {
+            exclude_traits: &["ra_test_fixture::ExcludedTrait".to_owned()],
+            ..TEST_CONFIG
+        },
         r#"
 trait ExcludedTrait {
     fn foo(&self) {}

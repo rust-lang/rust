@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use hir::{
-    AsAssocItem, AssocItem, AssocItemContainer, Crate, HasCrate, ImportPathConfig, ItemInNs,
-    ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
+    AsAssocItem, AssocItem, AssocItemContainer, Complete, Crate, HasCrate, ImportPathConfig,
+    ItemInNs, ModPath, Module, ModuleDef, Name, PathResolution, PrefixKind, ScopeDef, Semantics,
     SemanticsScope, Trait, TyFingerprint, Type, db::HirDatabase,
 };
 use itertools::Itertools;
@@ -183,6 +183,9 @@ impl ImportAssets {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct CompleteInFlyimport(pub bool);
+
 /// An import (not necessary the only one) that corresponds a certain given [`PathImportCandidate`].
 /// (the structure is not entirely correct, since there can be situations requiring two imports, see FIXME below for the details)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -198,11 +201,31 @@ pub struct LocatedImport {
     /// the original item is the associated constant, but the import has to be a trait that
     /// defines this constant.
     pub original_item: ItemInNs,
+    /// The value of `#[rust_analyzer::completions(...)]`, if existing.
+    pub complete_in_flyimport: CompleteInFlyimport,
 }
 
 impl LocatedImport {
-    pub fn new(import_path: ModPath, item_to_import: ItemInNs, original_item: ItemInNs) -> Self {
-        Self { import_path, item_to_import, original_item }
+    pub fn new(
+        import_path: ModPath,
+        item_to_import: ItemInNs,
+        original_item: ItemInNs,
+        complete_in_flyimport: CompleteInFlyimport,
+    ) -> Self {
+        Self { import_path, item_to_import, original_item, complete_in_flyimport }
+    }
+
+    pub fn new_no_completion(
+        import_path: ModPath,
+        item_to_import: ItemInNs,
+        original_item: ItemInNs,
+    ) -> Self {
+        Self {
+            import_path,
+            item_to_import,
+            original_item,
+            complete_in_flyimport: CompleteInFlyimport(true),
+        }
     }
 }
 
@@ -351,12 +374,17 @@ fn path_applicable_imports(
                 // see also an ignored test under FIXME comment in the qualify_path.rs module
                 AssocSearchMode::Exclude,
             )
-            .filter_map(|item| {
+            .filter_map(|(item, do_not_complete)| {
                 if !scope_filter(item) {
                     return None;
                 }
                 let mod_path = mod_path(item)?;
-                Some(LocatedImport::new(mod_path, item, item))
+                Some(LocatedImport::new(
+                    mod_path,
+                    item,
+                    item,
+                    CompleteInFlyimport(do_not_complete != Complete::IgnoreFlyimport),
+                ))
             })
             .take(DEFAULT_QUERY_SEARCH_LIMIT)
             .collect()
@@ -371,7 +399,7 @@ fn path_applicable_imports(
             NameToImport::Exact(first_qsegment.as_str().to_owned(), true),
             AssocSearchMode::Exclude,
         )
-        .filter_map(|item| {
+        .filter_map(|(item, do_not_complete)| {
             // we found imports for `first_qsegment`, now we need to filter these imports by whether
             // they result in resolving the rest of the path successfully
             validate_resolvable(
@@ -382,6 +410,7 @@ fn path_applicable_imports(
                 &path_candidate.name,
                 item,
                 qualifier_rest,
+                CompleteInFlyimport(do_not_complete != Complete::IgnoreFlyimport),
             )
         })
         .take(DEFAULT_QUERY_SEARCH_LIMIT)
@@ -399,6 +428,7 @@ fn validate_resolvable(
     candidate: &NameToImport,
     resolved_qualifier: ItemInNs,
     unresolved_qualifier: &[Name],
+    complete_in_flyimport: CompleteInFlyimport,
 ) -> Option<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::import_for_item").entered();
 
@@ -434,7 +464,14 @@ fn validate_resolvable(
                     false => ControlFlow::Continue(()),
                 },
             )
-            .map(|item| LocatedImport::new(import_path_candidate, resolved_qualifier, item));
+            .map(|item| {
+                LocatedImport::new(
+                    import_path_candidate,
+                    resolved_qualifier,
+                    item,
+                    complete_in_flyimport,
+                )
+            });
         }
         // FIXME
         ModuleDef::Trait(_) => return None,
@@ -472,6 +509,7 @@ fn validate_resolvable(
             import_path_candidate.clone(),
             resolved_qualifier,
             assoc_to_item(assoc),
+            complete_in_flyimport,
         ))
     })
 }
@@ -510,15 +548,15 @@ fn trait_applicable_items(
     let env_traits = trait_candidate.receiver_ty.env_traits(db);
     let related_traits = inherent_traits.chain(env_traits).collect::<FxHashSet<_>>();
 
-    let mut required_assoc_items = FxHashSet::default();
+    let mut required_assoc_items = FxHashMap::default();
     let mut trait_candidates: FxHashSet<_> = items_locator::items_with_name(
         db,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
         AssocSearchMode::AssocItemsOnly,
     )
-    .filter_map(|input| item_as_assoc(db, input))
-    .filter_map(|assoc| {
+    .filter_map(|(input, do_not_complete)| Some((item_as_assoc(db, input)?, do_not_complete)))
+    .filter_map(|(assoc, do_not_complete)| {
         if !trait_assoc_item && matches!(assoc, AssocItem::Const(_) | AssocItem::TypeAlias(_)) {
             return None;
         }
@@ -527,7 +565,8 @@ fn trait_applicable_items(
         if related_traits.contains(&assoc_item_trait) {
             return None;
         }
-        required_assoc_items.insert(assoc);
+        required_assoc_items
+            .insert(assoc, CompleteInFlyimport(do_not_complete != Complete::IgnoreFlyimport));
         Some(assoc_item_trait.into())
     })
     .collect();
@@ -599,7 +638,7 @@ fn trait_applicable_items(
             None,
             None,
             |assoc| {
-                if required_assoc_items.contains(&assoc) {
+                if let Some(&complete_in_flyimport) = required_assoc_items.get(&assoc) {
                     let located_trait = assoc.container_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let import_path = trait_import_paths
@@ -610,6 +649,7 @@ fn trait_applicable_items(
                         import_path,
                         trait_item,
                         assoc_to_item(assoc),
+                        complete_in_flyimport,
                     ));
                 }
                 None::<()>
@@ -624,7 +664,7 @@ fn trait_applicable_items(
             None,
             |function| {
                 let assoc = function.as_assoc_item(db)?;
-                if required_assoc_items.contains(&assoc) {
+                if let Some(&complete_in_flyimport) = required_assoc_items.get(&assoc) {
                     let located_trait = assoc.container_trait(db).filter(|&it| scope_filter(it))?;
                     let trait_item = ItemInNs::from(ModuleDef::from(located_trait));
                     let import_path = trait_import_paths
@@ -635,6 +675,7 @@ fn trait_applicable_items(
                         import_path,
                         trait_item,
                         assoc_to_item(assoc),
+                        complete_in_flyimport,
                     ));
                 }
                 None::<()>

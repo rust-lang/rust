@@ -11,8 +11,8 @@ use crate::{
         AttrOwner, Const, DefDatabase, Enum, ExternBlock, ExternCrate, Field, FieldParent,
         FieldsShape, FileItemTreeId, FnFlags, Function, GenericModItem, GenericParams, Impl,
         ItemTree, Macro2, MacroCall, MacroRules, Mod, ModItem, ModKind, Param, Path, RawAttrs,
-        RawVisibilityId, Static, Struct, Trait, TraitAlias, TypeAlias, TypeBound, Union, Use,
-        UseTree, UseTreeKind, Variant,
+        RawVisibilityId, Static, StaticFlags, Struct, Trait, TraitAlias, TypeAlias, TypeBound,
+        Union, Use, UseTree, UseTreeKind, Variant,
     },
     pretty::{print_path, print_type_bounds, print_type_ref},
     type_ref::{TypeRefId, TypesMap},
@@ -418,26 +418,18 @@ impl Printer<'_> {
                 wln!(self, " = _;");
             }
             ModItem::Static(it) => {
-                let Static {
-                    name,
-                    visibility,
-                    mutable,
-                    type_ref,
-                    ast_id,
-                    has_safe_kw,
-                    has_unsafe_kw,
-                    types_map,
-                } = &self.tree[it];
+                let Static { name, visibility, type_ref, ast_id, types_map, flags } =
+                    &self.tree[it];
                 self.print_ast_id(ast_id.erase());
                 self.print_visibility(*visibility);
-                if *has_safe_kw {
+                if flags.contains(StaticFlags::HAS_SAFE_KW) {
                     w!(self, "safe ");
                 }
-                if *has_unsafe_kw {
+                if flags.contains(StaticFlags::HAS_UNSAFE_KW) {
                     w!(self, "unsafe ");
                 }
                 w!(self, "static ");
-                if *mutable {
+                if flags.contains(StaticFlags::MUTABLE) {
                     w!(self, "mut ");
                 }
                 w!(self, "{}: ", name.display(self.db.upcast(), self.edition));

@@ -8,8 +8,8 @@ use std::{iter, ops::ControlFlow};
 
 use base_db::{RootQueryDb as _, salsa::AsDynDatabase};
 use hir::{
-    DisplayTarget, HasAttrs, Local, ModPath, ModuleDef, ModuleSource, Name, PathResolution,
-    ScopeDef, Semantics, SemanticsScope, Symbol, Type, TypeInfo,
+    DisplayTarget, HasAttrs, Local, ModuleDef, ModuleSource, Name, PathResolution, ScopeDef,
+    Semantics, SemanticsScope, Symbol, Type, TypeInfo,
 };
 use ide_db::{
     FilePosition, FxHashMap, FxHashSet, RootDatabase, famous_defs::FamousDefs,
@@ -796,15 +796,12 @@ impl<'a> CompletionContext<'a> {
             .exclude_traits
             .iter()
             .filter_map(|path| {
-                scope
-                    .resolve_mod_path(&ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
-                    ))
-                    .find_map(|it| match it {
+                hir::resolve_absolute_path(db, path.split("::").map(Symbol::intern)).find_map(
+                    |it| match it {
                         hir::ItemInNs::Types(ModuleDef::Trait(t)) => Some(t),
                         _ => None,
-                    })
+                    },
+                )
             })
             .collect();
 
@@ -812,11 +809,7 @@ impl<'a> CompletionContext<'a> {
             .exclude_flyimport
             .iter()
             .flat_map(|(path, kind)| {
-                scope
-                    .resolve_mod_path(&ModPath::from_segments(
-                        hir::PathKind::Plain,
-                        path.split("::").map(Symbol::intern).map(Name::new_symbol_root),
-                    ))
+                hir::resolve_absolute_path(db, path.split("::").map(Symbol::intern))
                     .map(|it| (it.into_module_def(), *kind))
             })
             .collect();

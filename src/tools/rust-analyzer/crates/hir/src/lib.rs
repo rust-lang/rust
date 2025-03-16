@@ -114,6 +114,7 @@ pub use crate::{
 pub use {
     cfg::{CfgAtom, CfgExpr, CfgOptions},
     hir_def::{
+        Complete,
         ImportPathConfig,
         attr::{AttrSourceMap, Attrs, AttrsWithOwner},
         data::adt::StructKind,
@@ -254,14 +255,17 @@ impl Crate {
         self,
         db: &dyn DefDatabase,
         query: import_map::Query,
-    ) -> impl Iterator<Item = Either<ModuleDef, Macro>> {
+    ) -> impl Iterator<Item = (Either<ModuleDef, Macro>, Complete)> {
         let _p = tracing::info_span!("query_external_importables").entered();
-        import_map::search_dependencies(db, self.into(), &query).into_iter().map(|item| {
-            match ItemInNs::from(item) {
-                ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
-                ItemInNs::Macros(mac_id) => Either::Right(mac_id),
-            }
-        })
+        import_map::search_dependencies(db, self.into(), &query).into_iter().map(
+            |(item, do_not_complete)| {
+                let item = match ItemInNs::from(item) {
+                    ItemInNs::Types(mod_id) | ItemInNs::Values(mod_id) => Either::Left(mod_id),
+                    ItemInNs::Macros(mac_id) => Either::Right(mac_id),
+                };
+                (item, do_not_complete)
+            },
+        )
     }
 
     pub fn all(db: &dyn HirDatabase) -> Vec<Crate> {
@@ -811,7 +815,7 @@ impl Module {
                 let items = &db.trait_items(trait_.into()).items;
                 let required_items = items.iter().filter(|&(_, assoc)| match *assoc {
                     AssocItemId::FunctionId(it) => !db.function_data(it).has_body(),
-                    AssocItemId::ConstId(id) => !db.const_data(id).has_body,
+                    AssocItemId::ConstId(id) => !db.const_data(id).has_body(),
                     AssocItemId::TypeAliasId(it) => db.type_alias_data(it).type_ref.is_none(),
                 });
                 impl_assoc_items_scratch.extend(db.impl_items(impl_def.id).items.iter().cloned());
@@ -2812,7 +2816,7 @@ impl Static {
     }
 
     pub fn is_mut(self, db: &dyn HirDatabase) -> bool {
-        db.static_data(self.id).mutable
+        db.static_data(self.id).mutable()
     }
 
     pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
@@ -2931,6 +2935,11 @@ impl Trait {
             .as_ref()
             .map(|it| it.as_ref().clone().into_boxed_slice())
             .unwrap_or_default()
+    }
+
+    /// `#[rust_analyzer::completions(...)]` mode.
+    pub fn complete(self, db: &dyn HirDatabase) -> Complete {
+        Complete::extract(true, &self.attrs(db))
     }
 }
 
@@ -6358,4 +6367,49 @@ where
     fn on_trait_item(&mut self, item: AssocItem) -> ControlFlow<()> {
         self(item)
     }
+}
+
+pub fn resolve_absolute_path<'a, I: Iterator<Item = Symbol> + Clone + 'a>(
+    db: &'a dyn HirDatabase,
+    mut segments: I,
+) -> impl Iterator<Item = ItemInNs> + use<'a, I> {
+    segments
+        .next()
+        .into_iter()
+        .flat_map(move |crate_name| {
+            db.all_crates()
+                .iter()
+                .filter(|&krate| {
+                    krate
+                        .extra_data(db)
+                        .display_name
+                        .as_ref()
+                        .is_some_and(|name| *name.crate_name().symbol() == crate_name)
+                })
+                .filter_map(|&krate| {
+                    let segments = segments.clone();
+                    let mut def_map = db.crate_def_map(krate);
+                    let mut module = &def_map[DefMap::ROOT];
+                    let mut segments = segments.with_position().peekable();
+                    while let Some((_, segment)) = segments.next_if(|&(position, _)| {
+                        !matches!(position, itertools::Position::Last | itertools::Position::Only)
+                    }) {
+                        let res = module
+                            .scope
+                            .get(&Name::new_symbol_root(segment))
+                            .take_types()
+                            .and_then(|res| match res {
+                                ModuleDefId::ModuleId(it) => Some(it),
+                                _ => None,
+                            })?;
+                        def_map = res.def_map(db.upcast());
+                        module = &def_map[res.local_id];
+                    }
+                    let (_, item_name) = segments.next()?;
+                    let res = module.scope.get(&Name::new_symbol_root(item_name));
+                    Some(res.iter_items().map(|(item, _)| item.into()))
+                })
+                .collect::<Vec<_>>()
+        })
+        .flatten()
 }

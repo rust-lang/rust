@@ -29,8 +29,8 @@ use crate::{
         GenericModItem, Idx, Impl, ImportAlias, Interned, ItemTree, ItemTreeData,
         ItemTreeSourceMaps, ItemTreeSourceMapsBuilder, Macro2, MacroCall, MacroRules, Mod, ModItem,
         ModKind, ModPath, Mutability, Name, Param, Path, Range, RawAttrs, RawIdx, RawVisibilityId,
-        Static, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree, UseTreeKind,
-        Variant,
+        Static, StaticFlags, Struct, StructKind, Trait, TraitAlias, TypeAlias, Union, Use, UseTree,
+        UseTreeKind, Variant,
     },
     lower::LowerCtx,
     path::AssociatedTypeBinding,
@@ -620,22 +620,23 @@ impl<'a> Ctx<'a> {
         let name = static_.name()?.as_name();
         let type_ref = TypeRef::from_ast_opt(&mut body_ctx, static_.ty());
         let visibility = self.lower_visibility(static_);
-        let mutable = static_.mut_token().is_some();
-        let has_safe_kw = static_.safe_token().is_some();
-        let has_unsafe_kw = static_.unsafe_token().is_some();
+
+        let mut flags = StaticFlags::empty();
+        if static_.mut_token().is_some() {
+            flags |= StaticFlags::MUTABLE;
+        }
+        if static_.safe_token().is_some() {
+            flags |= StaticFlags::HAS_SAFE_KW;
+        }
+        if static_.unsafe_token().is_some() {
+            flags |= StaticFlags::HAS_UNSAFE_KW;
+        }
+
         let ast_id = self.source_ast_id_map.ast_id(static_);
         types_map.shrink_to_fit();
         types_source_map.shrink_to_fit();
-        let res = Static {
-            name,
-            visibility,
-            mutable,
-            type_ref,
-            ast_id,
-            has_safe_kw,
-            has_unsafe_kw,
-            types_map: Arc::new(types_map),
-        };
+        let res =
+            Static { name, visibility, type_ref, ast_id, flags, types_map: Arc::new(types_map) };
         self.source_maps.statics.push(types_source_map);
         Some(id(self.data().statics.alloc(res)))
     }
