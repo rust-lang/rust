@@ -268,7 +268,7 @@ fn ci_rustc_if_unchanged_logic() {
             paths.push("library");
         }
 
-        let has_changes = config.last_modified_commit(&paths, "download-rustc", true).is_none();
+        let has_changes = config.has_changes_from_upstream(&paths);
 
         assert!(
             !has_changes,
