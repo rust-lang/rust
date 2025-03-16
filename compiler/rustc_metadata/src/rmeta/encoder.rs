@@ -684,7 +684,8 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         // the incremental cache. If this causes us to deserialize a `Span`, then we may load
         // additional `SyntaxContext`s into the global `HygieneData`. Therefore, we need to encode
         // the hygiene data last to ensure that we encode any `SyntaxContext`s that might be used.
-        let (syntax_contexts, expn_data, expn_hashes) = stat!("hygiene", || self.encode_hygiene());
+        let (syntax_context_keys, expn_data, expn_hashes) =
+            stat!("hygiene", || self.encode_hygiene());
 
         let def_path_hash_map = stat!("def-path-hash-map", || self.encode_def_path_hash_map());
 
@@ -742,7 +743,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 exported_symbols,
                 interpret_alloc_index,
                 tables,
-                syntax_contexts,
+                syntax_context_keys,
                 expn_data,
                 expn_hashes,
                 def_path_hash_map,
@@ -1853,15 +1854,15 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         self.lazy_array(foreign_modules.iter().map(|(_, m)| m).cloned())
     }
 
-    fn encode_hygiene(&mut self) -> (SyntaxContextTable, ExpnDataTable, ExpnHashTable) {
-        let mut syntax_contexts: TableBuilder<_, _> = Default::default();
+    fn encode_hygiene(&mut self) -> (SyntaxContextKeyTable, ExpnDataTable, ExpnHashTable) {
+        let mut syntax_context_keys: TableBuilder<_, _> = Default::default();
         let mut expn_data_table: TableBuilder<_, _> = Default::default();
         let mut expn_hash_table: TableBuilder<_, _> = Default::default();
 
         self.hygiene_ctxt.encode(
-            &mut (&mut *self, &mut syntax_contexts, &mut expn_data_table, &mut expn_hash_table),
-            |(this, syntax_contexts, _, _), index, ctxt_data| {
-                syntax_contexts.set_some(index, this.lazy(ctxt_data));
+            &mut (&mut *self, &mut syntax_context_keys, &mut expn_data_table, &mut expn_hash_table),
+            |(this, syntax_context_keys, _, _), index, ctxt_data| {
+                syntax_context_keys.set_some(index, this.lazy(ctxt_data));
             },
             |(this, _, expn_data_table, expn_hash_table), index, expn_data, hash| {
                 if let Some(index) = index.as_local() {
@@ -1872,7 +1873,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         );
 
         (
-            syntax_contexts.encode(&mut self.opaque),
+            syntax_context_keys.encode(&mut self.opaque),
             expn_data_table.encode(&mut self.opaque),
             expn_hash_table.encode(&mut self.opaque),
         )

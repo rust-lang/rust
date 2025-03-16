@@ -36,8 +36,9 @@ use rustc_serialize::opaque::FileEncoder;
 use rustc_session::config::{SymbolManglingVersion, TargetModifier};
 use rustc_session::cstore::{CrateDepKind, ForeignModule, LinkagePreference, NativeLib};
 use rustc_span::edition::Edition;
-use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextData};
-use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Ident, Span, Symbol};
+use rustc_span::hygiene::{ExpnIndex, MacroKind, SyntaxContextKey};
+use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::{self, ExpnData, ExpnHash, ExpnId, Span};
 use rustc_target::spec::{PanicStrategy, TargetTuple};
 use table::TableBuilder;
 use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
@@ -193,7 +194,7 @@ enum LazyState {
     Previous(NonZero<usize>),
 }
 
-type SyntaxContextTable = LazyTable<u32, Option<LazyValue<SyntaxContextData>>>;
+type SyntaxContextKeyTable = LazyTable<u32, Option<LazyValue<SyntaxContextKey>>>;
 type ExpnDataTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnData>>>;
 type ExpnHashTable = LazyTable<ExpnIndex, Option<LazyValue<ExpnHash>>>;
 
@@ -276,7 +277,7 @@ pub(crate) struct CrateRoot {
 
     exported_symbols: LazyArray<(ExportedSymbol<'static>, SymbolExportInfo)>,
 
-    syntax_contexts: SyntaxContextTable,
+    syntax_context_keys: SyntaxContextKeyTable,
     expn_data: ExpnDataTable,
     expn_hashes: ExpnHashTable,
 

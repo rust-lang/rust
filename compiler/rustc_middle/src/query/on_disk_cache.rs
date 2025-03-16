@@ -16,7 +16,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_session::Session;
 use rustc_span::hygiene::{
-    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextData,
+    ExpnId, HygieneDecodeContext, HygieneEncodeContext, SyntaxContext, SyntaxContextKey,
 };
 use rustc_span::source_map::Spanned;
 use rustc_span::{
@@ -39,7 +39,7 @@ const TAG_FULL_SPAN: u8 = 0;
 const TAG_PARTIAL_SPAN: u8 = 1;
 const TAG_RELATIVE_SPAN: u8 = 2;
 
-const TAG_SYNTAX_CONTEXT: u8 = 0;
+const TAG_SYNTAX_CONTEXT_KEY: u8 = 0;
 const TAG_EXPN_DATA: u8 = 1;
 
 // Tags for encoding Symbol's
@@ -79,7 +79,7 @@ pub struct OnDiskCache {
     // to represent the fact that we are storing *encoded* ids. When we decode
     // a `SyntaxContext`, a new id will be allocated from the global `HygieneData`,
     // which will almost certainly be different than the serialized id.
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_context_keys: FxHashMap<u32, AbsoluteBytePos>,
     // A map from the `DefPathHash` of an `ExpnId` to the position
     // of their associated `ExpnData`. Ideally, we would store a `DefId`,
     // but we need to decode this before we've constructed a `TyCtxt` (which
@@ -110,7 +110,7 @@ struct Footer {
     // without measurable overhead. This permits larger const allocations without ICEing.
     interpret_alloc_index: Vec<u64>,
     // See `OnDiskCache.syntax_contexts`
-    syntax_contexts: FxHashMap<u32, AbsoluteBytePos>,
+    syntax_context_keys: FxHashMap<u32, AbsoluteBytePos>,
     // See `OnDiskCache.expn_data`
     expn_data: UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: UnhashMap<ExpnHash, u32>,
@@ -180,7 +180,7 @@ impl OnDiskCache {
             query_result_index: footer.query_result_index.into_iter().collect(),
             prev_side_effects_index: footer.side_effects_index.into_iter().collect(),
             alloc_decoding_state: AllocDecodingState::new(footer.interpret_alloc_index),
-            syntax_contexts: footer.syntax_contexts,
+            syntax_context_keys: footer.syntax_context_keys,
             expn_data: footer.expn_data,
             foreign_expn_data: footer.foreign_expn_data,
             hygiene_context: Default::default(),
@@ -196,7 +196,7 @@ impl OnDiskCache {
             query_result_index: Default::default(),
             prev_side_effects_index: Default::default(),
             alloc_decoding_state: AllocDecodingState::new(Vec::new()),
-            syntax_contexts: FxHashMap::default(),
+            syntax_context_keys: FxHashMap::default(),
             expn_data: UnhashMap::default(),
             foreign_expn_data: UnhashMap::default(),
             hygiene_context: Default::default(),
@@ -301,7 +301,7 @@ impl OnDiskCache {
                 interpret_alloc_index
             };
 
-            let mut syntax_contexts = FxHashMap::default();
+            let mut syntax_context_keys = FxHashMap::default();
             let mut expn_data = UnhashMap::default();
             let mut foreign_expn_data = UnhashMap::default();
 
@@ -312,8 +312,8 @@ impl OnDiskCache {
                 &mut encoder,
                 |encoder, index, ctxt_data| {
                     let pos = AbsoluteBytePos::new(encoder.position());
-                    encoder.encode_tagged(TAG_SYNTAX_CONTEXT, ctxt_data);
-                    syntax_contexts.insert(index, pos);
+                    encoder.encode_tagged(TAG_SYNTAX_CONTEXT_KEY, &ctxt_data);
+                    syntax_context_keys.insert(index, pos);
                 },
                 |encoder, expn_id, data, hash| {
                     if expn_id.krate == LOCAL_CRATE {
@@ -335,7 +335,7 @@ impl OnDiskCache {
                     query_result_index,
                     side_effects_index,
                     interpret_alloc_index,
-                    syntax_contexts,
+                    syntax_context_keys,
                     expn_data,
                     foreign_expn_data,
                 },
@@ -441,7 +441,7 @@ impl OnDiskCache {
             file_index_to_file: &self.file_index_to_file,
             file_index_to_stable_id: &self.file_index_to_stable_id,
             alloc_decoding_session: self.alloc_decoding_state.new_decoding_session(),
-            syntax_contexts: &self.syntax_contexts,
+            syntax_context_keys: &self.syntax_context_keys,
             expn_data: &self.expn_data,
             foreign_expn_data: &self.foreign_expn_data,
             hygiene_context: &self.hygiene_context,
@@ -461,7 +461,7 @@ pub struct CacheDecoder<'a, 'tcx> {
     file_index_to_file: &'a Lock<FxHashMap<SourceFileIndex, Arc<SourceFile>>>,
     file_index_to_stable_id: &'a FxHashMap<SourceFileIndex, EncodedSourceFileId>,
     alloc_decoding_session: AllocDecodingSession<'a>,
-    syntax_contexts: &'a FxHashMap<u32, AbsoluteBytePos>,
+    syntax_context_keys: &'a FxHashMap<u32, AbsoluteBytePos>,
     expn_data: &'a UnhashMap<ExpnHash, AbsoluteBytePos>,
     foreign_expn_data: &'a UnhashMap<ExpnHash, u32>,
     hygiene_context: &'a HygieneDecodeContext,
@@ -576,13 +576,12 @@ impl<'a, 'tcx> Decodable<CacheDecoder<'a, 'tcx>> for Vec<u8> {
 
 impl<'a, 'tcx> SpanDecoder for CacheDecoder<'a, 'tcx> {
     fn decode_syntax_context(&mut self) -> SyntaxContext {
-        let syntax_contexts = self.syntax_contexts;
         rustc_span::hygiene::decode_syntax_context(self, self.hygiene_context, |this, id| {
             // This closure is invoked if we haven't already decoded the data for the `SyntaxContext` we are deserializing.
             // We look up the position of the associated `SyntaxData` and decode it.
-            let pos = syntax_contexts.get(&id).unwrap();
+            let pos = this.syntax_context_keys.get(&id).unwrap();
             this.with_position(pos.to_usize(), |decoder| {
-                let data: SyntaxContextData = decode_tagged(decoder, TAG_SYNTAX_CONTEXT);
+                let data: SyntaxContextKey = decode_tagged(decoder, TAG_SYNTAX_CONTEXT_KEY);
                 data
             })
         })
