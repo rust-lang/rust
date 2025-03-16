@@ -22,7 +22,10 @@ use ide::{
     Analysis, AnalysisHost, AnnotationConfig, DiagnosticsConfig, Edition, InlayFieldsToResolve,
     InlayHintsConfig, LineCol, RootDatabase,
 };
-use ide_db::{EditionedFileId, LineIndexDatabase, SnippetCap, base_db::SourceDatabase};
+use ide_db::{
+    EditionedFileId, LineIndexDatabase, SnippetCap,
+    base_db::{SourceDatabase, salsa::Database},
+};
 use itertools::Itertools;
 use load_cargo::{LoadCargoConfig, ProcMacroServerChoice, load_workspace};
 use oorandom::Rand32;
@@ -104,7 +107,7 @@ impl flags::AnalysisStats {
         }
         eprintln!(")");
 
-        let host = AnalysisHost::with_database(db);
+        let mut host = AnalysisHost::with_database(db);
         let db = host.raw_database();
 
         let mut analysis_sw = self.stop_watch();
@@ -249,6 +252,9 @@ impl flags::AnalysisStats {
         if self.run_term_search {
             self.run_term_search(&workspace, db, &vfs, file_ids, verbosity);
         }
+
+        let db = host.raw_database_mut();
+        db.trigger_lru_eviction();
 
         let total_span = analysis_sw.elapsed();
         eprintln!("{:<20} {total_span}", "Total:");
