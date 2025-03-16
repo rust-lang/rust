@@ -194,6 +194,7 @@ others at:
 * [`nvptx`]
 * [`wasm32`]
 * [`loongarch64`]
+* [`s390x`]
 
 [`x86`]: ../../core/arch/x86/index.html
 [`x86_64`]: ../../core/arch/x86_64/index.html
@@ -208,6 +209,7 @@ others at:
 [`nvptx`]: ../../core/arch/nvptx/index.html
 [`wasm32`]: ../../core/arch/wasm32/index.html
 [`loongarch64`]: ../../core/arch/loongarch64/index.html
+[`s390x`]: ../../core/arch/s390x/index.html
 
 # Examples
 
