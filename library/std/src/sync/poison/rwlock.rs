@@ -918,6 +918,24 @@ impl<'a, T: ?Sized> RwLockReadGuard<'a, T> {
             None => Err(orig),
         }
     }
+
+    #[unstable(feature = "rwlock_try_upgrade", issue = "138559")]
+    pub fn try_upgrade(orig: Self) -> Result<RwLockWriteGuard<'a, T>, RwLockReadGuard<'a, T>> {
+        let rwl = &RwLock {
+            data: UnsafeCell::new(orig.data.as_ptr().read()),
+            poison: poison::Flag::new(),
+            inner: *orig.inner_lock,
+        };
+
+        // don't call the destructor
+        forget(orig);
+
+        // SAFETY: We have ownership of the read guard, so it must be in read mode already
+        match unsafe { rwl.inner.try_upgrade() } {
+            true => Ok(RwLockWriteGuard::new(rwl).unwrap_or_else(PoisonError::into_inner)),
+            false => Err(RwLockReadGuard::new(rwl).unwrap_or_else(PoisonError::into_inner)),
+        }
+    }
 }
 
 impl<'a, T: ?Sized> MappedRwLockReadGuard<'a, T> {

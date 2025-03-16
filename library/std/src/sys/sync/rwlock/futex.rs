@@ -34,6 +34,11 @@ fn is_write_locked(state: Primitive) -> bool {
 }
 
 #[inline]
+fn is_read_locked(state: Primitive) -> bool {
+    state & MASK == READ_LOCKED
+}
+
+#[inline]
 fn has_readers_waiting(state: Primitive) -> bool {
     state & READERS_WAITING != 0
 }
@@ -203,6 +208,19 @@ impl RwLock {
             self.state.fetch_sub(READERS_WAITING, Relaxed);
             futex_wake_all(&self.state);
         }
+    }
+
+    /// # Safety
+    ///
+    /// The 'RwLock' must be read-locked in order to call this. Calling this function in a loop
+    /// in at least 2 threads will deadlock.
+    #[inline]
+    pub unsafe fn try_upgrade(&self) -> bool {
+        debg_assert!(
+            is_read_locked(self.state),
+            "RwLock must be read locked to call `try_upgrade`"
+        );
+        self.state.compare_exchange(READ_LOCKED, WRITE_LOCKED, Acquire, Relaxed).is_ok()
     }
 
     #[cold]
