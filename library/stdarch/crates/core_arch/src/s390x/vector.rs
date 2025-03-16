@@ -1929,10 +1929,9 @@ mod sealed {
                     type Result = $r;
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn $m(self, b: Self, c: *mut i32) -> Self::Result {
+                    unsafe fn $m(self, b: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b));
-                        c.write(y);
-                        transmute(x)
+                        (transmute(x), y)
                     }
                 }
             )*
@@ -1959,10 +1958,9 @@ mod sealed {
                     type Result = t_b!($ty);
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn $m(self, b: Self, c: *mut i32) -> Self::Result {
+                    unsafe fn $m(self, b: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $fun::<{ FindImm::$imm as i32 }>(transmute(self), transmute(b));
-                        c.write(y);
-                        transmute(x)
+                        (transmute(x), y)
                     }
                 }
             )*
@@ -2126,7 +2124,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyEqCC<Other> {
         type Result;
-        unsafe fn vec_find_any_eq_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_eq_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [cc VectorFindAnyEqCC vec_find_any_eq_cc] Eq vfaebs vfaehs vfaefs }
@@ -2134,7 +2132,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyNeCC<Other> {
         type Result;
-        unsafe fn vec_find_any_ne_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_ne_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [cc VectorFindAnyNeCC vec_find_any_ne_cc] Ne vfaebs vfaehs vfaefs }
@@ -2142,7 +2140,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyEqIdxCC<Other> {
         type Result;
-        unsafe fn vec_find_any_eq_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_eq_idx_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [idx_cc VectorFindAnyEqIdxCC vec_find_any_eq_idx_cc] EqIdx vfaebs vfaehs vfaefs }
@@ -2150,7 +2148,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyNeIdxCC<Other> {
         type Result;
-        unsafe fn vec_find_any_ne_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_ne_idx_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [idx_cc VectorFindAnyNeIdxCC vec_find_any_ne_idx_cc] NeIdx vfaebs vfaehs vfaefs }
@@ -2158,7 +2156,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyEqOrZeroIdxCC<Other> {
         type Result;
-        unsafe fn vec_find_any_eq_or_0_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_eq_or_0_idx_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [idx_cc VectorFindAnyEqOrZeroIdxCC vec_find_any_eq_or_0_idx_cc] EqIdx vfaezbs vfaezhs vfaezfs }
@@ -2166,7 +2164,7 @@ mod sealed {
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
     pub trait VectorFindAnyNeOrZeroIdxCC<Other> {
         type Result;
-        unsafe fn vec_find_any_ne_or_0_idx_cc(self, other: Other, c: *mut i32) -> Self::Result;
+        unsafe fn vec_find_any_ne_or_0_idx_cc(self, other: Other) -> (Self::Result, i32);
     }
 
     impl_vfae! { [idx_cc VectorFindAnyNeOrZeroIdxCC vec_find_any_ne_or_0_idx_cc] NeIdx vfaezbs vfaezhs vfaezfs }
@@ -2423,11 +2421,9 @@ mod sealed {
                 unsafe fn $intr(
                     a: $ty,
                     b: $ty,
-                    c: *mut i32,
-                ) -> $outty {
+                ) -> ($outty, i32) {
                     let PackedTuple { x, y } = super::$intr(a, b);
-                    c.write(y);
-                    x
+                    (x, y)
                 }
 
                 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -2436,8 +2432,8 @@ mod sealed {
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_packs_cc(self, b: Self, c: *mut i32) -> Self::Result {
-                        $intr(self, b, c)
+                    unsafe fn vec_packs_cc(self, b: Self) -> (Self::Result, i32) {
+                        $intr(self, b)
                     }
                 }
             )*
@@ -2447,7 +2443,7 @@ mod sealed {
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPacksCC {
         type Result;
-        unsafe fn vec_packs_cc(self, b: Self, c: *mut i32) -> Self::Result;
+        unsafe fn vec_packs_cc(self, b: Self) -> (Self::Result, i32);
     }
 
     impl_vector_packs_cc! {
@@ -2468,8 +2464,8 @@ mod sealed {
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_packsu_cc(self, b: Self, c: *mut i32) -> Self::Result {
-                        $intr(self, b, c)
+                    unsafe fn vec_packsu_cc(self, b: Self) -> (Self::Result, i32) {
+                        $intr(self, b)
                     }
                 }
             )*
@@ -2479,7 +2475,7 @@ mod sealed {
     #[unstable(feature = "stdarch_powerpc", issue = "111145")]
     pub trait VectorPacksuCC {
         type Result;
-        unsafe fn vec_packsu_cc(self, b: Self, c: *mut i32) -> Self::Result;
+        unsafe fn vec_packsu_cc(self, b: Self) -> (Self::Result, i32);
     }
 
     impl_vector_packsu_cc! {
@@ -3187,15 +3183,13 @@ mod sealed {
             self,
             b: Self,
             c: vector_unsigned_char,
-            d: *mut i32,
-        ) -> vector_unsigned_char;
+        ) -> (vector_unsigned_char, i32);
 
         unsafe fn vec_search_string_until_zero_cc(
             self,
             b: Self,
             c: vector_unsigned_char,
-            d: *mut i32,
-        ) -> vector_unsigned_char;
+        ) -> (vector_unsigned_char, i32);
     }
 
     macro_rules! impl_vec_search_string{
@@ -3205,18 +3199,16 @@ mod sealed {
                 impl VectorSearchString for $ty {
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char, d: *mut i32) -> vector_unsigned_char {
+                    unsafe fn vec_search_string_cc(self, b: Self, c: vector_unsigned_char) -> (vector_unsigned_char, i32) {
                         let PackedTuple { x,y } = $intr_s(transmute(self), transmute(b), c);
-                        d.write(y);
-                        x
+                        (x, y)
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char, d: *mut i32) -> vector_unsigned_char {
+                    unsafe fn vec_search_string_until_zero_cc(self, b: Self, c: vector_unsigned_char) -> (vector_unsigned_char, i32) {
                         let PackedTuple { x,y } = $intr_sz(transmute(self), transmute(b), c);
-                        d.write(y);
-                        x
+                        (x, y)
                     }
                 }
 
@@ -3435,8 +3427,8 @@ mod sealed {
     impl_vec_trait! { [VectorCopyUntilZero vec_cp_until_zero]+ vec_vistrf (vector_unsigned_int) }
 
     #[unstable(feature = "stdarch_s390x", issue = "135681")]
-    pub trait VectorCopyUntilZeroCC {
-        unsafe fn vec_cp_until_zero_cc(self, cc: *mut i32) -> Self;
+    pub trait VectorCopyUntilZeroCC: Sized {
+        unsafe fn vec_cp_until_zero_cc(self) -> (Self, i32);
     }
 
     test_impl! { vec_vistrbs (a: vector_unsigned_char) -> PackedTuple<vector_unsigned_char, i32> [vistrbs, vistrbs] }
@@ -3450,10 +3442,9 @@ mod sealed {
                 impl VectorCopyUntilZeroCC for $ty {
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_cp_until_zero_cc(self, cc: *mut i32) -> Self {
+                    unsafe fn vec_cp_until_zero_cc(self) -> (Self, i32) {
                         let PackedTuple { x,y } = $intr(transmute(self));
-                        cc.write(y);
-                        transmute(x)
+                        (transmute(x), y)
                     }
                 }
 
@@ -3729,14 +3720,14 @@ mod sealed {
         unsafe fn vec_cmpeq_idx(self, other: Self) -> Self::Result;
         unsafe fn vec_cmpne_idx(self, other: Self) -> Self::Result;
 
-        unsafe fn vec_cmpeq_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
-        unsafe fn vec_cmpne_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+        unsafe fn vec_cmpeq_idx_cc(self, other: Self) -> (Self::Result, i32);
+        unsafe fn vec_cmpne_idx_cc(self, other: Self) -> (Self::Result, i32);
 
         unsafe fn vec_cmpeq_or_0_idx(self, other: Self) -> Self::Result;
         unsafe fn vec_cmpne_or_0_idx(self, other: Self) -> Self::Result;
 
-        unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
-        unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result;
+        unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self) -> (Self::Result, i32);
+        unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self) -> (Self::Result, i32);
     }
 
     macro_rules! impl_compare_equality_idx {
@@ -3777,34 +3768,30 @@ mod sealed {
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_cmpeq_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                    unsafe fn vec_cmpeq_idx_cc(self, other: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $cmpeq_cc(transmute(self), transmute(other));
-                        *cc = y;
-                        transmute(x)
+                        (transmute(x), y)
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_cmpne_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                    unsafe fn vec_cmpne_idx_cc(self, other: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $cmpne_cc(transmute(self), transmute(other));
-                        *cc = y;
-                        transmute(x)
+                        (transmute(x),y)
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                    unsafe fn vec_cmpeq_or_0_idx_cc(self, other: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $cmpeq_or_0_cc(transmute(self), transmute(other));
-                        *cc = y;
-                        transmute(x)
+                        (transmute(x), y)
                     }
 
                     #[inline]
                     #[target_feature(enable = "vector")]
-                    unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self, cc: *mut i32) -> Self::Result {
+                    unsafe fn vec_cmpne_or_0_idx_cc(self, other: Self) -> (Self::Result, i32) {
                         let PackedTuple { x, y } = $cmpne_or_0_cc(transmute(self), transmute(other));
-                        *cc = y;
-                        transmute(x)
+                        (transmute(x),y)
                     }
                 }
             )*
@@ -4279,7 +4266,9 @@ pub unsafe fn vec_packs<T: sealed::VectorPacks<U>, U>(a: T, b: U) -> T::Result {
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_packs_cc<T: sealed::VectorPacksCC>(a: T, b: T, c: *mut i32) -> T::Result {
-    a.vec_packs_cc(b, c)
+    let (x, y) = a.vec_packs_cc(b);
+    unsafe { c.write(y) };
+    x
 }
 
 /// Vector Pack Saturated Unsigned
@@ -4295,7 +4284,9 @@ pub unsafe fn vec_packsu<T: sealed::VectorPacksu<U>, U>(a: T, b: U) -> T::Result
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_packsu_cc<T: sealed::VectorPacksuCC>(a: T, b: T, c: *mut i32) -> T::Result {
-    a.vec_packsu_cc(b, c)
+    let (x, y) = a.vec_packsu_cc(b);
+    unsafe { c.write(y) };
+    x
 }
 
 /// Vector Unpack High
@@ -4668,7 +4659,9 @@ macro_rules! vec_find_any_cc {
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
             pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U, c: *mut i32) -> T::Result {
-                a.$fun(b, c)
+                let (x, y) = a.$fun(b);
+                unsafe { c.write(y) };
+                x
             }
         )*
     }
@@ -5021,7 +5014,9 @@ pub unsafe fn vec_search_string_cc<T: sealed::VectorSearchString>(
     c: vector_unsigned_char,
     d: *mut i32,
 ) -> vector_unsigned_char {
-    a.vec_search_string_cc(b, c, d)
+    let (x, y) = a.vec_search_string_cc(b, c);
+    unsafe { d.write(y) };
+    x
 }
 
 /// Vector Search String Until Zero
@@ -5034,7 +5029,9 @@ pub unsafe fn vec_search_string_until_zero_cc<T: sealed::VectorSearchString>(
     c: vector_unsigned_char,
     d: *mut i32,
 ) -> vector_unsigned_char {
-    a.vec_search_string_until_zero_cc(b, c, d)
+    let (x, y) = a.vec_search_string_until_zero_cc(b, c);
+    unsafe { d.write(y) };
+    x
 }
 
 /// Vector Convert from float (even elements) to double
@@ -5116,7 +5113,9 @@ pub unsafe fn vec_cp_until_zero<T: sealed::VectorCopyUntilZero>(a: T) -> T {
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_cp_until_zero_cc<T: sealed::VectorCopyUntilZeroCC>(a: T, cc: *mut i32) -> T {
-    a.vec_cp_until_zero_cc(cc)
+    let (x, y) = a.vec_cp_until_zero_cc();
+    unsafe { cc.write(y) };
+    x
 }
 
 /// Vector Multiply Sum Logical
@@ -5384,7 +5383,9 @@ pub unsafe fn vec_cmpeq_idx_cc<T: sealed::VectorEqualityIdx>(
     b: T,
     cc: *mut i32,
 ) -> T::Result {
-    a.vec_cmpeq_idx_cc(b, cc)
+    let (x, y) = a.vec_cmpeq_idx_cc(b);
+    unsafe { cc.write(y) };
+    x
 }
 /// Vector Compare Not Equal Index with Condition Code
 #[inline]
@@ -5395,7 +5396,9 @@ pub unsafe fn vec_cmpne_idx_cc<T: sealed::VectorEqualityIdx>(
     b: T,
     cc: *mut i32,
 ) -> T::Result {
-    a.vec_cmpne_idx_cc(b, cc)
+    let (x, y) = a.vec_cmpne_idx_cc(b);
+    unsafe { cc.write(y) };
+    x
 }
 /// Vector Compare Equal or Zero Index
 #[inline]
@@ -5420,7 +5423,9 @@ pub unsafe fn vec_cmpeq_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
     b: T,
     cc: *mut i32,
 ) -> T::Result {
-    a.vec_cmpeq_or_0_idx_cc(b, cc)
+    let (x, y) = a.vec_cmpeq_or_0_idx_cc(b);
+    unsafe { cc.write(y) };
+    x
 }
 /// Vector Compare Not Equal or Zero Index with Condition Code
 #[inline]
@@ -5431,7 +5436,9 @@ pub unsafe fn vec_cmpne_or_0_idx_cc<T: sealed::VectorEqualityIdx>(
     b: T,
     cc: *mut i32,
 ) -> T::Result {
-    a.vec_cmpne_or_0_idx_cc(b, cc)
+    let (x, y) = a.vec_cmpne_or_0_idx_cc(b);
+    unsafe { cc.write(y) };
+    x
 }
 
 /// All Elements Equal
