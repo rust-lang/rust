@@ -868,7 +868,7 @@ fn copy_generic_args(
             args,
             has_self_type: generic_args.has_self_type,
             bindings,
-            desugared_from_fn: generic_args.desugared_from_fn,
+            parenthesized: generic_args.parenthesized,
         }
     })
 }

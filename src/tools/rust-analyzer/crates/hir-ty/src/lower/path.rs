@@ -9,7 +9,7 @@ use hir_def::{
     data::TraitFlags,
     expr_store::HygieneId,
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
-    path::{GenericArg, GenericArgs, Path, PathSegment, PathSegments},
+    path::{GenericArg, GenericArgs, GenericArgsParentheses, Path, PathSegment, PathSegments},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
     type_ref::{TypeBound, TypeRef, TypesMap},
 };
@@ -138,12 +138,15 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
 
     fn prohibit_parenthesized_generic_args(&mut self) -> bool {
         if let Some(generic_args) = self.current_or_prev_segment.args_and_bindings {
-            if generic_args.desugared_from_fn {
-                let segment = self.current_segment_u32();
-                self.on_diagnostic(
-                    PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
-                );
-                return true;
+            match generic_args.parenthesized {
+                GenericArgsParentheses::No => {}
+                GenericArgsParentheses::ReturnTypeNotation | GenericArgsParentheses::ParenSugar => {
+                    let segment = self.current_segment_u32();
+                    self.on_diagnostic(
+                        PathLoweringDiagnostic::ParenthesizedGenericArgsWithoutFnTrait { segment },
+                    );
+                    return true;
+                }
             }
         }
         false
@@ -604,8 +607,14 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
     ) -> Substitution {
         let prohibit_parens = match def {
             GenericDefId::TraitId(trait_) => {
-                let trait_data = self.ctx.db.trait_data(trait_);
-                !trait_data.flags.contains(TraitFlags::RUSTC_PAREN_SUGAR)
+                // RTN is prohibited anyways if we got here.
+                let is_rtn =
+                    self.current_or_prev_segment.args_and_bindings.is_some_and(|generics| {
+                        generics.parenthesized == GenericArgsParentheses::ReturnTypeNotation
+                    });
+                let is_fn_trait =
+                    !self.ctx.db.trait_data(trait_).flags.contains(TraitFlags::RUSTC_PAREN_SUGAR);
+                is_rtn || is_fn_trait
             }
             _ => true,
         };
