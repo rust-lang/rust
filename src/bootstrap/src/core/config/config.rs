@@ -3201,6 +3201,10 @@ impl Config {
 
         Some(commit.to_string())
     }
+
+    pub fn ci_env(&self) -> CiEnv {
+        if self.is_running_on_ci { CiEnv::GitHubActions } else { CiEnv::None }
+    }
 }
 
 /// Compares the current `Llvm` options against those in the CI LLVM builder and detects any incompatible options.
