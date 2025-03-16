@@ -3,6 +3,7 @@
 use core::ascii::EscapeDefault;
 
 use crate::fmt::{self, Write};
+use crate::hint::assert_unchecked;
 #[cfg(not(all(target_arch = "x86_64", target_feature = "sse2")))]
 use crate::intrinsics::const_eval_select;
 use crate::{ascii, iter, ops};
@@ -57,25 +58,34 @@ impl [u8] {
     #[must_use]
     #[inline]
     pub const fn eq_ignore_ascii_case(&self, other: &[u8]) -> bool {
+        const CHUNK_SIZE: usize = 16;
         if self.len() != other.len() {
             return false;
         }
-
-        // FIXME(const-hack): This implementation can be reverted when
-        // `core::iter::zip` is allowed in const. The original implementation:
-        //  self.len() == other.len() && iter::zip(self, other).all(|(a, b)| a.eq_ignore_ascii_case(b))
-        let mut a = self;
-        let mut b = other;
-
-        while let ([first_a, rest_a @ ..], [first_b, rest_b @ ..]) = (a, b) {
-            if first_a.eq_ignore_ascii_case(&first_b) {
-                a = rest_a;
-                b = rest_b;
-            } else {
+        // FIXME(const-hack): use chunks_exact or for loops.
+        // Check in chunks for vectorization.
+        let mut i = 0;
+        while i + CHUNK_SIZE <= self.len() {
+            let mut equal = true;
+            let mut j = 0;
+            while j < CHUNK_SIZE {
+                // SAFETY: Outer loop stops before we could go out of bounds.
+                unsafe { assert_unchecked(i + j < self.len()) }
+                equal &= self[i + j].eq_ignore_ascii_case(&other[i + j]);
+                j += 1;
+            }
+            if !equal {
                 return false;
             }
+            i += CHUNK_SIZE;
         }
-
+        // Process the remainder that did not fit the above chunks.
+        while i < self.len() {
+            if !self[i].eq_ignore_ascii_case(&other[i]) {
+                return false;
+            }
+            i += 1;
+        }
         true
     }
 
