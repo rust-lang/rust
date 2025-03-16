@@ -1536,17 +1536,15 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (start, overflow) = n.overflowing_mul(self.chunk_size);
-        if start >= self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let end = match start.checked_add(self.chunk_size) {
-                Some(sum) => cmp::min(self.v.len(), sum),
-                None => self.v.len(),
-            };
-            let nth = &self.v[start..end];
-            self.v = &self.v[end..];
+        // min(len) makes a wrong start harmless, but enables optimizing this to brachless code
+        let chunk_start = &self.v[start.min(self.v.len())..];
+        let (nth, remainder) = chunk_start.split_at(self.chunk_size.min(chunk_start.len()));
+        if !overflow && start < self.v.len() {
+            self.v = remainder;
             Some(nth)
+        } else {
+            self.v = &self.v[..0]; // cheaper than &[]
+            None
         }
     }
 
