@@ -598,7 +598,6 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             sym::repr,
             // code generation
             sym::cold,
-            sym::target_feature,
             // documentation
             sym::doc,
         ];
@@ -622,6 +621,21 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             continue;
                         }
                         _ => {}
+                    }
+
+                    if other_attr.has_name(sym::target_feature) {
+                        if !self.tcx.features().naked_functions_target_feature() {
+                            feature_err(
+                                &self.tcx.sess,
+                                sym::naked_functions_target_feature,
+                                other_attr.span(),
+                                "`#[target_feature(/* ... */)]` is currently unstable on `#[naked]` functions",
+                            ).emit();
+
+                            return;
+                        } else {
+                            continue;
+                        }
                     }
 
                     if !ALLOW_LIST.iter().any(|name| other_attr.has_name(*name)) {

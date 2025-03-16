@@ -1375,6 +1375,7 @@ symbols! {
         naked,
         naked_asm,
         naked_functions,
+        naked_functions_target_feature,
         name,
         names,
         native_link_modifiers,
