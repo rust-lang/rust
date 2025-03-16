@@ -3562,7 +3562,7 @@ pub fn is_block_like(expr: &Expr<'_>) -> bool {
 pub fn binary_expr_needs_parentheses(expr: &Expr<'_>) -> bool {
     fn contains_block(expr: &Expr<'_>, is_operand: bool) -> bool {
         match expr.kind {
-            ExprKind::Binary(_, lhs, _) => contains_block(lhs, true),
+            ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) => contains_block(lhs, true),
             _ if is_block_like(expr) => is_operand,
             _ => false,
         }
