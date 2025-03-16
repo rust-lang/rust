@@ -190,6 +190,8 @@ pub enum PathFreshness {
 ///
 /// `target_paths` should be a non-empty slice of paths (relative to `git_dir` or the
 /// current working directory) whose modifications would invalidate the artifact.
+/// Each path can also be a negative match, i.e. `:!foo`. This matches changes outside
+/// the `foo` directory.
 ///
 /// The function behaves differently in CI and outside CI.
 ///

@@ -123,6 +123,30 @@ fn test_changes_in_previous_upstream() {
     });
 }
 
+#[test]
+fn test_changes_negative_path() {
+    git_test(|ctx| {
+        let upstream = ctx.create_upstream_merge(&["a"]);
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.modify("d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.get_source(&[":!b", ":!d"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.get_source(&[":!c"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.get_source(&[":!d", ":!x"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream }
+        );
+    });
+}
+
 struct GitCtx {
     dir: tempfile::TempDir,
     git_repo: String,
@@ -203,9 +227,10 @@ impl GitCtx {
         writeln!(file, "line").unwrap();
     }
 
-    fn commit(&self) {
+    fn commit(&self) -> String {
         self.run_git(&["add", "."]);
         self.run_git(&["commit", "-m", "commit message"]);
+        self.get_current_commit()
     }
 
     fn switch_to_branch(&self, name: &str) {
