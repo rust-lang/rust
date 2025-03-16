@@ -889,16 +889,16 @@ impl SyntaxExtension {
             })
             .unwrap_or_else(|| (None, helper_attrs));
 
-        let stability = find_attr!(attrs, AttributeKind::Stability{stability, ..} => *stability);
+        let stability = find_attr!(attrs, AttributeKind::Stability { stability, .. } => *stability);
 
         // FIXME(jdonszelmann): make it impossible to miss the or_else in the typesystem
-        if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability{span, ..} => *span) {
+        if let Some(sp) = find_attr!(attrs, AttributeKind::ConstStability { span, .. } => *span) {
             sess.dcx().emit_err(errors::MacroConstStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
             });
         }
-        if let Some(sp) = find_attr!(attrs, AttributeKind::BodyStability{span, ..} => *span) {
+        if let Some(sp) = find_attr!(attrs, AttributeKind::BodyStability{ span, .. } => *span) {
             sess.dcx().emit_err(errors::MacroBodyStability {
                 span: sp,
                 head_span: sess.source_map().guess_head_span(span),
@@ -912,7 +912,10 @@ impl SyntaxExtension {
                 // FIXME(jdonszelmann): avoid the into_iter/collect?
                 .then(|| allow_internal_unstable.iter().map(|i| i.0).collect::<Vec<_>>().into()),
             stability,
-            deprecation: find_attr!(attrs, AttributeKind::Deprecation{deprecation, ..} => *deprecation),
+            deprecation: find_attr!(
+                attrs,
+                AttributeKind::Deprecation { deprecation, .. } => *deprecation
+            ),
             helper_attrs,
             edition,
             builtin_name,
@@ -1000,6 +1003,7 @@ impl SyntaxExtension {
             self.allow_internal_unsafe,
             self.local_inner_macros,
             self.collapse_debuginfo,
+            self.builtin_name.is_some(),
         )
     }
 }

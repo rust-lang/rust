@@ -16,8 +16,7 @@ use rustc_abi::{Align, HasDataLayout, Size};
 use rustc_ast::Mutability;
 use rustc_data_structures::intern::Interned;
 use rustc_macros::HashStable;
-use rustc_serialize::{Decodable, Encodable};
-use rustc_type_ir::{TyDecoder, TyEncoder};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::{
     AllocId, BadBytesAccess, CtfeProvenance, InterpErrorKind, InterpResult, Pointer,
@@ -112,7 +111,7 @@ struct AllocFlags {
     all_zero: bool,
 }
 
-impl<E: TyEncoder> Encodable<E> for AllocFlags {
+impl<E: Encoder> Encodable<E> for AllocFlags {
     fn encode(&self, encoder: &mut E) {
         // Make sure Align::MAX can be stored with the high 2 bits unset.
         const {
@@ -131,7 +130,7 @@ impl<E: TyEncoder> Encodable<E> for AllocFlags {
     }
 }
 
-impl<D: TyDecoder> Decodable<D> for AllocFlags {
+impl<D: Decoder> Decodable<D> for AllocFlags {
     fn decode(decoder: &mut D) -> Self {
         let flags: u8 = Decodable::decode(decoder);
         let align = flags & 0b0011_1111;
@@ -173,7 +172,7 @@ fn all_zero(buf: &[u8]) -> bool {
 }
 
 /// Custom encoder for [`Allocation`] to more efficiently represent the case where all bytes are 0.
-impl<Prov: Provenance, Extra, Bytes, E: TyEncoder> Encodable<E> for Allocation<Prov, Extra, Bytes>
+impl<Prov: Provenance, Extra, Bytes, E: Encoder> Encodable<E> for Allocation<Prov, Extra, Bytes>
 where
     Bytes: AllocBytes,
     ProvenanceMap<Prov>: Encodable<E>,
@@ -193,7 +192,7 @@ where
     }
 }
 
-impl<Prov: Provenance, Extra, Bytes, D: TyDecoder> Decodable<D> for Allocation<Prov, Extra, Bytes>
+impl<Prov: Provenance, Extra, Bytes, D: Decoder> Decodable<D> for Allocation<Prov, Extra, Bytes>
 where
     Bytes: AllocBytes,
     ProvenanceMap<Prov>: Decodable<D>,

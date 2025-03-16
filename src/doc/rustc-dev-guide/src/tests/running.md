@@ -24,8 +24,8 @@ collection.
 
 The test results are cached and previously successful tests are `ignored` during
 testing. The stdout/stderr contents as well as a timestamp file for every test
-can be found under `build/<target-triple>/test/` for the given
-`<target-triple>`. To force-rerun a test (e.g. in case the test runner fails to
+can be found under `build/<target-tuple>/test/` for the given
+`<target-tuple>`. To force-rerun a test (e.g. in case the test runner fails to
 notice a change) you can use the `--force-rerun` CLI option.
 
 > **Note on requirements of external dependencies**
@@ -49,7 +49,7 @@ test suite ([`tests/ui`]):
 ./x test tests/ui
 ```
 
-This will run the `ui` test suite. Of course, the choice of test suites is
+Of course, the choice of test suites is
 somewhat arbitrary, and may not suit the task you are doing. For example, if you
 are hacking on debuginfo, you may be better off with the debuginfo test suite:
 
@@ -112,8 +112,8 @@ crates, you have to specify those explicitly.
 ./x test --stage 1 library/std
 ```
 
-By listing which test suites you want to run you avoid having to run tests for
-components you did not change at all.
+By listing which test suites you want to run,
+you avoid having to run tests for components you did not change at all.
 
 <div class="warning">
 Note that bors only runs the tests with the full stage 2 build; therefore, while
@@ -172,16 +172,18 @@ additional arguments to the compiler when building the tests.
 ## Editing and updating the reference files
 
 If you have changed the compiler's output intentionally, or you are making a new
-test, you can pass `--bless` to the test subcommand. E.g. if some tests in
-`tests/ui` are failing, you can run
+test, you can pass `--bless` to the test subcommand.
+
+As an example,
+if some tests in `tests/ui` are failing, you can run this command:
 
 ```text
 ./x test tests/ui --bless
 ```
 
-to automatically adjust the `.stderr`, `.stdout` or `.fixed` files of
-all tests. Of course you can also target just specific tests with the
-`--test-args your_test_name` flag, just like when running the tests.
+It automatically adjusts the `.stderr`, `.stdout`, or `.fixed` files of all `test/ui` tests.
+Of course you can also target just specific tests with the `--test-args your_test_name` flag,
+just like when running the tests without the `--bless` flag.
 
 ## Configuring test running
 
@@ -190,7 +192,7 @@ There are a few options for running tests:
 * `config.toml` has the `rust.verbose-tests` option. If `false`, each test will
   print a single dot (the default). If `true`, the name of every test will be
   printed. This is equivalent to the `--quiet` option in the [Rust test
-  harness](https://doc.rust-lang.org/rustc/tests/)
+  harness](https://doc.rust-lang.org/rustc/tests/).
 * The environment variable `RUST_TEST_THREADS` can be set to the number of
   concurrent threads to use for testing.
 

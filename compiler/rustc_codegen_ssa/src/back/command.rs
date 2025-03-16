@@ -137,10 +137,40 @@ impl Command {
     /// Returns a `true` if we're pretty sure that this'll blow OS spawn limits,
     /// or `false` if we should attempt to spawn and see what the OS says.
     pub(crate) fn very_likely_to_exceed_some_spawn_limit(&self) -> bool {
-        // We mostly only care about Windows in this method, on Unix the limits
-        // can be gargantuan anyway so we're pretty unlikely to hit them
-        if cfg!(unix) {
+        #[cfg(not(any(windows, unix)))]
+        {
             return false;
+        }
+
+        // On Unix the limits can be gargantuan anyway so we're pretty
+        // unlikely to hit them, but might still exceed it.
+        // We consult ARG_MAX here to get an estimate.
+        #[cfg(unix)]
+        {
+            let ptr_size = mem::size_of::<usize>();
+            // arg + \0 + pointer
+            let args_size = self.args.iter().fold(0usize, |acc, a| {
+                let arg = a.as_encoded_bytes().len();
+                let nul = 1;
+                acc.saturating_add(arg).saturating_add(nul).saturating_add(ptr_size)
+            });
+            // key + `=` + value + \0 + pointer
+            let envs_size = self.env.iter().fold(0usize, |acc, (k, v)| {
+                let k = k.as_encoded_bytes().len();
+                let eq = 1;
+                let v = v.as_encoded_bytes().len();
+                let nul = 1;
+                acc.saturating_add(k)
+                    .saturating_add(eq)
+                    .saturating_add(v)
+                    .saturating_add(nul)
+                    .saturating_add(ptr_size)
+            });
+            let arg_max = match unsafe { libc::sysconf(libc::_SC_ARG_MAX) } {
+                -1 => return false, // Go to OS anyway.
+                max => max as usize,
+            };
+            return args_size.saturating_add(envs_size) > arg_max;
         }
 
         // Ok so on Windows to spawn a process is 32,768 characters in its
@@ -165,9 +195,14 @@ impl Command {
         //
         // [1]: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-createprocessa
         // [2]: https://devblogs.microsoft.com/oldnewthing/?p=41553
-
-        let estimated_command_line_len = self.args.iter().map(|a| a.len()).sum::<usize>();
-        estimated_command_line_len > 1024 * 6
+        #[cfg(windows)]
+        {
+            let estimated_command_line_len = self
+                .args
+                .iter()
+                .fold(0usize, |acc, a| acc.saturating_add(a.as_encoded_bytes().len()));
+            return estimated_command_line_len > 1024 * 6;
+        }
     }
 }
 

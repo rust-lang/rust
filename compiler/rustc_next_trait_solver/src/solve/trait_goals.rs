@@ -5,9 +5,9 @@ use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
 use rustc_type_ir::solve::CanonicalResponse;
-use rustc_type_ir::visit::TypeVisitableExt as _;
 use rustc_type_ir::{
-    self as ty, Interner, Movability, TraitPredicate, TypingMode, Upcast as _, elaborate,
+    self as ty, Interner, Movability, TraitPredicate, TypeVisitableExt as _, TypingMode,
+    Upcast as _, elaborate,
 };
 use tracing::{instrument, trace};
 

@@ -27,7 +27,6 @@ rustc_serialize = { path = "../rustc_serialize" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
-rustc_type_ir = { path = "../rustc_type_ir" }
 tempfile = "3.2"
 tracing = "0.1"
 # tidy-alphabetical-end

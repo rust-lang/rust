@@ -2378,7 +2378,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 
@@ -2481,7 +2481,7 @@ impl Step for Gcc {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let tarball = Tarball::new(builder, "gcc", &self.target.triple);
         let output = builder.ensure(super::gcc::Gcc { target: self.target });
-        tarball.add_file(output.libgccjit, ".", 0o644);
+        tarball.add_file(output.libgccjit, "lib", 0o644);
         tarball.generate()
     }
 }

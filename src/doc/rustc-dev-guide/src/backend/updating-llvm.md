@@ -116,14 +116,14 @@ so let's go through each in detail.
    at the time of the branch,
    and the remaining part is the current date.
 
-2. Apply Rust-specific patches to the llvm-project repository.
+1. Apply Rust-specific patches to the llvm-project repository.
    All features and bugfixes are upstream,
    but there's often some weird build-related patches
    that don't make sense to upstream.
    These patches are typically the latest patches in the
    rust-lang/llvm-project branch that rustc is currently using.
 
-3. Build the new LLVM in the `rust` repository.
+1. Build the new LLVM in the `rust` repository.
    To do this,
    you'll want to update the `src/llvm-project` repository to your branch,
    and the revision you've created.
@@ -151,7 +151,7 @@ so let's go through each in detail.
    download-ci-llvm = false
    ```
 
-4. Test for regressions across other platforms. LLVM often has at least one bug
+1. Test for regressions across other platforms. LLVM often has at least one bug
    for non-tier-1 architectures, so it's good to do some more testing before
    sending this to bors! If you're low on resources you can send the PR as-is
    now to bors, though, and it'll get tested anyway.
@@ -170,22 +170,17 @@ so let's go through each in detail.
    * `./src/ci/docker/run.sh dist-various-2`
    * `./src/ci/docker/run.sh armhf-gnu`
 
-5. Prepare a PR to `rust-lang/rust`. Work with maintainers of
+1. Prepare a PR to `rust-lang/rust`. Work with maintainers of
    `rust-lang/llvm-project` to get your commit in a branch of that repository,
    and then you can send a PR to `rust-lang/rust`. You'll change at least
    `src/llvm-project` and will likely also change [`llvm-wrapper`] as well.
 
-   <!-- date-check: Sep 2024 -->
+   <!-- date-check: mar 2025 -->
    > For prior art, here are some previous LLVM updates:
-   > - [LLVM 11](https://github.com/rust-lang/rust/pull/73526)
-   > - [LLVM 12](https://github.com/rust-lang/rust/pull/81451)
-   > - [LLVM 13](https://github.com/rust-lang/rust/pull/87570)
-   > - [LLVM 14](https://github.com/rust-lang/rust/pull/93577)
-   > - [LLVM 15](https://github.com/rust-lang/rust/pull/99464)
-   > - [LLVM 16](https://github.com/rust-lang/rust/pull/109474)
    > - [LLVM 17](https://github.com/rust-lang/rust/pull/115959)
    > - [LLVM 18](https://github.com/rust-lang/rust/pull/120055)
    > - [LLVM 19](https://github.com/rust-lang/rust/pull/127513)
+   > - [LLVM 20](https://github.com/rust-lang/rust/pull/135763)
 
    Note that sometimes it's easiest to land [`llvm-wrapper`] compatibility as a PR
    before actually updating `src/llvm-project`.
@@ -194,7 +189,7 @@ so let's go through each in detail.
    others interested in trying out the new LLVM can benefit from work you've done
    to update the C++ bindings.
 
-3. Over the next few months,
+1. Over the next few months,
    LLVM will continually push commits to its `release/a.b` branch.
    We will often want to have those bug fixes as well.
    The merge process for that is to use `git merge` itself to merge LLVM's
@@ -202,9 +197,9 @@ so let's go through each in detail.
    This is typically
    done multiple times when necessary while LLVM's release branch is baking.
 
-4. LLVM then announces the release of version `a.b`.
+1. LLVM then announces the release of version `a.b`.
 
-5. After LLVM's official release,
+1. After LLVM's official release,
    we follow the process of creating a new branch on the
    rust-lang/llvm-project repository again,
    this time with a new date.

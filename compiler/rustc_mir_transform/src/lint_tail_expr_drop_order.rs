@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::collections::hash_map;
 use std::rc::Rc;
 
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_data_structures::unord::{UnordMap, UnordSet};
 use rustc_errors::Subdiagnostic;
 use rustc_hir::CRATE_HIR_ID;
@@ -25,7 +25,6 @@ use rustc_mir_dataflow::{Analysis, MaybeReachable, ResultsCursor};
 use rustc_session::lint::builtin::TAIL_EXPR_DROP_ORDER;
 use rustc_session::lint::{self};
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::data_structures::IndexMap;
 use tracing::debug;
 
 fn place_has_common_prefix<'tcx>(left: &Place<'tcx>, right: &Place<'tcx>) -> bool {
@@ -199,7 +198,7 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
     // and, for each block, the vector of locations.
     //
     // We group them per-block because they tend to scheduled in the same drop ladder block.
-    let mut bid_per_block = IndexMap::default();
+    let mut bid_per_block = FxIndexMap::default();
     let mut bid_places = UnordSet::new();
 
     let mut ty_dropped_components = UnordMap::default();
@@ -455,8 +454,8 @@ pub(crate) fn run_lint<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &Body<
 }
 
 /// Extract binding names if available for diagnosis
-fn collect_user_names(body: &Body<'_>) -> IndexMap<Local, Symbol> {
-    let mut names = IndexMap::default();
+fn collect_user_names(body: &Body<'_>) -> FxIndexMap<Local, Symbol> {
+    let mut names = FxIndexMap::default();
     for var_debug_info in &body.var_debug_info {
         if let mir::VarDebugInfoContents::Place(place) = &var_debug_info.value
             && let Some(local) = place.local_or_deref_local()
@@ -470,9 +469,9 @@ fn collect_user_names(body: &Body<'_>) -> IndexMap<Local, Symbol> {
 /// Assign names for anonymous or temporary values for diagnosis
 fn assign_observables_names(
     locals: impl IntoIterator<Item = Local>,
-    user_names: &IndexMap<Local, Symbol>,
-) -> IndexMap<Local, (String, bool)> {
-    let mut names = IndexMap::default();
+    user_names: &FxIndexMap<Local, Symbol>,
+) -> FxIndexMap<Local, (String, bool)> {
+    let mut names = FxIndexMap::default();
     let mut assigned_names = FxHashSet::default();
     let mut idx = 0u64;
     let mut fresh_name = || {

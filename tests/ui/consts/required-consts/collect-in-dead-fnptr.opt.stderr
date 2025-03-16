@@ -3,8 +3,6 @@ error[E0080]: evaluation of `Fail::<i32>::C` failed
    |
 LL |     const C: () = panic!();
    |                   ^^^^^^^^ evaluation panicked: explicit panic
-   |
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
   --> $DIR/collect-in-dead-fnptr.rs:18:17

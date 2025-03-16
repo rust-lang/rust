@@ -10,8 +10,7 @@ use super::{
 };
 use crate::mir;
 use crate::query::TyCtxtEnsureOk;
-use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, GenericArgs, TyCtxt};
+use crate::ty::{self, GenericArgs, TyCtxt, TypeVisitableExt};
 
 impl<'tcx> TyCtxt<'tcx> {
     /// Evaluates a constant without providing any generic parameters. This is useful to evaluate consts

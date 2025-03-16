@@ -7,7 +7,6 @@ LL | #[derive(PartialOrd, AddImpl)]
    = help: the trait `PartialEq` is not implemented for `PriorityQueue<T>`
 note: required by a bound in `PartialOrd`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: the trait bound `PriorityQueue<T>: Eq` is not satisfied
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22
@@ -32,7 +31,6 @@ LL | #[derive(PartialOrd, AddImpl)]
    |          ^^^^^^^^^^ unsatisfied trait bound introduced in this `derive` macro
 note: required by a bound in `Ord`
   --> $SRC_DIR/core/src/cmp.rs:LL:COL
-   = note: this error originates in the derive macro `AddImpl` which comes from the expansion of the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: can't compare `BinaryHeap<PriorityQueueEntry<T>>` with `_`
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:20:25
@@ -44,7 +42,6 @@ LL | struct PriorityQueue<T>(BinaryHeap<PriorityQueueEntry<T>>);
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ no implementation for `BinaryHeap<PriorityQueueEntry<T>> < _` and `BinaryHeap<PriorityQueueEntry<T>> > _`
    |
    = help: the trait `PartialOrd<_>` is not implemented for `BinaryHeap<PriorityQueueEntry<T>>`
-   = note: this error originates in the derive macro `PartialOrd` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0599]: no method named `cmp` found for struct `BinaryHeap<PriorityQueueEntry<T>>` in the current scope
   --> $DIR/issue-104884-trait-impl-sugg-err.rs:13:22

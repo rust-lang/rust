@@ -1,9 +1,11 @@
 use std::ops::Range;
 
 use rustc_data_structures::{snapshot_vec as sv, unify as ut};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
-use rustc_middle::ty::{self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_middle::ty::{
+    self, ConstVid, FloatVid, IntVid, RegionVid, Ty, TyCtxt, TyVid, TypeFoldable, TypeFolder,
+    TypeSuperFoldable,
+};
+use rustc_type_ir::TypeVisitableExt;
 use tracing::instrument;
 use ut::UnifyKey;
 

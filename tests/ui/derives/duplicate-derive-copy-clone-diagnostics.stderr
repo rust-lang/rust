@@ -5,8 +5,6 @@ LL | #[derive(Copy, Clone)]
    |          ---- first implementation here
 LL | #[derive(Copy, Clone)]
    |          ^^^^ conflicting implementation for `E`
-   |
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0119]: conflicting implementations of trait `Clone` for type `E`
   --> $DIR/duplicate-derive-copy-clone-diagnostics.rs:6:16
@@ -15,8 +13,6 @@ LL | #[derive(Copy, Clone)]
    |                ----- first implementation here
 LL | #[derive(Copy, Clone)]
    |                ^^^^^ conflicting implementation for `E`
-   |
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

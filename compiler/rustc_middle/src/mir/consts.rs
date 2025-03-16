@@ -6,7 +6,7 @@ use rustc_macros::{HashStable, Lift, TyDecodable, TyEncodable, TypeFoldable, Typ
 use rustc_session::RemapFileNameExt;
 use rustc_session::config::RemapPathScopeComponents;
 use rustc_span::{DUMMY_SP, Span, Symbol};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
 use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};

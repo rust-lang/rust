@@ -16,7 +16,6 @@ note: required by a bound in `is_copy`
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
 LL |     is_copy(B { a: 1, b: &C });
@@ -40,7 +39,6 @@ note: required by a bound in `is_clone`
    |
 LL | fn is_clone<T: Clone>(_: T) {}
    |                ^^^^^ required by this bound in `is_clone`
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
 LL |     is_clone(B { a: 1, b: &C });
@@ -64,7 +62,6 @@ note: required by a bound in `is_copy`
    |
 LL | fn is_copy<T: Copy>(_: T) {}
    |               ^^^^ required by this bound in `is_copy`
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider borrowing here
    |
 LL |     is_copy(B { a: 1, b: &D });

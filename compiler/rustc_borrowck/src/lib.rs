@@ -35,8 +35,7 @@ use rustc_infer::infer::{
 };
 use rustc_middle::mir::*;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode};
+use rustc_middle::ty::{self, ParamEnv, RegionVid, TyCtxt, TypingMode, fold_regions};
 use rustc_middle::{bug, span_bug};
 use rustc_mir_dataflow::impls::{
     EverInitializedPlaces, MaybeInitializedPlaces, MaybeUninitializedPlaces,

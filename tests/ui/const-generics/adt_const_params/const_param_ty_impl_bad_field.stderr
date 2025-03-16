@@ -15,8 +15,6 @@ LL | #[derive(std::marker::UnsizedConstParamTy, Eq, PartialEq)]
 LL |
 LL | struct CantParamDerive(NotParam);
    |                        -------- this field does not implement `ConstParamTy_`
-   |
-   = note: this error originates in the derive macro `std::marker::UnsizedConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

@@ -9,7 +9,6 @@ note: inside `my_fn`
    |
 LL |     panic!("Some error occurred");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: evaluation of constant value failed
   --> $DIR/const-errs-dont-conflict-103369.rs:7:25
@@ -22,7 +21,6 @@ note: inside `my_fn`
    |
 LL |     panic!("Some error occurred");
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the failure occurred here
-   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

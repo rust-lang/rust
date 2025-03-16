@@ -1516,7 +1516,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Ident] {
         self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
             PatKind::Ident(_, ident, _) => self.lower_ident(ident),
-            _ => Ident::new(kw::Empty, self.lower_span(param.pat.span)),
+            PatKind::Wild => Ident::new(kw::Underscore, self.lower_span(param.pat.span)),
+            _ => {
+                self.dcx().span_delayed_bug(
+                    param.pat.span,
+                    "non-ident/wild param pat must trigger an error",
+                );
+                Ident::new(kw::Empty, self.lower_span(param.pat.span))
+            }
         }))
     }
 

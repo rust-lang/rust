@@ -2945,7 +2945,7 @@ impl<'tcx> FmtPrinter<'_, 'tcx> {
             }
         }
 
-        impl<'tcx> ty::visit::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
+        impl<'tcx> ty::TypeVisitor<TyCtxt<'tcx>> for RegionNameCollector<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) {
                 trace!("address: {:p}", r.0.0);
 

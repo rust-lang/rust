@@ -5,7 +5,7 @@ use std::ops::{ControlFlow, Deref};
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::instrument;
 
 use crate::data_structures::SsoHashSet;
@@ -57,7 +57,7 @@ where
 macro_rules! impl_binder_encode_decode {
     ($($t:ty),+ $(,)?) => {
         $(
-            impl<I: Interner, E: crate::TyEncoder<I = I>> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
+            impl<I: Interner, E: rustc_serialize::Encoder> rustc_serialize::Encodable<E> for ty::Binder<I, $t>
             where
                 $t: rustc_serialize::Encodable<E>,
                 I::BoundVarKinds: rustc_serialize::Encodable<E>,
@@ -67,7 +67,7 @@ macro_rules! impl_binder_encode_decode {
                     self.as_ref().skip_binder().encode(e);
                 }
             }
-            impl<I: Interner, D: crate::TyDecoder<I = I>> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
+            impl<I: Interner, D: rustc_serialize::Decoder> rustc_serialize::Decodable<D> for ty::Binder<I, $t>
             where
                 $t: TypeVisitable<I> + rustc_serialize::Decodable<D>,
                 I::BoundVarKinds: rustc_serialize::Decodable<D>,
@@ -342,7 +342,10 @@ impl<I: Interner> TypeVisitor<I> for ValidateBoundVars<I> {
 #[derive_where(PartialOrd; I: Interner, T: Ord)]
 #[derive_where(Hash; I: Interner, T: Hash)]
 #[derive_where(Debug; I: Interner, T: Debug)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub struct EarlyBinder<I: Interner, T> {
     value: T,
     #[derive_where(skip(Debug))]
@@ -859,7 +862,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !val.has_escaping_bound_vars() {
             val
         } else {
-            ty::fold::shift_vars(self.cx, val, self.binders_passed)
+            ty::shift_vars(self.cx, val, self.binders_passed)
         }
     }
 
@@ -867,7 +870,7 @@ impl<'a, I: Interner> ArgFolder<'a, I> {
         if self.binders_passed == 0 || !region.has_escaping_bound_vars() {
             region
         } else {
-            ty::fold::shift_region(self.cx, region, self.binders_passed)
+            ty::shift_region(self.cx, region, self.binders_passed)
         }
     }
 }
