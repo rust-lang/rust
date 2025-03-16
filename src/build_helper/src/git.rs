@@ -186,7 +186,7 @@ pub fn get_git_modified_files(
             let (status, name) = f.trim().split_once(char::is_whitespace).unwrap();
             if status == "D" {
                 None
-            } else if Path::new(name).extension().map_or(false, |ext| {
+            } else if Path::new(name).extension().map_or(true, |ext| {
                 extensions.is_empty() || extensions.contains(&ext.to_str().unwrap())
             }) {
                 Some(name.to_owned())
