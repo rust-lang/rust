@@ -756,12 +756,7 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(
-        &self,
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        keep_as_is: bool,
-    ) -> Vec<String> {
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
@@ -772,7 +767,7 @@ impl Item {
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if keep_as_is {
+                if is_json {
                     Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
@@ -786,7 +781,8 @@ impl Item {
                 }
             })
             .collect();
-        if !keep_as_is
+
+        if !is_json
             && let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
