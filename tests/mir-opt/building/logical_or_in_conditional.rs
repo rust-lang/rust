@@ -1,6 +1,6 @@
 // skip-filecheck
 //@ compile-flags: -Z validate-mir
-#![feature(let_chains)]
+//@ edition: 2024
 struct Droppy(u8);
 impl Drop for Droppy {
     fn drop(&mut self) {

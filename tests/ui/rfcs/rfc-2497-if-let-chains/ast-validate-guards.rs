@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+//@ edition: 2024
 
 fn let_or_guard(x: Result<Option<i32>, ()>) {
     match x {

@@ -1,6 +1,6 @@
 // issue #117766
+//@ edition: 2024
 
-#![feature(let_chains)]
 fn main() {
     if let () = ()
         && let () = () {

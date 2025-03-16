@@ -1,7 +1,7 @@
+//@ edition: 2024
 // Parenthesised let "expressions" are not allowed in guards
 
 #![feature(if_let_guard)]
-#![feature(let_chains)]
 
 #[cfg(FALSE)]
 fn un_cfged() {

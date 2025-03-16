@@ -1,11 +1,11 @@
 error: expected `{`, found `;`
-  --> $DIR/semi-in-let-chain.rs:7:23
+  --> $DIR/semi-in-let-chain.rs:6:23
    |
 LL |         && let () = ();
    |                       ^ expected `{`
    |
 note: you likely meant to continue parsing the let-chain starting here
-  --> $DIR/semi-in-let-chain.rs:8:9
+  --> $DIR/semi-in-let-chain.rs:7:9
    |
 LL |         && let () = ()
    |         ^^^^^^
@@ -16,13 +16,13 @@ LL +         && let () = ()
    |
 
 error: expected `{`, found `;`
-  --> $DIR/semi-in-let-chain.rs:15:20
+  --> $DIR/semi-in-let-chain.rs:14:20
    |
 LL |         && () == ();
    |                    ^ expected `{`
    |
 note: the `if` expression is missing a block after this condition
-  --> $DIR/semi-in-let-chain.rs:14:8
+  --> $DIR/semi-in-let-chain.rs:13:8
    |
 LL |       if let () = ()
    |  ________^
@@ -30,13 +30,13 @@ LL | |         && () == ();
    | |___________________^
 
 error: expected `{`, found `;`
-  --> $DIR/semi-in-let-chain.rs:23:20
+  --> $DIR/semi-in-let-chain.rs:22:20
    |
 LL |         && () == ();
    |                    ^ expected `{`
    |
 note: you likely meant to continue parsing the let-chain starting here
-  --> $DIR/semi-in-let-chain.rs:24:9
+  --> $DIR/semi-in-let-chain.rs:23:9
    |
 LL |         && let () = ()
    |         ^^^^^^
