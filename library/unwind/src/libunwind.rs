@@ -125,16 +125,13 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
     //
     // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
     // "setjmp-longjmp" / SjLj unwinding.
-    #[repr(C)]
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum _Unwind_Action {
-        _UA_SEARCH_PHASE = 1,
-        _UA_CLEANUP_PHASE = 2,
-        _UA_HANDLER_FRAME = 4,
-        _UA_FORCE_UNWIND = 8,
-        _UA_END_OF_STACK = 16,
-    }
-    pub use _Unwind_Action::*;
+    pub type _Unwind_Action = c_int;
+
+    pub const _UA_SEARCH_PHASE: c_int = 1;
+    pub const _UA_CLEANUP_PHASE: c_int = 2;
+    pub const _UA_HANDLER_FRAME: c_int = 4;
+    pub const _UA_FORCE_UNWIND: c_int = 8;
+    pub const _UA_END_OF_STACK: c_int = 16;
 
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
