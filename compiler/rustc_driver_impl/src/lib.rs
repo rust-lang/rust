@@ -457,8 +457,7 @@ pub enum Compilation {
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    let start = if upper_cased_code.starts_with('E') { 1 } else { 0 };
-    if let Ok(code) = upper_cased_code[start..].parse::<u32>()
+    if let Ok(code) = upper_cased_code.strip_prefix('E').unwrap_or(&upper_cased_code).parse::<u32>()
         && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
     {
         let mut is_in_code_block = false;

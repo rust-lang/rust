@@ -1538,8 +1538,13 @@ fn print_native_static_libs(
         }
         let stem = path.file_stem().unwrap().to_str().unwrap();
         // Convert library file-stem into a cc -l argument.
-        let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
-        let lib = &stem[prefix..];
+        let lib = if let Some(lib) = stem.strip_prefix("lib")
+            && !sess.target.is_like_windows
+        {
+            lib
+        } else {
+            stem
+        };
         let path = parent.unwrap_or_else(|| Path::new(""));
         if sess.target.is_like_msvc {
             // When producing a dll, the MSVC linker may not actually emit a
