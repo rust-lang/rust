@@ -1137,7 +1137,7 @@ pub struct Resolver<'ra, 'tcx> {
     non_macro_attr: MacroData,
     local_macro_def_scopes: FxHashMap<LocalDefId, Module<'ra>>,
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
-    unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
+    unused_macros: FxIndexMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
     unused_macro_rules: FxIndexMap<LocalDefId, UnordMap<usize, (Ident, Span)>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
