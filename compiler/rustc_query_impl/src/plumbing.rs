@@ -79,14 +79,15 @@ impl QueryContext for QueryCtxt<'_> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
-    fn collect_active_jobs(self) -> QueryMap {
+    fn collect_active_jobs(self) -> (QueryMap, bool) {
         let mut jobs = QueryMap::default();
+        let mut complete = true;
 
         for collect in super::TRY_COLLECT_ACTIVE_JOBS.iter() {
-            collect(self.tcx, &mut jobs);
+            collect(self.tcx, &mut jobs, &mut complete);
         }
 
-        jobs
+        (jobs, complete)
     }
 
     // Interactions with on_disk_cache
@@ -139,7 +140,8 @@ impl QueryContext for QueryCtxt<'_> {
     }
 
     fn depth_limit_error(self, job: QueryJobId) {
-        let (info, depth) = job.find_dep_kind_root(self.collect_active_jobs());
+        // FIXME: `collect_active_jobs` expects no locks to be held, which doesn't hold for this call.
+        let (info, depth) = job.find_dep_kind_root(self.collect_active_jobs().0);
 
         let suggested_limit = match self.recursion_limit() {
             Limit(0) => Limit(2),
@@ -677,7 +679,7 @@ macro_rules! define_queries {
                 }
             }
 
-            pub(crate) fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap) {
+            pub(crate) fn try_collect_active_jobs<'tcx>(tcx: TyCtxt<'tcx>, qmap: &mut QueryMap, complete: &mut bool) {
                 let make_query = |tcx, key| {
                     let kind = rustc_middle::dep_graph::dep_kinds::$name;
                     let name = stringify!($name);
@@ -692,6 +694,7 @@ macro_rules! define_queries {
                 // don't `unwrap()` here, just manually check for `None` and do best-effort error
                 // reporting.
                 if res.is_none() {
+                    *complete = false;
                     tracing::warn!(
                         "Failed to collect active jobs for query with name `{}`!",
                         stringify!($name)
@@ -756,7 +759,7 @@ macro_rules! define_queries {
 
         // These arrays are used for iteration and can't be indexed by `DepKind`.
 
-        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap)] =
+        const TRY_COLLECT_ACTIVE_JOBS: &[for<'tcx> fn(TyCtxt<'tcx>, &mut QueryMap, &mut bool)] =
             &[$(query_impl::$name::try_collect_active_jobs),*];
 
         const ALLOC_SELF_PROFILE_QUERY_STRINGS: &[

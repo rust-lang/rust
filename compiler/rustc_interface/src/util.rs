@@ -192,7 +192,16 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
             // `TyCtxt` TLS reference here.
             let query_map = current_gcx2.access(|gcx| {
                 tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
-                    tls::with(|tcx| QueryCtxt::new(tcx).collect_active_jobs())
+                    tls::with(|tcx| {
+                        let (query_map, complete) = QueryCtxt::new(tcx).collect_active_jobs();
+                        if !complete {
+                            eprintln!("internal compiler error: failed to get query map in deadlock handler, aborting process");
+                            // We need to abort here as we failed to resolve the deadlock,
+                            // otherwise the compiler could just hang,
+                            process::abort();
+                        }
+                        query_map
+                    })
                 })
             });
             let query_map = FromDyn::from(query_map);
@@ -201,7 +210,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                 .name("rustc query cycle handler".to_string())
                 .spawn(move || {
                     let on_panic = defer(|| {
-                        eprintln!("query cycle handler thread panicked, aborting process");
+                        eprintln!("internal compiler error: query cycle handler thread panicked, aborting process");
                         // We need to abort here as we failed to resolve the deadlock,
                         // otherwise the compiler could just hang,
                         process::abort();
