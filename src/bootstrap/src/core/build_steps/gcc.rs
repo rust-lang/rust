@@ -12,12 +12,13 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+use build_helper::ci::CiEnv;
+
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
 use crate::utils::exec::command;
 use crate::utils::helpers::{self, t};
-use build_helper::ci::CiEnv;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
 pub struct Gcc {
@@ -97,6 +98,8 @@ pub enum GccBuildStatus {
 /// Returns a path to the libgccjit.so file.
 #[cfg(not(test))]
 fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<PathBuf> {
+    use build_helper::git::PathFreshness;
+
     // Try to download GCC from CI if configured and available
     if !matches!(builder.config.gcc_ci_mode, crate::core::config::GccCiMode::DownloadFromCi) {
         return None;

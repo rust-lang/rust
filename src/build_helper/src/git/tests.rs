@@ -1,8 +1,9 @@
-use crate::ci::CiEnv;
-use crate::git::{GitConfig, PathFreshness, check_path_modifications};
 use std::ffi::OsStr;
 use std::fs::OpenOptions;
 use std::process::Command;
+
+use crate::ci::CiEnv;
+use crate::git::{GitConfig, PathFreshness, check_path_modifications};
 
 #[test]
 fn test_pr_ci_unchanged_anywhere() {
