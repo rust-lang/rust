@@ -3820,7 +3820,7 @@ unsafe fn __lcbb<const BLOCK_BOUNDARY: u16>(ptr: *const u8) -> u32 {
     lcbb(ptr, const { validate_block_boundary(BLOCK_BOUNDARY) })
 }
 
-/// Vector element-wise addition.
+/// Vector Add
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3828,7 +3828,7 @@ pub unsafe fn vec_add<T: sealed::VectorAdd<U>, U>(a: T, b: U) -> T::Result {
     a.vec_add(b)
 }
 
-/// Vector element-wise subtraction.
+/// Vector Subtract
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3836,7 +3836,7 @@ pub unsafe fn vec_sub<T: sealed::VectorSub<U>, U>(a: T, b: U) -> T::Result {
     a.vec_sub(b)
 }
 
-/// Vector element-wise multiplication.
+/// Vector Multiply
 ///
 /// ## Purpose
 /// Compute the products of corresponding elements of two vectors.
@@ -3876,7 +3876,7 @@ pub unsafe fn vec_popcnt<T: sealed::CountBits>(a: T) -> T::Result {
     a.vec_popcnt()
 }
 
-/// Vector element-wise maximum.
+/// Vector Maximum
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3884,7 +3884,7 @@ pub unsafe fn vec_max<T: sealed::VectorMax<U>, U>(a: T, b: U) -> T::Result {
     a.vec_max(b)
 }
 
-/// Vector element-wise minimum.
+/// Vector  Minimum
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3892,7 +3892,7 @@ pub unsafe fn vec_min<T: sealed::VectorMin<U>, U>(a: T, b: U) -> T::Result {
     a.vec_min(b)
 }
 
-/// Vector abs.
+/// Vector Absolute
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3900,7 +3900,7 @@ pub unsafe fn vec_abs<T: sealed::VectorAbs>(a: T) -> T {
     a.vec_abs()
 }
 
-/// Vector negative abs.
+/// Vector Negative Absolute
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3924,7 +3924,7 @@ pub unsafe fn vec_nmsub<T: sealed::VectorNmsub>(a: T, b: T, c: T) -> T {
     a.vec_nmsub(b, c)
 }
 
-/// Vector square root.
+/// Vector Square Root
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3940,7 +3940,7 @@ pub unsafe fn vec_splat<T: sealed::VectorSplat, const IMM: u32>(a: T) -> T {
     a.vec_splat::<IMM>()
 }
 
-/// Vector splats.
+/// Vector Splats
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3948,7 +3948,7 @@ pub unsafe fn vec_splats<T: sealed::VectorSplats<U>, U>(a: T) -> U {
     a.vec_splats()
 }
 
-/// Vector and
+/// Vector AND
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3956,7 +3956,7 @@ pub unsafe fn vec_and<T: sealed::VectorAnd<U>, U>(a: T, b: U) -> T::Result {
     a.vec_and(b)
 }
 
-/// Vector or
+/// Vector OR
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3964,7 +3964,7 @@ pub unsafe fn vec_or<T: sealed::VectorOr<U>, U>(a: T, b: U) -> T::Result {
     a.vec_or(b)
 }
 
-/// Vector xor
+/// Vector XOR
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3972,7 +3972,7 @@ pub unsafe fn vec_xor<T: sealed::VectorXor<U>, U>(a: T, b: U) -> T::Result {
     a.vec_xor(b)
 }
 
-/// Vector nor
+/// Vector NOR
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3980,7 +3980,7 @@ pub unsafe fn vec_nor<T: sealed::VectorNor<U>, U>(a: T, b: U) -> T::Result {
     a.vec_nor(b)
 }
 
-/// Vector nand
+/// Vector NAND
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3988,7 +3988,7 @@ pub unsafe fn vec_nand<T: sealed::VectorNand<U>, U>(a: T, b: U) -> T::Result {
     a.vec_nand(b)
 }
 
-/// Vector xnor
+/// Vector XNOR
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -3996,7 +3996,7 @@ pub unsafe fn vec_eqv<T: sealed::VectorEqv<U>, U>(a: T, b: U) -> T::Result {
     a.vec_eqv(b)
 }
 
-/// Vector andc.
+/// Vector ANDC
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4018,7 +4018,7 @@ pub unsafe fn vec_orc<T: sealed::VectorOrc<U>, U>(a: T, b: U) -> T::Result {
     a.vec_orc(b)
 }
 
-/// Vector floor.
+/// Vector Floor
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4026,7 +4026,7 @@ pub unsafe fn vec_floor<T: sealed::VectorFloor>(a: T) -> T {
     a.vec_floor()
 }
 
-/// Vector ceil.
+/// Vector Ceil
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4034,6 +4034,8 @@ pub unsafe fn vec_ceil<T: sealed::VectorCeil>(a: T) -> T {
     a.vec_ceil()
 }
 
+/// Vector Truncate
+///
 /// Returns a vector containing the truncated values of the corresponding elements of the given vector.
 /// Each element of the result contains the value of the corresponding element of a, truncated to an integral value.
 #[inline]
@@ -4043,6 +4045,8 @@ pub unsafe fn vec_trunc<T: sealed::VectorTrunc>(a: T) -> T {
     a.vec_trunc()
 }
 
+/// Vector Round
+///
 /// Returns a vector containing the rounded values to the nearest representable floating-point integer,
 /// using IEEE round-to-nearest rounding, of the corresponding elements of the given vector
 #[inline]
@@ -4052,6 +4056,8 @@ pub unsafe fn vec_round<T: sealed::VectorRound>(a: T) -> T {
     a.vec_round()
 }
 
+/// Vector Round to Current
+///
 /// Returns a vector by using the current rounding mode to round every
 /// floating-point element in the given vector to integer.
 #[inline]
@@ -4061,6 +4067,8 @@ pub unsafe fn vec_roundc<T: sealed::VectorRoundc>(a: T) -> T {
     a.vec_roundc()
 }
 
+/// Vector Round toward Negative Infinity
+///
 /// Returns a vector containing the largest representable floating-point integral values less
 /// than or equal to the values of the corresponding elements of the given vector.
 #[inline]
@@ -4075,6 +4083,8 @@ pub unsafe fn vec_roundm<T: sealed::VectorFloor>(a: T) -> T {
     a.vec_floor()
 }
 
+/// Vector Round toward Positive Infinity
+///
 /// Returns a vector containing the smallest representable floating-point integral values greater
 /// than or equal to the values of the corresponding elements of the given vector.
 #[inline]
@@ -4089,6 +4099,8 @@ pub unsafe fn vec_roundp<T: sealed::VectorCeil>(a: T) -> T {
     a.vec_ceil()
 }
 
+/// Vector Round toward Zero
+///
 /// Returns a vector containing the truncated values of the corresponding elements of the given vector.
 /// Each element of the result contains the value of the corresponding element of a, truncated to an integral value.
 #[inline]
@@ -4103,6 +4115,8 @@ pub unsafe fn vec_roundz<T: sealed::VectorTrunc>(a: T) -> T {
     a.vec_trunc()
 }
 
+/// Vector Round to Integer
+///
 /// Returns a vector by using the current rounding mode to round every floating-point element in the given vector to integer.
 #[inline]
 #[target_feature(enable = "vector")]
@@ -4175,6 +4189,8 @@ pub unsafe fn vec_rl<T: sealed::VectorRl<U>, U>(a: T, b: U) -> T::Result {
     a.vec_rl(b)
 }
 
+/// Vector Shift Left
+///
 /// Performs a left shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
 /// element of a left by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by zeros.
 #[inline]
@@ -4187,6 +4203,8 @@ where
     a.vec_sll(b)
 }
 
+/// Vector Shift Right
+///
 /// Performs a right shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
 /// element of a right by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by zeros.
 #[inline]
@@ -4199,6 +4217,8 @@ where
     a.vec_srl(b)
 }
 
+/// Vector Shift Right Arithmetic
+///
 /// Performs an algebraic right shift for a vector by a given number of bits. Each element of the result is obtained by shifting the corresponding
 /// element of a right by the number of bits specified by the last 3 bits of every byte of b. The bits that are shifted out are replaced by copies of
 /// the most significant bit of the element of a.
@@ -4212,6 +4232,8 @@ where
     a.vec_sral(b)
 }
 
+/// Vector Element Rotate Left Immediate
+///
 /// Rotates each element of a vector left by a given number of bits. Each element of the result is obtained by rotating the corresponding element
 /// of a left by the number of bits specified by b, modulo the number of bits in the element.
 #[inline]
@@ -4221,6 +4243,8 @@ pub unsafe fn vec_rli<T: sealed::VectorRli>(a: T, bits: core::ffi::c_ulong) -> T
     a.vec_rli(bits)
 }
 
+/// Vector Reverse Elements
+///
 /// Returns a vector with the elements of the input vector in reversed order.
 #[inline]
 #[target_feature(enable = "vector")]
@@ -4229,6 +4253,8 @@ pub unsafe fn vec_reve<T: sealed::VectorReve>(a: T) -> T {
     a.vec_reve()
 }
 
+/// Vector Byte Reverse
+///
 /// Returns a vector where each vector element contains the corresponding byte-reversed vector element of the input vector.
 #[inline]
 #[target_feature(enable = "vector")]
@@ -4237,12 +4263,24 @@ pub unsafe fn vec_revb<T: sealed::VectorRevb>(a: T) -> T {
     a.vec_revb()
 }
 
+/// Vector Merge High
+///
 /// Merges the most significant ("high") halves of two vectors.
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_mergeh<T: sealed::VectorMergeh>(a: T, b: T) -> T {
     a.vec_mergeh(b)
+}
+
+/// Vector Merge Low
+///
+/// Merges the least significant ("low") halves of two vectors.
+#[inline]
+#[target_feature(enable = "vector")]
+#[unstable(feature = "stdarch_s390x", issue = "135681")]
+pub unsafe fn vec_mergel<T: sealed::VectorMergel>(a: T, b: T) -> T {
+    a.vec_mergel(b)
 }
 
 /// Vector Pack
@@ -4305,14 +4343,8 @@ pub unsafe fn vec_unpackl<T: sealed::VectorUnpackl>(a: T) -> <T as sealed::Vecto
     a.vec_unpackl()
 }
 
-/// Merges the least significant ("low") halves of two vectors.
-#[inline]
-#[target_feature(enable = "vector")]
-#[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_mergel<T: sealed::VectorMergel>(a: T, b: T) -> T {
-    a.vec_mergel(b)
-}
-
+/// Vector Generate Byte Mask
+///
 /// Generates byte masks for elements in the return vector. For each bit in a, if the bit is one, all bit positions
 /// in the corresponding byte element of d are set to ones. Otherwise, if the bit is zero, the corresponding byte element is set to zero.
 #[inline]
@@ -4359,6 +4391,8 @@ pub unsafe fn vec_genmasks_64<const L: u8, const H: u8>() -> vector_unsigned_lon
     vector_unsigned_long_long(const { [genmasks(u64::BITS, L, H); 2] })
 }
 
+/// Vector Permute
+///
 /// Returns a vector that contains some elements of two vectors, in the order specified by a third vector.
 /// Each byte of the result is selected by using the least significant 5 bits of the corresponding byte of c as an index into the concatenated bytes of a and b.
 /// Note: The vector generate mask built-in function [`vec_genmask`] could help generate the mask c.
@@ -4451,6 +4485,8 @@ pub unsafe fn vec_subc<T: sealed::VectorSubc<U>, U>(a: T, b: U) -> T::Result {
     a.vec_subc(b)
 }
 
+/// Vector Subtract Carryout unsigned 128-bits
+///
 /// Gets the carry bit of the 128-bit subtraction of two quadword values.
 /// This function operates on the vectors as 128-bit unsigned integers. It returns a vector containing the borrow produced by subtracting b from a, as unsigned 128-bits integers.
 /// If no borrow occurred, the bit 127 of d is 1; otherwise it is set to 0. All other bits of d are 0.
@@ -4519,6 +4555,8 @@ pub unsafe fn vec_addec_u128(
     transmute(carry as u128)
 }
 
+/// Vector Subtract with Carryout
+///
 /// Subtracts unsigned quadword values with carry bit from a previous operation.
 ///
 /// This function operates on the vectors as 128-bit unsigned integers. It returns a vector containing the result of subtracting of b from a,
@@ -4631,11 +4669,12 @@ pub unsafe fn vec_splat_u64<const IMM: i16>() -> vector_unsigned_long_long {
 }
 
 macro_rules! vec_find_any {
-    ($($Trait:ident $fun:ident)*) => {
+    ($($Trait:ident $fun:ident $doc:literal)*) => {
         $(
             #[inline]
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            #[doc = $doc]
             pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U) -> T::Result {
                 a.$fun(b)
             }
@@ -4644,20 +4683,21 @@ macro_rules! vec_find_any {
 }
 
 vec_find_any! {
-    VectorFindAnyEq vec_find_any_eq
-    VectorFindAnyNe vec_find_any_ne
-    VectorFindAnyEqIdx vec_find_any_eq_idx
-    VectorFindAnyNeIdx vec_find_any_ne_idx
-    VectorFindAnyEqOrZeroIdx vec_find_any_eq_or_0_idx
-    VectorFindAnyNeOrZeroIdx vec_find_any_ne_or_0_idx
+    VectorFindAnyEq vec_find_any_eq "Vector Find Any Element Equal with Condition Code"
+    VectorFindAnyNe vec_find_any_ne "Vector Find Any Element Not Equal with Condition Code"
+    VectorFindAnyEqIdx vec_find_any_eq_idx "Vector Find Any Element Equal Index with Condition Code"
+    VectorFindAnyNeIdx vec_find_any_ne_idx "Vector Find Any Element Not Equal Index with Condition Code"
+    VectorFindAnyEqOrZeroIdx vec_find_any_eq_or_0_idx "Vector Find Any Element Equal or Zero Index with Condition Code"
+    VectorFindAnyNeOrZeroIdx vec_find_any_ne_or_0_idx "Vector Find Any Element Not Equal or Zero Index with Condition Code"
 }
 
 macro_rules! vec_find_any_cc {
-    ($($Trait:ident $fun:ident)*) => {
+    ($($Trait:ident $fun:ident $doc:literal)*) => {
         $(
             #[inline]
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
+            #[doc = $doc]
             pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U, c: *mut i32) -> T::Result {
                 let (x, y) = a.$fun(b);
                 unsafe { c.write(y) };
@@ -4668,12 +4708,12 @@ macro_rules! vec_find_any_cc {
 }
 
 vec_find_any_cc! {
-    VectorFindAnyEqCC vec_find_any_eq_cc
-    VectorFindAnyNeCC vec_find_any_ne_cc
-    VectorFindAnyEqIdxCC vec_find_any_eq_idx_cc
-    VectorFindAnyNeIdxCC vec_find_any_ne_idx_cc
-    VectorFindAnyEqOrZeroIdxCC vec_find_any_eq_or_0_idx_cc
-    VectorFindAnyNeOrZeroIdxCC vec_find_any_ne_or_0_idx_cc
+    VectorFindAnyEqCC vec_find_any_eq_cc "Vector Find Any Element Equal with Condition Code"
+    VectorFindAnyNeCC vec_find_any_ne_cc "Vector Find Any Element Not Equal with Condition Code"
+    VectorFindAnyEqIdxCC vec_find_any_eq_idx_cc "Vector Find Any Element Equal Index with Condition Code"
+    VectorFindAnyNeIdxCC vec_find_any_ne_idx_cc "Vector Find Any Element Not Equal Index with Condition Code"
+    VectorFindAnyEqOrZeroIdxCC vec_find_any_eq_or_0_idx_cc "Vector Find Any Element Equal or Zero Index with Condition Code"
+    VectorFindAnyNeOrZeroIdxCC vec_find_any_ne_or_0_idx_cc "Vector Find Any Element Not Equal or Zero Index with Condition Code"
 }
 
 /// Vector Load
@@ -4966,6 +5006,7 @@ pub unsafe fn vec_fp_test_data_class<T: sealed::VectorFpTestDataClass, const CLA
     x
 }
 
+/// All Elements Not a Number
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4973,6 +5014,7 @@ pub unsafe fn vec_all_nan<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
     i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 == 0)
 }
 
+/// All Elements Numeric
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4980,6 +5022,7 @@ pub unsafe fn vec_all_numeric<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
     i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 == 3)
 }
 
+/// Any Elements Not a Number
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -4987,6 +5030,7 @@ pub unsafe fn vec_any_nan<T: sealed::VectorFpTestDataClass>(a: T) -> i32 {
     i32::from(a.vec_fp_test_data_class::<__VEC_CLASS_FP_NAN>().1 != 3)
 }
 
+/// Any Elements Numeric
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
@@ -5267,7 +5311,8 @@ pub unsafe fn vec_cmpnrg_idx_cc<T: sealed::VectorCompareRange>(
     x
 }
 
-/// Vector Compare Ranges or Zero Index#[inline]
+/// Vector Compare Ranges or Zero Index
+#[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
 pub unsafe fn vec_cmprg_or_0_idx<T: sealed::VectorCompareRange>(a: T, b: T, c: T) -> T::Result {
