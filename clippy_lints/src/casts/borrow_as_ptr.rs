@@ -29,10 +29,6 @@ pub(super) fn check<'tcx>(
         }
 
         let (suggestion, span) = if msrv.meets(cx, msrvs::RAW_REF_OP) {
-            let operator_kind = match mutability {
-                Mutability::Not => "const",
-                Mutability::Mut => "mut",
-            };
             // Make sure that the span to be replaced doesn't include parentheses, that could break the
             // suggestion.
             let span = if has_enclosing_paren(snippet_with_applicability(cx, expr.span, "", &mut app)) {
@@ -42,7 +38,7 @@ pub(super) fn check<'tcx>(
             } else {
                 expr.span
             };
-            (format!("&raw {operator_kind} {snip}"), span)
+            (format!("&raw {} {snip}", mutability.ptr_str()), span)
         } else {
             let Some(std_or_core) = std_or_core(cx) else {
                 return false;
