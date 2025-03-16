@@ -1388,7 +1388,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
             Some(nth)
         } else {
             // setting length to 0 is cheaper than overwriting the pointer when assigning &[]
-            self.v = &self.v[..0];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         }
     }
@@ -1429,7 +1429,7 @@ impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = self.v.len().overflowing_sub(n);
         if end < self.size.get() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let ret = &self.v[end - self.size.get()..end];
@@ -1609,7 +1609,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
@@ -1933,7 +1933,7 @@ impl<'a, T> Iterator for ChunksExact<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (start, overflow) = n.overflowing_mul(self.chunk_size);
         if start >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let (_, snd) = self.v.split_at(start);
@@ -1971,7 +1971,7 @@ impl<'a, T> DoubleEndedIterator for ChunksExact<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let start = (len - 1 - n) * self.chunk_size;
@@ -2638,7 +2638,7 @@ impl<'a, T> Iterator for RChunks<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = n.overflowing_mul(self.chunk_size);
         if end >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // Can't underflow because of the check above
@@ -2695,7 +2695,7 @@ impl<'a, T> DoubleEndedIterator for RChunks<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // can't underflow because `n < len`
@@ -3023,7 +3023,7 @@ impl<'a, T> Iterator for RChunksExact<'a, T> {
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let (end, overflow) = n.overflowing_mul(self.chunk_size);
         if end >= self.v.len() || overflow {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             let (fst, _) = self.v.split_at(self.v.len() - end);
@@ -3062,7 +3062,7 @@ impl<'a, T> DoubleEndedIterator for RChunksExact<'a, T> {
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let len = self.len();
         if n >= len {
-            self.v = &[];
+            self.v = &self.v[..0]; // cheaper than &[]
             None
         } else {
             // now that we know that `n` corresponds to a chunk,
