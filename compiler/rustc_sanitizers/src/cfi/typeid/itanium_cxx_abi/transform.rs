@@ -9,10 +9,9 @@ use std::iter;
 use rustc_hir as hir;
 use rustc_hir::LangItem;
 use rustc_middle::bug;
-use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::{
     self, ExistentialPredicateStableCmpExt as _, Instance, InstanceKind, IntTy, List, TraitRef, Ty,
-    TyCtxt, TypeFoldable, TypeVisitableExt, UintTy,
+    TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::sym;

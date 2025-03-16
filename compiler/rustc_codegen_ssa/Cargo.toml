@@ -40,7 +40,6 @@ rustc_span = { path = "../rustc_span" }
 rustc_symbol_mangling = { path = "../rustc_symbol_mangling" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
-rustc_type_ir = { path = "../rustc_type_ir" }
 serde_json = "1.0.59"
 smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 tempfile = "3.2"

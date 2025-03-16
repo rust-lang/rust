@@ -15,11 +15,10 @@ use rustc_index::IndexVec;
 use rustc_infer::infer::{DefineOpaqueTypes, InferOk, TypeTrace};
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt};
+use rustc_middle::ty::{self, IsSuggestable, Ty, TyCtxt, TypeVisitableExt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::Session;
-use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, Ident, Span, kw, sym};
 use rustc_trait_selection::error_reporting::infer::{FailureCode, ObligationCauseExt};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -2679,7 +2678,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     params.get(is_method as usize..params.len() - sig.decl.c_variadic as usize)?;
                 debug_assert_eq!(params.len(), fn_inputs.len());
                 Some((
-                    fn_inputs.zip(params.iter().map(|param| FnParam::Name(param))).collect(),
+                    fn_inputs.zip(params.iter().map(|&param| FnParam::Name(param))).collect(),
                     generics,
                 ))
             }
@@ -2710,23 +2709,14 @@ impl<'tcx> Visitor<'tcx> for FindClosureArg<'tcx> {
 #[derive(Clone, Copy)]
 enum FnParam<'hir> {
     Param(&'hir hir::Param<'hir>),
-    Name(&'hir Ident),
+    Name(Ident),
 }
+
 impl FnParam<'_> {
     fn span(&self) -> Span {
         match self {
-            Self::Param(x) => x.span,
-            Self::Name(x) => x.span,
-        }
-    }
-
-    fn name(&self) -> Option<Symbol> {
-        match self {
-            Self::Param(x) if let hir::PatKind::Binding(_, _, ident, _) = x.pat.kind => {
-                Some(ident.name)
-            }
-            Self::Name(x) if x.name != kw::Empty => Some(x.name),
-            _ => None,
+            Self::Param(param) => param.span,
+            Self::Name(ident) => ident.span,
         }
     }
 
@@ -2734,8 +2724,23 @@ impl FnParam<'_> {
         struct D<'a>(FnParam<'a>, usize);
         impl fmt::Display for D<'_> {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                if let Some(name) = self.0.name() {
-                    write!(f, "`{name}`")
+                // A "unique" param name is one that (a) exists, and (b) is guaranteed to be unique
+                // among the parameters, i.e. `_` does not count.
+                let unique_name = match self.0 {
+                    FnParam::Param(param)
+                        if let hir::PatKind::Binding(_, _, ident, _) = param.pat.kind =>
+                    {
+                        Some(ident.name)
+                    }
+                    FnParam::Name(ident)
+                        if ident.name != kw::Empty && ident.name != kw::Underscore =>
+                    {
+                        Some(ident.name)
+                    }
+                    _ => None,
+                };
+                if let Some(unique_name) = unique_name {
+                    write!(f, "`{unique_name}`")
                 } else {
                     write!(f, "parameter #{}", self.1 + 1)
                 }

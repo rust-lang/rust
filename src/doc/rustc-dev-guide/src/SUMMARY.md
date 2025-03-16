@@ -178,7 +178,7 @@
         - [Inference details](./opaque-types-impl-trait-inference.md)
         - [Return Position Impl Trait In Trait](./return-position-impl-trait-in-trait.md)
         - [Region inference restrictions][opaque-infer]
-- [Effect checking](./effects.md)
+- [Const condition checking](./effects.md)
 - [Pattern and Exhaustiveness Checking](./pat-exhaustive-checking.md)
 - [Unsafety Checking](./unsafety-checking.md)
 - [MIR dataflow](./mir/dataflow.md)

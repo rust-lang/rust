@@ -11,7 +11,6 @@ LL |     bar(x);
    |
    = note: the result of `format_args!` can only be assigned directly if no placeholders in its arguments are used
    = note: to learn more, visit <https://doc.rust-lang.org/std/macro.format_args.html>
-   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/issue-114374-invalid-help-fmt-args.rs:10:15
@@ -26,7 +25,6 @@ LL |     bar(foo);
    |
    = note: the result of `format_args!` can only be assigned directly if no placeholders in its arguments are used
    = note: to learn more, visit <https://doc.rust-lang.org/std/macro.format_args.html>
-   = note: this error originates in the macro `format_args` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 

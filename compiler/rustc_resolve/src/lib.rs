@@ -9,7 +9,6 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
-#![allow(rustc::potential_query_instability)]
 #![allow(rustc::untranslatable_diagnostic)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
@@ -47,6 +46,7 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::steal::Steal;
 use rustc_data_structures::sync::FreezeReadGuard;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Applicability, Diag, ErrCode, ErrorGuaranteed};
 use rustc_expand::base::{DeriveResolution, SyntaxExtension, SyntaxExtensionKind};
 use rustc_feature::BUILTIN_ATTRIBUTES;
@@ -1046,7 +1046,7 @@ pub struct Resolver<'ra, 'tcx> {
     graph_root: Module<'ra>,
 
     prelude: Option<Module<'ra>>,
-    extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'ra>>,
+    extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'ra>>,
 
     /// N.B., this is used only for better diagnostics, not name resolution itself.
     field_names: LocalDefIdMap<Vec<Ident>>,
@@ -1079,7 +1079,7 @@ pub struct Resolver<'ra, 'tcx> {
     extra_lifetime_params_map: NodeMap<Vec<(Ident, NodeId, LifetimeRes)>>,
 
     /// `CrateNum` resolutions of `extern crate` items.
-    extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
     trait_map: NodeMap<Vec<TraitCandidate>>,
 
@@ -1102,7 +1102,7 @@ pub struct Resolver<'ra, 'tcx> {
     /// some AST passes can generate identifiers that only resolve to local or
     /// lang items.
     empty_module: Module<'ra>,
-    module_map: FxHashMap<DefId, Module<'ra>>,
+    module_map: FxIndexMap<DefId, Module<'ra>>,
     binding_parent_modules: FxHashMap<NameBinding<'ra>, Module<'ra>>,
 
     underscore_disambiguator: u32,
@@ -1136,7 +1136,7 @@ pub struct Resolver<'ra, 'tcx> {
     macro_names: FxHashSet<Ident>,
     builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
     registered_tools: &'tcx RegisteredTools,
-    macro_use_prelude: FxHashMap<Symbol, NameBinding<'ra>>,
+    macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,
     dummy_ext_bang: Arc<SyntaxExtension>,
     dummy_ext_derive: Arc<SyntaxExtension>,
@@ -1145,7 +1145,7 @@ pub struct Resolver<'ra, 'tcx> {
     ast_transform_scopes: FxHashMap<LocalExpnId, Module<'ra>>,
     unused_macros: FxHashMap<LocalDefId, (NodeId, Ident)>,
     /// A map from the macro to all its potentially unused arms.
-    unused_macro_rules: FxIndexMap<LocalDefId, FxHashMap<usize, (Ident, Span)>>,
+    unused_macro_rules: FxIndexMap<LocalDefId, UnordMap<usize, (Ident, Span)>>,
     proc_macro_stubs: FxHashSet<LocalDefId>,
     /// Traces collected during macro resolution and validated when it's complete.
     single_segment_macro_resolutions:
@@ -1259,7 +1259,7 @@ impl<'ra> ResolverArenas<'ra> {
         expn_id: ExpnId,
         span: Span,
         no_implicit_prelude: bool,
-        module_map: &mut FxHashMap<DefId, Module<'ra>>,
+        module_map: &mut FxIndexMap<DefId, Module<'ra>>,
         module_self_bindings: &mut FxHashMap<Module<'ra>, NameBinding<'ra>>,
     ) -> Module<'ra> {
         let module = Module(Interned::new_unchecked(self.modules.alloc(ModuleData::new(
@@ -1404,7 +1404,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         arenas: &'ra ResolverArenas<'ra>,
     ) -> Resolver<'ra, 'tcx> {
         let root_def_id = CRATE_DEF_ID.to_def_id();
-        let mut module_map = FxHashMap::default();
+        let mut module_map = FxIndexMap::default();
         let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
@@ -1421,8 +1421,8 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ExpnId::root(),
             DUMMY_SP,
             true,
-            &mut FxHashMap::default(),
-            &mut FxHashMap::default(),
+            &mut Default::default(),
+            &mut Default::default(),
         );
 
         let mut def_id_to_node_id = IndexVec::default();
@@ -1437,7 +1437,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut invocation_parents = FxHashMap::default();
         invocation_parents.insert(LocalExpnId::ROOT, InvocationParent::ROOT);
 
-        let mut extern_prelude: FxHashMap<Ident, ExternPreludeEntry<'_>> = tcx
+        let mut extern_prelude: FxIndexMap<Ident, ExternPreludeEntry<'_>> = tcx
             .sess
             .opts
             .externs
@@ -1536,7 +1536,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             macro_names: FxHashSet::default(),
             builtin_macros: Default::default(),
             registered_tools,
-            macro_use_prelude: FxHashMap::default(),
+            macro_use_prelude: Default::default(),
             macro_map: FxHashMap::default(),
             dummy_ext_bang: Arc::new(SyntaxExtension::dummy_bang(edition)),
             dummy_ext_derive: Arc::new(SyntaxExtension::dummy_derive(edition)),

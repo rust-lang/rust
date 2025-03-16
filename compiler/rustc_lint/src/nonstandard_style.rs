@@ -274,18 +274,13 @@ impl NonSnakeCase {
             let ident = ident.trim_start_matches('\'');
             let ident = ident.trim_matches('_');
 
-            let mut allow_underscore = true;
-            ident.chars().all(|c| {
-                allow_underscore = match c {
-                    '_' if !allow_underscore => return false,
-                    '_' => false,
-                    // It would be more obvious to use `c.is_lowercase()`,
-                    // but some characters do not have a lowercase form
-                    c if !c.is_uppercase() => true,
-                    _ => return false,
-                };
-                true
-            })
+            if ident.contains("__") {
+                return false;
+            }
+
+            // This correctly handles letters in languages with and without
+            // cases, as well as numbers and underscores.
+            !ident.chars().any(char::is_uppercase)
         }
 
         let name = ident.name.as_str();

@@ -5,11 +5,9 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_infer::infer::outlives::env::OutlivesEnvironment;
 use rustc_infer::infer::{InferCtxt, NllRegionVariableOrigin, TyCtxtInferExt as _};
 use rustc_macros::extension;
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
     self, GenericArgKind, GenericArgs, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeFoldable,
-    TypingMode,
+    TypeVisitableExt, TypingMode, fold_regions,
 };
 use rustc_span::Span;
 use rustc_trait_selection::regions::OutlivesEnvironmentBuildExt;

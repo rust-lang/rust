@@ -35,8 +35,13 @@ jobs:
 
           cd src/ci/citool
 
-          echo "Post-merge analysis result" > output.log
+          printf "*This is an experimental post-merge analysis report. You can ignore it.*\n\n" > output.log
+          printf "<details>\n<summary>Post-merge report</summary>\n\n" >> output.log
+
           cargo run --release post-merge-report ${PARENT_COMMIT} ${{ github.sha }} >> output.log
+
+          printf "</details>\n" >> output.log
+
           cat output.log
 
           gh pr comment ${HEAD_PR} -F output.log

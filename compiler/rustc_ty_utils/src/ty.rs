@@ -5,8 +5,9 @@ use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::bug;
 use rustc_middle::query::Providers;
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, Upcast, fold_regions,
+};
 use rustc_span::DUMMY_SP;
 use rustc_span::def_id::{CRATE_DEF_ID, DefId, LocalDefId};
 use rustc_trait_selection::traits;
@@ -14,49 +15,49 @@ use tracing::instrument;
 
 #[instrument(level = "debug", skip(tcx), ret)]
 fn sized_constraint_for_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
-    use rustc_type_ir::TyKind::*;
-
     match ty.kind() {
         // these are always sized
-        Bool
-        | Char
-        | Int(..)
-        | Uint(..)
-        | Float(..)
-        | RawPtr(..)
-        | Ref(..)
-        | FnDef(..)
-        | FnPtr(..)
-        | Array(..)
-        | Closure(..)
-        | CoroutineClosure(..)
-        | Coroutine(..)
-        | CoroutineWitness(..)
-        | Never
-        | Dynamic(_, _, ty::DynStar) => None,
+        ty::Bool
+        | ty::Char
+        | ty::Int(..)
+        | ty::Uint(..)
+        | ty::Float(..)
+        | ty::RawPtr(..)
+        | ty::Ref(..)
+        | ty::FnDef(..)
+        | ty::FnPtr(..)
+        | ty::Array(..)
+        | ty::Closure(..)
+        | ty::CoroutineClosure(..)
+        | ty::Coroutine(..)
+        | ty::CoroutineWitness(..)
+        | ty::Never
+        | ty::Dynamic(_, _, ty::DynStar) => None,
 
         // these are never sized
-        Str | Slice(..) | Dynamic(_, _, ty::Dyn) | Foreign(..) => Some(ty),
+        ty::Str | ty::Slice(..) | ty::Dynamic(_, _, ty::Dyn) | ty::Foreign(..) => Some(ty),
 
-        Pat(ty, _) => sized_constraint_for_ty(tcx, *ty),
+        ty::Pat(ty, _) => sized_constraint_for_ty(tcx, *ty),
 
-        Tuple(tys) => tys.last().and_then(|&ty| sized_constraint_for_ty(tcx, ty)),
+        ty::Tuple(tys) => tys.last().and_then(|&ty| sized_constraint_for_ty(tcx, ty)),
 
         // recursive case
-        Adt(adt, args) => adt.sized_constraint(tcx).and_then(|intermediate| {
+        ty::Adt(adt, args) => adt.sized_constraint(tcx).and_then(|intermediate| {
             let ty = intermediate.instantiate(tcx, args);
             sized_constraint_for_ty(tcx, ty)
         }),
 
         // these can be sized or unsized.
-        Param(..) | Alias(..) | Error(_) => Some(ty),
+        ty::Param(..) | ty::Alias(..) | ty::Error(_) => Some(ty),
 
         // We cannot instantiate the binder, so just return the *original* type back,
         // but only if the inner type has a sized constraint. Thus we skip the binder,
         // but don't actually use the result from `sized_constraint_for_ty`.
-        UnsafeBinder(inner_ty) => sized_constraint_for_ty(tcx, inner_ty.skip_binder()).map(|_| ty),
+        ty::UnsafeBinder(inner_ty) => {
+            sized_constraint_for_ty(tcx, inner_ty.skip_binder()).map(|_| ty)
+        }
 
-        Placeholder(..) | Bound(..) | Infer(..) => {
+        ty::Placeholder(..) | ty::Bound(..) | ty::Infer(..) => {
             bug!("unexpected type `{ty:?}` in sized_constraint_for_ty")
         }
     }
