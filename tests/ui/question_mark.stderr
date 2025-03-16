@@ -215,5 +215,45 @@ LL | |         return None;
 LL | |     };
    | |______^ help: replace it with: `let v = bar.foo.owned.clone()?;`
 
-error: aborting due to 22 previous errors
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:464:5
+   |
+LL | /     let Some(ref x) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = foo.opt_x.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:474:5
+   |
+LL | /     let Some(ref mut x) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x = foo.opt_x.as_mut()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:485:5
+   |
+LL | /     let Some(ref x @ ref y) = foo.opt_x else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ y = foo.opt_x.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:489:5
+   |
+LL | /     let Some(ref x @ WrapperStructWithString(_)) = bar else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ &WrapperStructWithString(_) = bar.as_ref()?;`
+
+error: this `let...else` may be rewritten with the `?` operator
+  --> tests/ui/question_mark.rs:493:5
+   |
+LL | /     let Some(ref mut x @ WrapperStructWithString(_)) = bar else {
+LL | |         return None;
+LL | |     };
+   | |______^ help: replace it with: `let x @ &mut WrapperStructWithString(_) = bar.as_mut()?;`
+
+error: aborting due to 27 previous errors
 
