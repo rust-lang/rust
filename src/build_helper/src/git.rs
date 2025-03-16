@@ -173,7 +173,7 @@ pub fn get_git_modified_files(
     config: &GitConfig<'_>,
     git_dir: Option<&Path>,
     extensions: &[&str],
-) -> Result<Option<Vec<String>>, String> {
+) -> Result<Vec<String>, String> {
     let merge_base = get_closest_merge_commit(git_dir, config, &[])?;
 
     let mut git = Command::new("git");
@@ -195,7 +195,7 @@ pub fn get_git_modified_files(
             }
         })
         .collect();
-    Ok(Some(files))
+    Ok(files)
 }
 
 /// Returns the files that haven't been added to git yet.
