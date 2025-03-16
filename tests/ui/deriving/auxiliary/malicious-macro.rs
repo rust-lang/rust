@@ -1,4 +1,4 @@
-#![feature(let_chains)]
+//@ edition: 2024
 
 extern crate proc_macro;
 
