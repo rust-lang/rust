@@ -105,6 +105,8 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
 
+      - uses: taiki-e/install-action@nextest
+
       - name: Bump opt-level
         if: matrix.os == 'ubuntu-latest'
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
@@ -122,7 +124,7 @@ jobs:
 
       - name: Test
         if: matrix.os == 'ubuntu-latest' || matrix.os == 'windows-latest' || github.event_name == 'push'
-        run: cargo test -- --quiet
+        run: cargo nextest run --no-fail-fast --hide-progress-bar --status-level fail
 
       - name: Switch to stable toolchain
         run: |
