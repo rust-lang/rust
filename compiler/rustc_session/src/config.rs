@@ -873,27 +873,29 @@ pub struct PrintRequest {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintKind {
-    FileNames,
-    HostTuple,
-    Sysroot,
-    TargetLibdir,
-    CrateName,
+    // tidy-alphabetical-start
+    AllTargetSpecs,
+    CallingConventions,
     Cfg,
     CheckCfg,
-    CallingConventions,
-    TargetList,
+    CodeModels,
+    CrateName,
+    DeploymentTarget,
+    FileNames,
+    HostTuple,
+    LinkArgs,
+    NativeStaticLibs,
+    RelocationModels,
+    SplitDebuginfo,
+    StackProtectorStrategies,
+    Sysroot,
     TargetCPUs,
     TargetFeatures,
-    RelocationModels,
-    CodeModels,
-    TlsModels,
+    TargetLibdir,
+    TargetList,
     TargetSpec,
-    AllTargetSpecs,
-    NativeStaticLibs,
-    StackProtectorStrategies,
-    LinkArgs,
-    SplitDebuginfo,
-    DeploymentTarget,
+    TlsModels,
+    // tidy-alphabetical-end
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Default)]
