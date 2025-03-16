@@ -40,9 +40,13 @@ pub unsafe fn extract_int(x: Result<usize, Box<()>>) -> usize {
 }
 
 // CHECK-LABEL: @extract_box
-// CHECK-SAME: (i{{[0-9]+}} {{[^%]+}} [[DISCRIMINANT:%[0-9]+]], ptr {{[^%]+}} [[PAYLOAD:%[0-9]+]])
+// CHECK-SAME: (i{{[0-9]+}} {{[^%]+}} [[DISCRIMINANT:%x.0]], ptr {{[^%]+}} [[PAYLOAD:%x.1]])
 #[no_mangle]
 pub unsafe fn extract_box(x: Result<usize, Box<i32>>) -> Box<i32> {
+    // CHECK: [[NOT_OK:%.+]] = icmp ne i{{[0-9]+}} [[DISCRIMINANT]], 0
+    // CHECK: call void @llvm.assume(i1 [[NOT_OK]])
+    // CHECK: [[NOT_NULL:%.+]] = icmp ne ptr [[PAYLOAD]], null
+    // CHECK: call void @llvm.assume(i1 [[NOT_NULL]])
     // CHECK: ret ptr [[PAYLOAD]]
     match x {
         Ok(_) => std::intrinsics::unreachable(),

@@ -281,13 +281,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     && in_a.size(self.cx) == out_a.size(self.cx)
                     && in_b.size(self.cx) == out_b.size(self.cx)
                 {
-                    let in_a_ibty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
-                    let in_b_ibty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
-                    let out_a_ibty = bx.scalar_pair_element_backend_type(cast, 0, false);
-                    let out_b_ibty = bx.scalar_pair_element_backend_type(cast, 1, false);
+                    let in_a_bty = bx.scalar_pair_element_backend_type(operand.layout, 0, false);
+                    let in_b_bty = bx.scalar_pair_element_backend_type(operand.layout, 1, false);
+                    let out_a_bty = bx.scalar_pair_element_backend_type(cast, 0, false);
+                    let out_b_bty = bx.scalar_pair_element_backend_type(cast, 1, false);
                     Some(OperandValue::Pair(
-                        self.transmute_immediate(bx, imm_a, in_a, in_a_ibty, out_a, out_a_ibty),
-                        self.transmute_immediate(bx, imm_b, in_b, in_b_ibty, out_b, out_b_ibty),
+                        self.transmute_immediate(bx, imm_a, in_a, in_a_bty, out_a, out_a_bty),
+                        self.transmute_immediate(bx, imm_b, in_b, in_b_bty, out_b, out_b_bty),
                     ))
                 } else {
                     None
@@ -353,7 +353,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     ///
     /// `to_backend_ty` must be the *non*-immediate backend type (so it will be
     /// `i8`, not `i1`, for `bool`-like types.)
-    fn transmute_immediate(
+    pub(crate) fn transmute_immediate(
         &self,
         bx: &mut Bx,
         mut imm: Bx::Value,
@@ -371,8 +371,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             return imm;
         }
 
-        use abi::Primitive::*;
         imm = bx.from_immediate(imm);
+        debug_assert_eq!(bx.cx().val_ty(imm), from_backend_ty);
 
         // If we have a scalar, we must already know its range. Either
         //
@@ -385,8 +385,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // <https://github.com/rust-lang/rust/pull/135610#issuecomment-2599275182>
         self.assume_scalar_range(bx, imm, from_scalar, from_backend_ty);
 
+        use abi::Primitive::*;
         imm = match (from_scalar.primitive(), to_scalar.primitive()) {
-            (Int(..) | Float(_), Int(..) | Float(_)) => bx.bitcast(imm, to_backend_ty),
+            (Int(..), Int(..)) | (Float(_), Float(_)) => imm,
+            (Int(..), Float(_)) | (Float(_), Int(..)) => bx.bitcast(imm, to_backend_ty),
             (Pointer(..), Pointer(..)) => bx.pointercast(imm, to_backend_ty),
             (Int(..), Pointer(..)) => bx.ptradd(bx.const_null(bx.type_ptr()), imm),
             (Pointer(..), Int(..)) => {
@@ -411,6 +413,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // constraint that the `transmute` introduced is to `assume` it.
         self.assume_scalar_range(bx, imm, to_scalar, to_backend_ty);
 
+        debug_assert_eq!(bx.cx().val_ty(imm), to_backend_ty);
         imm = bx.to_immediate_scalar(imm, to_scalar);
         imm
     }
@@ -1157,8 +1160,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::AggregateKind::Coroutine(..) | mir::AggregateKind::CoroutineClosure(..) => false,
                 };
                 allowed_kind && {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let ty = self.monomorphize(ty);
+                    let ty = rvalue.ty(self.mir, self.cx.tcx());
+                    let ty = self.monomorphize(ty);
                     let layout = self.cx.spanned_layout_of(ty, span);
                     !self.cx.is_backend_ref(layout)
                 }
