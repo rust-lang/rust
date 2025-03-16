@@ -3837,10 +3837,7 @@ unsafe fn __lcbb<const BLOCK_BOUNDARY: u16>(ptr: *const u8) -> u32 {
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_add<T, U>(a: T, b: U) -> <T as sealed::VectorAdd<U>>::Result
-where
-    T: sealed::VectorAdd<U>,
-{
+pub unsafe fn vec_add<T: sealed::VectorAdd<U>, U>(a: T, b: U) -> T::Result {
     a.vec_add(b)
 }
 
@@ -3848,10 +3845,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_sub<T, U>(a: T, b: U) -> <T as sealed::VectorSub<U>>::Result
-where
-    T: sealed::VectorSub<U>,
-{
+pub unsafe fn vec_sub<T: sealed::VectorSub<U>, U>(a: T, b: U) -> T::Result {
     a.vec_sub(b)
 }
 
@@ -3865,10 +3859,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_mul<T>(a: T, b: T) -> T
-where
-    T: sealed::VectorMul,
-{
+pub unsafe fn vec_mul<T: sealed::VectorMul>(a: T, b: T) -> T {
     a.vec_mul(b)
 }
 
@@ -3876,10 +3867,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cntlz<T>(a: T) -> <T as sealed::CountBits>::Result
-where
-    T: sealed::CountBits,
-{
+pub unsafe fn vec_cntlz<T: sealed::CountBits>(a: T) -> T::Result {
     a.vec_cntlz()
 }
 
@@ -3887,10 +3875,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_cnttz<T>(a: T) -> <T as sealed::CountBits>::Result
-where
-    T: sealed::CountBits,
-{
+pub unsafe fn vec_cnttz<T: sealed::CountBits>(a: T) -> T::Result {
     a.vec_cnttz()
 }
 
@@ -3900,10 +3885,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_popcnt<T>(a: T) -> <T as sealed::CountBits>::Result
-where
-    T: sealed::CountBits,
-{
+pub unsafe fn vec_popcnt<T: sealed::CountBits>(a: T) -> T::Result {
     a.vec_popcnt()
 }
 
@@ -3911,10 +3893,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_max<T, U>(a: T, b: U) -> <T as sealed::VectorMax<U>>::Result
-where
-    T: sealed::VectorMax<U>,
-{
+pub unsafe fn vec_max<T: sealed::VectorMax<U>, U>(a: T, b: U) -> T::Result {
     a.vec_max(b)
 }
 
@@ -3922,10 +3901,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_min<T, U>(a: T, b: U) -> <T as sealed::VectorMin<U>>::Result
-where
-    T: sealed::VectorMin<U>,
-{
+pub unsafe fn vec_min<T: sealed::VectorMin<U>, U>(a: T, b: U) -> T::Result {
     a.vec_min(b)
 }
 
@@ -3933,10 +3909,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_abs<T>(a: T) -> T
-where
-    T: sealed::VectorAbs,
-{
+pub unsafe fn vec_abs<T: sealed::VectorAbs>(a: T) -> T {
     a.vec_abs()
 }
 
@@ -3968,10 +3941,7 @@ pub unsafe fn vec_nmsub<T: sealed::VectorNmsub>(a: T, b: T, c: T) -> T {
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_sqrt<T>(a: T) -> T
-where
-    T: sealed::VectorSqrt,
-{
+pub unsafe fn vec_sqrt<T: sealed::VectorSqrt>(a: T) -> T {
     a.vec_sqrt()
 }
 
@@ -3979,10 +3949,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_splat<T, const IMM: u32>(a: T) -> T
-where
-    T: sealed::VectorSplat,
-{
+pub unsafe fn vec_splat<T: sealed::VectorSplat, const IMM: u32>(a: T) -> T {
     a.vec_splat::<IMM>()
 }
 
@@ -3990,10 +3957,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_splats<T, U>(a: T) -> U
-where
-    T: sealed::VectorSplats<U>,
-{
+pub unsafe fn vec_splats<T: sealed::VectorSplats<U>, U>(a: T) -> U {
     a.vec_splats()
 }
 
@@ -4001,10 +3965,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_and<T, U>(a: T, b: U) -> <T as sealed::VectorAnd<U>>::Result
-where
-    T: sealed::VectorAnd<U>,
-{
+pub unsafe fn vec_and<T: sealed::VectorAnd<U>, U>(a: T, b: U) -> T::Result {
     a.vec_and(b)
 }
 
@@ -4012,10 +3973,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_or<T, U>(a: T, b: U) -> <T as sealed::VectorOr<U>>::Result
-where
-    T: sealed::VectorOr<U>,
-{
+pub unsafe fn vec_or<T: sealed::VectorOr<U>, U>(a: T, b: U) -> T::Result {
     a.vec_or(b)
 }
 
@@ -4023,10 +3981,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_xor<T, U>(a: T, b: U) -> <T as sealed::VectorXor<U>>::Result
-where
-    T: sealed::VectorXor<U>,
-{
+pub unsafe fn vec_xor<T: sealed::VectorXor<U>, U>(a: T, b: U) -> T::Result {
     a.vec_xor(b)
 }
 
@@ -4034,10 +3989,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_nor<T, U>(a: T, b: U) -> <T as sealed::VectorNor<U>>::Result
-where
-    T: sealed::VectorNor<U>,
-{
+pub unsafe fn vec_nor<T: sealed::VectorNor<U>, U>(a: T, b: U) -> T::Result {
     a.vec_nor(b)
 }
 
@@ -4045,10 +3997,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_nand<T, U>(a: T, b: U) -> <T as sealed::VectorNand<U>>::Result
-where
-    T: sealed::VectorNand<U>,
-{
+pub unsafe fn vec_nand<T: sealed::VectorNand<U>, U>(a: T, b: U) -> T::Result {
     a.vec_nand(b)
 }
 
@@ -4056,10 +4005,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_eqv<T, U>(a: T, b: U) -> <T as sealed::VectorEqv<U>>::Result
-where
-    T: sealed::VectorEqv<U>,
-{
+pub unsafe fn vec_eqv<T: sealed::VectorEqv<U>, U>(a: T, b: U) -> T::Result {
     a.vec_eqv(b)
 }
 
@@ -4067,10 +4013,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_andc<T, U>(a: T, b: U) -> <T as sealed::VectorAndc<U>>::Result
-where
-    T: sealed::VectorAndc<U>,
-{
+pub unsafe fn vec_andc<T: sealed::VectorAndc<U>, U>(a: T, b: U) -> T::Result {
     a.vec_andc(b)
 }
 
@@ -4084,10 +4027,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_orc<T, U>(a: T, b: U) -> <T as sealed::VectorOrc<U>>::Result
-where
-    T: sealed::VectorOrc<U>,
-{
+pub unsafe fn vec_orc<T: sealed::VectorOrc<U>, U>(a: T, b: U) -> T::Result {
     a.vec_orc(b)
 }
 
@@ -4095,10 +4035,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_floor<T>(a: T) -> T
-where
-    T: sealed::VectorFloor,
-{
+pub unsafe fn vec_floor<T: sealed::VectorFloor>(a: T) -> T {
     a.vec_floor()
 }
 
@@ -4106,10 +4043,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_ceil<T>(a: T) -> T
-where
-    T: sealed::VectorCeil,
-{
+pub unsafe fn vec_ceil<T: sealed::VectorCeil>(a: T) -> T {
     a.vec_ceil()
 }
 
@@ -4118,10 +4052,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_trunc<T>(a: T) -> T
-where
-    T: sealed::VectorTrunc,
-{
+pub unsafe fn vec_trunc<T: sealed::VectorTrunc>(a: T) -> T {
     a.vec_trunc()
 }
 
@@ -4130,10 +4061,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_round<T>(a: T) -> T
-where
-    T: sealed::VectorRound,
-{
+pub unsafe fn vec_round<T: sealed::VectorRound>(a: T) -> T {
     a.vec_round()
 }
 
@@ -4142,10 +4070,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_roundc<T>(a: T) -> T
-where
-    T: sealed::VectorRoundc,
-{
+pub unsafe fn vec_roundc<T: sealed::VectorRoundc>(a: T) -> T {
     a.vec_roundc()
 }
 
@@ -4154,10 +4079,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_roundm<T>(a: T) -> T
-where
-    T: sealed::VectorFloor,
-{
+pub unsafe fn vec_roundm<T: sealed::VectorFloor>(a: T) -> T {
     // the IBM docs note
     //
     // > vec_roundm provides the same functionality as vec_floor, except that vec_roundz would not trigger the IEEE-inexact exception.
@@ -4171,10 +4093,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_roundp<T>(a: T) -> T
-where
-    T: sealed::VectorCeil,
-{
+pub unsafe fn vec_roundp<T: sealed::VectorCeil>(a: T) -> T {
     // the IBM docs note
     //
     // > vec_roundp provides the same functionality as vec_ceil, except that vec_roundz would not trigger the IEEE-inexact exception.
@@ -4188,10 +4107,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_roundz<T>(a: T) -> T
-where
-    T: sealed::VectorTrunc,
-{
+pub unsafe fn vec_roundz<T: sealed::VectorTrunc>(a: T) -> T {
     // the IBM docs note
     //
     // > vec_roundz provides the same functionality as vec_trunc, except that vec_roundz would not trigger the IEEE-inexact exception.
@@ -4204,10 +4120,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_rint<T>(a: T) -> T
-where
-    T: sealed::VectorRint,
-{
+pub unsafe fn vec_rint<T: sealed::VectorRint>(a: T) -> T {
     a.vec_rint()
 }
 
@@ -4223,10 +4136,7 @@ pub unsafe fn vec_avg<T: sealed::VectorAvg<U>, U>(a: T, b: U) -> T::Result {
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_sl<T, U>(a: T, b: U) -> <T as sealed::VectorSl<U>>::Result
-where
-    T: sealed::VectorSl<U>,
-{
+pub unsafe fn vec_sl<T: sealed::VectorSl<U>, U>(a: T, b: U) -> T::Result {
     a.vec_sl(b)
 }
 
@@ -4234,10 +4144,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_sr<T, U>(a: T, b: U) -> <T as sealed::VectorSr<U>>::Result
-where
-    T: sealed::VectorSr<U>,
-{
+pub unsafe fn vec_sr<T: sealed::VectorSr<U>, U>(a: T, b: U) -> T::Result {
     a.vec_sr(b)
 }
 
@@ -4245,10 +4152,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_sra<T, U>(a: T, b: U) -> <T as sealed::VectorSra<U>>::Result
-where
-    T: sealed::VectorSra<U>,
-{
+pub unsafe fn vec_sra<T: sealed::VectorSra<U>, U>(a: T, b: U) -> T::Result {
     a.vec_sra(b)
 }
 
@@ -4256,10 +4160,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_slb<T, U>(a: T, b: U) -> <T as sealed::VectorSlb<U>>::Result
-where
-    T: sealed::VectorSlb<U>,
-{
+pub unsafe fn vec_slb<T: sealed::VectorSlb<U>, U>(a: T, b: U) -> T::Result {
     a.vec_slb(b)
 }
 
@@ -4267,10 +4168,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_srb<T, U>(a: T, b: U) -> <T as sealed::VectorSrb<U>>::Result
-where
-    T: sealed::VectorSrb<U>,
-{
+pub unsafe fn vec_srb<T: sealed::VectorSrb<U>, U>(a: T, b: U) -> T::Result {
     a.vec_srb(b)
 }
 
@@ -4278,10 +4176,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_srab<T, U>(a: T, b: U) -> <T as sealed::VectorSrab<U>>::Result
-where
-    T: sealed::VectorSrab<U>,
-{
+pub unsafe fn vec_srab<T: sealed::VectorSrab<U>, U>(a: T, b: U) -> T::Result {
     a.vec_srab(b)
 }
 
@@ -4289,10 +4184,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_rl<T, U>(a: T, b: U) -> <T as sealed::VectorRl<U>>::Result
-where
-    T: sealed::VectorRl<U>,
-{
+pub unsafe fn vec_rl<T: sealed::VectorRl<U>, U>(a: T, b: U) -> T::Result {
     a.vec_rl(b)
 }
 
@@ -4338,10 +4230,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_rli<T>(a: T, bits: core::ffi::c_ulong) -> T
-where
-    T: sealed::VectorRli,
-{
+pub unsafe fn vec_rli<T: sealed::VectorRli>(a: T, bits: core::ffi::c_ulong) -> T {
     a.vec_rli(bits)
 }
 
@@ -4349,10 +4238,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_reve<T>(a: T) -> T
-where
-    T: sealed::VectorReve,
-{
+pub unsafe fn vec_reve<T: sealed::VectorReve>(a: T) -> T {
     a.vec_reve()
 }
 
@@ -4360,10 +4246,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_revb<T>(a: T) -> T
-where
-    T: sealed::VectorRevb,
-{
+pub unsafe fn vec_revb<T: sealed::VectorRevb>(a: T) -> T {
     a.vec_revb()
 }
 
@@ -4371,10 +4254,7 @@ where
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_mergeh<T>(a: T, b: T) -> T
-where
-    T: sealed::VectorMergeh,
-{
+pub unsafe fn vec_mergeh<T: sealed::VectorMergeh>(a: T, b: T) -> T {
     a.vec_mergeh(b)
 }
 
@@ -4438,10 +4318,7 @@ pub unsafe fn vec_unpackl<T: sealed::VectorUnpackl>(a: T) -> <T as sealed::Vecto
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_mergel<T>(a: T, b: T) -> T
-where
-    T: sealed::VectorMergel,
-{
+pub unsafe fn vec_mergel<T: sealed::VectorMergel>(a: T, b: T) -> T {
     a.vec_mergel(b)
 }
 
@@ -4579,10 +4456,7 @@ pub unsafe fn vec_sub_u128(
 #[inline]
 #[target_feature(enable = "vector")]
 #[unstable(feature = "stdarch_s390x", issue = "135681")]
-pub unsafe fn vec_subc<T, U>(a: T, b: U) -> <T as sealed::VectorSubc<U>>::Result
-where
-    T: sealed::VectorSubc<U>,
-{
+pub unsafe fn vec_subc<T: sealed::VectorSubc<U>, U>(a: T, b: U) -> T::Result {
     a.vec_subc(b)
 }
 
@@ -4771,10 +4645,7 @@ macro_rules! vec_find_any {
             #[inline]
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
-            pub unsafe fn $fun<T, U>(a: T, b: U) -> <T as sealed::$Trait<U>>::Result
-            where
-                T: sealed::$Trait<U>,
-            {
+            pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U) -> T::Result {
                 a.$fun(b)
             }
         )*
@@ -4796,10 +4667,7 @@ macro_rules! vec_find_any_cc {
             #[inline]
             #[target_feature(enable = "vector")]
             #[unstable(feature = "stdarch_s390x", issue = "135681")]
-            pub unsafe fn $fun<T, U>(a: T, b: U, c: *mut i32) -> <T as sealed::$Trait<U>>::Result
-            where
-                T: sealed::$Trait<U>,
-            {
+            pub unsafe fn $fun<T: sealed::$Trait<U>, U>(a: T, b: U, c: *mut i32) -> T::Result {
                 a.$fun(b, c)
             }
         )*
