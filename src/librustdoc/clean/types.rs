@@ -5,7 +5,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{AttributeKind, ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -768,7 +768,13 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if is_json {
-                    Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    if matches!(attr, hir::Attribute::Parsed(AttributeKind::Deprecation { .. })) {
+                        // rustdoc-json stores this in `Item::deprecation`, so we
+                        // don't want it it `Item::attrs`.
+                        None
+                    } else {
+                        Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    }
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
@@ -782,6 +788,7 @@ impl Item {
             })
             .collect();
 
+        // Add #[repr(...)]
         if !is_json
             && let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
