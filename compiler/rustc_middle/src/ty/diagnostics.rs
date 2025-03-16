@@ -641,21 +641,19 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IsSuggestableVisitor<'tcx> {
                 }
             }
 
-            Alias(Projection, AliasTy { def_id, .. }) => {
-                if self.tcx.def_kind(def_id) != DefKind::AssocTy {
-                    return ControlFlow::Break(());
-                }
+            Alias(Projection, AliasTy { def_id, .. })
+                if self.tcx.def_kind(def_id) != DefKind::AssocTy =>
+            {
+                return ControlFlow::Break(());
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return ControlFlow::Break(());
-                }
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return ControlFlow::Break(());
             }
 
             _ => {}
@@ -733,17 +731,13 @@ impl<'tcx> FallibleTypeFolder<TyCtxt<'tcx>> for MakeSuggestableFolder<'tcx> {
                 }
             }
 
-            Param(param) => {
-                // FIXME: It would be nice to make this not use string manipulation,
-                // but it's pretty hard to do this, since `ty::ParamTy` is missing
-                // sufficient info to determine if it is synthetic, and we don't
-                // always have a convenient way of getting `ty::Generics` at the call
-                // sites we invoke `IsSuggestable::is_suggestable`.
-                if param.name.as_str().starts_with("impl ") {
-                    return Err(());
-                }
-
-                t
+            // FIXME: It would be nice to make this not use string manipulation,
+            // but it's pretty hard to do this, since `ty::ParamTy` is missing
+            // sufficient info to determine if it is synthetic, and we don't
+            // always have a convenient way of getting `ty::Generics` at the call
+            // sites we invoke `IsSuggestable::is_suggestable`.
+            Param(param) if param.name.as_str().starts_with("impl ") => {
+                return Err(());
             }
 
             _ => t,

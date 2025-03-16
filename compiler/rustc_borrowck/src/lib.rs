@@ -2479,19 +2479,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, '_, 'tcx> {
         let body = self.body;
         for local in body.mut_vars_and_args_iter().filter(|local| !self.used_mut.contains(local)) {
             let local_decl = &body.local_decls[local];
-            let lint_root = match &body.source_scopes[local_decl.source_info.scope].local_data {
-                ClearCrossCrate::Set(data) => data.lint_root,
-                _ => continue,
+            let ClearCrossCrate::Set(SourceScopeLocalData { lint_root, .. }) =
+                body.source_scopes[local_decl.source_info.scope].local_data
+            else {
+                continue;
             };
 
             // Skip over locals that begin with an underscore or have no name
-            match self.local_names[local] {
-                Some(name) => {
-                    if name.as_str().starts_with('_') {
-                        continue;
-                    }
-                }
-                None => continue,
+            if self.local_names[local].is_none_or(|name| name.as_str().starts_with('_')) {
+                continue;
             }
 
             let span = local_decl.source_info.span;
