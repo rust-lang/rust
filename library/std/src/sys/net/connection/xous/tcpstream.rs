@@ -324,7 +324,7 @@ impl TcpStream {
                 }
                 Ok(SocketAddr::V6(SocketAddrV6::new(new_addr.into(), self.local_port, 0, 0)))
             }
-            _ => Err(io::const_error!(io::ErrorKind::InvalidInput, "tnternal error")),
+            _ => Err(io::const_error!(io::ErrorKind::InvalidInput, "internal error")),
         }
     }
 
