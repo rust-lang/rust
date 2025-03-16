@@ -264,7 +264,7 @@ impl fmt::Display for InactiveReason {
 }
 
 /// A `CfgOptions` that implements `Hash`, for the sake of hashing only.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct HashableCfgOptions {
     _enabled: Box<[CfgAtom]>,
 }

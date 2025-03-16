@@ -167,13 +167,13 @@ impl<'a> AssocItemCollector<'a> {
 
         'items: for &item in assoc_items {
             let attrs = item_tree.attrs(self.db, self.module_id.krate, ModItem::from(item).into());
-            if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
+            if !attrs.is_cfg_enabled(self.expander.cfg_options(self.db)) {
                 self.diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
                     tree_id,
                     ModItem::from(item).into(),
                     attrs.cfg().unwrap(),
-                    self.expander.cfg_options().clone(),
+                    self.expander.cfg_options(self.db).clone(),
                 ));
                 continue;
             }

@@ -276,8 +276,8 @@ impl Crate {
         doc_url.map(|s| s.trim_matches('"').trim_end_matches('/').to_owned() + "/")
     }
 
-    pub fn cfg(&self, db: &dyn HirDatabase) -> Arc<CfgOptions> {
-        Arc::clone(self.id.cfg_options(db))
+    pub fn cfg<'db>(&self, db: &'db dyn HirDatabase) -> &'db CfgOptions {
+        self.id.cfg_options(db)
     }
 
     pub fn potential_cfg<'db>(&self, db: &'db dyn HirDatabase) -> &'db CfgOptions {

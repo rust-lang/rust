@@ -11,7 +11,6 @@ use hir_expand::{
 };
 use span::{Edition, SyntaxContext};
 use syntax::{Parse, ast};
-use triomphe::Arc;
 
 use crate::type_ref::{TypesMap, TypesSourceMap};
 use crate::{
@@ -21,7 +20,6 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Expander {
-    cfg_options: Arc<CfgOptions>,
     span_map: OnceCell<SpanMap>,
     current_file_id: HirFileId,
     pub(crate) module: ModuleId,
@@ -44,7 +42,6 @@ impl Expander {
             module,
             recursion_depth: 0,
             recursion_limit,
-            cfg_options: Arc::clone(module.krate.cfg_options(db)),
             span_map: OnceCell::new(),
         }
     }
@@ -141,8 +138,8 @@ impl Expander {
         )
     }
 
-    pub(crate) fn cfg_options(&self) -> &CfgOptions {
-        &self.cfg_options
+    pub(crate) fn cfg_options<'db>(&self, db: &'db dyn DefDatabase) -> &'db CfgOptions {
+        self.module.krate.cfg_options(db)
     }
 
     pub fn current_file_id(&self) -> HirFileId {

@@ -1894,14 +1894,14 @@ impl ExprCollector<'_> {
     fn check_cfg(&mut self, owner: &dyn ast::HasAttrs) -> Option<()> {
         match self.expander.parse_attrs(self.db, owner).cfg() {
             Some(cfg) => {
-                if self.expander.cfg_options().check(&cfg) != Some(false) {
+                if self.expander.cfg_options(self.db).check(&cfg) != Some(false) {
                     return Some(());
                 }
 
                 self.source_map.diagnostics.push(ExpressionStoreDiagnostics::InactiveCode {
                     node: self.expander.in_file(SyntaxNodePtr::new(owner.syntax())),
                     cfg,
-                    opts: self.expander.cfg_options().clone(),
+                    opts: self.expander.cfg_options(self.db).clone(),
                 });
 
                 None

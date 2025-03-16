@@ -18,7 +18,7 @@ impl salsa::Database for LoggerDb {
         let event = event();
         match event.kind {
             salsa::EventKind::WillExecute { .. }
-            | salsa::EventKind::WillCheckCancellation { .. }
+            | salsa::EventKind::WillCheckCancellation
             | salsa::EventKind::DidValidateMemoizedValue { .. }
             | salsa::EventKind::WillDiscardStaleOutput { .. }
             | salsa::EventKind::DidDiscard { .. } => {

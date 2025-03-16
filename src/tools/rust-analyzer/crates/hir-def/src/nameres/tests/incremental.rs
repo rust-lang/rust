@@ -58,7 +58,7 @@ pub const BAZ: u32 = 0;
                 Edition::CURRENT,
                 Some(CrateDisplayName::from_canonical_name(crate_name)),
                 None,
-                Arc::default(),
+                Default::default(),
                 None,
                 Env::default(),
                 CrateOrigin::Local { repo: None, name: Some(Symbol::intern(crate_name)) },

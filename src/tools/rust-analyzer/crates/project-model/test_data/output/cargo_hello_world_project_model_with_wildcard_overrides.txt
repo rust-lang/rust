@@ -22,11 +22,7 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: Some(
-                AbsPathBuf(
-                    "$ROOT$hello-world",
-                ),
-            ),
+            proc_macro_cwd: None,
         },
         extra: ExtraCrateData {
             version: Some(
@@ -107,11 +103,7 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: Some(
-                AbsPathBuf(
-                    "$ROOT$hello-world",
-                ),
-            ),
+            proc_macro_cwd: None,
         },
         extra: ExtraCrateData {
             version: Some(
@@ -192,11 +184,7 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: Some(
-                AbsPathBuf(
-                    "$ROOT$hello-world",
-                ),
-            ),
+            proc_macro_cwd: None,
         },
         extra: ExtraCrateData {
             version: Some(
@@ -277,11 +265,7 @@
                 ),
             },
             is_proc_macro: false,
-            proc_macro_cwd: Some(
-                AbsPathBuf(
-                    "$ROOT$hello-world",
-                ),
-            ),
+            proc_macro_cwd: None,
         },
         extra: ExtraCrateData {
             version: Some(
@@ -345,11 +329,7 @@
                 name: "libc",
             },
             is_proc_macro: false,
-            proc_macro_cwd: Some(
-                AbsPathBuf(
-                    "$ROOT$.cargo/registry/src/github.com-1ecc6299db9ec823/libc-0.2.98",
-                ),
-            ),
+            proc_macro_cwd: None,
         },
         extra: ExtraCrateData {
             version: Some(
