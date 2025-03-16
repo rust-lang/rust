@@ -747,7 +747,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let tcx = self.cx.tcx();
                 OperandRef {
                     val: OperandValue::Immediate(val),
-                    layout: self.cx.layout_of(tcx.types.usize),
+                    layout: self.cx.layout_of(null_op.ty(tcx)),
                 }
             }
 
