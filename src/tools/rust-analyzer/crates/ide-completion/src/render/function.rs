@@ -320,7 +320,9 @@ fn detail(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
         format_to!(detail, "unsafe ");
     }
 
-    format_to!(detail, "fn({})", params_display(ctx, func));
+    detail.push_str("fn(");
+    params_display(ctx, &mut detail, func);
+    detail.push(')');
     if !ret_ty.is_unit() {
         format_to!(detail, " -> {}", ret_ty.display(ctx.db, ctx.display_target));
     }
@@ -342,31 +344,29 @@ fn detail_full(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
     detail
 }
 
-fn params_display(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
-    let mut params = if let Some(self_param) = func.self_param(ctx.db) {
+fn params_display(ctx: &CompletionContext<'_>, detail: &mut String, func: hir::Function) {
+    if let Some(self_param) = func.self_param(ctx.db) {
+        format_to!(detail, "{}", self_param.display(ctx.db, ctx.display_target));
         let assoc_fn_params = func.assoc_fn_params(ctx.db);
         let params = assoc_fn_params
             .iter()
             .skip(1) // skip the self param because we are manually handling that
             .map(|p| p.ty().display(ctx.db, ctx.display_target));
-        format!(
-            "{}{}",
-            self_param.display(ctx.db, ctx.display_target),
-            params.format_with("", |display, f| {
-                f(&", ")?;
-                f(&display)
-            })
-        )
+        for param in params {
+            format_to!(detail, ", {}", param);
+        }
     } else {
         let assoc_fn_params = func.assoc_fn_params(ctx.db);
-        assoc_fn_params.iter().map(|p| p.ty().display(ctx.db, ctx.display_target)).join(", ")
-    };
-
-    if func.is_varargs(ctx.db) {
-        params.push_str(", ...");
+        format_to!(
+            detail,
+            "{}",
+            assoc_fn_params.iter().map(|p| p.ty().display(ctx.db, ctx.display_target)).format(", ")
+        );
     }
 
-    params
+    if func.is_varargs(ctx.db) {
+        detail.push_str(", ...");
+    }
 }
 
 fn params(
