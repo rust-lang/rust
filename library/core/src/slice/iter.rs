@@ -1380,14 +1380,16 @@ impl<'a, T> Iterator for Windows<'a, T> {
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let (end, overflow) = self.size.get().overflowing_add(n);
-        if end > self.v.len() || overflow {
-            self.v = &[];
-            None
-        } else {
-            let nth = &self.v[n..end];
-            self.v = &self.v[n + 1..];
+        let size = self.size.get();
+        if let Some(rest) = self.v.get(n..)
+            && let Some(nth) = rest.get(..size)
+        {
+            self.v = &rest[1..];
             Some(nth)
+        } else {
+            // setting length to 0 is cheaper than overwriting the pointer when assigning &[]
+            self.v = &self.v[..0];
+            None
         }
     }
 
