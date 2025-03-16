@@ -343,7 +343,7 @@ fn detail_full(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
 }
 
 fn params_display(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
-    if let Some(self_param) = func.self_param(ctx.db) {
+    let mut params = if let Some(self_param) = func.self_param(ctx.db) {
         let assoc_fn_params = func.assoc_fn_params(ctx.db);
         let params = assoc_fn_params
             .iter()
@@ -360,7 +360,13 @@ fn params_display(ctx: &CompletionContext<'_>, func: hir::Function) -> String {
     } else {
         let assoc_fn_params = func.assoc_fn_params(ctx.db);
         assoc_fn_params.iter().map(|p| p.ty().display(ctx.db, ctx.display_target)).join(", ")
+    };
+
+    if func.is_varargs(ctx.db) {
+        params.push_str(", ...");
     }
+
+    params
 }
 
 fn params(

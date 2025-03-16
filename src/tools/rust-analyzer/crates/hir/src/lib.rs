@@ -2363,6 +2363,10 @@ impl Function {
         db.function_data(self.id).is_async()
     }
 
+    pub fn is_varargs(self, db: &dyn HirDatabase) -> bool {
+        db.function_data(self.id).is_varargs()
+    }
+
     pub fn extern_block(self, db: &dyn HirDatabase) -> Option<ExternBlock> {
         match self.id.lookup(db.upcast()).container {
             ItemContainerId::ExternBlockId(id) => Some(ExternBlock { id }),
