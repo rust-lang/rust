@@ -53,7 +53,7 @@ fn report_atomic_type_validation_error<'tcx>(
 
 pub(crate) fn clif_vector_type<'tcx>(tcx: TyCtxt<'tcx>, layout: TyAndLayout<'tcx>) -> Type {
     let (element, count) = match layout.backend_repr {
-        BackendRepr::Vector { element, count } => (element, count),
+        BackendRepr::SimdVector { element, count } => (element, count),
         _ => unreachable!(),
     };
 
@@ -340,14 +340,10 @@ fn codegen_float_intrinsic_call<'tcx>(
         sym::ceilf64 => ("ceil", 1, fx.tcx.types.f64, types::F64),
         sym::truncf32 => ("truncf", 1, fx.tcx.types.f32, types::F32),
         sym::truncf64 => ("trunc", 1, fx.tcx.types.f64, types::F64),
-        sym::rintf32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
-        sym::rintf64 => ("rint", 1, fx.tcx.types.f64, types::F64),
+        sym::round_ties_even_f32 => ("rintf", 1, fx.tcx.types.f32, types::F32),
+        sym::round_ties_even_f64 => ("rint", 1, fx.tcx.types.f64, types::F64),
         sym::roundf32 => ("roundf", 1, fx.tcx.types.f32, types::F32),
         sym::roundf64 => ("round", 1, fx.tcx.types.f64, types::F64),
-        sym::roundevenf32 => ("roundevenf", 1, fx.tcx.types.f32, types::F32),
-        sym::roundevenf64 => ("roundeven", 1, fx.tcx.types.f64, types::F64),
-        sym::nearbyintf32 => ("nearbyintf", 1, fx.tcx.types.f32, types::F32),
-        sym::nearbyintf64 => ("nearbyint", 1, fx.tcx.types.f64, types::F64),
         sym::sinf32 => ("sinf", 1, fx.tcx.types.f32, types::F32),
         sym::sinf64 => ("sin", 1, fx.tcx.types.f64, types::F64),
         sym::cosf32 => ("cosf", 1, fx.tcx.types.f32, types::F32),
@@ -399,8 +395,8 @@ fn codegen_float_intrinsic_call<'tcx>(
         | sym::ceilf64
         | sym::truncf32
         | sym::truncf64
-        | sym::nearbyintf32
-        | sym::nearbyintf64
+        | sym::round_ties_even_f32
+        | sym::round_ties_even_f64
         | sym::sqrtf32
         | sym::sqrtf64 => {
             let val = match intrinsic {
@@ -408,7 +404,9 @@ fn codegen_float_intrinsic_call<'tcx>(
                 sym::floorf32 | sym::floorf64 => fx.bcx.ins().floor(args[0]),
                 sym::ceilf32 | sym::ceilf64 => fx.bcx.ins().ceil(args[0]),
                 sym::truncf32 | sym::truncf64 => fx.bcx.ins().trunc(args[0]),
-                sym::nearbyintf32 | sym::nearbyintf64 => fx.bcx.ins().nearest(args[0]),
+                sym::round_ties_even_f32 | sym::round_ties_even_f64 => {
+                    fx.bcx.ins().nearest(args[0])
+                }
                 sym::sqrtf32 | sym::sqrtf64 => fx.bcx.ins().sqrt(args[0]),
                 _ => unreachable!(),
             };
@@ -1033,7 +1031,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1054,7 +1052,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1075,7 +1073,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Int(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());
@@ -1096,7 +1094,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
 
             let layout = src.layout();
             match layout.ty.kind() {
-                ty::Uint(_) | ty::Int(_) | ty::RawPtr(..) => {}
+                ty::Uint(_) => {}
                 _ => {
                     report_atomic_type_validation_error(fx, intrinsic, source_info.span, layout.ty);
                     return Ok(());

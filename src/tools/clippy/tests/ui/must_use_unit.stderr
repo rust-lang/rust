@@ -10,7 +10,7 @@ LL | pub fn must_use_default() {}
    = help: to override `-D warnings` add `#[allow(clippy::must_use_unit)]`
 
 error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:13:1
+  --> tests/ui/must_use_unit.rs:14:1
    |
 LL | #[must_use]
    | ----------- help: remove the attribute
@@ -18,28 +18,12 @@ LL | pub fn must_use_unit() -> () {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:16:1
+  --> tests/ui/must_use_unit.rs:18:1
    |
 LL | #[must_use = "With note"]
    | ------------------------- help: remove the attribute
 LL | pub fn must_use_with_note() {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:31:1
-   |
-LL | #[cfg_attr(all(), must_use, deprecated)]
-   |                   -------------------- help: change these attributes to: `deprecated`
-LL | fn issue_12320() {}
-   | ^^^^^^^^^^^^^^^^
-
-error: this unit-returning function has a `#[must_use]` attribute
-  --> tests/ui/must_use_unit.rs:34:1
-   |
-LL | #[cfg_attr(all(), deprecated, doc = "foo", must_use)]
-   |                   --------------------------------- help: change these attributes to: `deprecated, doc = "foo"`
-LL | fn issue_12320_2() {}
-   | ^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 5 previous errors
+error: aborting due to 3 previous errors
 

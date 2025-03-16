@@ -4,16 +4,16 @@ mod bogus_attribute_types_1 {
     #[deprecated(since = "a", note = "a", reason)] //~ ERROR unknown meta item 'reason'
     fn f1() { }
 
-    #[deprecated(since = "a", note)] //~ ERROR incorrect meta item
+    #[deprecated(since = "a", note)] //~ ERROR expected a quoted string literal
     fn f2() { }
 
-    #[deprecated(since, note = "a")] //~ ERROR incorrect meta item
+    #[deprecated(since, note = "a")] //~ ERROR expected a quoted string literal
     fn f3() { }
 
-    #[deprecated(since = "a", note(b))] //~ ERROR incorrect meta item
+    #[deprecated(since = "a", note(b))] //~ ERROR expected a quoted string literal
     fn f5() { }
 
-    #[deprecated(since(b), note = "a")] //~ ERROR incorrect meta item
+    #[deprecated(since(b), note = "a")] //~ ERROR expected a quoted string literal
     fn f6() { }
 
     #[deprecated(note = b"test")] //~ ERROR literal in `deprecated` value must be a string

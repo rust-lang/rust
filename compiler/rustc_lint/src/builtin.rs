@@ -419,7 +419,7 @@ impl MissingDoc {
             return;
         }
 
-        let attrs = cx.tcx.hir().attrs(cx.tcx.local_def_id_to_hir_id(def_id));
+        let attrs = cx.tcx.hir_attrs(cx.tcx.local_def_id_to_hir_id(def_id));
         let has_doc = attrs.iter().any(has_doc);
         if !has_doc {
             cx.emit_span_lint(
@@ -975,10 +975,8 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #[no_mangle]
-    /// fn foo<T>(t: T) {
-    ///
-    /// }
+    /// #[unsafe(no_mangle)]
+    /// fn foo<T>(t: T) {}
     /// ```
     ///
     /// {{produces}}
@@ -999,7 +997,7 @@ declare_lint_pass!(InvalidNoMangleItems => [NO_MANGLE_CONST_ITEMS, NO_MANGLE_GEN
 
 impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        let attrs = cx.tcx.hir().attrs(it.hir_id());
+        let attrs = cx.tcx.hir_attrs(it.hir_id());
         let check_no_mangle_on_generic_fn = |no_mangle_attr: &hir::Attribute,
                                              impl_generics: Option<&hir::Generics<'_>>,
                                              generics: &hir::Generics<'_>,
@@ -1013,7 +1011,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                         cx.emit_span_lint(
                             NO_MANGLE_GENERIC_ITEMS,
                             span,
-                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span },
+                            BuiltinNoMangleGeneric { suggestion: no_mangle_attr.span() },
                         );
                         break;
                     }
@@ -1052,7 +1050,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                 for it in *items {
                     if let hir::AssocItemKind::Fn { .. } = it.kind {
                         if let Some(no_mangle_attr) =
-                            attr::find_by_name(cx.tcx.hir().attrs(it.id.hir_id()), sym::no_mangle)
+                            attr::find_by_name(cx.tcx.hir_attrs(it.id.hir_id()), sym::no_mangle)
                         {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
@@ -1228,7 +1226,7 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         {
             cx.emit_span_lint(
                 UNGATED_ASYNC_FN_TRACK_CALLER,
-                attr.span,
+                attr.span(),
                 BuiltinUngatedAsyncFnTrackCaller { label: span, session: &cx.tcx.sess },
             );
         }
@@ -2584,34 +2582,35 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         ) -> Option<InitError> {
             let ty = cx.tcx.try_normalize_erasing_regions(cx.typing_env(), ty).unwrap_or(ty);
 
-            use rustc_type_ir::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some("references must be non-null".into()),
-                Adt(..) if ty.is_box() => Some("`Box` must be non-null".into()),
-                FnPtr(..) => Some("function pointers must be non-null".into()),
-                Never => Some("the `!` type has no valid value".into()),
-                RawPtr(ty, _) if matches!(ty.kind(), Dynamic(..)) =>
+                ty::Ref(..) => Some("references must be non-null".into()),
+                ty::Adt(..) if ty.is_box() => Some("`Box` must be non-null".into()),
+                ty::FnPtr(..) => Some("function pointers must be non-null".into()),
+                ty::Never => Some("the `!` type has no valid value".into()),
+                ty::RawPtr(ty, _) if matches!(ty.kind(), ty::Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
                     Some("the vtable of a wide raw pointer must be non-null".into())
                 }
                 // Primitive types with other constraints.
-                Bool if init == InitKind::Uninit => {
+                ty::Bool if init == InitKind::Uninit => {
                     Some("booleans must be either `true` or `false`".into())
                 }
-                Char if init == InitKind::Uninit => {
+                ty::Char if init == InitKind::Uninit => {
                     Some("characters must be a valid Unicode codepoint".into())
                 }
-                Int(_) | Uint(_) if init == InitKind::Uninit => {
+                ty::Int(_) | ty::Uint(_) if init == InitKind::Uninit => {
                     Some("integers must be initialized".into())
                 }
-                Float(_) if init == InitKind::Uninit => Some("floats must be initialized".into()),
-                RawPtr(_, _) if init == InitKind::Uninit => {
+                ty::Float(_) if init == InitKind::Uninit => {
+                    Some("floats must be initialized".into())
+                }
+                ty::RawPtr(_, _) if init == InitKind::Uninit => {
                     Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
-                Adt(adt_def, args) if !adt_def.is_union() => {
+                ty::Adt(adt_def, args) if !adt_def.is_union() => {
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
@@ -2677,11 +2676,11 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                     // We couldn't find anything wrong here.
                     None
                 }
-                Tuple(..) => {
+                ty::Tuple(..) => {
                     // Proceed recursively, check all fields.
                     ty.tuple_fields().iter().find_map(|field| ty_find_init_error(cx, field, init))
                 }
-                Array(ty, len) => {
+                ty::Array(ty, len) => {
                     if matches!(len.try_to_target_usize(cx.tcx), Some(v) if v > 0) {
                         // Array length known at array non-empty -- recurse.
                         ty_find_init_error(cx, *ty, init)
@@ -2909,7 +2908,13 @@ enum AsmLabelKind {
 impl<'tcx> LateLintPass<'tcx> for AsmLabels {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
         if let hir::Expr {
-            kind: hir::ExprKind::InlineAsm(hir::InlineAsm { template_strs, options, .. }),
+            kind:
+                hir::ExprKind::InlineAsm(hir::InlineAsm {
+                    asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
+                    template_strs,
+                    options,
+                    ..
+                }),
             ..
         } = expr
         {

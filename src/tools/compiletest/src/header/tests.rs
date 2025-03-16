@@ -155,7 +155,8 @@ impl ConfigBuilder {
             "--jsondocck-path=",
             "--src-root=",
             "--src-test-suite-root=",
-            "--build-base=",
+            "--build-root=",
+            "--build-test-suite-root=",
             "--sysroot-base=",
             "--cc=c",
             "--cxx=c++",
@@ -238,11 +239,6 @@ fn check_ignore(config: &Config, contents: &str) -> bool {
     d.ignore
 }
 
-fn parse_makefile(config: &Config, contents: &str) -> EarlyProps {
-    let bytes = contents.as_bytes();
-    EarlyProps::from_reader(config, Path::new("Makefile"), bytes)
-}
-
 #[test]
 fn should_fail() {
     let config: Config = cfg().build();
@@ -260,10 +256,6 @@ fn revisions() {
     let config: Config = cfg().build();
 
     assert_eq!(parse_rs(&config, "//@ revisions: a b c").revisions, vec!["a", "b", "c"],);
-    assert_eq!(
-        parse_makefile(&config, "# revisions: hello there").revisions,
-        vec!["hello", "there"],
-    );
 }
 
 #[test]
@@ -895,8 +887,6 @@ fn test_needs_target_has_atomic() {
 }
 
 #[test]
-// FIXME: this test will fail against stage 0 until #137037 changes reach beta.
-#[cfg_attr(bootstrap, ignore)]
 fn test_rustc_abi() {
     let config = cfg().target("i686-unknown-linux-gnu").build();
     assert_eq!(config.target_cfg().rustc_abi, Some("x86-sse2".to_string()));

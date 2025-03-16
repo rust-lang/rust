@@ -1115,6 +1115,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 }
             });
         } else {
+            #[allow(rustc::potential_query_instability)] // FIXME
             for ident in single_imports.iter().cloned() {
                 let result = self.r.maybe_resolve_ident_in_module(
                     ModuleOrUniformRoot::Module(module),
@@ -1527,6 +1528,14 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         self.insert_field_visibilities_local(def_id.to_def_id(), variant.data.fields());
 
         visit::walk_variant(self, variant);
+    }
+
+    fn visit_where_predicate(&mut self, p: &'a ast::WherePredicate) {
+        if p.is_placeholder {
+            self.visit_invoc(p.id);
+        } else {
+            visit::walk_where_predicate(self, p);
+        }
     }
 
     fn visit_crate(&mut self, krate: &'a ast::Crate) {

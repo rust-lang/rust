@@ -1878,7 +1878,7 @@ fn windows_unix_socket_exists() {
         let bytes = socket_path.as_os_str().as_encoded_bytes();
         let bytes = core::slice::from_raw_parts(bytes.as_ptr().cast::<i8>(), bytes.len());
         addr.sun_path[..bytes.len()].copy_from_slice(bytes);
-        let len = mem::size_of_val(&addr) as i32;
+        let len = size_of_val(&addr) as i32;
         let result = c::bind(socket, (&raw const addr).cast::<c::SOCKADDR>(), len);
         c::closesocket(socket);
         assert_eq!(result, 0);
@@ -1914,8 +1914,11 @@ fn test_hidden_file_truncation() {
     assert_eq!(metadata.len(), 0);
 }
 
+// See https://github.com/rust-lang/rust/pull/131072 for more details about why
+// these two tests are disabled under Windows 7 here.
 #[cfg(windows)]
 #[test]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_file_over_open_file() {
     // Make sure that std::fs::rename works if the target file is already opened with FILE_SHARE_DELETE. See #123985.
     let tmpdir = tmpdir();
@@ -1940,6 +1943,7 @@ fn test_rename_file_over_open_file() {
 
 #[test]
 #[cfg(windows)]
+#[cfg_attr(target_vendor = "win7", ignore = "Unsupported under Windows 7.")]
 fn test_rename_directory_to_non_empty_directory() {
     // Renaming a directory over a non-empty existing directory should fail on Windows.
     let tmpdir: TempDir = tmpdir();
@@ -1958,6 +1962,10 @@ fn test_rename_directory_to_non_empty_directory() {
 #[test]
 fn test_rename_symlink() {
     let tmpdir = tmpdir();
+    if !got_symlink_permission(&tmpdir) {
+        return;
+    };
+
     let original = tmpdir.join("original");
     let dest = tmpdir.join("dest");
     let not_exist = Path::new("does not exist");

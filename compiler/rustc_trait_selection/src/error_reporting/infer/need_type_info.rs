@@ -18,7 +18,7 @@ use rustc_middle::ty::{
     TypeFoldable, TypeFolder, TypeSuperFoldable, TypeckResults,
 };
 use rustc_span::{BytePos, DUMMY_SP, FileName, Ident, Span, sym};
-use rustc_type_ir::visit::TypeVisitableExt;
+use rustc_type_ir::TypeVisitableExt;
 use tracing::{debug, instrument, warn};
 
 use super::nice_region_error::placeholder_error::Highlighted;
@@ -137,7 +137,7 @@ impl InferenceDiagnosticsParentData {
 }
 
 impl IntoDiagArg for UnderspecifiedArgKind {
-    fn into_diag_arg(self) -> rustc_errors::DiagArgValue {
+    fn into_diag_arg(self, _: &mut Option<std::path::PathBuf>) -> rustc_errors::DiagArgValue {
         let kind = match self {
             Self::Type { .. } => "type",
             Self::Const { is_parameter: true } => "const_with_param",
@@ -1074,7 +1074,7 @@ impl<'a, 'tcx> FindInferSourceVisitor<'a, 'tcx> {
         &self,
         path: &'tcx hir::Path<'tcx>,
         args: GenericArgsRef<'tcx>,
-    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'a {
+    ) -> impl Iterator<Item = InsertableGenericArgs<'tcx>> + 'tcx {
         let tcx = self.tecx.tcx;
         let have_turbofish = path.segments.iter().any(|segment| {
             segment.args.is_some_and(|args| args.args.iter().any(|arg| arg.is_ty_or_const()))
@@ -1351,7 +1351,7 @@ impl<'a, 'tcx> Visitor<'tcx> for FindInferSourceVisitor<'a, 'tcx> {
             && !has_impl_trait(def_id)
             // FIXME(fn_delegation): In delegation item argument spans are equal to last path
             // segment. This leads to ICE's when emitting `multipart_suggestion`.
-            && tcx.hir().opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
+            && tcx.hir_opt_delegation_sig_id(expr.hir_id.owner.def_id).is_none()
         {
             let successor =
                 method_args.get(0).map_or_else(|| (")", span.hi()), |arg| (", ", arg.span.lo()));

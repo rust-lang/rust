@@ -144,14 +144,6 @@ impl<'tcx> ObligationCause<'tcx> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, HashStable, TyEncodable, TyDecodable)]
-#[derive(TypeVisitable, TypeFoldable)]
-pub struct UnifyReceiverContext<'tcx> {
-    pub assoc_item: ty::AssocItem,
-    pub param_env: ty::ParamEnv<'tcx>,
-    pub args: GenericArgsRef<'tcx>,
-}
-
 /// A compact form of `ObligationCauseCode`.
 #[derive(Clone, PartialEq, Eq, Default, HashStable)]
 #[derive(TypeVisitable, TypeFoldable, TyEncodable, TyDecodable)]
@@ -274,7 +266,7 @@ pub enum ObligationCauseCode<'tcx> {
     },
 
     /// Constant expressions must be sized.
-    ConstSized,
+    SizedConstOrStatic,
 
     /// `static` items must have `Sync` type.
     SharedStatic,
@@ -360,8 +352,6 @@ pub enum ObligationCauseCode<'tcx> {
     /// Method receiver
     MethodReceiver,
 
-    UnifyReceiver(Box<UnifyReceiverContext<'tcx>>),
-
     /// `return` with no expression
     ReturnNoExpression,
 
@@ -407,9 +397,9 @@ pub enum ObligationCauseCode<'tcx> {
 
     RustCall,
 
-    /// Obligations to prove that a `std::ops::Drop` impl is not stronger than
+    /// Obligations to prove that a `Drop` or negative auto trait impl is not stronger than
     /// the ADT it's being implemented for.
-    DropImpl,
+    AlwaysApplicableImpl,
 
     /// Requirement for a `const N: Ty` to implement `Ty: ConstParamTy`
     ConstParam(Ty<'tcx>),
@@ -786,7 +776,7 @@ impl DynCompatibilityViolation {
     pub fn error_msg(&self) -> Cow<'static, str> {
         match self {
             DynCompatibilityViolation::SizedSelf(_) => "it requires `Self: Sized`".into(),
-            DynCompatibilityViolation::SupertraitSelf(ref spans) => {
+            DynCompatibilityViolation::SupertraitSelf(spans) => {
                 if spans.iter().any(|sp| *sp != DUMMY_SP) {
                     "it uses `Self` as a type parameter".into()
                 } else {
@@ -990,12 +980,9 @@ pub enum CodegenObligationError {
     /// overflow bug, since I believe this is the only case
     /// where ambiguity can result.
     Ambiguity,
-    /// This can trigger when we probe for the source of a `'static` lifetime requirement
-    /// on a trait object: `impl Foo for dyn Trait {}` has an implicit `'static` bound.
-    /// This can also trigger when we have a global bound that is not actually satisfied,
-    /// but was included during typeck due to the trivial_bounds feature.
+    /// This can trigger when we have a global bound that is not actually satisfied
+    /// due to trivial bounds.
     Unimplemented,
-    FulfillmentError,
     /// The selected impl has unconstrained generic parameters. This will emit an error
     /// during impl WF checking.
     UnconstrainedParam(ErrorGuaranteed),

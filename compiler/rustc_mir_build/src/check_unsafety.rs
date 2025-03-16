@@ -2,6 +2,7 @@ use std::borrow::Cow;
 use std::mem;
 use std::ops::Bound;
 
+use rustc_ast::AsmMacro;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::DiagArgValue;
 use rustc_hir::def::DefKind;
@@ -450,6 +451,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
             | ExprKind::Tuple { .. }
             | ExprKind::Unary { .. }
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::Assign { .. }
             | ExprKind::AssignOp { .. }
             | ExprKind::Break { .. }
@@ -559,7 +561,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 }
             }
             ExprKind::InlineAsm(box InlineAsmExpr {
-                asm_macro: _,
+                asm_macro: AsmMacro::Asm | AsmMacro::NakedAsm,
                 ref operands,
                 template: _,
                 options: _,
@@ -583,7 +585,7 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                         }
                         Out { expr: None, reg: _, late: _ }
                         | Const { value: _, span: _ }
-                        | SymFn { value: _, span: _ }
+                        | SymFn { value: _ }
                         | SymStatic { def_id: _ } => {}
                         Label { block } => {
                             // Label blocks are safe context.
@@ -751,6 +753,11 @@ impl UnsafeOpKind {
         span: Span,
         suggest_unsafe_block: bool,
     ) {
+        if tcx.hir_opt_delegation_sig_id(hir_id.owner.def_id).is_some() {
+            // The body of the delegation item is synthesized, so it makes no sense
+            // to emit this lint.
+            return;
+        }
         let parent_id = tcx.hir_get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {

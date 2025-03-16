@@ -506,9 +506,9 @@ impl<'tcx> TypeRelation<TyCtxt<'tcx>> for FunctionalVariances<'tcx> {
         self.tcx
     }
 
-    fn relate_with_variance<T: ty::relate::Relate<TyCtxt<'tcx>>>(
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
         &mut self,
-        variance: rustc_type_ir::Variance,
+        variance: ty::Variance,
         _: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
         a: T,
         b: T,

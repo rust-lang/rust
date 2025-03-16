@@ -84,14 +84,11 @@ fn get_simple_intrinsic<'gcc, 'tcx>(
         sym::ceilf64 => "ceil",
         sym::truncf32 => "truncf",
         sym::truncf64 => "trunc",
-        sym::rintf32 => "rintf",
-        sym::rintf64 => "rint",
-        sym::nearbyintf32 => "nearbyintf",
-        sym::nearbyintf64 => "nearbyint",
+        // We match the LLVM backend and lower this to `rint`.
+        sym::round_ties_even_f32 => "rintf",
+        sym::round_ties_even_f64 => "rint",
         sym::roundf32 => "roundf",
         sym::roundf64 => "round",
-        sym::roundevenf32 => "roundevenf",
-        sym::roundevenf64 => "roundeven",
         sym::abort => "abort",
         _ => return None,
     };
@@ -315,7 +312,7 @@ impl<'a, 'gcc, 'tcx> IntrinsicCallBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tc
                 let layout = self.layout_of(tp_ty).layout;
                 let _use_integer_compare = match layout.backend_repr() {
                     Scalar(_) | ScalarPair(_, _) => true,
-                    Vector { .. } => false,
+                    SimdVector { .. } => false,
                     Memory { .. } => {
                         // For rusty ABIs, small aggregates are actually passed
                         // as `RegKind::Integer` (see `FnAbi::adjust_for_abi`),

@@ -16,10 +16,10 @@ extern crate rustc_driver;
 extern crate rustc_interface;
 extern crate stable_mir;
 
-use std::collections::HashSet;
 use rustc_smir::rustc_internal;
-use stable_mir::*;
 use stable_mir::mir::MirVisitor;
+use stable_mir::*;
+use std::collections::HashSet;
 use std::io::Write;
 use std::ops::ControlFlow;
 
@@ -27,7 +27,7 @@ const CRATE_NAME: &str = "input";
 
 fn test_visitor() -> ControlFlow<()> {
     let main_fn = stable_mir::entry_fn();
-    let main_body = main_fn.unwrap().body();
+    let main_body = main_fn.unwrap().expect_body();
     let main_visitor = TestVisitor::collect(&main_body);
     assert!(main_visitor.ret_val.is_some());
     assert!(main_visitor.args.is_empty());
@@ -51,7 +51,7 @@ struct TestVisitor<'a> {
     pub tys: HashSet<ty::Ty>,
     pub ret_val: Option<mir::LocalDecl>,
     pub args: Vec<mir::LocalDecl>,
-    pub calls: Vec<mir::mono::Instance>
+    pub calls: Vec<mir::mono::Instance>,
 }
 
 impl<'a> TestVisitor<'a> {
@@ -90,8 +90,8 @@ impl<'a> mir::MirVisitor for TestVisitor<'a> {
     fn visit_terminator(&mut self, term: &mir::Terminator, location: mir::visit::Location) {
         if let mir::TerminatorKind::Call { func, .. } = &term.kind {
             let ty::TyKind::RigidTy(ty) = func.ty(self.body.locals()).unwrap().kind() else {
-                unreachable!
-            () };
+                unreachable!()
+            };
             let ty::RigidTy::FnDef(def, args) = ty else { unreachable!() };
             self.calls.push(mir::mono::Instance::resolve(def, &args).unwrap());
         }

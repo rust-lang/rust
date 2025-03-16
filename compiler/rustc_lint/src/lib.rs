@@ -21,20 +21,18 @@
 
 // tidy-alphabetical-start
 #![allow(internal_features)]
-#![cfg_attr(bootstrap, feature(trait_upcasting))]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
-#![feature(extract_if)]
 #![feature(if_let_guard)]
 #![feature(iter_order_by)]
 #![feature(let_chains)]
 #![feature(rustc_attrs)]
 #![feature(rustdoc_internals)]
 #![feature(try_blocks)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 mod async_closures;
@@ -600,6 +598,11 @@ fn register_builtins(store: &mut LintStore) {
         "cenum_impl_drop_cast",
         "converted into hard error, \
          see <https://github.com/rust-lang/rust/issues/73333> for more information",
+    );
+    store.register_removed(
+        "ptr_cast_add_auto_to_object",
+        "converted into hard error, see issue #127323 \
+         <https://github.com/rust-lang/rust/issues/127323> for more information",
     );
 }
 

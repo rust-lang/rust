@@ -6,6 +6,7 @@ use rustc_ast::{
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::unord::UnordSet;
 use rustc_errors::codes::*;
 use rustc_errors::{
     Applicability, Diag, DiagCtxtHandle, ErrorGuaranteed, MultiSpan, SuggestionStyle,
@@ -42,10 +43,10 @@ use crate::imports::{Import, ImportKind};
 use crate::late::{PatternSource, Rib};
 use crate::{
     AmbiguityError, AmbiguityErrorMisc, AmbiguityKind, BindingError, BindingKey, Finalize,
-    HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module, ModuleKind,
-    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, PrivacyError,
-    ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used, VisResolutionError,
-    errors as errs, path_names_to_string,
+    ForwardGenericParamBanReason, HasGenericParams, LexicalScopeBinding, MacroRulesScope, Module,
+    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
+    PrivacyError, ResolutionError, Resolver, Scope, ScopeSet, Segment, UseError, Used,
+    VisResolutionError, errors as errs, path_names_to_string,
 };
 
 type Res = def::Res<ast::NodeId>;
@@ -887,12 +888,17 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 participle,
                 name,
             }),
-            ResolutionError::ForwardDeclaredGenericParam => {
-                self.dcx().create_err(errs::ForwardDeclaredGenericParam { span })
+            ResolutionError::ForwardDeclaredGenericParam(param, reason) => match reason {
+                ForwardGenericParamBanReason::Default => {
+                    self.dcx().create_err(errs::ForwardDeclaredGenericParam { param, span })
+                }
+                ForwardGenericParamBanReason::ConstParamTy => self
+                    .dcx()
+                    .create_err(errs::ForwardDeclaredGenericInConstParamTy { param, span }),
+            },
+            ResolutionError::ParamInTyOfConstParam { name } => {
+                self.dcx().create_err(errs::ParamInTyOfConstParam { span, name })
             }
-            ResolutionError::ParamInTyOfConstParam { name, param_kind: is_type } => self
-                .dcx()
-                .create_err(errs::ParamInTyOfConstParam { span, name, param_kind: is_type }),
             ResolutionError::ParamInNonTrivialAnonConst { name, param_kind: is_type } => {
                 self.dcx().create_err(errs::ParamInNonTrivialAnonConst {
                     span,
@@ -908,9 +914,14 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             ResolutionError::ParamInEnumDiscriminant { name, param_kind: is_type } => self
                 .dcx()
                 .create_err(errs::ParamInEnumDiscriminant { span, name, param_kind: is_type }),
-            ResolutionError::SelfInGenericParamDefault => {
-                self.dcx().create_err(errs::SelfInGenericParamDefault { span })
-            }
+            ResolutionError::ForwardDeclaredSelf(reason) => match reason {
+                ForwardGenericParamBanReason::Default => {
+                    self.dcx().create_err(errs::SelfInGenericParamDefault { span })
+                }
+                ForwardGenericParamBanReason::ConstParamTy => {
+                    self.dcx().create_err(errs::SelfInConstGenericTy { span })
+                }
+            },
             ResolutionError::UnreachableLabel { name, definition_span, suggestion } => {
                 let ((sub_suggestion_label, sub_suggestion), sub_unreachable_label) =
                     match suggestion {
@@ -1457,6 +1468,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             return;
         }
 
+        #[allow(rustc::potential_query_instability)] // FIXME
         let unused_macro = self.unused_macros.iter().find_map(|(def_id, (_, unused_ident))| {
             if unused_ident.name == ident.name { Some((def_id, unused_ident)) } else { None }
         });
@@ -1806,7 +1818,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             && !def_id.is_local()
             && let Some(attr) = self.tcx.get_attr(def_id, sym::non_exhaustive)
         {
-            non_exhaustive = Some(attr.span);
+            non_exhaustive = Some(attr.span());
         } else if let Some(span) = ctor_fields_span {
             let label = errors::ConstructorPrivateIfAnyFieldPrivate { span };
             err.subdiagnostic(label);
@@ -2252,7 +2264,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
     #[instrument(level = "debug", skip(self, parent_scope))]
     pub(crate) fn make_path_suggestion(
         &mut self,
-        span: Span,
         mut path: Vec<Segment>,
         parent_scope: &ParentScope<'ra>,
     ) -> Option<(Vec<Segment>, Option<String>)> {
@@ -2267,7 +2278,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                     && !first.ident.is_path_segment_keyword() =>
             {
                 // Insert a placeholder that's later replaced by `self`/`super`/etc.
-                path.insert(0, Segment::from_ident(Ident::empty()));
+                path.insert(0, Segment::from_ident(Ident::dummy()));
             }
             _ => return None,
         }
@@ -2480,7 +2491,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             //   or  `use a::{b, c, d}};`
             //               ^^^^^^^^^^^
             let (has_nested, after_crate_name) =
-                find_span_immediately_after_crate_name(self.tcx.sess, module_name, import.use_span);
+                find_span_immediately_after_crate_name(self.tcx.sess, import.use_span);
             debug!(has_nested, ?after_crate_name);
 
             let source_map = self.tcx.sess.source_map();
@@ -2687,11 +2698,7 @@ fn extend_span_to_previous_binding(sess: &Session, binding_span: Span) -> Option
 /// //       ^^^^^^^^^^^^^^^ -- true
 /// ```
 #[instrument(level = "debug", skip(sess))]
-fn find_span_immediately_after_crate_name(
-    sess: &Session,
-    module_name: Symbol,
-    use_span: Span,
-) -> (bool, Span) {
+fn find_span_immediately_after_crate_name(sess: &Session, use_span: Span) -> (bool, Span) {
     let source_map = sess.source_map();
 
     // Using `use issue_59764::foo::{baz, makro};` as an example throughout..
@@ -2858,18 +2865,11 @@ fn show_candidates(
             } else {
                 // Get the unique item kinds and if there's only one, we use the right kind name
                 // instead of the more generic "items".
-                let mut kinds = accessible_path_strings
+                let kinds = accessible_path_strings
                     .iter()
                     .map(|(_, descr, _, _, _)| *descr)
-                    .collect::<FxHashSet<&str>>()
-                    .into_iter();
-                let kind = if let Some(kind) = kinds.next()
-                    && let None = kinds.next()
-                {
-                    kind
-                } else {
-                    "item"
-                };
+                    .collect::<UnordSet<&str>>();
+                let kind = if let Some(kind) = kinds.get_only() { kind } else { "item" };
                 let s = if kind.ends_with('s') { "es" } else { "s" };
 
                 ("one of these", kind, s, String::new(), "")

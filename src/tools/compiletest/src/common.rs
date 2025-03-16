@@ -190,6 +190,9 @@ pub struct Config {
     /// The cargo executable.
     pub cargo_path: Option<PathBuf>,
 
+    /// Rustc executable used to compile run-make recipes.
+    pub stage0_rustc_path: Option<PathBuf>,
+
     /// The rustdoc executable.
     pub rustdoc_path: Option<PathBuf>,
 
@@ -220,8 +223,10 @@ pub struct Config {
     /// The directory containing the test suite sources. Must be a subdirectory of `src_root`.
     pub src_test_suite_root: PathBuf,
 
-    /// The directory where programs should be built
-    pub build_base: PathBuf,
+    /// Root build directory (e.g. `build/`).
+    pub build_root: PathBuf,
+    /// Test suite specific build directory (e.g. `build/host/test/ui/`).
+    pub build_test_suite_root: PathBuf,
 
     /// The directory containing the compiler sysroot
     pub sysroot_base: PathBuf,
@@ -347,7 +352,7 @@ pub struct Config {
 
     /// If true, this will generate a coverage file with UI test files that run `MachineApplicable`
     /// diagnostics but are missing `run-rustfix` annotations. The generated coverage file is
-    /// created in `/<build_base>/rustfix_missing_coverage.txt`
+    /// created in `<test_suite_build_root>/rustfix_missing_coverage.txt`
     pub rustfix_coverage: bool,
 
     /// whether to run `tidy` (html-tidy) when a rustdoc test fails
@@ -476,9 +481,17 @@ impl Config {
     }
 
     pub fn has_asm_support(&self) -> bool {
+        // This should match the stable list in `LoweringContext::lower_inline_asm`.
         static ASM_SUPPORTED_ARCHS: &[&str] = &[
-            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "x86",
+            "x86_64",
+            "arm",
+            "aarch64",
+            "arm64ec",
+            "riscv32",
             "riscv64",
+            "loongarch64",
+            "s390x",
             // These targets require an additional asm_experimental_arch feature.
             // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
         ];
@@ -812,12 +825,16 @@ pub const UI_STDERR_16: &str = "16bit.stderr";
 pub const UI_COVERAGE: &str = "coverage";
 pub const UI_COVERAGE_MAP: &str = "cov-map";
 
-/// Absolute path to the directory where all output for all tests in the given
-/// `relative_dir` group should reside. Example:
-///   /path/to/build/host-tuple/test/ui/relative/
+/// Absolute path to the directory where all output for all tests in the given `relative_dir` group
+/// should reside. Example:
+///
+/// ```text
+/// /path/to/build/host-tuple/test/ui/relative/
+/// ```
+///
 /// This is created early when tests are collected to avoid race conditions.
 pub fn output_relative_path(config: &Config, relative_dir: &Path) -> PathBuf {
-    config.build_base.join(relative_dir)
+    config.build_test_suite_root.join(relative_dir)
 }
 
 /// Generates a unique name for the test, such as `testname.revision.mode`.

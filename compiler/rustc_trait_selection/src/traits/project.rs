@@ -13,9 +13,9 @@ use rustc_infer::traits::{ObligationCauseCode, PredicateObligations};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::traits::{BuiltinImplSource, ImplSource, ImplSourceUserDefinedData};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Term, Ty, TyCtxt, TypingMode, Upcast};
+use rustc_middle::ty::{
+    self, Term, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, TypingMode, Upcast,
+};
 use rustc_middle::{bug, span_bug};
 use rustc_span::sym;
 use rustc_type_ir::elaborate;
@@ -1232,8 +1232,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // why we special case object types.
                 false
             }
-            ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-            | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
+            ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => {
                 // These traits have no associated types.
                 selcx.tcx().dcx().span_delayed_bug(
                     obligation.cause.span,
@@ -1325,8 +1324,7 @@ fn confirm_select_candidate<'cx, 'tcx>(
         }
         ImplSource::Builtin(BuiltinImplSource::Object { .. }, _)
         | ImplSource::Param(..)
-        | ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _)
-        | ImplSource::Builtin(BuiltinImplSource::TupleUnsizing, _) => {
+        | ImplSource::Builtin(BuiltinImplSource::TraitUpcasting { .. }, _) => {
             // we don't create Select candidates with this kind of resolution
             span_bug!(
                 obligation.cause.span,

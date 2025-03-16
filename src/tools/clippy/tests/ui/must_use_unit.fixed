@@ -7,10 +7,13 @@ extern crate proc_macros;
 use proc_macros::external;
 
 pub fn must_use_default() {}
+//~^ must_use_unit
 
 pub fn must_use_unit() -> () {}
+//~^ must_use_unit
 
 pub fn must_use_with_note() {}
+//~^ must_use_unit
 
 fn main() {
     must_use_default();
@@ -23,9 +26,3 @@ fn main() {
         fn foo() {}
     );
 }
-
-#[cfg_attr(all(), deprecated)]
-fn issue_12320() {}
-
-#[cfg_attr(all(), deprecated, doc = "foo")]
-fn issue_12320_2() {}

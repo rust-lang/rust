@@ -62,9 +62,7 @@ pub struct DerivableImpls {
 
 impl DerivableImpls {
     pub fn new(conf: &'static Conf) -> Self {
-        DerivableImpls {
-            msrv: conf.msrv.clone(),
-        }
+        DerivableImpls { msrv: conf.msrv }
     }
 }
 
@@ -199,17 +197,15 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             && let ImplItemKind::Fn(_, b) = &impl_item.kind
             && let Body { value: func_expr, .. } = cx.tcx.hir_body(*b)
             && let &ty::Adt(adt_def, args) = cx.tcx.type_of(item.owner_id).instantiate_identity().kind()
-            && let attrs = cx.tcx.hir().attrs(item.hir_id())
+            && let attrs = cx.tcx.hir_attrs(item.hir_id())
             && !attrs.iter().any(|attr| attr.doc_str().is_some())
-            && cx.tcx.hir().attrs(impl_item_hir).is_empty()
+            && cx.tcx.hir_attrs(impl_item_hir).is_empty()
         {
             if adt_def.is_struct() {
                 check_struct(cx, item, self_ty, func_expr, adt_def, args, cx.tcx.typeck_body(*b));
-            } else if adt_def.is_enum() && self.msrv.meets(msrvs::DEFAULT_ENUM_ATTRIBUTE) {
+            } else if adt_def.is_enum() && self.msrv.meets(cx, msrvs::DEFAULT_ENUM_ATTRIBUTE) {
                 check_enum(cx, item, func_expr, adt_def);
             }
         }
     }
-
-    extract_msrv_attr!(LateContext);
 }

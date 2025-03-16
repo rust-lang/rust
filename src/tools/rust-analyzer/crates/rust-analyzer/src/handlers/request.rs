@@ -32,13 +32,13 @@ use triomphe::Arc;
 use vfs::{AbsPath, AbsPathBuf, FileId, VfsPath};
 
 use crate::{
-    completion_item_hash,
     config::{Config, RustfmtConfig, WorkspaceSymbolConfig},
     diagnostics::convert_diagnostic,
     global_state::{FetchWorkspaceRequest, GlobalState, GlobalStateSnapshot},
     hack_recover_crate_name,
     line_index::LineEndings,
     lsp::{
+        completion_item_hash,
         ext::{
             InternalTestingFetchConfigOption, InternalTestingFetchConfigParams,
             InternalTestingFetchConfigResponse,
@@ -427,7 +427,12 @@ pub(crate) fn handle_on_enter(
         Some(it) => it,
     };
     let line_index = snap.file_line_index(position.file_id)?;
-    let edit = to_proto::snippet_text_edit_vec(&line_index, true, edit);
+    let edit = to_proto::snippet_text_edit_vec(
+        &line_index,
+        true,
+        edit,
+        snap.config.change_annotation_support(),
+    );
     Ok(Some(edit))
 }
 
@@ -464,7 +469,12 @@ pub(crate) fn handle_on_type_formatting(
     let (_, (text_edit, snippet_edit)) = edit.source_file_edits.into_iter().next().unwrap();
     stdx::always!(snippet_edit.is_none(), "on type formatting shouldn't use structured snippets");
 
-    let change = to_proto::snippet_text_edit_vec(&line_index, edit.is_snippet, text_edit);
+    let change = to_proto::snippet_text_edit_vec(
+        &line_index,
+        edit.is_snippet,
+        text_edit,
+        snap.config.change_annotation_support(),
+    );
     Ok(Some(change))
 }
 
@@ -941,9 +951,7 @@ pub(crate) fn handle_runnables(
 
         let update_test = runnable.update_test;
         if let Some(mut runnable) = to_proto::runnable(&snap, runnable)? {
-            if let Some(runnable) =
-                to_proto::make_update_runnable(&runnable, &update_test.label(), &update_test.env())
-            {
+            if let Some(runnable) = to_proto::make_update_runnable(&runnable, update_test) {
                 res.push(runnable);
             }
 
@@ -2027,7 +2035,12 @@ pub(crate) fn handle_move_item(
     match snap.analysis.move_item(range, direction)? {
         Some(text_edit) => {
             let line_index = snap.file_line_index(file_id)?;
-            Ok(to_proto::snippet_text_edit_vec(&line_index, true, text_edit))
+            Ok(to_proto::snippet_text_edit_vec(
+                &line_index,
+                true,
+                text_edit,
+                snap.config.change_annotation_support(),
+            ))
         }
         None => Ok(vec![]),
     }
@@ -2158,7 +2171,7 @@ fn runnable_action_links(
 
     if hover_actions_config.update_test && client_commands_config.run_single {
         let label = update_test.label();
-        if let Some(r) = to_proto::make_update_runnable(&r, &label, &update_test.env()) {
+        if let Some(r) = to_proto::make_update_runnable(&r, update_test) {
             let update_command = to_proto::command::run_single(&r, label.unwrap().as_str());
             group.commands.push(to_command_link(update_command, r.label.clone()));
         }

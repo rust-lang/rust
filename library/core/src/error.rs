@@ -47,7 +47,7 @@ use crate::fmt::{self, Debug, Display, Formatter};
 /// impl Error for ReadConfigError {}
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Error")]
+#[rustc_diagnostic_item = "Error"]
 #[rustc_has_incoherent_inherent_impls]
 #[allow(multiple_supertrait_upcastable)]
 pub trait Error: Debug + Display {
@@ -1099,5 +1099,5 @@ impl Error for crate::time::TryFromFloatSecsError {}
 #[stable(feature = "cstr_from_bytes_until_nul", since = "1.69.0")]
 impl Error for crate::ffi::FromBytesUntilNulError {}
 
-#[stable(feature = "get_many_mut", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "get_many_mut", since = "1.86.0")]
 impl Error for crate::slice::GetDisjointMutError {}

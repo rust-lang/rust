@@ -23,9 +23,8 @@ fn raw_parts_kind(cx: &LateContext<'_>, did: DefId) -> Option<RawPartsKind> {
     }
 }
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: &Msrv) {
-    if msrv.meets(msrvs::PTR_SLICE_RAW_PARTS)
-        && let ty::RawPtr(ptrty, _) = cast_to.kind()
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>, cast_to: Ty<'_>, msrv: Msrv) {
+    if let ty::RawPtr(ptrty, _) = cast_to.kind()
         && let ty::Slice(_) = ptrty.kind()
         && let ExprKind::Call(fun, [ptr_arg, len_arg]) = cast_expr.peel_blocks().kind
         && let ExprKind::Path(ref qpath) = fun.kind
@@ -33,6 +32,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
         && let Some(rpk) = raw_parts_kind(cx, fun_def_id)
         && let ctxt = expr.span.ctxt()
         && cast_expr.span.ctxt() == ctxt
+        && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS)
     {
         let func = match rpk {
             RawPartsKind::Immutable => "from_raw_parts",

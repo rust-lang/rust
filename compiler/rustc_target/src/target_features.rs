@@ -461,6 +461,7 @@ const HEXAGON_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static POWERPC_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("altivec", Unstable(sym::powerpc_target_feature), &[]),
+    ("msync", Unstable(sym::powerpc_target_feature), &[]),
     ("partword-atomics", Unstable(sym::powerpc_target_feature), &[]),
     ("power10-vector", Unstable(sym::powerpc_target_feature), &["power9-vector"]),
     ("power8-altivec", Unstable(sym::powerpc_target_feature), &["altivec"]),
@@ -497,9 +498,14 @@ static RISCV_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     ("relax", Unstable(sym::riscv_target_feature), &[]),
     ("unaligned-scalar-mem", Unstable(sym::riscv_target_feature), &[]),
     ("v", Unstable(sym::riscv_target_feature), &[]),
+    ("za128rs", Unstable(sym::riscv_target_feature), &[]),
+    ("za64rs", Unstable(sym::riscv_target_feature), &[]),
     ("zaamo", Unstable(sym::riscv_target_feature), &[]),
     ("zabha", Unstable(sym::riscv_target_feature), &["zaamo"]),
+    ("zacas", Unstable(sym::riscv_target_feature), &["zaamo"]),
     ("zalrsc", Unstable(sym::riscv_target_feature), &[]),
+    ("zama16b", Unstable(sym::riscv_target_feature), &[]),
+    ("zawrs", Unstable(sym::riscv_target_feature), &[]),
     ("zba", Stable, &[]),
     ("zbb", Stable, &[]),
     ("zbc", Stable, &[]),
@@ -597,13 +603,18 @@ static CSKY_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
 static LOONGARCH_FEATURES: &[(&str, Stability, ImpliedFeatures)] = &[
     // tidy-alphabetical-start
     ("d", Unstable(sym::loongarch_target_feature), &["f"]),
+    ("div32", Unstable(sym::loongarch_target_feature), &[]),
     ("f", Unstable(sym::loongarch_target_feature), &[]),
     ("frecipe", Unstable(sym::loongarch_target_feature), &[]),
+    ("lam-bh", Unstable(sym::loongarch_target_feature), &[]),
+    ("lamcas", Unstable(sym::loongarch_target_feature), &[]),
     ("lasx", Unstable(sym::loongarch_target_feature), &["lsx"]),
     ("lbt", Unstable(sym::loongarch_target_feature), &[]),
+    ("ld-seq-sa", Unstable(sym::loongarch_target_feature), &[]),
     ("lsx", Unstable(sym::loongarch_target_feature), &["d"]),
     ("lvz", Unstable(sym::loongarch_target_feature), &[]),
     ("relax", Unstable(sym::loongarch_target_feature), &[]),
+    ("scq", Unstable(sym::loongarch_target_feature), &[]),
     ("ual", Unstable(sym::loongarch_target_feature), &[]),
     // tidy-alphabetical-end
 ];
@@ -762,17 +773,15 @@ impl Target {
         }
     }
 
-    pub fn implied_target_features<'a>(
-        &self,
-        base_features: impl Iterator<Item = &'a str>,
-    ) -> FxHashSet<&'a str> {
+    // Note: the returned set includes `base_feature`.
+    pub fn implied_target_features<'a>(&self, base_feature: &'a str) -> FxHashSet<&'a str> {
         let implied_features =
             self.rust_target_features().iter().map(|(f, _, i)| (f, i)).collect::<FxHashMap<_, _>>();
 
-        // implied target features have their own implied target features, so we traverse the
-        // map until there are no more features to add
+        // Implied target features have their own implied target features, so we traverse the
+        // map until there are no more features to add.
         let mut features = FxHashSet::default();
-        let mut new_features = base_features.collect::<Vec<&str>>();
+        let mut new_features = vec![base_feature];
         while let Some(new_feature) = new_features.pop() {
             if features.insert(new_feature) {
                 if let Some(implied_features) = implied_features.get(&new_feature) {

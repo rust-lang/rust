@@ -1,12 +1,12 @@
 use super::Builder;
 use crate::any::Any;
 use crate::panic::panic_any;
+use crate::result;
 use crate::sync::atomic::{AtomicBool, Ordering};
 use crate::sync::mpsc::{Sender, channel};
 use crate::sync::{Arc, Barrier};
 use crate::thread::{self, Scope, ThreadId};
 use crate::time::{Duration, Instant};
-use crate::{mem, result};
 
 // !!! These tests are dangerous. If something is buggy, they will hang, !!!
 // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -327,7 +327,7 @@ fn sleep_ms_smoke() {
 
 #[test]
 fn test_size_of_option_thread_id() {
-    assert_eq!(mem::size_of::<Option<ThreadId>>(), mem::size_of::<ThreadId>());
+    assert_eq!(size_of::<Option<ThreadId>>(), size_of::<ThreadId>());
 }
 
 #[test]

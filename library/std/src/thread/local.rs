@@ -50,7 +50,8 @@ use crate::fmt;
 /// use std::cell::Cell;
 /// use std::thread;
 ///
-/// thread_local!(static FOO: Cell<u32> = Cell::new(1));
+/// // explicit `const {}` block enables more efficient initialization
+/// thread_local!(static FOO: Cell<u32> = const { Cell::new(1) });
 ///
 /// assert_eq!(FOO.get(), 1);
 /// FOO.set(2);
@@ -138,7 +139,7 @@ impl<T: 'static> fmt::Debug for LocalKey<T> {
 /// use std::cell::{Cell, RefCell};
 ///
 /// thread_local! {
-///     pub static FOO: Cell<u32> = Cell::new(1);
+///     pub static FOO: Cell<u32> = const { Cell::new(1) };
 ///
 ///     static BAR: RefCell<Vec<f32>> = RefCell::new(vec![1.0, 2.0]);
 /// }
@@ -394,7 +395,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<i32> = Cell::new(1);
+    ///     static X: Cell<i32> = const { Cell::new(1) };
     /// }
     ///
     /// assert_eq!(X.get(), 1);
@@ -423,7 +424,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<Option<i32>> = Cell::new(Some(1));
+    ///     static X: Cell<Option<i32>> = const { Cell::new(Some(1)) };
     /// }
     ///
     /// assert_eq!(X.take(), Some(1));
@@ -453,7 +454,7 @@ impl<T: 'static> LocalKey<Cell<T>> {
     /// use std::cell::Cell;
     ///
     /// thread_local! {
-    ///     static X: Cell<i32> = Cell::new(1);
+    ///     static X: Cell<i32> = const { Cell::new(1) };
     /// }
     ///
     /// assert_eq!(X.replace(2), 1);

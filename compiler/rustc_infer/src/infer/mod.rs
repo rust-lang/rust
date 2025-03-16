@@ -15,7 +15,6 @@ use region_constraints::{
 };
 pub use relate::StructurallyRelateAliases;
 pub use relate::combine::PredicateEmittingRelation;
-use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_data_structures::undo_log::{Rollback, UndoLogs};
 use rustc_data_structures::unify as ut;
@@ -29,14 +28,11 @@ use rustc_middle::infer::canonical::{CanonicalQueryInput, CanonicalVarValues};
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::traits::select;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::{
-    BoundVarReplacerDelegate, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions,
-};
-use rustc_middle::ty::visit::TypeVisitableExt;
 use rustc_middle::ty::{
-    self, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs, GenericArgsRef,
-    GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt, TyVid,
-    TypeVisitable, TypingEnv, TypingMode,
+    self, BoundVarReplacerDelegate, ConstVid, FloatVid, GenericArg, GenericArgKind, GenericArgs,
+    GenericArgsRef, GenericParamDefKind, InferConst, IntVid, PseudoCanonicalInput, Ty, TyCtxt,
+    TyVid, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable, TypeVisitableExt, TypingEnv,
+    TypingMode, fold_regions,
 };
 use rustc_span::{Span, Symbol};
 use snapshot::undo_log::InferCtxtUndoLogs;
@@ -233,7 +229,7 @@ impl<'tcx> InferCtxtInner<'tcx> {
     // while looping through this.
     pub fn iter_opaque_types(
         &self,
-    ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> + '_ {
+    ) -> impl Iterator<Item = (ty::OpaqueTypeKey<'tcx>, ty::OpaqueHiddenType<'tcx>)> {
         self.opaque_type_storage.opaque_types.iter().map(|(&k, &v)| (k, v))
     }
 }
@@ -1295,9 +1291,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// The returned function is used in a fast path. If it returns `true` the variable is
     /// unchanged, `false` indicates that the status is unknown.
     #[inline]
-    pub fn is_ty_infer_var_definitely_unchanged<'a>(
-        &'a self,
-    ) -> (impl Fn(TyOrConstInferVar) -> bool + Captures<'tcx> + 'a) {
+    pub fn is_ty_infer_var_definitely_unchanged(&self) -> impl Fn(TyOrConstInferVar) -> bool {
         // This hoists the borrow/release out of the loop body.
         let inner = self.inner.try_borrow();
 

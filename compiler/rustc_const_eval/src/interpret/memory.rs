@@ -263,9 +263,9 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             M::GLOBAL_KIND.map(MemoryKind::Machine),
             "dynamically allocating global memory"
         );
-        // We have set things up so we don't need to call `adjust_from_tcx` here,
-        // so we avoid copying the entire allocation contents.
-        let extra = M::init_alloc_extra(self, id, kind, alloc.size(), alloc.align)?;
+        // This cannot be merged with the `adjust_global_allocation` code path
+        // since here we have an allocation that already uses `M::Bytes`.
+        let extra = M::init_local_allocation(self, id, kind, alloc.size(), alloc.align)?;
         let alloc = alloc.with_extra(extra);
         self.memory.alloc_map.insert(id, (kind, alloc));
         M::adjust_alloc_root_pointer(self, Pointer::from(id), Some(kind))
@@ -955,18 +955,13 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
 
     /// Handle the effect an FFI call might have on the state of allocations.
     /// This overapproximates the modifications which external code might make to memory:
-    /// We set all reachable allocations as initialized, mark all provenances as exposed
+    /// We set all reachable allocations as initialized, mark all reachable provenances as exposed
     /// and overwrite them with `Provenance::WILDCARD`.
-    pub fn prepare_for_native_call(
-        &mut self,
-        id: AllocId,
-        initial_prov: M::Provenance,
-    ) -> InterpResult<'tcx> {
-        // Expose provenance of the root allocation.
-        M::expose_provenance(self, initial_prov)?;
-
+    ///
+    /// The allocations in `ids` are assumed to be already exposed.
+    pub fn prepare_for_native_call(&mut self, ids: Vec<AllocId>) -> InterpResult<'tcx> {
         let mut done = FxHashSet::default();
-        let mut todo = vec![id];
+        let mut todo = ids;
         while let Some(id) = todo.pop() {
             if !done.insert(id) {
                 // We already saw this allocation before, don't process it again.
@@ -987,6 +982,10 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     todo.push(id);
                 }
             }
+            // Also expose the provenance of the interpreter-level allocation, so it can
+            // be read by FFI. The `black_box` is defensive programming as LLVM likes
+            // to (incorrectly) optimize away ptr2int casts whose result is unused.
+            std::hint::black_box(alloc.get_bytes_unchecked_raw().expose_provenance());
 
             // Prepare for possible write from native code if mutable.
             if info.mutbl.is_mut() {

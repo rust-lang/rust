@@ -9,8 +9,6 @@ LL | | where
 LL | |     T: Borrow<Q>,
 LL | |     Q: ?Sized + PartialOrd,
    | |___________________________- first implementation here
-   |
-   = note: this error originates in the derive macro `PartialEq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 1 previous error
 

@@ -475,7 +475,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
         );
         if result != libc::B_OK {
             use crate::io::ErrorKind;
-            Err(io::const_error!(ErrorKind::Uncategorized, "Error getting executable path"))
+            Err(io::const_error!(ErrorKind::Uncategorized, "error getting executable path"))
         } else {
             // find_path adds the null terminator.
             let name = CStr::from_ptr(name.as_ptr()).to_bytes();
@@ -484,7 +484,12 @@ pub fn current_exe() -> io::Result<PathBuf> {
     }
 }
 
-#[cfg(any(target_os = "redox", target_os = "rtems"))]
+#[cfg(target_os = "redox")]
+pub fn current_exe() -> io::Result<PathBuf> {
+    crate::fs::read_to_string("/scheme/sys/exe").map(PathBuf::from)
+}
+
+#[cfg(target_os = "rtems")]
 pub fn current_exe() -> io::Result<PathBuf> {
     crate::fs::read_to_string("sys:exe").map(PathBuf::from)
 }
@@ -492,7 +497,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 #[cfg(target_os = "l4re")]
 pub fn current_exe() -> io::Result<PathBuf> {
     use crate::io::ErrorKind;
-    Err(io::const_error!(ErrorKind::Unsupported, "Not yet implemented!"))
+    Err(io::const_error!(ErrorKind::Unsupported, "not yet implemented!"))
 }
 
 #[cfg(target_os = "vxworks")]

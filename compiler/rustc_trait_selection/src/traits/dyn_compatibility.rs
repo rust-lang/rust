@@ -24,7 +24,9 @@ use super::elaborate;
 use crate::infer::TyCtxtInferExt;
 pub use crate::traits::DynCompatibilityViolation;
 use crate::traits::query::evaluate_obligation::InferCtxtExt;
-use crate::traits::{MethodViolationCode, Obligation, ObligationCause, util};
+use crate::traits::{
+    MethodViolationCode, Obligation, ObligationCause, normalize_param_env_or_error, util,
+};
 
 /// Returns the dyn-compatibility violations that affect HIR ty lowering.
 ///
@@ -538,10 +540,10 @@ fn receiver_for_self_ty<'tcx>(
 /// a pointer.
 ///
 /// In practice, we cannot use `dyn Trait` explicitly in the obligation because it would result in
-/// a new check that `Trait` is dyn-compatible, creating a cycle (until dyn_compatible_for_dispatch
-/// is stabilized, see tracking issue <https://github.com/rust-lang/rust/issues/43561>).
-/// Instead, we fudge a little by introducing a new type parameter `U` such that
+/// a new check that `Trait` is dyn-compatible, creating a cycle.
+/// Instead, we emulate a placeholder by introducing a new type parameter `U` such that
 /// `Self: Unsize<U>` and `U: Trait + ?Sized`, and use `U` in place of `dyn Trait`.
+///
 /// Written as a chalk-style query:
 /// ```ignore (not-rust)
 /// forall (U: Trait + ?Sized) {
@@ -572,8 +574,6 @@ fn receiver_is_dispatchable<'tcx>(
 
     // the type `U` in the query
     // use a bogus type parameter to mimic a forall(U) query using u32::MAX for now.
-    // FIXME(mikeyhew) this is a total hack. Once dyn_compatible_for_dispatch is stabilized, we can
-    // replace this with `dyn Trait`
     let unsized_self_ty: Ty<'tcx> =
         Ty::new_param(tcx, u32::MAX, rustc_span::sym::RustaceansAreAwesome);
 
@@ -581,8 +581,8 @@ fn receiver_is_dispatchable<'tcx>(
     let unsized_receiver_ty =
         receiver_for_self_ty(tcx, receiver_ty, unsized_self_ty, method.def_id);
 
-    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` added to caller bounds
-    // `U: ?Sized` is already implied here
+    // create a modified param env, with `Self: Unsize<U>` and `U: Trait` (and all of
+    // its supertraits) added to caller bounds. `U: ?Sized` is already implied here.
     let param_env = {
         let param_env = tcx.param_env(method.def_id);
 
@@ -600,10 +600,13 @@ fn receiver_is_dispatchable<'tcx>(
             ty::TraitRef::new_from_args(tcx, trait_def_id, args).upcast(tcx)
         };
 
-        let caller_bounds =
-            param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]);
-
-        ty::ParamEnv::new(tcx.mk_clauses_from_iter(caller_bounds))
+        normalize_param_env_or_error(
+            tcx,
+            ty::ParamEnv::new(tcx.mk_clauses_from_iter(
+                param_env.caller_bounds().iter().chain([unsize_predicate, trait_predicate]),
+            )),
+            ObligationCause::dummy_with_span(tcx.def_span(method.def_id)),
+        )
     };
 
     // Receiver: DispatchFromDyn<Receiver[Self => U]>
@@ -698,11 +701,11 @@ impl<'tcx> TypeVisitor<TyCtxt<'tcx>> for IllegalSelfTypeVisitor<'tcx> {
                     ControlFlow::Continue(())
                 }
             }
-            ty::Alias(ty::Projection, ref data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
+            ty::Alias(ty::Projection, data) if self.tcx.is_impl_trait_in_trait(data.def_id) => {
                 // We'll deny these later in their own pass
                 ControlFlow::Continue(())
             }
-            ty::Alias(ty::Projection, ref data) => {
+            ty::Alias(ty::Projection, data) => {
                 match self.allow_self_projections {
                     AllowSelfProjections::Yes => {
                         // This is a projected type `<Foo as SomeTrait>::X`.

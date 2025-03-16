@@ -4,6 +4,7 @@ use clippy_utils::sugg::Sugg;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{get_expr_use_or_unification_node, is_lint_allowed, path_def_id, path_to_local, std_or_core};
 use hir::LifetimeName;
+use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, MultiSpan};
 use rustc_hir::hir_id::{HirId, HirIdMap};
 use rustc_hir::intravisit::{Visitor, walk_expr};
@@ -19,7 +20,6 @@ use rustc_middle::ty::{self, Binder, ClauseKind, ExistentialPredicate, List, Pre
 use rustc_session::declare_lint_pass;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, sym};
-use rustc_abi::ExternAbi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::{fmt, iter};

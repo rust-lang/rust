@@ -36,7 +36,7 @@ which implement the `memory64` feature and if they do they're likely behind a
 flag, for example:
 
 * Nodejs - `--experimental-wasm-memory64`
-* Wasmtime - `--wasm-features memory64`
+* Wasmtime - `--wasm memory64`
 
 Also note that at this time the `wasm64-unknown-unknown` target assumes the
 presence of other merged wasm proposals such as (with their LLVM feature flags):

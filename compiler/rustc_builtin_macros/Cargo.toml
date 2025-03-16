@@ -1,11 +1,7 @@
 [package]
 name = "rustc_builtin_macros"
 version = "0.0.0"
-edition = "2021"
-
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(llvm_enzyme)'] }
+edition = "2024"
 
 [lib]
 doctest = false
@@ -20,6 +16,7 @@ rustc_errors = { path = "../rustc_errors" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_fluent_macro = { path = "../rustc_fluent_macro" }
+rustc_hir = { path = "../rustc_hir" }
 rustc_index = { path = "../rustc_index" }
 rustc_lexer = { path = "../rustc_lexer" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }

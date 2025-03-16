@@ -1,9 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::bug;
-use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitor};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperVisitable, TypeVisitor};
 use rustc_span::Span;
-use rustc_type_ir::fold::TypeFoldable;
 use tracing::debug;
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

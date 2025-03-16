@@ -274,7 +274,6 @@
 // tidy-alphabetical-start
 
 // stabilization was reverted after it hit beta
-#![cfg_attr(not(bootstrap), feature(extended_varargs_abi_support))]
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]
@@ -293,6 +292,7 @@
 #![feature(doc_masked)]
 #![feature(doc_notable_trait)]
 #![feature(dropck_eyepatch)]
+#![feature(extended_varargs_abi_support)]
 #![feature(f128)]
 #![feature(f16)]
 #![feature(formatting_options)]
@@ -666,6 +666,8 @@ pub mod arch {
     pub use std_detect::is_loongarch_feature_detected;
     #[unstable(feature = "is_riscv_feature_detected", issue = "111192")]
     pub use std_detect::is_riscv_feature_detected;
+    #[unstable(feature = "stdarch_s390x_feature_detection", issue = "135413")]
+    pub use std_detect::is_s390x_feature_detected;
     #[stable(feature = "simd_x86", since = "1.27.0")]
     pub use std_detect::is_x86_feature_detected;
     #[unstable(feature = "stdarch_mips_feature_detection", issue = "111188")]

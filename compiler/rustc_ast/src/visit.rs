@@ -597,7 +597,7 @@ pub fn walk_use_tree<'a, V: Visitor<'a>>(
             visit_opt!(visitor, visit_ident, rename);
         }
         UseTreeKind::Glob => {}
-        UseTreeKind::Nested { ref items, span: _ } => {
+        UseTreeKind::Nested { items, span: _ } => {
             for &(ref nested_tree, nested_id) in items {
                 try_visit!(visitor.visit_use_tree(nested_tree, nested_id, true));
             }
@@ -833,7 +833,8 @@ pub fn walk_where_predicate<'a, V: Visitor<'a>>(
     visitor: &mut V,
     predicate: &'a WherePredicate,
 ) -> V::Result {
-    let WherePredicate { kind, id: _, span: _ } = predicate;
+    let WherePredicate { attrs, kind, id: _, span: _, is_placeholder: _ } = predicate;
+    walk_list!(visitor, visit_attribute, attrs);
     visitor.visit_where_predicate_kind(kind)
 }
 
@@ -891,7 +892,14 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             _ctxt,
             _ident,
             _vis,
-            Fn { defaultness: _, sig: FnSig { header, decl, span: _ }, generics, contract, body },
+            Fn {
+                defaultness: _,
+                sig: FnSig { header, decl, span: _ },
+                generics,
+                contract,
+                body,
+                define_opaque,
+            },
         ) => {
             // Identifier and visibility are visited as a part of the item.
             try_visit!(visitor.visit_fn_header(header));
@@ -899,6 +907,9 @@ pub fn walk_fn<'a, V: Visitor<'a>>(visitor: &mut V, kind: FnKind<'a>) -> V::Resu
             try_visit!(visitor.visit_fn_decl(decl));
             visit_opt!(visitor, visit_contract, contract);
             visit_opt!(visitor, visit_block, body);
+            for (id, path) in define_opaque.iter().flatten() {
+                try_visit!(visitor.visit_path(path, *id))
+            }
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             try_visit!(visitor.visit_closure_binder(binder));
@@ -1202,7 +1213,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
                 FnKind::Closure(binder, coroutine_kind, fn_decl, body),
                 *span,
                 *id
-            ))
+            ));
         }
         ExprKind::Block(block, opt_label) => {
             visit_opt!(visitor, visit_label, opt_label);
@@ -1210,6 +1221,7 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
         }
         ExprKind::Gen(_capt, body, _kind, _decl_span) => try_visit!(visitor.visit_block(body)),
         ExprKind::Await(expr, _span) => try_visit!(visitor.visit_expr(expr)),
+        ExprKind::Use(expr, _span) => try_visit!(visitor.visit_expr(expr)),
         ExprKind::Assign(lhs, rhs, _span) => {
             try_visit!(visitor.visit_expr(lhs));
             try_visit!(visitor.visit_expr(rhs));

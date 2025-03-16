@@ -126,11 +126,7 @@ impl Step for Miri {
 
         // This compiler runs on the host, we'll just use it for the target.
         let target_compiler = builder.compiler(stage, host);
-        // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
-        // we'd have stageN/bin/rustc and stageN/bin/rustdoc be effectively different stage
-        // compilers, which isn't what we want. Rustdoc should be linked in the same way as the
-        // rustc compiler it's paired with, so it must be built with the previous stage compiler.
-        let host_compiler = builder.compiler(stage - 1, host);
+        let host_compiler = tool::get_tool_rustc_compiler(builder, target_compiler);
 
         // Get a target sysroot for Miri.
         let miri_sysroot = test::Miri::build_miri_sysroot(builder, target_compiler, target);
@@ -369,5 +365,30 @@ impl Step for FeaturesStatusDump {
         cmd.arg(builder.out.join("features-status-dump.json"));
 
         cmd.run(builder);
+    }
+}
+
+/// Dummy step that can be used to deliberately trigger bootstrap's step cycle
+/// detector, for automated and manual testing.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct CyclicStep {
+    n: u32,
+}
+
+impl Step for CyclicStep {
+    type Output = ();
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("cyclic-step")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // Start with n=2, so that we build up a few stack entries before panicking.
+        run.builder.ensure(CyclicStep { n: 2 })
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        // When n=0, the step will try to ensure itself, causing a step cycle.
+        builder.ensure(CyclicStep { n: self.n.saturating_sub(1) })
     }
 }

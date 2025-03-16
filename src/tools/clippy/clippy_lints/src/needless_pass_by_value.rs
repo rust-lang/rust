@@ -5,6 +5,7 @@ use clippy_utils::source::{SpanRangeExt, snippet};
 use clippy_utils::ty::{
     implements_trait, implements_trait_with_env_from_iter, is_copy, is_type_diagnostic_item, is_type_lang_item,
 };
+use rustc_abi::ExternAbi;
 use rustc_errors::{Applicability, Diag};
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
@@ -19,7 +20,6 @@ use rustc_session::declare_lint_pass;
 use rustc_span::def_id::LocalDefId;
 use rustc_span::symbol::kw;
 use rustc_span::{Span, sym};
-use rustc_abi::ExternAbi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::misc::type_allowed_to_implement_copy;
 
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         match kind {
             FnKind::ItemFn(.., header) => {
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
@@ -325,6 +325,8 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _: HirId) {
         self.move_common(cmt);
     }
+
+    fn use_cloned(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
 

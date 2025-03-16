@@ -7,6 +7,7 @@ pub mod foo {
 
     // this line should produce a warning:
     pub fn to_foo() {}
+    //~^ module_name_repetitions
 
     // but this line shouldn't
     pub fn bar_foo() {}

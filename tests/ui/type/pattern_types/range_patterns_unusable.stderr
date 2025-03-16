@@ -4,7 +4,7 @@ error[E0512]: cannot transmute between types of different sizes, or dependently-
 LL |     let _: Option<u32> = unsafe { std::mem::transmute(z) };
    |                                   ^^^^^^^^^^^^^^^^^^^
    |
-   = note: source type: `Option<(u32) is 1..=>` (32 bits)
+   = note: source type: `Option<(u32) is 1..>` (32 bits)
    = note: target type: `Option<u32>` (64 bits)
 
 error: aborting due to 1 previous error

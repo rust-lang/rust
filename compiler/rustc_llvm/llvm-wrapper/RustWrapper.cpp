@@ -152,8 +152,12 @@ extern "C" LLVMContextRef LLVMRustContextCreate(bool shouldDiscardNames) {
 }
 
 extern "C" void LLVMRustSetNormalizedTarget(LLVMModuleRef M,
-                                            const char *Triple) {
-  unwrap(M)->setTargetTriple(Triple::normalize(Triple));
+                                            const char *Target) {
+#if LLVM_VERSION_GE(21, 0)
+  unwrap(M)->setTargetTriple(Triple(Triple::normalize(Target)));
+#else
+  unwrap(M)->setTargetTriple(Triple::normalize(Target));
+#endif
 }
 
 extern "C" void LLVMRustPrintPassTimings(RustStringRef OutBuf) {
@@ -1766,6 +1770,24 @@ extern "C" LLVMValueRef LLVMRustBuildMaxNum(LLVMBuilderRef B, LLVMValueRef LHS,
                                             LLVMValueRef RHS) {
   return wrap(unwrap(B)->CreateMaxNum(unwrap(LHS), unwrap(RHS)));
 }
+
+#if LLVM_VERSION_LT(19, 0)
+enum {
+  LLVMGEPFlagInBounds = (1 << 0),
+  LLVMGEPFlagNUSW = (1 << 1),
+  LLVMGEPFlagNUW = (1 << 2),
+};
+extern "C" LLVMValueRef
+LLVMBuildGEPWithNoWrapFlags(LLVMBuilderRef B, LLVMTypeRef Ty,
+                            LLVMValueRef Pointer, LLVMValueRef *Indices,
+                            unsigned NumIndices, const char *Name,
+                            unsigned NoWrapFlags) {
+  if (NoWrapFlags & LLVMGEPFlagInBounds)
+    return LLVMBuildInBoundsGEP2(B, Ty, Pointer, Indices, NumIndices, Name);
+  else
+    return LLVMBuildGEP2(B, Ty, Pointer, Indices, NumIndices, Name);
+}
+#endif
 
 // Transfers ownership of DiagnosticHandler unique_ptr to the caller.
 extern "C" DiagnosticHandler *

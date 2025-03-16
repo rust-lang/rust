@@ -174,15 +174,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn hir_free_items(self) -> impl Iterator<Item = ItemId> + 'tcx {
+    pub fn hir_free_items(self) -> impl Iterator<Item = ItemId> {
         self.hir_crate_items(()).free_items.iter().copied()
     }
 
     #[inline]
-    pub fn hir_module_free_items(
-        self,
-        module: LocalModDefId,
-    ) -> impl Iterator<Item = ItemId> + 'tcx {
+    pub fn hir_module_free_items(self, module: LocalModDefId) -> impl Iterator<Item = ItemId> {
         self.hir_module_items(module).free_items()
     }
 
@@ -278,14 +275,15 @@ impl<'tcx> TyCtxt<'tcx> {
             span_bug!(
                 self.hir().span(hir_id),
                 "body_owned_by: {} has no associated body",
-                self.hir().node_to_string(hir_id)
+                self.hir_id_to_string(hir_id)
             );
         })
     }
 
-    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> + 'tcx {
-        self.hir_body(id).params.iter().map(|arg| match arg.pat.kind {
+    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> {
+        self.hir_body(id).params.iter().map(|param| match param.pat.kind {
             PatKind::Binding(_, _, ident, _) => ident,
+            PatKind::Wild => Ident::new(kw::Underscore, param.pat.span),
             _ => Ident::empty(),
         })
     }
@@ -305,6 +303,7 @@ impl<'tcx> TyCtxt<'tcx> {
             DefKind::Static { safety: _, mutability, nested: false } => {
                 BodyOwnerKind::Static(mutability)
             }
+            DefKind::GlobalAsm => BodyOwnerKind::GlobalAsm,
             dk => bug!("{:?} is not a body node: {:?}", def_id, dk),
         }
     }
@@ -327,7 +326,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 ConstContext::ConstFn
             }
             BodyOwnerKind::Fn if self.is_const_default_method(def_id) => ConstContext::ConstFn,
-            BodyOwnerKind::Fn | BodyOwnerKind::Closure => return None,
+            BodyOwnerKind::Fn | BodyOwnerKind::Closure | BodyOwnerKind::GlobalAsm => return None,
         };
 
         Some(ccx)
@@ -337,7 +336,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// crate. If you would prefer to iterate over the bodies
     /// themselves, you can do `self.hir().krate().body_ids.iter()`.
     #[inline]
-    pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> + 'tcx {
+    pub fn hir_body_owners(self) -> impl Iterator<Item = LocalDefId> {
         self.hir_crate_items(()).body_owners.iter().copied()
     }
 
@@ -376,7 +375,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// invoking `krate.attrs` because it registers a tighter
     /// dep-graph access.
     pub fn hir_krate_attrs(self) -> &'tcx [Attribute] {
-        self.hir().attrs(CRATE_HIR_ID)
+        self.hir_attrs(CRATE_HIR_ID)
     }
 
     pub fn hir_rustc_coherence_is_core(self) -> bool {
@@ -502,7 +501,7 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
     /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
-    pub fn hir_parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'tcx {
+    pub fn hir_parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> {
         ParentHirIterator::new(self, current_id)
     }
 
@@ -676,104 +675,178 @@ impl<'tcx> TyCtxt<'tcx> {
             }
         }
     }
-}
 
-impl<'hir> Map<'hir> {
-    pub fn get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
-        let parent = self.tcx.hir_get_parent_item(hir_id);
+    /// Get a representation of this `id` for debugging purposes.
+    /// NOTE: Do NOT use this in diagnostics!
+    pub fn hir_id_to_string(self, id: HirId) -> String {
+        let path_str = |def_id: LocalDefId| self.def_path_str(def_id);
+
+        let span_str = || {
+            self.sess.source_map().span_to_snippet(Map { tcx: self }.span(id)).unwrap_or_default()
+        };
+        let node_str = |prefix| format!("{id} ({prefix} `{}`)", span_str());
+
+        match self.hir_node(id) {
+            Node::Item(item) => {
+                let item_str = match item.kind {
+                    ItemKind::ExternCrate(..) => "extern crate",
+                    ItemKind::Use(..) => "use",
+                    ItemKind::Static(..) => "static",
+                    ItemKind::Const(..) => "const",
+                    ItemKind::Fn { .. } => "fn",
+                    ItemKind::Macro(..) => "macro",
+                    ItemKind::Mod(..) => "mod",
+                    ItemKind::ForeignMod { .. } => "foreign mod",
+                    ItemKind::GlobalAsm { .. } => "global asm",
+                    ItemKind::TyAlias(..) => "ty",
+                    ItemKind::Enum(..) => "enum",
+                    ItemKind::Struct(..) => "struct",
+                    ItemKind::Union(..) => "union",
+                    ItemKind::Trait(..) => "trait",
+                    ItemKind::TraitAlias(..) => "trait alias",
+                    ItemKind::Impl { .. } => "impl",
+                };
+                format!("{id} ({item_str} {})", path_str(item.owner_id.def_id))
+            }
+            Node::ForeignItem(item) => {
+                format!("{id} (foreign item {})", path_str(item.owner_id.def_id))
+            }
+            Node::ImplItem(ii) => {
+                let kind = match ii.kind {
+                    ImplItemKind::Const(..) => "associated constant",
+                    ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                        ImplicitSelfKind::None => "associated function",
+                        _ => "method",
+                    },
+                    ImplItemKind::Type(_) => "associated type",
+                };
+                format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
+            }
+            Node::TraitItem(ti) => {
+                let kind = match ti.kind {
+                    TraitItemKind::Const(..) => "associated constant",
+                    TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
+                        ImplicitSelfKind::None => "associated function",
+                        _ => "trait method",
+                    },
+                    TraitItemKind::Type(..) => "associated type",
+                };
+
+                format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))
+            }
+            Node::Variant(variant) => {
+                format!("{id} (variant `{}` in {})", variant.ident, path_str(variant.def_id))
+            }
+            Node::Field(field) => {
+                format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
+            }
+            Node::AnonConst(_) => node_str("const"),
+            Node::ConstBlock(_) => node_str("const"),
+            Node::ConstArg(_) => node_str("const"),
+            Node::Expr(_) => node_str("expr"),
+            Node::ExprField(_) => node_str("expr field"),
+            Node::Stmt(_) => node_str("stmt"),
+            Node::PathSegment(_) => node_str("path segment"),
+            Node::Ty(_) => node_str("type"),
+            Node::AssocItemConstraint(_) => node_str("assoc item constraint"),
+            Node::TraitRef(_) => node_str("trait ref"),
+            Node::OpaqueTy(_) => node_str("opaque type"),
+            Node::Pat(_) => node_str("pat"),
+            Node::TyPat(_) => node_str("pat ty"),
+            Node::PatField(_) => node_str("pattern field"),
+            Node::PatExpr(_) => node_str("pattern literal"),
+            Node::Param(_) => node_str("param"),
+            Node::Arm(_) => node_str("arm"),
+            Node::Block(_) => node_str("block"),
+            Node::Infer(_) => node_str("infer"),
+            Node::LetStmt(_) => node_str("local"),
+            Node::Ctor(ctor) => format!(
+                "{id} (ctor {})",
+                ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
+            ),
+            Node::Lifetime(_) => node_str("lifetime"),
+            Node::GenericParam(param) => {
+                format!("{id} (generic_param {})", path_str(param.def_id))
+            }
+            Node::Crate(..) => String::from("(root_crate)"),
+            Node::WherePredicate(_) => node_str("where predicate"),
+            Node::Synthetic => unreachable!(),
+            Node::Err(_) => node_str("error"),
+            Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
+        }
+    }
+
+    pub fn hir_get_foreign_abi(self, hir_id: HirId) -> ExternAbi {
+        let parent = self.hir_get_parent_item(hir_id);
         if let OwnerNode::Item(Item { kind: ItemKind::ForeignMod { abi, .. }, .. }) =
-            self.tcx.hir_owner_node(parent)
+            self.hir_owner_node(parent)
         {
             return *abi;
         }
         bug!(
             "expected foreign mod or inlined parent, found {}",
-            self.node_to_string(HirId::make_owner(parent.def_id))
+            self.hir_id_to_string(HirId::make_owner(parent.def_id))
         )
     }
 
-    pub fn expect_item(self, id: LocalDefId) -> &'hir Item<'hir> {
-        match self.tcx.expect_hir_owner_node(id) {
+    pub fn hir_expect_item(self, id: LocalDefId) -> &'tcx Item<'tcx> {
+        match self.expect_hir_owner_node(id) {
             OwnerNode::Item(item) => item,
-            _ => bug!("expected item, found {}", self.node_to_string(HirId::make_owner(id))),
+            _ => bug!("expected item, found {}", self.hir_id_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_impl_item(self, id: LocalDefId) -> &'hir ImplItem<'hir> {
-        match self.tcx.expect_hir_owner_node(id) {
+    pub fn hir_expect_impl_item(self, id: LocalDefId) -> &'tcx ImplItem<'tcx> {
+        match self.expect_hir_owner_node(id) {
             OwnerNode::ImplItem(item) => item,
-            _ => bug!("expected impl item, found {}", self.node_to_string(HirId::make_owner(id))),
+            _ => bug!("expected impl item, found {}", self.hir_id_to_string(HirId::make_owner(id))),
         }
     }
 
-    pub fn expect_trait_item(self, id: LocalDefId) -> &'hir TraitItem<'hir> {
-        match self.tcx.expect_hir_owner_node(id) {
+    pub fn hir_expect_trait_item(self, id: LocalDefId) -> &'tcx TraitItem<'tcx> {
+        match self.expect_hir_owner_node(id) {
             OwnerNode::TraitItem(item) => item,
-            _ => bug!("expected trait item, found {}", self.node_to_string(HirId::make_owner(id))),
-        }
-    }
-
-    pub fn get_fn_output(self, def_id: LocalDefId) -> Option<&'hir FnRetTy<'hir>> {
-        Some(&self.tcx.opt_hir_owner_node(def_id)?.fn_decl()?.output)
-    }
-
-    pub fn expect_variant(self, id: HirId) -> &'hir Variant<'hir> {
-        match self.tcx.hir_node(id) {
-            Node::Variant(variant) => variant,
-            _ => bug!("expected variant, found {}", self.node_to_string(id)),
-        }
-    }
-
-    pub fn expect_field(self, id: HirId) -> &'hir FieldDef<'hir> {
-        match self.tcx.hir_node(id) {
-            Node::Field(field) => field,
-            _ => bug!("expected field, found {}", self.node_to_string(id)),
-        }
-    }
-
-    pub fn expect_foreign_item(self, id: OwnerId) -> &'hir ForeignItem<'hir> {
-        match self.tcx.hir_owner_node(id) {
-            OwnerNode::ForeignItem(item) => item,
             _ => {
-                bug!(
-                    "expected foreign item, found {}",
-                    self.node_to_string(HirId::make_owner(id.def_id))
-                )
+                bug!("expected trait item, found {}", self.hir_id_to_string(HirId::make_owner(id)))
             }
         }
     }
 
+    pub fn hir_get_fn_output(self, def_id: LocalDefId) -> Option<&'tcx FnRetTy<'tcx>> {
+        Some(&self.opt_hir_owner_node(def_id)?.fn_decl()?.output)
+    }
+
     #[track_caller]
-    pub fn expect_opaque_ty(self, id: LocalDefId) -> &'hir OpaqueTy<'hir> {
-        match self.tcx.hir_node_by_def_id(id) {
+    pub fn hir_expect_opaque_ty(self, id: LocalDefId) -> &'tcx OpaqueTy<'tcx> {
+        match self.hir_node_by_def_id(id) {
             Node::OpaqueTy(opaq) => opaq,
             _ => {
                 bug!(
                     "expected opaque type definition, found {}",
-                    self.node_to_string(self.tcx.local_def_id_to_hir_id(id))
+                    self.hir_id_to_string(self.local_def_id_to_hir_id(id))
                 )
             }
         }
     }
 
-    pub fn expect_expr(self, id: HirId) -> &'hir Expr<'hir> {
-        match self.tcx.hir_node(id) {
+    pub fn hir_expect_expr(self, id: HirId) -> &'tcx Expr<'tcx> {
+        match self.hir_node(id) {
             Node::Expr(expr) => expr,
-            _ => bug!("expected expr, found {}", self.node_to_string(id)),
+            _ => bug!("expected expr, found {}", self.hir_id_to_string(id)),
         }
     }
 
-    pub fn opt_delegation_sig_id(self, def_id: LocalDefId) -> Option<DefId> {
-        self.tcx.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_sig_id()
+    pub fn hir_opt_delegation_sig_id(self, def_id: LocalDefId) -> Option<DefId> {
+        self.opt_hir_owner_node(def_id)?.fn_decl()?.opt_delegation_sig_id()
     }
 
     #[inline]
-    fn opt_ident(self, id: HirId) -> Option<Ident> {
-        match self.tcx.hir_node(id) {
+    fn hir_opt_ident(self, id: HirId) -> Option<Ident> {
+        match self.hir_node(id) {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::span`.
-            Node::Ctor(..) => match self.tcx.parent_hir_node(id) {
+            Node::Ctor(..) => match self.parent_hir_node(id) {
                 Node::Item(item) => Some(item.ident),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
@@ -783,30 +856,32 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
-    pub(super) fn opt_ident_span(self, id: HirId) -> Option<Span> {
-        self.opt_ident(id).map(|ident| ident.span)
+    pub(super) fn hir_opt_ident_span(self, id: HirId) -> Option<Span> {
+        self.hir_opt_ident(id).map(|ident| ident.span)
     }
 
     #[inline]
-    pub fn ident(self, id: HirId) -> Ident {
-        self.opt_ident(id).unwrap()
+    pub fn hir_ident(self, id: HirId) -> Ident {
+        self.hir_opt_ident(id).unwrap()
     }
 
     #[inline]
-    pub fn opt_name(self, id: HirId) -> Option<Symbol> {
-        self.opt_ident(id).map(|ident| ident.name)
+    pub fn hir_opt_name(self, id: HirId) -> Option<Symbol> {
+        self.hir_opt_ident(id).map(|ident| ident.name)
     }
 
-    pub fn name(self, id: HirId) -> Symbol {
-        self.opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.node_to_string(id)))
+    pub fn hir_name(self, id: HirId) -> Symbol {
+        self.hir_opt_name(id).unwrap_or_else(|| bug!("no name for {}", self.hir_id_to_string(id)))
     }
 
     /// Given a node ID, gets a list of attributes associated with the AST
     /// corresponding to the node-ID.
-    pub fn attrs(self, id: HirId) -> &'hir [Attribute] {
-        self.tcx.hir_attrs(id.owner).get(id.local_id)
+    pub fn hir_attrs(self, id: HirId) -> &'tcx [Attribute] {
+        self.hir_attr_map(id.owner).get(id.local_id)
     }
+}
 
+impl<'hir> Map<'hir> {
     /// Gets the span of the definition of the specified HIR node.
     /// This is used by `tcx.def_span`.
     pub fn span(self, hir_id: HirId) -> Span {
@@ -979,12 +1054,6 @@ impl<'hir> Map<'hir> {
         }
     }
 
-    /// Get a representation of this `id` for debugging purposes.
-    /// NOTE: Do NOT use this in diagnostics!
-    pub fn node_to_string(self, id: HirId) -> String {
-        hir_id_to_string(self, id)
-    }
-
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
@@ -1149,102 +1218,6 @@ fn upstream_crates(tcx: TyCtxt<'_>) -> Vec<(StableCrateId, Svh)> {
     upstream_crates
 }
 
-fn hir_id_to_string(map: Map<'_>, id: HirId) -> String {
-    let path_str = |def_id: LocalDefId| map.tcx.def_path_str(def_id);
-
-    let span_str = || map.tcx.sess.source_map().span_to_snippet(map.span(id)).unwrap_or_default();
-    let node_str = |prefix| format!("{id} ({prefix} `{}`)", span_str());
-
-    match map.tcx.hir_node(id) {
-        Node::Item(item) => {
-            let item_str = match item.kind {
-                ItemKind::ExternCrate(..) => "extern crate",
-                ItemKind::Use(..) => "use",
-                ItemKind::Static(..) => "static",
-                ItemKind::Const(..) => "const",
-                ItemKind::Fn { .. } => "fn",
-                ItemKind::Macro(..) => "macro",
-                ItemKind::Mod(..) => "mod",
-                ItemKind::ForeignMod { .. } => "foreign mod",
-                ItemKind::GlobalAsm(..) => "global asm",
-                ItemKind::TyAlias(..) => "ty",
-                ItemKind::Enum(..) => "enum",
-                ItemKind::Struct(..) => "struct",
-                ItemKind::Union(..) => "union",
-                ItemKind::Trait(..) => "trait",
-                ItemKind::TraitAlias(..) => "trait alias",
-                ItemKind::Impl { .. } => "impl",
-            };
-            format!("{id} ({item_str} {})", path_str(item.owner_id.def_id))
-        }
-        Node::ForeignItem(item) => {
-            format!("{id} (foreign item {})", path_str(item.owner_id.def_id))
-        }
-        Node::ImplItem(ii) => {
-            let kind = match ii.kind {
-                ImplItemKind::Const(..) => "associated constant",
-                ImplItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
-                    ImplicitSelfKind::None => "associated function",
-                    _ => "method",
-                },
-                ImplItemKind::Type(_) => "associated type",
-            };
-            format!("{id} ({kind} `{}` in {})", ii.ident, path_str(ii.owner_id.def_id))
-        }
-        Node::TraitItem(ti) => {
-            let kind = match ti.kind {
-                TraitItemKind::Const(..) => "associated constant",
-                TraitItemKind::Fn(fn_sig, _) => match fn_sig.decl.implicit_self {
-                    ImplicitSelfKind::None => "associated function",
-                    _ => "trait method",
-                },
-                TraitItemKind::Type(..) => "associated type",
-            };
-
-            format!("{id} ({kind} `{}` in {})", ti.ident, path_str(ti.owner_id.def_id))
-        }
-        Node::Variant(variant) => {
-            format!("{id} (variant `{}` in {})", variant.ident, path_str(variant.def_id))
-        }
-        Node::Field(field) => {
-            format!("{id} (field `{}` in {})", field.ident, path_str(field.def_id))
-        }
-        Node::AnonConst(_) => node_str("const"),
-        Node::ConstBlock(_) => node_str("const"),
-        Node::ConstArg(_) => node_str("const"),
-        Node::Expr(_) => node_str("expr"),
-        Node::ExprField(_) => node_str("expr field"),
-        Node::Stmt(_) => node_str("stmt"),
-        Node::PathSegment(_) => node_str("path segment"),
-        Node::Ty(_) => node_str("type"),
-        Node::AssocItemConstraint(_) => node_str("assoc item constraint"),
-        Node::TraitRef(_) => node_str("trait ref"),
-        Node::OpaqueTy(_) => node_str("opaque type"),
-        Node::Pat(_) => node_str("pat"),
-        Node::TyPat(_) => node_str("pat ty"),
-        Node::PatField(_) => node_str("pattern field"),
-        Node::PatExpr(_) => node_str("pattern literal"),
-        Node::Param(_) => node_str("param"),
-        Node::Arm(_) => node_str("arm"),
-        Node::Block(_) => node_str("block"),
-        Node::Infer(_) => node_str("infer"),
-        Node::LetStmt(_) => node_str("local"),
-        Node::Ctor(ctor) => format!(
-            "{id} (ctor {})",
-            ctor.ctor_def_id().map_or("<missing path>".into(), |def_id| path_str(def_id)),
-        ),
-        Node::Lifetime(_) => node_str("lifetime"),
-        Node::GenericParam(param) => {
-            format!("{id} (generic_param {})", path_str(param.def_id))
-        }
-        Node::Crate(..) => String::from("(root_crate)"),
-        Node::WherePredicate(_) => node_str("where predicate"),
-        Node::Synthetic => unreachable!(),
-        Node::Err(_) => node_str("error"),
-        Node::PreciseCapturingNonLifetimeArg(_param) => node_str("parameter"),
-    }
-}
-
 pub(super) fn hir_module_items(tcx: TyCtxt<'_>, module_id: LocalModDefId) -> ModuleItems {
     let mut collector = ItemCollector::new(tcx, false);
 
@@ -1358,7 +1331,7 @@ impl<'hir> Visitor<'hir> for ItemCollector<'hir> {
             self.submodules.push(item.owner_id);
             // A module collector does not recurse inside nested modules.
             if self.crate_collector {
-                intravisit::walk_mod(self, module, item.hir_id());
+                intravisit::walk_mod(self, module);
             }
         } else {
             intravisit::walk_item(self, item)

@@ -11,8 +11,6 @@ use rustc_middle::ty::Ty;
 use rustc_span::{Ident, Span, Symbol};
 
 use crate::fluent_generated as fluent;
-mod pattern_types;
-pub(crate) use pattern_types::*;
 pub(crate) mod wrong_number_of_generic_args;
 
 mod precise_captures;
@@ -84,6 +82,8 @@ pub(crate) struct AssocItemNotFound<'a> {
     pub label: Option<AssocItemNotFoundLabel<'a>>,
     #[subdiagnostic]
     pub sugg: Option<AssocItemNotFoundSugg<'a>>,
+    #[label(hir_analysis_within_macro)]
+    pub within_macro_span: Option<Span>,
 }
 
 #[derive(Subdiagnostic)]
@@ -425,16 +425,6 @@ pub(crate) struct UnconstrainedOpaqueType {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_tait_forward_compat)]
-#[note]
-pub(crate) struct TaitForwardCompat {
-    #[primary_span]
-    pub span: Span,
-    #[note]
-    pub item_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_tait_forward_compat2)]
 #[note]
 pub(crate) struct TaitForwardCompat2 {
@@ -711,17 +701,6 @@ pub(crate) struct InvalidUnionField {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_invalid_unsafe_field, code = E0740)]
-pub(crate) struct InvalidUnsafeField {
-    #[primary_span]
-    pub field_span: Span,
-    #[subdiagnostic]
-    pub sugg: InvalidUnsafeFieldSuggestion,
-    #[note]
-    pub note: (),
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_return_type_notation_on_non_rpitit)]
 pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
     #[primary_span]
@@ -736,18 +715,6 @@ pub(crate) struct ReturnTypeNotationOnNonRpitit<'tcx> {
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(hir_analysis_invalid_union_field_sugg, applicability = "machine-applicable")]
 pub(crate) struct InvalidUnionFieldSuggestion {
-    #[suggestion_part(code = "std::mem::ManuallyDrop<")]
-    pub lo: Span,
-    #[suggestion_part(code = ">")]
-    pub hi: Span,
-}
-
-#[derive(Subdiagnostic)]
-#[multipart_suggestion(
-    hir_analysis_invalid_unsafe_field_sugg,
-    applicability = "machine-applicable"
-)]
-pub(crate) struct InvalidUnsafeFieldSuggestion {
     #[suggestion_part(code = "std::mem::ManuallyDrop<")]
     pub lo: Span,
     #[suggestion_part(code = ">")]
@@ -907,6 +874,10 @@ pub(crate) enum ImplNotMarkedDefault {
         ident: Ident,
     },
 }
+
+#[derive(LintDiagnostic)]
+#[diag(hir_analysis_useless_impl_item)]
+pub(crate) struct UselessImplItem;
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_missing_trait_item, code = E0046)]
@@ -1165,18 +1136,6 @@ pub(crate) struct InherentTyOutside {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct DispatchFromDynCoercion<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
-    #[note(hir_analysis_coercion_between_struct_same_note)]
-    pub note: bool,
-    pub source_path: String,
-    pub target_path: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(hir_analysis_dispatch_from_dyn_repr, code = E0378)]
 pub(crate) struct DispatchFromDynRepr {
     #[primary_span]
@@ -1293,41 +1252,40 @@ pub(crate) struct DispatchFromDynZST<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct DispatchFromDynSingle<'a> {
+#[diag(hir_analysis_coerce_zero, code = E0374)]
+pub(crate) struct CoerceNoField {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
+    pub trait_name: &'static str,
     #[note(hir_analysis_coercion_between_struct_single_note)]
     pub note: bool,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_dispatch_from_dyn_multi, code = E0378)]
-#[note]
-pub(crate) struct DispatchFromDynMulti {
+#[diag(hir_analysis_coerce_multi, code = E0375)]
+pub(crate) struct CoerceMulti {
+    pub trait_name: &'static str,
     #[primary_span]
     pub span: Span,
-    #[note(hir_analysis_coercions_note)]
-    pub coercions_note: bool,
     pub number: usize,
-    pub coercions: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0376)]
-pub(crate) struct DispatchFromDynStruct<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
+    #[note]
+    pub fields: MultiSpan,
 }
 
 #[derive(Diagnostic)]
 #[diag(hir_analysis_coerce_unsized_may, code = E0377)]
-pub(crate) struct DispatchFromDynSame<'a> {
+pub(crate) struct CoerceUnsizedNonStruct {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
+    pub trait_name: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(hir_analysis_coerce_unsized_may, code = E0377)]
+pub(crate) struct CoerceSameStruct {
+    #[primary_span]
+    pub span: Span,
+    pub trait_name: &'static str,
     #[note(hir_analysis_coercion_between_struct_same_note)]
     pub note: bool,
     pub source_path: String,
@@ -1335,34 +1293,15 @@ pub(crate) struct DispatchFromDynSame<'a> {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0374)]
-pub(crate) struct CoerceUnsizedOneField<'a> {
+#[diag(hir_analysis_coerce_unsized_field_validity)]
+pub(crate) struct CoerceFieldValidity<'tcx> {
     #[primary_span]
     pub span: Span,
-    pub trait_name: &'a str,
-    #[note(hir_analysis_coercion_between_struct_single_note)]
-    pub note: bool,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_multi, code = E0375)]
-#[note]
-pub(crate) struct CoerceUnsizedMulti {
-    #[primary_span]
+    pub ty: Ty<'tcx>,
+    pub trait_name: &'static str,
     #[label]
-    pub span: Span,
-    #[note(hir_analysis_coercions_note)]
-    pub coercions_note: bool,
-    pub number: usize,
-    pub coercions: String,
-}
-
-#[derive(Diagnostic)]
-#[diag(hir_analysis_coerce_unsized_may, code = E0378)]
-pub(crate) struct CoerceUnsizedMay<'a> {
-    #[primary_span]
-    pub span: Span,
-    pub trait_name: &'a str,
+    pub field_span: Span,
+    pub field_ty: Ty<'tcx>,
 }
 
 #[derive(Diagnostic)]

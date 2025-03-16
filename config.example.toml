@@ -164,6 +164,16 @@
 #build-config = {}
 
 # =============================================================================
+# Tweaking how GCC is compiled
+# =============================================================================
+[gcc]
+# Download GCC from CI instead of building it locally.
+# Note that this will attempt to download GCC even if there are local
+# modifications to the `src/gcc` submodule.
+# Currently, this is only supported for the `x86_64-unknown-linux-gnu` target.
+# download-ci-gcc = false
+
+# =============================================================================
 # General build configuration options
 # =============================================================================
 [build]
@@ -188,6 +198,17 @@
 
 # The default stage to use for the `bench` subcommand
 #bench-stage = 2
+
+# A descriptive string to be appended to version output (e.g., `rustc --version`),
+# which is also used in places like debuginfo `DW_AT_producer`. This may be useful for
+# supplementary build information, like distro-specific package versions.
+#
+# The Rust compiler will differentiate between versions of itself, including
+# based on this string, which means that if you wish to be compatible with
+# upstream Rust you need to set this to "". However, note that if you set this to "" but
+# are not actually compatible -- for example if you've backported patches that change
+# behavior -- this may lead to miscompilations or other bugs.
+#description = ""
 
 # Build triple for the pre-compiled snapshot compiler. If `rustc` is set, this must match its host
 # triple (see `rustc --version --verbose`; cross-compiling the rust build system itself is NOT
@@ -425,6 +446,10 @@
 # a specific version.
 #ccache = false
 
+# List of paths to exclude from the build and test processes. 
+# For example, exclude = ["tests/ui", "src/tools/tidy"].
+#exclude = []
+
 # =============================================================================
 # General install configuration options
 # =============================================================================
@@ -608,22 +633,12 @@
 
 # The "channel" for the Rust build to produce. The stable/beta channels only
 # allow using stable features, whereas the nightly and dev channels allow using
-# nightly features
+# nightly features.
 #
-# If using tarball sources, default value for `channel` is taken from the `src/ci/channel` file;
-# otherwise, it's "dev".
-#channel = if "is a tarball source" { content of `src/ci/channel` file } else { "dev" }
-
-# A descriptive string to be appended to `rustc --version` output, which is
-# also used in places like debuginfo `DW_AT_producer`. This may be useful for
-# supplementary build information, like distro-specific package versions.
+# You can set the channel to "auto-detect" to load the channel name from `src/ci/channel`.
 #
-# The Rust compiler will differentiate between versions of itself, including
-# based on this string, which means that if you wish to be compatible with
-# upstream Rust you need to set this to "". However, note that if you are not
-# actually compatible -- for example if you've backported patches that change
-# behavior -- this may lead to miscompilations or other bugs.
-#description = ""
+# If using tarball sources, default value is "auto-detect", otherwise, it's "dev".
+#channel = if "is a tarball source" { "auto-detect" } else { "dev" }
 
 # The root location of the musl installation directory. The library directory
 # will also need to contain libunwind.a for an unwinding implementation. Note

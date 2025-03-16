@@ -1,10 +1,12 @@
 // gate-test-abi_vectorcall
+//@ add-core-stubs
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
 #![no_core]
 #![feature(no_core, lang_items)]
-#[lang="sized"]
-trait Sized { }
+
+extern crate minicore;
+use minicore::*;
 
 // Test that the "vectorcall" ABI is feature-gated, and cannot be used when
 // the `vectorcall` feature gate is not used.

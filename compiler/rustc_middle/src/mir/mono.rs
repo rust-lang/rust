@@ -2,7 +2,7 @@ use std::fmt;
 use std::hash::Hash;
 
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
-use rustc_attr_parsing::InlineAttr;
+use rustc_attr_data_structures::InlineAttr;
 use rustc_data_structures::base_n::{BaseNString, CASE_INSENSITIVE, ToBaseN};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxIndexMap;
@@ -243,7 +243,7 @@ impl<'tcx> MonoItem<'tcx> {
     /// Returns the item's `CrateNum`
     pub fn krate(&self) -> CrateNum {
         match self {
-            MonoItem::Fn(ref instance) => instance.def_id().krate,
+            MonoItem::Fn(instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }

@@ -14,6 +14,7 @@ export class PersistentState {
     get serverVersion(): string | undefined {
         return this.globalState.get("serverVersion");
     }
+
     async updateServerVersion(value: string | undefined) {
         await this.globalState.update("serverVersion", value);
     }

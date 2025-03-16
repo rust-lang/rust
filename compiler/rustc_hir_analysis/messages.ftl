@@ -85,6 +85,10 @@ hir_analysis_cmse_output_stack_spill =
     .note1 = functions with the `{$abi}` ABI must pass their result via the available return registers
     .note2 = the result must either be a (transparently wrapped) i64, u64 or f64, or be at most 4 bytes in size
 
+hir_analysis_coerce_multi = implementing `{$trait_name}` does not allow multiple fields to be coerced
+    .note = the trait `{$trait_name}` may only be implemented when a single field is being coerced
+    .label = these fields must be coerced for `{$trait_name}` to be valid
+
 hir_analysis_coerce_pointee_no_field = `CoercePointee` can only be derived on `struct`s with at least one field
 
 hir_analysis_coerce_pointee_no_user_validity_assertion = asserting applicability of `derive(CoercePointee)` on a target data is forbidden
@@ -95,12 +99,12 @@ hir_analysis_coerce_pointee_not_struct = `derive(CoercePointee)` is only applica
 
 hir_analysis_coerce_pointee_not_transparent = `derive(CoercePointee)` is only applicable to `struct` with `repr(transparent)` layout
 
+hir_analysis_coerce_unsized_field_validity = for `{$ty}` to have a valid implementation of `{$trait_name}`, it must be possible to coerce the field of type `{$field_ty}`
+    .label = `{$field_ty}` must be a pointer, reference, or smart pointer that is allowed to be unsized
+
 hir_analysis_coerce_unsized_may = the trait `{$trait_name}` may only be implemented for a coercion between structures
 
-hir_analysis_coerce_unsized_multi = implementing the trait `CoerceUnsized` requires multiple coercions
-    .note = `CoerceUnsized` may only be implemented for a coercion between structures with one field being coerced
-    .coercions_note = currently, {$number} fields need coercions: {$coercions}
-    .label = requires multiple coercions
+hir_analysis_coerce_zero = implementing `{$trait_name}` requires a field to be coerced
 
 hir_analysis_coercion_between_struct_same_note = expected coercion between the same definition; expected `{$source_path}`, found `{$target_path}`
 
@@ -138,10 +142,6 @@ hir_analysis_cross_crate_traits = cross-crate traits with a default impl, like `
 
 hir_analysis_cross_crate_traits_defined = cross-crate traits with a default impl, like `{$traits}`, can only be implemented for a struct/enum type defined in the current crate
     .label = can't implement cross-crate trait for type in another crate
-
-hir_analysis_dispatch_from_dyn_multi = implementing the `DispatchFromDyn` trait requires multiple coercions
-    .note = the trait `DispatchFromDyn` may only be implemented for a coercion between structures with a single field being coerced
-    .coercions_note = currently, {$number} fields need coercions: {$coercions}
 
 hir_analysis_dispatch_from_dyn_repr = structs implementing `DispatchFromDyn` may not have `#[repr(packed)]` or `#[repr(C)]`
 
@@ -244,9 +244,6 @@ hir_analysis_inherent_ty_outside_relevant = cannot define inherent `impl` for a 
     .help = consider moving this inherent impl into the crate defining the type if possible
     .span_help = alternatively add `#[rustc_allow_incoherent_impl]` to the relevant impl items
 
-hir_analysis_invalid_base_type = `{$ty}` is not a valid base type for range patterns
-    .note = range patterns only support integers
-
 hir_analysis_invalid_generic_receiver_ty = invalid generic `self` parameter type: `{$receiver_ty}`
     .note = type of `self` must not be a method generic parameter type
 
@@ -276,13 +273,6 @@ hir_analysis_invalid_union_field =
     .note = union fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
 
 hir_analysis_invalid_union_field_sugg =
-    wrap the field type in `ManuallyDrop<...>`
-
-hir_analysis_invalid_unsafe_field =
-    field must implement `Copy` or be wrapped in `ManuallyDrop<...>` to be unsafe
-    .note = unsafe fields must not have drop side-effects, which is currently enforced via either `Copy` or `ManuallyDrop<...>`
-
-hir_analysis_invalid_unsafe_field_sugg =
     wrap the field type in `ManuallyDrop<...>`
 
 hir_analysis_late_bound_const_in_apit = `impl Trait` can only mention const parameters from an fn or impl
@@ -514,12 +504,9 @@ hir_analysis_supertrait_item_shadowee = item from `{$supertrait}` is shadowed by
 
 hir_analysis_supertrait_item_shadowing = trait item `{$item}` from `{$subtrait}` shadows identically named item from supertrait
 
-hir_analysis_tait_forward_compat = item constrains opaque type that is not in its signature
-    .note = this item must mention the opaque type in its signature in order to be able to register hidden types
-
-hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`, but has it in its signature
-    .note = consider moving the opaque type's declaration and defining uses into a separate module
-    .opaque = this opaque type is in the signature
+hir_analysis_tait_forward_compat2 = item does not constrain `{$opaque_type}`
+    .note = consider removing `#[define_opaque]` or adding an empty `#[define_opaque()]`
+    .opaque = this opaque type is supposed to be constrained
 
 hir_analysis_target_feature_on_main = `main` function is not allowed to have `#[target_feature]`
 
@@ -605,6 +592,8 @@ hir_analysis_unused_generic_parameter_adt_no_phantom_data_help =
 hir_analysis_unused_generic_parameter_ty_alias_help =
     consider removing `{$param_name}` or referring to it in the body of the type alias
 
+hir_analysis_useless_impl_item = this item cannot be used as its where bounds are not satisfied for the `Self` type
+
 hir_analysis_value_of_associated_struct_already_specified =
     the value of the associated type `{$item_name}` in trait `{$def_path}` is already specified
     .label = re-bound here
@@ -617,6 +606,8 @@ hir_analysis_variances_of = {$variances}
 
 hir_analysis_where_clause_on_main = `main` function is not allowed to have a `where` clause
     .label = `main` cannot have a `where` clause
+
+hir_analysis_within_macro = due to this macro variable
 
 hir_analysis_wrong_number_of_generic_arguments_to_intrinsic =
     intrinsic has wrong number of {$descr} parameters: found {$found}, expected {$expected}

@@ -9,12 +9,7 @@ use rustc_middle::ty::{self, Ty, TypeAndMut};
 
 use super::CAST_SLICE_DIFFERENT_SIZES;
 
-pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv) {
-    // suggestion is invalid if `ptr::slice_from_raw_parts` does not exist
-    if !msrv.meets(msrvs::PTR_SLICE_RAW_PARTS) {
-        return;
-    }
-
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: Msrv) {
     // if this cast is the child of another cast expression then don't emit something for it, the full
     // chain will be analyzed
     if is_child_of_cast(cx, expr) {
@@ -30,7 +25,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
         if let (Ok(from_layout), Ok(to_layout)) = (cx.layout_of(start_ty.ty), cx.layout_of(end_ty.ty)) {
             let from_size = from_layout.size.bytes();
             let to_size = to_layout.size.bytes();
-            if from_size != to_size && from_size != 0 && to_size != 0 {
+            if from_size != to_size && from_size != 0 && to_size != 0 && msrv.meets(cx, msrvs::PTR_SLICE_RAW_PARTS) {
                 span_lint_and_then(
                     cx,
                     CAST_SLICE_DIFFERENT_SIZES,

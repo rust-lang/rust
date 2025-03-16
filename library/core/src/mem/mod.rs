@@ -140,7 +140,7 @@ pub use crate::intrinsics::transmute;
 #[inline]
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_forget")]
+#[rustc_diagnostic_item = "mem_forget"]
 pub const fn forget<T>(t: T) {
     let _ = ManuallyDrop::new(t);
 }
@@ -226,31 +226,27 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
 /// // Some primitives
-/// assert_eq!(4, mem::size_of::<i32>());
-/// assert_eq!(8, mem::size_of::<f64>());
-/// assert_eq!(0, mem::size_of::<()>());
+/// assert_eq!(4, size_of::<i32>());
+/// assert_eq!(8, size_of::<f64>());
+/// assert_eq!(0, size_of::<()>());
 ///
 /// // Some arrays
-/// assert_eq!(8, mem::size_of::<[i32; 2]>());
-/// assert_eq!(12, mem::size_of::<[i32; 3]>());
-/// assert_eq!(0, mem::size_of::<[i32; 0]>());
+/// assert_eq!(8, size_of::<[i32; 2]>());
+/// assert_eq!(12, size_of::<[i32; 3]>());
+/// assert_eq!(0, size_of::<[i32; 0]>());
 ///
 ///
 /// // Pointer size equality
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<*const i32>());
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Box<i32>>());
-/// assert_eq!(mem::size_of::<&i32>(), mem::size_of::<Option<&i32>>());
-/// assert_eq!(mem::size_of::<Box<i32>>(), mem::size_of::<Option<Box<i32>>>());
+/// assert_eq!(size_of::<&i32>(), size_of::<*const i32>());
+/// assert_eq!(size_of::<&i32>(), size_of::<Box<i32>>());
+/// assert_eq!(size_of::<&i32>(), size_of::<Option<&i32>>());
+/// assert_eq!(size_of::<Box<i32>>(), size_of::<Option<Box<i32>>>());
 /// ```
 ///
 /// Using `#[repr(C)]`.
 ///
 /// ```
-/// use std::mem;
-///
 /// #[repr(C)]
 /// struct FieldStruct {
 ///     first: u8,
@@ -265,13 +261,13 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 /// // The size of the third field is 1, so add 1 to the size. Size is 5.
 /// // Finally, the alignment of the struct is 2 (because the largest alignment amongst its
 /// // fields is 2), so add 1 to the size for padding. Size is 6.
-/// assert_eq!(6, mem::size_of::<FieldStruct>());
+/// assert_eq!(6, size_of::<FieldStruct>());
 ///
 /// #[repr(C)]
 /// struct TupleStruct(u8, u16, u8);
 ///
 /// // Tuple structs follow the same rules.
-/// assert_eq!(6, mem::size_of::<TupleStruct>());
+/// assert_eq!(6, size_of::<TupleStruct>());
 ///
 /// // Note that reordering the fields can lower the size. We can remove both padding bytes
 /// // by putting `third` before `second`.
@@ -282,7 +278,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///     second: u16
 /// }
 ///
-/// assert_eq!(4, mem::size_of::<FieldStructOptimized>());
+/// assert_eq!(4, size_of::<FieldStructOptimized>());
 ///
 /// // Union size is the size of the largest field.
 /// #[repr(C)]
@@ -291,7 +287,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 ///     larger: u16
 /// }
 ///
-/// assert_eq!(2, mem::size_of::<ExampleUnion>());
+/// assert_eq!(2, size_of::<ExampleUnion>());
 /// ```
 ///
 /// [alignment]: align_of
@@ -304,7 +300,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
+#[rustc_diagnostic_item = "mem_size_of"]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
 }
@@ -320,13 +316,11 @@ pub const fn size_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::size_of_val(&5i32));
+/// assert_eq!(4, size_of_val(&5i32));
 ///
 /// let x: [u8; 13] = [0; 13];
 /// let y: &[u8] = &x;
-/// assert_eq!(13, mem::size_of_val(y));
+/// assert_eq!(13, size_of_val(y));
 /// ```
 ///
 /// [`size_of::<T>()`]: size_of
@@ -334,7 +328,7 @@ pub const fn size_of<T>() -> usize {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_size_of_val", since = "1.85.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
+#[rustc_diagnostic_item = "mem_size_of_val"]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -381,7 +375,7 @@ pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
 /// #![feature(layout_for_ptr)]
 /// use std::mem;
 ///
-/// assert_eq!(4, mem::size_of_val(&5i32));
+/// assert_eq!(4, size_of_val(&5i32));
 ///
 /// let x: [u8; 13] = [0; 13];
 /// let y: &[u8] = &x;
@@ -454,9 +448,7 @@ pub fn min_align_of_val<T: ?Sized>(val: &T) -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::align_of::<i32>());
+/// assert_eq!(4, align_of::<i32>());
 /// ```
 #[inline(always)]
 #[must_use]
@@ -477,9 +469,7 @@ pub const fn align_of<T>() -> usize {
 /// # Examples
 ///
 /// ```
-/// use std::mem;
-///
-/// assert_eq!(4, mem::align_of_val(&5i32));
+/// assert_eq!(4, align_of_val(&5i32));
 /// ```
 #[inline]
 #[must_use]
@@ -856,7 +846,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_replace")]
+#[rustc_diagnostic_item = "mem_replace"]
 pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // It may be tempting to use `swap` to avoid `unsafe` here. Don't!
     // The compiler optimizes the implementation below to two `memcpy`s
@@ -866,8 +856,13 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // such that the old value is not duplicated. Nothing is dropped and
     // nothing here can panic.
     unsafe {
-        let result = ptr::read(dest);
-        ptr::write(dest, src);
+        // Ideally we wouldn't use the intrinsics here, but going through the
+        // `ptr` methods introduces two unnecessary UbChecks, so until we can
+        // remove those for pointers that come from references, this uses the
+        // intrinsics instead so this stays very cheap in MIR (and debug).
+
+        let result = crate::intrinsics::read_via_copy(dest);
+        crate::intrinsics::write_via_move(dest, src);
         result
     }
 }
@@ -936,7 +931,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// [`RefCell`]: crate::cell::RefCell
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_drop")]
+#[rustc_diagnostic_item = "mem_drop"]
 pub fn drop<T>(_x: T) {}
 
 /// Bitwise-copies a value.
@@ -1159,7 +1154,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_discriminant")]
+#[rustc_diagnostic_item = "mem_discriminant"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v))
@@ -1259,41 +1254,55 @@ impl<T> SizedTypeProperties for T {}
 
 /// Expands to the offset in bytes of a field from the beginning of the given type.
 ///
-/// Structs, enums, unions and tuples are supported.
+/// The type may be a `struct`, `enum`, `union`, or tuple.
 ///
-/// Nested field accesses may be used, but not array indexes.
+/// The field may be a nested field (`field1.field2`), but not an array index.
+/// The field must be visible to the call site.
 ///
-/// If the nightly-only feature `offset_of_enum` is enabled,
-/// variants may be traversed as if they were fields.
-/// Variants themselves do not have an offset.
+/// The offset is returned as a [`usize`].
 ///
-/// Visibility is respected - all types and fields must be visible to the call site:
+/// # Offsets of, and in, dynamically sized types
 ///
-/// ```
-/// mod nested {
-///     #[repr(C)]
-///     pub struct Struct {
-///         private: u8,
-///     }
-/// }
+/// The field’s type must be [`Sized`], but it may be located in a [dynamically sized] container.
+/// If the field type is dynamically sized, then you cannot use `offset_of!` (since the field's
+/// alignment, and therefore its offset, may also be dynamic) and must take the offset from an
+/// actual pointer to the container instead.
 ///
-/// // assert_eq!(mem::offset_of!(nested::Struct, private), 0);
-/// // ^^^ error[E0616]: field `private` of struct `Struct` is private
-/// ```
-///
-/// Only [`Sized`] fields are supported, but the container may be unsized:
 /// ```
 /// # use core::mem;
+/// # use core::fmt::Debug;
 /// #[repr(C)]
-/// pub struct Struct {
+/// pub struct Struct<T: ?Sized> {
 ///     a: u8,
-///     b: [u8],
+///     b: T,
 /// }
 ///
-/// assert_eq!(mem::offset_of!(Struct, a), 0); // OK
-/// // assert_eq!(mem::offset_of!(Struct, b), 1);
-/// // ^^^ error[E0277]: doesn't have a size known at compile-time
+/// #[derive(Debug)]
+/// #[repr(C, align(4))]
+/// struct Align4(u32);
+///
+/// assert_eq!(mem::offset_of!(Struct<dyn Debug>, a), 0); // OK — Sized field
+/// assert_eq!(mem::offset_of!(Struct<Align4>, b), 4); // OK — not DST
+///
+/// // assert_eq!(mem::offset_of!(Struct<dyn Debug>, b), 1);
+/// // ^^^ error[E0277]: ... cannot be known at compilation time
+///
+/// // To obtain the offset of a !Sized field, examine a concrete value
+/// // instead of using offset_of!.
+/// let value: Struct<Align4> = Struct { a: 1, b: Align4(2) };
+/// let ref_unsized: &Struct<dyn Debug> = &value;
+/// let offset_of_b = unsafe {
+///     (&raw const ref_unsized.b).byte_offset_from_unsigned(ref_unsized)
+/// };
+/// assert_eq!(offset_of_b, 4);
 /// ```
+///
+/// If you need to obtain the offset of a field of a `!Sized` type, then, since the offset may
+/// depend on the particular value being stored (in particular, `dyn Trait` values have a
+/// dynamically-determined alignment), you must retrieve the offset from a specific reference
+/// or pointer, and so you cannot use `offset_of!` to work without one.
+///
+/// # Layout is subject to change
 ///
 /// Note that type layout is, in general, [subject to change and
 /// platform-specific](https://doc.rust-lang.org/reference/type-layout.html). If
@@ -1330,11 +1339,16 @@ impl<T> SizedTypeProperties for T {}
 ///
 /// [explicit `repr` attribute]: https://doc.rust-lang.org/reference/type-layout.html#representations
 ///
+/// # Unstable features
+///
+/// The following unstable features expand the functionality of `offset_of!`:
+///
+/// * [`offset_of_enum`] — allows `enum` variants to be traversed as if they were fields.
+/// * [`offset_of_slice`] — allows getting the offset of a field of type `[T]`.
+///
 /// # Examples
 ///
 /// ```
-/// #![feature(offset_of_enum)]
-///
 /// use std::mem;
 /// #[repr(C)]
 /// struct FieldStruct {
@@ -1356,18 +1370,11 @@ impl<T> SizedTypeProperties for T {}
 /// struct NestedB(u8);
 ///
 /// assert_eq!(mem::offset_of!(NestedA, b.0), 0);
-///
-/// #[repr(u8)]
-/// enum Enum {
-///     A(u8, u16),
-///     B { one: u8, two: u16 },
-/// }
-///
-/// assert_eq!(mem::offset_of!(Enum, A.0), 1);
-/// assert_eq!(mem::offset_of!(Enum, B.two), 2);
-///
-/// assert_eq!(mem::offset_of!(Option<&u8>, Some.0), 0);
 /// ```
+///
+/// [dynamically sized]: https://doc.rust-lang.org/reference/dynamically-sized-types.html
+/// [`offset_of_enum`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-enum.html
+/// [`offset_of_slice`]: https://doc.rust-lang.org/nightly/unstable-book/language-features/offset-of-slice.html
 #[stable(feature = "offset_of", since = "1.77.0")]
 #[allow_internal_unstable(builtin_syntax)]
 pub macro offset_of($Container:ty, $($fields:expr)+ $(,)?) {

@@ -37,14 +37,17 @@ fn main() {
     match color {
         Color::Red => println!("Red"),
         _ => eprintln!("Not red"),
+        //~^ wildcard_enum_match_arm
     };
     match color {
         Color::Red => println!("Red"),
         _not_red => eprintln!("Not red"),
+        //~^ wildcard_enum_match_arm
     };
     let _str = match color {
         Color::Red => "Red".to_owned(),
         not_red => format!("{:?}", not_red),
+        //~^ wildcard_enum_match_arm
     };
     match color {
         Color::Red => {},
@@ -61,6 +64,7 @@ fn main() {
     match color {
         Color::Rgb(r, _, _) if r > 0 => "Some red",
         _ => "No red",
+        //~^ wildcard_enum_match_arm
     };
     match color {
         Color::Red | Color::Green | Color::Blue | Color::Cyan => {},
@@ -78,6 +82,7 @@ fn main() {
     match error_kind {
         ErrorKind::NotFound => {},
         _ => {},
+        //~^ wildcard_enum_match_arm
     }
     match error_kind {
         ErrorKind::NotFound => {},
@@ -96,6 +101,7 @@ fn main() {
         match Enum::A {
             Enum::A => (),
             _ => (),
+            //~^ wildcard_enum_match_arm
         }
     }
 }

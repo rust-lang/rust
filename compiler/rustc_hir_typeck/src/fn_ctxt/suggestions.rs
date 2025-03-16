@@ -23,7 +23,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
-use rustc_span::{Ident, Span, Symbol, sym};
+use rustc_span::{ExpnKind, Ident, MacroKind, Span, Symbol, sym};
 use rustc_trait_selection::error_reporting::InferCtxtErrorExt;
 use rustc_trait_selection::error_reporting::traits::DefIdOrName;
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -613,7 +613,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .iter()
                     .take(4)
                     .map(|(var_hir_id, upvar)| {
-                        let var_name = self.tcx.hir().name(*var_hir_id).to_string();
+                        let var_name = self.tcx.hir_name(*var_hir_id).to_string();
                         let msg = format!("`{var_name}` captured here");
                         (upvar.span, msg)
                     })
@@ -1365,6 +1365,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.param_env,
                 ty::TraitRef::new(self.tcx, into_def_id, [expr_ty, expected_ty]),
             ))
+            && !expr
+                .span
+                .macro_backtrace()
+                .any(|x| matches!(x.kind, ExpnKind::Macro(MacroKind::Attr | MacroKind::Derive, ..)))
         {
             let span = expr.span.find_oldest_ancestor_in_same_ctxt();
 
@@ -1380,10 +1384,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 sugg.insert(0, (expr.span.shrink_to_lo(), format!("{}: ", name)));
             }
             diag.multipart_suggestion(
-                format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
-                sugg,
-                Applicability::MaybeIncorrect
-            );
+                    format!("call `Into::into` on this expression to convert `{expr_ty}` into `{expected_ty}`"),
+                    sugg,
+                    Applicability::MaybeIncorrect
+                );
             return true;
         }
 
@@ -2979,7 +2983,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) else {
+        let span = if let hir::ExprKind::Lit(lit) = &expr.kind { lit.span } else { expr.span };
+        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) else {
             return false;
         };
 
@@ -3074,10 +3079,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
                 let src = src.trim_end_matches(&checked_ty.to_string());
                 let len = src.split('.').next().unwrap().len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             } else {
                 let len = src.trim_end_matches(&checked_ty.to_string()).len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             },
             if expr.precedence() < ExprPrecedence::Unambiguous {
                 // Readd `)`

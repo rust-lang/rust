@@ -17,7 +17,7 @@ use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::num::NonZero;
 use std::ptr::NonNull;
-use std::{fmt, mem, str};
+use std::{fmt, str};
 
 pub use adt::*;
 pub use assoc::*;
@@ -27,10 +27,13 @@ pub use intrinsic::IntrinsicDef;
 use rustc_abi::{Align, FieldIdx, Integer, IntegerType, ReprFlags, ReprOptions, VariantIdx};
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::node_id::NodeMap;
+pub use rustc_ast_ir::{Movability, Mutability, try_visit};
+use rustc_attr_data_structures::AttributeKind;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::steal::Steal;
+use rustc_data_structures::unord::UnordMap;
 use rustc_errors::{Diag, ErrorGuaranteed};
 use rustc_hir::LangItem;
 use rustc_hir::def::{CtorKind, CtorOf, DefKind, DocLinkResMap, LifetimeRes, Res};
@@ -47,10 +50,10 @@ pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
-pub use rustc_type_ir::{Movability, Mutability, *};
+pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
 pub use vtable::*;
-use {rustc_ast as ast, rustc_attr_parsing as attr, rustc_hir as hir};
+use {rustc_ast as ast, rustc_attr_data_structures as attr, rustc_hir as hir};
 
 pub use self::closure::{
     BorrowKind, CAPTURE_STRUCT_LOCAL, CaptureInfo, CapturedPlace, ClosureTypeInfo,
@@ -66,7 +69,7 @@ pub use self::context::{
     CtxtInterners, CurrentGcx, DeducedParamAttrs, Feed, FreeRegionInfo, GlobalCtxt, Lift, TyCtxt,
     TyCtxtFeed, tls,
 };
-pub use self::fold::{FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable};
+pub use self::fold::*;
 pub use self::instance::{Instance, InstanceKind, ReifyReason, ShortInstance, UnusedGenericParams};
 pub use self::list::{List, ListWithCachedTypeInfo};
 pub use self::opaque_types::OpaqueTypeKey;
@@ -96,13 +99,14 @@ pub use self::typeck_results::{
     CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations, IsIdentity,
     Rust2024IncompatiblePatInfo, TypeckResults, UserType, UserTypeAnnotationIndex, UserTypeKind,
 };
-pub use self::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
+pub use self::visit::*;
 use crate::error::{OpaqueHiddenTypeMismatch, TypeMismatchReason};
 use crate::metadata::ModChild;
 use crate::middle::privacy::EffectiveVisibilities;
 use crate::mir::{Body, CoroutineLayout};
 use crate::query::{IntoQueryParam, Providers};
 use crate::ty;
+use crate::ty::codec::{TyDecoder, TyEncoder};
 pub use crate::ty::diagnostics::*;
 use crate::ty::fast_reject::SimplifiedType;
 use crate::ty::util::Discr;
@@ -114,16 +118,15 @@ pub mod codec;
 pub mod error;
 pub mod fast_reject;
 pub mod flags;
-pub mod fold;
 pub mod inhabitedness;
 pub mod layout;
 pub mod normalize_erasing_regions;
 pub mod pattern;
 pub mod print;
 pub mod relate;
+pub mod significant_drop_order;
 pub mod trait_def;
 pub mod util;
-pub mod visit;
 pub mod vtable;
 pub mod walk;
 
@@ -135,6 +138,7 @@ mod context;
 mod diagnostics;
 mod elaborate_impl;
 mod erase_regions;
+mod fold;
 mod generic_args;
 mod generics;
 mod impls_ty;
@@ -151,6 +155,7 @@ mod structural_impls;
 #[allow(hidden_glob_reexports)]
 mod sty;
 mod typeck_results;
+mod visit;
 
 // Data types
 
@@ -165,7 +170,7 @@ pub struct ResolverGlobalCtxt {
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
     pub expn_that_defined: FxHashMap<LocalDefId, ExpnId>,
     pub effective_visibilities: EffectiveVisibilities,
-    pub extern_crate_map: FxHashMap<LocalDefId, CrateNum>,
+    pub extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     pub maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
     pub module_children: LocalDefIdMap<Vec<ModChild>>,
     pub glob_map: FxHashMap<LocalDefId, FxHashSet<Symbol>>,
@@ -439,7 +444,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Ty<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Ty<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Ty<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }
@@ -546,13 +551,13 @@ impl<'tcx> TypeVisitable<TyCtxt<'tcx>> for Term<'tcx> {
     }
 }
 
-impl<'tcx, E: TyEncoder<I = TyCtxt<'tcx>>> Encodable<E> for Term<'tcx> {
+impl<'tcx, E: TyEncoder<'tcx>> Encodable<E> for Term<'tcx> {
     fn encode(&self, e: &mut E) {
         self.unpack().encode(e)
     }
 }
 
-impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for Term<'tcx> {
+impl<'tcx, D: TyDecoder<'tcx>> Decodable<D> for Term<'tcx> {
     fn decode(d: &mut D) -> Self {
         let res: TermKind<'tcx> = Decodable::decode(d);
         res.pack()
@@ -635,12 +640,12 @@ impl<'tcx> TermKind<'tcx> {
         let (tag, ptr) = match self {
             TermKind::Ty(ty) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ty.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ty.0.0) & TAG_MASK, 0);
                 (TYPE_TAG, NonNull::from(ty.0.0).cast())
             }
             TermKind::Const(ct) => {
                 // Ensure we can use the tag bits.
-                assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
+                assert_eq!(align_of_val(&*ct.0.0) & TAG_MASK, 0);
                 (CONST_TAG, NonNull::from(ct.0.0).cast())
             }
         };
@@ -935,7 +940,7 @@ impl rustc_type_ir::inherent::PlaceholderLike for PlaceholderConst {
 
 pub type Clauses<'tcx> = &'tcx ListWithCachedTypeInfo<Clause<'tcx>>;
 
-impl<'tcx> rustc_type_ir::visit::Flags for Clauses<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Clauses<'tcx> {
     fn flags(&self) -> TypeFlags {
         (**self).flags()
     }
@@ -988,12 +993,6 @@ impl<'tcx> ParamEnv<'tcx> {
     #[inline]
     pub fn new(caller_bounds: Clauses<'tcx>) -> Self {
         ParamEnv { caller_bounds }
-    }
-
-    /// Returns this same environment but with no caller bounds.
-    #[inline]
-    pub fn without_caller_bounds(self) -> Self {
-        Self::new(ListWithCachedTypeInfo::empty())
     }
 
     /// Creates a pair of param-env and value for use in queries.
@@ -1154,7 +1153,7 @@ pub struct VariantDef {
     /// `DefId` that identifies the variant's constructor.
     /// If this variant is a struct variant, then this is `None`.
     pub ctor: Option<(CtorKind, DefId)>,
-    /// Variant or struct name, maybe empty for anonymous adt (struct or union).
+    /// Variant or struct name.
     pub name: Symbol,
     /// Discriminant of this variant.
     pub discr: VariantDiscr,
@@ -1183,23 +1182,17 @@ impl VariantDef {
     ///
     /// If someone speeds up attribute loading to not be a performance concern, they can
     /// remove this hack and use the constructor `DefId` everywhere.
+    #[instrument(level = "debug")]
     pub fn new(
         name: Symbol,
         variant_did: Option<DefId>,
         ctor: Option<(CtorKind, DefId)>,
         discr: VariantDiscr,
         fields: IndexVec<FieldIdx, FieldDef>,
-        adt_kind: AdtKind,
         parent_did: DefId,
         recover_tainted: Option<ErrorGuaranteed>,
         is_field_list_non_exhaustive: bool,
     ) -> Self {
-        debug!(
-            "VariantDef::new(name = {:?}, variant_did = {:?}, ctor = {:?}, discr = {:?},
-             fields = {:?}, adt_kind = {:?}, parent_did = {:?})",
-            name, variant_did, ctor, discr, fields, adt_kind, parent_did,
-        );
-
         let mut flags = VariantFlags::NO_VARIANT_FLAGS;
         if is_field_list_non_exhaustive {
             flags |= VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE;
@@ -1424,39 +1417,6 @@ pub enum ImplOverlapKind {
         /// Whether or not the impl is permitted due to the trait being a `#[marker]` trait
         marker: bool,
     },
-    /// These impls are allowed to overlap, but that raises an
-    /// issue #33140 future-compatibility warning (tracked in #56484).
-    ///
-    /// Some background: in Rust 1.0, the trait-object types `Send + Sync` (today's
-    /// `dyn Send + Sync`) and `Sync + Send` (now `dyn Sync + Send`) were different.
-    ///
-    /// The widely-used version 0.1.0 of the crate `traitobject` had accidentally relied on
-    /// that difference, doing what reduces to the following set of impls:
-    ///
-    /// ```compile_fail,(E0119)
-    /// trait Trait {}
-    /// impl Trait for dyn Send + Sync {}
-    /// impl Trait for dyn Sync + Send {}
-    /// ```
-    ///
-    /// Obviously, once we made these types be identical, that code causes a coherence
-    /// error and a fairly big headache for us. However, luckily for us, the trait
-    /// `Trait` used in this case is basically a marker trait, and therefore having
-    /// overlapping impls for it is sound.
-    ///
-    /// To handle this, we basically regard the trait as a marker trait, with an additional
-    /// future-compatibility warning. To avoid accidentally "stabilizing" this feature,
-    /// it has the following restrictions:
-    ///
-    /// 1. The trait must indeed be a marker-like trait (i.e., no items), and must be
-    /// positive impls.
-    /// 2. The trait-ref of both impls must be equal.
-    /// 3. The trait-ref of both impls must be a trait object type consisting only of
-    /// marker traits.
-    /// 4. Neither of the impls can have any where-clauses.
-    ///
-    /// Once `traitobject` 0.1.0 is no longer an active concern, this hack can be removed.
-    FutureCompatOrderDepTraitObjects,
 }
 
 /// Useful source information about where a desugared associated type for an
@@ -1495,9 +1455,10 @@ impl<'tcx> TyCtxt<'tcx> {
             field_shuffle_seed ^= user_seed;
         }
 
-        for attr in self.get_attrs(did, sym::repr) {
-            for r in attr::parse_repr_attr(self.sess, attr) {
-                flags.insert(match r {
+        if let Some(reprs) = attr::find_attr!(self.get_all_attrs(did), AttributeKind::Repr(r) => r)
+        {
+            for (r, _) in reprs {
+                flags.insert(match *r {
                     attr::ReprRust => ReprFlags::empty(),
                     attr::ReprC => ReprFlags::IS_C,
                     attr::ReprPacked(pack) => {
@@ -1533,6 +1494,10 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                     attr::ReprAlign(align) => {
                         max_align = max_align.max(Some(align));
+                        ReprFlags::empty()
+                    }
+                    attr::ReprEmpty => {
+                        /* skip these, they're just for diagnostics */
                         ReprFlags::empty()
                     }
                 });
@@ -1629,7 +1594,7 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    /// Returns `true` if the impls are the same polarity and the trait either
+    /// Returns `Some` if the impls are the same polarity and the trait either
     /// has no items or is annotated `#[marker]` and prevents item overrides.
     #[instrument(level = "debug", skip(self), ret)]
     pub fn impls_are_allowed_to_overlap(
@@ -1668,18 +1633,6 @@ impl<'tcx> TyCtxt<'tcx> {
 
         if is_marker_overlap {
             return Some(ImplOverlapKind::Permitted { marker: true });
-        }
-
-        if let Some(self_ty1) =
-            self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id1)
-            && let Some(self_ty2) =
-                self.self_ty_of_trait_impl_enabling_order_dep_trait_object_hack(def_id2)
-        {
-            if self_ty1 == self_ty2 {
-                return Some(ImplOverlapKind::FutureCompatOrderDepTraitObjects);
-            } else {
-                debug!("found {self_ty1:?} != {self_ty2:?}");
-            }
         }
 
         None
@@ -1745,7 +1698,7 @@ impl<'tcx> TyCtxt<'tcx> {
     // FIXME(@lcnr): Remove this function.
     pub fn get_attrs_unchecked(self, did: DefId) -> &'tcx [hir::Attribute] {
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did))
+            self.hir_attrs(self.local_def_id_to_hir_id(did))
         } else {
             self.attrs_for_def(did)
         }
@@ -1757,13 +1710,21 @@ impl<'tcx> TyCtxt<'tcx> {
         did: impl Into<DefId>,
         attr: Symbol,
     ) -> impl Iterator<Item = &'tcx hir::Attribute> {
+        self.get_all_attrs(did).filter(move |a: &&hir::Attribute| a.has_name(attr))
+    }
+
+    /// Gets all attributes.
+    ///
+    /// To see if an item has a specific attribute, you should use [`rustc_attr_data_structures::find_attr!`] so you can use matching.
+    pub fn get_all_attrs(
+        self,
+        did: impl Into<DefId>,
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let did: DefId = did.into();
-        let filter_fn = move |a: &&hir::Attribute| a.has_name(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter()
         } else {
-            debug_assert!(rustc_feature::encode_cross_crate(attr));
-            self.attrs_for_def(did).iter().filter(filter_fn)
+            self.attrs_for_def(did).iter()
         }
     }
 
@@ -1798,17 +1759,14 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn get_attrs_by_path<'attr>(
+    pub fn get_attrs_by_path(
         self,
         did: DefId,
-        attr: &'attr [Symbol],
-    ) -> impl Iterator<Item = &'tcx hir::Attribute> + 'attr
-    where
-        'tcx: 'attr,
-    {
+        attr: &[Symbol],
+    ) -> impl Iterator<Item = &'tcx hir::Attribute> {
         let filter_fn = move |a: &&hir::Attribute| a.path_matches(attr);
         if let Some(did) = did.as_local() {
-            self.hir().attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
+            self.hir_attrs(self.local_def_id_to_hir_id(did)).iter().filter(filter_fn)
         } else {
             self.attrs_for_def(did).iter().filter(filter_fn)
         }

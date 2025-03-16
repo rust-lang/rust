@@ -66,9 +66,9 @@ impl DnfExpr {
             }
         }
 
-        res.enabled.sort_unstable_by(compare);
+        res.enabled.sort_unstable();
         res.enabled.dedup();
-        res.disabled.sort_unstable_by(compare);
+        res.disabled.sort_unstable();
         res.disabled.dedup();
         Some(res)
     }
@@ -114,22 +114,11 @@ impl DnfExpr {
             };
 
             // Undo the FxHashMap randomization for consistent output.
-            diff.enable.sort_unstable_by(compare);
-            diff.disable.sort_unstable_by(compare);
+            diff.enable.sort_unstable();
+            diff.disable.sort_unstable();
 
             Some(diff)
         })
-    }
-}
-
-fn compare(a: &CfgAtom, b: &CfgAtom) -> std::cmp::Ordering {
-    match (a, b) {
-        (CfgAtom::Flag(a), CfgAtom::Flag(b)) => a.as_str().cmp(b.as_str()),
-        (CfgAtom::Flag(_), CfgAtom::KeyValue { .. }) => std::cmp::Ordering::Less,
-        (CfgAtom::KeyValue { .. }, CfgAtom::Flag(_)) => std::cmp::Ordering::Greater,
-        (CfgAtom::KeyValue { key, value }, CfgAtom::KeyValue { key: key2, value: value2 }) => {
-            key.as_str().cmp(key2.as_str()).then(value.as_str().cmp(value2.as_str()))
-        }
     }
 }
 

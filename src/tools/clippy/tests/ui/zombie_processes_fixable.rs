@@ -5,16 +5,20 @@ use std::process::{Child, Command};
 
 fn main() {
     let _ = Command::new("").spawn().unwrap();
-    //~^ ERROR: spawned process is never `wait()`ed on
+    //~^ zombie_processes
+
     Command::new("").spawn().unwrap();
-    //~^ ERROR: spawned process is never `wait()`ed on
+    //~^ zombie_processes
+
     spawn_proc();
-    //~^ ERROR: spawned process is never `wait()`ed on
+    //~^ zombie_processes
+
     spawn_proc().wait().unwrap(); // OK
 }
 
 fn not_main() {
     Command::new("").spawn().unwrap();
+    //~^ zombie_processes
 }
 
 fn spawn_proc() -> Child {

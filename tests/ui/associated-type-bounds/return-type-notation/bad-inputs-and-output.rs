@@ -1,6 +1,7 @@
 //@ edition: 2021
-
+//@ run-rustfix
 #![feature(return_type_notation)]
+#![allow(dead_code)]
 
 trait Trait {
     async fn method() {}
@@ -19,6 +20,9 @@ fn foo_path<T: Trait>() where T::method(i32): Send {}
 //~^ ERROR argument types not allowed with return type notation
 
 fn bar_path<T: Trait>() where T::method() -> (): Send {}
+//~^ ERROR return type not allowed with return type notation
+
+fn bay_path<T: Trait>() where T::method(..) -> (): Send {}
 //~^ ERROR return type not allowed with return type notation
 
 fn baz_path<T: Trait>() where T::method(): Send {}

@@ -9,18 +9,20 @@
 #![cfg_attr(feature = "nightly", allow(internal_features))]
 #![cfg_attr(feature = "nightly", feature(never_type))]
 #![cfg_attr(feature = "nightly", feature(rustc_attrs))]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable, Encodable, HashStable_NoContext};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 
 pub mod visit;
 
 /// The movability of a coroutine / closure literal:
 /// whether a coroutine contains self-references, causing it to be `!Unpin`.
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub enum Movability {
     /// May contain self-references, `!Unpin`.
     Static,
@@ -29,7 +31,10 @@ pub enum Movability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub enum Mutability {
     // N.B. Order is deliberate, so that Not < Mut
     Not,
@@ -88,7 +93,10 @@ impl Mutability {
 }
 
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Copy)]
-#[cfg_attr(feature = "nightly", derive(Encodable, Decodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub enum Pinnedness {
     Not,
     Pinned,

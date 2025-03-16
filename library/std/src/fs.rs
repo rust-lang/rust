@@ -14,7 +14,8 @@
         target_os = "emscripten",
         target_os = "wasi",
         target_env = "sgx",
-        target_os = "xous"
+        target_os = "xous",
+        target_os = "trusty",
     ))
 ))]
 mod tests;
@@ -2446,7 +2447,7 @@ pub fn symlink_metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `rename` function on Unix
-/// and the `SetFileInformationByHandle` function on Windows.
+/// and the `MoveFileExW` or `SetFileInformationByHandle` function on Windows.
 ///
 /// Because of this, the behavior when both `from` and `to` exist differs. On
 /// Unix, if `from` is a directory, `to` must also be an (empty) directory. If
@@ -2857,9 +2858,11 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// See [`fs::remove_file`] and [`fs::remove_dir`].
 ///
-/// `remove_dir_all` will fail if `remove_dir` or `remove_file` fail on any constituent paths, including the root `path`.
-/// As a result, the directory you are deleting must exist, meaning that this function is not idempotent.
-/// Additionally, `remove_dir_all` will also fail if the `path` is not a directory.
+/// [`remove_dir_all`] will fail if [`remove_dir`] or [`remove_file`] fail on *any* constituent
+/// paths, *including* the root `path`. Consequently,
+///
+/// - The directory you are deleting *must* exist, meaning that this function is *not idempotent*.
+/// - [`remove_dir_all`] will fail if the `path` is *not* a directory.
 ///
 /// Consider ignoring the error if validating the removal is not required for your use case.
 ///

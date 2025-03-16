@@ -1023,7 +1023,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 format!(" for lifetime parameter `{name}`")
             }
             infer::UpvarRegion(ref upvar_id, _) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
+                let var_name = self.tcx.hir_name(upvar_id.var_path.hir_id);
                 format!(" for capture of `{var_name}` by closure")
             }
             infer::Nll(..) => bug!("NLL variable found in lexical phase"),

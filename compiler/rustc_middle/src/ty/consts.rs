@@ -34,7 +34,7 @@ impl<'tcx> rustc_type_ir::inherent::IntoKind for Const<'tcx> {
     }
 }
 
-impl<'tcx> rustc_type_ir::visit::Flags for Const<'tcx> {
+impl<'tcx> rustc_type_ir::Flags for Const<'tcx> {
     fn flags(&self) -> TypeFlags {
         self.0.flags
     }

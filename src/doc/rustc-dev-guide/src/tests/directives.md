@@ -6,10 +6,7 @@
 FIXME(jieyouxu) completely revise this chapter.
 -->
 
-Directives are special comments that tell compiletest how to build and interpret
-a test. They must appear before the Rust source in the test. They may also
-appear in `rmake.rs` or legacy Makefiles for [run-make
-tests](compiletest.md#run-make-tests).
+Directives are special comments that tell compiletest how to build and interpret a test. They must appear before the Rust source in the test. They may also appear in `rmake.rs` [run-make tests](compiletest.md#run-make-tests).
 
 They are normally put after the short comment that explains the point of this
 test. Compiletest test suites use `//@` to signal that a comment is a directive.
@@ -122,8 +119,7 @@ for more details.
 These directives are used to ignore the test in some situations, which
 means the test won't be compiled or run.
 
-* `ignore-X` where `X` is a target detail or stage will ignore the test
-  accordingly (see below)
+* `ignore-X` where `X` is a target detail or other criteria on which to ignore the test (see below)
 * `only-X` is like `ignore-X`, but will *only* run the test on that target or
   stage
 * `ignore-test` always ignores the test. This can be used to temporarily disable
@@ -142,7 +138,8 @@ Some examples of `X` in `ignore-X` or `only-X`:
   matches that target as well as the emscripten targets.
 - Pointer width: `32bit`, `64bit`
 - Endianness: `endian-big`
-- Stage: `stage0`, `stage1`, `stage2`
+- Stage: `stage1`, `stage2`
+- Binary format: `elf`
 - Channel: `stable`, `beta`
 - When cross compiling: `cross-compile`
 - When [remote testing] is used: `remote`
@@ -198,7 +195,6 @@ settings:
 
 The following directives will check LLVM support:
 
-- `no-system-llvm` — ignores if the system llvm is used
 - `exact-llvm-major-version: 19` — ignores if the llvm major version does not
   match the specified llvm major version.
 - `min-llvm-version: 13.0` — ignored if the LLVM version is less than the given
@@ -221,8 +217,6 @@ The following directives will check LLVM support:
     [`aarch64-gnu-debug`]), which only runs a
     subset of `run-make` tests. Other tests with this directive will not
     run at all, which is usually not what you want.
-  - Notably, the [`aarch64-gnu-debug`] CI job *currently* only runs `run-make`
-    tests which additionally contain `clang` in their test name.
 
 See also [Debuginfo tests](compiletest.md#debuginfo-tests) for directives for
 ignoring debuggers.

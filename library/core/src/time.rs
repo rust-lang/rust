@@ -77,7 +77,7 @@ const DAYS_PER_WEEK: u64 = 7;
 /// crate to do so.
 #[stable(feature = "duration", since = "1.3.0")]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Duration")]
+#[rustc_diagnostic_item = "Duration"]
 pub struct Duration {
     secs: u64,
     nanos: Nanoseconds, // Always 0 <= nanos < NANOS_PER_SEC
@@ -1377,7 +1377,8 @@ impl fmt::Debug for Duration {
                     } else {
                         // We need to add padding. Use the `Formatter::padding` helper function.
                         let default_align = fmt::Alignment::Left;
-                        let post_padding = f.padding(requested_w - actual_w, default_align)?;
+                        let post_padding =
+                            f.padding((requested_w - actual_w) as u16, default_align)?;
                         emit_without_padding(f)?;
                         post_padding.write(f)
                     }

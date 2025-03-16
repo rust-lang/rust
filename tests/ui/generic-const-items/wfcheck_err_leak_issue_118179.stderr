@@ -3,8 +3,6 @@ error[E0770]: the type of const parameters must not depend on other generic para
    |
 LL | struct G<T, const N: Vec<T>>(T);
    |                          ^ the type must not depend on the parameter `T`
-   |
-   = note: type parameters may not be used in the type of const parameters
 
 error: aborting due to 1 previous error
 

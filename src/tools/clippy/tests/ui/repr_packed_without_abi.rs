@@ -2,12 +2,14 @@
 
 #[repr(packed)]
 struct NetworkPacketHeader {
+    //~^ repr_packed_without_abi
     header_length: u8,
     header_version: u16,
 }
 
 #[repr(packed)]
 union Foo {
+    //~^ repr_packed_without_abi
     a: u8,
     b: u16,
 }

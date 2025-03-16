@@ -1,11 +1,13 @@
 use std::marker::PhantomData;
+#[cfg(not(feature = "nightly"))]
+use std::mem;
 use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Bound, Not, Range, RangeBounds, Shl};
 use std::rc::Rc;
-use std::{fmt, iter, mem, slice};
+use std::{fmt, iter, slice};
 
 use Chunk::*;
 #[cfg(feature = "nightly")]
-use rustc_macros::{Decodable_Generic, Encodable_Generic};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
 use smallvec::{SmallVec, smallvec};
 
 use crate::{Idx, IndexVec};
@@ -14,7 +16,7 @@ use crate::{Idx, IndexVec};
 mod tests;
 
 type Word = u64;
-const WORD_BYTES: usize = mem::size_of::<Word>();
+const WORD_BYTES: usize = size_of::<Word>();
 const WORD_BITS: usize = WORD_BYTES * 8;
 
 // The choice of chunk size has some trade-offs.
@@ -112,7 +114,7 @@ macro_rules! bit_relations_inherent_impls {
 /// to or greater than the domain size. All operations that involve two bitsets
 /// will panic if the bitsets have differing domain sizes.
 ///
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Eq, PartialEq, Hash)]
 pub struct DenseBitSet<T> {
     domain_size: usize,
@@ -723,7 +725,7 @@ impl<T: Idx> ChunkedBitSet<T> {
         match self.chunks.get(chunk_index) {
             Some(Zeros(_chunk_domain_size)) => ChunkIter::Zeros,
             Some(Ones(chunk_domain_size)) => ChunkIter::Ones(0..*chunk_domain_size as usize),
-            Some(Mixed(chunk_domain_size, _, ref words)) => {
+            Some(Mixed(chunk_domain_size, _, words)) => {
                 let num_words = num_words(*chunk_domain_size as usize);
                 ChunkIter::Mixed(BitIter::new(&words[0..num_words]))
             }
@@ -752,11 +754,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     changed = true;
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // First check if the operation would change
@@ -836,11 +834,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                         Mixed(*self_chunk_domain_size, self_chunk_count, Rc::new(self_chunk_words));
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
@@ -891,11 +885,7 @@ impl<T: Idx> BitRelations<ChunkedBitSet<T>> for ChunkedBitSet<T> {
                     *self_chunk = other_chunk.clone();
                 }
                 (
-                    Mixed(
-                        self_chunk_domain_size,
-                        ref mut self_chunk_count,
-                        ref mut self_chunk_words,
-                    ),
+                    Mixed(self_chunk_domain_size, self_chunk_count, self_chunk_words),
                     Mixed(_other_chunk_domain_size, _other_chunk_count, other_chunk_words),
                 ) => {
                     // See [`<Self as BitRelations<ChunkedBitSet<T>>>::union`] for the explanation
@@ -1402,7 +1392,7 @@ impl<T: Idx> From<DenseBitSet<T>> for GrowableBitSet<T> {
 ///
 /// All operations that involve a row and/or column index will panic if the
 /// index exceeds the relevant bound.
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Clone, Eq, PartialEq, Hash)]
 pub struct BitMatrix<R: Idx, C: Idx> {
     num_rows: usize,
@@ -1678,7 +1668,7 @@ impl<R: Idx, C: Idx> SparseBitMatrix<R, C> {
 
     /// Iterates through all the columns set to true in a given row of
     /// the matrix.
-    pub fn iter(&self, row: R) -> impl Iterator<Item = C> + '_ {
+    pub fn iter(&self, row: R) -> impl Iterator<Item = C> {
         self.row(row).into_iter().flat_map(|r| r.iter())
     }
 
@@ -1826,7 +1816,7 @@ impl std::fmt::Debug for FiniteBitSet<u32> {
 
 /// A fixed-sized bitset type represented by an integer type. Indices outwith than the range
 /// representable by `T` are considered set.
-#[cfg_attr(feature = "nightly", derive(Decodable_Generic, Encodable_Generic))]
+#[cfg_attr(feature = "nightly", derive(Decodable_NoContext, Encodable_NoContext))]
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct FiniteBitSet<T: FiniteBitSetTy>(pub T);
 

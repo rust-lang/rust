@@ -123,7 +123,7 @@ impl<'tcx> IfThisChanged<'tcx> {
     fn process_attrs(&mut self, def_id: LocalDefId) {
         let def_path_hash = self.tcx.def_path_hash(def_id.to_def_id());
         let hir_id = self.tcx.local_def_id_to_hir_id(def_id);
-        let attrs = self.tcx.hir().attrs(hir_id);
+        let attrs = self.tcx.hir_attrs(hir_id);
         for attr in attrs {
             if attr.has_name(sym::rustc_if_this_changed) {
                 let dep_node_interned = self.argument(attr);
@@ -137,13 +137,13 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                 };
-                self.if_this_changed.push((attr.span, def_id.to_def_id(), dep_node));
+                self.if_this_changed.push((attr.span(), def_id.to_def_id(), dep_node));
             } else if attr.has_name(sym::rustc_then_this_would_need) {
                 let dep_node_interned = self.argument(attr);
                 let dep_node = match dep_node_interned {
@@ -151,17 +151,17 @@ impl<'tcx> IfThisChanged<'tcx> {
                         match DepNode::from_label_string(self.tcx, n.as_str(), def_path_hash) {
                             Ok(n) => n,
                             Err(()) => self.tcx.dcx().emit_fatal(errors::UnrecognizedDepNode {
-                                span: attr.span,
+                                span: attr.span(),
                                 name: n,
                             }),
                         }
                     }
                     None => {
-                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span });
+                        self.tcx.dcx().emit_fatal(errors::MissingDepNode { span: attr.span() });
                     }
                 };
                 self.then_this_would_need.push((
-                    attr.span,
+                    attr.span(),
                     dep_node_interned.unwrap(),
                     hir_id,
                     dep_node,

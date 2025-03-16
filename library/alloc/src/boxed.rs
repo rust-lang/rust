@@ -237,22 +237,9 @@ pub struct Box<
 /// the newly allocated memory. This is an intrinsic to avoid unnecessary copies.
 ///
 /// This is the surface syntax for `box <expr>` expressions.
-#[cfg(not(bootstrap))]
 #[rustc_intrinsic]
-#[rustc_intrinsic_must_be_overridden]
 #[unstable(feature = "liballoc_internals", issue = "none")]
-pub fn box_new<T>(_x: T) -> Box<T> {
-    unreachable!()
-}
-
-/// Transition function for the next bootstrap bump.
-#[cfg(bootstrap)]
-#[unstable(feature = "liballoc_internals", issue = "none")]
-#[inline(always)]
-pub fn box_new<T>(x: T) -> Box<T> {
-    #[rustc_box]
-    Box::new(x)
-}
+pub fn box_new<T>(x: T) -> Box<T>;
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then places `x` into it.
@@ -950,8 +937,6 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(box_uninit_write)]
-    ///
     /// let big_box = Box::<[usize; 1024]>::new_uninit();
     ///
     /// let mut array = [0; 1024];
@@ -967,7 +952,7 @@ impl<T, A: Allocator> Box<mem::MaybeUninit<T>, A> {
     ///     assert_eq!(*x, i);
     /// }
     /// ```
-    #[unstable(feature = "box_uninit_write", issue = "129397")]
+    #[stable(feature = "box_uninit_write", since = "CURRENT_RUSTC_VERSION")]
     #[inline]
     pub fn write(mut boxed: Self, value: T) -> Box<T, A> {
         unsafe {

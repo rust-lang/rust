@@ -9,10 +9,9 @@ use rustc_data_structures::graph::implementation::{
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::unord::UnordSet;
 use rustc_index::{IndexSlice, IndexVec};
-use rustc_middle::ty::fold::{TypeFoldable, fold_regions};
 use rustc_middle::ty::{
     self, ReBound, ReEarlyParam, ReErased, ReError, ReLateParam, RePlaceholder, ReStatic, ReVar,
-    Region, RegionVid, Ty, TyCtxt,
+    Region, RegionVid, Ty, TyCtxt, TypeFoldable, fold_regions,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::Span;
@@ -160,7 +159,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
     /// empty region. The `expansion` phase will grow this larger.
     fn construct_var_data(&self) -> LexicalRegionResolutions<'tcx> {
         LexicalRegionResolutions {
-            values: IndexVec::from_fn_n(
+            values: IndexVec::<RegionVid, _>::from_fn_n(
                 |vid| {
                     let vid_universe = self.var_infos[vid].universe;
                     VarValue::Empty(vid_universe)

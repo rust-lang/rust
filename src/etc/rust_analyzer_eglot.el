@@ -8,7 +8,6 @@
                                                          "check"
                                                          "--json-output"])
                  :linkedProjects ["Cargo.toml"
-                                  "src/tools/x/Cargo.toml"
                                   "src/bootstrap/Cargo.toml"
                                   "src/tools/rust-analyzer/Cargo.toml"
                                   "compiler/rustc_codegen_cranelift/Cargo.toml"

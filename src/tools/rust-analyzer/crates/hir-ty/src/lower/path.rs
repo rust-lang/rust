@@ -10,7 +10,7 @@ use hir_def::{
     generics::{TypeParamProvenance, WherePredicate, WherePredicateTypeTarget},
     path::{GenericArg, GenericArgs, Path, PathSegment, PathSegments},
     resolver::{ResolveValueResult, TypeNs, ValueNs},
-    type_ref::{TypeBound, TypeRef},
+    type_ref::{TypeBound, TypeRef, TypesMap},
     GenericDefId, GenericParamId, ItemContainerId, Lookup, TraitId,
 };
 use smallvec::SmallVec;
@@ -838,15 +838,21 @@ impl<'a, 'b> PathLoweringContext<'a, 'b> {
                         (_, ImplTraitLoweringMode::Param | ImplTraitLoweringMode::Variable) => {
                             // Find the generic index for the target of our `bound`
                             let target_param_idx =
-                                self.ctx.resolver.where_predicates_in_scope().find_map(|(p, _)| {
-                                    match p {
+                                self.ctx.resolver.where_predicates_in_scope().find_map(
+                                    |(p, (_, types_map))| match p {
                                         WherePredicate::TypeBound {
                                             target: WherePredicateTypeTarget::TypeOrConstParam(idx),
                                             bound: b,
-                                        } if b == bound => Some(idx),
+                                        } if std::ptr::eq::<TypesMap>(
+                                            self.ctx.types_map,
+                                            types_map,
+                                        ) && bound == b =>
+                                        {
+                                            Some(idx)
+                                        }
                                         _ => None,
-                                    }
-                                });
+                                    },
+                                );
                             let ty = if let Some(target_param_idx) = target_param_idx {
                                 let mut counter = 0;
                                 let generics = self.ctx.generics().expect("generics in scope");

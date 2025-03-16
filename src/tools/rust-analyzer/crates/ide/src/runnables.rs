@@ -9,6 +9,7 @@ use hir::{
 };
 use ide_assists::utils::{has_test_related_attribute, test_related_attribute_syn};
 use ide_db::{
+    base_db::SourceDatabase,
     defs::Definition,
     documentation::docs_from_attrs,
     helpers::visit_file_defs,
@@ -399,7 +400,8 @@ pub(crate) fn runnable_impl(
     sema: &Semantics<'_, RootDatabase>,
     def: &hir::Impl,
 ) -> Option<Runnable> {
-    let edition = def.module(sema.db).krate().edition(sema.db);
+    let display_target = def.module(sema.db).krate().to_display_target(sema.db);
+    let edition = display_target.edition;
     let attrs = def.attrs(sema.db);
     if !has_runnable_doc_test(&attrs) {
         return None;
@@ -408,7 +410,7 @@ pub(crate) fn runnable_impl(
     let nav = def.try_to_nav(sema.db)?.call_site();
     let ty = def.self_ty(sema.db);
     let adt_name = ty.as_adt()?.name(sema.db);
-    let mut ty_args = ty.generic_parameters(sema.db, edition).peekable();
+    let mut ty_args = ty.generic_parameters(sema.db, display_target).peekable();
     let params = if ty_args.peek().is_some() {
         format!("<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)))
     } else {
@@ -494,7 +496,11 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
         Definition::SelfType(it) => it.attrs(db),
         _ => return None,
     };
-    let edition = def.krate(db).map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let krate = def.krate(db);
+    let edition = krate.map(|it| it.edition(db)).unwrap_or(Edition::CURRENT);
+    let display_target = krate
+        .unwrap_or_else(|| (*db.crate_graph().crates_in_topological_order().last().unwrap()).into())
+        .to_display_target(db);
     if !has_runnable_doc_test(&attrs) {
         return None;
     }
@@ -509,7 +515,7 @@ fn module_def_doctest(db: &RootDatabase, def: Definition) -> Option<Runnable> {
             if let Some(ty) = assoc_item.implementing_ty(db) {
                 if let Some(adt) = ty.as_adt() {
                     let name = adt.name(db);
-                    let mut ty_args = ty.generic_parameters(db, edition).peekable();
+                    let mut ty_args = ty.generic_parameters(db, display_target).peekable();
                     format_to!(path, "{}", name.display(db, edition));
                     if ty_args.peek().is_some() {
                         format_to!(path, "<{}>", ty_args.format_with(",", |ty, cb| cb(&ty)));

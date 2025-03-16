@@ -270,6 +270,11 @@ v(
     "loongarch64-unknown-linux-musl install directory",
 )
 v(
+    "musl-root-wali-wasm32",
+    "target.wasm32-wali-linux-musl.musl-root",
+    "wasm32-wali-linux-musl install directory",
+)
+v(
     "qemu-armhf-rootfs",
     "target.arm-unknown-linux-gnueabihf.qemu-rootfs",
     "rootfs in qemu testing, you probably don't want to use this",
@@ -292,7 +297,7 @@ v(
 v("release-channel", "rust.channel", "the name of the release channel to build")
 v(
     "release-description",
-    "rust.description",
+    "build.description",
     "optional descriptive string for version output",
 )
 v("dist-compression-formats", None, "List of compression formats to use")
@@ -776,6 +781,6 @@ if __name__ == "__main__":
         f.write(contents)
 
     p("")
-    p("run `python {}/x.py --help`".format(rust_dir))
+    p("run `{} {}/x.py --help`".format(os.path.basename(sys.executable), rust_dir))
     if "GITHUB_ACTIONS" in os.environ:
         print("::endgroup::")

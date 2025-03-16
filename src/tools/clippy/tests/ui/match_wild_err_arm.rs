@@ -21,24 +21,22 @@ fn match_wild_err_arm() {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => panic!("err"),
-        //~^ ERROR: `Err(_)` matches all errors
-        //~| NOTE: match each error separately or use the error output, or use `.expect(ms
+        //~^ match_wild_err_arm
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => panic!(),
-        //~^ ERROR: `Err(_)` matches all errors
-        //~| NOTE: match each error separately or use the error output, or use `.expect(ms
+        //~^ match_wild_err_arm
     }
 
     match x {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_) => {
-            //~^ ERROR: `Err(_)` matches all errors
-            //~| NOTE: match each error separately or use the error output, or use `.expect(ms
+            //~^ match_wild_err_arm
+
             panic!();
         },
     }
@@ -47,8 +45,7 @@ fn match_wild_err_arm() {
         Ok(3) => println!("ok"),
         Ok(_) => println!("ok"),
         Err(_e) => panic!(),
-        //~^ ERROR: `Err(_e)` matches all errors
-        //~| NOTE: match each error separately or use the error output, or use `.expect(ms
+        //~^ match_wild_err_arm
     }
 
     // Allowed when used in `panic!`.

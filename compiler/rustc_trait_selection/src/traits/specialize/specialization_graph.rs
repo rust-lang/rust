@@ -12,7 +12,6 @@ use crate::traits;
 
 #[derive(Copy, Clone, Debug)]
 pub enum FutureCompatOverlapErrorKind {
-    OrderDepTraitObjects,
     LeakCheck,
 }
 
@@ -151,12 +150,6 @@ impl<'tcx> Children {
                 {
                     match overlap_kind {
                         ty::ImplOverlapKind::Permitted { marker: _ } => {}
-                        ty::ImplOverlapKind::FutureCompatOrderDepTraitObjects => {
-                            *last_lint_mut = Some(FutureCompatOverlapError {
-                                error: create_overlap_error(overlap),
-                                kind: FutureCompatOverlapErrorKind::OrderDepTraitObjects,
-                            });
-                        }
                     }
 
                     return Ok((false, false));
@@ -200,15 +193,12 @@ impl<'tcx> Children {
     }
 }
 
-fn iter_children(children: &Children) -> impl Iterator<Item = DefId> + '_ {
+fn iter_children(children: &Children) -> impl Iterator<Item = DefId> {
     let nonblanket = children.non_blanket_impls.iter().flat_map(|(_, v)| v.iter());
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }
 
-fn filtered_children(
-    children: &mut Children,
-    st: SimplifiedType,
-) -> impl Iterator<Item = DefId> + '_ {
+fn filtered_children(children: &mut Children, st: SimplifiedType) -> impl Iterator<Item = DefId> {
     let nonblanket = children.non_blanket_impls.entry(st).or_default().iter();
     children.blanket_impls.iter().chain(nonblanket).cloned()
 }

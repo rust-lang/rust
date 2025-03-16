@@ -12,7 +12,7 @@ declare_lint! {
     /// for `dyn SubTrait` with a `dyn SuperTrait` type as the `Output` type.
     ///
     /// These implementations are "shadowed" by trait upcasting (stabilized since
-    /// CURRENT_RUSTC_VERSION). The `deref` functions is no longer called implicitly, which might
+    /// 1.86.0). The `deref` functions is no longer called implicitly, which might
     /// change behavior compared to previous rustc versions.
     ///
     /// ### Example

@@ -55,12 +55,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Or-patterns are not tested directly; instead they are expanded into subcandidates,
             // which are then distinguished by testing whatever non-or patterns they contain.
             TestCase::Or { .. } => bug!("or-patterns should have already been handled"),
-
-            TestCase::Irrefutable { .. } => span_bug!(
-                match_pair.pattern_span,
-                "simplifiable pattern found: {:?}",
-                match_pair.pattern_span
-            ),
         };
 
         Test { span: match_pair.pattern_span, kind }
@@ -546,11 +540,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) = candidate
-            .match_pairs
-            .iter()
-            .enumerate()
-            .find(|&(_, mp)| mp.place == Some(test_place))?;
+        let (match_pair_index, match_pair) =
+            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == test_place)?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -593,7 +584,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate
                         .match_pairs
                         .iter()
-                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
+                        .any(|mp| mp.place == test_place && is_covering_range(&mp.test_case))
                 };
                 if sorted_candidates
                     .get(&TestBranch::Failure)
@@ -769,7 +760,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let match_pair = candidate.match_pairs.remove(match_pair_index);
             candidate.match_pairs.extend(match_pair.subpairs);
             // Move or-patterns to the end.
-            candidate.match_pairs.sort_by_key(|pair| matches!(pair.test_case, TestCase::Or { .. }));
+            candidate.sort_match_pairs();
         }
 
         ret

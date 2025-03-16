@@ -19,7 +19,7 @@ env:
 
 jobs:
   rust:
-    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event.action == 'workflow_dispatch' }}
+    if: ${{ github.repository == 'rust-lang/rust-analyzer' || github.event_name == 'workflow_dispatch' }}
     name: Rust
     runs-on: ubuntu-latest
     env:

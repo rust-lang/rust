@@ -1,0 +1,35 @@
+error: malformed `type_const` attribute input
+  --> $DIR/bad-type_const-syntax.rs:2:5
+   |
+LL |     #[type_const()]
+   |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[type_const]`
+
+error[E0658]: the `#[type_const]` attribute is an experimental feature
+  --> $DIR/bad-type_const-syntax.rs:2:5
+   |
+LL |     #[type_const()]
+   |     ^^^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error[E0658]: the `#[type_const]` attribute is an experimental feature
+  --> $DIR/bad-type_const-syntax.rs:11:5
+   |
+LL |     #[type_const]
+   |     ^^^^^^^^^^^^^
+   |
+   = note: see issue #132980 <https://github.com/rust-lang/rust/issues/132980> for more information
+   = help: add `#![feature(min_generic_const_args)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: `#[type_const]` must only be applied to trait associated constants
+  --> $DIR/bad-type_const-syntax.rs:11:5
+   |
+LL |     #[type_const]
+   |     ^^^^^^^^^^^^^
+
+error: aborting due to 4 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

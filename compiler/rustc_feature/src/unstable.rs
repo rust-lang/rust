@@ -1,6 +1,7 @@
 //! List of the unstable feature gates.
 
 use std::path::PathBuf;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_span::{Span, Symbol, sym};
@@ -203,7 +204,7 @@ declare_features! (
     /// Allows using anonymous lifetimes in argument-position impl-trait.
     (unstable, anonymous_lifetime_in_impl_trait, "1.63.0", None),
     /// Allows access to the emscripten_wasm_eh config, used by panic_unwind and unwind
-    (internal, cfg_emscripten_wasm_eh, "CURRENT_RUSTC_VERSION", None),
+    (internal, cfg_emscripten_wasm_eh, "1.86.0", None),
     /// Allows identifying the `compiler_builtins` crate.
     (internal, compiler_builtins, "1.13.0", None),
     /// Allows writing custom MIR
@@ -239,7 +240,7 @@ declare_features! (
     /// Added for testing unstable lints; perma-unstable.
     (internal, test_unstable_lint, "1.60.0", None),
     /// Helps with formatting for `group_imports = "StdExternalCrate"`.
-    (unstable, unqualified_local_imports, "1.83.0", None),
+    (unstable, unqualified_local_imports, "1.83.0", Some(138299)),
     /// Use for stable + negative coherence and strict coherence depending on trait's
     /// rustc_strict_coherence value.
     (unstable, with_negative_coherence, "1.60.0", None),
@@ -270,14 +271,6 @@ declare_features! (
     (unstable, doc_notable_trait, "1.52.0", Some(45040)),
     /// Allows using the `may_dangle` attribute (RFC 1327).
     (unstable, dropck_eyepatch, "1.10.0", Some(34761)),
-    /// Allows making `dyn Trait` well-formed even if `Trait` is not dyn compatible[^1].
-    /// In that case, `dyn Trait: Trait` does not hold. Moreover, coercions and
-    /// casts in safe Rust to `dyn Trait` for such a `Trait` is also forbidden.
-    ///
-    /// Renamed from `object_safe_for_dispatch`.
-    ///
-    /// [^1]: Formerly known as "object safe".
-    (unstable, dyn_compatible_for_dispatch, "1.83.0", Some(43561)),
     /// Allows using the `#[fundamental]` attribute.
     (unstable, fundamental, "1.0.0", Some(29635)),
     /// Allows using `#[link_name="llvm.*"]`.
@@ -358,7 +351,7 @@ declare_features! (
     /// Allows `extern "C-cmse-nonsecure-call" fn()`.
     (unstable, abi_c_cmse_nonsecure_call, "1.51.0", Some(81391)),
     /// Allows `extern "gpu-kernel" fn()`.
-    (unstable, abi_gpu_kernel, "CURRENT_RUSTC_VERSION", Some(135467)),
+    (unstable, abi_gpu_kernel, "1.86.0", Some(135467)),
     /// Allows `extern "msp430-interrupt" fn()`.
     (unstable, abi_msp430_interrupt, "1.16.0", Some(38487)),
     /// Allows `extern "ptx-*" fn()`.
@@ -402,7 +395,7 @@ declare_features! (
     /// Allows the use of `#[cfg(<true/false>)]`.
     (unstable, cfg_boolean_literals, "1.83.0", Some(131204)),
     /// Allows the use of `#[cfg(contract_checks)` to check if contract checks are enabled.
-    (unstable, cfg_contract_checks, "CURRENT_RUSTC_VERSION", Some(128044)),
+    (unstable, cfg_contract_checks, "1.86.0", Some(128044)),
     /// Allows the use of `#[cfg(overflow_checks)` to check if integer overflow behaviour.
     (unstable, cfg_overflow_checks, "1.71.0", Some(111466)),
     /// Provides the relocation model information as cfg entry
@@ -446,9 +439,9 @@ declare_features! (
     /// Allows the `?` operator in const contexts.
     (unstable, const_try, "1.56.0", Some(74935)),
     /// Allows use of contracts attributes.
-    (incomplete, contracts, "CURRENT_RUSTC_VERSION", Some(128044)),
+    (incomplete, contracts, "1.86.0", Some(128044)),
     /// Allows access to internal machinery used to implement contracts.
-    (internal, contracts_internals, "CURRENT_RUSTC_VERSION", Some(128044)),
+    (internal, contracts_internals, "1.86.0", Some(128044)),
     /// Allows coroutines to be cloned.
     (unstable, coroutine_clone, "1.65.0", Some(95360)),
     /// Allows defining coroutines.
@@ -481,6 +474,8 @@ declare_features! (
     (unstable, doc_masked, "1.21.0", Some(44027)),
     /// Allows `dyn* Trait` objects.
     (incomplete, dyn_star, "1.65.0", Some(102425)),
+    /// Allows the .use postfix syntax `x.use` and use closures `use |x| { ... }`
+    (incomplete, ergonomic_clones, "CURRENT_RUSTC_VERSION", Some(132290)),
     /// Allows exhaustive pattern matching on types that contain uninhabited types.
     (unstable, exhaustive_patterns, "1.13.0", Some(51085)),
     /// Allows explicit tail calls via `become` expression.
@@ -489,7 +484,7 @@ declare_features! (
     /// for functions with varargs.
     (unstable, extended_varargs_abi_support, "1.65.0", Some(100189)),
     /// Allows using `system` as a calling convention with varargs.
-    (unstable, extern_system_varargs, "CURRENT_RUSTC_VERSION", Some(136946)),
+    (unstable, extern_system_varargs, "1.86.0", Some(136946)),
     /// Allows defining `extern type`s.
     (unstable, extern_types, "1.23.0", Some(43467)),
     /// Allow using 128-bit (quad precision) floating point numbers.
@@ -516,8 +511,10 @@ declare_features! (
     (incomplete, generic_const_exprs, "1.56.0", Some(76560)),
     /// Allows generic parameters and where-clauses on free & associated const items.
     (incomplete, generic_const_items, "1.73.0", Some(113521)),
+    /// Allows the type of const generics to depend on generic parameters
+    (incomplete, generic_const_parameter_types, "CURRENT_RUSTC_VERSION", Some(137626)),
     /// Allows any generic constants being used as pattern type range ends
-    (incomplete, generic_pattern_types, "CURRENT_RUSTC_VERSION", Some(136574)),
+    (incomplete, generic_pattern_types, "1.86.0", Some(136574)),
     /// Allows registering static items globally, possibly across crates, to iterate over at runtime.
     (unstable, global_registration, "1.80.0", Some(125119)),
     /// Allows using guards in patterns.
@@ -533,7 +530,7 @@ declare_features! (
     /// Allows `impl Trait` as output type in `Fn` traits in return position of functions.
     (unstable, impl_trait_in_fn_trait_return, "1.64.0", Some(99697)),
     /// Allows `use` associated functions from traits.
-    (unstable, import_trait_associated_functions, "CURRENT_RUSTC_VERSION", Some(134691)),
+    (unstable, import_trait_associated_functions, "1.86.0", Some(134691)),
     /// Allows associated types in inherent impls.
     (incomplete, inherent_associated_types, "1.52.0", Some(8995)),
     /// Allow anonymous constants from an inline `const` block in pattern position
@@ -541,7 +538,7 @@ declare_features! (
     /// Allows using `pointer` and `reference` in intra-doc links
     (unstable, intra_doc_pointers, "1.51.0", Some(80896)),
     // Allows using the `kl` and `widekl` target features and the associated intrinsics
-    (unstable, keylocker_x86, "CURRENT_RUSTC_VERSION", Some(134813)),
+    (unstable, keylocker_x86, "1.86.0", Some(134813)),
     // Allows setting the threshold for the `large_assignments` lint.
     (unstable, large_assignments, "1.52.0", Some(83518)),
     /// Allow to have type alias types for inter-crate use.
@@ -582,7 +579,7 @@ declare_features! (
     /// Allows diverging expressions to fall back to `!` rather than `()`.
     (unstable, never_type_fallback, "1.41.0", Some(65992)),
     /// Switch `..` syntax to use the new (`Copy + IntoIterator`) range types.
-    (unstable, new_range, "CURRENT_RUSTC_VERSION", Some(123741)),
+    (unstable, new_range, "1.86.0", Some(123741)),
     /// Allows `#![no_core]`.
     (unstable, no_core, "1.3.0", Some(29639)),
     /// Allows the use of `no_sanitize` attribute.
@@ -607,6 +604,8 @@ declare_features! (
     (unstable, precise_capturing_in_traits, "1.83.0", Some(130044)),
     /// Allows macro attributes on expressions, statements and non-inline modules.
     (unstable, proc_macro_hygiene, "1.30.0", Some(54727)),
+    /// Allows the use of raw-dylibs on ELF platforms
+    (incomplete, raw_dylib_elf, "CURRENT_RUSTC_VERSION", Some(135694)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024.
     (incomplete, ref_pat_eat_one_layer_2024, "1.79.0", Some(123076)),
     /// Makes `&` and `&mut` patterns eat only one layer of references in Rust 2024—structural variant
@@ -634,7 +633,7 @@ declare_features! (
     /// Allows string patterns to dereference values to match them.
     (unstable, string_deref_patterns, "1.67.0", Some(87121)),
     /// Allows subtrait items to shadow supertrait items.
-    (unstable, supertrait_item_shadowing, "CURRENT_RUSTC_VERSION", Some(89151)),
+    (unstable, supertrait_item_shadowing, "1.86.0", Some(89151)),
     /// Allows using `#[thread_local]` on `static` items.
     (unstable, thread_local, "1.0.0", Some(29594)),
     /// Allows defining `trait X = A + B;` alias items.
@@ -663,16 +662,17 @@ declare_features! (
     (internal, unsized_fn_params, "1.49.0", Some(48055)),
     /// Allows unsized rvalues at arguments and parameters.
     (incomplete, unsized_locals, "1.30.0", Some(48055)),
-    /// Allows unsized tuple coercion.
-    (unstable, unsized_tuple_coercion, "1.20.0", Some(42877)),
     /// Allows using the `#[used(linker)]` (or `#[used(compiler)]`) attribute.
     (unstable, used_with_arg, "1.60.0", Some(93798)),
+    /// Allows use of attributes in `where` clauses.
+    (unstable, where_clause_attrs, "CURRENT_RUSTC_VERSION", Some(115590)),
     /// Allows use of x86 `AMX` target-feature attributes and intrinsics
     (unstable, x86_amx_intrinsics, "1.81.0", Some(126622)),
     /// Allows use of the `xop` target-feature
     (unstable, xop_target_feature, "1.81.0", Some(127208)),
     /// Allows `do yeet` expressions
     (unstable, yeet_expr, "1.62.0", Some(96373)),
+    (unstable, yield_expr, "CURRENT_RUSTC_VERSION", Some(43122)),
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
     // Features are listed in alphabetical order. Tidy will fail if you don't keep it this way.
     // !!!!    !!!!    !!!!    !!!!   !!!!    !!!!    !!!!    !!!!    !!!!    !!!!    !!!!
@@ -689,11 +689,13 @@ impl Features {
     ) -> Result<(), Box<dyn std::error::Error>> {
         #[derive(serde::Serialize)]
         struct LibFeature {
+            timestamp: u128,
             symbol: String,
         }
 
         #[derive(serde::Serialize)]
         struct LangFeature {
+            timestamp: u128,
             symbol: String,
             since: Option<String>,
         }
@@ -707,10 +709,20 @@ impl Features {
         let metrics_file = std::fs::File::create(metrics_path)?;
         let metrics_file = std::io::BufWriter::new(metrics_file);
 
+        let now = || {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .expect("system time should always be greater than the unix epoch")
+                .as_nanos()
+        };
+
         let lib_features = self
             .enabled_lib_features
             .iter()
-            .map(|EnabledLibFeature { gate_name, .. }| LibFeature { symbol: gate_name.to_string() })
+            .map(|EnabledLibFeature { gate_name, .. }| LibFeature {
+                symbol: gate_name.to_string(),
+                timestamp: now(),
+            })
             .collect();
 
         let lang_features = self
@@ -719,6 +731,7 @@ impl Features {
             .map(|EnabledLangFeature { gate_name, stable_since, .. }| LangFeature {
                 symbol: gate_name.to_string(),
                 since: stable_since.map(|since| since.to_string()),
+                timestamp: now(),
             })
             .collect();
 

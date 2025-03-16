@@ -22,7 +22,7 @@ use hir_expand::{
     db::ExpandDatabase,
     proc_macro::{ProcMacro, ProcMacroExpander, ProcMacroExpansionError, ProcMacroKind},
     span_map::SpanMapRef,
-    InFile, MacroCallKind, MacroFileId, MacroFileIdExt,
+    InFile, MacroCallKind, MacroFileId, MacroFileIdExt, MacroKind,
 };
 use intern::Symbol;
 use itertools::Itertools;
@@ -211,7 +211,11 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
 
         if let Some(src) = src {
             if let Some(file_id) = src.file_id.macro_file() {
-                if file_id.is_attr_macro(&db) || file_id.is_custom_derive(&db) {
+                if let MacroKind::Derive
+                | MacroKind::DeriveBuiltIn
+                | MacroKind::Attr
+                | MacroKind::AttrBuiltIn = file_id.kind(&db)
+                {
                     let call = file_id.call_node(&db);
                     let mut show_spans = false;
                     let mut show_ctxt = false;
@@ -236,7 +240,7 @@ pub fn identity_when_valid(_attr: TokenStream, item: TokenStream) -> TokenStream
     for impl_id in def_map[local_id].scope.impls() {
         let src = impl_id.lookup(&db).source(&db);
         if let Some(macro_file) = src.file_id.macro_file() {
-            if macro_file.is_builtin_derive(&db) {
+            if let MacroKind::DeriveBuiltIn | MacroKind::Derive = macro_file.kind(&db) {
                 let pp = pretty_print_macro_expansion(
                     src.value.syntax().clone(),
                     db.span_map(macro_file.into()).as_ref(),

@@ -7,8 +7,8 @@ publish = false
 [dependencies]
 indicatif = { version = "0.17.8", default-features = false }
 num = "0.4.3"
-rand = "0.8.5"
-rand_chacha = "0.3"
+rand = "0.9.0"
+rand_chacha = "0.9.0"
 rayon = "1"
 
 [lib]

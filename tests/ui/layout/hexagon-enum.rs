@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: --target hexagon-unknown-linux-musl
 //@ normalize-stderr: "randomization_seed: \d+" -> "randomization_seed: $$SEED"
 //@ needs-llvm-components: hexagon
@@ -9,8 +10,8 @@
 #![crate_type = "lib"]
 #![no_core]
 
-#[lang="sized"]
-trait Sized {}
+extern crate minicore;
+use minicore::*;
 
 #[rustc_layout(debug)]
 #[repr(C)]

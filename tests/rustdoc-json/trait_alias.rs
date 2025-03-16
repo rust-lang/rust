@@ -1,4 +1,3 @@
-// ignore-tidy-linelength
 #![feature(trait_alias)]
 
 //@ set StrLike = "$.index[*][?(@.name=='StrLike')].id"

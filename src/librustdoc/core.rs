@@ -15,11 +15,12 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::{DefId, DefIdMap, DefIdSet, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Path};
-use rustc_interface::interface;
 use rustc_lint::{MissingDoc, late_lint_mod};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
-use rustc_session::config::{self, CrateType, ErrorOutputType, Input, ResolveDocLinks};
+use rustc_session::config::{
+    self, CrateType, ErrorOutputType, Input, OutFileName, OutputType, OutputTypes, ResolveDocLinks,
+};
 pub(crate) use rustc_session::config::{Options, UnstableOptions};
 use rustc_session::{Session, lint};
 use rustc_span::source_map;
@@ -153,13 +154,12 @@ pub(crate) fn new_dcx(
         false,
     );
     let emitter: Box<DynEmitter> = match error_format {
-        ErrorOutputType::HumanReadable(kind, color_config) => {
+        ErrorOutputType::HumanReadable { kind, color_config } => {
             let short = kind.short();
             Box::new(
                 HumanEmitter::new(stderr_destination(color_config), fallback_bundle)
                     .sm(source_map.map(|sm| sm as _))
                     .short_message(short)
-                    .teach(unstable_opts.teach)
                     .diagnostic_width(diagnostic_width)
                     .track_diagnostics(unstable_opts.track_diagnostics)
                     .theme(if let HumanReadableErrorType::Unicode = kind {
@@ -210,7 +210,7 @@ pub(crate) fn create_config(
         unstable_opts,
         target,
         edition,
-        maybe_sysroot,
+        sysroot,
         lint_opts,
         describe_lints,
         lint_cap,
@@ -219,7 +219,7 @@ pub(crate) fn create_config(
         remap_path_prefix,
         ..
     }: RustdocOptions,
-    RenderOptions { document_private, .. }: &RenderOptions,
+    render_options: &RenderOptions,
 ) -> rustc_interface::Config {
     // Add the doc cfg into the doc build.
     cfgs.push("doc".to_string());
@@ -245,12 +245,15 @@ pub(crate) fn create_config(
 
     let crate_types =
         if proc_macro_crate { vec![CrateType::ProcMacro] } else { vec![CrateType::Rlib] };
-    let resolve_doc_links =
-        if *document_private { ResolveDocLinks::All } else { ResolveDocLinks::Exported };
+    let resolve_doc_links = if render_options.document_private {
+        ResolveDocLinks::All
+    } else {
+        ResolveDocLinks::Exported
+    };
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
-        maybe_sysroot,
+        sysroot,
         search_paths: libs,
         crate_types,
         lint_opts,
@@ -269,10 +272,18 @@ pub(crate) fn create_config(
         crate_name,
         test,
         remap_path_prefix,
+        output_types: if let Some(file) = render_options.dep_info() {
+            OutputTypes::new(&[(
+                OutputType::DepInfo,
+                file.map(|f| OutFileName::Real(f.to_path_buf())),
+            )])
+        } else {
+            OutputTypes::new(&[])
+        },
         ..Options::default()
     };
 
-    interface::Config {
+    rustc_interface::Config {
         opts: sessopts,
         crate_cfg: cfgs,
         crate_check_cfg: check_cfgs,

@@ -79,8 +79,6 @@ LL | struct Foo(N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                                                    --------  ------ this field does not implement `Copy`
    |                                                    |
    |                                                    this field does not implement `Copy`
-   |
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `Copy` cannot be implemented for this type
   --> $DIR/issue-50480.rs:11:17
@@ -92,8 +90,6 @@ LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                                                          --------  ------ this field does not implement `Copy`
    |                                                          |
    |                                                          this field does not implement `Copy`
-   |
-   = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `i32` is not an iterator
   --> $DIR/issue-50480.rs:14:33
@@ -118,7 +114,6 @@ LL | #[derive(Clone, Copy)]
    |          ^^^^^ `i32` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `i32`
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `i32` is not an iterator
   --> $DIR/issue-50480.rs:14:33
@@ -130,7 +125,6 @@ LL | struct Bar<T>(T, N, NotDefined, <i32 as Iterator>::Item, Vec<i32>, String);
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^ `i32` is not an iterator
    |
    = help: the trait `Iterator` is not implemented for `i32`
-   = note: this error originates in the derive macro `Clone` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 13 previous errors
 

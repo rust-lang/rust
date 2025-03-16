@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ is '$.index[*][?(@.name=="on_lifetimes")].inner.function.generics.where_predicates' '[{"lifetime_predicate": {"lifetime": "'\''all", "outlives": ["'\''a", "'\''b", "'\''c"]}}]'
 pub fn on_lifetimes<'a, 'b, 'c, 'all>()
 where

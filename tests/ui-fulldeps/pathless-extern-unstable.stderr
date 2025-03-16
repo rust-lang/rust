@@ -1,5 +1,5 @@
 error[E0658]: use of unstable library feature `rustc_private`: this crate is being loaded from the sysroot, an unstable location; did you mean to load this crate from crates.io via `Cargo.toml` instead?
-  --> $DIR/pathless-extern-unstable.rs:7:9
+  --> $DIR/pathless-extern-unstable.rs:6:9
    |
 LL | pub use rustc_middle;
    |         ^^^^^^^^^^^^

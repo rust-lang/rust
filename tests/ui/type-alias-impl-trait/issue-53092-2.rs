@@ -3,12 +3,13 @@
 
 type Bug<T, U> = impl Fn(T) -> U + Copy;
 
+#[define_opaque(Bug)]
+//~^ ERROR: only functions and methods can define opaque types
 const CONST_BUG: Bug<u8, ()> = unsafe { std::mem::transmute(|_: u8| ()) };
-//~^ ERROR cycle detected
-//~| ERROR: non-defining opaque type use
 
+#[define_opaque(Bug)]
 fn make_bug<T, U: From<T>>() -> Bug<T, U> {
-    |x| x.into()
+    |x| x.into() //~ ERROR is not satisfied
 }
 
 fn main() {

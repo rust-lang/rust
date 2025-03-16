@@ -186,19 +186,9 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Generics {
                     {
                         Some(parent_did)
                     }
-                    // Exclude `GlobalAsm` here which cannot have generics.
-                    Node::Expr(&Expr { kind: ExprKind::InlineAsm(asm), .. })
-                        if asm.operands.iter().any(|(op, _op_sp)| match op {
-                            hir::InlineAsmOperand::Const { anon_const }
-                            | hir::InlineAsmOperand::SymFn { anon_const } => {
-                                anon_const.hir_id == hir_id
-                            }
-                            _ => false,
-                        }) =>
-                    {
-                        Some(parent_did)
-                    }
                     Node::TyPat(_) => Some(parent_did),
+                    // Field default values inherit the ADT's generics.
+                    Node::Field(_) => Some(parent_did),
                     _ => None,
                 }
             }

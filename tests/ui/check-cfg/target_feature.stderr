@@ -60,6 +60,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `d32`
 `deflate-conversion`
 `dit`
+`div32`
 `doloop`
 `dotprod`
 `dpb`
@@ -133,8 +134,11 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `jsconv`
 `kl`
 `lahfsahf`
+`lam-bh`
+`lamcas`
 `lasx`
 `lbt`
+`ld-seq-sa`
 `leoncasa`
 `lor`
 `lse`
@@ -151,6 +155,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `mp`
 `mp1e2`
 `msa`
+`msync`
 `mte`
 `multivalue`
 `mutable-globals`
@@ -189,6 +194,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `reserve-x18`
 `rtm`
 `sb`
+`scq`
 `sha`
 `sha2`
 `sha3`
@@ -290,9 +296,14 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `xsavec`
 `xsaveopt`
 `xsaves`
+`za128rs`
+`za64rs`
 `zaamo`
 `zabha`
+`zacas`
 `zalrsc`
+`zama16b`
+`zawrs`
 `zba`
 `zbb`
 `zbc`

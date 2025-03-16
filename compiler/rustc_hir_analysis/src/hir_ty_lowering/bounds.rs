@@ -8,10 +8,12 @@ use rustc_hir::HirId;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::bug;
-use rustc_middle::ty::{self as ty, IsSuggestable, Ty, TyCtxt, Upcast};
+use rustc_middle::ty::{
+    self as ty, IsSuggestable, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitableExt,
+    TypeVisitor, Upcast,
+};
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym};
 use rustc_trait_selection::traits;
-use rustc_type_ir::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitableExt, TypeVisitor};
 use smallvec::SmallVec;
 use tracing::{debug, instrument};
 
@@ -468,11 +470,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
 
                 // Good error for `where Trait::method(..): Send`.
                 let Some(self_ty) = opt_self_ty else {
-                    return self.error_missing_qpath_self_ty(
+                    let guar = self.error_missing_qpath_self_ty(
                         trait_def_id,
                         hir_ty.span,
                         item_segment,
+                        ty::AssocKind::Type,
                     );
+                    return Ty::new_error(tcx, guar);
                 };
                 let self_ty = self.lower_ty(self_ty);
 

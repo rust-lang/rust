@@ -88,12 +88,6 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .string_literal     { color: #CC9393; }
 .field              { color: #94BFF3; }
 .function           { color: #93E0E3; }
-.function.unsafe    { color: #BC8383; }
-.trait.unsafe       { color: #BC8383; }
-.operator.unsafe    { color: #BC8383; }
-.mutable.unsafe     { color: #BC8383; text-decoration: underline; }
-.keyword.unsafe     { color: #BC8383; font-weight: bold; }
-.macro.unsafe       { color: #BC8383; }
 .parameter          { color: #94BFF3; }
 .text               { color: #DCDCCC; }
 .type               { color: #7CB8BB; }
@@ -115,6 +109,7 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 .control            { font-style: italic; }
 .reference          { font-style: italic; font-weight: bold; }
 .const              { font-weight: bolder; }
+.unsafe             { color: #BC8383; }
 
 .invalid_escape_sequence { color: #FC5555; text-decoration: wavy underline; }
 .unresolved_reference    { color: #FC5555; text-decoration: wavy underline; }

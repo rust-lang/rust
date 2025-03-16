@@ -1,8 +1,7 @@
 use std::ops::Deref;
 
-use rustc_type_ir::fold::TypeFoldable;
 use rustc_type_ir::solve::{Certainty, Goal, NoSolution};
-use rustc_type_ir::{self as ty, InferCtxtLike, Interner};
+use rustc_type_ir::{self as ty, InferCtxtLike, Interner, TypeFoldable};
 
 pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
     type Infcx: InferCtxtLike<Interner = Self::Interner>;
@@ -102,7 +101,6 @@ pub trait SolverDelegate: Deref<Target = Self::Infcx> + Sized {
 
     fn is_transmutable(
         &self,
-        param_env: <Self::Interner as Interner>::ParamEnv,
         dst: <Self::Interner as Interner>::Ty,
         src: <Self::Interner as Interner>::Ty,
         assume: <Self::Interner as Interner>::Const,

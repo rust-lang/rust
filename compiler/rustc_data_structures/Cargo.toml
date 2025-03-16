@@ -1,7 +1,7 @@
 [package]
 name = "rustc_data_structures"
 version = "0.0.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
@@ -28,6 +28,11 @@ tempfile = "3.2"
 thin-vec = "0.2.12"
 tracing = "0.1"
 # tidy-alphabetical-end
+
+[dependencies.hashbrown]
+version = "0.15.2"
+default-features = false
+features = ["nightly"] # for may_dangle
 
 [dependencies.parking_lot]
 version = "0.12"

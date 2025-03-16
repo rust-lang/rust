@@ -1,4 +1,3 @@
-use rustc_data_structures::captures::Captures;
 use rustc_index::bit_set::DenseBitSet;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::{BasicCoverageBlock, CoverageIdsInfo, CoverageKind, MappingKind};
@@ -66,7 +65,7 @@ fn coverage_attr_on(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
             Some(_) | None => {
                 // Other possibilities should have been rejected by `rustc_parse::validate_attr`.
                 // Use `span_delayed_bug` to avoid an ICE in failing builds (#127880).
-                tcx.dcx().span_delayed_bug(attr.span, "unexpected value of coverage attribute");
+                tcx.dcx().span_delayed_bug(attr.span(), "unexpected value of coverage attribute");
             }
         }
     }
@@ -153,7 +152,7 @@ fn coverage_ids_info<'tcx>(
 
 fn all_coverage_in_mir_body<'a, 'tcx>(
     body: &'a Body<'tcx>,
-) -> impl Iterator<Item = &'a CoverageKind> + Captures<'tcx> {
+) -> impl Iterator<Item = &'a CoverageKind> {
     body.basic_blocks.iter().flat_map(|bb_data| &bb_data.statements).filter_map(|statement| {
         match statement.kind {
             StatementKind::Coverage(ref kind) if !is_inlined(body, statement) => Some(kind),

@@ -2,14 +2,14 @@ use std::any::Any;
 use std::ffi::OsString;
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, LazyLock, OnceLock};
 use std::{env, fs, iter};
 
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::parallel;
 use rustc_data_structures::steal::Steal;
-use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, OnceLock, WorkerLocal};
+use rustc_data_structures::sync::{AppendOnlyIndexVec, FreezeLock, WorkerLocal};
 use rustc_expand::base::{ExtCtxt, LintStoreExpand};
 use rustc_feature::Features;
 use rustc_fs_util::try_canonicalize;
@@ -171,13 +171,15 @@ fn configure_and_expand(
                     new_path.push(path);
                 }
             }
-            env::set_var(
-                "PATH",
-                &env::join_paths(
-                    new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
-                )
-                .unwrap(),
-            );
+            unsafe {
+                env::set_var(
+                    "PATH",
+                    &env::join_paths(
+                        new_path.iter().filter(|p| env::join_paths(iter::once(p)).is_ok()),
+                    )
+                    .unwrap(),
+                );
+            }
         }
 
         // Create the config for macro expansion
@@ -216,7 +218,9 @@ fn configure_and_expand(
         }
 
         if cfg!(windows) {
-            env::set_var("PATH", &old_path);
+            unsafe {
+                env::set_var("PATH", &old_path);
+            }
         }
 
         krate
@@ -301,8 +305,41 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         for (ident, mut spans) in identifiers.drain(..) {
             spans.sort();
             if ident == sym::ferris {
+                enum FerrisFix {
+                    SnakeCase,
+                    ScreamingSnakeCase,
+                    PascalCase,
+                }
+
+                impl FerrisFix {
+                    const fn as_str(self) -> &'static str {
+                        match self {
+                            FerrisFix::SnakeCase => "ferris",
+                            FerrisFix::ScreamingSnakeCase => "FERRIS",
+                            FerrisFix::PascalCase => "Ferris",
+                        }
+                    }
+                }
+
                 let first_span = spans[0];
-                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span });
+                let prev_source = sess.psess.source_map().span_to_prev_source(first_span);
+                let ferris_fix = prev_source
+                    .map_or(FerrisFix::SnakeCase, |source| {
+                        let mut source_before_ferris = source.trim_end().split_whitespace().rev();
+                        match source_before_ferris.next() {
+                            Some("struct" | "trait" | "mod" | "union" | "type" | "enum") => {
+                                FerrisFix::PascalCase
+                            }
+                            Some("const" | "static") => FerrisFix::ScreamingSnakeCase,
+                            Some("mut") if source_before_ferris.next() == Some("static") => {
+                                FerrisFix::ScreamingSnakeCase
+                            }
+                            _ => FerrisFix::SnakeCase,
+                        }
+                    })
+                    .as_str();
+
+                sess.dcx().emit_err(errors::FerrisIdentifier { spans, first_span, ferris_fix });
             } else {
                 sess.dcx().emit_err(errors::EmojiIdentifier { spans, ident });
             }

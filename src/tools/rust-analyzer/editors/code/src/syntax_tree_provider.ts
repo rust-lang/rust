@@ -7,8 +7,10 @@ import * as ra from "./lsp_ext";
 export class SyntaxTreeProvider implements vscode.TreeDataProvider<SyntaxElement> {
     private _onDidChangeTreeData: vscode.EventEmitter<SyntaxElement | undefined | void> =
         new vscode.EventEmitter<SyntaxElement | undefined | void>();
+
     readonly onDidChangeTreeData: vscode.Event<SyntaxElement | undefined | void> =
         this._onDidChangeTreeData.event;
+
     ctx: CtxInit;
     root: SyntaxNode | undefined;
     hideWhitespace: boolean = false;

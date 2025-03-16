@@ -12,7 +12,6 @@ note: the `ConstParamTy_` impl for `[*const u8; 1]` requires that `*const u8: Co
    |
 LL | struct Foo([*const u8; 1]);
    |            ^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/nested_bad_const_param_ty.rs:11:10
@@ -28,7 +27,6 @@ note: the `ConstParamTy_` impl for `[*mut u8; 1]` requires that `*mut u8: ConstP
    |
 LL | struct Foo2([*mut u8; 1]);
    |             ^^^^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/nested_bad_const_param_ty.rs:16:10
@@ -44,7 +42,6 @@ note: the `ConstParamTy_` impl for `[fn(); 1]` requires that `fn(): ConstParamTy
    |
 LL | struct Foo3([fn(); 1]);
    |             ^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/nested_bad_const_param_ty.rs:6:10
@@ -60,7 +57,6 @@ note: the `ConstParamTy_` impl for `[*const u8; 1]` requires that `*const u8: Un
    |
 LL | struct Foo([*const u8; 1]);
    |            ^^^^^^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/nested_bad_const_param_ty.rs:11:10
@@ -76,7 +72,6 @@ note: the `ConstParamTy_` impl for `[*mut u8; 1]` requires that `*mut u8: Unsize
    |
 LL | struct Foo2([*mut u8; 1]);
    |             ^^^^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `ConstParamTy_` cannot be implemented for this type
   --> $DIR/nested_bad_const_param_ty.rs:16:10
@@ -92,7 +87,6 @@ note: the `ConstParamTy_` impl for `[fn(); 1]` requires that `fn(): UnsizedConst
    |
 LL | struct Foo3([fn(); 1]);
    |             ^^^^^^^^^
-   = note: this error originates in the derive macro `ConstParamTy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 6 previous errors
 

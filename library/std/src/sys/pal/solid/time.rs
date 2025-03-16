@@ -35,7 +35,7 @@ impl SystemTime {
         SystemTime(t)
     }
 
-    pub(super) fn from_time_t(t: abi::time_t) -> Self {
+    pub fn from_time_t(t: abi::time_t) -> Self {
         Self(t)
     }
 

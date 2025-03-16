@@ -539,7 +539,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         &self,
         hir_id: hir::HirId,
     ) -> Option<ty::CanonicalUserType<'tcx>> {
-        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.typeck_results, hir_id)
+        crate::thir::util::user_args_applied_to_ty_of_hir_id(self.tcx, self.typeck_results, hir_id)
     }
 
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds

@@ -6,9 +6,8 @@ use rustc_infer::infer::DefineOpaqueTypes;
 use rustc_middle::bug;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::BottomUpFolder;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, AssocItem, Ty, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{self, AssocItem, BottomUpFolder, Ty, TypeFoldable, TypeVisitableExt};
 use rustc_span::{DUMMY_SP, Ident, Span, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::ObligationCause;
@@ -577,9 +576,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut parent;
         'outer: loop {
             // Climb the HIR tree to see if the current `Expr` is part of a `break;` statement.
-            let (hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Semi(&ref p), .. })
-            | hir::Node::Block(hir::Block { expr: Some(&ref p), .. })
-            | hir::Node::Expr(&ref p)) = self.tcx.hir_node(parent_id)
+            let (hir::Node::Stmt(&hir::Stmt { kind: hir::StmtKind::Semi(p), .. })
+            | hir::Node::Block(&hir::Block { expr: Some(p), .. })
+            | hir::Node::Expr(p)) = self.tcx.hir_node(parent_id)
             else {
                 break;
             };
@@ -593,13 +592,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             loop {
                 // Climb the HIR tree to find the (desugared) `loop` this `break` corresponds to.
                 let parent = match self.tcx.hir_node(parent_id) {
-                    hir::Node::Expr(&ref parent) => {
+                    hir::Node::Expr(parent) => {
                         parent_id = self.tcx.parent_hir_id(parent.hir_id);
                         parent
                     }
                     hir::Node::Stmt(hir::Stmt {
                         hir_id,
-                        kind: hir::StmtKind::Semi(&ref parent) | hir::StmtKind::Expr(&ref parent),
+                        kind: hir::StmtKind::Semi(parent) | hir::StmtKind::Expr(parent),
                         ..
                     }) => {
                         parent_id = self.tcx.parent_hir_id(*hir_id);
@@ -1265,7 +1264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     CallableKind::Function
                 };
-                maybe_emit_help(def_id, path.segments[0].ident, args, callable_kind);
+                maybe_emit_help(def_id, path.segments.last().unwrap().ident, args, callable_kind);
             }
             hir::ExprKind::MethodCall(method, _receiver, args, _span) => {
                 let Some(def_id) =

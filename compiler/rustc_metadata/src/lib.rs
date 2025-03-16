@@ -1,11 +1,11 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![doc(rust_logo)]
 #![feature(coroutines)]
 #![feature(decl_macro)]
 #![feature(error_iter)]
-#![feature(extract_if)]
 #![feature(file_buffered)]
 #![feature(if_let_guard)]
 #![feature(iter_from_coroutine)]
@@ -16,7 +16,6 @@
 #![feature(proc_macro_internals)]
 #![feature(rustdoc_internals)]
 #![feature(trusted_len)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 extern crate proc_macro;
@@ -36,8 +35,8 @@ pub mod locator;
 pub use creader::{DylibError, load_symbol_from_dylib};
 pub use fs::{METADATA_FILENAME, emit_wrapper_file};
 pub use native_libs::{
-    find_native_static_library, try_find_native_dynamic_library, try_find_native_static_library,
-    walk_native_lib_search_dirs,
+    NativeLibSearchFallback, find_native_static_library, try_find_native_dynamic_library,
+    try_find_native_static_library, walk_native_lib_search_dirs,
 };
 pub use rmeta::{EncodedMetadata, METADATA_HEADER, encode_metadata, rendered_const};
 

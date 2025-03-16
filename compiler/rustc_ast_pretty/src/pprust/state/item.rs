@@ -650,7 +650,16 @@ impl<'a> State<'a> {
         attrs: &[ast::Attribute],
         func: &ast::Fn,
     ) {
-        let ast::Fn { defaultness, generics, sig, contract, body } = func;
+        let ast::Fn { defaultness, generics, sig, contract, body, define_opaque } = func;
+
+        if let Some(define_opaque) = define_opaque {
+            for (_, path) in define_opaque {
+                self.word("define opaques from ");
+                self.print_path(path, false, 0);
+                self.word(",");
+            }
+        }
+
         if body.is_some() {
             self.head("");
         }
@@ -698,7 +707,7 @@ impl<'a> State<'a> {
         }
         self.print_generic_params(&generics.params);
         self.print_fn_params_and_ret(decl, false);
-        self.print_where_clause(&generics.where_clause)
+        self.print_where_clause(&generics.where_clause);
     }
 
     pub(crate) fn print_fn_params_and_ret(&mut self, decl: &ast::FnDecl, is_closure: bool) {
@@ -735,7 +744,8 @@ impl<'a> State<'a> {
     }
 
     pub fn print_where_predicate(&mut self, predicate: &ast::WherePredicate) {
-        let ast::WherePredicate { kind, id: _, span: _ } = predicate;
+        let ast::WherePredicate { attrs, kind, id: _, span: _, is_placeholder: _ } = predicate;
+        self.print_outer_attributes(attrs);
         match kind {
             ast::WherePredicateKind::BoundPredicate(where_bound_predicate) => {
                 self.print_where_bound_predicate(where_bound_predicate);

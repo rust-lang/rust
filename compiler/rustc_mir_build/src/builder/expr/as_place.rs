@@ -216,11 +216,11 @@ fn to_upvars_resolved_place_builder<'tcx>(
 /// Supports only HIR projection kinds that represent a path that might be
 /// captured by a closure or a coroutine, i.e., an `Index` or a `Subslice`
 /// projection kinds are unsupported.
-fn strip_prefix<'a, 'tcx>(
+fn strip_prefix<'tcx>(
     mut base_ty: Ty<'tcx>,
-    projections: &'a [PlaceElem<'tcx>],
+    projections: &[PlaceElem<'tcx>],
     prefix_projections: &[HirProjection<'tcx>],
-) -> impl Iterator<Item = PlaceElem<'tcx>> + 'a {
+) -> impl Iterator<Item = PlaceElem<'tcx>> {
     let mut iter = projections
         .iter()
         .copied()
@@ -582,6 +582,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             | ExprKind::Yield { .. }
             | ExprKind::ThreadLocalRef(_)
             | ExprKind::Call { .. }
+            | ExprKind::ByUse { .. }
             | ExprKind::WrapUnsafeBinder { .. } => {
                 // these are not places, so we need to make a temporary.
                 debug_assert!(!matches!(Category::of(&expr.kind), Some(Category::Place)));

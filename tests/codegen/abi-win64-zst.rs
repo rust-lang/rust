@@ -1,3 +1,4 @@
+//@ add-core-stubs
 //@ compile-flags: -Z merge-functions=disabled
 //@ add-core-stubs
 

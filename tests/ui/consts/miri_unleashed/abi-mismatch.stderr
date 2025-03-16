@@ -1,19 +1,14 @@
 error[E0080]: could not evaluate static initializer
-  --> $DIR/abi-mismatch.rs:7:5
+  --> $DIR/abi-mismatch.rs:11:18
    |
-LL |     my_fn();
-   |     ^^^^^^^ calling a function with calling convention C using calling convention Rust
+LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
+   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ calling a function with calling convention C using calling convention Rust
    |
 note: inside `call_rust_fn`
   --> $DIR/abi-mismatch.rs:7:5
    |
 LL |     my_fn();
-   |     ^^^^^^^
-note: inside `VAL`
-  --> $DIR/abi-mismatch.rs:13:18
-   |
-LL | static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn()) });
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^ the failure occurred here
 
 warning: skipping const checks
    |

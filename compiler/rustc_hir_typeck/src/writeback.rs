@@ -11,9 +11,9 @@ use rustc_hir::{self as hir, AmbigArg, HirId};
 use rustc_middle::span_bug;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, PointerCoercion};
-use rustc_middle::ty::fold::{TypeFoldable, TypeFolder, fold_regions};
-use rustc_middle::ty::visit::TypeVisitableExt;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperFoldable};
+use rustc_middle::ty::{
+    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt, fold_regions,
+};
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
 use rustc_trait_selection::solve;
@@ -48,13 +48,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         for param in body.params {
             wbcx.visit_node_id(param.pat.span, param.hir_id);
         }
-        // Type only exists for constants and statics, not functions.
         match self.tcx.hir_body_owner_kind(item_def_id) {
-            hir::BodyOwnerKind::Const { .. } | hir::BodyOwnerKind::Static(_) => {
+            // Visit the type of a const or static, which is used during THIR building.
+            hir::BodyOwnerKind::Const { .. }
+            | hir::BodyOwnerKind::Static(_)
+            | hir::BodyOwnerKind::GlobalAsm => {
                 let item_hir_id = self.tcx.local_def_id_to_hir_id(item_def_id);
                 wbcx.visit_node_id(body.value.span, item_hir_id);
             }
-            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => (),
+            // For closures and consts, we already plan to visit liberated signatures.
+            hir::BodyOwnerKind::Closure | hir::BodyOwnerKind::Fn => {}
         }
         wbcx.visit_body(body);
         wbcx.visit_min_capture_map();
@@ -245,13 +248,6 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             }
         }
     }
-
-    fn visit_const_block(&mut self, span: Span, anon_const: &hir::ConstBlock) {
-        self.visit_node_id(span, anon_const.hir_id);
-
-        let body = self.tcx().hir_body(anon_const.body);
-        self.visit_body(body);
-    }
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -281,9 +277,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
             hir::ExprKind::Field(..) | hir::ExprKind::OffsetOf(..) => {
                 self.visit_field_id(e.hir_id);
             }
-            hir::ExprKind::ConstBlock(ref anon_const) => {
-                self.visit_const_block(e.span, anon_const);
-            }
             _ => {}
         }
 
@@ -292,6 +285,14 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
         self.fix_scalar_builtin_expr(e);
         self.fix_index_builtin_expr(e);
+    }
+
+    fn visit_inline_const(&mut self, anon_const: &hir::ConstBlock) {
+        let span = self.tcx().def_span(anon_const.def_id);
+        self.visit_node_id(span, anon_const.hir_id);
+
+        let body = self.tcx().hir_body(anon_const.body);
+        self.visit_body(body);
     }
 
     fn visit_generic_param(&mut self, p: &'tcx hir::GenericParam<'tcx>) {
@@ -316,11 +317,8 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
         match p.kind {
             hir::PatKind::Binding(..) => {
                 let typeck_results = self.fcx.typeck_results.borrow();
-                if let Some(bm) =
-                    typeck_results.extract_binding_mode(self.tcx().sess, p.hir_id, p.span)
-                {
-                    self.typeck_results.pat_binding_modes_mut().insert(p.hir_id, bm);
-                }
+                let bm = typeck_results.extract_binding_mode(self.tcx().sess, p.hir_id, p.span);
+                self.typeck_results.pat_binding_modes_mut().insert(p.hir_id, bm);
             }
             hir::PatKind::Struct(_, fields, _) => {
                 for field in fields {
@@ -340,9 +338,6 @@ impl<'cx, 'tcx> Visitor<'tcx> for WritebackCx<'cx, 'tcx> {
 
     fn visit_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) {
         self.visit_node_id(expr.span, expr.hir_id);
-        if let hir::PatExprKind::ConstBlock(c) = &expr.kind {
-            self.visit_const_block(expr.span, c);
-        }
         intravisit::walk_pat_expr(self, expr);
     }
 

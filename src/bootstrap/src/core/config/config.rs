@@ -171,6 +171,17 @@ impl LldMode {
     }
 }
 
+/// Determines how will GCC be provided.
+#[derive(Default, Clone)]
+pub enum GccCiMode {
+    /// Build GCC from the local `src/gcc` submodule.
+    #[default]
+    BuildLocally,
+    /// Try to download GCC from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    DownloadFromCi,
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
@@ -218,6 +229,8 @@ pub struct Config {
     pub stderr_is_tty: bool,
 
     pub on_fail: Option<String>,
+    pub explicit_stage_from_cli: bool,
+    pub explicit_stage_from_config: bool,
     pub stage: u32,
     pub keep_stage: Vec<u32>,
     pub keep_stage_std: Vec<u32>,
@@ -280,6 +293,9 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+
+    // gcc codegen options
+    pub gcc_ci_mode: GccCiMode,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -674,6 +690,7 @@ pub(crate) struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
+    gcc: Option<Gcc>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
@@ -708,7 +725,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile, change_id }: Self,
+        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -727,6 +744,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.gcc, gcc, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
 
@@ -892,6 +910,7 @@ define_config! {
     #[derive(Default)]
     struct Build {
         build: Option<String> = "build",
+        description: Option<String> = "description",
         host: Option<Vec<String>> = "host",
         target: Option<Vec<String>> = "target",
         build_dir: Option<String> = "build-dir",
@@ -940,6 +959,7 @@ define_config! {
         jobs: Option<u32> = "jobs",
         compiletest_diff_tool: Option<String> = "compiletest-diff-tool",
         ccache: Option<StringOrBool> = "ccache",
+        exclude: Option<Vec<PathBuf>> = "exclude",
     }
 }
 
@@ -989,6 +1009,13 @@ define_config! {
         enable_warnings: Option<bool> = "enable-warnings",
         download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
         build_config: Option<HashMap<String, String>> = "build-config",
+    }
+}
+
+define_config! {
+    /// TOML representation of how the GCC build is configured.
+    struct Gcc {
+        download_ci_gcc: Option<bool> = "download-ci-gcc",
     }
 }
 
@@ -1174,6 +1201,7 @@ define_config! {
         incremental: Option<bool> = "incremental",
         default_linker: Option<String> = "default-linker",
         channel: Option<String> = "channel",
+        // FIXME: Remove this field at Q2 2025, it has been replaced by build.description
         description: Option<String> = "description",
         musl_root: Option<String> = "musl-root",
         rpath: Option<bool> = "rpath",
@@ -1370,22 +1398,6 @@ impl Config {
             "flags.exclude" = ?flags.exclude
         );
 
-        config.skip = flags
-            .skip
-            .into_iter()
-            .chain(flags.exclude)
-            .map(|p| {
-                // Never return top-level path here as it would break `--skip`
-                // logic on rustc's internal test framework which is utilized
-                // by compiletest.
-                if cfg!(windows) {
-                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
-                } else {
-                    p
-                }
-            })
-            .collect();
-
         #[cfg(feature = "tracing")]
         span!(
             target: "CONFIG_HANDLING",
@@ -1581,6 +1593,7 @@ impl Config {
         config.change_id = toml.change_id.inner;
 
         let Build {
+            mut description,
             build,
             host,
             target,
@@ -1630,7 +1643,28 @@ impl Config {
             jobs,
             compiletest_diff_tool,
             mut ccache,
+            exclude,
         } = toml.build.unwrap_or_default();
+
+        let mut paths: Vec<PathBuf> = flags.skip.into_iter().chain(flags.exclude).collect();
+
+        if let Some(exclude) = exclude {
+            paths.extend(exclude);
+        }
+
+        config.skip = paths
+            .into_iter()
+            .map(|p| {
+                // Never return top-level path here as it would break `--skip`
+                // logic on rustc's internal test framework which is utilized
+                // by compiletest.
+                if cfg!(windows) {
+                    PathBuf::from(p.to_str().unwrap().replace('/', "\\"))
+                } else {
+                    p
+                }
+            })
+            .collect();
 
         config.jobs = Some(threads_from_config(flags.jobs.unwrap_or(jobs.unwrap_or(0))));
 
@@ -1775,7 +1809,11 @@ impl Config {
 
         let is_user_configured_rust_channel =
             if let Some(channel) = toml.rust.as_ref().and_then(|r| r.channel.clone()) {
-                config.channel = channel;
+                if channel == "auto-detect" {
+                    config.channel = ci_channel.into();
+                } else {
+                    config.channel = channel;
+                }
                 true
             } else {
                 false
@@ -1825,7 +1863,7 @@ impl Config {
                 randomize_layout,
                 default_linker,
                 channel: _, // already handled above
-                description,
+                description: rust_description,
                 musl_root,
                 rpath,
                 verbose_tests,
@@ -1918,7 +1956,12 @@ impl Config {
             set(&mut config.jemalloc, jemalloc);
             set(&mut config.test_compare_mode, test_compare_mode);
             set(&mut config.backtrace, backtrace);
-            config.description = description;
+            if rust_description.is_some() {
+                eprintln!(
+                    "Warning: rust.description is deprecated. Use build.description instead."
+                );
+            }
+            description = description.or(rust_description);
             set(&mut config.rust_dist_src, dist_src);
             set(&mut config.verbose_tests, verbose_tests);
             // in the case "false" is set explicitly, do not overwrite the command line args
@@ -1984,6 +2027,7 @@ impl Config {
         }
 
         config.reproducible_artifacts = flags.reproducible_artifact;
+        config.description = description;
 
         // We need to override `rust.channel` if it's manually specified when using the CI rustc.
         // This is because if the compiler uses a different channel than the one specified in config.toml,
@@ -2119,6 +2163,16 @@ impl Config {
             }
         } else {
             config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
+        }
+
+        if let Some(gcc) = toml.gcc {
+            config.gcc_ci_mode = match gcc.download_ci_gcc {
+                Some(value) => match value {
+                    true => GccCiMode::DownloadFromCi,
+                    false => GccCiMode::BuildLocally,
+                },
+                None => GccCiMode::default(),
+            };
         }
 
         if let Some(t) = toml.target {
@@ -2323,6 +2377,14 @@ impl Config {
         config.compiletest_diff_tool = compiletest_diff_tool;
 
         let download_rustc = config.download_rustc_commit.is_some();
+        config.explicit_stage_from_cli = flags.stage.is_some();
+        config.explicit_stage_from_config = test_stage.is_some()
+            || build_stage.is_some()
+            || doc_stage.is_some()
+            || dist_stage.is_some()
+            || install_stage.is_some()
+            || check_stage.is_some()
+            || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
             Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
@@ -2330,21 +2392,21 @@ impl Config {
             Subcommand::Doc { .. } => {
                 flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
             }
-            Subcommand::Build { .. } => {
+            Subcommand::Build => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Test { .. } | Subcommand::Miri { .. } => {
                 flags.stage.or(test_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Bench { .. } => flags.stage.or(bench_stage).unwrap_or(2),
-            Subcommand::Dist { .. } => flags.stage.or(dist_stage).unwrap_or(2),
-            Subcommand::Install { .. } => flags.stage.or(install_stage).unwrap_or(2),
+            Subcommand::Dist => flags.stage.or(dist_stage).unwrap_or(2),
+            Subcommand::Install => flags.stage.or(install_stage).unwrap_or(2),
             Subcommand::Perf { .. } => flags.stage.unwrap_or(1),
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
             | Subcommand::Clippy { .. }
-            | Subcommand::Fix { .. }
+            | Subcommand::Fix
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
@@ -2359,10 +2421,10 @@ impl Config {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
                 | Subcommand::Doc { .. }
-                | Subcommand::Build { .. }
+                | Subcommand::Build
                 | Subcommand::Bench { .. }
-                | Subcommand::Dist { .. }
-                | Subcommand::Install { .. } => {
+                | Subcommand::Dist
+                | Subcommand::Install => {
                     assert_eq!(
                         config.stage, 2,
                         "x.py should be run with `--stage 2` on CI, but was run with `--stage {}`",
@@ -2372,7 +2434,7 @@ impl Config {
                 Subcommand::Clean { .. }
                 | Subcommand::Check { .. }
                 | Subcommand::Clippy { .. }
-                | Subcommand::Fix { .. }
+                | Subcommand::Fix
                 | Subcommand::Run { .. }
                 | Subcommand::Setup { .. }
                 | Subcommand::Format { .. }
@@ -2390,6 +2452,10 @@ impl Config {
             DryRun::Disabled => false,
             DryRun::SelfCheck | DryRun::UserSelected => true,
         }
+    }
+
+    pub fn is_explicit_stage(&self) -> bool {
+        self.explicit_stage_from_cli || self.explicit_stage_from_config
     }
 
     /// Runs a command, printing out nice contextual information if it fails.
@@ -2958,6 +3024,9 @@ impl Config {
         // these changes to speed up the build process for library developers. This provides consistent
         // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
         // options.
+        //
+        // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
+        // logic accordingly.
         if !CiEnv::is_ci() {
             allowed_paths.push(":!library");
         }

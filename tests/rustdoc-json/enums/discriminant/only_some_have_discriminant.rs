@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 pub enum Foo {
     //@ is "$.index[*][?(@.name=='Has')].inner.variant.discriminant" '{"expr":"0", "value":"0"}'
     Has = 0,

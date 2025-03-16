@@ -116,8 +116,8 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        // simd_shuffle_generic<T, U, const I: &[u32]>(x: T, y: T) -> U
-        sym::simd_shuffle_generic => {
+        // simd_shuffle_const_generic<T, U, const I: &[u32]>(x: T, y: T) -> U
+        sym::simd_shuffle_const_generic => {
             let [x, y] = args else {
                 bug!("wrong number of args for intrinsic {intrinsic}");
             };
@@ -458,64 +458,6 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
                     _ => unreachable!(),
                 }
             });
-        }
-
-        sym::simd_fpow => {
-            intrinsic_args!(fx, args => (a, b); intrinsic);
-
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_pair_for_each_lane(fx, a, b, ret, &|fx, lane_ty, _ret_lane_ty, a_lane, b_lane| {
-                match lane_ty.kind() {
-                    ty::Float(FloatTy::F32) => fx.lib_call(
-                        "powf",
-                        vec![AbiParam::new(types::F32), AbiParam::new(types::F32)],
-                        vec![AbiParam::new(types::F32)],
-                        &[a_lane, b_lane],
-                    )[0],
-                    ty::Float(FloatTy::F64) => fx.lib_call(
-                        "pow",
-                        vec![AbiParam::new(types::F64), AbiParam::new(types::F64)],
-                        vec![AbiParam::new(types::F64)],
-                        &[a_lane, b_lane],
-                    )[0],
-                    _ => unreachable!("{:?}", lane_ty),
-                }
-            });
-        }
-
-        sym::simd_fpowi => {
-            intrinsic_args!(fx, args => (a, exp); intrinsic);
-            let exp = exp.load_scalar(fx);
-
-            if !a.layout().ty.is_simd() {
-                report_simd_type_validation_error(fx, intrinsic, span, a.layout().ty);
-                return;
-            }
-
-            simd_for_each_lane(
-                fx,
-                a,
-                ret,
-                &|fx, lane_ty, _ret_lane_ty, lane| match lane_ty.kind() {
-                    ty::Float(FloatTy::F32) => fx.lib_call(
-                        "__powisf2", // compiler-builtins
-                        vec![AbiParam::new(types::F32), AbiParam::new(types::I32)],
-                        vec![AbiParam::new(types::F32)],
-                        &[lane, exp],
-                    )[0],
-                    ty::Float(FloatTy::F64) => fx.lib_call(
-                        "__powidf2", // compiler-builtins
-                        vec![AbiParam::new(types::F64), AbiParam::new(types::I32)],
-                        vec![AbiParam::new(types::F64)],
-                        &[lane, exp],
-                    )[0],
-                    _ => unreachable!("{:?}", lane_ty),
-                },
-            );
         }
 
         sym::simd_fsin

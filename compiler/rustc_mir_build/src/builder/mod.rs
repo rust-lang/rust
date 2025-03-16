@@ -37,7 +37,7 @@ pub(crate) fn closure_saved_names_of_captured_variables<'tcx>(
         .map(|captured_place| {
             let name = captured_place.to_symbol();
             match captured_place.info.capture_kind {
-                ty::UpvarCapture::ByValue => name,
+                ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => name,
                 ty::UpvarCapture::ByRef(..) => Symbol::intern(&format!("_ref__{name}")),
             }
         })
@@ -61,7 +61,9 @@ pub fn build_mir<'tcx>(tcx: TyCtxt<'tcx>, def: LocalDefId) -> Body<'tcx> {
         Ok((thir, expr)) => {
             let build_mir = |thir: &Thir<'tcx>| match thir.body_type {
                 thir::BodyTy::Fn(fn_sig) => construct_fn(tcx, def, thir, expr, fn_sig),
-                thir::BodyTy::Const(ty) => construct_const(tcx, def, thir, expr, ty),
+                thir::BodyTy::Const(ty) | thir::BodyTy::GlobalAsm(ty) => {
+                    construct_const(tcx, def, thir, expr, ty)
+                }
             };
 
             // this must run before MIR dump, because
@@ -483,7 +485,7 @@ fn construct_fn<'tcx>(
     };
 
     if let Some(custom_mir_attr) =
-        tcx.hir().attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
+        tcx.hir_attrs(fn_id).iter().find(|attr| attr.name_or_empty() == sym::custom_mir)
     {
         return custom::build_custom_mir(
             tcx,
@@ -576,6 +578,7 @@ fn construct_const<'a, 'tcx>(
             let span = tcx.def_span(def);
             (span, span)
         }
+        Node::Item(hir::Item { kind: hir::ItemKind::GlobalAsm { .. }, span, .. }) => (*span, *span),
         _ => span_bug!(tcx.def_span(def), "can't build MIR for {:?}", def),
     };
 
@@ -609,7 +612,8 @@ fn construct_error(tcx: TyCtxt<'_>, def_id: LocalDefId, guar: ErrorGuaranteed) -
         | DefKind::AssocConst
         | DefKind::AnonConst
         | DefKind::InlineConst
-        | DefKind::Static { .. } => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
+        | DefKind::Static { .. }
+        | DefKind::GlobalAsm => (vec![], tcx.type_of(def_id).instantiate_identity(), None),
         DefKind::Ctor(..) | DefKind::Fn | DefKind::AssocFn => {
             let sig = tcx.liberate_late_bound_regions(
                 def_id.to_def_id(),
@@ -737,7 +741,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         coroutine: Option<Box<CoroutineInfo<'tcx>>>,
     ) -> Builder<'a, 'tcx> {
         let tcx = infcx.tcx;
-        let attrs = tcx.hir().attrs(hir_id);
+        let attrs = tcx.hir_attrs(hir_id);
         // Some functions always have overflow checks enabled,
         // however, they may not get codegen'd, depending on
         // the settings for the crate they are codegened in.
@@ -868,7 +872,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let mut projs = closure_env_projs.clone();
                 projs.push(ProjectionElem::Field(FieldIdx::new(i), ty));
                 match capture {
-                    ty::UpvarCapture::ByValue => {}
+                    ty::UpvarCapture::ByValue | ty::UpvarCapture::ByUse => {}
                     ty::UpvarCapture::ByRef(..) => {
                         projs.push(ProjectionElem::Deref);
                     }

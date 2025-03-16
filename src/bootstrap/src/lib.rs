@@ -27,6 +27,7 @@ use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
+use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
@@ -74,7 +75,7 @@ const LLD_FILE_NAMES: &[&str] = &["ld.lld", "ld64.lld", "lld-link", "wasm-ld"];
 
 /// Extra `--check-cfg` to add when building the compiler or tools
 /// (Mode restriction, config name, config values (if any))
-#[allow(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
+#[expect(clippy::type_complexity)] // It's fine for hard-coded list and type is explained above.
 const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "llvm_enzyme", None),
@@ -92,10 +93,27 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &str, Option<&[&'static str]>)] = &[
 /// Each compiler has a `stage` that it is associated with and a `host` that
 /// corresponds to the platform the compiler runs on. This structure is used as
 /// a parameter to many methods below.
-#[derive(Eq, PartialOrd, Ord, PartialEq, Clone, Copy, Hash, Debug)]
+#[derive(Eq, PartialOrd, Ord, Clone, Copy, Debug)]
 pub struct Compiler {
     stage: u32,
     host: TargetSelection,
+    /// Indicates whether the compiler was forced to use a specific stage.
+    /// This field is ignored in `Hash` and `PartialEq` implementations as only the `stage`
+    /// and `host` fields are relevant for those.
+    forced_compiler: bool,
+}
+
+impl std::hash::Hash for Compiler {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.stage.hash(state);
+        self.host.hash(state);
+    }
+}
+
+impl PartialEq for Compiler {
+    fn eq(&self, other: &Self) -> bool {
+        self.stage == other.stage && self.host == other.host
+    }
 }
 
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]
@@ -185,7 +203,6 @@ struct Crate {
     name: String,
     deps: HashSet<String>,
     path: PathBuf,
-    has_lib: bool,
     features: Vec<String>,
 }
 
@@ -237,7 +254,7 @@ pub enum Mode {
     /// Build a tool which uses the locally built rustc and the target std,
     /// placing the output in the "stageN-tools" directory. This is used for
     /// anything that needs a fully functional rustc, such as rustdoc, clippy,
-    /// cargo, rls, rustfmt, miri, etc.
+    /// cargo, rustfmt, miri, etc.
     ToolRustc,
 }
 
@@ -637,7 +654,7 @@ impl Build {
 
         // Check for postponed failures from `test --no-fail-fast`.
         let failures = self.delayed_failures.borrow();
-        if failures.len() > 0 {
+        if !failures.is_empty() {
             eprintln!("\n{} command(s) did not execute successfully:\n", failures.len());
             for failure in failures.iter() {
                 eprintln!("  - {failure}\n");
@@ -1200,6 +1217,16 @@ Executed at: {executed_at}"#,
             return PathBuf::new();
         }
         self.cc.borrow()[&target].path().into()
+    }
+
+    /// Returns the internal `cc::Tool` for the C compiler.
+    fn cc_tool(&self, target: TargetSelection) -> Tool {
+        self.cc.borrow()[&target].clone()
+    }
+
+    /// Returns the internal `cc::Tool` for the C++ compiler.
+    fn cxx_tool(&self, target: TargetSelection) -> Tool {
+        self.cxx.borrow()[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the
@@ -1964,6 +1991,14 @@ fn chmod(path: &Path, perms: u32) {
 fn chmod(_path: &Path, _perms: u32) {}
 
 impl Compiler {
+    pub fn new(stage: u32, host: TargetSelection) -> Self {
+        Self { stage, host, forced_compiler: false }
+    }
+
+    pub fn forced_compiler(&mut self, forced_compiler: bool) {
+        self.forced_compiler = forced_compiler;
+    }
+
     pub fn with_stage(mut self, stage: u32) -> Compiler {
         self.stage = stage;
         self
@@ -1972,6 +2007,11 @@ impl Compiler {
     /// Returns `true` if this is a snapshot compiler for `build`'s configuration
     pub fn is_snapshot(&self, build: &Build) -> bool {
         self.stage == 0 && self.host == build.build
+    }
+
+    /// Indicates whether the compiler was forced to use a specific stage.
+    pub fn is_forced_compiler(&self) -> bool {
+        self.forced_compiler
     }
 }
 

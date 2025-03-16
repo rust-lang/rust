@@ -576,6 +576,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         EncodeCrossCrate::Yes, experimental!(patchable_function_entry)
     ),
 
+    // Probably temporary component of min_generic_const_args.
+    // `#[type_const] const ASSOC: usize;`
+    gated!(
+        type_const, Normal, template!(Word), ErrorFollowing,
+        EncodeCrossCrate::Yes, min_generic_const_args, experimental!(type_const),
+    ),
+
     // ==========================================================================
     // Internal attributes: Stability, deprecation, and unsafe:
     // ==========================================================================
@@ -1005,17 +1012,13 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         rustc_intrinsic, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
         "the `#[rustc_intrinsic]` attribute is used to declare intrinsics as function items",
     ),
-    gated!(
-        rustc_intrinsic_must_be_overridden, Normal, template!(Word), ErrorFollowing, EncodeCrossCrate::Yes, intrinsics,
-        "the `#[rustc_intrinsic_must_be_overridden]` attribute is used to declare intrinsics without real bodies",
-    ),
     rustc_attr!(
         rustc_no_mir_inline, Normal, template!(Word), WarnFollowing, EncodeCrossCrate::Yes,
         "#[rustc_no_mir_inline] prevents the MIR inliner from inlining a function while not affecting codegen"
     ),
     rustc_attr!(
         rustc_force_inline, Normal, template!(Word, NameValueStr: "reason"), WarnFollowing, EncodeCrossCrate::Yes,
-        "#![rustc_force_inline] forces a free function to be inlined"
+        "#[rustc_force_inline] forces a free function to be inlined"
     ),
 
     // ==========================================================================

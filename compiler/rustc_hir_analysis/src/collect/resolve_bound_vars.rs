@@ -160,7 +160,7 @@ enum Scope<'a> {
 
 impl<'a> Scope<'a> {
     // A helper for debugging scopes without printing parent scopes
-    fn debug_truncated(&'a self) -> impl fmt::Debug + 'a {
+    fn debug_truncated(&self) -> impl fmt::Debug {
         fmt::from_fn(move |f| match self {
             Self::Binder { bound_vars, scope_type, hir_id, where_bound_origin, s: _ } => f
                 .debug_struct("Binder")
@@ -623,7 +623,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::Mod(..)
             | hir::ItemKind::ForeignMod { .. }
             | hir::ItemKind::Static(..)
-            | hir::ItemKind::GlobalAsm(..) => {
+            | hir::ItemKind::GlobalAsm { .. } => {
                 // These sorts of items have no lifetime parameters at all.
                 intravisit::walk_item(self, item);
             }
@@ -1462,7 +1462,8 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         for &(opaque_def_id, captures) in opaque_capture_scopes.iter().rev() {
             let mut captures = captures.borrow_mut();
             let remapped = *captures.entry(lifetime).or_insert_with(|| {
-                let feed = self.tcx.create_def(opaque_def_id, ident.name, DefKind::LifetimeParam);
+                let feed =
+                    self.tcx.create_def(opaque_def_id, Some(ident.name), DefKind::LifetimeParam);
                 feed.def_span(ident.span);
                 feed.def_ident_span(Some(ident.span));
                 feed.def_id()
@@ -2159,10 +2160,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
 
     /// Walk the generics of the item for a trait bound whose self type
     /// corresponds to the expected res, and return the trait def id.
-    fn for_each_trait_bound_on_res(
-        &self,
-        expected_res: Res,
-    ) -> impl Iterator<Item = DefId> + use<'tcx, '_> {
+    fn for_each_trait_bound_on_res(&self, expected_res: Res) -> impl Iterator<Item = DefId> {
         std::iter::from_coroutine(
             #[coroutine]
             move || {

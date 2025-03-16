@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 pub struct Foo;
 
 // Check that Self is represented uniformly between inherent impls, trait impls,

@@ -5,7 +5,6 @@ use std::cell::Cell;
 use std::mem;
 use std::sync::Arc;
 
-use rustc_ast::attr::AttributeExt;
 use rustc_ast::expand::StrippedCfgItem;
 use rustc_ast::{self as ast, Crate, NodeId, attr};
 use rustc_ast_pretty::pprust;
@@ -324,6 +323,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn check_unused_macros(&mut self) {
+        #[allow(rustc::potential_query_instability)] // FIXME
         for (_, &(node_id, ident)) in self.unused_macros.iter() {
             self.lint_buffer.buffer_lint(
                 UNUSED_MACROS,
@@ -334,10 +334,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         }
 
         for (&def_id, unused_arms) in self.unused_macro_rules.iter() {
-            let mut unused_arms = unused_arms.iter().collect::<Vec<_>>();
-            unused_arms.sort_by_key(|&(&arm_i, _)| arm_i);
-
-            for (&arm_i, &(ident, rule_span)) in unused_arms {
+            for (&arm_i, &(ident, rule_span)) in unused_arms.to_sorted_stable_ord() {
                 if self.unused_macros.contains_key(&def_id) {
                     // We already lint the entire macro as unused
                     continue;
@@ -1112,7 +1109,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         &mut self,
         macro_def: &ast::MacroDef,
         ident: Ident,
-        attrs: &[impl AttributeExt],
+        attrs: &[rustc_hir::Attribute],
         span: Span,
         node_id: NodeId,
         edition: Edition,

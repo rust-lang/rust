@@ -1,6 +1,6 @@
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::fold::TypeFoldable;
@@ -20,7 +20,10 @@ use crate::{self as ty, Interner};
 /// t-types for help.
 #[derive_where(Clone, Copy, Hash, PartialEq, Eq, Debug; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyEncodable, TyDecodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Encodable_NoContext, Decodable_NoContext, HashStable_NoContext)
+)]
 pub enum TypingMode<I: Interner> {
     /// When checking whether impls overlap, we check whether any obligations
     /// are guaranteed to never hold when unifying the impls. This requires us
@@ -151,7 +154,7 @@ pub trait InferCtxtLike: Sized {
         value: ty::Binder<Self::Interner, T>,
     ) -> T;
 
-    fn enter_forall<T: TypeFoldable<Self::Interner> + Copy, U>(
+    fn enter_forall<T: TypeFoldable<Self::Interner>, U>(
         &self,
         value: ty::Binder<Self::Interner, T>,
         f: impl FnOnce(T) -> U,

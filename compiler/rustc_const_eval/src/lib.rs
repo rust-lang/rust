@@ -1,6 +1,7 @@
 // tidy-alphabetical-start
 #![allow(internal_features)]
 #![allow(rustc::diagnostic_outside_of_impl)]
+#![cfg_attr(doc, recursion_limit = "256")] // FIXME(nnethercote): will be removed by #124141
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
@@ -16,7 +17,6 @@
 #![feature(unqualified_local_imports)]
 #![feature(yeet_expr)]
 #![warn(unqualified_local_imports)]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 pub mod check_consts;

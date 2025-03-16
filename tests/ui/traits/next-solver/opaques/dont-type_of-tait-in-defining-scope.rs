@@ -11,12 +11,14 @@ type Foo = impl Sized;
 
 fn needs_send<T: Send>() {}
 
+#[define_opaque(Foo)]
 fn test(_: Foo) {
     needs_send::<Foo>();
     //~^ ERROR type annotations needed: cannot satisfy `Foo == _`
 }
 
-fn defines(_: Foo) {
+#[define_opaque(Foo)]
+fn defines() {
     let _: Foo = ();
 }
 

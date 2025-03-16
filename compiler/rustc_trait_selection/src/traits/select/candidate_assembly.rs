@@ -859,13 +859,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
 
                         if let Some(principal) = data.principal() {
-                            if !self.infcx.tcx.features().dyn_compatible_for_dispatch() {
-                                principal.with_self_ty(self.tcx(), self_ty)
-                            } else if self.tcx().is_dyn_compatible(principal.def_id()) {
-                                principal.with_self_ty(self.tcx(), self_ty)
-                            } else {
-                                return;
-                            }
+                            principal.with_self_ty(self.tcx(), self_ty)
                         } else {
                             // Only auto trait bounds exist.
                             return;
@@ -1019,13 +1013,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // `Struct<T>` -> `Struct<U>`
             (&ty::Adt(def_id_a, _), &ty::Adt(def_id_b, _)) if def_id_a.is_struct() => {
                 if def_id_a == def_id_b {
-                    candidates.vec.push(BuiltinUnsizeCandidate);
-                }
-            }
-
-            // `(.., T)` -> `(.., U)`
-            (&ty::Tuple(tys_a), &ty::Tuple(tys_b)) => {
-                if tys_a.len() == tys_b.len() {
                     candidates.vec.push(BuiltinUnsizeCandidate);
                 }
             }

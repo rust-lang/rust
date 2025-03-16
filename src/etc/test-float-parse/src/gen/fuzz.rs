@@ -6,7 +6,7 @@ use std::ops::Range;
 use std::sync::Mutex;
 
 use rand::Rng;
-use rand::distributions::{Distribution, Standard};
+use rand::distr::{Distribution, StandardUniform};
 use rand_chacha::ChaCha8Rng;
 use rand_chacha::rand_core::SeedableRng;
 
@@ -47,9 +47,8 @@ impl<F: Float> Fuzz<F> {
 
 impl<F: Float> Generator<F> for Fuzz<F>
 where
-    Standard: Distribution<<F as Float>::Int>,
+    StandardUniform: Distribution<<F as Float>::Int>,
 {
-    const NAME: &'static str = "fuzz";
     const SHORT_NAME: &'static str = "fuzz";
 
     type WriteCtx = F;
@@ -75,13 +74,13 @@ where
 
 impl<F: Float> Iterator for Fuzz<F>
 where
-    Standard: Distribution<<F as Float>::Int>,
+    StandardUniform: Distribution<<F as Float>::Int>,
 {
     type Item = <Self as Generator<F>>::WriteCtx;
 
     fn next(&mut self) -> Option<Self::Item> {
         let _ = self.iter.next()?;
-        let i: F::Int = self.rng.gen();
+        let i: F::Int = self.rng.random();
 
         Some(F::from_bits(i))
     }

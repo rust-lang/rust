@@ -1,11 +1,8 @@
 #![feature(type_alias_impl_trait)]
 
-mod foo {
-    use super::Equals;
-    pub type WithLifetime<T> = impl Equals<SelfType = ()>;
-    fn _defining_use<T>() -> WithLifetime<T> {}
-}
-use foo::WithLifetime;
+pub type WithLifetime<T> = impl Equals<SelfType = ()>;
+#[define_opaque(WithLifetime)]
+fn _defining_use<T>() -> WithLifetime<T> {}
 
 trait Convert<'a> {
     type Witness;

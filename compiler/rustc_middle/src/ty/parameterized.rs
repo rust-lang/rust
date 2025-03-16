@@ -3,6 +3,7 @@ use std::hash::Hash;
 use rustc_data_structures::unord::UnordMap;
 use rustc_hir::def_id::DefIndex;
 use rustc_index::{Idx, IndexVec};
+use rustc_span::Symbol;
 
 use crate::ty;
 
@@ -80,10 +81,10 @@ trivially_parameterized_over_tcx! {
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
     rustc_ast::expand::StrippedCfgItem<rustc_hir::def_id::DefIndex>,
-    rustc_attr_parsing::ConstStability,
-    rustc_attr_parsing::DefaultBodyStability,
-    rustc_attr_parsing::Deprecation,
-    rustc_attr_parsing::Stability,
+    rustc_attr_data_structures::ConstStability,
+    rustc_attr_data_structures::DefaultBodyStability,
+    rustc_attr_data_structures::Deprecation,
+    rustc_attr_data_structures::Stability,
     rustc_hir::Constness,
     rustc_hir::Defaultness,
     rustc_hir::Safety,
@@ -96,6 +97,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
     rustc_hir::OpaqueTyOrigin<rustc_hir::def_id::DefId>,
+    rustc_hir::PreciseCapturingArgKind<Symbol, Symbol>,
     rustc_index::bit_set::DenseBitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_session::cstore::ForeignModule,

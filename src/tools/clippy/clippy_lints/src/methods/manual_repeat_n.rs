@@ -14,16 +14,16 @@ pub(super) fn check<'tcx>(
     expr: &'tcx Expr<'tcx>,
     repeat_expr: &Expr<'_>,
     take_arg: &Expr<'_>,
-    msrv: &Msrv,
+    msrv: Msrv,
 ) {
-    if msrv.meets(msrvs::REPEAT_N)
-        && !expr.span.from_expansion()
+    if !expr.span.from_expansion()
         && is_trait_method(cx, expr, sym::Iterator)
         && let ExprKind::Call(_, [repeat_arg]) = repeat_expr.kind
         && let Some(def_id) = fn_def_id(cx, repeat_expr)
         && cx.tcx.is_diagnostic_item(sym::iter_repeat, def_id)
         && !expr_use_ctxt(cx, expr).is_ty_unified
         && let Some(std_or_core) = std_or_core(cx)
+        && msrv.meets(cx, msrvs::REPEAT_N)
     {
         let mut app = Applicability::MachineApplicable;
         span_lint_and_sugg(

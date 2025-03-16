@@ -230,8 +230,10 @@ fn make_win_dist(
         "libiconv.a",
         "libmoldname.a",
         "libpthread.a",
-        //Windows import libs
-        //This should contain only the set of libraries necessary to link the standard library.
+        // Windows import libs
+        // This *should* contain only the set of libraries necessary to link the standard library,
+        // however we've had problems with people accidentally depending on extra libs being here,
+        // so we can't easily remove entries.
         "libadvapi32.a",
         "libbcrypt.a",
         "libcomctl32.a",
@@ -430,7 +432,7 @@ impl Step for Rustc {
                 },
                 builder.kind,
             ) {
-                builder.install(&ra_proc_macro_srv, &image.join("libexec"), 0o755);
+                builder.install(&ra_proc_macro_srv.tool_path, &image.join("libexec"), 0o755);
             }
 
             let libdir_relative = builder.libdir_relative(compiler);
@@ -1145,54 +1147,12 @@ impl Step for Cargo {
         let mut tarball = Tarball::new(builder, "cargo", &target.triple);
         tarball.set_overlay(OverlayKind::Cargo);
 
-        tarball.add_file(cargo, "bin", 0o755);
+        tarball.add_file(cargo.tool_path, "bin", 0o755);
         tarball.add_file(etc.join("_cargo"), "share/zsh/site-functions", 0o644);
         tarball.add_renamed_file(etc.join("cargo.bashcomp.sh"), "etc/bash_completion.d", "cargo");
         tarball.add_dir(etc.join("man"), "share/man/man1");
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
-        Some(tarball.generate())
-    }
-}
-
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
-pub struct Rls {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for Rls {
-    type Output = Option<GeneratedTarball>;
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rls");
-        run.alias("rls").default_condition(default)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rls {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
-        let target = self.target;
-
-        let rls = builder.ensure(tool::Rls { compiler, target });
-
-        let mut tarball = Tarball::new(builder, "rls", &target.triple);
-        tarball.set_overlay(OverlayKind::Rls);
-        tarball.is_preview(true);
-        tarball.add_file(rls, "bin", 0o755);
-        tarball.add_legal_and_readme_to("share/doc/rls");
         Some(tarball.generate())
     }
 }
@@ -1233,7 +1193,7 @@ impl Step for RustAnalyzer {
         let mut tarball = Tarball::new(builder, "rust-analyzer", &target.triple);
         tarball.set_overlay(OverlayKind::RustAnalyzer);
         tarball.is_preview(true);
-        tarball.add_file(rust_analyzer, "bin", 0o755);
+        tarball.add_file(rust_analyzer.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rust-analyzer");
         Some(tarball.generate())
     }
@@ -1279,8 +1239,8 @@ impl Step for Clippy {
         let mut tarball = Tarball::new(builder, "clippy", &target.triple);
         tarball.set_overlay(OverlayKind::Clippy);
         tarball.is_preview(true);
-        tarball.add_file(clippy, "bin", 0o755);
-        tarball.add_file(cargoclippy, "bin", 0o755);
+        tarball.add_file(clippy.tool_path, "bin", 0o755);
+        tarball.add_file(cargoclippy.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/clippy");
         Some(tarball.generate())
     }
@@ -1329,8 +1289,8 @@ impl Step for Miri {
         let mut tarball = Tarball::new(builder, "miri", &target.triple);
         tarball.set_overlay(OverlayKind::Miri);
         tarball.is_preview(true);
-        tarball.add_file(miri, "bin", 0o755);
-        tarball.add_file(cargomiri, "bin", 0o755);
+        tarball.add_file(miri.tool_path, "bin", 0o755);
+        tarball.add_file(cargomiri.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/miri");
         Some(tarball.generate())
     }
@@ -1460,8 +1420,8 @@ impl Step for Rustfmt {
         let mut tarball = Tarball::new(builder, "rustfmt", &target.triple);
         tarball.set_overlay(OverlayKind::Rustfmt);
         tarball.is_preview(true);
-        tarball.add_file(rustfmt, "bin", 0o755);
-        tarball.add_file(cargofmt, "bin", 0o755);
+        tarball.add_file(rustfmt.tool_path, "bin", 0o755);
+        tarball.add_file(cargofmt.tool_path, "bin", 0o755);
         tarball.add_legal_and_readme_to("share/doc/rustfmt");
         Some(tarball.generate())
     }
@@ -1526,7 +1486,6 @@ impl Step for Extended {
         add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("cargo" => Cargo { compiler, target });
         add_component!("rustfmt" => Rustfmt { compiler, target });
-        add_component!("rls" => Rls { compiler, target });
         add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compiler, target });
@@ -2144,8 +2103,7 @@ pub fn maybe_install_llvm_target(builder: &Builder<'_>, target: TargetSelection,
     ),
 )]
 pub fn maybe_install_llvm_runtime(builder: &Builder<'_>, target: TargetSelection, sysroot: &Path) {
-    let dst_libdir =
-        sysroot.join(builder.sysroot_libdir_relative(Compiler { stage: 1, host: target }));
+    let dst_libdir = sysroot.join(builder.sysroot_libdir_relative(Compiler::new(1, target)));
     // We do not need to copy LLVM files into the sysroot if it is not
     // dynamically linked; it is already included into librustc_llvm
     // statically.
@@ -2283,7 +2241,7 @@ impl Step for LlvmBitcodeLinker {
         tarball.set_overlay(OverlayKind::LlvmBitcodeLinker);
         tarball.is_preview(true);
 
-        tarball.add_file(llbc_linker, self_contained_bin_dir, 0o755);
+        tarball.add_file(llbc_linker.tool_path, self_contained_bin_dir, 0o755);
 
         Some(tarball.generate())
     }
@@ -2420,7 +2378,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 
@@ -2498,5 +2456,32 @@ impl Step for ReproducibleArtifacts {
             added_anything = true;
         }
         if added_anything { Some(tarball.generate()) } else { None }
+    }
+}
+
+/// Tarball containing a prebuilt version of the libgccjit library,
+/// needed as a dependency for the GCC codegen backend (similarly to the LLVM
+/// backend needing a prebuilt libLLVM).
+#[derive(Clone, Debug, Eq, Hash, PartialEq)]
+pub struct Gcc {
+    pub target: TargetSelection,
+}
+
+impl Step for Gcc {
+    type Output = GeneratedTarball;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("gcc")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(Gcc { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) -> Self::Output {
+        let tarball = Tarball::new(builder, "gcc", &self.target.triple);
+        let output = builder.ensure(super::gcc::Gcc { target: self.target });
+        tarball.add_file(output.libgccjit, "lib", 0o644);
+        tarball.generate()
     }
 }

@@ -3,22 +3,23 @@
 
 // tidy-alphabetical-start
 #![recursion_limit = "256"]
-#![warn(unreachable_pub)]
 // tidy-alphabetical-end
 
 use std::cell::Cell;
 use std::vec;
 
 use rustc_abi::ExternAbi;
-use rustc_ast::util::parser::{self, AssocOp, ExprPrecedence, Fixity};
-use rustc_ast::{DUMMY_NODE_ID, DelimArgs};
+use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
+use rustc_ast::{AttrStyle, DUMMY_NODE_ID, DelimArgs};
 use rustc_ast_pretty::pp::Breaks::{Consistent, Inconsistent};
 use rustc_ast_pretty::pp::{self, Breaks};
 use rustc_ast_pretty::pprust::state::MacHeader;
 use rustc_ast_pretty::pprust::{Comments, PrintState};
+use rustc_attr_data_structures::{AttributeKind, PrintAttribute};
 use rustc_hir::{
     BindingMode, ByRef, ConstArgKind, GenericArg, GenericBound, GenericParam, GenericParamKind,
-    HirId, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term, TyPatKind,
+    HirId, ImplicitSelfKind, LifetimeParamKind, Node, PatKind, PreciseCapturingArg, RangeEnd, Term,
+    TyPatKind,
 };
 use rustc_span::source_map::SourceMap;
 use rustc_span::{FileName, Ident, Span, Symbol, kw};
@@ -79,63 +80,46 @@ impl<'a> State<'a> {
         (self.attrs)(id)
     }
 
-    fn print_inner_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Inner, false, true)
+    fn print_attrs_as_inner(&mut self, attrs: &[hir::Attribute]) {
+        self.print_either_attributes(attrs, ast::AttrStyle::Inner)
     }
 
-    fn print_outer_attributes(&mut self, attrs: &[hir::Attribute]) -> bool {
-        self.print_either_attributes(attrs, ast::AttrStyle::Outer, false, true)
+    fn print_attrs_as_outer(&mut self, attrs: &[hir::Attribute]) {
+        self.print_either_attributes(attrs, ast::AttrStyle::Outer)
     }
 
-    fn print_either_attributes(
-        &mut self,
-        attrs: &[hir::Attribute],
-        kind: ast::AttrStyle,
-        is_inline: bool,
-        trailing_hardbreak: bool,
-    ) -> bool {
-        let mut printed = false;
+    fn print_either_attributes(&mut self, attrs: &[hir::Attribute], style: ast::AttrStyle) {
+        if attrs.is_empty() {
+            return;
+        }
+
         for attr in attrs {
-            if attr.style == kind {
-                self.print_attribute_inline(attr, is_inline);
-                if is_inline {
-                    self.nbsp();
-                }
-                printed = true;
-            }
+            self.print_attribute_inline(attr, style);
         }
-        if printed && trailing_hardbreak && !is_inline {
-            self.hardbreak_if_not_bol();
-        }
-        printed
+        self.hardbreak_if_not_bol();
     }
 
-    fn print_attribute_inline(&mut self, attr: &hir::Attribute, is_inline: bool) {
-        if !is_inline {
-            self.hardbreak_if_not_bol();
-        }
-        self.maybe_print_comment(attr.span.lo());
-        match &attr.kind {
-            hir::AttrKind::Normal(normal) => {
-                match attr.style {
+    fn print_attribute_inline(&mut self, attr: &hir::Attribute, style: AttrStyle) {
+        match &attr {
+            hir::Attribute::Unparsed(unparsed) => {
+                self.maybe_print_comment(unparsed.span.lo());
+                match style {
                     ast::AttrStyle::Inner => self.word("#!["),
                     ast::AttrStyle::Outer => self.word("#["),
                 }
-                if normal.unsafety == hir::Safety::Unsafe {
-                    self.word("unsafe(");
-                }
-                self.print_attr_item(&normal, attr.span);
-                if normal.unsafety == hir::Safety::Unsafe {
-                    self.word(")");
-                }
+                self.print_attr_item(&unparsed, unparsed.span);
                 self.word("]");
             }
-            hir::AttrKind::DocComment(comment_kind, data) => {
+            hir::Attribute::Parsed(AttributeKind::DocComment { style, kind, comment, .. }) => {
                 self.word(rustc_ast_pretty::pprust::state::doc_comment_to_string(
-                    *comment_kind,
-                    attr.style,
-                    *data,
+                    *kind, *style, *comment,
                 ));
+                self.hardbreak()
+            }
+            hir::Attribute::Parsed(pa) => {
+                self.word("#[attr = ");
+                pa.print_attribute(self);
+                self.word("]");
                 self.hardbreak()
             }
         }
@@ -161,7 +145,7 @@ impl<'a> State<'a> {
                     false,
                     None,
                     *delim,
-                    tokens,
+                    &tokens,
                     true,
                     span,
                 ),
@@ -306,7 +290,7 @@ where
 }
 
 pub fn attribute_to_string(ann: &dyn PpAnn, attr: &hir::Attribute) -> String {
-    to_string(ann, |s| s.print_attribute_inline(attr, false))
+    to_string(ann, |s| s.print_attribute_inline(attr, AttrStyle::Outer))
 }
 
 pub fn ty_to_string(ann: &dyn PpAnn, ty: &hir::Ty<'_>) -> String {
@@ -369,7 +353,7 @@ impl<'a> State<'a> {
     }
 
     fn print_mod(&mut self, _mod: &hir::Mod<'_>, attrs: &[hir::Attribute]) {
-        self.print_inner_attributes(attrs);
+        self.print_attrs_as_inner(attrs);
         for &item_id in _mod.item_ids {
             self.ann.nested(self, Nested::Item(item_id));
         }
@@ -486,7 +470,7 @@ impl<'a> State<'a> {
     fn print_foreign_item(&mut self, item: &hir::ForeignItem<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
-        self.print_outer_attributes(self.attrs(item.hir_id()));
+        self.print_attrs_as_outer(self.attrs(item.hir_id()));
         match item.kind {
             hir::ForeignItemKind::Fn(sig, arg_names, generics) => {
                 self.head("");
@@ -568,29 +552,11 @@ impl<'a> State<'a> {
         self.word(";")
     }
 
-    fn print_item_type(
-        &mut self,
-        item: &hir::Item<'_>,
-        generics: &hir::Generics<'_>,
-        inner: impl Fn(&mut Self),
-    ) {
-        self.head("type");
-        self.print_ident(item.ident);
-        self.print_generic_params(generics.params);
-        self.end(); // end the inner ibox
-
-        self.print_where_clause(generics);
-        self.space();
-        inner(self);
-        self.word(";");
-        self.end(); // end the outer ibox
-    }
-
     fn print_item(&mut self, item: &hir::Item<'_>) {
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(item.span.lo());
         let attrs = self.attrs(item.hir_id());
-        self.print_outer_attributes(attrs);
+        self.print_attrs_as_outer(attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match item.kind {
             hir::ItemKind::ExternCrate(orig_name) => {
@@ -686,22 +652,29 @@ impl<'a> State<'a> {
                 self.head("extern");
                 self.word_nbsp(abi.to_string());
                 self.bopen();
-                self.print_inner_attributes(self.attrs(item.hir_id()));
+                self.print_attrs_as_inner(self.attrs(item.hir_id()));
                 for item in items {
                     self.ann.nested(self, Nested::ForeignItem(item.id));
                 }
                 self.bclose(item.span);
             }
-            hir::ItemKind::GlobalAsm(asm) => {
+            hir::ItemKind::GlobalAsm { asm, .. } => {
                 self.head("global_asm!");
                 self.print_inline_asm(asm);
                 self.end()
             }
             hir::ItemKind::TyAlias(ty, generics) => {
-                self.print_item_type(item, generics, |state| {
-                    state.word_space("=");
-                    state.print_type(ty);
-                });
+                self.head("type");
+                self.print_ident(item.ident);
+                self.print_generic_params(generics.params);
+                self.end(); // end the inner ibox
+
+                self.print_where_clause(generics);
+                self.space();
+                self.word_space("=");
+                self.print_type(ty);
+                self.word(";");
+                self.end(); // end the outer ibox
             }
             hir::ItemKind::Enum(ref enum_definition, params) => {
                 self.print_enum_def(enum_definition, params, item.ident.name, item.span);
@@ -754,7 +727,7 @@ impl<'a> State<'a> {
 
                 self.space();
                 self.bopen();
-                self.print_inner_attributes(attrs);
+                self.print_attrs_as_inner(attrs);
                 for impl_item in items {
                     self.ann.nested(self, Nested::ImplItem(impl_item.id));
                 }
@@ -846,7 +819,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(self.attrs(v.hir_id));
+            self.print_attrs_as_outer(self.attrs(v.hir_id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.word(",");
@@ -879,7 +852,7 @@ impl<'a> State<'a> {
                     self.popen();
                     self.commasep(Inconsistent, struct_def.fields(), |s, field| {
                         s.maybe_print_comment(field.span.lo());
-                        s.print_outer_attributes(s.attrs(field.hir_id));
+                        s.print_attrs_as_outer(s.attrs(field.hir_id));
                         s.print_type(field.ty);
                     });
                     self.pclose();
@@ -906,7 +879,7 @@ impl<'a> State<'a> {
         for field in fields {
             self.hardbreak_if_not_bol();
             self.maybe_print_comment(field.span.lo());
-            self.print_outer_attributes(self.attrs(field.hir_id));
+            self.print_attrs_as_outer(self.attrs(field.hir_id));
             self.print_ident(field.ident);
             self.word_nbsp(":");
             self.print_type(field.ty);
@@ -942,7 +915,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ti.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ti.span.lo());
-        self.print_outer_attributes(self.attrs(ti.hir_id()));
+        self.print_attrs_as_outer(self.attrs(ti.hir_id()));
         match ti.kind {
             hir::TraitItemKind::Const(ty, default) => {
                 self.print_associated_const(ti.ident, ti.generics, ty, default);
@@ -970,7 +943,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::SubItem(ii.hir_id()));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(ii.span.lo());
-        self.print_outer_attributes(self.attrs(ii.hir_id()));
+        self.print_attrs_as_outer(self.attrs(ii.hir_id()));
 
         match ii.kind {
             hir::ImplItemKind::Const(ty, expr) => {
@@ -1073,7 +1046,7 @@ impl<'a> State<'a> {
         self.ann.pre(self, AnnNode::Block(blk));
         self.bopen();
 
-        self.print_inner_attributes(attrs);
+        self.print_attrs_as_inner(attrs);
 
         for st in blk.stmts {
             self.print_stmt(st);
@@ -1263,7 +1236,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(self.attrs(field.hir_id));
+        self.print_attrs_as_outer(self.attrs(field.hir_id));
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_space(":");
@@ -1311,12 +1284,11 @@ impl<'a> State<'a> {
     }
 
     fn print_expr_binary(&mut self, op: hir::BinOp, lhs: &hir::Expr<'_>, rhs: &hir::Expr<'_>) {
-        let assoc_op = AssocOp::from_ast_binop(op.node);
-        let binop_prec = assoc_op.precedence();
+        let binop_prec = op.node.precedence();
         let left_prec = lhs.precedence();
         let right_prec = rhs.precedence();
 
-        let (mut left_needs_paren, right_needs_paren) = match assoc_op.fixity() {
+        let (mut left_needs_paren, right_needs_paren) = match op.node.fixity() {
             Fixity::Left => (left_prec < binop_prec, right_prec <= binop_prec),
             Fixity::Right => (left_prec <= binop_prec, right_prec < binop_prec),
             Fixity::None => (left_prec <= binop_prec, right_prec <= binop_prec),
@@ -1429,12 +1401,13 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Const { ref anon_const } => {
                     s.word("const");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    // Not using `print_inline_const` to avoid additional `const { ... }`
+                    s.ann.nested(s, Nested::Body(anon_const.body))
                 }
-                hir::InlineAsmOperand::SymFn { ref anon_const } => {
+                hir::InlineAsmOperand::SymFn { ref expr } => {
                     s.word("sym_fn");
                     s.space();
-                    s.print_anon_const(anon_const);
+                    s.print_expr(expr);
                 }
                 hir::InlineAsmOperand::SymStatic { ref path, def_id: _ } => {
                     s.word("sym_static");
@@ -1460,7 +1433,7 @@ impl<'a> State<'a> {
 
     fn print_expr(&mut self, expr: &hir::Expr<'_>) {
         self.maybe_print_comment(expr.span.lo());
-        self.print_outer_attributes(self.attrs(expr.hir_id));
+        self.print_attrs_as_outer(self.attrs(expr.hir_id));
         self.ibox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Expr(expr));
         match expr.kind {
@@ -1484,6 +1457,10 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::MethodCall(segment, receiver, args, _) => {
                 self.print_expr_method_call(segment, receiver, args);
+            }
+            hir::ExprKind::Use(expr, _) => {
+                self.print_expr(expr);
+                self.word(".use");
             }
             hir::ExprKind::Binary(op, lhs, rhs) => {
                 self.print_expr_binary(op, lhs, rhs);
@@ -1676,8 +1653,8 @@ impl<'a> State<'a> {
             }
             hir::ExprKind::UnsafeBinderCast(kind, expr, ty) => {
                 match kind {
-                    hir::UnsafeBinderCastKind::Wrap => self.word("wrap_binder!("),
-                    hir::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder!("),
+                    ast::UnsafeBinderCastKind::Wrap => self.word("wrap_binder!("),
+                    ast::UnsafeBinderCastKind::Unwrap => self.word("unwrap_binder!("),
                 }
                 self.print_expr(expr);
                 if let Some(ty) = ty {
@@ -1856,7 +1833,7 @@ impl<'a> State<'a> {
                 self.word_space("=");
                 match term {
                     Term::Ty(ty) => self.print_type(ty),
-                    Term::Const(ref c) => self.print_const_arg(c),
+                    Term::Const(c) => self.print_const_arg(c),
                 }
             }
             hir::AssocItemConstraintKind::Bound { bounds } => {
@@ -1884,17 +1861,10 @@ impl<'a> State<'a> {
         // Pat isn't normalized, but the beauty of it
         // is that it doesn't matter
         match pat.kind {
-            TyPatKind::Range(begin, end, end_kind) => {
-                if let Some(expr) = begin {
-                    self.print_const_arg(expr);
-                }
-                match end_kind {
-                    RangeEnd::Included => self.word("..."),
-                    RangeEnd::Excluded => self.word(".."),
-                }
-                if let Some(expr) = end {
-                    self.print_const_arg(expr);
-                }
+            TyPatKind::Range(begin, end) => {
+                self.print_const_arg(begin);
+                self.word("..=");
+                self.print_const_arg(end);
             }
             TyPatKind::Err(_) => {
                 self.popen();
@@ -2072,7 +2042,7 @@ impl<'a> State<'a> {
             self.space();
         }
         self.cbox(INDENT_UNIT);
-        self.print_outer_attributes(self.attrs(field.hir_id));
+        self.print_attrs_as_outer(self.attrs(field.hir_id));
         if !field.is_shorthand {
             self.print_ident(field.ident);
             self.word_nbsp(":");
@@ -2082,8 +2052,30 @@ impl<'a> State<'a> {
     }
 
     fn print_param(&mut self, arg: &hir::Param<'_>) {
-        self.print_outer_attributes(self.attrs(arg.hir_id));
+        self.print_attrs_as_outer(self.attrs(arg.hir_id));
         self.print_pat(arg.pat);
+    }
+
+    fn print_implicit_self(&mut self, implicit_self_kind: &hir::ImplicitSelfKind) {
+        match implicit_self_kind {
+            ImplicitSelfKind::Imm => {
+                self.word("self");
+            }
+            ImplicitSelfKind::Mut => {
+                self.print_mutability(hir::Mutability::Mut, false);
+                self.word("self");
+            }
+            ImplicitSelfKind::RefImm => {
+                self.word("&");
+                self.word("self");
+            }
+            ImplicitSelfKind::RefMut => {
+                self.word("&");
+                self.print_mutability(hir::Mutability::Mut, false);
+                self.word("self");
+            }
+            ImplicitSelfKind::None => unreachable!(),
+        }
     }
 
     fn print_arm(&mut self, arm: &hir::Arm<'_>) {
@@ -2095,7 +2087,7 @@ impl<'a> State<'a> {
         self.cbox(INDENT_UNIT);
         self.ann.pre(self, AnnNode::Arm(arm));
         self.ibox(0);
-        self.print_outer_attributes(self.attrs(arm.hir_id));
+        self.print_attrs_as_outer(self.attrs(arm.hir_id));
         self.print_pat(arm.pat);
         self.space();
         if let Some(ref g) = arm.guard {
@@ -2151,27 +2143,35 @@ impl<'a> State<'a> {
         // Make sure we aren't supplied *both* `arg_names` and `body_id`.
         assert!(arg_names.is_empty() || body_id.is_none());
         let mut i = 0;
-        let mut print_arg = |s: &mut Self| {
-            if let Some(arg_name) = arg_names.get(i) {
-                s.word(arg_name.to_string());
-                s.word(":");
-                s.space();
-            } else if let Some(body_id) = body_id {
-                s.ann.nested(s, Nested::BodyParamPat(body_id, i));
-                s.word(":");
-                s.space();
+        let mut print_arg = |s: &mut Self, ty: Option<&hir::Ty<'_>>| {
+            if i == 0 && decl.implicit_self.has_implicit_self() {
+                s.print_implicit_self(&decl.implicit_self);
+            } else {
+                if let Some(arg_name) = arg_names.get(i) {
+                    if arg_name.name != kw::Empty {
+                        s.word(arg_name.to_string());
+                        s.word(":");
+                        s.space();
+                    }
+                } else if let Some(body_id) = body_id {
+                    s.ann.nested(s, Nested::BodyParamPat(body_id, i));
+                    s.word(":");
+                    s.space();
+                }
+                if let Some(ty) = ty {
+                    s.print_type(ty);
+                }
             }
             i += 1;
         };
         self.commasep(Inconsistent, decl.inputs, |s, ty| {
             s.ibox(INDENT_UNIT);
-            print_arg(s);
-            s.print_type(ty);
+            print_arg(s, Some(ty));
             s.end();
         });
         if decl.c_variadic {
             self.word(", ");
-            print_arg(self);
+            print_arg(self, None);
             self.word("...");
         }
         self.pclose();
@@ -2214,6 +2214,7 @@ impl<'a> State<'a> {
     fn print_capture_clause(&mut self, capture_clause: hir::CaptureBy) {
         match capture_clause {
             hir::CaptureBy::Value { .. } => self.word_space("move"),
+            hir::CaptureBy::Use { .. } => self.word_space("use"),
             hir::CaptureBy::Ref => {}
         }
     }
@@ -2284,7 +2285,9 @@ impl<'a> State<'a> {
                 GenericBound::Use(args, _) => {
                     self.word("use <");
 
-                    self.commasep(Inconsistent, args, |s, arg| s.print_precise_capturing_arg(*arg));
+                    self.commasep(Inconsistent, *args, |s, arg| {
+                        s.print_precise_capturing_arg(*arg)
+                    });
 
                     self.word(">");
                 }
@@ -2300,10 +2303,23 @@ impl<'a> State<'a> {
     }
 
     fn print_generic_params(&mut self, generic_params: &[GenericParam<'_>]) {
-        if !generic_params.is_empty() {
+        let is_lifetime_elided = |generic_param: &GenericParam<'_>| {
+            matches!(
+                generic_param.kind,
+                GenericParamKind::Lifetime { kind: LifetimeParamKind::Elided(_) }
+            )
+        };
+
+        // We don't want to show elided lifetimes as they are compiler-inserted and not
+        // expressible in surface level Rust.
+        if !generic_params.is_empty() && !generic_params.iter().all(is_lifetime_elided) {
             self.word("<");
 
-            self.commasep(Inconsistent, generic_params, |s, param| s.print_generic_param(param));
+            self.commasep(
+                Inconsistent,
+                generic_params.iter().filter(|gp| !is_lifetime_elided(gp)),
+                |s, param| s.print_generic_param(param),
+            );
 
             self.word(">");
         }
@@ -2358,6 +2374,7 @@ impl<'a> State<'a> {
     }
 
     fn print_where_predicate(&mut self, predicate: &hir::WherePredicate<'_>) {
+        self.print_attrs_as_outer(self.attrs(predicate.hir_id));
         match *predicate.kind {
             hir::WherePredicateKind::BoundPredicate(hir::WhereBoundPredicate {
                 bound_generic_params,

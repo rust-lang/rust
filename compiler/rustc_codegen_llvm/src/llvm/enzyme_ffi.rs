@@ -3,13 +3,14 @@
 
 use libc::{c_char, c_uint};
 
+use super::MetadataKindId;
 use super::ffi::{BasicBlock, Metadata, Module, Type, Value};
 use crate::llvm::Bool;
 
 #[link(name = "llvm-wrapper", kind = "static")]
-extern "C" {
+unsafe extern "C" {
     // Enzyme
-    pub(crate) fn LLVMRustHasMetadata(I: &Value, KindID: c_uint) -> bool;
+    pub(crate) safe fn LLVMRustHasMetadata(I: &Value, KindID: MetadataKindId) -> bool;
     pub(crate) fn LLVMRustEraseInstUntilInclusive(BB: &BasicBlock, I: &Value);
     pub(crate) fn LLVMRustGetLastInstruction<'a>(BB: &BasicBlock) -> Option<&'a Value>;
     pub(crate) fn LLVMRustDIGetInstMetadata(I: &Value) -> Option<&Metadata>;
@@ -18,7 +19,7 @@ extern "C" {
     pub(crate) fn LLVMRustVerifyFunction(V: &Value, action: LLVMRustVerifierFailureAction) -> Bool;
 }
 
-extern "C" {
+unsafe extern "C" {
     // Enzyme
     pub(crate) fn LLVMDumpModule(M: &Module);
     pub(crate) fn LLVMDumpValue(V: &Value);
@@ -42,10 +43,10 @@ pub use self::Enzyme_AD::*;
 #[cfg(llvm_enzyme)]
 pub mod Enzyme_AD {
     use libc::c_void;
-    extern "C" {
+    unsafe extern "C" {
         pub fn EnzymeSetCLBool(arg1: *mut ::std::os::raw::c_void, arg2: u8);
     }
-    extern "C" {
+    unsafe extern "C" {
         static mut EnzymePrintPerf: c_void;
         static mut EnzymePrintActivity: c_void;
         static mut EnzymePrintType: c_void;

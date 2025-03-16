@@ -18,6 +18,8 @@ extend-ignore-re = [
     "INOUT",
     "optin",
     "=Pn",
+    # ignore `// spellchecker:off` until `// spellchecker:on`
+    "(?s)(#|//)\\s*spellchecker:off.*?\\n\\s*(#|//)\\s*spellchecker:on",
 ]
 
 [default.extend-words]

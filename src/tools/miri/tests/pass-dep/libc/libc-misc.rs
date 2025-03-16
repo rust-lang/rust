@@ -78,11 +78,16 @@ fn test_getuid() {
     let _val = unsafe { libc::getuid() };
 }
 
+fn test_geteuid() {
+    let _val = unsafe { libc::geteuid() };
+}
+
 fn main() {
     test_thread_local_errno();
     test_environ();
     test_dlsym();
     test_getuid();
+    test_geteuid();
 
     #[cfg(target_os = "linux")]
     test_sigrt();

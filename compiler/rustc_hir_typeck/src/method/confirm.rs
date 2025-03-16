@@ -11,13 +11,13 @@ use rustc_hir_analysis::hir_ty_lowering::{
 };
 use rustc_infer::infer::{self, DefineOpaqueTypes, InferOk};
 use rustc_lint::builtin::SUPERTRAIT_ITEM_SHADOWING_USAGE;
-use rustc_middle::traits::{ObligationCauseCode, UnifyReceiverContext};
+use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCoercion,
 };
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::{
-    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeVisitableExt, UserArgs,
+    self, GenericArgs, GenericArgsRef, GenericParamDefKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, UserArgs,
 };
 use rustc_middle::{bug, span_bug};
 use rustc_span::{DUMMY_SP, Span};
@@ -136,7 +136,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
         );
-        self.unify_receivers(self_ty, method_sig_rcvr, pick, all_args);
+        self.unify_receivers(self_ty, method_sig_rcvr, pick);
 
         let (method_sig, method_predicates) =
             self.normalize(self.span, (method_sig, method_predicates));
@@ -426,6 +426,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
 
             fn provided_kind(
                 &mut self,
+                preceding_args: &[ty::GenericArg<'tcx>],
                 param: &ty::GenericParamDef,
                 arg: &GenericArg<'tcx>,
             ) -> ty::GenericArg<'tcx> {
@@ -446,7 +447,10 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                     (GenericParamDefKind::Const { .. }, GenericArg::Const(ct)) => self
                         .cfcx
                         // We handle the ambig portions of `ConstArg` in the match arms below
-                        .lower_const_arg(ct.as_unambig_ct(), FeedConstTy::Param(param.def_id))
+                        .lower_const_arg(
+                            ct.as_unambig_ct(),
+                            FeedConstTy::Param(param.def_id, preceding_args),
+                        )
                         .into(),
                     (GenericParamDefKind::Const { .. }, GenericArg::Infer(inf)) => {
                         self.cfcx.ct_infer(Some(param), inf.span).into()
@@ -525,20 +529,12 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         method_self_ty: Ty<'tcx>,
         pick: &probe::Pick<'tcx>,
-        args: GenericArgsRef<'tcx>,
     ) {
         debug!(
             "unify_receivers: self_ty={:?} method_self_ty={:?} span={:?} pick={:?}",
             self_ty, method_self_ty, self.span, pick
         );
-        let cause = self.cause(
-            self.self_expr.span,
-            ObligationCauseCode::UnifyReceiver(Box::new(UnifyReceiverContext {
-                assoc_item: pick.item,
-                param_env: self.param_env,
-                args,
-            })),
-        );
+        let cause = self.cause(self.self_expr.span, ObligationCauseCode::Misc);
         match self.at(&cause, self.param_env).sup(DefineOpaqueTypes::Yes, method_self_ty, self_ty) {
             Ok(InferOk { obligations, value: () }) => {
                 self.register_predicates(obligations);

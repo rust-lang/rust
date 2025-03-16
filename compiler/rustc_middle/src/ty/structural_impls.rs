@@ -11,16 +11,16 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_type_ir::ConstKind;
-use rustc_type_ir::visit::{VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
-use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{
+    self, FallibleTypeFolder, InferConst, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -50,7 +50,7 @@ impl<'tcx> fmt::Debug for ty::AdtDef<'tcx> {
 
 impl fmt::Debug for ty::UpvarId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let name = ty::tls::with(|tcx| tcx.hir().name(self.var_path.hir_id));
+        let name = ty::tls::with(|tcx| tcx.hir_name(self.var_path.hir_id));
         write!(f, "UpvarId({:?};`{}`;{:?})", self.var_path.hir_id, name, self.closure_expr_id)
     }
 }
@@ -284,6 +284,7 @@ TrivialTypeTraversalImpls! {
     rustc_hir::def_id::LocalDefId,
     rustc_hir::HirId,
     rustc_hir::MatchSource,
+    rustc_hir::RangeEnd,
     rustc_span::Ident,
     rustc_span::Span,
     rustc_span::Symbol,
@@ -447,23 +448,23 @@ impl<'tcx> TypeSuperVisitable<TyCtxt<'tcx>> for Ty<'tcx> {
             }
             ty::Slice(typ) => typ.visit_with(visitor),
             ty::Adt(_, args) => args.visit_with(visitor),
-            ty::Dynamic(ref trait_ty, ref reg, _) => {
+            ty::Dynamic(trait_ty, reg, _) => {
                 try_visit!(trait_ty.visit_with(visitor));
                 reg.visit_with(visitor)
             }
             ty::Tuple(ts) => ts.visit_with(visitor),
             ty::FnDef(_, args) => args.visit_with(visitor),
-            ty::FnPtr(ref sig_tys, _) => sig_tys.visit_with(visitor),
-            ty::UnsafeBinder(ref f) => f.visit_with(visitor),
+            ty::FnPtr(sig_tys, _) => sig_tys.visit_with(visitor),
+            ty::UnsafeBinder(f) => f.visit_with(visitor),
             ty::Ref(r, ty, _) => {
                 try_visit!(r.visit_with(visitor));
                 ty.visit_with(visitor)
             }
-            ty::Coroutine(_did, ref args) => args.visit_with(visitor),
-            ty::CoroutineWitness(_did, ref args) => args.visit_with(visitor),
-            ty::Closure(_did, ref args) => args.visit_with(visitor),
-            ty::CoroutineClosure(_did, ref args) => args.visit_with(visitor),
-            ty::Alias(_, ref data) => data.visit_with(visitor),
+            ty::Coroutine(_did, args) => args.visit_with(visitor),
+            ty::CoroutineWitness(_did, args) => args.visit_with(visitor),
+            ty::Closure(_did, args) => args.visit_with(visitor),
+            ty::CoroutineClosure(_did, args) => args.visit_with(visitor),
+            ty::Alias(_, data) => data.visit_with(visitor),
 
             ty::Pat(ty, pat) => {
                 try_visit!(ty.visit_with(visitor));

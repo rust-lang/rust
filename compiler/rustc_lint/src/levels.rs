@@ -152,7 +152,7 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
 #[instrument(level = "trace", skip(tcx), ret)]
 fn shallow_lint_levels_on(tcx: TyCtxt<'_>, owner: hir::OwnerId) -> ShallowLintLevelMap {
     let store = unerased_lint_store(tcx.sess);
-    let attrs = tcx.hir_attrs(owner);
+    let attrs = tcx.hir_attr_map(owner);
 
     let mut levels = LintLevelsBuilder {
         sess: tcx.sess,
@@ -297,6 +297,11 @@ impl<'tcx> Visitor<'tcx> for LintLevelsBuilder<'_, LintLevelQueryMap<'tcx>> {
     fn visit_expr(&mut self, e: &'tcx hir::Expr<'tcx>) {
         self.add_id(e.hir_id);
         intravisit::walk_expr(self, e);
+    }
+
+    fn visit_pat_field(&mut self, f: &'tcx hir::PatField<'tcx>) -> Self::Result {
+        self.add_id(f.hir_id);
+        intravisit::walk_pat_field(self, f);
     }
 
     fn visit_expr_field(&mut self, f: &'tcx hir::ExprField<'tcx>) {

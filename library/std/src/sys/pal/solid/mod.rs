@@ -22,13 +22,11 @@ pub mod env;
 // `error` is `pub(crate)` so that it can be accessed by `itron/error.rs` as
 // `crate::sys::error`
 pub(crate) mod error;
-pub mod fs;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod stdio;
 pub use self::itron::{thread, thread_parking};
 pub mod time;
 

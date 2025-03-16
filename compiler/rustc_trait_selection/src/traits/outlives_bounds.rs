@@ -36,7 +36,7 @@ fn implied_outlives_bounds<'a, 'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     body_id: LocalDefId,
     ty: Ty<'tcx>,
-    compat: bool,
+    disable_implied_bounds_hack: bool,
 ) -> Vec<OutlivesBound<'tcx>> {
     let ty = infcx.resolve_vars_if_possible(ty);
     let ty = OpportunisticRegionResolver::new(infcx).fold_ty(ty);
@@ -52,11 +52,8 @@ fn implied_outlives_bounds<'a, 'tcx>(
     let mut canonical_var_values = OriginalQueryValues::default();
     let input = ImpliedOutlivesBounds { ty };
     let canonical = infcx.canonicalize_query(param_env.and(input), &mut canonical_var_values);
-    let implied_bounds_result = if compat {
-        infcx.tcx.implied_outlives_bounds_compat(canonical)
-    } else {
-        infcx.tcx.implied_outlives_bounds(canonical)
-    };
+    let implied_bounds_result =
+        infcx.tcx.implied_outlives_bounds((canonical, disable_implied_bounds_hack));
     let Ok(canonical_result) = implied_bounds_result else {
         return vec![];
     };
@@ -110,14 +107,15 @@ fn implied_outlives_bounds<'a, 'tcx>(
 impl<'tcx> InferCtxt<'tcx> {
     /// Do *NOT* call this directly. You probably want to construct a `OutlivesEnvironment`
     /// instead if you're interested in the implied bounds for a given signature.
-    fn implied_bounds_tys_with_compat<Tys: IntoIterator<Item = Ty<'tcx>>>(
+    fn implied_bounds_tys<Tys: IntoIterator<Item = Ty<'tcx>>>(
         &self,
         body_id: LocalDefId,
         param_env: ParamEnv<'tcx>,
         tys: Tys,
-        compat: bool,
+        disable_implied_bounds_hack: bool,
     ) -> impl Iterator<Item = OutlivesBound<'tcx>> {
-        tys.into_iter()
-            .flat_map(move |ty| implied_outlives_bounds(self, param_env, body_id, ty, compat))
+        tys.into_iter().flat_map(move |ty| {
+            implied_outlives_bounds(self, param_env, body_id, ty, disable_implied_bounds_hack)
+        })
     }
 }

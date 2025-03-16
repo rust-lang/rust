@@ -70,11 +70,12 @@ fn main() {
     }
 
     // check_version warnings are not printed during setup, or during CI
-    let changelog_suggestion = if matches!(config.cmd, Subcommand::Setup { .. }) || CiEnv::is_ci() {
-        None
-    } else {
-        check_version(&config)
-    };
+    let changelog_suggestion =
+        if matches!(config.cmd, Subcommand::Setup { .. }) || CiEnv::is_ci() || config.dry_run() {
+            None
+        } else {
+            check_version(&config)
+        };
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
@@ -187,7 +188,7 @@ fn check_version(config: &Config) -> Option<String> {
             "update `config.toml` to use `change-id = {latest_change_id}` instead"
         ));
 
-        if io::stdout().is_terminal() && !config.dry_run() {
+        if io::stdout().is_terminal() {
             t!(fs::write(warned_id_path, latest_change_id.to_string()));
         }
     } else {

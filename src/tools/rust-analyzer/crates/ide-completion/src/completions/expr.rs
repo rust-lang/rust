@@ -147,7 +147,10 @@ pub(crate) fn complete_expr_path(
             });
             match resolution {
                 hir::PathResolution::Def(hir::ModuleDef::Module(module)) => {
-                    let module_scope = module.scope(ctx.db, Some(ctx.module));
+                    // Set visible_from to None so private items are returned.
+                    // They will be possibly filtered out in add_path_resolution()
+                    // via def_is_visible().
+                    let module_scope = module.scope(ctx.db, None);
                     for (name, def) in module_scope {
                         if scope_def_applicable(def) {
                             acc.add_path_resolution(
@@ -362,7 +365,8 @@ pub(crate) fn complete_expr_path(
                     add_keyword("false", "false");
 
                     if in_condition || in_block_expr {
-                        add_keyword("let", "let");
+                        add_keyword("letm", "let mut $0");
+                        add_keyword("let", "let $0");
                     }
 
                     if after_if_expr {

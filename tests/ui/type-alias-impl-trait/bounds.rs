@@ -9,6 +9,7 @@ use std::fmt::Debug;
 // type alias bounds.
 type Foo<T: Debug> = (impl Debug, usize);
 
+#[define_opaque(Foo)]
 fn foo<U: Debug>() -> Foo<U> {
     (Vec::<U>::new(), 1234)
 }

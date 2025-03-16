@@ -19,6 +19,7 @@ use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
 use tracing::{instrument, span};
 
+use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -66,7 +67,7 @@ impl Std {
         self
     }
 
-    #[allow(clippy::wrong_self_convention)]
+    #[expect(clippy::wrong_self_convention)]
     pub fn is_for_mir_opt_tests(mut self, is_for_mir_opt_tests: bool) -> Self {
         self.is_for_mir_opt_tests = is_for_mir_opt_tests;
         self
@@ -193,11 +194,7 @@ impl Step for Std {
         trace!(?compiler_to_use);
 
         if compiler_to_use != compiler {
-            trace!(
-                ?compiler_to_use,
-                ?compiler,
-                "compiler != compiler_to_use, handling cross-compile scenario"
-            );
+            trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
             builder.ensure(Std::new(compiler_to_use, target));
             let msg = if compiler_to_use.host == target {
@@ -389,24 +386,38 @@ fn copy_self_contained_objects(
         let srcdir = builder.musl_libdir(target).unwrap_or_else(|| {
             panic!("Target {:?} does not have a \"musl-libdir\" key", target.triple)
         });
-        for &obj in &["libc.a", "crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
-            copy_and_stamp(
-                builder,
-                &libdir_self_contained,
-                &srcdir,
-                obj,
-                &mut target_deps,
-                DependencyType::TargetSelfContained,
-            );
+        if !target.starts_with("wasm32") {
+            for &obj in &["libc.a", "crt1.o", "Scrt1.o", "rcrt1.o", "crti.o", "crtn.o"] {
+                copy_and_stamp(
+                    builder,
+                    &libdir_self_contained,
+                    &srcdir,
+                    obj,
+                    &mut target_deps,
+                    DependencyType::TargetSelfContained,
+                );
+            }
+            let crt_path = builder.ensure(llvm::CrtBeginEnd { target });
+            for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
+                let src = crt_path.join(obj);
+                let target = libdir_self_contained.join(obj);
+                builder.copy_link(&src, &target);
+                target_deps.push((target, DependencyType::TargetSelfContained));
+            }
+        } else {
+            // For wasm32 targets, we need to copy the libc.a and crt1-command.o files from the
+            // musl-libdir, but we don't need the other files.
+            for &obj in &["libc.a", "crt1-command.o"] {
+                copy_and_stamp(
+                    builder,
+                    &libdir_self_contained,
+                    &srcdir,
+                    obj,
+                    &mut target_deps,
+                    DependencyType::TargetSelfContained,
+                );
+            }
         }
-        let crt_path = builder.ensure(llvm::CrtBeginEnd { target });
-        for &obj in &["crtbegin.o", "crtbeginS.o", "crtend.o", "crtendS.o"] {
-            let src = crt_path.join(obj);
-            let target = libdir_self_contained.join(obj);
-            builder.copy_link(&src, &target);
-            target_deps.push((target, DependencyType::TargetSelfContained));
-        }
-
         if !target.starts_with("s390x") {
             let libunwind_path = copy_llvm_libunwind(builder, target, &libdir_self_contained);
             target_deps.push((libunwind_path, DependencyType::TargetSelfContained));
@@ -993,7 +1004,9 @@ impl Step for Rustc {
     fn make_run(run: RunConfig<'_>) {
         let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
-            compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
+            compiler: run
+                .builder
+                .compiler(run.builder.top_stage.saturating_sub(1), run.build_triple()),
             target: run.target,
             crates,
         });
@@ -1614,6 +1627,14 @@ impl Step for CodegenBackend {
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
 
+        // Ideally, we'd have a separate step for the individual codegen backends,
+        // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
+        // If the logic gets more complicated, it should probably be done.
+        if backend == "gcc" {
+            let gcc = builder.ensure(Gcc { target });
+            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        }
+
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
         let _guard = builder.msg_build(compiler, format_args!("codegen backend {backend}"), target);
@@ -1902,7 +1923,7 @@ impl Step for Assemble {
 
     fn make_run(run: RunConfig<'_>) {
         run.builder.ensure(Assemble {
-            target_compiler: run.builder.compiler(run.builder.top_stage + 1, run.target),
+            target_compiler: run.builder.compiler(run.builder.top_stage, run.target),
         });
     }
 
@@ -1983,13 +2004,14 @@ impl Step for Assemble {
         let maybe_install_llvm_bitcode_linker = |compiler| {
             if builder.config.llvm_bitcode_linker_enabled {
                 trace!("llvm-bitcode-linker enabled, installing");
-                let src_path = builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
-                    compiler,
-                    target: target_compiler.host,
-                    extra_features: vec![],
-                });
+                let llvm_bitcode_linker =
+                    builder.ensure(crate::core::build_steps::tool::LlvmBitcodeLinker {
+                        compiler,
+                        target: target_compiler.host,
+                        extra_features: vec![],
+                    });
                 let tool_exe = exe("llvm-bitcode-linker", target_compiler.host);
-                builder.copy_link(&src_path, &libdir_bin.join(tool_exe));
+                builder.copy_link(&llvm_bitcode_linker.tool_path, &libdir_bin.join(tool_exe));
             }
         };
 
@@ -2008,7 +2030,9 @@ impl Step for Assemble {
                 builder.info(&format!("Creating a sysroot for stage{stage} compiler (use `rustup toolchain link 'name' build/host/stage{stage}`)", stage=target_compiler.stage));
             }
 
-            maybe_install_llvm_bitcode_linker(target_compiler);
+            let mut precompiled_compiler = target_compiler;
+            precompiled_compiler.forced_compiler(true);
+            maybe_install_llvm_bitcode_linker(precompiled_compiler);
 
             return target_compiler;
         }
@@ -2181,18 +2205,17 @@ impl Step for Assemble {
         // logic to create the final binary. This is used by the
         // `wasm32-wasip2` target of Rust.
         if builder.tool_enabled("wasm-component-ld") {
-            let wasm_component_ld_exe =
-                builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
-                    compiler: build_compiler,
-                    target: target_compiler.host,
-                });
+            let wasm_component = builder.ensure(crate::core::build_steps::tool::WasmComponentLd {
+                compiler: build_compiler,
+                target: target_compiler.host,
+            });
             builder.copy_link(
-                &wasm_component_ld_exe,
-                &libdir_bin.join(wasm_component_ld_exe.file_name().unwrap()),
+                &wasm_component.tool_path,
+                &libdir_bin.join(wasm_component.tool_path.file_name().unwrap()),
             );
         }
 
-        maybe_install_llvm_bitcode_linker(build_compiler);
+        maybe_install_llvm_bitcode_linker(target_compiler);
 
         // Ensure that `libLLVM.so` ends up in the newly build compiler directory,
         // so that it can be found when the newly built `rustc` is run.

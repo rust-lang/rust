@@ -454,3 +454,79 @@ fn check_rustc_if_unchanged_paths() {
         assert!(config.src.join(p).exists(), "{p} doesn't exist.");
     }
 }
+
+#[test]
+fn test_explicit_stage() {
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            test-stage = 1
+        "#,
+            )
+        },
+    );
+
+    assert!(!config.explicit_stage_from_cli);
+    assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--stage=2".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+        ]),
+        |&_| toml::from_str(""),
+    );
+
+    assert!(config.explicit_stage_from_cli);
+    assert!(!config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_owned(),
+            "--stage=2".to_owned(),
+            "--config=/does/not/exist".to_owned(),
+        ]),
+        |&_| {
+            toml::from_str(
+                r#"
+            [build]
+            test-stage = 1
+        "#,
+            )
+        },
+    );
+
+    assert!(config.explicit_stage_from_cli);
+    assert!(config.explicit_stage_from_config);
+    assert!(config.is_explicit_stage());
+
+    let config = Config::parse_inner(
+        Flags::parse(&["check".to_owned(), "--config=/does/not/exist".to_owned()]),
+        |&_| toml::from_str(""),
+    );
+
+    assert!(!config.explicit_stage_from_cli);
+    assert!(!config.explicit_stage_from_config);
+    assert!(!config.is_explicit_stage());
+}
+
+#[test]
+fn test_exclude() {
+    let exclude_path = "compiler";
+    let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
+
+    let first_excluded = config
+        .skip
+        .first()
+        .expect("Expected at least one excluded path")
+        .to_str()
+        .expect("Failed to convert excluded path to string");
+
+    assert_eq!(first_excluded, exclude_path);
+}

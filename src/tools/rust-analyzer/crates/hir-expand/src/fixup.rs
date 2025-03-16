@@ -148,7 +148,6 @@ pub(crate) fn fixup_syntax(
                     }
                     if it.then_branch().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -179,7 +178,6 @@ pub(crate) fn fixup_syntax(
                     }
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -196,7 +194,6 @@ pub(crate) fn fixup_syntax(
                 ast::LoopExpr(it) => {
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -228,7 +225,6 @@ pub(crate) fn fixup_syntax(
                     if it.match_arm_list().is_none() {
                         // No match arms
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -269,7 +265,6 @@ pub(crate) fn fixup_syntax(
 
                     if it.loop_body().is_none() {
                         append.insert(node.clone().into(), vec![
-                            // FIXME: THis should be a subtree no?
                             Leaf::Punct(Punct {
                                 char: '{',
                                 spacing: Spacing::Alone,
@@ -307,28 +302,6 @@ pub(crate) fn fixup_syntax(
                                 })
                             ]);
                         }
-                    }
-                },
-                ast::ArgList(it) => {
-                    if it.r_paren_token().is_none() {
-                        append.insert(node.into(), vec![
-                            Leaf::Punct(Punct {
-                                span: fake_span(node_range),
-                                char: ')',
-                                spacing: Spacing::Alone
-                            })
-                        ]);
-                    }
-                },
-                ast::ArgList(it) => {
-                    if it.r_paren_token().is_none() {
-                        append.insert(node.into(), vec![
-                            Leaf::Punct(Punct {
-                                span: fake_span(node_range),
-                                char: ')',
-                                spacing: Spacing::Alone
-                            })
-                        ]);
                     }
                 },
                 ast::ClosureExpr(it) => {
@@ -476,12 +449,12 @@ fn reverse_fixups_(tt: &mut TopSubtree, undo_info: &[TopSubtree]) {
             }
         }
         tt::TokenTree::Subtree(tt) => {
+            // fixup should only create matching delimiters, but proc macros
+            // could just copy the span to one of the delimiters. We don't want
+            // to leak the dummy ID, so we remove both.
             if tt.delimiter.close.anchor.ast_id == FIXUP_DUMMY_AST_ID
                 || tt.delimiter.open.anchor.ast_id == FIXUP_DUMMY_AST_ID
             {
-                // Even though fixup never creates subtrees with fixup spans, the old proc-macro server
-                // might copy them if the proc-macro asks for it, so we need to filter those out
-                // here as well.
                 return TransformTtAction::remove();
             }
             TransformTtAction::Keep
@@ -571,6 +544,17 @@ mod tests {
             parse.syntax_node()
         );
 
+        // the fixed-up tree should not contain braces as punct
+        // FIXME: should probably instead check that it's a valid punctuation character
+        for x in tt.token_trees().flat_tokens() {
+            match x {
+                ::tt::TokenTree::Leaf(::tt::Leaf::Punct(punct)) => {
+                    assert!(!matches!(punct.char, '{' | '}' | '(' | ')' | '[' | ']'))
+                }
+                _ => (),
+            }
+        }
+
         reverse_fixups(&mut tt, &fixups.undo_info);
 
         // the fixed-up + reversed version should be equivalent to the original input
@@ -596,7 +580,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for _ in __ra_fixup { }}
+fn foo () {for _ in __ra_fixup {}}
 "#]],
         )
     }
@@ -624,7 +608,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {for bar in qux { }}
+fn foo () {for bar in qux {}}
 "#]],
         )
     }
@@ -655,7 +639,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup { }}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
@@ -687,7 +671,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {match __ra_fixup { }}
+fn foo () {match __ra_fixup {}}
 "#]],
         )
     }
@@ -802,7 +786,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if a { }}
+fn foo () {if a {}}
 "#]],
         )
     }
@@ -816,7 +800,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup { }}
+fn foo () {if __ra_fixup {}}
 "#]],
         )
     }
@@ -830,7 +814,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {if __ra_fixup {} { }}
+fn foo () {if __ra_fixup {} {}}
 "#]],
         )
     }
@@ -844,7 +828,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while __ra_fixup { }}
+fn foo () {while __ra_fixup {}}
 "#]],
         )
     }
@@ -858,7 +842,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {while foo { }}
+fn foo () {while foo {}}
 "#]],
         )
     }
@@ -885,7 +869,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () {loop { }}
+fn foo () {loop {}}
 "#]],
         )
     }
@@ -941,7 +925,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () { foo ( a ) }
+fn foo () {foo (a)}
 "#]],
         );
         check(
@@ -951,7 +935,7 @@ fn foo() {
 }
 "#,
             expect![[r#"
-fn foo () { bar . foo ( a ) }
+fn foo () {bar . foo (a)}
 "#]],
         );
     }

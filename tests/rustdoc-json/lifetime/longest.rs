@@ -1,5 +1,3 @@
-// ignore-tidy-linelength
-
 //@ is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].name"  \"\'a\"
 //@ is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'
 //@ is "$.index[*][?(@.name=='longest')].inner.function.generics.params[0].kind"  '{"lifetime": {"outlives": []}}'

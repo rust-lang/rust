@@ -30,6 +30,15 @@ LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
    = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
+  --> $DIR/issue-84108.rs:15:13
+   |
+LL | static BAZ: ([u8], usize) = ([], 0);
+   |             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
+   |
+   = help: the trait `Sized` is not implemented for `[u8]`
+   = note: only the last element of a tuple may have a dynamically sized type
+
+error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/issue-84108.rs:9:12
    |
 LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
@@ -47,15 +56,6 @@ LL | const BAR: (&Path, [u8], usize) = ("hello", [], 42);
    |
    = note: expected slice `[u8]`
               found array `[_; 0]`
-
-error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
-  --> $DIR/issue-84108.rs:15:13
-   |
-LL | static BAZ: ([u8], usize) = ([], 0);
-   |             ^^^^^^^^^^^^^ doesn't have a size known at compile-time
-   |
-   = help: the trait `Sized` is not implemented for `[u8]`
-   = note: only the last element of a tuple may have a dynamically sized type
 
 error[E0277]: the size for values of type `[u8]` cannot be known at compilation time
   --> $DIR/issue-84108.rs:15:13

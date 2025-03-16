@@ -181,6 +181,7 @@ trait Trait<T> {}
 impl Trait<usize> for Struct {}
 type Y = impl Trait<_>;
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for type aliases
+#[define_opaque(Y)]
 fn foo() -> Y {
     Struct
 }

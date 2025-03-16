@@ -175,6 +175,12 @@ pub enum Transparency {
     Opaque,
 }
 
+impl Transparency {
+    pub fn fallback(macro_rules: bool) -> Self {
+        if macro_rules { Transparency::SemiTransparent } else { Transparency::Opaque }
+    }
+}
+
 impl LocalExpnId {
     /// The ID of the theoretical expansion that generates freshly parsed, unexpanded AST.
     pub const ROOT: LocalExpnId = LocalExpnId::ZERO;
@@ -976,6 +982,8 @@ pub struct ExpnData {
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
     pub(crate) collapse_debuginfo: bool,
+    /// When true, we do not display the note telling people to use the `-Zmacro-backtrace` flag.
+    pub hide_backtrace: bool,
 }
 
 impl !PartialEq for ExpnData {}
@@ -994,6 +1002,7 @@ impl ExpnData {
         allow_internal_unsafe: bool,
         local_inner_macros: bool,
         collapse_debuginfo: bool,
+        hide_backtrace: bool,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -1008,6 +1017,7 @@ impl ExpnData {
             allow_internal_unsafe,
             local_inner_macros,
             collapse_debuginfo,
+            hide_backtrace,
         }
     }
 
@@ -1032,6 +1042,7 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             collapse_debuginfo: false,
+            hide_backtrace: false,
         }
     }
 
@@ -1167,6 +1178,8 @@ pub enum DesugaringKind {
     BoundModifier,
     /// Calls to contract checks (`#[requires]` to precond, `#[ensures]` to postcond)
     Contract,
+    /// A pattern type range start/end
+    PatTyRange,
 }
 
 impl DesugaringKind {
@@ -1184,6 +1197,7 @@ impl DesugaringKind {
             DesugaringKind::WhileLoop => "`while` loop",
             DesugaringKind::BoundModifier => "trait bound modifier",
             DesugaringKind::Contract => "contract check",
+            DesugaringKind::PatTyRange => "pattern type",
         }
     }
 }

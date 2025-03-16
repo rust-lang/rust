@@ -3,12 +3,12 @@ use std::assert_matches::assert_matches;
 use arrayvec::ArrayVec;
 use rustc_abi::{self as abi, FIRST_VARIANT, FieldIdx};
 use rustc_middle::ty::adjustment::PointerCoercion;
-use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
+use rustc_middle::ty::layout::{HasTyCtxt, HasTypingEnv, LayoutOf, TyAndLayout};
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_middle::{bug, mir, span_bug};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, Span};
-use tracing::{debug, instrument, trace};
+use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue};
 use super::place::PlaceRef;
@@ -93,8 +93,6 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     return;
                 }
 
-                // If `v` is an integer constant whose value is just a single byte repeated N times,
-                // emit a `memset` filling the entire `dest` with that byte.
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
                     let size = bx.const_usize(dest.layout.size.bytes());
@@ -119,33 +117,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     false
                 };
 
-                trace!(?cg_elem.val);
                 match cg_elem.val {
                     OperandValue::Immediate(v) => {
                         if try_init_all_same(bx, v) {
                             return;
                         }
                     }
-                    OperandValue::Pair(a, b) => {
-                        let a_is_undef = bx.cx().is_undef(a);
-                        match (a_is_undef, bx.cx().is_undef(b)) {
-                            // Can happen for uninit unions
-                            (true, true) => {
-                                // FIXME: can we produce better output here?
-                            }
-                            (false, true) | (true, false) => {
-                                let val = if a_is_undef { b } else { a };
-                                if try_init_all_same(bx, val) {
-                                    return;
-                                }
-                            }
-                            (false, false) => {
-                                // FIXME: if both are the same value, use try_init_all_same
-                            }
-                        }
-                    }
-                    OperandValue::ZeroSized => unreachable!("checked above"),
-                    OperandValue::Ref(..) => {}
+                    _ => (),
                 }
 
                 let count = self
@@ -385,6 +363,13 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         to_backend_ty: Bx::Type,
     ) -> Bx::Value {
         assert_eq!(from_scalar.size(self.cx), to_scalar.size(self.cx));
+
+        // While optimizations will remove no-op transmutes, they might still be
+        // there in debug or things that aren't no-op in MIR because they change
+        // the Rust type but not the underlying layout/niche.
+        if from_scalar == to_scalar && from_backend_ty == to_backend_ty {
+            return imm;
+        }
 
         use abi::Primitive::*;
         imm = bx.from_immediate(imm);
@@ -666,9 +651,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         lhs.layout.ty,
                     ),
 
-                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => {
-                        self.codegen_scalar_binop(bx, op, lhs_val, rhs_val, lhs.layout.ty)
-                    }
+                    (OperandValue::Immediate(lhs_val), OperandValue::Immediate(rhs_val)) => self
+                        .codegen_scalar_binop(
+                            bx,
+                            op,
+                            lhs_val,
+                            rhs_val,
+                            lhs.layout.ty,
+                            rhs.layout.ty,
+                        ),
 
                     _ => bug!(),
                 };
@@ -715,7 +706,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::Rvalue::Discriminant(ref place) => {
                 let discr_ty = rvalue.ty(self.mir, bx.tcx());
                 let discr_ty = self.monomorphize(discr_ty);
-                let discr = self.codegen_place(bx, place.as_ref()).codegen_get_discr(bx, discr_ty);
+                let operand = self.codegen_consume(bx, place.as_ref());
+                let discr = operand.codegen_get_discr(self, bx, discr_ty);
                 OperandRef {
                     val: OperandValue::Immediate(discr),
                     layout: self.cx.layout_of(discr_ty),
@@ -872,7 +864,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let ty = cg_place.layout.ty;
         assert!(
-            if bx.cx().type_has_metadata(ty) {
+            if bx.cx().tcx().type_has_metadata(ty, bx.cx().typing_env()) {
                 matches!(val, OperandValue::Pair(..))
             } else {
                 matches!(val, OperandValue::Immediate(..))
@@ -889,10 +881,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         op: mir::BinOp,
         lhs: Bx::Value,
         rhs: Bx::Value,
-        input_ty: Ty<'tcx>,
+        lhs_ty: Ty<'tcx>,
+        rhs_ty: Ty<'tcx>,
     ) -> Bx::Value {
-        let is_float = input_ty.is_floating_point();
-        let is_signed = input_ty.is_signed();
+        let is_float = lhs_ty.is_floating_point();
+        let is_signed = lhs_ty.is_signed();
         match op {
             mir::BinOp::Add => {
                 if is_float {
@@ -958,9 +951,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::BitAnd => bx.and(lhs, rhs),
             mir::BinOp::BitXor => bx.xor(lhs, rhs),
             mir::BinOp::Offset => {
-                let pointee_type = input_ty
+                let pointee_type = lhs_ty
                     .builtin_deref(true)
-                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", input_ty));
+                    .unwrap_or_else(|| bug!("deref of non-pointer {:?}", lhs_ty));
                 let pointee_layout = bx.cx().layout_of(pointee_type);
                 if pointee_layout.is_zst() {
                     // `Offset` works in terms of the size of pointee,
@@ -968,7 +961,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     lhs
                 } else {
                     let llty = bx.cx().backend_type(pointee_layout);
-                    bx.inbounds_gep(llty, lhs, &[rhs])
+                    if !rhs_ty.is_signed() {
+                        bx.inbounds_nuw_gep(llty, lhs, &[rhs])
+                    } else {
+                        bx.inbounds_gep(llty, lhs, &[rhs])
+                    }
                 }
             }
             mir::BinOp::Shl | mir::BinOp::ShlUnchecked => {
@@ -1179,7 +1176,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             assert!(!self.cx.is_backend_scalar_pair(layout));
             OperandValueKind::Immediate(match layout.backend_repr {
                 abi::BackendRepr::Scalar(s) => s,
-                abi::BackendRepr::Vector { element, .. } => element,
+                abi::BackendRepr::SimdVector { element, .. } => element,
                 x => span_bug!(self.mir.span, "Couldn't translate {x:?} as backend immediate"),
             })
         } else if self.cx.is_backend_scalar_pair(layout) {

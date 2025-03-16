@@ -1,7 +1,6 @@
 //@ run-pass
 #![allow(non_camel_case_types)]
-//@ ignore-emscripten FIXME(#45351) hits an LLVM assert
-#![feature(repr_simd, intrinsics)]
+#![feature(repr_simd, core_intrinsics)]
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
@@ -23,54 +22,7 @@ macro_rules! all_eq {
     }};
 }
 
-#[rustc_intrinsic]
-unsafe fn simd_add<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_sub<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_mul<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_div<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_rem<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_shl<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_shr<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_and<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_or<T>(x: T, y: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_xor<T>(x: T, y: T) -> T;
-
-
-#[rustc_intrinsic]
-unsafe fn simd_neg<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_bswap<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_bitreverse<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_ctlz<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_ctpop<T>(x: T) -> T;
-
-#[rustc_intrinsic]
-unsafe fn simd_cttz<T>(x: T) -> T;
+use std::intrinsics::simd::*;
 
 fn main() {
     let x1 = i32x4([1, 2, 3, 4]);
