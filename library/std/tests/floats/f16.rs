@@ -953,3 +953,15 @@ fn test_total_cmp() {
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&f16::INFINITY));
     assert_eq!(Ordering::Less, (-s_nan()).total_cmp(&s_nan()));
 }
+
+#[test]
+fn test_from() {
+    assert_eq!(f16::from(false), 0.0);
+    assert_eq!(f16::from(true), 1.0);
+    assert_eq!(f16::from(u8::MIN), 0.0);
+    assert_eq!(f16::from(42_u8), 42.0);
+    assert_eq!(f16::from(u8::MAX), 255.0);
+    assert_eq!(f16::from(i8::MIN), -128.0);
+    assert_eq!(f16::from(42_i8), 42.0);
+    assert_eq!(f16::from(i8::MAX), 127.0);
+}
