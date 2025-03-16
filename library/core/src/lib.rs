@@ -43,18 +43,6 @@
 //!    which do not trigger a panic can be assured that this function is never
 //!    called. The `lang` attribute is called `eh_personality`.
 
-// Since core defines many fundamental lang items, all tests live in a
-// separate crate, coretests (library/coretests), to avoid bizarre issues.
-//
-// Here we explicitly #[cfg]-out this whole crate when testing. If we don't do
-// this, both the generated test artifact and the linked libtest (which
-// transitively includes core) will both define the same set of lang items,
-// and this will cause the E0152 "found duplicate lang item" error. See
-// discussion in #50466 for details.
-//
-// This cfg won't affect doc tests.
-#![cfg(not(test))]
-//
 #![stable(feature = "core", since = "1.6.0")]
 #![doc(
     html_playground_url = "https://play.rust-lang.org/",
@@ -64,7 +52,6 @@
 )]
 #![doc(rust_logo)]
 #![doc(cfg_hide(
-    not(test),
     no_fp_fmt_parse,
     target_pointer_width = "16",
     target_pointer_width = "32",
@@ -228,13 +215,9 @@ extern crate self as core;
 #[allow(unused)]
 use prelude::rust_2024::*;
 
-#[cfg(not(test))] // See #65860
 #[macro_use]
 mod macros;
 
-// We don't export this through #[macro_export] for now, to avoid breakage.
-// See https://github.com/rust-lang/rust/issues/82913
-#[cfg(not(test))]
 #[unstable(feature = "assert_matches", issue = "82775")]
 /// Unstable module containing the unstable `assert_matches` macro.
 pub mod assert_matches {

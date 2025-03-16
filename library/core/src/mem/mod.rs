@@ -140,7 +140,7 @@ pub use crate::intrinsics::transmute;
 #[inline]
 #[rustc_const_stable(feature = "const_forget", since = "1.46.0")]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_forget")]
+#[rustc_diagnostic_item = "mem_forget"]
 pub const fn forget<T>(t: T) {
     let _ = ManuallyDrop::new(t);
 }
@@ -300,7 +300,7 @@ pub fn forget_unsized<T: ?Sized>(t: T) {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_promotable]
 #[rustc_const_stable(feature = "const_mem_size_of", since = "1.24.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of")]
+#[rustc_diagnostic_item = "mem_size_of"]
 pub const fn size_of<T>() -> usize {
     intrinsics::size_of::<T>()
 }
@@ -328,7 +328,7 @@ pub const fn size_of<T>() -> usize {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_stable(feature = "const_size_of_val", since = "1.85.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_size_of_val")]
+#[rustc_diagnostic_item = "mem_size_of_val"]
 pub const fn size_of_val<T: ?Sized>(val: &T) -> usize {
     // SAFETY: `val` is a reference, so it's a valid raw pointer
     unsafe { intrinsics::size_of_val(val) }
@@ -846,7 +846,7 @@ pub fn take<T: Default>(dest: &mut T) -> T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[must_use = "if you don't need the old value, you can just assign the new value directly"]
 #[rustc_const_stable(feature = "const_replace", since = "1.83.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_replace")]
+#[rustc_diagnostic_item = "mem_replace"]
 pub const fn replace<T>(dest: &mut T, src: T) -> T {
     // It may be tempting to use `swap` to avoid `unsafe` here. Don't!
     // The compiler optimizes the implementation below to two `memcpy`s
@@ -931,7 +931,7 @@ pub const fn replace<T>(dest: &mut T, src: T) -> T {
 /// [`RefCell`]: crate::cell::RefCell
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_drop")]
+#[rustc_diagnostic_item = "mem_drop"]
 pub fn drop<T>(_x: T) {}
 
 /// Bitwise-copies a value.
@@ -1154,7 +1154,7 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_stable(feature = "const_discriminant", since = "1.75.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "mem_discriminant")]
+#[rustc_diagnostic_item = "mem_discriminant"]
 #[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const fn discriminant<T>(v: &T) -> Discriminant<T> {
     Discriminant(intrinsics::discriminant_value(v))
