@@ -9,6 +9,10 @@
     feature(stdarch_aarch64_feature_detection)
 )]
 #![cfg_attr(
+    all(target_arch = "s390x", target_os = "linux"),
+    feature(stdarch_s390x_feature_detection)
+)]
+#![cfg_attr(
     all(target_arch = "powerpc", target_os = "linux"),
     feature(stdarch_powerpc_feature_detection)
 )]
@@ -129,6 +133,32 @@ fn powerpc64_linux() {
     println!("altivec: {}", is_powerpc64_feature_detected!("altivec"));
     println!("power8: {}", is_powerpc64_feature_detected!("power8"));
     println!("vsx: {}", is_powerpc64_feature_detected!("vsx"));
+    // tidy-alphabetical-end
+}
+
+#[test]
+#[cfg(all(target_arch = "s390x", target_os = "linux"))]
+fn s390x_linux() {
+    use std::arch::is_s390x_feature_detected;
+    // tidy-alphabetical-start
+    println!("deflate-conversion: {}", is_s390x_feature_detected!("deflate-conversion"));
+    println!("enhanced-sort: {}", is_s390x_feature_detected!("enhanced-sort"));
+    println!("guarded-storage: {}", is_s390x_feature_detected!("guarded-storage"));
+    println!("high-word: {}", is_s390x_feature_detected!("high-word"));
+    println!("nnp-assist: {}", is_s390x_feature_detected!("nnp-assist"));
+    println!("transactional-execution: {}", is_s390x_feature_detected!("transactional-execution"));
+    println!("vector-enhancements-1: {}", is_s390x_feature_detected!("vector-enhancements-1"));
+    println!("vector-enhancements-2: {}", is_s390x_feature_detected!("vector-enhancements-2"));
+    println!(
+        "vector-packed-decimal-enhancement-2: {}",
+        is_s390x_feature_detected!("vector-packed-decimal-enhancement-2")
+    );
+    println!(
+        "vector-packed-decimal-enhancement: {}",
+        is_s390x_feature_detected!("vector-packed-decimal-enhancement")
+    );
+    println!("vector-packed-decimal: {}", is_s390x_feature_detected!("vector-packed-decimal"));
+    println!("vector: {}", is_s390x_feature_detected!("vector"));
     // tidy-alphabetical-end
 }
 
