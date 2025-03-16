@@ -63,7 +63,7 @@ fn dog() -> impl std::fmt::Display {
     }
 }
 
-fn hat() -> dyn std::fmt::Display { //~ ERROR return type cannot be a trait object without pointer indirection
+fn hat() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
     match 13 {
         0 => {
             return 0i32;
@@ -74,7 +74,7 @@ fn hat() -> dyn std::fmt::Display { //~ ERROR return type cannot be a trait obje
     }
 }
 
-fn pug() -> dyn std::fmt::Display { //~ ERROR return type cannot be a trait object without pointer indirection
+fn pug() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
     match 13 {
         0 => 0i32,
         1 => 1u32,
@@ -82,7 +82,7 @@ fn pug() -> dyn std::fmt::Display { //~ ERROR return type cannot be a trait obje
     }
 }
 
-fn man() -> dyn std::fmt::Display { //~ ERROR return type cannot be a trait object without pointer indirection
+fn man() -> dyn std::fmt::Display { //~ ERROR return type cannot have an unboxed trait object
     if false {
         0i32
     } else {
