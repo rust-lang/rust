@@ -41,6 +41,15 @@ impl Edition {
         self >= Edition::Edition2018
     }
 
+    pub fn number(&self) -> usize {
+        match self {
+            Edition::Edition2015 => 2015,
+            Edition::Edition2018 => 2018,
+            Edition::Edition2021 => 2021,
+            Edition::Edition2024 => 2024,
+        }
+    }
+
     pub fn iter() -> impl Iterator<Item = Edition> {
         [Edition::Edition2015, Edition::Edition2018, Edition::Edition2021, Edition::Edition2024]
             .iter()

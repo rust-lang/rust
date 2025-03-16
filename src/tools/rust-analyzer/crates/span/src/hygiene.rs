@@ -353,14 +353,18 @@ impl Transparency {
 
 impl fmt::Display for SyntaxContext {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.as_u32())
+        if self.is_root() {
+            write!(f, "ROOT{}", Edition::from_u32(SyntaxContext::MAX_ID - self.0.as_u32()).number())
+        } else {
+            write!(f, "{}", self.0.as_u32())
+        }
     }
 }
 
 impl std::fmt::Debug for SyntaxContext {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
-            write!(f, "{}", self.0.as_u32())
+            fmt::Display::fmt(self, f)
         } else {
             f.debug_tuple("SyntaxContext").field(&self.0).finish()
         }
