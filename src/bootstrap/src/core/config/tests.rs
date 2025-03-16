@@ -515,3 +515,18 @@ fn test_explicit_stage() {
     assert!(!config.explicit_stage_from_config);
     assert!(!config.is_explicit_stage());
 }
+
+#[test]
+fn test_exclude() {
+    let exclude_path = "compiler";
+    let config = parse(&format!("build.exclude=[\"{}\"]", exclude_path));
+
+    let first_excluded = config
+        .skip
+        .first()
+        .expect("Expected at least one excluded path")
+        .to_str()
+        .expect("Failed to convert excluded path to string");
+
+    assert_eq!(first_excluded, exclude_path);
+}
