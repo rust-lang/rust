@@ -101,75 +101,6 @@ pub fn updated_master_branch(
     Err("Cannot find any suitable upstream master branch".to_owned())
 }
 
-/// Finds the nearest merge commit by comparing the local `HEAD` with the upstream branch's state.
-/// To work correctly, the upstream remote must be properly configured using `git remote add <name> <url>`.
-/// In most cases `get_closest_merge_commit` is the function you are looking for as it doesn't require remote
-/// to be configured.
-fn git_upstream_merge_base(
-    config: &GitConfig<'_>,
-    git_dir: Option<&Path>,
-) -> Result<String, String> {
-    let updated_master = updated_master_branch(config, git_dir)?;
-    let mut git = Command::new("git");
-    if let Some(git_dir) = git_dir {
-        git.current_dir(git_dir);
-    }
-    Ok(output_result(git.arg("merge-base").arg(&updated_master).arg("HEAD"))?.trim().to_owned())
-}
-
-/// Searches for the nearest merge commit in the repository.
-///
-/// **In CI** finds the nearest merge commit that *also exists upstream*.
-///
-/// It looks for the most recent commit made by the merge bot by matching the author's email
-/// address with the merge bot's email.
-pub fn get_closest_merge_commit(
-    git_dir: Option<&Path>,
-    config: &GitConfig<'_>,
-    target_paths: &[&str],
-) -> Result<String, String> {
-    let mut git = Command::new("git");
-
-    if let Some(git_dir) = git_dir {
-        git.current_dir(git_dir);
-    }
-
-    let channel = include_str!("../../ci/channel").trim();
-
-    let merge_base = {
-        if CiEnv::is_ci() &&
-            // FIXME: When running on rust-lang managed CI and it's not a nightly build,
-            // `git_upstream_merge_base` fails with an error message similar to this:
-            // ```
-            //    called `Result::unwrap()` on an `Err` value: "command did not execute successfully:
-            //    cd \"/checkout\" && \"git\" \"merge-base\" \"origin/master\" \"HEAD\"\nexpected success, got: exit status: 1\n"
-            // ```
-            // Investigate and resolve this issue instead of skipping it like this.
-            (channel == "nightly" || !CiEnv::is_rust_lang_managed_ci_job())
-        {
-            git_upstream_merge_base(config, git_dir).unwrap()
-        } else {
-            // For non-CI environments, ignore rust-lang/rust upstream as it usually gets
-            // outdated very quickly.
-            "HEAD".to_string()
-        }
-    };
-
-    git.args([
-        "rev-list",
-        &format!("--author={}", config.git_merge_commit_email),
-        "-n1",
-        "--first-parent",
-        &merge_base,
-    ]);
-
-    if !target_paths.is_empty() {
-        git.arg("--").args(target_paths);
-    }
-
-    Ok(output_result(&mut git)?.trim().to_owned())
-}
-
 /// Represents the result of checking whether a set of paths
 /// have been modified locally or not.
 #[derive(PartialEq, Debug)]
@@ -186,9 +117,11 @@ pub enum PathFreshness {
 
 /// This function figures out if a set of paths was last modified upstream or
 /// if there are some local modifications made to them.
-///
 /// It can be used to figure out if we should download artifacts from CI or rather
 /// build them locally.
+///
+/// The function assumes that at least a single upstream bors merge commit is in the
+/// local git history.
 ///
 /// `target_paths` should be a non-empty slice of paths (git `pathspec`s) relative to `git_dir`
 /// or the current working directory whose modifications would invalidate the artifact.

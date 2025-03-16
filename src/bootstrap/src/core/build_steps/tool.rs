@@ -696,8 +696,7 @@ impl Step for Rustdoc {
             let files_to_track = &["src/librustdoc", "src/tools/rustdoc"];
 
             // Check if unchanged
-            if builder.config.last_modified_commit(files_to_track, "download-rustc", true).is_some()
-            {
+            if !builder.config.has_changes_from_upstream(files_to_track) {
                 let precompiled_rustdoc = builder
                     .config
                     .ci_rustc_dir()
