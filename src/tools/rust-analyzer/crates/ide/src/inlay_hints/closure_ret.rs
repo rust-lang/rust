@@ -63,7 +63,10 @@ pub(super) fn hints(
     } else {
         Some(config.lazy_text_edit(|| {
             let body = closure.body();
-            let body_range = body.expect("Closure must have a body").syntax().text_range();
+            let body_range = match body {
+                Some(body) => body.syntax().text_range(),
+                None => return TextEdit::builder().finish(),
+            };
             let mut builder = TextEdit::builder();
             let insert_pos = param_list.syntax().text_range().end();
 
