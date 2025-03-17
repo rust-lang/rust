@@ -385,4 +385,9 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
         severity: ChangeSeverity::Info,
         summary: "Added new option `build.exclude` which works the same way as `--exclude` flag on `x`.",
     },
+    ChangeInfo {
+        change_id: 137081,
+        severity: ChangeSeverity::Warning,
+        summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
+    },
 ];

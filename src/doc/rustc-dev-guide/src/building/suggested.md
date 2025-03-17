@@ -305,7 +305,7 @@ subsequent rebuilds:
 ```
 
 If you don't want to include the flag with every command, you can enable it in
-the `config.toml`:
+the `bootstrap.toml`:
 
 ```toml
 [rust]
@@ -384,20 +384,20 @@ ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
 ### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
-**`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect
+**`patch-binaries-for-nix = true` in `bootstrap.toml`**. Bootstrap tries to detect
 whether it's running in nix and enable patching automatically, but this
 detection can have false negatives.
 
-You can also use your nix shell to manage `config.toml`:
+You can also use your nix shell to manage `bootstrap.toml`:
 
 ```nix
 let
   config = pkgs.writeText "rustc-config" ''
-    # Your config.toml content goes here
+    # Your bootstrap.toml content goes here
   ''
 pkgs.mkShell {
   /* ... */
-  # This environment variable tells bootstrap where our config.toml is.
+  # This environment variable tells bootstrap where our bootstrap.toml is.
   RUST_BOOTSTRAP_CONFIG = config;
 }
 ```

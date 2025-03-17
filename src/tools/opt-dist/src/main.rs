@@ -369,9 +369,17 @@ fn main() -> anyhow::Result<()> {
         println!("Environment values\n{}", format_env_variables());
     });
 
-    with_log_group("Printing config.toml", || {
-        if let Ok(config) = std::fs::read_to_string("config.toml") {
-            println!("Contents of `config.toml`:\n{config}");
+    with_log_group("Printing bootstrap.toml", || {
+        let config_file = if std::path::Path::new("bootstrap.toml").exists() {
+            "bootstrap.toml"
+        } else {
+            "config.toml" // Fall back for backward compatibility
+        };
+
+        if let Ok(config) = std::fs::read_to_string(config_file) {
+            println!("Contents of `bootstrap.toml`:\n{config}");
+        } else {
+            eprintln!("Failed to read `{}`", config_file);
         }
     });
 

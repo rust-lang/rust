@@ -23,7 +23,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["powerpc64le-unknown-linux-musl"]
 ```
 
-Make sure your C compiler is included in `$PATH`, then add it to the `config.toml`:
+Make sure your C compiler is included in `$PATH`, then add it to the `bootstrap.toml`:
 
 ```toml
 [target.powerpc64le-unknown-linux-musl]
