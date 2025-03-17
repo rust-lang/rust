@@ -112,13 +112,23 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
 
         if let hir::Attribute::Parsed(p) = attr {
             match p {
+                /*
+                AttributeKind::EiiImpl(eii_macro) => {
+                    let Some(eii_extern_item) = find_attr!(
+                        tcx.get_all_attrs(eii_macro),
+                        AttributeKind::EiiMacroFor { eii_extern_item, .. } => *eii_extern_item
+                    ) else {
+                        tcx.dcx().span_delayed_bug(attr.span(), "missing attr on EII macro");
+                        continue;
+                    };
+                    let _ = eii_extern_item; // XXX mangle as this item or something.
+                }*/
                 AttributeKind::Repr(reprs) => {
                     codegen_fn_attrs.alignment = reprs
                         .iter()
                         .filter_map(|(r, _)| if let ReprAlign(x) = r { Some(*x) } else { None })
                         .max();
                 }
-
                 _ => {}
             }
         }

@@ -153,30 +153,34 @@ impl<'hir> LoweringContext<'_, 'hir> {
         i: &ItemKind,
     ) -> Vec<hir::Attribute> {
         match i {
+            ItemKind::Fn(box Fn { eii_impl, .. }) if eii_impl.is_empty() => Vec::new(),
             ItemKind::Fn(box Fn { eii_impl, .. }) => {
-                let mut eii_impls = ThinVec::new();
-                for EIIImpl {
-                    node_id,
-                    eii_macro_path,
-                    impl_safety,
-                    span,
-                    inner_span,
-                    is_default,
-                } in eii_impl
-                {
-                    let did = self.lower_path_simple_eii(*node_id, eii_macro_path);
-                    eii_impls.push(rustc_attr_parsing::EIIImpl {
-                        eii_macro: did,
-                        span: self.lower_span(*span),
-                        inner_span: self.lower_span(*inner_span),
-                        impl_marked_unsafe: self
-                            .lower_safety(*impl_safety, hir::Safety::Safe)
-                            .is_unsafe(),
-                        is_default: *is_default,
-                    })
-                }
-
-                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(eii_impls))]
+                vec![hir::Attribute::Parsed(AttributeKind::EiiImpl(
+                    eii_impl
+                        .iter()
+                        .map(
+                            |EIIImpl {
+                                 node_id,
+                                 eii_macro_path,
+                                 impl_safety,
+                                 span,
+                                 inner_span,
+                                 is_default,
+                             }| {
+                                let did = self.lower_path_simple_eii(*node_id, eii_macro_path);
+                                rustc_attr_parsing::EIIImpl {
+                                    eii_macro: did,
+                                    span: self.lower_span(*span),
+                                    inner_span: self.lower_span(*inner_span),
+                                    impl_marked_unsafe: self
+                                        .lower_safety(*impl_safety, hir::Safety::Safe)
+                                        .is_unsafe(),
+                                    is_default: *is_default,
+                                }
+                            },
+                        )
+                        .collect(),
+                ))]
             }
             ItemKind::MacroDef(
                 _,
@@ -541,14 +545,13 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         def_kind.descr(def_id.to_def_id())
                     );
                 };
-
-                let ast_macro_def = self.arena.alloc(ast::MacroDef {
+                let macro_def = self.arena.alloc(ast::MacroDef {
                     body,
                     macro_rules: *macro_rules,
                     eii_macro_for: None,
                 });
 
-                hir::ItemKind::Macro(ident, ast_macro_def, macro_kind)
+                hir::ItemKind::Macro(ident, macro_def, macro_kind)
             }
             ItemKind::Delegation(box delegation) => {
                 let delegation_results = self.lower_delegation(delegation, id, false);

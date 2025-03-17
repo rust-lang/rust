@@ -845,6 +845,17 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         sp: Span,
         print_visibility: impl FnOnce(&mut Self),
     ) {
+        if let Some(eii_macro_for) = &macro_def.eii_macro_for {
+            self.word("#[eii_macro_for(");
+            self.print_path(&eii_macro_for.extern_item_path, false, 0);
+            if eii_macro_for.impl_unsafe {
+                self.word(",");
+                self.space();
+                self.word("unsafe");
+            }
+            self.word(")]");
+            self.hardbreak();
+        }
         let (kw, has_bang) = if macro_def.macro_rules {
             ("macro_rules", true)
         } else {

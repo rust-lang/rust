@@ -1073,21 +1073,6 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "#[rustc_force_inline] forces a free function to be inlined"
     ),
 
-    gated!(
-        eii, Normal, template!(Word),
-        ErrorPreceding, EncodeCrossCrate::No,
-        eii_internals, "internally used to implement EII"
-    ),
-    gated!(
-        eii_impl, Normal, template!(List: "/*opt*/ default"),
-        ErrorPreceding, EncodeCrossCrate::No,
-        eii_internals, "internally used to implement EII"
-    ),
-    gated!(
-        eii_macro_for, Normal, template!(List: "path"),
-        ErrorPreceding, EncodeCrossCrate::No,
-        eii_internals, "internally used to implement EII"
-    ),
     // ==========================================================================
     // Internal attributes, Testing:
     // ==========================================================================
