@@ -194,6 +194,7 @@ pub trait Clone: Sized {
     reason = "this isn't part of any API guarantee",
     issue = "none"
 )]
+#[cfg_attr(not(bootstrap), lang = "trivial_clone")]
 // SAFETY:
 // It is sound to specialize on this because the `clone` implementation cannot be
 // lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,
