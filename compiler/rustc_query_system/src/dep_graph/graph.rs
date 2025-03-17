@@ -1204,6 +1204,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             ),
             anon_node_to_index: Sharded::new(|| {
                 FxHashMap::with_capacity_and_hasher(
+                    // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
                     new_node_count_estimate / sharded::shards(),
                     Default::default(),
                 )
