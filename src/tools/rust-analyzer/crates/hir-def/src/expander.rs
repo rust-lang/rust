@@ -56,7 +56,7 @@ impl Expander {
 
     pub fn syntax_context(&self) -> SyntaxContext {
         // FIXME:
-        SyntaxContext::root(Edition::CURRENT)
+        SyntaxContext::root(Edition::CURRENT_FIXME)
     }
 
     pub fn enter_expand<T: ast::AstNode>(

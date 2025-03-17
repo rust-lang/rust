@@ -26,7 +26,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -59,7 +59,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -92,7 +92,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -125,7 +125,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -158,7 +158,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -191,7 +191,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,
@@ -224,7 +224,7 @@
                         FileId(
                             0,
                         ),
-                        Edition2021,
+                        Edition2024,
                     ),
                     ptr: SyntaxNodePtr {
                         kind: STRUCT,

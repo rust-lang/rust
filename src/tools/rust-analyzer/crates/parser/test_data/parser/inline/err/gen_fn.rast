@@ -1,4 +1,6 @@
 SOURCE_FILE
+  COMMENT "// 2021"
+  WHITESPACE "\n"
   ERROR
     PATH
       PATH_SEGMENT
@@ -42,6 +44,6 @@ SOURCE_FILE
         L_CURLY "{"
         R_CURLY "}"
   WHITESPACE "\n"
-error 3: expected an item
-error 24: expected fn, trait or impl
-error 28: expected an item
+error 11: expected an item
+error 32: expected fn, trait or impl
+error 36: expected an item

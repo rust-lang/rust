@@ -423,10 +423,12 @@ pub mod ptr {
         unsafe { drop_in_place(to_drop) }
     }
     pub const unsafe fn read<T>(src: *const T) -> T {
-        *src
+        unsafe { *src }
     }
     pub const unsafe fn write<T>(dst: *mut T, src: T) {
-        *dst = src;
+        unsafe {
+            *dst = src;
+        }
     }
     // endregion:drop
 
@@ -1480,9 +1482,9 @@ pub mod iter {
                 }
             }
         }
-        pub use self::repeat::{repeat, Repeat};
+        pub use self::repeat::{Repeat, repeat};
     }
-    pub use self::sources::{repeat, Repeat};
+    pub use self::sources::{Repeat, repeat};
     // endregion:iterators
 
     mod traits {
@@ -1811,11 +1813,7 @@ pub mod num {
 #[lang = "bool"]
 impl bool {
     pub fn then<T, F: FnOnce() -> T>(self, f: F) -> Option<T> {
-        if self {
-            Some(f())
-        } else {
-            None
-        }
+        if self { Some(f()) } else { None }
     }
 }
 // endregion:bool_impl
