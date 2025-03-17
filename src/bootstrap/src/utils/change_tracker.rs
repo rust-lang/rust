@@ -387,7 +387,7 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     },
     ChangeInfo {
         change_id: 137081,
-        severity: ChangeSeverity::Info,
+        severity: ChangeSeverity::Warning,
         summary: "The default configuration filename has changed from `config.toml` to `bootstrap.toml`. `config.toml` is deprecated but remains supported for backward compatibility.",
     },
 ];

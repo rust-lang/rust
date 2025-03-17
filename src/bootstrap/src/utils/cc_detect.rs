@@ -122,7 +122,7 @@ pub fn find(build: &Build) {
 
 /// Probes and configures the C and C++ compilers for a single target.
 ///
-/// This function uses both user-specified configuration (from `config.toml`) and auto-detection
+/// This function uses both user-specified configuration (from `bootstrap.toml`) and auto-detection
 /// logic to determine the correct C/C++ compilers for the target. It also determines the appropriate
 /// archiver (`ar`) and sets up additional compilation flags (both handled and unhandled).
 pub fn find_target(build: &Build, target: TargetSelection) {
@@ -186,7 +186,7 @@ pub fn find_target(build: &Build, target: TargetSelection) {
 }
 
 /// Determines the default compiler for a given target and language when not explicitly
-/// configured in `config.toml`.
+/// configured in `bootstrap.toml`.
 fn default_compiler(
     cfg: &mut cc::Build,
     compiler: Language,

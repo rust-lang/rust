@@ -845,7 +845,7 @@ download-rustc = false
     HELP: There could be two reasons behind this:
         1) The host triple is not supported for `download-ci-gcc`.
         2) Old builds get deleted after a certain time.
-    HELP: In either case, disable `download-ci-gcc` in your config.toml:
+    HELP: In either case, disable `download-ci-gcc` in your bootstrap.toml:
 
     [gcc]
     download-ci-gcc = false
