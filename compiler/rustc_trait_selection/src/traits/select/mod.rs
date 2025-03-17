@@ -2706,6 +2706,7 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             HigherRankedType,
             poly_trait_ref,
         );
+
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)

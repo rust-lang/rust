@@ -170,6 +170,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             .expect("projection candidate is not a trait predicate")
             .map_bound(|t| t.trait_ref);
 
+        // During candidate assembly, if a unelaborated sizedness candidate would have been added,
+        // then the index of the `<Projection>: Sized` predicate that satisfied this
+        // `<Projection>: MetaSized` obligation was used - this means the candidate won't match
+        // the obligation below, so exit early.
+        if util::unelaborated_sizedness_candidate(
+            self.infcx,
+            obligation,
+            [candidate.upcast(self.infcx.tcx)],
+        )
+        .is_some()
+        {
+            return Ok(PredicateObligations::new());
+        }
+
         let candidate = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             HigherRankedType,

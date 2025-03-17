@@ -131,15 +131,29 @@ where
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         if let Some(trait_clause) = assumption.as_trait_clause() {
-            if trait_clause.def_id() == goal.predicate.def_id()
-                && trait_clause.polarity() == goal.predicate.polarity
-            {
+            if trait_clause.polarity() != goal.predicate.polarity {
+                return Err(NoSolution);
+            }
+
+            if trait_clause.def_id() == goal.predicate.def_id() {
                 if DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
                     goal.predicate.trait_ref.args,
                     trait_clause.skip_binder().trait_ref.args,
                 ) {
                     return Ok(());
                 }
+            }
+
+            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+            // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+            // are syntactic sugar for a lack of bounds so don't need this.
+            if ecx.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::MetaSized)
+                && ecx.cx().is_lang_item(trait_clause.def_id(), TraitSolverLangItem::Sized)
+            {
+                let meta_sized_clause = trait_clause
+                    .map_bound(|c| c.with_def_id(ecx.cx(), goal.predicate.def_id()))
+                    .upcast(ecx.cx());
+                return Self::fast_reject_assumption(ecx, goal, meta_sized_clause);
             }
         }
 
@@ -152,6 +166,18 @@ where
         assumption: I::Clause,
     ) -> Result<(), NoSolution> {
         let trait_clause = assumption.as_trait_clause().unwrap();
+
+        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+        // are syntactic sugar for a lack of bounds so don't need this.
+        if ecx.cx().is_lang_item(goal.predicate.def_id(), TraitSolverLangItem::MetaSized)
+            && ecx.cx().is_lang_item(trait_clause.def_id(), TraitSolverLangItem::Sized)
+        {
+            let meta_sized_clause = trait_clause
+                .map_bound(|c| c.with_def_id(ecx.cx(), goal.predicate.def_id()))
+                .upcast(ecx.cx());
+            return Self::match_assumption(ecx, goal, meta_sized_clause);
+        }
 
         let assumption_trait_pred = ecx.instantiate_binder_with_infer(trait_clause);
         ecx.eq(goal.param_env, goal.predicate.trait_ref, assumption_trait_pred.trait_ref)?;

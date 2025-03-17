@@ -97,6 +97,10 @@ impl<I: Interner> TraitRef<I> {
         )
     }
 
+    pub fn with_def_id(self, interner: I, def_id: I::DefId) -> Self {
+        TraitRef::new_from_args(interner, def_id, self.args)
+    }
+
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         TraitRef::new(
             interner,
@@ -146,6 +150,10 @@ pub struct TraitPredicate<I: Interner> {
 }
 
 impl<I: Interner> TraitPredicate<I> {
+    pub fn with_def_id(self, interner: I, def_id: I::DefId) -> Self {
+        Self { trait_ref: self.trait_ref.with_def_id(interner, def_id), polarity: self.polarity }
+    }
+
     pub fn with_self_ty(self, interner: I, self_ty: I::Ty) -> Self {
         Self { trait_ref: self.trait_ref.with_self_ty(interner, self_ty), polarity: self.polarity }
     }

@@ -187,8 +187,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx| {
-                    let Some(bound) = bound.as_trait_clause() else {
+                |selcx, clause, idx| {
+                    let Some(bound) = clause.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
                     if bound.polarity() != placeholder_trait_predicate.polarity {
@@ -196,6 +196,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        if util::unelaborated_sizedness_candidate(selcx.infcx, obligation, [bound])
+                            .is_some()
+                        {
+                            // As `ProjectionCandidate` takes an index and not a predicate, a
+                            // "corrected" `<Projection>: MetaSized` candidate cannot be created,
+                            // so instead keep the index of the `<Projection>: Sized` predicate and
+                            // correct for this in confirmation.
+                            candidates.vec.push(ProjectionCandidate(idx));
+                            return;
+                        }
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -233,6 +244,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
+
+        if let Some(bound) =
+            util::unelaborated_sizedness_candidate_from_obligation(self.infcx, stack.obligation)
+        {
+            candidates.vec.push(ParamCandidate(bound));
+            return Ok(());
+        }
 
         let bounds = stack
             .obligation
