@@ -28,6 +28,7 @@ use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_span::{DUMMY_SP, Symbol, sym};
+use rustc_target::spec::PanicStrategy;
 use rustc_trait_selection::infer::{BoundRegionConversionTime, TyCtxtInferExt};
 use rustc_trait_selection::traits::{ObligationCause, ObligationCtxt};
 use tracing::{debug, info};
@@ -592,6 +593,18 @@ pub fn allocator_kind_for_codegen(tcx: TyCtxt<'_>) -> Option<AllocatorKind> {
     if any_dynamic_crate { None } else { tcx.allocator_kind(()) }
 }
 
+/// Decide whether to inject an aborting stub personality function into this crate.
+pub fn needs_stub_personality_function(tcx: TyCtxt<'_>) -> bool {
+    let missing_personality = tcx.lang_items().eh_personality().is_none();
+    let is_abort = tcx.sess.panic_strategy() == PanicStrategy::Abort;
+    let is_not_panic_abort = tcx
+        .crates(())
+        .iter()
+        .any(|cnum| tcx.required_panic_strategy(*cnum) != Some(PanicStrategy::Abort));
+    let any_non_rlib = tcx.crate_types().iter().any(|ctype| *ctype != CrateType::Rlib);
+    missing_personality && is_abort && is_not_panic_abort && any_non_rlib
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
     tcx: TyCtxt<'_>,
@@ -688,6 +701,27 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             &backend,
             &ongoing_codegen.coordinator.sender,
             ModuleCodegen::new_allocator(llmod_id, module_llvm),
+            cost,
+        );
+    }
+
+    if needs_stub_personality_function(tcx) {
+        let llmod_id = cgu_name_builder
+            .build_cgu_name(LOCAL_CRATE, &["crate"], Some("personality_stub"))
+            .to_string();
+        let module_llvm = tcx.sess.time("write_personality_stub_module", || {
+            backend.codegen_personality_stub(tcx, &llmod_id)
+        });
+
+        ongoing_codegen.wait_for_signal_to_codegen_item();
+        ongoing_codegen.check_for_errors(tcx.sess);
+
+        // These modules are generally cheap and won't throw off scheduling.
+        let cost = 0;
+        submit_codegened_module_to_llvm(
+            &backend,
+            &ongoing_codegen.coordinator.sender,
+            ModuleCodegen::new_personality_stub(llmod_id, module_llvm),
             cost,
         );
     }

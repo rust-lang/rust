@@ -705,6 +705,7 @@ impl<'ll, 'tcx> MiscCodegenMethods<'tcx> for CodegenCx<'ll, 'tcx> {
         get_fn(self, instance)
     }
 
+    /// Get a function pointer for the exception handling personality function.
     fn eh_personality(&self) -> &'ll Value {
         // The exception handling personality function.
         //
