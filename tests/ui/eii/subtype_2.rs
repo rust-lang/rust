@@ -4,7 +4,7 @@
 #![feature(rustc_attrs)]
 #![feature(eii_internals)]
 
-#[core::eii_macro_for(bar)]
+#[eii_macro_for(bar)]
 #[rustc_builtin_macro(eii_macro)]
 macro foo() {
 
