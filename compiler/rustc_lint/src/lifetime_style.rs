@@ -62,7 +62,7 @@ declare_lint! {
     /// In certain `unsafe` code, lifetime elision combined with
     /// inconsistent lifetime syntax may result in unsound code.
     pub MISMATCHED_LIFETIME_SYNTAXES,
-    Allow,
+    Warn,
     "detects when an elided lifetime uses different syntax between arguments and return values"
 }
 

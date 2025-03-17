@@ -17,7 +17,7 @@ impl<'a> shrinky_pointer<'a> {
     pub fn look_at(&self) -> isize { return self.i.get(); }
 }
 
-fn shrinky_pointer(i: &Cell<isize>) -> shrinky_pointer {
+fn shrinky_pointer(i: &Cell<isize>) -> shrinky_pointer<'_> {
     shrinky_pointer {
         i: i
     }

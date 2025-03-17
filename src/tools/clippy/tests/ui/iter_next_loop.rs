@@ -8,7 +8,7 @@ fn main() {
 
     struct Unrelated(&'static [u8]);
     impl Unrelated {
-        fn next(&self) -> std::slice::Iter<u8> {
+        fn next(&self) -> std::slice::Iter<'_, u8> {
             self.0.iter()
         }
     }
