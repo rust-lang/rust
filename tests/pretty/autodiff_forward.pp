@@ -53,7 +53,7 @@ pub fn df2(x: &[f64], bx: &[f64], y: f64) -> f64 {
 pub fn f3(x: &[f64], y: f64) -> f64 {
     ::core::panicking::panic("not implemented")
 }
-#[rustc_autodiff(ForwardFirst, Dual, Const, Const,)]
+#[rustc_autodiff(Forward, Dual, Const, Const,)]
 #[inline(never)]
 pub fn df3(x: &[f64], bx: &[f64], y: f64) -> f64 {
     unsafe { asm!("NOP", options(pure, nomem)); };
