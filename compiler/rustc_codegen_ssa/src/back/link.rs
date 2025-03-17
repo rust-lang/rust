@@ -2136,7 +2136,7 @@ fn add_library_search_dirs(
     }
 
     let fallback = Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root });
-    walk_native_lib_search_dirs(sess, fallback, |dir, is_framework| {
+    let _ = walk_native_lib_search_dirs(sess, fallback, |dir, is_framework| {
         if is_framework {
             cmd.framework_path(dir);
         } else {

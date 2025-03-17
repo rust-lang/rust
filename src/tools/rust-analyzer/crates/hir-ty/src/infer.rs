@@ -1143,7 +1143,7 @@ impl<'a> InferenceContext<'a> {
             non_assocs: FxHashMap::default(),
         };
         for ty in tait_candidates {
-            ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
+            let _ = ty.visit_with(collector.as_dyn(), DebruijnIndex::INNERMOST);
         }
 
         // Non-assoc TAITs can be define-used everywhere as long as they are
