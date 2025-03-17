@@ -232,13 +232,6 @@ pub mod autodiff {
     pub use crate::macros::builtin::autodiff;
 }
 
-#[cfg(not(bootstrap))]
-#[unstable(feature = "eii", issue = "none")]
-pub use crate::macros::builtin::eii;
-#[cfg(not(bootstrap))]
-#[unstable(feature = "eii_internals", issue = "none")]
-pub use crate::macros::builtin::eii_macro_for;
-
 #[unstable(feature = "contracts", issue = "128044")]
 pub mod contracts;
 

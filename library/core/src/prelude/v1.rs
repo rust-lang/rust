@@ -119,3 +119,11 @@ pub use crate::macros::builtin::deref;
     reason = "`type_alias_impl_trait` has open design concerns"
 )]
 pub use crate::macros::builtin::define_opaque;
+
+#[unstable(feature = "eii", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::eii;
+
+#[unstable(feature = "eii_internals", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::eii_macro_for;
