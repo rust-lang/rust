@@ -3,6 +3,23 @@
 
 #[rustfmt::skip]
 fn main() {
+    let mut v = vec![false];
+    match v {
+        deref!([true]) => {}
+        _ if { v[0] = true; false } => {}
+        //~^ ERROR cannot borrow `v` as mutable because it is also borrowed as immutable
+        deref!([false]) => {}
+        _ => {},
+    }
+    match v {
+        [true] => {}
+        _ if { v[0] = true; false } => {}
+        //~^ ERROR cannot borrow `v` as mutable because it is also borrowed as immutable
+        [false] => {}
+        _ => {},
+    }
+
+    // deref patterns on boxes are lowered specially; test them separately.
     let mut b = Box::new(false);
     match b {
         deref!(true) => {}

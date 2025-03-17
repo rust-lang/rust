@@ -4,6 +4,7 @@
 #![allow(incomplete_features)]
 
 use std::borrow::Cow;
+use std::rc::Rc;
 
 fn main() {
     let cow: Cow<'static, [u8]> = Cow::Borrowed(&[1, 2, 3]);
@@ -18,7 +19,7 @@ fn main() {
         Cow::Owned(_) => unreachable!(),
     }
 
-    match Box::new(&cow) {
+    match Rc::new(&cow) {
         Cow::Borrowed { 0: _ } => {}
         Cow::Owned { 0: _ } => unreachable!(),
         _ => unreachable!(),
@@ -37,7 +38,7 @@ fn main() {
         Cow::Owned(_) => {}
     }
 
-    match Box::new(&cow_of_cow) {
+    match Rc::new(&cow_of_cow) {
         Cow::Borrowed { 0: _ } => unreachable!(),
         Cow::Owned { 0: _ } => {}
         _ => unreachable!(),
