@@ -8,6 +8,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
 use rustc_data_structures::sharded::{self, Sharded};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
@@ -675,8 +676,10 @@ impl<D: Deps> DepGraphData<D> {
         } else if let Some(nodes_newly_allocated_in_current_session) =
             &self.current.nodes_newly_allocated_in_current_session
         {
-            let seen = nodes_newly_allocated_in_current_session.lock().contains(dep_node);
-            assert!(!seen, "{}", msg());
+            outline(|| {
+                let seen = nodes_newly_allocated_in_current_session.lock().contains(dep_node);
+                assert!(!seen, "{}", msg());
+            });
         }
     }
 
@@ -1133,7 +1136,8 @@ pub(super) struct CurrentDepGraph<D: Deps> {
     forbidden_edge: Option<EdgeFilter>,
 
     /// Used to verify the absence of hash collisions among DepNodes.
-    /// This field is only `Some` if the `-Z incremental_verify_ich` option is present.
+    /// This field is only `Some` if the `-Z incremental_verify_ich` option is present
+    /// or if `debug_assertions` are enabled.
     ///
     /// The map contains all DepNodes that have been allocated in the current session so far and
     /// for which there is no equivalent in the previous session.
@@ -1186,6 +1190,9 @@ impl<D: Deps> CurrentDepGraph<D> {
 
         let new_node_count_estimate = 102 * prev_graph_node_count / 100 + 200;
 
+        let new_node_dbg =
+            session.opts.unstable_opts.incremental_verify_ich || cfg!(debug_assertions);
+
         CurrentDepGraph {
             encoder: GraphEncoder::new(
                 encoder,
@@ -1207,16 +1214,12 @@ impl<D: Deps> CurrentDepGraph<D> {
             forbidden_edge,
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
-            nodes_newly_allocated_in_current_session: session
-                .opts
-                .unstable_opts
-                .incremental_verify_ich
-                .then(|| {
-                    Lock::new(FxHashSet::with_capacity_and_hasher(
-                        new_node_count_estimate,
-                        Default::default(),
-                    ))
-                }),
+            nodes_newly_allocated_in_current_session: new_node_dbg.then(|| {
+                Lock::new(FxHashSet::with_capacity_and_hasher(
+                    new_node_count_estimate,
+                    Default::default(),
+                ))
+            }),
             total_read_count: AtomicU64::new(0),
             total_duplicate_read_count: AtomicU64::new(0),
         }
@@ -1248,9 +1251,11 @@ impl<D: Deps> CurrentDepGraph<D> {
         if let Some(ref nodes_newly_allocated_in_current_session) =
             self.nodes_newly_allocated_in_current_session
         {
-            if !nodes_newly_allocated_in_current_session.lock().insert(key) {
-                panic!("Found duplicate dep-node {key:?}");
-            }
+            outline(|| {
+                if !nodes_newly_allocated_in_current_session.lock().insert(key) {
+                    panic!("Found duplicate dep-node {key:?}");
+                }
+            });
         }
 
         dep_node_index
