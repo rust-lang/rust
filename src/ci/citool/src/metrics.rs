@@ -57,9 +57,9 @@ pub fn download_auto_job_metrics(
             Ok(metrics) => Some(metrics),
             Err(error) => {
                 eprintln!(
-                    r#"Did not find metrics for job `{}` at `{}`: {error:?}.
+                    r#"Did not find metrics for job `{}` at `{parent}`: {error:?}.
 Maybe it was newly added?"#,
-                    job.name, parent
+                    job.name
                 );
                 None
             }

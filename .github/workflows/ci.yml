@@ -244,9 +244,9 @@ jobs:
         continue-on-error: true
         run: |
           if [ -f build/metrics.json ]; then
-            METRICS=build/metrics.json  
+            METRICS=build/metrics.json
           elif [ -f obj/build/metrics.json ]; then
-            METRICS=obj/build/metrics.json  
+            METRICS=obj/build/metrics.json
           else
             echo "No metrics.json found"
             exit 0
