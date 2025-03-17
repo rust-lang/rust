@@ -601,24 +601,18 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: LocalDefId) -> CodegenFnAttrs {
     // strippable by the linker.
     //
     // Additionally weak lang items have predetermined symbol names.
-    if WEAK_LANG_ITEMS.iter().any(|&l| tcx.lang_items().get(l) == Some(did.to_def_id())) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
-    }
     if let Some((name, _)) = lang_items::extract(attrs)
         && let Some(lang_item) = LangItem::from_name(name)
-        && let Some(link_name) = lang_item.link_name()
     {
-        codegen_fn_attrs.export_name = Some(link_name);
-        codegen_fn_attrs.link_name = Some(link_name);
+        if WEAK_LANG_ITEMS.iter().any(|&l| l == lang_item) {
+            codegen_fn_attrs.flags |= CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL;
+        }
+        if let Some(link_name) = lang_item.link_name() {
+            codegen_fn_attrs.export_name = Some(link_name);
+            codegen_fn_attrs.link_name = Some(link_name);
+        }
     }
     check_link_name_xor_ordinal(tcx, &codegen_fn_attrs, link_ordinal_span);
-
-    // Internal symbols to the standard library all have no_mangle semantics in
-    // that they have defined symbol names present in the function name. This
-    // also applies to weak symbols where they all have known symbol names.
-    if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
-        codegen_fn_attrs.flags |= CodegenFnAttrFlags::NO_MANGLE;
-    }
 
     // Any linkage to LLVM intrinsics for now forcibly marks them all as never
     // unwinds since LLVM sometimes can't handle codegen which `invoke`s
