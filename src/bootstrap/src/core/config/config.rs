@@ -2334,10 +2334,7 @@ impl Config {
         //   thus, disabled
         // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
         //   when the config sets `rust.lld = false`
-        if config.build.triple == "x86_64-unknown-linux-gnu"
-            && config.hosts == [config.build]
-            && (config.channel == "dev" || config.channel == "nightly")
-        {
+        if config.build.triple == "x86_64-unknown-linux-gnu" && config.hosts == [config.build] {
             let no_llvm_config = config
                 .target_config
                 .get(&config.build)
