@@ -20,69 +20,103 @@ pub const VERSION_CHECK_VERSION: u32 = 1;
 pub const ENCODE_CLOSE_SPAN_VERSION: u32 = 2;
 pub const HAS_GLOBAL_SPANS: u32 = 3;
 pub const RUST_ANALYZER_SPAN_SUPPORT: u32 = 4;
-/// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field
+/// Whether literals encode their kind as an additional u32 field and idents their rawness as a u32 field.
 pub const EXTENDED_LEAF_DATA: u32 = 5;
 
+/// Current API version of the proc-macro protocol.
 pub const CURRENT_API_VERSION: u32 = EXTENDED_LEAF_DATA;
 
+/// Represents requests sent from the client to the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Request {
+    /// Retrieves a list of macros from a given dynamic library.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros { dylib_path: Utf8PathBuf },
+
+    /// Expands a procedural macro.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Box<ExpandMacro>),
+
+    /// Performs an API version check between the client and the server.
     /// Since [`VERSION_CHECK_VERSION`]
     ApiVersionCheck {},
+
+    /// Sets server-specific configurations.
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
 }
 
+/// Defines the mode used for handling span data.
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub enum SpanMode {
+    /// Default mode, where spans are identified by an ID.
     #[default]
     Id,
+
+    /// Rust Analyzer-specific span handling mode.
     RustAnalyzer,
 }
 
+/// Represents responses sent from the proc-macro-srv to the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Response {
+    /// Returns a list of available macros in a dynamic library.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ListMacros(Result<Vec<(String, ProcMacroKind)>, String>),
+
+    /// Returns result of a macro expansion.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ExpandMacro(Result<FlatTree, PanicMessage>),
+
+    /// Returns the API version supported by the server.
     /// Since [`NO_VERSION_CHECK_VERSION`]
     ApiVersionCheck(u32),
+
+    /// Confirms the application of a configuration update.
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
     SetConfig(ServerConfig),
+
+    /// Returns the result of a macro expansion, including extended span data.
     /// Since [`RUST_ANALYZER_SPAN_SUPPORT`]
     ExpandMacroExtended(Result<ExpandMacroExtended, PanicMessage>),
 }
 
+/// Configuration settings for the proc-macro-srv.
 #[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct ServerConfig {
+    /// Defines how span data should be handled.
     pub span_mode: SpanMode,
 }
 
+/// Represents an extended macro expansion response, including span data mappings.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpandMacroExtended {
+    /// The expanded syntax tree.
     pub tree: FlatTree,
+    /// Additional span data mappings.
     pub span_data_table: Vec<u32>,
 }
 
+/// Represents an error message when a macro expansion results in a panic.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PanicMessage(pub String);
 
+/// Represents a macro expansion request sent from the client.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpandMacro {
+    /// The path to the dynamic library containing the macro.
     pub lib: Utf8PathBuf,
     /// Environment variables to set during macro expansion.
     pub env: Vec<(String, String)>,
+    /// The current working directory for the macro expansion.
     pub current_dir: Option<String>,
+    /// Macro expansion data, including the macro body, name and attributes.
     #[serde(flatten)]
     pub data: ExpandMacroData,
 }
 
+/// Represents the input data required for expanding a macro.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ExpandMacroData {
     /// Argument of macro call.
@@ -103,18 +137,24 @@ pub struct ExpandMacroData {
     #[serde(skip_serializing_if = "ExpnGlobals::skip_serializing_if")]
     #[serde(default)]
     pub has_global_spans: ExpnGlobals,
+    /// Table of additional span data.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[serde(default)]
     pub span_data_table: Vec<u32>,
 }
 
+/// Represents global expansion settings, including span resolution.
 #[derive(Copy, Clone, Default, Debug, Serialize, Deserialize)]
 pub struct ExpnGlobals {
+    /// Determines whether to serialize the expansion settings.
     #[serde(skip_serializing)]
     #[serde(default)]
     pub serialize: bool,
+    /// Defines the `def_site` span location.
     pub def_site: usize,
+    /// Defines the `call_site` span location.
     pub call_site: usize,
+    /// Defines the `mixed_site` span location.
     pub mixed_site: usize,
 }
 
@@ -150,9 +190,11 @@ pub trait Message: serde::Serialize + DeserializeOwned {
 impl Message for Request {}
 impl Message for Response {}
 
+/// Type alias for a function that reads protocol messages from a buffered input stream.
 #[allow(type_alias_bounds)]
 type ProtocolRead<R: BufRead> =
     for<'i, 'buf> fn(inp: &'i mut R, buf: &'buf mut String) -> io::Result<Option<&'buf String>>;
+/// Type alias for a function that writes protocol messages to an output stream.
 #[allow(type_alias_bounds)]
 type ProtocolWrite<W: Write> = for<'o, 'msg> fn(out: &'o mut W, msg: &'msg str) -> io::Result<()>;
 

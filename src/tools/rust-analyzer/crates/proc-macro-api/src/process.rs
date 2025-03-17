@@ -21,6 +21,7 @@ use crate::{
     },
 };
 
+/// Represents a process handling proc-macro communication.
 #[derive(Debug)]
 pub(crate) struct ProcMacroServerProcess {
     /// The state of the proc-macro server process, the protocol is currently strictly sequential
@@ -32,6 +33,7 @@ pub(crate) struct ProcMacroServerProcess {
     exited: OnceLock<AssertUnwindSafe<ServerError>>,
 }
 
+/// Maintains the state of the proc-macro server process.
 #[derive(Debug)]
 struct ProcessSrvState {
     process: Process,
@@ -40,6 +42,7 @@ struct ProcessSrvState {
 }
 
 impl ProcMacroServerProcess {
+    /// Starts the proc-macro server and performs a version check
     pub(crate) fn run(
         process_path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>
@@ -85,14 +88,17 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Returns the server error if the process has exited.
     pub(crate) fn exited(&self) -> Option<&ServerError> {
         self.exited.get().map(|it| &it.0)
     }
 
+    /// Retrieves the API version of the proc-macro server.
     pub(crate) fn version(&self) -> u32 {
         self.version
     }
 
+    /// Checks the API version of the running proc-macro server.
     fn version_check(&self) -> Result<u32, ServerError> {
         let request = Request::ApiVersionCheck {};
         let response = self.send_task(request)?;
@@ -103,6 +109,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Enable support for rust-analyzer span mode if the server supports it.
     fn enable_rust_analyzer_spans(&self) -> Result<SpanMode, ServerError> {
         let request = Request::SetConfig(ServerConfig { span_mode: SpanMode::RustAnalyzer });
         let response = self.send_task(request)?;
@@ -113,6 +120,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Finds proc-macros in a given dynamic library.
     pub(crate) fn find_proc_macros(
         &self,
         dylib_path: &AbsPath,
@@ -127,6 +135,7 @@ impl ProcMacroServerProcess {
         }
     }
 
+    /// Sends a request to the proc-macro server and waits for a response.
     pub(crate) fn send_task(&self, req: Request) -> Result<Response, ServerError> {
         if let Some(server_error) = self.exited.get() {
             return Err(server_error.0.clone());
@@ -177,12 +186,14 @@ impl ProcMacroServerProcess {
     }
 }
 
+/// Manages the execution of the proc-macro server process.
 #[derive(Debug)]
 struct Process {
     child: JodChild,
 }
 
 impl Process {
+    /// Runs a new proc-macro server process with the specified environment variables.
     fn run(
         path: &AbsPath,
         env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
@@ -191,6 +202,7 @@ impl Process {
         Ok(Process { child })
     }
 
+    /// Retrieves stdin and stdout handles for the process.
     fn stdio(&mut self) -> Option<(ChildStdin, BufReader<ChildStdout>)> {
         let stdin = self.child.stdin.take()?;
         let stdout = self.child.stdout.take()?;
@@ -200,6 +212,7 @@ impl Process {
     }
 }
 
+/// Creates and configures a new child process for the proc-macro server.
 fn mk_child(
     path: &AbsPath,
     env: impl IntoIterator<Item = (impl AsRef<std::ffi::OsStr>, impl AsRef<std::ffi::OsStr>)>,
@@ -221,6 +234,7 @@ fn mk_child(
     cmd.spawn()
 }
 
+/// Sends a request to the server and reads the response.
 fn send_request(
     mut writer: &mut impl Write,
     mut reader: &mut impl BufRead,
