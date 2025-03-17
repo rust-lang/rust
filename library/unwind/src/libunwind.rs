@@ -27,10 +27,10 @@ pub type _Unwind_Trace_Fn =
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+#[cfg(all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(all(target_arch = "x86_64", target_os = "windows"))]
+#[cfg(all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")))]
 pub const unwinder_private_data_size: usize = 6;
 
 #[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
@@ -289,7 +289,10 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+if #[cfg(any(
+        all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+        target_os = "cygwin",
+    ))] {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}

@@ -46,6 +46,7 @@ unsafe extern "C" {
         any(
             target_os = "netbsd",
             target_os = "openbsd",
+            target_os = "cygwin",
             target_os = "android",
             target_os = "redox",
             target_os = "nuttx",
@@ -118,7 +119,12 @@ pub fn error_string(errno: i32) -> String {
     unsafe extern "C" {
         #[cfg_attr(
             all(
-                any(target_os = "linux", target_os = "hurd", target_env = "newlib"),
+                any(
+                    target_os = "linux",
+                    target_os = "hurd",
+                    target_env = "newlib",
+                    target_os = "cygwin"
+                ),
                 not(target_env = "ohos")
             ),
             link_name = "__xpg_strerror_r"
@@ -395,6 +401,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
 
 #[cfg(any(
     target_os = "linux",
+    target_os = "cygwin",
     target_os = "hurd",
     target_os = "android",
     target_os = "nuttx",
