@@ -39,8 +39,8 @@ use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
-    DebugEmissionKind, DebugNameTableKind,
+    DIBasicType, DIBuilder, DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock,
+    DIScope, DIType, DebugEmissionKind, DebugNameTableKind,
 };
 use crate::value::Value;
 
@@ -491,26 +491,22 @@ pub(crate) fn type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>, t: Ty<'tcx>) ->
 // FIXME(mw): Cache this via a regular UniqueTypeId instead of an extra field in the debug context.
 fn recursion_marker_type_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> &'ll DIType {
     *debug_context(cx).recursion_marker_type.get_or_init(move || {
-        unsafe {
-            // The choice of type here is pretty arbitrary -
-            // anything reading the debuginfo for a recursive
-            // type is going to see *something* weird - the only
-            // question is what exactly it will see.
-            //
-            // FIXME: the name `<recur_type>` does not fit the naming scheme
-            //        of other types.
-            //
-            // FIXME: it might make sense to use an actual pointer type here
-            //        so that debuggers can show the address.
-            let name = "<recur_type>";
-            llvm::LLVMRustDIBuilderCreateBasicType(
-                DIB(cx),
-                name.as_c_char_ptr(),
-                name.len(),
-                cx.tcx.data_layout.pointer_size.bits(),
-                dwarf_const::DW_ATE_unsigned,
-            )
-        }
+        // The choice of type here is pretty arbitrary -
+        // anything reading the debuginfo for a recursive
+        // type is going to see *something* weird - the only
+        // question is what exactly it will see.
+        //
+        // FIXME: the name `<recur_type>` does not fit the naming scheme
+        //        of other types.
+        //
+        // FIXME: it might make sense to use an actual pointer type here
+        //        so that debuggers can show the address.
+        create_basic_type(
+            cx,
+            "<recur_type>",
+            cx.tcx.data_layout.pointer_size,
+            dwarf_const::DW_ATE_unsigned,
+        )
     })
 }
 
@@ -788,15 +784,7 @@ fn build_basic_type_di_node<'ll, 'tcx>(
         _ => bug!("debuginfo::build_basic_type_di_node - `t` is invalid type"),
     };
 
-    let ty_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateBasicType(
-            DIB(cx),
-            name.as_c_char_ptr(),
-            name.len(),
-            cx.size_of(t).bits(),
-            encoding,
-        )
-    };
+    let ty_di_node = create_basic_type(cx, name, cx.size_of(t), encoding);
 
     if !cpp_like_debuginfo {
         return DINodeCreationResult::new(ty_di_node, false);
@@ -822,6 +810,23 @@ fn build_basic_type_di_node<'ll, 'tcx>(
     };
 
     DINodeCreationResult::new(typedef_di_node, false)
+}
+
+fn create_basic_type<'ll, 'tcx>(
+    cx: &CodegenCx<'ll, 'tcx>,
+    name: &str,
+    size: Size,
+    encoding: u32,
+) -> &'ll DIBasicType {
+    unsafe {
+        llvm::LLVMRustDIBuilderCreateBasicType(
+            DIB(cx),
+            name.as_c_char_ptr(),
+            name.len(),
+            size.bits(),
+            encoding,
+        )
+    }
 }
 
 fn build_foreign_type_di_node<'ll, 'tcx>(
