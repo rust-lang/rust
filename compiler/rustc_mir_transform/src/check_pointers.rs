@@ -182,35 +182,29 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
             return;
         }
 
-        // Since Deref projections must come first and only once, the pointer for an indirect place
-        // is the Local that the Place is based on.
+        // Get the place and type we visit.
         let pointer = Place::from(place.local);
-        let pointer_ty = self.local_decls[place.local].ty;
+        let pointer_ty = pointer.ty(self.local_decls, self.tcx).ty;
 
         // We only want to check places based on raw pointers
-        if !pointer_ty.is_raw_ptr() {
+        let &ty::RawPtr(mut pointee_ty, _) = pointer_ty.kind() else {
             trace!("Indirect, but not based on an raw ptr, not checking {:?}", place);
             return;
+        };
+
+        // If we see a borrow of a field projection, we want to pass the field type to the
+        // check and not the pointee type.
+        if matches!(self.field_projection_mode, BorrowedFieldProjectionMode::FollowProjections)
+            && matches!(
+                context,
+                PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
+                    | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
+            )
+        {
+            // Naturally, the field type is type of the initial place we look at.
+            pointee_ty = place.ty(self.local_decls, self.tcx).ty;
         }
 
-        // If we see a borrow of a field projection, we want to pass the field Ty to the
-        // check and not the pointee Ty.
-        let pointee_ty = match self.field_projection_mode {
-            BorrowedFieldProjectionMode::FollowProjections
-                if matches!(
-                    context,
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::SharedBorrow)
-                        | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
-                ) =>
-            {
-                if let Some(PlaceElem::Field(_, ty)) = place.projection.last() {
-                    *ty
-                } else {
-                    pointer_ty.builtin_deref(true).expect("no builtin_deref for an raw pointer")
-                }
-            }
-            _ => pointer_ty.builtin_deref(true).expect("no builtin_deref for an raw pointer"),
-        };
         // Ideally we'd support this in the future, but for now we are limited to sized types.
         if !pointee_ty.is_sized(self.tcx, self.typing_env) {
             trace!("Raw pointer, but pointee is not known to be sized: {:?}", pointer_ty);
@@ -222,6 +216,7 @@ impl<'a, 'tcx> Visitor<'tcx> for PointerFinder<'a, 'tcx> {
             ty::Array(ty, _) => *ty,
             _ => pointee_ty,
         };
+        // Check if we excluded this pointee type from the check.
         if self.excluded_pointees.contains(&element_ty) {
             trace!("Skipping pointer for type: {:?}", pointee_ty);
             return;
