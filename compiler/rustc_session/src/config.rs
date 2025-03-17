@@ -44,7 +44,7 @@ pub mod sigpipe;
 
 pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     // tidy-alphabetical-start
-    ("all-target-specs-json", PrintKind::AllTargetSpecs),
+    ("all-target-specs-json", PrintKind::AllTargetSpecsJson),
     ("calling-conventions", PrintKind::CallingConventions),
     ("cfg", PrintKind::Cfg),
     ("check-cfg", PrintKind::CheckCfg),
@@ -63,7 +63,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("target-features", PrintKind::TargetFeatures),
     ("target-libdir", PrintKind::TargetLibdir),
     ("target-list", PrintKind::TargetList),
-    ("target-spec-json", PrintKind::TargetSpec),
+    ("target-spec-json", PrintKind::TargetSpecJson),
     ("tls-models", PrintKind::TlsModels),
     // tidy-alphabetical-end
 ];
@@ -873,27 +873,29 @@ pub struct PrintRequest {
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum PrintKind {
-    FileNames,
-    HostTuple,
-    Sysroot,
-    TargetLibdir,
-    CrateName,
+    // tidy-alphabetical-start
+    AllTargetSpecsJson,
+    CallingConventions,
     Cfg,
     CheckCfg,
-    CallingConventions,
-    TargetList,
+    CodeModels,
+    CrateName,
+    DeploymentTarget,
+    FileNames,
+    HostTuple,
+    LinkArgs,
+    NativeStaticLibs,
+    RelocationModels,
+    SplitDebuginfo,
+    StackProtectorStrategies,
+    Sysroot,
     TargetCPUs,
     TargetFeatures,
-    RelocationModels,
-    CodeModels,
+    TargetLibdir,
+    TargetList,
+    TargetSpecJson,
     TlsModels,
-    TargetSpec,
-    AllTargetSpecs,
-    NativeStaticLibs,
-    StackProtectorStrategies,
-    LinkArgs,
-    SplitDebuginfo,
-    DeploymentTarget,
+    // tidy-alphabetical-end
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq, Default)]
@@ -2030,49 +2032,13 @@ fn collect_print_requests(
     prints.extend(matches.opt_strs("print").into_iter().map(|req| {
         let (req, out) = split_out_file_name(&req);
 
-        let kind = match PRINT_KINDS.iter().find(|&&(name, _)| name == req) {
-            Some((_, PrintKind::TargetSpec)) => {
-                if unstable_opts.unstable_options {
-                    PrintKind::TargetSpec
-                } else {
-                    early_dcx.early_fatal(
-                        "the `-Z unstable-options` flag must also be passed to \
-                         enable the target-spec-json print option",
-                    );
-                }
-            }
-            Some((_, PrintKind::AllTargetSpecs)) => {
-                if unstable_opts.unstable_options {
-                    PrintKind::AllTargetSpecs
-                } else {
-                    early_dcx.early_fatal(
-                        "the `-Z unstable-options` flag must also be passed to \
-                         enable the all-target-specs-json print option",
-                    );
-                }
-            }
-            Some((_, PrintKind::CheckCfg)) => {
-                if unstable_opts.unstable_options {
-                    PrintKind::CheckCfg
-                } else {
-                    early_dcx.early_fatal(
-                        "the `-Z unstable-options` flag must also be passed to \
-                         enable the check-cfg print option",
-                    );
-                }
-            }
-            Some(&(_, print_kind)) => print_kind,
-            None => {
-                let prints =
-                    PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
-                let prints = prints.join(", ");
-
-                let mut diag =
-                    early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
-                #[allow(rustc::diagnostic_outside_of_impl)]
-                diag.help(format!("valid print requests are: {prints}"));
-                diag.emit()
-            }
+        let kind = if let Some((print_name, print_kind)) =
+            PRINT_KINDS.iter().find(|&&(name, _)| name == req)
+        {
+            check_print_request_stability(early_dcx, unstable_opts, (print_name, *print_kind));
+            *print_kind
+        } else {
+            emit_unknown_print_request_help(early_dcx, req)
         };
 
         let out = out.unwrap_or(OutFileName::Stdout);
@@ -2089,6 +2055,34 @@ fn collect_print_requests(
     }));
 
     prints
+}
+
+fn check_print_request_stability(
+    early_dcx: &EarlyDiagCtxt,
+    unstable_opts: &UnstableOptions,
+    (print_name, print_kind): (&str, PrintKind),
+) {
+    match print_kind {
+        PrintKind::AllTargetSpecsJson | PrintKind::CheckCfg | PrintKind::TargetSpecJson
+            if !unstable_opts.unstable_options =>
+        {
+            early_dcx.early_fatal(format!(
+                "the `-Z unstable-options` flag must also be passed to enable the `{print_name}` \
+                print option"
+            ));
+        }
+        _ => {}
+    }
+}
+
+fn emit_unknown_print_request_help(early_dcx: &EarlyDiagCtxt, req: &str) -> ! {
+    let prints = PRINT_KINDS.iter().map(|(name, _)| format!("`{name}`")).collect::<Vec<_>>();
+    let prints = prints.join(", ");
+
+    let mut diag = early_dcx.early_struct_fatal(format!("unknown print request: `{req}`"));
+    #[allow(rustc::diagnostic_outside_of_impl)]
+    diag.help(format!("valid print requests are: {prints}"));
+    diag.emit()
 }
 
 pub fn parse_target_triple(early_dcx: &EarlyDiagCtxt, matches: &getopts::Matches) -> TargetTuple {
