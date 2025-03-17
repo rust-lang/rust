@@ -282,22 +282,35 @@ mod llvm_enzyme {
             span,
         };
 
+        // We're avoid duplicating the attributes `#[rustc_autodiff]` and `#[inline(never)]`.
+        fn same_attribute(attr: &ast::AttrKind, item: &ast::AttrKind) -> bool {
+            match (attr, item) {
+                (ast::AttrKind::Normal(a), ast::AttrKind::Normal(b)) => {
+                    let a = &a.item.path;
+                    let b = &b.item.path;
+                    a.segments.len() == b.segments.len()
+                        && a.segments.iter().zip(b.segments.iter()).all(|(a, b)| a.ident == b.ident)
+                }
+                _ => false,
+            }
+        }
+
         // Don't add it multiple times:
         let orig_annotatable: Annotatable = match item {
             Annotatable::Item(ref mut iitem) => {
-                if !iitem.attrs.iter().any(|a| a.id == attr.id) {
+                if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     iitem.attrs.push(attr);
                 }
-                if !iitem.attrs.iter().any(|a| a.id == inline_never.id) {
+                if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
                     iitem.attrs.push(inline_never.clone());
                 }
                 Annotatable::Item(iitem.clone())
             }
             Annotatable::AssocItem(ref mut assoc_item, i @ Impl) => {
-                if !assoc_item.attrs.iter().any(|a| a.id == attr.id) {
+                if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
                 }
-                if !assoc_item.attrs.iter().any(|a| a.id == inline_never.id) {
+                if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind)) {
                     assoc_item.attrs.push(inline_never.clone());
                 }
                 Annotatable::AssocItem(assoc_item.clone(), i)

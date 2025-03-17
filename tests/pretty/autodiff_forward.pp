@@ -73,10 +73,6 @@ pub fn df4() {
 }
 #[rustc_autodiff]
 #[inline(never)]
-#[rustc_autodiff]
-#[inline(never)]
-#[rustc_autodiff]
-#[inline(never)]
 pub fn f5(x: &[f64], y: f64) -> f64 {
     ::core::panicking::panic("not implemented")
 }
