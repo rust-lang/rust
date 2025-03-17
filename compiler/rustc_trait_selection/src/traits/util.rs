@@ -4,10 +4,13 @@ use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
 use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
+use rustc_infer::traits::PolyTraitObligation;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
+use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, PolyTraitPredicate, SizedTraitKind, TraitPredicate, TraitRef, Ty, TyCtxt, TypeFoldable,
+    TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 pub use rustc_next_trait_solver::placeholder::BoundVarReplacer;
 use rustc_span::Span;
@@ -381,4 +384,40 @@ pub fn sizedness_fast_path<'tcx>(tcx: TyCtxt<'tcx>, predicate: ty::Predicate<'tc
     }
 
     false
+}
+
+/// To improve performance, sizedness traits are not elaborated and so special-casing is required
+/// in the trait solver to find a `Sized` candidate for a `MetaSized` obligation. Returns the
+/// predicate to used in the candidate for such a `obligation`, given a `candidate`.
+pub(crate) fn lazily_elaborate_sizedness_candidate<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    obligation: &PolyTraitObligation<'tcx>,
+    candidate: PolyTraitPredicate<'tcx>,
+) -> PolyTraitPredicate<'tcx> {
+    if !infcx.tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
+        || !infcx.tcx.is_lang_item(candidate.def_id(), LangItem::Sized)
+    {
+        return candidate;
+    }
+
+    if obligation.predicate.polarity() != candidate.polarity() {
+        return candidate;
+    }
+
+    let drcx = DeepRejectCtxt::relate_rigid_rigid(infcx.tcx);
+    if !drcx.args_may_unify(
+        obligation.predicate.skip_binder().trait_ref.args,
+        candidate.skip_binder().trait_ref.args,
+    ) {
+        return candidate;
+    }
+
+    candidate.map_bound(|c| TraitPredicate {
+        trait_ref: TraitRef::new_from_args(
+            infcx.tcx,
+            obligation.predicate.def_id(),
+            c.trait_ref.args,
+        ),
+        polarity: c.polarity,
+    })
 }
