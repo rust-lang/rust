@@ -150,9 +150,6 @@ fn generate_enzyme_call<'ll>(
     outer_fn: &'ll Value,
     attrs: AutoDiffAttrs,
 ) {
-    let inputs = attrs.input_activity;
-    let output = attrs.ret_activity;
-
     // We have to pick the name depending on whether we want forward or reverse mode autodiff.
     let mut ad_name: String = match attrs.mode {
         DiffMode::Forward => "__enzyme_fwddiff",
@@ -240,18 +237,12 @@ fn generate_enzyme_call<'ll>(
         args.push(fn_to_diff);
 
         let enzyme_primal_ret = cx.create_metadata("enzyme_primal_return".to_string()).unwrap();
-        match output {
-            DiffActivity::Dual => {
-                args.push(cx.get_metadata_value(enzyme_primal_ret));
-            }
-            DiffActivity::Active => {
-                args.push(cx.get_metadata_value(enzyme_primal_ret));
-            }
-            _ => {}
+        if matches!(attrs.ret_activity, DiffActivity::Dual | DiffActivity::Active) {
+            args.push(cx.get_metadata_value(enzyme_primal_ret));
         }
 
         let outer_args: Vec<&llvm::Value> = get_params(outer_fn);
-        match_args_from_caller_to_enzyme(&cx, &mut args, &inputs, &outer_args);
+        match_args_from_caller_to_enzyme(&cx, &mut args, &attrs.input_activity, &outer_args);
 
         let call = builder.call(enzyme_ty, ad_fn, &args, None);
 
