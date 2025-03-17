@@ -230,8 +230,6 @@ fn memmove_backward_aligned() {
     }
 }
 
-// PowerPC tests are failing: https://github.com/rust-lang/rust/issues/99853
-#[cfg(not(target_arch = "powerpc64"))]
 #[test]
 fn memset_backward_misaligned_nonaligned_start() {
     let mut arr = gen_arr::<32>();
@@ -244,8 +242,6 @@ fn memset_backward_misaligned_nonaligned_start() {
     }
 }
 
-// PowerPC tests are failing: https://github.com/rust-lang/rust/issues/99853
-#[cfg(not(target_arch = "powerpc64"))]
 #[test]
 fn memset_backward_misaligned_aligned_start() {
     let mut arr = gen_arr::<32>();
@@ -258,8 +254,6 @@ fn memset_backward_misaligned_aligned_start() {
     }
 }
 
-// PowerPC tests are failing: https://github.com/rust-lang/rust/issues/99853
-#[cfg(not(target_arch = "powerpc64"))]
 #[test]
 fn memset_backward_aligned() {
     let mut arr = gen_arr::<32>();
