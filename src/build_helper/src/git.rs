@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::ci::CiEnv;
@@ -184,9 +184,11 @@ pub enum PathFreshness {
 
 /// This function figures out if a set of paths was last modified upstream or
 /// if there are some local modifications made to them.
-///
 /// It can be used to figure out if we should download artifacts from CI or rather
 /// build them locally.
+///
+/// The function assumes that at least a single upstream bors merge commit is in the
+/// local git history.
 ///
 /// `target_paths` should be a non-empty slice of paths (relative to `git_dir` or the
 /// current working directory) whose modifications would invalidate the artifact.
