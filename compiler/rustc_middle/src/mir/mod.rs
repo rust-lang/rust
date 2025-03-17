@@ -33,8 +33,8 @@ use crate::mir::interpret::{AllocRange, Scalar};
 use crate::ty::codec::{TyDecoder, TyEncoder};
 use crate::ty::print::{FmtPrinter, Printer, pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{
-    self, AdtDef, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt,
-    TypeVisitableExt, TypingEnv, UserTypeAnnotationIndex,
+    self, GenericArg, GenericArgsRef, Instance, InstanceKind, List, Ty, TyCtxt, TypeVisitableExt,
+    TypingEnv, UserTypeAnnotationIndex,
 };
 
 mod basic_blocks;
@@ -1482,52 +1482,9 @@ pub struct UserTypeProjections {
     pub contents: Vec<UserTypeProjection>,
 }
 
-impl<'tcx> UserTypeProjections {
-    pub fn none() -> Self {
-        UserTypeProjections { contents: vec![] }
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.contents.is_empty()
-    }
-
+impl UserTypeProjections {
     pub fn projections(&self) -> impl Iterator<Item = &UserTypeProjection> + ExactSizeIterator {
         self.contents.iter()
-    }
-
-    pub fn push_user_type(mut self, base_user_type: UserTypeAnnotationIndex) -> Self {
-        self.contents.push(UserTypeProjection { base: base_user_type, projs: vec![] });
-        self
-    }
-
-    fn map_projections(mut self, f: impl FnMut(UserTypeProjection) -> UserTypeProjection) -> Self {
-        self.contents = self.contents.into_iter().map(f).collect();
-        self
-    }
-
-    pub fn index(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.index())
-    }
-
-    pub fn subslice(self, from: u64, to: u64) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.subslice(from, to))
-    }
-
-    pub fn deref(self) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.deref())
-    }
-
-    pub fn leaf(self, field: FieldIdx) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.leaf(field))
-    }
-
-    pub fn variant(
-        self,
-        adt_def: AdtDef<'tcx>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.map_projections(|pat_ty_proj| pat_ty_proj.variant(adt_def, variant_index, field_index))
     }
 }
 
@@ -1551,42 +1508,6 @@ impl<'tcx> UserTypeProjections {
 pub struct UserTypeProjection {
     pub base: UserTypeAnnotationIndex,
     pub projs: Vec<ProjectionKind>,
-}
-
-impl UserTypeProjection {
-    pub(crate) fn index(mut self) -> Self {
-        self.projs.push(ProjectionElem::Index(()));
-        self
-    }
-
-    pub(crate) fn subslice(mut self, from: u64, to: u64) -> Self {
-        self.projs.push(ProjectionElem::Subslice { from, to, from_end: true });
-        self
-    }
-
-    pub(crate) fn deref(mut self) -> Self {
-        self.projs.push(ProjectionElem::Deref);
-        self
-    }
-
-    pub(crate) fn leaf(mut self, field: FieldIdx) -> Self {
-        self.projs.push(ProjectionElem::Field(field, ()));
-        self
-    }
-
-    pub(crate) fn variant(
-        mut self,
-        adt_def: AdtDef<'_>,
-        variant_index: VariantIdx,
-        field_index: FieldIdx,
-    ) -> Self {
-        self.projs.push(ProjectionElem::Downcast(
-            Some(adt_def.variant(variant_index).name),
-            variant_index,
-        ));
-        self.projs.push(ProjectionElem::Field(field_index, ()));
-        self
-    }
 }
 
 rustc_index::newtype_index! {
