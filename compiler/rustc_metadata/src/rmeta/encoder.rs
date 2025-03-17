@@ -843,9 +843,8 @@ fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> b
                 }
             }
         }
-    } else if attr.path().starts_with(&[sym::diagnostic]) && attr.path().len() == 2 {
-        should_encode =
-            rustc_feature::is_stable_diagnostic_attribute(attr.path()[1], state.features);
+    } else if let &[sym::diagnostic, seg] = &*attr.path() {
+        should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
     } else {
         should_encode = true;
     }

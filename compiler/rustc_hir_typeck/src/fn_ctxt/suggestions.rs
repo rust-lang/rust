@@ -1532,30 +1532,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.may_coerce(blk_ty, *elem_ty)
                 && blk.stmts.is_empty()
                 && blk.rules == hir::BlockCheckMode::DefaultBlock
+                && let source_map = self.tcx.sess.source_map()
+                && let Ok(snippet) = source_map.span_to_snippet(blk.span)
+                && snippet.starts_with('{')
+                && snippet.ends_with('}')
             {
-                let source_map = self.tcx.sess.source_map();
-                if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
-                    if snippet.starts_with('{') && snippet.ends_with('}') {
-                        diag.multipart_suggestion_verbose(
-                            "to create an array, use square brackets instead of curly braces",
-                            vec![
-                                (
-                                    blk.span
-                                        .shrink_to_lo()
-                                        .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
-                                    "[".to_string(),
-                                ),
-                                (
-                                    blk.span
-                                        .shrink_to_hi()
-                                        .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
-                                    "]".to_string(),
-                                ),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
+                diag.multipart_suggestion_verbose(
+                    "to create an array, use square brackets instead of curly braces",
+                    vec![
+                        (
+                            blk.span
+                                .shrink_to_lo()
+                                .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
+                            "[".to_string(),
+                        ),
+                        (
+                            blk.span
+                                .shrink_to_hi()
+                                .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
+                            "]".to_string(),
+                        ),
+                    ],
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }

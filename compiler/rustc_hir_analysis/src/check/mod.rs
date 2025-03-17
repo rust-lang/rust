@@ -153,10 +153,9 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     }
 
     // If `#[link_section]` is missing, then nothing to verify
-    let attrs = tcx.codegen_fn_attrs(id);
-    if attrs.link_section.is_none() {
+    let Some(link_section) = tcx.codegen_fn_attrs(id).link_section else {
         return;
-    }
+    };
 
     // For the wasm32 target statics with `#[link_section]` other than `.init_array`
     // are placed into custom sections of the final output file, but this isn't like
@@ -182,11 +181,8 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     //  continue to work, but would no longer be necessary.
 
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().ptrs().len() != 0
-        && attrs
-            .link_section
-            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-            .unwrap()
+        && !alloc.inner().provenance().ptrs().is_empty()
+        && !link_section.as_str().starts_with(".init_array")
     {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
