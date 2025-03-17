@@ -42,6 +42,9 @@ jiri=.jiri_root/bin/jiri
 
 set -x
 
+echo "ERROR"
+exit 1
+
 if [ -z "$KEEP_CHECKOUT" ]; then
     # This script will:
     # - create a directory named "fuchsia" if it does not exist
