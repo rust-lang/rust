@@ -7,7 +7,7 @@ pub struct HelperStruct<'n> {
 }
 
 impl DataStruct {
-    pub fn f(&self) -> HelperStruct {
+    pub fn f(&self) -> HelperStruct<'_> {
         let helpers = [vec![], vec![]];
 
         HelperStruct { helpers, is_empty: helpers[0].is_empty() }

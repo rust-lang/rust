@@ -14,7 +14,7 @@ impl<'a> Drop for defer<'a> {
     }
 }
 
-fn defer(b: &Cell<bool>) -> defer {
+fn defer(b: &Cell<bool>) -> defer<'_> {
     defer {
         b: b
     }

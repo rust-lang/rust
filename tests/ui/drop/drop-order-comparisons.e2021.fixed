@@ -589,7 +589,7 @@ impl Events {
         Ok(LogDrop(self, m))
     }
     /// Return an `Err` value that logs its drop.
-    fn err(&self, m: u64) -> Result<LogDrop, LogDrop> {
+    fn err(&self, m: u64) -> Result<LogDrop<'_>, LogDrop<'_>> {
         Err(LogDrop(self, m))
     }
     /// Log an event.

@@ -14,7 +14,7 @@ pub trait UnicodeStr {
 
 impl UnicodeStr for str {
     #[inline]
-    fn split_whitespace(&self) -> SplitWhitespace {
+    fn split_whitespace(&self) -> SplitWhitespace<'_> {
         unimplemented!()
     }
 }
