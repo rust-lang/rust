@@ -122,7 +122,7 @@ pub use crate::macros::builtin::define_opaque;
 
 #[unstable(feature = "eii", issue = "none")]
 #[cfg(not(bootstrap))]
-pub use crate::macros::builtin::eii;
+pub use crate::macros::builtin::{eii, unsafe_eii};
 
 #[unstable(feature = "eii_internals", issue = "none")]
 #[cfg(not(bootstrap))]

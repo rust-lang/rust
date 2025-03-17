@@ -1794,6 +1794,16 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
+    /// Unsafely Externally Implementable Item: Defines an unsafe attribute macro that can override
+    /// the item this is applied to.
+    #[cfg(not(bootstrap))]
+    #[unstable(feature = "eii", issue = "none")]
+    #[rustc_builtin_macro]
+    #[allow_internal_unstable(eii_internals, decl_macro, rustc_attrs)]
+    pub macro unsafe_eii($item:item) {
+        /* compiler built-in */
+    }
+
     /// Impl detail of EII
     #[cfg(not(bootstrap))]
     #[unstable(feature = "eii_internals", issue = "none")]

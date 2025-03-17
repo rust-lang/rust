@@ -6,32 +6,49 @@ use rustc_ast_pretty::pprust::path_to_string;
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Ident, Span, kw, sym};
 
-/* ```rust
-
-#[eii]
-fn panic_handler();
-
-#[eii(panic_handler)]
-fn panic_handler();
-
-#[eii(panic_handler, unsafe)]
-fn panic_handler();
-
-// expansion:
-
-extern "Rust" {
-    fn panic_handler();
-}
-
-#[rustc_builtin_macro(eii_macro)] // eii_macro_for: panic_handler
-macro panic_handler() {}
-
-``` */
+// ```rust
+// #[eii]
+// fn panic_handler();
+//
+// // or:
+//
+// #[eii(panic_handler)]
+// fn panic_handler();
+//
+// // expansion:
+//
+// extern "Rust" {
+//     fn panic_handler();
+// }
+//
+// #[rustc_builtin_macro(eii_macro)]
+// #[eii_macro_for(panic_handler)]
+// macro panic_handler() {}
+// ```
 pub(crate) fn eii(
     ecx: &mut ExtCtxt<'_>,
     span: Span,
     meta_item: &ast::MetaItem,
     item: Annotatable,
+) -> Vec<Annotatable> {
+    eii_(ecx, span, meta_item, item, false)
+}
+
+pub(crate) fn unsafe_eii(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    meta_item: &ast::MetaItem,
+    item: Annotatable,
+) -> Vec<Annotatable> {
+    eii_(ecx, span, meta_item, item, true)
+}
+
+fn eii_(
+    ecx: &mut ExtCtxt<'_>,
+    span: Span,
+    meta_item: &ast::MetaItem,
+    item: Annotatable,
+    impl_unsafe: bool,
 ) -> Vec<Annotatable> {
     let span = ecx.with_def_site_ctxt(span);
 
@@ -73,8 +90,6 @@ pub(crate) fn eii(
         });
         return vec![Annotatable::Item(orig_item)];
     };
-
-    let impl_unsafe = false; // TODO
 
     let abi = match func.sig.header.ext {
         // extern "X" fn  =>  extern "X" {}
@@ -123,28 +138,6 @@ pub(crate) fn eii(
 
     let macro_def = Annotatable::Item(P(ast::Item {
         attrs: ast::AttrVec::from_iter([
-            // #[eii_macro_for(func.ident)]
-            ast::Attribute {
-                kind: ast::AttrKind::Normal(P(ast::NormalAttr {
-                    item: ast::AttrItem {
-                        unsafety: ast::Safety::Default,
-                        path: ast::Path::from_ident(Ident::new(sym::eii_macro_for, span)),
-                        args: ast::AttrArgs::Delimited(ast::DelimArgs {
-                            dspan: DelimSpan::from_single(span),
-                            delim: Delimiter::Parenthesis,
-                            tokens: TokenStream::new(vec![tokenstream::TokenTree::Token(
-                                token::Token::from_ast_ident(func.ident),
-                                Spacing::Alone,
-                            )]),
-                        }),
-                        tokens: None,
-                    },
-                    tokens: None,
-                })),
-                id: ecx.sess.psess.attr_id_generator.mk_attr_id(),
-                style: ast::AttrStyle::Outer,
-                span,
-            },
             // #[builtin_macro(eii_macro)]
             ast::Attribute {
                 kind: ast::AttrKind::Normal(P(ast::NormalAttr {
@@ -197,7 +190,11 @@ pub(crate) fn eii(
                     ]),
                 }),
                 macro_rules: false,
-                eii_macro_for: None,
+                // #[eii_macro_for(func.ident)]
+                eii_macro_for: Some(ast::EIIMacroFor {
+                    extern_item_path: ast::Path::from_ident(func.ident),
+                    impl_unsafe,
+                }),
             }
         ),
         tokens: None,
