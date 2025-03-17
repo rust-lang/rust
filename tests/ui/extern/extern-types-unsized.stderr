@@ -59,8 +59,21 @@ help: consider relaxing the implicit `Sized` restriction
 LL | fn assert_sized<T: ?Sized>() {}
    |                  ++++++++
 
+error[E0277]: the size for values of type `A` cannot be known
+  --> $DIR/extern-types-unsized.rs:28:20
+   |
+LL |     assert_sized::<Bar<A>>();
+   |                    ^^^^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `A`
+note: required by a bound in `Bar`
+  --> $DIR/extern-types-unsized.rs:14:12
+   |
+LL | struct Bar<T: ?Sized> {
+   |            ^ required by this bound in `Bar`
+
 error[E0277]: the size for values of type `A` cannot be known at compilation time
-  --> $DIR/extern-types-unsized.rs:31:20
+  --> $DIR/extern-types-unsized.rs:32:20
    |
 LL |     assert_sized::<Bar<Bar<A>>>();
    |                    ^^^^^^^^^^^ doesn't have a size known at compile-time
@@ -81,6 +94,19 @@ help: consider relaxing the implicit `Sized` restriction
 LL | fn assert_sized<T: ?Sized>() {}
    |                  ++++++++
 
-error: aborting due to 4 previous errors
+error[E0277]: the size for values of type `A` cannot be known
+  --> $DIR/extern-types-unsized.rs:32:20
+   |
+LL |     assert_sized::<Bar<Bar<A>>>();
+   |                    ^^^^^^^^^^^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `A`
+note: required by a bound in `Bar`
+  --> $DIR/extern-types-unsized.rs:14:12
+   |
+LL | struct Bar<T: ?Sized> {
+   |            ^ required by this bound in `Bar`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

@@ -7,7 +7,8 @@ use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, PolyTraitPredicate, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder,
+    TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
 use smallvec::{SmallVec, smallvec};
@@ -548,4 +549,38 @@ pub fn sizedness_fast_path<'tcx>(
     }
 
     false
+}
+
+/// To improve performance, sizedness traits are not elaborated and so special-casing is required
+/// in the trait solver to find a `Sized` candidate for a `MetaSized` predicate. This is a helper
+/// function for that special-casing, intended to be used when the obligation to be proven has been
+/// confirmed to be `MetaSized`, and checking whether the `param_env` contains `Sized` for the same
+/// `self_ty` is all that remains to be done.
+pub(crate) fn is_unelaborated_sizedness_optimisation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    predicate: PolyTraitPredicate<'tcx>,
+    candidates: impl IntoIterator<Item = PolyTraitPredicate<'tcx>>,
+) -> bool {
+    find_unelaborated_sizedness_optimisation(infcx, predicate, candidates).is_some()
+}
+
+/// See `is_unelaborated_sizedness_optimisation`, but returns the `PolyTraitPredicate` that worked.
+pub(crate) fn find_unelaborated_sizedness_optimisation<'tcx>(
+    infcx: &InferCtxt<'tcx>,
+    predicate: PolyTraitPredicate<'tcx>,
+    candidates: impl IntoIterator<Item = PolyTraitPredicate<'tcx>>,
+) -> Option<PolyTraitPredicate<'tcx>> {
+    if !infcx.tcx.is_lang_item(predicate.def_id(), LangItem::MetaSized) {
+        return None;
+    }
+
+    candidates.into_iter().find(|c| {
+        if !infcx.tcx.is_lang_item(c.def_id(), LangItem::Sized) {
+            return false;
+        }
+
+        let expected_self_ty = infcx.resolve_vars_if_possible(predicate.self_ty());
+        let found_self_ty = infcx.resolve_vars_if_possible(c.self_ty());
+        expected_self_ty == found_self_ty
+    })
 }
