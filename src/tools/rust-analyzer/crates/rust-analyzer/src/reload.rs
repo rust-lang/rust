@@ -754,13 +754,11 @@ impl GlobalState {
             self.analysis_host.apply_change(change);
 
             self.finish_loading_crate_graph();
-            return;
+        } else {
+            change.set_crate_graph(crate_graph);
+            self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
         }
-        change.set_crate_graph(crate_graph);
-        self.fetch_proc_macros_queue.request_op(cause, (change, proc_macro_paths));
-    }
 
-    pub(crate) fn finish_loading_crate_graph(&mut self) {
         self.report_progress(
             "Building CrateGraph",
             crate::lsp::utils::Progress::End,
@@ -768,7 +766,9 @@ impl GlobalState {
             None,
             None,
         );
+    }
 
+    pub(crate) fn finish_loading_crate_graph(&mut self) {
         self.process_changes();
         self.reload_flycheck();
     }
