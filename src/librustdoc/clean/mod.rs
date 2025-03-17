@@ -125,7 +125,7 @@ pub(crate) fn clean_doc_module<'tcx>(doc: &DocModule<'tcx>, cx: &mut DocContext<
     items.extend(doc.items.values().flat_map(|(item, renamed, _)| {
         // Now we actually lower the imports, skipping everything else.
         if let hir::ItemKind::Use(path, hir::UseKind::Glob) = item.kind {
-            let name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
+            let name = renamed.unwrap_or(kw::Empty); // using kw::Empty is a bit of a hack
             clean_use_statement(item, name, path, hir::UseKind::Glob, cx, &mut inserted)
         } else {
             // skip everything else
@@ -1629,8 +1629,7 @@ fn first_non_private<'tcx>(
                 if let Some(use_def_id) = reexp.id()
                     && let Some(local_use_def_id) = use_def_id.as_local()
                     && let hir::Node::Item(item) = cx.tcx.hir_node_by_def_id(local_use_def_id)
-                    && !item.ident.name.is_empty()
-                    && let hir::ItemKind::Use(path, _) = item.kind
+                    && let hir::ItemKind::Use(path, hir::UseKind::Single(_)) = item.kind
                 {
                     for res in &path.res {
                         if let Res::Def(DefKind::Ctor(..), _) | Res::SelfCtor(..) = res {
@@ -1775,7 +1774,7 @@ fn maybe_expand_private_type_alias<'tcx>(
     } else {
         return None;
     };
-    let hir::ItemKind::TyAlias(ty, generics) = alias else { return None };
+    let hir::ItemKind::TyAlias(_, ty, generics) = alias else { return None };
 
     let final_seg = &path.segments.last().expect("segments were empty");
     let mut args = DefIdMap::default();
@@ -2794,20 +2793,24 @@ fn clean_maybe_renamed_item<'tcx>(
     use hir::ItemKind;
 
     let def_id = item.owner_id.to_def_id();
-    let mut name = renamed.unwrap_or_else(|| cx.tcx.hir_name(item.hir_id()));
+    let mut name = renamed.unwrap_or_else(|| {
+        // FIXME: using kw::Empty is a bit of a hack
+        cx.tcx.hir_opt_name(item.hir_id()).unwrap_or(kw::Empty)
+    });
+
     cx.with_param_env(def_id, |cx| {
         let kind = match item.kind {
-            ItemKind::Static(ty, mutability, body_id) => StaticItem(Static {
+            ItemKind::Static(_, ty, mutability, body_id) => StaticItem(Static {
                 type_: Box::new(clean_ty(ty, cx)),
                 mutability,
                 expr: Some(body_id),
             }),
-            ItemKind::Const(ty, generics, body_id) => ConstantItem(Box::new(Constant {
+            ItemKind::Const(_, ty, generics, body_id) => ConstantItem(Box::new(Constant {
                 generics: clean_generics(generics, cx),
                 type_: clean_ty(ty, cx),
                 kind: ConstantKind::Local { body: body_id, def_id },
             })),
-            ItemKind::TyAlias(hir_ty, generics) => {
+            ItemKind::TyAlias(_, hir_ty, generics) => {
                 *cx.current_type_aliases.entry(def_id).or_insert(0) += 1;
                 let rustdoc_ty = clean_ty(hir_ty, cx);
                 let type_ =
@@ -2840,34 +2843,34 @@ fn clean_maybe_renamed_item<'tcx>(
                 ));
                 return ret;
             }
-            ItemKind::Enum(ref def, generics) => EnumItem(Enum {
+            ItemKind::Enum(_, ref def, generics) => EnumItem(Enum {
                 variants: def.variants.iter().map(|v| clean_variant(v, cx)).collect(),
                 generics: clean_generics(generics, cx),
             }),
-            ItemKind::TraitAlias(generics, bounds) => TraitAliasItem(TraitAlias {
+            ItemKind::TraitAlias(_, generics, bounds) => TraitAliasItem(TraitAlias {
                 generics: clean_generics(generics, cx),
                 bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
             }),
-            ItemKind::Union(ref variant_data, generics) => UnionItem(Union {
+            ItemKind::Union(_, ref variant_data, generics) => UnionItem(Union {
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
-            ItemKind::Struct(ref variant_data, generics) => StructItem(Struct {
+            ItemKind::Struct(_, ref variant_data, generics) => StructItem(Struct {
                 ctor_kind: variant_data.ctor_kind(),
                 generics: clean_generics(generics, cx),
                 fields: variant_data.fields().iter().map(|x| clean_field(x, cx)).collect(),
             }),
             ItemKind::Impl(impl_) => return clean_impl(impl_, item.owner_id.def_id, cx),
-            ItemKind::Macro(macro_def, MacroKind::Bang) => MacroItem(Macro {
+            ItemKind::Macro(_, macro_def, MacroKind::Bang) => MacroItem(Macro {
                 source: display_macro_source(cx, name, macro_def),
                 macro_rules: macro_def.macro_rules,
             }),
-            ItemKind::Macro(_, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
+            ItemKind::Macro(_, _, macro_kind) => clean_proc_macro(item, &mut name, macro_kind, cx),
             // proc macros can have a name set by attributes
             ItemKind::Fn { ref sig, generics, body: body_id, .. } => {
                 clean_fn_or_proc_macro(item, sig, generics, body_id, &mut name, cx)
             }
-            ItemKind::Trait(_, _, generics, bounds, item_ids) => {
+            ItemKind::Trait(_, _, _, generics, bounds, item_ids) => {
                 let items = item_ids
                     .iter()
                     .map(|ti| clean_trait_item(cx.tcx.hir_trait_item(ti.id), cx))
@@ -2880,7 +2883,7 @@ fn clean_maybe_renamed_item<'tcx>(
                     bounds: bounds.iter().filter_map(|x| clean_generic_bound(x, cx)).collect(),
                 }))
             }
-            ItemKind::ExternCrate(orig_name) => {
+            ItemKind::ExternCrate(orig_name, _) => {
                 return clean_extern_crate(item, name, orig_name, cx);
             }
             ItemKind::Use(path, kind) => {

@@ -247,13 +247,13 @@ fn reject_placeholder_type_signatures_in_item<'tcx>(
     item: &'tcx hir::Item<'tcx>,
 ) {
     let (generics, suggest) = match &item.kind {
-        hir::ItemKind::Union(_, generics)
-        | hir::ItemKind::Enum(_, generics)
-        | hir::ItemKind::TraitAlias(generics, _)
-        | hir::ItemKind::Trait(_, _, generics, ..)
+        hir::ItemKind::Union(_, _, generics)
+        | hir::ItemKind::Enum(_, _, generics)
+        | hir::ItemKind::TraitAlias(_, generics, _)
+        | hir::ItemKind::Trait(_, _, _, generics, ..)
         | hir::ItemKind::Impl(hir::Impl { generics, .. })
-        | hir::ItemKind::Struct(_, generics) => (generics, true),
-        hir::ItemKind::TyAlias(_, generics) => (generics, false),
+        | hir::ItemKind::Struct(_, _, generics) => (generics, true),
+        hir::ItemKind::TyAlias(_, _, generics) => (generics, false),
         // `static`, `fn` and `const` are handled elsewhere to suggest appropriate type.
         _ => return,
     };
@@ -470,9 +470,9 @@ impl<'tcx> HirTyLowerer<'tcx> for ItemCtxt<'tcx> {
                         .tcx
                         .hir_expect_item(self.tcx.hir_get_parent_item(self.hir_id()).def_id);
                     match &item.kind {
-                        hir::ItemKind::Enum(_, generics)
-                        | hir::ItemKind::Struct(_, generics)
-                        | hir::ItemKind::Union(_, generics) => {
+                        hir::ItemKind::Enum(_, _, generics)
+                        | hir::ItemKind::Struct(_, _, generics)
+                        | hir::ItemKind::Union(_, _, generics) => {
                             let lt_name = get_new_lifetime_name(self.tcx, poly_trait_ref, generics);
                             let (lt_sp, sugg) = match generics.params {
                                 [] => (generics.span, format!("<{lt_name}>")),
@@ -667,16 +667,16 @@ fn get_new_lifetime_name<'tcx>(
 #[instrument(level = "debug", skip_all)]
 fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
     let it = tcx.hir_item(item_id);
-    debug!(item = %it.ident, id = %it.hir_id());
+    debug!(item = ?it.kind.ident(), id = %it.hir_id());
     let def_id = item_id.owner_id.def_id;
     let icx = ItemCtxt::new(tcx, def_id);
 
     match &it.kind {
         // These don't define types.
-        hir::ItemKind::ExternCrate(_)
+        hir::ItemKind::ExternCrate(..)
         | hir::ItemKind::Use(..)
         | hir::ItemKind::Macro(..)
-        | hir::ItemKind::Mod(_)
+        | hir::ItemKind::Mod(..)
         | hir::ItemKind::GlobalAsm { .. } => {}
         hir::ItemKind::ForeignMod { items, .. } => {
             for item in *items {
@@ -736,7 +736,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.at(it.span).explicit_super_predicates_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
         }
-        hir::ItemKind::Struct(struct_def, _) | hir::ItemKind::Union(struct_def, _) => {
+        hir::ItemKind::Struct(_, struct_def, _) | hir::ItemKind::Union(_, struct_def, _) => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -758,7 +758,7 @@ fn lower_item(tcx: TyCtxt<'_>, item_id: hir::ItemId) {
             tcx.ensure_ok().predicates_of(def_id);
         }
 
-        hir::ItemKind::Static(ty, ..) | hir::ItemKind::Const(ty, ..) => {
+        hir::ItemKind::Static(_, ty, ..) | hir::ItemKind::Const(_, ty, ..) => {
             tcx.ensure_ok().generics_of(def_id);
             tcx.ensure_ok().type_of(def_id);
             tcx.ensure_ok().predicates_of(def_id);
@@ -1089,7 +1089,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
     let repr = tcx.repr_options_of_def(def_id);
     let (kind, variants) = match &item.kind {
-        ItemKind::Enum(def, _) => {
+        ItemKind::Enum(_, def, _) => {
             let mut distance_from_explicit = 0;
             let variants = def
                 .variants
@@ -1117,7 +1117,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
 
             (AdtKind::Enum, variants)
         }
-        ItemKind::Struct(def, _) | ItemKind::Union(def, _) => {
+        ItemKind::Struct(ident, def, _) | ItemKind::Union(ident, def, _) => {
             let adt_kind = match item.kind {
                 ItemKind::Struct(..) => AdtKind::Struct,
                 _ => AdtKind::Union,
@@ -1125,7 +1125,7 @@ fn adt_def(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::AdtDef<'_> {
             let variants = std::iter::once(lower_variant(
                 tcx,
                 None,
-                item.ident,
+                *ident,
                 ty::VariantDiscr::Relative(0),
                 def,
                 adt_kind,

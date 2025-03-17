@@ -136,9 +136,9 @@ fn diagnostic_hir_wf_check<'tcx>(
                 ref item => bug!("Unexpected TraitItem {:?}", item),
             },
             hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::TyAlias(ty, _)
-                | hir::ItemKind::Static(ty, _, _)
-                | hir::ItemKind::Const(ty, _, _) => vec![ty],
+                hir::ItemKind::TyAlias(_, ty, _)
+                | hir::ItemKind::Static(_, ty, _, _)
+                | hir::ItemKind::Const(_, ty, _, _) => vec![ty],
                 hir::ItemKind::Impl(impl_) => match &impl_.of_trait {
                     Some(t) => t
                         .path

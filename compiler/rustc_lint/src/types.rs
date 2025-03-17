@@ -1664,7 +1664,7 @@ impl ImproperCTypesDefinitions {
             && cx.tcx.sess.target.os == "aix"
             && !adt_def.all_fields().next().is_none()
         {
-            let struct_variant_data = item.expect_struct().0;
+            let struct_variant_data = item.expect_struct().1;
             for (index, ..) in struct_variant_data.fields().iter().enumerate() {
                 // Struct fields (after the first field) are checked for the
                 // power alignment rule, as fields after the first are likely
@@ -1696,9 +1696,9 @@ impl ImproperCTypesDefinitions {
 impl<'tcx> LateLintPass<'tcx> for ImproperCTypesDefinitions {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         match item.kind {
-            hir::ItemKind::Static(ty, ..)
-            | hir::ItemKind::Const(ty, ..)
-            | hir::ItemKind::TyAlias(ty, ..) => {
+            hir::ItemKind::Static(_, ty, ..)
+            | hir::ItemKind::Const(_, ty, ..)
+            | hir::ItemKind::TyAlias(_, ty, ..) => {
                 self.check_ty_maybe_containing_foreign_fnptr(
                     cx,
                     ty,
@@ -1765,7 +1765,7 @@ declare_lint_pass!(VariantSizeDifferences => [VARIANT_SIZE_DIFFERENCES]);
 
 impl<'tcx> LateLintPass<'tcx> for VariantSizeDifferences {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if let hir::ItemKind::Enum(ref enum_definition, _) = it.kind {
+        if let hir::ItemKind::Enum(_, ref enum_definition, _) = it.kind {
             let t = cx.tcx.type_of(it.owner_id).instantiate_identity();
             let ty = cx.tcx.erase_regions(t);
             let Ok(layout) = cx.layout_of(ty) else { return };
