@@ -1130,7 +1130,8 @@ impl<'tcx> DeadVisitor<'tcx> {
         if dead_codes.is_empty() {
             return;
         }
-        dead_codes.sort_by_key(|v| v.level);
+        // FIXME: `dead_codes` should probably be morally equivalent to `IndexMap<(Level, LintExpectationId), (DefId, Symbol)>`
+        dead_codes.sort_by_key(|v| v.level.0);
         for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
