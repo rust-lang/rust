@@ -48,6 +48,7 @@ pub enum SolverTraitLangItem {
     PointeeTrait,
     Sized,
     TransmuteTrait,
+    TrivialClone,
     Tuple,
     Unpin,
     Unsize,

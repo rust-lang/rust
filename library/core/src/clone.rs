@@ -269,6 +269,7 @@ pub const trait Clone: Sized {
     issue = "none"
 )]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
+#[lang = "trivial_clone"]
 // SAFETY:
 // It is sound to specialize on this because the `clone` implementation cannot be
 // lifetime-dependent. Therefore, if `TrivialClone` is implemented for any lifetime,

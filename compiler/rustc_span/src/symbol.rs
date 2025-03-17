@@ -2271,6 +2271,7 @@ symbols! {
         transparent_enums,
         transparent_unions,
         trivial_bounds,
+        trivial_clone,
         truncf16,
         truncf32,
         truncf64,
