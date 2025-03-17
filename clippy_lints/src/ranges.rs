@@ -4,15 +4,20 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg, span_lint_and_the
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{SpanRangeExt, snippet, snippet_with_applicability};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{get_parent_expr, higher, is_in_const_context, is_integer_const, path_to_local};
+use clippy_utils::ty::implements_trait;
+use clippy_utils::{
+    expr_use_ctxt, fn_def_id, get_parent_expr, higher, is_in_const_context, is_integer_const, is_path_lang_item,
+    path_to_local,
+};
+use rustc_ast::Mutability;
 use rustc_ast::ast::RangeLimits;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Expr, ExprKind, HirId};
+use rustc_hir::{BinOpKind, Expr, ExprKind, HirId, LangItem, Node};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty;
+use rustc_middle::ty::{self, ClauseKind, GenericArgKind, PredicatePolarity, Ty};
 use rustc_session::impl_lint_pass;
-use rustc_span::Span;
 use rustc_span::source_map::Spanned;
+use rustc_span::{Span, sym};
 use std::cmp::Ordering;
 
 declare_clippy_lint! {
@@ -24,6 +29,12 @@ declare_clippy_lint! {
     /// The code is more readable with an inclusive range
     /// like `x..=y`.
     ///
+    /// ### Limitations
+    /// The lint is conservative and will trigger only when switching
+    /// from an exclusive to an inclusive range is provably safe from
+    /// a typing point of view. This corresponds to situations where
+    /// the range is used as an iterator, or for indexing.
+    ///
     /// ### Known problems
     /// Will add unnecessary pair of parentheses when the
     /// expression is not wrapped in a pair but starts with an opening parenthesis
@@ -33,11 +44,6 @@ declare_clippy_lint! {
     /// Also in many cases, inclusive ranges are still slower to run than
     /// exclusive ranges, because they essentially add an extra branch that
     /// LLVM may fail to hoist out of the loop.
-    ///
-    /// This will cause a warning that cannot be fixed if the consumer of the
-    /// range only accepts a specific range type, instead of the generic
-    /// `RangeBounds` trait
-    /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
     ///
     /// ### Example
     /// ```no_run
@@ -71,11 +77,11 @@ declare_clippy_lint! {
     /// The code is more readable with an exclusive range
     /// like `x..y`.
     ///
-    /// ### Known problems
-    /// This will cause a warning that cannot be fixed if
-    /// the consumer of the range only accepts a specific range type, instead of
-    /// the generic `RangeBounds` trait
-    /// ([#3307](https://github.com/rust-lang/rust-clippy/issues/3307)).
+    /// ### Limitations
+    /// The lint is conservative and will trigger only when switching
+    /// from an inclusive to an exclusive range is provably safe from
+    /// a typing point of view. This corresponds to situations where
+    /// the range is used as an iterator, or for indexing.
     ///
     /// ### Example
     /// ```no_run
@@ -344,8 +350,124 @@ fn check_range_bounds<'a, 'tcx>(cx: &'a LateContext<'tcx>, ex: &'a Expr<'_>) -> 
     None
 }
 
+/// Check whether `expr` could switch range types without breaking the typing requirements. This is
+/// generally the case when `expr` is used as an iterator for example, or as a slice or `&str`
+/// index.
+///
+/// FIXME: Note that the current implementation may still return false positives. A proper fix would
+/// check that the obligations are still satisfied after switching the range type.
+fn can_switch_ranges<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    original: RangeLimits,
+    inner_ty: Ty<'tcx>,
+) -> bool {
+    let use_ctxt = expr_use_ctxt(cx, expr);
+    let (Node::Expr(parent_expr), false) = (use_ctxt.node, use_ctxt.is_ty_unified) else {
+        return false;
+    };
+
+    // Check if `expr` is the argument of a compiler-generated `IntoIter::into_iter(expr)`
+    if let ExprKind::Call(func, [arg]) = parent_expr.kind
+        && arg.hir_id == use_ctxt.child_id
+        && is_path_lang_item(cx, func, LangItem::IntoIterIntoIter)
+    {
+        return true;
+    }
+
+    // Check if `expr` is used as the receiver of a method of the `Iterator`, `IntoIterator`,
+    // or `RangeBounds` traits.
+    if let ExprKind::MethodCall(_, receiver, _, _) = parent_expr.kind
+        && receiver.hir_id == use_ctxt.child_id
+        && let Some(method_did) = cx.typeck_results().type_dependent_def_id(parent_expr.hir_id)
+        && let Some(trait_did) = cx.tcx.trait_of_item(method_did)
+        && matches!(
+            cx.tcx.get_diagnostic_name(trait_did),
+            Some(sym::Iterator | sym::IntoIterator | sym::RangeBounds)
+        )
+    {
+        return true;
+    }
+
+    // Check if `expr` is an argument of a call which requires an `Iterator`, `IntoIterator`,
+    // or `RangeBounds` trait.
+    if let ExprKind::Call(_, args) | ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
+        && let Some(id) = fn_def_id(cx, parent_expr)
+        && let Some(arg_idx) = args.iter().position(|e| e.hir_id == use_ctxt.child_id)
+    {
+        let input_idx = if matches!(parent_expr.kind, ExprKind::MethodCall(..)) {
+            arg_idx + 1
+        } else {
+            arg_idx
+        };
+        let inputs = cx
+            .tcx
+            .liberate_late_bound_regions(id, cx.tcx.fn_sig(id).instantiate_identity())
+            .inputs();
+        let expr_ty = inputs[input_idx];
+        // Check that the `expr` type is present only once, otherwise modifying just one of them might be
+        // risky if they are referenced using the same generic type for example.
+        if inputs.iter().enumerate().all(|(n, ty)|
+                                         n == input_idx
+                                         || !ty.walk().any(|arg| matches!(arg.kind(),
+                                                                          GenericArgKind::Type(ty) if ty == expr_ty)))
+            // Look for a clause requiring `Iterator`, `IntoIterator`, or `RangeBounds`, and resolving to `expr_type`.
+            && cx
+                .tcx
+                .param_env(id)
+                .caller_bounds()
+                .into_iter()
+                .any(|p| {
+                    if let ClauseKind::Trait(t) = p.kind().skip_binder()
+                        && t.polarity == PredicatePolarity::Positive
+                        && matches!(
+                            cx.tcx.get_diagnostic_name(t.trait_ref.def_id),
+                            Some(sym::Iterator | sym::IntoIterator | sym::RangeBounds)
+                        )
+                    {
+                        t.self_ty() == expr_ty
+                    } else {
+                        false
+                    }
+                })
+        {
+            return true;
+        }
+    }
+
+    // Check if `expr` is used for indexing, and if the switched range type could be used
+    // as well.
+    if let ExprKind::Index(outer_expr, index, _) = parent_expr.kind
+        && index.hir_id == expr.hir_id
+        // Build the switched range type (for example `RangeInclusive<usize>`).
+        && let Some(switched_range_def_id) = match original {
+            RangeLimits::HalfOpen => cx.tcx.lang_items().range_inclusive_struct(),
+            RangeLimits::Closed => cx.tcx.lang_items().range_struct(),
+        }
+        && let switched_range_ty = cx
+            .tcx
+            .type_of(switched_range_def_id)
+            .instantiate(cx.tcx, &[inner_ty.into()])
+        // Check that the switched range type can be used for indexing the original expression
+        // through the `Index` or `IndexMut` trait.
+        && let ty::Ref(_, outer_ty, mutability) = cx.typeck_results().expr_ty_adjusted(outer_expr).kind()
+        && let Some(index_def_id) = match mutability {
+            Mutability::Not => cx.tcx.lang_items().index_trait(),
+            Mutability::Mut => cx.tcx.lang_items().index_mut_trait(),
+        }
+       && implements_trait(cx, *outer_ty, index_def_id, &[switched_range_ty.into()])
+    // We could also check that the associated item of the `index_def_id` trait with the switched range type
+    // return the same type, but it is reasonable to expect so. We can't check that the result is identical
+    // in both `Index<Range<…>>` and `Index<RangeInclusive<…>>` anyway.
+    {
+        return true;
+    }
+
+    false
+}
+
 // exclusive range plus one: `x..(y+1)`
-fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
+fn check_exclusive_range_plus_one<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if expr.span.can_be_used_for_suggestions()
         && let Some(higher::Range {
             start,
@@ -353,6 +475,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             limits: RangeLimits::HalfOpen,
         }) = higher::Range::hir(expr)
         && let Some(y) = y_plus_one(cx, end)
+        && can_switch_ranges(cx, expr, RangeLimits::HalfOpen, cx.typeck_results().expr_ty(y))
     {
         let span = expr.span;
         span_lint_and_then(
@@ -383,7 +506,7 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
 }
 
 // inclusive range minus one: `x..=(y-1)`
-fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
+fn check_inclusive_range_minus_one<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
     if expr.span.can_be_used_for_suggestions()
         && let Some(higher::Range {
             start,
@@ -391,6 +514,7 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             limits: RangeLimits::Closed,
         }) = higher::Range::hir(expr)
         && let Some(y) = y_minus_one(cx, end)
+        && can_switch_ranges(cx, expr, RangeLimits::Closed, cx.typeck_results().expr_ty(y))
     {
         span_lint_and_then(
             cx,
