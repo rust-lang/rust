@@ -141,8 +141,6 @@ mod i_to_f {
     }
 }
 
-// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
-#[cfg(not(target_arch = "powerpc64"))]
 mod f_to_i {
     use super::*;
 

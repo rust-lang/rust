@@ -2,11 +2,8 @@
 #![allow(unreachable_code)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
-#[cfg(not(target_arch = "powerpc64"))]
 use testcrate::*;
 
-// PowerPC tests are failing on LLVM 13: https://github.com/rust-lang/rust/issues/88520
-#[cfg(not(target_arch = "powerpc64"))]
 mod float_comparisons {
     use super::*;
 
