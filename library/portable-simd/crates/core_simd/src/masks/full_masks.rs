@@ -238,7 +238,6 @@ where
     T: MaskElement,
     LaneCount<N>: SupportedLaneCount,
 {
-    /// Return the `MaskElement` of the `Mask`
     #[inline]
     fn from(value: Mask<T, N>) -> Self {
         value.0

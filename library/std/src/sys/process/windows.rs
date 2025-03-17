@@ -121,7 +121,7 @@ impl PartialEq<str> for EnvKey {
 // Environment variable keys should preserve their original case even though
 // they are compared using a caseless string mapping.
 impl From<OsString> for EnvKey {
-    /// Create a new `EnvKey` from `OsString` and it's encode wide iter.
+    /// Create a new `EnvKey` from `OsString` and its encode wide iter.
     ///
     /// ## Cost
     /// Has to collect `OsString.encode_wide` which allocates a new `Vec`

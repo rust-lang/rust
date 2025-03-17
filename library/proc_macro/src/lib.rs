@@ -722,7 +722,6 @@ impl fmt::Debug for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Group> for TokenTree {
-    /// Wrap `Group` in `TokenTree::Group`
     fn from(g: Group) -> TokenTree {
         TokenTree::Group(g)
     }
@@ -730,7 +729,6 @@ impl From<Group> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Ident> for TokenTree {
-    /// Wrap `Ident` in `TokenTree::Ident`
     fn from(g: Ident) -> TokenTree {
         TokenTree::Ident(g)
     }
@@ -738,7 +736,6 @@ impl From<Ident> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Punct> for TokenTree {
-    /// Wrap `Punct` in `TokenTree::Punct`
     fn from(g: Punct) -> TokenTree {
         TokenTree::Punct(g)
     }
@@ -746,7 +743,6 @@ impl From<Punct> for TokenTree {
 
 #[stable(feature = "proc_macro_lib2", since = "1.29.0")]
 impl From<Literal> for TokenTree {
-    /// Wrap `Literal` in `TokenTree::Literal`
     fn from(g: Literal) -> TokenTree {
         TokenTree::Literal(g)
     }
