@@ -45,6 +45,12 @@ pub(crate) fn calc_result<'a>(
     time_opts: Option<&time::TestTimeOptions>,
     exec_time: Option<&time::TestExecTime>,
 ) -> TestResult {
+    let at_location = if desc.source_file != "" {
+        format!(" at {}:{}:{}", desc.source_file, desc.start_line, desc.start_col)
+    } else {
+        "".to_string()
+    };
+
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
         (&ShouldPanic::YesWithMessage(msg), Err(err)) => {
@@ -53,26 +59,32 @@ pub(crate) fn calc_result<'a>(
                 .map(|e| &**e)
                 .or_else(|| err.downcast_ref::<&'static str>().copied());
 
+            let shoud_panic_location = if desc.source_file != "" {
+                format!("should panic with message{}\n      ", at_location)
+            } else {
+                "".to_string()
+            };
+
             if maybe_panic_str.map(|e| e.contains(msg)).unwrap_or(false) {
                 TestResult::TrOk
             } else if let Some(panic_str) = maybe_panic_str {
                 TestResult::TrFailedMsg(format!(
-                    r#"panic did not contain expected string
+                    r#"{shoud_panic_location}panic did not contain expected string
       panic message: `{panic_str:?}`,
- expected substring: `{msg:?}`"#
+      expected substring: `{msg:?}`"#
                 ))
             } else {
                 TestResult::TrFailedMsg(format!(
-                    r#"expected panic with string value,
- found non-string value: `{:?}`
-     expected substring: `{:?}`"#,
+                    r#"{shoud_panic_location}expected panic with string value,
+      found non-string value: `{:?}`
+      expected substring: `{:?}`"#,
                     (*err).type_id(),
                     msg
                 ))
             }
         }
         (&ShouldPanic::Yes, Ok(())) | (&ShouldPanic::YesWithMessage(_), Ok(())) => {
-            TestResult::TrFailedMsg("test did not panic as expected".to_string())
+            TestResult::TrFailedMsg(format!("test did not panic as expected{}", at_location))
         }
         _ => TestResult::TrFailed,
     };

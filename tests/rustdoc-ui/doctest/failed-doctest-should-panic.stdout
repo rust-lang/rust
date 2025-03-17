@@ -5,7 +5,7 @@ test $DIR/failed-doctest-should-panic.rs - Foo (line 10) - should panic ... FAIL
 failures:
 
 ---- $DIR/failed-doctest-should-panic.rs - Foo (line 10) stdout ----
-note: test did not panic as expected
+note: test did not panic as expected at $DIR/failed-doctest-should-panic.rs:10:0
 
 failures:
     $DIR/failed-doctest-should-panic.rs - Foo (line 10)
