@@ -92,6 +92,7 @@ fn do_check_simd_vector_abi<'tcx>(
     }
 }
 
+/// Determines whether the given argument is passed the same way on the old and new wasm ABIs.
 fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool {
     if matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
         return true;
@@ -120,16 +121,16 @@ fn do_check_wasm_abi<'tcx>(
     is_call: bool,
     span: impl Fn() -> Span,
 ) {
-    // Only proceed for `extern "C" fn` on wasm32-unknown-unknown (same check as what `adjust_for_foreign_abi` uses to call `compute_wasm_abi_info`).
+    // Only proceed for `extern "C" fn` on wasm32-unknown-unknown (same check as what `adjust_for_foreign_abi` uses to call `compute_wasm_abi_info`),
+    // and only proceed if `wasm_c_abi_opt` indicates we should emit the lint.
     if !(tcx.sess.target.arch == "wasm32"
         && tcx.sess.target.os == "unknown"
-        && tcx.wasm_c_abi_opt() == WasmCAbi::Legacy
+        && tcx.wasm_c_abi_opt() == WasmCAbi::Legacy { with_lint: true }
         && abi.conv == Conv::C)
     {
         return;
     }
-    // Warn against all types whose ABI will change. That's all arguments except for things passed as scalars.
-    // Return values are not affected by this change.
+    // Warn against all types whose ABI will change. Return values are not affected by this change.
     for arg_abi in abi.args.iter() {
         if wasm_abi_safe(tcx, arg_abi) {
             continue;
