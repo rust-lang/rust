@@ -112,6 +112,14 @@ pub use core::prelude::v1::deref;
 )]
 pub use core::prelude::v1::define_opaque;
 
+#[unstable(feature = "eii", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::{eii, unsafe_eii};
+
+#[unstable(feature = "eii_internals", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::eii_macro_for;
+
 // The file so far is equivalent to core/src/prelude/v1.rs. It is duplicated
 // rather than glob imported because we want docs to show these re-exports as
 // pointing to within `std`.
