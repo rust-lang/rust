@@ -39,6 +39,7 @@ pub fn pointeesized() -> Box<impl Tr + PointeeSized> {
 //~^ ERROR: the size for values of type `impl Tr + PointeeSized` cannot be known
         let y: Box<dyn Tr> = x;
 //~^ ERROR: the size for values of type `impl Tr + PointeeSized` cannot be known
+//~| ERROR: the size for values of type `impl Tr + PointeeSized` cannot be known
     }
     Box::new(1u32)
 }
