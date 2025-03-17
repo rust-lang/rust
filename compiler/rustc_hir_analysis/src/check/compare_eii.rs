@@ -68,6 +68,7 @@ fn check_region_bounds_on_impl_item<'tcx>(
         let mut generics_span = None;
         let mut bounds_span = vec![];
         let mut where_span = None;
+
         if let Some(declaration_node) = tcx.hir_get_if_local(declaration)
             && let Some(declaration_generics) = declaration_node.generics()
         {
@@ -83,11 +84,9 @@ fn check_region_bounds_on_impl_item<'tcx>(
                     }
                 }
             }
-            if let Some(declaration_node) = tcx.hir_get_if_local(declaration)
-                && let Some(declaration_generics) = declaration_node.generics()
-            {
+            if let Some(implementation_generics) = tcx.hir_get_generics(external_impl) {
                 let mut impl_bounds = 0;
-                for p in declaration_generics.predicates {
+                for p in implementation_generics.predicates {
                     if let hir::WherePredicateKind::BoundPredicate(pred) = p.kind {
                         for b in pred.bounds {
                             if let hir::GenericBound::Outlives(_) = b {
@@ -98,8 +97,8 @@ fn check_region_bounds_on_impl_item<'tcx>(
                 }
                 if impl_bounds == bounds_span.len() {
                     bounds_span = vec![];
-                } else if declaration_generics.has_where_clause_predicates {
-                    where_span = Some(declaration_generics.where_clause_span);
+                } else if implementation_generics.has_where_clause_predicates {
+                    where_span = Some(implementation_generics.where_clause_span);
                 }
             }
         }
@@ -145,7 +144,8 @@ fn compare_number_of_method_arguments<'tcx>(
                     }
                 })
             })
-            .or_else(|| tcx.hir_span_if_local(declaration));
+            .or_else(|| tcx.hir_span_if_local(declaration))
+            .unwrap_or_else(|| tcx.def_span(declaration));
 
         let (_, external_impl_sig, _, _) = &tcx.hir_expect_item(external_impl).expect_fn();
         let pos = external_impl_number_args.saturating_sub(1);
@@ -171,15 +171,12 @@ fn compare_number_of_method_arguments<'tcx>(
             declaration_number_args
         );
 
-        if let Some(declaration_span) = declaration_span {
-            err.span_label(
-                declaration_span,
-                format!(
-                    "requires {}",
-                    potentially_plural_count(declaration_number_args, "parameter")
-                ),
-            );
-        }
+        // if let Some(declaration_span) = declaration_span {
+        err.span_label(
+            declaration_span,
+            format!("requires {}", potentially_plural_count(declaration_number_args, "parameter")),
+        );
+        // }
 
         err.span_label(
             impl_span,
@@ -395,7 +392,11 @@ fn extract_spans_for_error_reporting<'tcx>(
             declaration_args.and_then(|mut args| args.nth(i)),
             external_impl_name,
         ),
-        _ => (cause.span, tcx.hir_span_if_local(declaration), external_impl_name),
+        _ => (
+            cause.span,
+            tcx.hir_span_if_local(declaration).or_else(|| Some(tcx.def_span(declaration))),
+            external_impl_name,
+        ),
     }
 }
 
