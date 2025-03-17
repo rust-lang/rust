@@ -26,6 +26,7 @@ use rustc_span::{DUMMY_SP, Span, sym};
 use tracing::{debug, instrument, warn};
 
 use super::ObligationCtxt;
+use super::util::is_unelaborated_sizedness_optimisation;
 use crate::error_reporting::traits::suggest_new_overflow_limit;
 use crate::infer::InferOk;
 use crate::solve::inspect::{InspectGoal, ProofTreeInferCtxtExt, ProofTreeVisitor};
@@ -581,6 +582,16 @@ fn try_prove_negated_where_clause<'tcx>(
     let Some(negative_predicate) = clause.as_predicate().flip_polarity(root_infcx.tcx) else {
         return false;
     };
+
+    if let Some(pred) = clause.as_trait_clause()
+        && is_unelaborated_sizedness_optimisation(
+            root_infcx,
+            pred,
+            param_env.caller_bounds().iter().filter_map(|c| c.as_trait_clause()),
+        )
+    {
+        return false;
+    }
 
     // N.B. We don't need to use intercrate mode here because we're trying to prove
     // the *existence* of a negative goal, not the non-existence of a positive goal.

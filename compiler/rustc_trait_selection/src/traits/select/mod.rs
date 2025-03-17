@@ -33,6 +33,7 @@ use rustc_middle::ty::{
 use rustc_span::{Symbol, sym};
 use rustc_type_ir::elaborate;
 use rustc_type_ir::solve::SizedTraitKind;
+use thin_vec::thin_vec;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -2700,12 +2701,21 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
         obligation: &PolyTraitObligation<'tcx>,
         poly_trait_ref: ty::PolyTraitRef<'tcx>,
     ) -> Result<PredicateObligations<'tcx>, ()> {
+        if util::is_unelaborated_sizedness_optimisation(
+            self.infcx,
+            obligation.predicate,
+            [poly_trait_ref.upcast(self.infcx.tcx)],
+        ) {
+            return Ok(thin_vec![]);
+        }
+
         let predicate = self.infcx.enter_forall_and_leak_universe(obligation.predicate);
         let trait_ref = self.infcx.instantiate_binder_with_fresh_vars(
             obligation.cause.span,
             HigherRankedType,
             poly_trait_ref,
         );
+
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)
