@@ -2297,13 +2297,27 @@ impl Child {
 /// considered undesirable. Note that returning from `main` also calls `exit`, so making `exit` an
 /// unsafe operation is not an option.)
 ///
-/// ## Safe interop with C code
+/// ## Platform-specific behavior
 ///
-/// This function is safe to call as long as `exit` is only ever invoked from Rust. However, on some
-/// platforms this function is implemented by calling the C function [`exit`][C-exit]. As of C23,
-/// the C standard does not permit multiple threads to call `exit` concurrently. Rust mitigates this
-/// with a lock, but if C code calls `exit`, that can still cause undefined behavior. Note that
-/// returning from `main` is equivalent to calling `exit`.
+/// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
+/// will be visible to a parent process inspecting the exit code. On most
+/// Unix-like platforms, only the eight least-significant bits are considered.
+///
+/// For example, the exit code for this example will be `0` on Linux, but `256`
+/// on Windows:
+///
+/// ```no_run
+/// use std::process;
+///
+/// process::exit(0x0100);
+/// ```
+///
+/// ### Safe interop with C code
+///
+/// On Unix, this function is currently implemented using the `exit` C function [`exit`][C-exit]. As
+/// of C23, the C standard does not permit multiple threads to call `exit` concurrently. Rust
+/// mitigates this with a lock, but if C code calls `exit`, that can still cause undefined behavior.
+/// Note that returning from `main` is equivalent to calling `exit`.
 ///
 /// Therefore, it is undefined behavior to have two concurrent threads perform the following
 /// without synchronization:
@@ -2324,21 +2338,6 @@ impl Child {
 /// - [GNU C library Bugzilla](https://sourceware.org/bugzilla/show_bug.cgi?id=31997)
 ///
 /// [C-exit]: https://en.cppreference.com/w/c/program/exit
-///
-/// ## Platform-specific behavior
-///
-/// **Unix**: On Unix-like platforms, it is unlikely that all 32 bits of `exit`
-/// will be visible to a parent process inspecting the exit code. On most
-/// Unix-like platforms, only the eight least-significant bits are considered.
-///
-/// For example, the exit code for this example will be `0` on Linux, but `256`
-/// on Windows:
-///
-/// ```no_run
-/// use std::process;
-///
-/// process::exit(0x0100);
-/// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "process_exit")]
 pub fn exit(code: i32) -> ! {
