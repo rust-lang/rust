@@ -252,7 +252,14 @@ impl SerializedDepGraph {
             .collect();
 
         for (idx, node) in nodes.iter_enumerated() {
-            index[node.kind.as_usize()].insert(node.hash, idx);
+            if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
+                panic!(
+                    "Error: A dep graph node does not have an unique index. \
+                     Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
+                     can help narrow down the issue for reporting. A clean build may also work around the issue.\n
+                     DepNode: {node:?}"
+                )
+            }
         }
 
         Arc::new(SerializedDepGraph {
