@@ -2083,6 +2083,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4ee93343901ab17bd981295f2cf0026d4ad018c7c31ba84549a4ddbb47a45104"
 
 [[package]]
+name = "literal-escaper"
+version = "0.0.0"
+dependencies = [
+ "rustc-std-workspace-std 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "lld-wrapper"
 version = "0.1.0"
 
@@ -3149,6 +3156,12 @@ name = "rustc-std-workspace-std"
 version = "1.0.1"
 
 [[package]]
+name = "rustc-std-workspace-std"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aba676a20abe46e5b0f1b0deae474aaaf31407e6c71147159890574599da04ef"
+
+[[package]]
 name = "rustc_abi"
 version = "0.0.0"
 dependencies = [
@@ -3186,6 +3199,7 @@ name = "rustc_ast"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "literal-escaper",
  "memchr",
  "rustc_ast_ir",
  "rustc_data_structures",
@@ -3895,6 +3909,7 @@ name = "rustc_lexer"
 version = "0.0.0"
 dependencies = [
  "expect-test",
+ "literal-escaper",
  "memchr",
  "unicode-properties",
  "unicode-xid",
@@ -4157,6 +4172,7 @@ name = "rustc_parse"
 version = "0.0.0"
 dependencies = [
  "bitflags",
+ "literal-escaper",
  "rustc_ast",
  "rustc_ast_pretty",
  "rustc_data_structures",
@@ -4179,6 +4195,7 @@ dependencies = [
 name = "rustc_parse_format"
 version = "0.0.0"
 dependencies = [
+ "literal-escaper",
  "rustc_index",
  "rustc_lexer",
 ]

@@ -6,6 +6,7 @@ use core::ops::{Bound, ControlFlow};
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::{IdentIsRaw, MetaVarKind};
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
+use literal_escaper::unescape_char;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
@@ -21,7 +22,6 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
-use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
