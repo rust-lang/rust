@@ -18,7 +18,7 @@ use rustc_middle::traits::{BuiltinImplSource, SignatureMismatchData};
 use rustc_middle::ty::{self, GenericArgsRef, Ty, TyCtxt, Upcast};
 use rustc_middle::{bug, span_bug};
 use rustc_span::def_id::DefId;
-use rustc_type_ir::elaborate;
+use rustc_type_ir::{Binder, elaborate};
 use thin_vec::thin_vec;
 use tracing::{debug, instrument};
 
@@ -188,6 +188,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             candidate,
             &mut obligations,
         );
+
+        if tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
+            && util::sizedness_elab_opt_fast_path_from_traitrefs(
+                self.infcx,
+                obligation.predicate.self_ty(),
+                [Binder::dummy(candidate)],
+            )
+            .is_some()
+        {
+            return Ok(obligations);
+        }
 
         obligations.extend(
             self.infcx

@@ -8,6 +8,7 @@ use std::fmt::Debug;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
@@ -581,6 +582,21 @@ fn try_prove_negated_where_clause<'tcx>(
     let Some(negative_predicate) = clause.as_predicate().flip_polarity(root_infcx.tcx) else {
         return false;
     };
+
+    let maybe_meta_sized_self_ty = clause
+        .as_trait_clause()
+        .filter(|c| root_infcx.tcx.is_lang_item(c.def_id(), LangItem::MetaSized))
+        .map(|c| c.self_ty());
+    if let Some(meta_sized_self_ty) = maybe_meta_sized_self_ty
+        && util::sizedness_elab_opt_fast_path_from_paramenv(
+            root_infcx,
+            meta_sized_self_ty,
+            param_env,
+        )
+        .is_some()
+    {
+        return false;
+    }
 
     // N.B. We don't need to use intercrate mode here because we're trying to prove
     // the *existence* of a negative goal, not the non-existence of a positive goal.

@@ -9,6 +9,8 @@ use rustc_middle::ty::{
     self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::{InferCtxtLike, Interner, Upcast};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -503,4 +505,69 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+}
+
+/// To improve performance, Sizedness traits are not elaborated and so special-casing is required
+/// in the trait solver to find a `Sized` candidate for a `MetaSized` predicate. This is a helper
+/// function for that special-casing, intended to be used when the obligation to be proven has been
+/// confirmed to be `MetaSized`, and checking whether the `param_env` contains `Sized` for the same
+/// `self_ty` is all that remains to be done.
+// Ideally this would be re-used by the next solver, but there is no `InferCtxtLike` implementor.
+pub(crate) fn sizedness_elab_opt_fast_path_from_paramenv<Infcx, I>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    param_env: I::ParamEnv,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitPredicate<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+{
+    #[allow(rustc::usage_of_type_ir_inherent)]
+    use rustc_type_ir::inherent::*;
+    sizedness_elab_opt_fast_path_from_clauses(infcx, self_ty, param_env.caller_bounds().iter())
+}
+
+/// Same as `sizedness_elab_opt_fast_path_from_paramenv` but takes an iterator of clauses instead
+/// of a parameter environment.
+pub(crate) fn sizedness_elab_opt_fast_path_from_clauses<Infcx, I, Trs>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    clauses: Trs,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitPredicate<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+    Trs: IntoIterator<Item = I::Clause>,
+{
+    #[allow(rustc::usage_of_type_ir_inherent)]
+    use rustc_type_ir::inherent::*;
+    sizedness_elab_opt_fast_path_from_traitrefs(
+        infcx,
+        self_ty,
+        clauses
+            .into_iter()
+            .filter_map(|p| p.as_trait_clause())
+            .map(|c| c.map_bound(|c| c.trait_ref)),
+    )
+    .map(|f| f.map_bound(|f| f.upcast(infcx.cx())))
+}
+
+/// Same as `sizedness_elab_opt_fast_path_from_paramenv` but takes an iterator of trait refs instead
+/// of a parameter environment.
+pub(crate) fn sizedness_elab_opt_fast_path_from_traitrefs<Infcx, I, TraitRefs>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    trait_refs: TraitRefs,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitRef<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+    TraitRefs: IntoIterator<Item = rustc_type_ir::Binder<I, rustc_type_ir::TraitRef<I>>>,
+{
+    trait_refs.into_iter().find(|c| {
+        let expected_self_ty = infcx.resolve_vars_if_possible(self_ty);
+        let found_self_ty = infcx.resolve_vars_if_possible(c.self_ty());
+        expected_self_ty == found_self_ty
+            && infcx.cx().is_lang_item(c.def_id(), TraitSolverLangItem::Sized)
+    })
 }

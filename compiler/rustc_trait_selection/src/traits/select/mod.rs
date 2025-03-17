@@ -31,8 +31,9 @@ use rustc_middle::ty::{
     TypingMode, Upcast,
 };
 use rustc_span::{Symbol, sym};
-use rustc_type_ir::elaborate;
 use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::{Binder, elaborate};
+use thin_vec::thin_vec;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -2641,6 +2642,18 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             HigherRankedType,
             poly_trait_ref,
         );
+
+        if self.tcx().is_lang_item(predicate.def_id(), LangItem::MetaSized)
+            && util::sizedness_elab_opt_fast_path_from_traitrefs(
+                self.infcx,
+                Binder::dummy(predicate.self_ty()),
+                [Binder::dummy(trait_ref)],
+            )
+            .is_some()
+        {
+            return Ok(thin_vec![]);
+        }
+
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)

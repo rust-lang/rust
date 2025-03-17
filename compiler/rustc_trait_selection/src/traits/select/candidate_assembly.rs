@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::{Interner, elaborate};
+use rustc_type_ir::{Binder, Interner, elaborate};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -188,8 +188,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx| {
-                    let Some(bound) = bound.as_trait_clause() else {
+                |selcx, clause, idx| {
+                    let Some(bound) = clause.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
                     if bound.polarity() != placeholder_trait_predicate.polarity {
@@ -197,6 +197,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        if selcx
+                            .tcx()
+                            .is_lang_item(placeholder_trait_predicate.def_id(), LangItem::MetaSized)
+                            && util::sizedness_elab_opt_fast_path_from_clauses(
+                                selcx.infcx,
+                                Binder::dummy(placeholder_trait_predicate.self_ty()),
+                                [clause],
+                            )
+                            .is_some()
+                        {
+                            candidates.vec.push(ProjectionCandidate(idx));
+                            return;
+                        }
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -234,6 +248,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
+
+        if self.tcx().is_lang_item(stack.obligation.predicate.def_id(), LangItem::MetaSized)
+            && let Some(bound) = util::sizedness_elab_opt_fast_path_from_paramenv(
+                self.infcx,
+                stack.obligation.self_ty(),
+                stack.obligation.param_env,
+            )
+        {
+            candidates.vec.push(ParamCandidate(bound));
+            return Ok(());
+        }
 
         let bounds = stack
             .obligation
