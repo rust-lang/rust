@@ -13,7 +13,7 @@ use rustc_data_structures::sorted_map::SortedIndexMultiMap;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_hir::{self as hir, BindingMode, ByRef, HirId, Node};
+use rustc_hir::{self as hir, BindingMode, ByRef, HirId, ItemLocalId, Node};
 use rustc_index::bit_set::GrowableBitSet;
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
@@ -221,7 +221,7 @@ struct Builder<'a, 'tcx> {
     coverage_info: Option<coverageinfo::CoverageInfoBuilder>,
 }
 
-type CaptureMap<'tcx> = SortedIndexMultiMap<usize, HirId, Capture<'tcx>>;
+type CaptureMap<'tcx> = SortedIndexMultiMap<usize, ItemLocalId, Capture<'tcx>>;
 
 #[derive(Debug)]
 struct Capture<'tcx> {
@@ -853,6 +853,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let capture_tys = upvar_args.upvar_tys();
 
         let tcx = self.tcx;
+        let mut upvar_owner = None;
         self.upvars = tcx
             .closure_captures(self.def_id)
             .iter()
@@ -866,6 +867,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     HirPlaceBase::Upvar(upvar_id) => upvar_id.var_path.hir_id,
                     _ => bug!("Expected an upvar"),
                 };
+                let upvar_base = upvar_owner.get_or_insert(var_id.owner);
+                assert_eq!(*upvar_base, var_id.owner);
+                let var_id = var_id.local_id;
 
                 let mutability = captured_place.mutability;
 
