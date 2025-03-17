@@ -16,7 +16,8 @@ use thin_vec::ThinVec;
 use tracing::instrument;
 
 use super::errors::{
-    InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound, TupleStructWithDefault,
+    ExternBlockSuggestion, FnWithoutBody, InvalidAbi, InvalidAbiSuggestion,
+    MisplacedRelaxTraitBound, TupleStructWithDefault,
 };
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
@@ -211,6 +212,35 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 define_opaque,
                 ..
             }) => {
+                let is_instrinsic = attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
+                if body.is_none() && !is_instrinsic {
+                    self.dcx().emit_err(FnWithoutBody {
+                        span,
+                        replace_span: {
+                            let source_map = self.tcx.sess.source_map();
+                            let end = source_map.end_point(span);
+                            if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
+                                end
+                            } else {
+                                span.shrink_to_hi()
+                            }
+                        },
+                        extern_block_suggestion: match header.ext {
+                            Extern::None => None,
+                            Extern::Implicit(start_span) => Some(ExternBlockSuggestion::Implicit {
+                                start_span,
+                                end_span: span.shrink_to_hi(),
+                            }),
+                            Extern::Explicit(abi, start_span) => {
+                                Some(ExternBlockSuggestion::Explicit {
+                                    start_span,
+                                    end_span: span.shrink_to_hi(),
+                                    abi: abi.symbol_unescaped,
+                                })
+                            }
+                        },
+                    });
+                }
                 self.with_new_scopes(*fn_sig_span, |this| {
                     // Note: we don't need to change the return type from `T` to
                     // `impl Future<Output = T>` here because lower_body
@@ -224,8 +254,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         decl,
                         coroutine_kind,
                         body.as_deref(),
-                        attrs,
                         contract.as_deref(),
+                        is_instrinsic,
                     );
 
                     let itctx = ImplTraitContext::Universal;
@@ -815,8 +845,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &sig.decl,
                     sig.header.coroutine_kind,
                     Some(body),
-                    attrs,
                     contract.as_deref(),
+                    false,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -934,8 +964,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     &sig.decl,
                     sig.header.coroutine_kind,
                     body.as_deref(),
-                    attrs,
                     contract.as_deref(),
+                    false,
                 );
                 let (generics, sig) = self.lower_method_sig(
                     generics,
@@ -1192,15 +1222,15 @@ impl<'hir> LoweringContext<'_, 'hir> {
         decl: &FnDecl,
         coroutine_kind: Option<CoroutineKind>,
         body: Option<&Block>,
-        attrs: &'hir [hir::Attribute],
         contract: Option<&FnContract>,
+        is_instrinsic: bool,
     ) -> hir::BodyId {
         let Some(body) = body else {
             // Functions without a body are an error, except if this is an intrinsic. For those we
             // create a fake body so that the entire rest of the compiler doesn't have to deal with
             // this as a special case.
             return self.lower_fn_body(decl, contract, |this| {
-                if attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic) {
+                if is_instrinsic {
                     let span = this.lower_span(span);
                     let empty_block = hir::Block {
                         hir_id: this.next_id(),

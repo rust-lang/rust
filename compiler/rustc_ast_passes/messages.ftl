@@ -60,8 +60,6 @@ ast_passes_equality_in_where = equality constraints are not yet supported in `wh
     .suggestion_path = if `{$trait_segment}::{$potential_assoc}` is an associated type you're trying to set, use the associated type binding syntax
     .note = see issue #20041 <https://github.com/rust-lang/rust/issues/20041> for more information
 
-ast_passes_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
-
 ast_passes_extern_fn_qualifiers = functions in `extern` blocks cannot have `{$kw}` qualifier
     .label = in this `extern` block
     .suggestion = remove the `{$kw}` qualifier
@@ -108,10 +106,6 @@ ast_passes_fn_param_forbidden_self =
 
 ast_passes_fn_param_too_many =
     function can not have more than {$max_num_args} arguments
-
-ast_passes_fn_without_body =
-    free function without a body
-    .suggestion = provide a definition for the function
 
 ast_passes_forbidden_bound =
     bounds cannot be used in this context

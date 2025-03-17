@@ -918,36 +918,16 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 return; // Avoid visiting again.
             }
             ItemKind::Fn(
-                func
-                @ box Fn { defaultness, generics: _, sig, contract: _, body, define_opaque: _ },
+                func @ box Fn {
+                    defaultness,
+                    generics: _,
+                    sig: _,
+                    contract: _,
+                    body: _,
+                    define_opaque: _,
+                },
             ) => {
                 self.check_defaultness(item.span, *defaultness);
-
-                let is_intrinsic =
-                    item.attrs.iter().any(|a| a.name_or_empty() == sym::rustc_intrinsic);
-                if body.is_none() && !is_intrinsic {
-                    self.dcx().emit_err(errors::FnWithoutBody {
-                        span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
-                        extern_block_suggestion: match sig.header.ext {
-                            Extern::None => None,
-                            Extern::Implicit(start_span) => {
-                                Some(errors::ExternBlockSuggestion::Implicit {
-                                    start_span,
-                                    end_span: item.span.shrink_to_hi(),
-                                })
-                            }
-                            Extern::Explicit(abi, start_span) => {
-                                Some(errors::ExternBlockSuggestion::Explicit {
-                                    start_span,
-                                    end_span: item.span.shrink_to_hi(),
-                                    abi: abi.symbol_unescaped,
-                                })
-                            }
-                        },
-                    });
-                }
-
                 self.visit_vis(&item.vis);
                 self.visit_ident(&item.ident);
                 let kind = FnKind::Fn(FnCtxt::Free, &item.ident, &item.vis, &*func);

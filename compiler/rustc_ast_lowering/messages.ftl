@@ -59,9 +59,15 @@ ast_lowering_default_field_in_tuple = default fields are not supported in tuple 
 ast_lowering_does_not_support_modifiers =
     the `{$class_name}` register class does not support template modifiers
 
+ast_lowering_extern_block_suggestion = if you meant to declare an externally defined function, use an `extern` block
+
 ast_lowering_extra_double_dot =
     `..` can only be used once per {$ctx} pattern
     .label = can only be used once per {$ctx} pattern
+
+ast_lowering_fn_without_body =
+    free function without a body
+    .suggestion = provide a definition for the function
 
 ast_lowering_functional_record_update_destructuring_assignment =
     functional record updates are not allowed in destructuring assignments
