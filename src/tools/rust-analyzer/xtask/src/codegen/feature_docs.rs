@@ -8,8 +8,12 @@ use crate::{
     util::list_rust_files,
 };
 
-pub(crate) fn generate(_check: bool) {
+pub(crate) fn generate(check: bool) {
     let features = Feature::collect().unwrap();
+    // Do not generate docs when run with `--check`
+    if check {
+        return;
+    }
     let contents = features.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
     let contents = add_preamble(crate::flags::CodegenType::FeatureDocs, contents);
     let dst = project_root().join("docs/book/src/features_generated.md");
