@@ -1769,8 +1769,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
-        let ident = self.lower_ident(l.ident);
-        self.new_named_lifetime(l.id, l.id, ident)
+        self.new_named_lifetime(l.id, l.id, l.ident)
     }
 
     #[instrument(level = "debug", skip(self))]

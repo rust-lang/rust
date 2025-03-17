@@ -1757,7 +1757,6 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 })
             }
             GenericParamKind::Lifetime => {
-                let ident = self.lower_ident(ident);
                 let lt_id = self.next_node_id();
                 let lifetime = self.new_named_lifetime(id, lt_id, ident);
                 hir::WherePredicateKind::RegionPredicate(hir::WhereRegionPredicate {
