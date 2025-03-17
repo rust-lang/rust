@@ -25,6 +25,16 @@ mod llvm_enzyme {
 
     use crate::errors;
 
+    pub(crate) fn outer_normal_attr(
+        kind: &P<rustc_ast::NormalAttr>,
+        id: rustc_ast::AttrId,
+        span: Span,
+    ) -> rustc_ast::Attribute {
+        let style = rustc_ast::AttrStyle::Outer;
+        let kind = rustc_ast::AttrKind::Normal(kind.clone());
+        rustc_ast::Attribute { kind, id, style, span }
+    }
+
     // If we have a default `()` return type or explicitley `()` return type,
     // then we often can skip doing some work.
     fn has_ret(ty: &FnRetTy) -> bool {
@@ -268,19 +278,9 @@ mod llvm_enzyme {
         };
         let inline_never_attr = P(ast::NormalAttr { item: inline_item, tokens: None });
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let attr: ast::Attribute = ast::Attribute {
-            kind: ast::AttrKind::Normal(rustc_ad_attr.clone()),
-            id: new_id,
-            style: ast::AttrStyle::Outer,
-            span,
-        };
+        let attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let new_id = ecx.sess.psess.attr_id_generator.mk_attr_id();
-        let inline_never: ast::Attribute = ast::Attribute {
-            kind: ast::AttrKind::Normal(inline_never_attr),
-            id: new_id,
-            style: ast::AttrStyle::Outer,
-            span,
-        };
+        let inline_never = outer_normal_attr(&inline_never_attr, new_id, span);
 
         // We're avoid duplicating the attributes `#[rustc_autodiff]` and `#[inline(never)]`.
         fn same_attribute(attr: &ast::AttrKind, item: &ast::AttrKind) -> bool {
@@ -325,13 +325,7 @@ mod llvm_enzyme {
             delim: rustc_ast::token::Delimiter::Parenthesis,
             tokens: ts,
         });
-        let d_attr: ast::Attribute = ast::Attribute {
-            kind: ast::AttrKind::Normal(rustc_ad_attr.clone()),
-            id: new_id,
-            style: ast::AttrStyle::Outer,
-            span,
-        };
-
+        let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
         let d_annotatable = if is_impl {
             let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
             let d_fn = P(ast::AssocItem {
