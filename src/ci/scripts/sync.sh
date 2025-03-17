@@ -13,10 +13,10 @@ init_upstream() {
     (git remote -v | grep -w upstream && \
     git remote set-url upstream "$upstream") || \
     git remote add upstream "$upstream"
-    git fetch --no-tags --recurse-submodules=no upstream 
+    git fetch --no-tags --recurse-submodules=no upstream
 }
 
-rustup update nightly 
+rustup update nightly
 rustup default nightly
 
 NIGHTLY_COMMIT_HASH=$(rustc --version | cut -d ' ' -f 3 | cut -d '(' -f 2)
@@ -33,14 +33,14 @@ if [[ ! $DATE =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
 fi
 
 NIGHTLY_TOOLCHAIN="nightly-$DATE"
-git submodule update --init --no-recommend-shallow src/llvm-project 
+git submodule update --init --no-recommend-shallow src/llvm-project
 (cd src/llvm-project && init_upstream $LLVM_UPSTREAM)
 init_upstream $RUST_UPSTREAM
 git branch -D nightly
 git checkout -b nightly "$NIGHTLY_COMMIT_HASH" || exit
 git submodule update --rebase src/llvm-project
 git submodule set-url -- src/llvm-project $LLVM_FORK
-git submodule set-branch --branch $MAIN_BRANCH -- src/llvm-project 
+git submodule set-branch --branch $MAIN_BRANCH -- src/llvm-project
 git add src/llvm-project .gitmodules
 git commit -m "$NIGHTLY_TOOLCHAIN"
 git tag -D $BASE_TAG
