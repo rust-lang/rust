@@ -227,7 +227,13 @@ error: this boolean expression can be simplified
   --> tests/ui/nonminimal_bool.rs:214:8
    |
 LL |     if !(a < 2.0 && !b) {
-   |        ^^^^^^^^^^^^^^^^ help: try: `!(a < 2.0) || b`
+   |        ^^^^^^^^^^^^^^^^ help: try: `a >= 2.0 || b`
 
-error: aborting due to 30 previous errors
+error: this boolean expression can be simplified
+  --> tests/ui/nonminimal_bool.rs:233:12
+   |
+LL |         if !(matches!(ty, TyKind::Ref(_, _, _)) && !is_mutable(&expr)) {
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `!matches!(ty, TyKind::Ref(_, _, _)) || is_mutable(&expr)`
+
+error: aborting due to 31 previous errors
 
