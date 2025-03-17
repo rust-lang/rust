@@ -5,7 +5,7 @@ trait A {
     type X: ?Sized;
 }
 
-fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>) //~ ERROR mismatched types
+fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>) //~ ERROR
 where
     for<'b> &'b T: A,
     <&'static T as A>::X: Sized

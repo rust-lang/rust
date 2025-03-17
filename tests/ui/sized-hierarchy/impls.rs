@@ -207,6 +207,7 @@ fn main() {
     //~^ ERROR the size for values of type `main::Foo` cannot be known at compilation time
     needs_metasized::<(Foo, Foo)>();
     //~^ ERROR the size for values of type `main::Foo` cannot be known at compilation time
+    //~| ERROR the size for values of type `main::Foo` cannot be known
     needs_pointeesized::<(Foo, Foo)>();
     //~^ ERROR the size for values of type `main::Foo` cannot be known at compilation time
 

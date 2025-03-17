@@ -4,6 +4,7 @@ use smallvec::smallvec;
 
 use crate::data_structures::HashSet;
 use crate::inherent::*;
+use crate::lang_items::TraitSolverLangItem;
 use crate::outlives::{Component, push_outlives_components};
 use crate::{self as ty, Interner, Upcast as _};
 
@@ -84,6 +85,7 @@ pub fn elaborate<I: Interner, O: Elaboratable<I>>(
 }
 
 impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
+    /// Adds `obligations` to the stack.
     fn extend_deduped(&mut self, obligations: impl IntoIterator<Item = O>) {
         // Only keep those bounds that we haven't already seen.
         // This is necessary to prevent infinite recursion in some
@@ -110,6 +112,18 @@ impl<I: Interner, O: Elaboratable<I>> Elaborator<I, O> {
         let Some(clause) = elaboratable.predicate().as_clause() else {
             return;
         };
+
+        // PERF(sized-hierarchy): To avoid iterating over sizedness supertraits in
+        // parameter environments, as an optimisation, sizedness supertraits aren't
+        // elaborated, so check if a `Sized` obligation is being elaborated to a
+        // `MetaSized` obligation and emit it. Candidate assembly and confirmation
+        // are modified to check for the `Sized` subtrait when a `MetaSized` obligation
+        // is present.
+        if let Some(did) = clause.as_trait_clause().map(|c| c.def_id()) {
+            if self.cx.is_lang_item(did, TraitSolverLangItem::Sized) {
+                return;
+            }
+        }
 
         let bound_clause = clause.kind();
         match bound_clause.skip_binder() {
