@@ -332,7 +332,7 @@ fn wasm_functype<'tcx>(tcx: TyCtxt<'tcx>, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, def_id
     // please also add `wasm32-unknown-unknown` back in `tests/assembly/wasm32-naked-fn.rs`
     // basically the commit introducing this comment should be reverted
     if let PassMode::Pair { .. } = fn_abi.ret.mode {
-        let _ = WasmCAbi::Legacy;
+        let _ = WasmCAbi::Legacy { with_lint: true };
         span_bug!(
             tcx.def_span(def_id),
             "cannot return a pair (the wasm32-unknown-unknown ABI is broken, see https://github.com/rust-lang/rust/issues/115666"
@@ -384,7 +384,7 @@ fn wasm_type<'tcx>(
                 BackendRepr::SimdVector { .. } => "v128",
                 BackendRepr::Memory { .. } => {
                     // FIXME: remove this branch once the wasm32-unknown-unknown ABI is fixed
-                    let _ = WasmCAbi::Legacy;
+                    let _ = WasmCAbi::Legacy { with_lint: true };
                     span_bug!(
                         tcx.def_span(def_id),
                         "cannot use memory args (the wasm32-unknown-unknown ABI is broken, see https://github.com/rust-lang/rust/issues/115666"
