@@ -5,7 +5,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{AttributeKind, ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -756,12 +756,7 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(
-        &self,
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        keep_as_is: bool,
-    ) -> Vec<String> {
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
@@ -772,8 +767,14 @@ impl Item {
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if keep_as_is {
-                    Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                if is_json {
+                    if matches!(attr, hir::Attribute::Parsed(AttributeKind::Deprecation { .. })) {
+                        // rustdoc-json stores this in `Item::deprecation`, so we
+                        // don't want it it `Item::attrs`.
+                        None
+                    } else {
+                        Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    }
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
@@ -786,7 +787,9 @@ impl Item {
                 }
             })
             .collect();
-        if !keep_as_is
+
+        // Add #[repr(...)]
+        if !is_json
             && let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
