@@ -383,6 +383,6 @@ pub const CONFIG_CHANGE_HISTORY: &[ChangeInfo] = &[
     ChangeInfo {
         change_id: 137147,
         severity: ChangeSeverity::Info,
-        summary: "New option `build.exclude` that adds support for excluding test.",
+        summary: "Added new option `build.exclude` which works the same way as `--exclude` flag on `x`.",
     },
 ];
