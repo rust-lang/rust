@@ -5,7 +5,7 @@ use syntax::{
     SyntaxKind::WHITESPACE,
     T,
     ast::{self, AstNode, HasName, make},
-    ted,
+    ted::{self, Position},
 };
 
 use crate::{
@@ -131,7 +131,7 @@ fn add_assist(
         target,
         |builder| {
             let insert_after = ted::Position::after(builder.make_mut(adt.clone()).syntax());
-
+            let impl_is_unsafe = trait_.map(|s| s.is_unsafe(ctx.db())).unwrap_or(false);
             let impl_def_with_items =
                 impl_def_from_trait(&ctx.sema, adt, &annotated_name, trait_, replace_trait_path);
             update_attribute(builder, old_derives, old_tree, old_trait_path, attr);
@@ -141,6 +141,12 @@ fn add_assist(
             match (ctx.config.snippet_cap, impl_def_with_items) {
                 (None, None) => {
                     let impl_def = generate_trait_impl(adt, trait_path);
+                    if impl_is_unsafe {
+                        ted::insert(
+                            Position::first_child_of(impl_def.syntax()),
+                            make::token(T![unsafe]),
+                        );
+                    }
 
                     ted::insert_all(
                         insert_after,
@@ -148,6 +154,12 @@ fn add_assist(
                     );
                 }
                 (None, Some((impl_def, _))) => {
+                    if impl_is_unsafe {
+                        ted::insert(
+                            Position::first_child_of(impl_def.syntax()),
+                            make::token(T![unsafe]),
+                        );
+                    }
                     ted::insert_all(
                         insert_after,
                         vec![make::tokens::blank_line().into(), impl_def.syntax().clone().into()],
@@ -155,6 +167,13 @@ fn add_assist(
                 }
                 (Some(cap), None) => {
                     let impl_def = generate_trait_impl(adt, trait_path);
+
+                    if impl_is_unsafe {
+                        ted::insert(
+                            Position::first_child_of(impl_def.syntax()),
+                            make::token(T![unsafe]),
+                        );
+                    }
 
                     if let Some(l_curly) =
                         impl_def.assoc_item_list().and_then(|it| it.l_curly_token())
@@ -169,6 +188,14 @@ fn add_assist(
                 }
                 (Some(cap), Some((impl_def, first_assoc_item))) => {
                     let mut added_snippet = false;
+
+                    if impl_is_unsafe {
+                        ted::insert(
+                            Position::first_child_of(impl_def.syntax()),
+                            make::token(T![unsafe]),
+                        );
+                    }
+
                     if let ast::AssocItem::Fn(ref func) = first_assoc_item {
                         if let Some(m) = func.syntax().descendants().find_map(ast::MacroCall::cast)
                         {
@@ -1402,6 +1429,23 @@ impl core::fmt::Debug for Foo {
         f.debug_struct("Foo").finish()
     }
 }
+"#,
+        )
+    }
+
+    #[test]
+    fn unsafeness_of_a_trait_observed() {
+        check_assist(
+            replace_derive_with_manual_impl,
+            r#"
+//- minicore: send, derive
+#[derive(Sen$0d)]
+pub struct Foo;
+"#,
+            r#"
+pub struct Foo;
+
+unsafe impl Send for Foo {$0}
 "#,
         )
     }

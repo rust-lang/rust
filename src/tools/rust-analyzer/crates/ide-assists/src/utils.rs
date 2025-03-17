@@ -212,6 +212,7 @@ pub fn add_trait_assoc_items_to_impl(
     });
 
     let assoc_item_list = impl_.get_or_create_assoc_item_list();
+
     let mut first_item = None;
     for item in items {
         first_item.get_or_insert_with(|| item.clone());
