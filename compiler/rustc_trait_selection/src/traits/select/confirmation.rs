@@ -187,6 +187,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &mut obligations,
         );
 
+        if util::is_unelaborated_sizedness_optimisation(
+            self.infcx,
+            obligation.predicate,
+            [ty::Binder::dummy(candidate.upcast(self.infcx.tcx))],
+        ) {
+            return Ok(obligations);
+        }
+
         obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)

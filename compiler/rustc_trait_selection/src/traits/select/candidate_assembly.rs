@@ -16,13 +16,13 @@ use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::elaborate;
 use rustc_type_ir::solve::SizedTraitKind;
+use rustc_type_ir::{Binder, elaborate};
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
 use super::{BuiltinImplConditions, SelectionCandidateSet, SelectionContext, TraitObligationStack};
-use crate::traits::util;
+use crate::traits::util::{self, find_unelaborated_sizedness_optimisation};
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     #[instrument(skip(self, stack), level = "debug")]
@@ -192,8 +192,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut distinct_normalized_bounds = FxHashSet::default();
             let _ = self.for_each_item_bound::<!>(
                 placeholder_trait_predicate.self_ty(),
-                |selcx, bound, idx| {
-                    let Some(bound) = bound.as_trait_clause() else {
+                |selcx, clause, idx| {
+                    let Some(bound) = clause.as_trait_clause() else {
                         return ControlFlow::Continue(());
                     };
                     if bound.polarity() != placeholder_trait_predicate.polarity {
@@ -201,6 +201,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        if let Some(pred) = clause.as_trait_clause()
+                            && util::is_unelaborated_sizedness_optimisation(
+                                selcx.infcx,
+                                Binder::dummy(placeholder_trait_predicate),
+                                [pred],
+                            )
+                        {
+                            candidates.vec.push(ProjectionCandidate(idx));
+                            return;
+                        }
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -238,6 +249,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
+
+        if let Some(bound) = find_unelaborated_sizedness_optimisation(
+            self.infcx,
+            stack.obligation.predicate,
+            stack.obligation.param_env.caller_bounds().iter().filter_map(|c| c.as_trait_clause()),
+        ) {
+            candidates.vec.push(ParamCandidate(bound));
+            return Ok(());
+        }
 
         let bounds = stack
             .obligation

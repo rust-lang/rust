@@ -45,6 +45,15 @@ LL |         let y: Box<dyn Tr> = x;
    = help: the trait `Sized` is not implemented for `impl Tr + PointeeSized`
    = note: required for the cast from `Box<impl Tr + PointeeSized>` to `Box<dyn Tr>`
 
-error: aborting due to 5 previous errors
+error[E0277]: the size for values of type `impl Tr + PointeeSized` cannot be known
+  --> $DIR/pretty-print-opaque.rs:40:30
+   |
+LL |         let y: Box<dyn Tr> = x;
+   |                              ^ doesn't have a known size
+   |
+   = help: the trait `MetaSized` is not implemented for `impl Tr + PointeeSized`
+   = note: required for the cast from `Box<impl Tr + PointeeSized>` to `Box<dyn Tr>`
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
