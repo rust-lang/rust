@@ -6,14 +6,6 @@ LL | fn baz<G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
    |        |
    |        help: consider introducing lifetime `'a` here: `'a,`
 
-warning: elided lifetime has a name
-  --> $DIR/missing-lifetimes-in-signature.rs:102:64
-   |
-LL | fn ok2<'a, G: 'a, T>(g: G, dest: &'a mut T) -> impl FnOnce() + '_ + 'a
-   |        -- lifetime `'a` declared here                          ^^ this elided lifetime gets resolved as `'a`
-   |
-   = note: `#[warn(elided_named_lifetimes)]` on by default
-
 error[E0700]: hidden type for `impl FnOnce()` captures lifetime that does not appear in bounds
   --> $DIR/missing-lifetimes-in-signature.rs:19:5
    |
@@ -136,7 +128,7 @@ help: consider adding an explicit lifetime bound
 LL |     G: Get<T> + 'a,
    |               ++++
 
-error: aborting due to 8 previous errors; 1 warning emitted
+error: aborting due to 8 previous errors
 
 Some errors have detailed explanations: E0261, E0309, E0311, E0621, E0700.
 For more information about an error, try `rustc --explain E0261`.
