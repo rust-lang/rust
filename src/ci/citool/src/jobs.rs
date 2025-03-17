@@ -185,6 +185,20 @@ fn calculate_jobs(
             env.extend(crate::yaml_map_to_json(&job.env));
             let full_name = format!("{prefix} - {}", job.name);
 
+            // When the default `@bors try` job is executed (which is usually done
+            // for benchmarking performance, running crater or for downloading the
+            // built toolchain using `rustup-toolchain-install-master`),
+            // we inject the `DIST_TRY_BUILD` environment variable to the jobs
+            // to tell `opt-dist` to make the build faster by skipping certain steps.
+            if let RunType::TryJob { job_patterns } = run_type {
+                if job_patterns.is_none() {
+                    env.insert(
+                        "DIST_TRY_BUILD".to_string(),
+                        serde_json::value::Value::Number(1.into()),
+                    );
+                }
+            }
+
             GithubActionsJob {
                 name: job.name,
                 full_name,
