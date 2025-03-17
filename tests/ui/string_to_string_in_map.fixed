@@ -9,6 +9,9 @@ fn main() {
     //~^ string_to_string
     let _ = variable2.cloned();
     //~^ string_to_string
+    #[rustfmt::skip]
+    let _ = variable2.cloned();
+    //~^ string_to_string
 
     let _ = vec![String::new()].iter().cloned().collect::<Vec<_>>();
     //~^ string_to_string

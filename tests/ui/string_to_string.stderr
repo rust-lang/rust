@@ -17,7 +17,7 @@ LL |         x.to_string()
    = help: consider using `.clone()`
 
 error: `to_string()` called on a `String`
-  --> tests/ui/string_to_string.rs:20:33
+  --> tests/ui/string_to_string.rs:19:33
    |
 LL |     let _ = x.unwrap_or_else(|| v.to_string());
    |                                 ^^^^^^^^^^^^^

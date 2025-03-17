@@ -15,7 +15,6 @@ fn main() {
     });
     //~^^ string_to_string
 
-    // Should not lint.
     let x = Some(String::new());
     let _ = x.unwrap_or_else(|| v.to_string());
     //~^ string_to_string

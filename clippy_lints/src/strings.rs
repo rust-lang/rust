@@ -14,6 +14,8 @@ use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::sym;
 
+use std::ops::ControlFlow;
+
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for string appends of the form `x = x + y` (without
@@ -454,13 +456,21 @@ fn is_parent_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_spa
 }
 
 fn is_called_from_map_like(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<rustc_span::Span> {
-    let parent = get_parent_expr(cx, expr)?;
-
-    if matches!(parent.kind, ExprKind::Closure(_)) {
-        is_parent_map_like(cx, parent)
-    } else {
-        None
-    }
+    // Look for a closure as parent of `expr`, discarding simple blocks
+    let parent_closure = cx
+        .tcx
+        .hir_parent_iter(expr.hir_id)
+        .try_fold(expr.hir_id, |child_hir_id, (_, node)| match node {
+            // Check that the child expression is the only expression in the block
+            Node::Block(block) if block.stmts.is_empty() && block.expr.map(|e| e.hir_id) == Some(child_hir_id) => {
+                ControlFlow::Continue(block.hir_id)
+            },
+            Node::Expr(expr) if matches!(expr.kind, ExprKind::Block(..)) => ControlFlow::Continue(expr.hir_id),
+            Node::Expr(expr) if matches!(expr.kind, ExprKind::Closure(_)) => ControlFlow::Break(Some(expr)),
+            _ => ControlFlow::Break(None),
+        })
+        .break_value()?;
+    is_parent_map_like(cx, parent_closure?)
 }
 
 fn suggest_cloned_string_to_string(cx: &LateContext<'_>, span: rustc_span::Span) {

@@ -9,6 +9,9 @@ fn main() {
     //~^ string_to_string
     let _ = variable2.map(|x| x.to_string());
     //~^ string_to_string
+    #[rustfmt::skip]
+    let _ = variable2.map(|x| { x.to_string() });
+    //~^ string_to_string
 
     let _ = vec![String::new()].iter().map(String::to_string).collect::<Vec<_>>();
     //~^ string_to_string
