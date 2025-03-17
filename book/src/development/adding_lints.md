@@ -127,7 +127,9 @@ fn main() {
 
 Note that we are adding comment annotations with the name of our lint to mark
 lines where we expect an error. Once we have implemented our lint we can run
-`TESTNAME=foo_functions cargo uibless` to generate the `.stderr` file.
+`TESTNAME=foo_functions cargo uibless` to generate the `.stderr` file. If our
+lint makes use of structured suggestions then this command will also generate
+the corresponding `.fixed` file.
 
 While we are working on implementing our lint, we can keep running the UI test.
 That allows us to check if the output is turning into what we want by checking the
@@ -135,8 +137,8 @@ That allows us to check if the output is turning into what we want by checking t
 
 Once we have implemented our lint running `TESTNAME=foo_functions cargo uitest`
 should pass on its own. When we commit our lint, we need to commit the generated
- `.stderr` files, too. In general, you should only commit files changed by
- `cargo bless` for the specific lint you are creating/editing.
+ `.stderr` and if applicable `.fixed` files, too. In general, you should only
+ commit files changed by `cargo bless` for the specific lint you are creating/editing.
 
 > _Note:_ you can run multiple test files by specifying a comma separated list:
 > `TESTNAME=foo_functions,test2,test3`.
