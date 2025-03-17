@@ -3,11 +3,13 @@
 use rustc_abi::{BackendRepr, RegKind};
 use rustc_hir::CRATE_HIR_ID;
 use rustc_middle::mir::{self, traversal};
-use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt};
-use rustc_session::lint::builtin::ABI_UNSUPPORTED_VECTOR_TYPES;
+use rustc_middle::ty::layout::LayoutCx;
+use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypingEnv};
+use rustc_session::lint::builtin::{ABI_UNSUPPORTED_VECTOR_TYPES, WASM_C_ABI};
 use rustc_span::def_id::DefId;
 use rustc_span::{DUMMY_SP, Span, Symbol, sym};
-use rustc_target::callconv::{Conv, FnAbi, PassMode};
+use rustc_target::callconv::{ArgAbi, Conv, FnAbi, PassMode};
+use rustc_target::spec::{HasWasmCAbiOpt, WasmCAbi};
 
 use crate::errors;
 
@@ -26,13 +28,15 @@ fn uses_vector_registers(mode: &PassMode, repr: &BackendRepr) -> bool {
 /// for a certain function.
 /// `is_call` indicates whether this is a call-site check or a definition-site check;
 /// this is only relevant for the wording in the emitted error.
-fn do_check_abi<'tcx>(
+fn do_check_simd_vector_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
     def_id: DefId,
     is_call: bool,
     span: impl Fn() -> Span,
 ) {
+    // We check this on all functions, including those using the "Rust" ABI.
+    // For the "Rust" ABI it would be a bug if the lint ever triggered, but better safe than sorry.
     let feature_def = tcx.sess.target.features_for_correct_vector_abi();
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     let have_feature = |feat: Symbol| {
@@ -88,6 +92,60 @@ fn do_check_abi<'tcx>(
     }
 }
 
+fn wasm_abi_safe<'tcx>(tcx: TyCtxt<'tcx>, arg: &ArgAbi<'tcx, Ty<'tcx>>) -> bool {
+    if matches!(arg.layout.backend_repr, BackendRepr::Scalar(_)) {
+        return true;
+    }
+
+    // This matches `unwrap_trivial_aggregate` in the wasm ABI logic.
+    if arg.layout.is_aggregate() {
+        let cx = LayoutCx::new(tcx, TypingEnv::fully_monomorphized());
+        if let Some(unit) = arg.layout.homogeneous_aggregate(&cx).ok().and_then(|ha| ha.unit()) {
+            let size = arg.layout.size;
+            // Ensure there's just a single `unit` element in `arg`.
+            if unit.size == size {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
+/// Warns against usage of `extern "C"` on wasm32-unknown-unknown that is affected by the
+/// ABI transition.
+fn do_check_wasm_abi<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    abi: &FnAbi<'tcx, Ty<'tcx>>,
+    is_call: bool,
+    span: impl Fn() -> Span,
+) {
+    // Only proceed for `extern "C" fn` on wasm32-unknown-unknown (same check as what `adjust_for_foreign_abi` uses to call `compute_wasm_abi_info`).
+    if !(tcx.sess.target.arch == "wasm32"
+        && tcx.sess.target.os == "unknown"
+        && tcx.wasm_c_abi_opt() == WasmCAbi::Legacy
+        && abi.conv == Conv::C)
+    {
+        return;
+    }
+    // Warn against all types whose ABI will change. That's all arguments except for things passed as scalars.
+    // Return values are not affected by this change.
+    for arg_abi in abi.args.iter() {
+        if wasm_abi_safe(tcx, arg_abi) {
+            continue;
+        }
+        let span = span();
+        tcx.emit_node_span_lint(
+            WASM_C_ABI,
+            CRATE_HIR_ID,
+            span,
+            errors::WasmCAbiTransition { ty: arg_abi.layout.ty, is_call },
+        );
+        // Let's only warn once per function.
+        break;
+    }
+}
+
 /// Checks that the ABI of a given instance of a function does not contain vector-passed arguments
 /// or return values for which the corresponding target feature is not enabled.
 fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
@@ -98,13 +156,10 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         // function.
         return;
     };
-    do_check_abi(
-        tcx,
-        abi,
-        instance.def_id(),
-        /*is_call*/ false,
-        || tcx.def_span(instance.def_id()),
-    )
+    do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, || {
+        tcx.def_span(instance.def_id())
+    });
+    do_check_wasm_abi(tcx, abi, /*is_call*/ false, || tcx.def_span(instance.def_id()));
 }
 
 /// Checks that a call expression does not try to pass a vector-passed argument which requires a
@@ -141,7 +196,8 @@ fn check_call_site_abi<'tcx>(
         // ABI failed to compute; this will not get through codegen.
         return;
     };
-    do_check_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, || span);
+    do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, || span);
+    do_check_wasm_abi(tcx, callee_abi, /*is_call*/ true, || span);
 }
 
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
