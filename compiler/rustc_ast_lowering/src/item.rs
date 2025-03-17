@@ -216,15 +216,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 if body.is_none() && !is_instrinsic {
                     self.dcx().emit_err(FnWithoutBody {
                         span,
-                        replace_span: {
-                            let source_map = self.tcx.sess.source_map();
-                            let end = source_map.end_point(span);
-                            if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
-                                end
-                            } else {
-                                span.shrink_to_hi()
-                            }
-                        },
+                        replace_span: self.tcx.sess.source_map().span_ending_semi_or_hi(span),
                         extern_block_suggestion: match header.ext {
                             Extern::None => None,
                             Extern::Implicit(start_span) => Some(ExternBlockSuggestion::Implicit {

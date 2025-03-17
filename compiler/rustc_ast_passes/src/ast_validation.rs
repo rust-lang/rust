@@ -398,19 +398,6 @@ impl<'a> AstValidator<'a> {
         }
     }
 
-    /// If `sp` ends with a semicolon, returns it as a `Span`
-    /// Otherwise, returns `sp.shrink_to_hi()`
-    fn ending_semi_or_hi(&self, sp: Span) -> Span {
-        let source_map = self.sess.source_map();
-        let end = source_map.end_point(sp);
-
-        if source_map.span_to_snippet(end).is_ok_and(|s| s == ";") {
-            end
-        } else {
-            sp.shrink_to_hi()
-        }
-    }
-
     fn check_type_no_bounds(&self, bounds: &[GenericBound], ctx: &str) {
         let span = match bounds {
             [] => return,
@@ -1053,7 +1040,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if expr.is_none() {
                     self.dcx().emit_err(errors::ConstWithoutBody {
                         span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
+                        replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                     });
                 }
             }
@@ -1066,7 +1053,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if expr.is_none() {
                     self.dcx().emit_err(errors::StaticWithoutBody {
                         span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
+                        replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                     });
                 }
             }
@@ -1077,7 +1064,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 if ty.is_none() {
                     self.dcx().emit_err(errors::TyAliasWithoutBody {
                         span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
+                        replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                     });
                 }
                 self.check_type_no_bounds(bounds, "this context");
@@ -1398,14 +1385,14 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                 AssocItemKind::Const(box ConstItem { expr: None, .. }) => {
                     self.dcx().emit_err(errors::AssocConstWithoutBody {
                         span: item.span,
-                        replace_span: self.ending_semi_or_hi(item.span),
+                        replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                     });
                 }
                 AssocItemKind::Fn(box Fn { body, .. }) => {
                     if body.is_none() {
                         self.dcx().emit_err(errors::AssocFnWithoutBody {
                             span: item.span,
-                            replace_span: self.ending_semi_or_hi(item.span),
+                            replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                         });
                     }
                 }
@@ -1413,7 +1400,7 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     if ty.is_none() {
                         self.dcx().emit_err(errors::AssocTypeWithoutBody {
                             span: item.span,
-                            replace_span: self.ending_semi_or_hi(item.span),
+                            replace_span: self.sess.source_map().span_ending_semi_or_hi(item.span),
                         });
                     }
                     self.check_type_no_bounds(bounds, "`impl`s");

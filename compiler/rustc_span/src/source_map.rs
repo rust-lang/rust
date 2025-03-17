@@ -1080,6 +1080,13 @@ impl SourceMap {
         let span = self.next_point(span);
         if self.span_to_snippet(span).as_deref() == Ok(";") { Some(span) } else { None }
     }
+
+    /// If `sp` ends with a semicolon, returns it as a `Span`
+    /// Otherwise, returns `sp.shrink_to_hi()`
+    pub fn span_ending_semi_or_hi(&self, sp: Span) -> Span {
+        let end = self.end_point(sp);
+        if self.span_to_snippet(end).is_ok_and(|s| s == ";") { end } else { sp.shrink_to_hi() }
+    }
 }
 
 pub fn get_source_map() -> Option<Arc<SourceMap>> {
