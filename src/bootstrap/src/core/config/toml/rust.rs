@@ -619,7 +619,6 @@ impl Config {
         // build our internal lld and use it as the default linker, by setting the `rust.lld` config
         // to true by default:
         // - on the `x86_64-unknown-linux-gnu` target
-        // - on the `dev` and `nightly` channels
         // - when building our in-tree llvm (i.e. the target has not set an `llvm-config`), so that
         //   we're also able to build the corresponding lld
         // - or when using an external llvm that's downloaded from CI, which also contains our prebuilt
@@ -628,9 +627,7 @@ impl Config {
         //   thus, disabled
         // - similarly, lld will not be built nor used by default when explicitly asked not to, e.g.
         //   when the config sets `rust.lld = false`
-        if self.host_target.triple == "x86_64-unknown-linux-gnu"
-            && self.hosts == [self.host_target]
-            && (self.channel == "dev" || self.channel == "nightly")
+        if self.host_target.triple == "x86_64-unknown-linux-gnu" && self.hosts == [self.host_target]
         {
             let no_llvm_config = self
                 .target_config
