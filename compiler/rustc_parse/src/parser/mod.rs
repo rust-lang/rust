@@ -1374,7 +1374,7 @@ impl<'a> Parser<'a> {
             self.psess.gated_spans.gate(sym::inline_const_pat, span);
         }
         self.expect_keyword(exp!(Const))?;
-        let (attrs, blk) = self.parse_inner_attrs_and_block()?;
+        let (attrs, blk) = self.parse_inner_attrs_and_block(None)?;
         let anon_const = AnonConst {
             id: DUMMY_NODE_ID,
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
