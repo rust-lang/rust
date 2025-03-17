@@ -1,8 +1,5 @@
 #![deny(mismatched_lifetime_syntaxes)]
 
-// `elided_named_lifetimes` overlaps with `lifetime_style_mismatch`, ignore it for now
-#![allow(elided_named_lifetimes)]
-
 #[derive(Copy, Clone)]
 struct ContainsLifetime<'a>(&'a u8);
 

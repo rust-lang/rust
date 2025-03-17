@@ -1,5 +1,5 @@
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:11:47
+  --> $DIR/mismatched-lifetime-syntaxes.rs:8:47
    |
 LL | fn explicit_bound_ref_to_implicit_ref<'a>(v: &'a u8) -> &u8 {
    |                                               ^^        --- the lifetime gets resolved as `'a`
@@ -17,7 +17,7 @@ LL | fn explicit_bound_ref_to_implicit_ref<'a>(v: &'a u8) -> &'a u8 {
    |                                                          ++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:16:57
+  --> $DIR/mismatched-lifetime-syntaxes.rs:13:57
    |
 LL | fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'_ u8 {
    |                                                         ^^         -- the lifetime gets resolved as `'a`
@@ -31,7 +31,7 @@ LL + fn explicit_bound_ref_to_explicit_anonymous_ref<'a>(v: &'a u8) -> &'a u8 {
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:23:48
+  --> $DIR/mismatched-lifetime-syntaxes.rs:20:48
    |
 LL | fn implicit_path_to_explicit_anonymous_path(v: ContainsLifetime) -> ContainsLifetime<'_> {
    |                                                ^^^^^^^^^^^^^^^^                      -- the lifetime gets resolved as `'_`
@@ -44,7 +44,7 @@ LL | fn implicit_path_to_explicit_anonymous_path(v: ContainsLifetime<'_>) -> Con
    |                                                                ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:28:65
+  --> $DIR/mismatched-lifetime-syntaxes.rs:25:65
    |
 LL | fn explicit_anonymous_path_to_implicit_path(v: ContainsLifetime<'_>) -> ContainsLifetime {
    |                                                                 ^^      ---------------- the lifetime gets resolved as `'_`
@@ -57,7 +57,7 @@ LL | fn explicit_anonymous_path_to_implicit_path(v: ContainsLifetime<'_>) -> Con
    |                                                                                         ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:33:65
+  --> $DIR/mismatched-lifetime-syntaxes.rs:30:65
    |
 LL | fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> ContainsLifetime {
    |                                                                 ^^      ---------------- the lifetime gets resolved as `'a`
@@ -70,7 +70,7 @@ LL | fn explicit_bound_path_to_implicit_path<'a>(v: ContainsLifetime<'a>) -> Con
    |                                                                                         ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:39:25
+  --> $DIR/mismatched-lifetime-syntaxes.rs:36:25
    |
 LL |     v: ContainsLifetime<'a>,
    |                         ^^ this lifetime flows to the output
@@ -85,7 +85,7 @@ LL + ) -> ContainsLifetime<'a> {
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:47:37
+  --> $DIR/mismatched-lifetime-syntaxes.rs:44:37
    |
 LL | fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime {
    |                                     ^^^     ---------------- the lifetime gets resolved as `'_`
@@ -98,7 +98,7 @@ LL | fn implicit_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> {
    |                                                             ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:52:48
+  --> $DIR/mismatched-lifetime-syntaxes.rs:49:48
    |
 LL | fn explicit_anonymous_ref_to_implicit_path(v: &'_ u8) -> ContainsLifetime {
    |                                                ^^        ---------------- the lifetime gets resolved as `'_`
@@ -112,7 +112,7 @@ LL + fn explicit_anonymous_ref_to_implicit_path(v: &u8) -> ContainsLifetime<'_> 
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:57:48
+  --> $DIR/mismatched-lifetime-syntaxes.rs:54:48
    |
 LL | fn explicit_bound_ref_to_implicit_path<'a>(v: &'a u8) -> ContainsLifetime {
    |                                                ^^        ---------------- the lifetime gets resolved as `'a`
@@ -125,7 +125,7 @@ LL | fn explicit_bound_ref_to_implicit_path<'a>(v: &'a u8) -> ContainsLifetime<'
    |                                                                          ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:62:58
+  --> $DIR/mismatched-lifetime-syntaxes.rs:59:58
    |
 LL | fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> ContainsLifetime<'_> {
    |                                                          ^^                         -- the lifetime gets resolved as `'a`
@@ -139,7 +139,7 @@ LL + fn explicit_bound_ref_to_explicit_anonymous_path<'a>(v: &'a u8) -> Contains
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:69:37
+  --> $DIR/mismatched-lifetime-syntaxes.rs:66:37
    |
 LL | fn implicit_path_to_implicit_ref(v: ContainsLifetime) -> &u8 {
    |                                     ^^^^^^^^^^^^^^^^     --- the lifetime gets resolved as `'_`
@@ -152,7 +152,7 @@ LL | fn implicit_path_to_implicit_ref(v: ContainsLifetime<'_>) -> &u8 {
    |                                                     ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:74:47
+  --> $DIR/mismatched-lifetime-syntaxes.rs:71:47
    |
 LL | fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime) -> &'_ u8 {
    |                                               ^^^^^^^^^^^^^^^^      -- the lifetime gets resolved as `'_`
@@ -166,7 +166,7 @@ LL + fn implicit_path_to_explicit_anonymous_ref(v: ContainsLifetime<'_>) -> &u8 
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:79:64
+  --> $DIR/mismatched-lifetime-syntaxes.rs:76:64
    |
 LL | fn explicit_bound_path_to_implicit_ref<'a>(v: ContainsLifetime<'a>) -> &u8 {
    |                                                                ^^      --- the lifetime gets resolved as `'a`
@@ -179,7 +179,7 @@ LL | fn explicit_bound_path_to_implicit_ref<'a>(v: ContainsLifetime<'a>) -> &'a 
    |                                                                         ++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:84:74
+  --> $DIR/mismatched-lifetime-syntaxes.rs:81:74
    |
 LL | fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a>) -> &'_ u8 {
    |                                                                          ^^       -- the lifetime gets resolved as `'a`
@@ -193,7 +193,7 @@ LL + fn explicit_bound_path_to_explicit_anonymous_ref<'a>(v: ContainsLifetime<'a
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:90:55
+  --> $DIR/mismatched-lifetime-syntaxes.rs:87:55
    |
 LL |     fn method_explicit_bound_ref_to_implicit_ref<'a>(&'a self) -> &u8 {
    |                                                       ^^          --- the lifetime gets resolved as `'a`
@@ -206,7 +206,7 @@ LL |     fn method_explicit_bound_ref_to_implicit_ref<'a>(&'a self) -> &'a u8 {
    |                                                                    ++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:95:65
+  --> $DIR/mismatched-lifetime-syntaxes.rs:92:65
    |
 LL |     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) -> &'_ u8 {
    |                                                                 ^^           -- the lifetime gets resolved as `'a`
@@ -220,7 +220,7 @@ LL +     fn method_explicit_bound_ref_to_explicit_anonymous_ref<'a>(&'a self) ->
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:102:56
+  --> $DIR/mismatched-lifetime-syntaxes.rs:99:56
    |
 LL |     fn method_explicit_anonymous_ref_to_implicit_path(&'_ self) -> ContainsLifetime {
    |                                                        ^^          ---------------- the lifetime gets resolved as `'_`
@@ -234,7 +234,7 @@ LL +     fn method_explicit_anonymous_ref_to_implicit_path(&self) -> ContainsLif
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:107:56
+  --> $DIR/mismatched-lifetime-syntaxes.rs:104:56
    |
 LL |     fn method_explicit_bound_ref_to_implicit_path<'a>(&'a self) -> ContainsLifetime {
    |                                                        ^^          ---------------- the lifetime gets resolved as `'a`
@@ -247,7 +247,7 @@ LL |     fn method_explicit_bound_ref_to_implicit_path<'a>(&'a self) -> Contains
    |                                                                                    ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:112:66
+  --> $DIR/mismatched-lifetime-syntaxes.rs:109:66
    |
 LL |     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -> ContainsLifetime<'_> {
    |                                                                  ^^                           -- the lifetime gets resolved as `'a`
@@ -261,7 +261,7 @@ LL +     fn method_explicit_bound_ref_to_explicit_anonymous_path<'a>(&'a self) -
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:127:39
+  --> $DIR/mismatched-lifetime-syntaxes.rs:124:39
    |
 LL |     fn static_ref_to_implicit_ref(v: &'static u8) -> &u8 {
    |                                       ^^^^^^^        --- the lifetime gets resolved as `'static`
@@ -274,7 +274,7 @@ LL |     fn static_ref_to_implicit_ref(v: &'static u8) -> &'static u8 {
    |                                                       +++++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:132:49
+  --> $DIR/mismatched-lifetime-syntaxes.rs:129:49
    |
 LL |     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'_ u8 {
    |                                                 ^^^^^^^         -- the lifetime gets resolved as `'static`
@@ -288,7 +288,7 @@ LL +     fn static_ref_to_explicit_anonymous_ref(v: &'static u8) -> &'static u8 
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:137:40
+  --> $DIR/mismatched-lifetime-syntaxes.rs:134:40
    |
 LL |     fn static_ref_to_implicit_path(v: &'static u8) -> ContainsLifetime {
    |                                        ^^^^^^^        ---------------- the lifetime gets resolved as `'static`
@@ -301,7 +301,7 @@ LL |     fn static_ref_to_implicit_path(v: &'static u8) -> ContainsLifetime<'sta
    |                                                                       +++++++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:142:50
+  --> $DIR/mismatched-lifetime-syntaxes.rs:139:50
    |
 LL |     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLifetime<'_> {
    |                                                  ^^^^^^^                         -- the lifetime gets resolved as `'static`
@@ -315,7 +315,7 @@ LL +     fn static_ref_to_explicit_anonymous_path(v: &'static u8) -> ContainsLif
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:148:40
+  --> $DIR/mismatched-lifetime-syntaxes.rs:145:40
    |
 LL |         fn static_ref_to_implicit_ref(&'static self) -> &u8 {
    |                                        ^^^^^^^          --- the lifetime gets resolved as `'static`
@@ -328,7 +328,7 @@ LL |         fn static_ref_to_implicit_ref(&'static self) -> &'static u8 {
    |                                                          +++++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:153:50
+  --> $DIR/mismatched-lifetime-syntaxes.rs:150:50
    |
 LL |         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'_ u8 {
    |                                                  ^^^^^^^           -- the lifetime gets resolved as `'static`
@@ -342,7 +342,7 @@ LL +         fn static_ref_to_explicit_anonymous_ref(&'static self) -> &'static 
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:158:41
+  --> $DIR/mismatched-lifetime-syntaxes.rs:155:41
    |
 LL |         fn static_ref_to_implicit_path(&'static self) -> ContainsLifetime {
    |                                         ^^^^^^^          ---------------- the lifetime gets resolved as `'static`
@@ -355,7 +355,7 @@ LL |         fn static_ref_to_implicit_path(&'static self) -> ContainsLifetime<'
    |                                                                          +++++++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:163:51
+  --> $DIR/mismatched-lifetime-syntaxes.rs:160:51
    |
 LL |         fn static_ref_to_explicit_anonymous_path(&'static self) -> ContainsLifetime<'_> {
    |                                                   ^^^^^^^                           -- the lifetime gets resolved as `'static`
@@ -369,7 +369,7 @@ LL +         fn static_ref_to_explicit_anonymous_path(&'static self) -> Contains
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:175:55
+  --> $DIR/mismatched-lifetime-syntaxes.rs:172:55
    |
 LL |     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce() + '_ {
    |                                                       ^^                        -- the lifetime gets resolved as `'a`
@@ -383,7 +383,7 @@ LL +     fn explicit_bound_ref_to_impl_trait_bound<'a>(v: &'a u8) -> impl FnOnce
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:180:65
+  --> $DIR/mismatched-lifetime-syntaxes.rs:177:65
    |
 LL |     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> impl FnOnce() + use<'_> {
    |                                                                 ^^                            -- the lifetime gets resolved as `'a`
@@ -397,7 +397,7 @@ LL +     fn explicit_bound_ref_to_impl_trait_precise_capture<'a>(v: &'a u8) -> i
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:185:72
+  --> $DIR/mismatched-lifetime-syntaxes.rs:182:72
    |
 LL |     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>) -> impl FnOnce() + '_ {
    |                                                                        ^^                      -- the lifetime gets resolved as `'a`
@@ -411,7 +411,7 @@ LL +     fn explicit_bound_path_to_impl_trait_bound<'a>(v: ContainsLifetime<'a>)
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:191:29
+  --> $DIR/mismatched-lifetime-syntaxes.rs:188:29
    |
 LL |         v: ContainsLifetime<'a>,
    |                             ^^ this lifetime flows to the output
@@ -426,7 +426,7 @@ LL +     ) -> impl FnOnce() + use<'a> {
    |
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:205:54
+  --> $DIR/mismatched-lifetime-syntaxes.rs:202:54
    |
 LL |     fn explicit_bound_ref_to_dyn_trait_bound<'a>(v: &'a u8) -> Box<dyn Iterator<Item = &u8> + '_> {
    |                                                      ^^                                ---    -- the lifetimes get resolved as `'a`
@@ -440,7 +440,7 @@ LL |     fn explicit_bound_ref_to_dyn_trait_bound<'a>(v: &'a u8) -> Box<dyn Iter
    |                                                                                         ++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:211:29
+  --> $DIR/mismatched-lifetime-syntaxes.rs:208:29
    |
 LL |         v: ContainsLifetime<'a>,
    |                             ^^ this lifetime flows to the output
@@ -456,7 +456,7 @@ LL |     ) -> Box<dyn Iterator<Item = ContainsLifetime<'a>> + '_> {
    |                                                  ++++
 
 error: lifetime flowing from input to output with different syntax can be confusing
-  --> $DIR/mismatched-lifetime-syntaxes.rs:220:33
+  --> $DIR/mismatched-lifetime-syntaxes.rs:217:33
    |
 LL |     fn multiple_outputs<'a>(v: &'a u8) -> (&u8, &u8) {
    |                                 ^^         ---  --- the lifetimes get resolved as `'a`

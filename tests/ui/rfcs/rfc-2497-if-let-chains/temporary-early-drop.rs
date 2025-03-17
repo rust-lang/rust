@@ -8,7 +8,7 @@
 struct Pd;
 
 impl Pd {
-    fn it(&self) -> It {
+    fn it(&self) -> It<'_> {
         todo!()
     }
 }
