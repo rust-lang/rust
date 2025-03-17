@@ -33,6 +33,7 @@ use rustc_middle::ty::{
 use rustc_span::{Symbol, sym};
 use rustc_type_ir::elaborate;
 use rustc_type_ir::solve::SizedTraitKind;
+use thin_vec::thin_vec;
 use tracing::{debug, instrument, trace};
 
 use self::EvaluationResult::*;
@@ -2641,6 +2642,16 @@ impl<'tcx> SelectionContext<'_, 'tcx> {
             HigherRankedType,
             poly_trait_ref,
         );
+
+        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+        // are syntactic sugar for a lack of bounds so don't need this.
+        if self.tcx().is_lang_item(predicate.def_id(), LangItem::MetaSized)
+            && self.tcx().is_lang_item(trait_ref.def_id, LangItem::Sized)
+        {
+            return Ok(thin_vec![]);
+        }
+
         self.infcx
             .at(&obligation.cause, obligation.param_env)
             .eq(DefineOpaqueTypes::No, predicate.trait_ref, trait_ref)

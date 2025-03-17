@@ -8,6 +8,7 @@ use std::fmt::Debug;
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_errors::{Diag, EmissionGuarantee};
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{CRATE_DEF_ID, DefId};
 use rustc_infer::infer::{DefineOpaqueTypes, InferCtxt, TyCtxtInferExt};
@@ -581,6 +582,28 @@ fn try_prove_negated_where_clause<'tcx>(
     let Some(negative_predicate) = clause.as_predicate().flip_polarity(root_infcx.tcx) else {
         return false;
     };
+
+    // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+    // check for a `Sized` subtrait when looking for `MetaSized` (even for this negated clause).
+    let is_meta_sized_clause = clause
+        .as_trait_clause()
+        .map(|c| root_infcx.tcx.is_lang_item(c.def_id(), LangItem::MetaSized))
+        .unwrap_or(false);
+    if is_meta_sized_clause
+        && param_env
+            .caller_bounds()
+            .iter()
+            .rev() // sizedness predicates are normally at the end for diagnostics reasons
+            .filter_map(|p| p.as_trait_clause())
+            .any(|c| {
+                // FIXME(sized-hierarchy): this is incorrect and should check that `self_ty`
+                // matches, but `clause` contains a new inference variable that won't match the
+                // parameter environment
+                root_infcx.tcx.is_lang_item(c.def_id(), LangItem::Sized)
+            })
+    {
+        return false;
+    }
 
     // N.B. We don't need to use intercrate mode here because we're trying to prove
     // the *existence* of a negative goal, not the non-existence of a positive goal.

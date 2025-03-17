@@ -37,19 +37,7 @@ help: consider further restricting type parameter `T` with trait `Overlap`
 LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T>, T: Overlap<for<'a> fn(Assoc<'a, T>)> {}
    |                                                                          ++++++++++++++++++++++++++++++++++++++
 
-error[E0277]: the trait bound `{type error}: const MetaSized` is not satisfied
-  --> $DIR/issue-118950-root-region.rs:19:64
-   |
-LL | impl<T> Overlap<for<'a> fn(Assoc<'a, T>)> for T where Missing: Overlap<T> {}
-   |                                                                ^^^^^^^^^^
-   |
-note: required by a bound in `Overlap`
-  --> $DIR/issue-118950-root-region.rs:12:1
-   |
-LL | trait Overlap<T> {}
-   | ^^^^^^^^^^^^^^^^ required by this bound in `Overlap`
-
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 3 previous errors; 1 warning emitted
 
 Some errors have detailed explanations: E0277, E0412.
 For more information about an error, try `rustc --explain E0277`.
