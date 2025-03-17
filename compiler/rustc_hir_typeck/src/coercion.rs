@@ -694,31 +694,8 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
-                    if trait_pred.def_id() == unsize_did {
-                        let self_ty = trait_pred.self_ty();
-                        let unsize_ty = trait_pred.trait_ref.args[1].expect_ty();
-                        debug!("coerce_unsized: ambiguous unsize case for {:?}", trait_pred);
-                        match (self_ty.kind(), unsize_ty.kind()) {
-                            (&ty::Infer(ty::TyVar(v)), ty::Dynamic(..))
-                                if self.type_var_is_sized(v) =>
-                            {
-                                debug!("coerce_unsized: have sized infer {:?}", v);
-                                coercion.obligations.push(obligation);
-                                // `$0: Unsize<dyn Trait>` where we know that `$0: Sized`, try going
-                                // for unsizing.
-                            }
-                            _ => {
-                                // Some other case for `$0: Unsize<Something>`. Note that we
-                                // hit this case even if `Something` is a sized type, so just
-                                // don't do the coercion.
-                                debug!("coerce_unsized: ambiguous unsize");
-                                return Err(TypeError::Mismatch);
-                            }
-                        }
-                    } else {
-                        debug!("coerce_unsized: early return - ambiguous");
-                        return Err(TypeError::Mismatch);
-                    }
+                    debug!("coerce_unsized: early return - ambiguous");
+                    return Err(TypeError::Mismatch);
                 }
                 Err(traits::Unimplemented) => {
                     debug!("coerce_unsized: early return - can't prove obligation");
