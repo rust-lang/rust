@@ -3641,7 +3641,8 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const
 /// For regions of memory which might overlap, use [`copy`] instead.
 ///
 /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the argument order swapped.
+/// with the source and destination arguments swapped,
+/// and `count` counting the number of `T`s instead of bytes.
 ///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
 /// requirements of `T`. The initialization state is preserved exactly.
@@ -3761,8 +3762,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// If the source and destination will *never* overlap,
 /// [`copy_nonoverlapping`] can be used instead.
 ///
-/// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-/// order swapped. Copying takes place as if the bytes were copied from `src`
+/// `copy` is semantically equivalent to C's [`memmove`], but
+/// with the source and destination arguments swapped,
+/// and `count` counting the number of `T`s instead of bytes.
+/// Copying takes place as if the bytes were copied from `src`
 /// to a temporary array and then copied from the array to `dst`.
 ///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the

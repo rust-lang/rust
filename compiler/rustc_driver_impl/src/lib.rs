@@ -649,10 +649,10 @@ fn print_crate_info(
             HostTuple => println_info!("{}", rustc_session::config::host_tuple()),
             Sysroot => println_info!("{}", sess.sysroot.display()),
             TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
-            TargetSpec => {
+            TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
-            AllTargetSpecs => {
+            AllTargetSpecsJson => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {
                     let triple = TargetTuple::from_tuple(name);
