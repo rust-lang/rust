@@ -837,15 +837,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn evaluate_array_len(&mut self, bx: &mut Bx, place: mir::Place<'tcx>) -> Bx::Value {
         // ZST are passed as operands and require special handling
         // because codegen_place() panics if Local is operand.
-        if let Some(index) = place.as_local() {
-            if let LocalRef::Operand(op) = self.locals[index] {
-                if let ty::Array(_, n) = op.layout.ty.kind() {
-                    let n = n
-                        .try_to_target_usize(bx.tcx())
-                        .expect("expected monomorphic const in codegen");
-                    return bx.cx().const_usize(n);
-                }
-            }
+        if let Some(index) = place.as_local()
+            && let LocalRef::Operand(op) = self.locals[index]
+            && let ty::Array(_, n) = op.layout.ty.kind()
+        {
+            let n = n.try_to_target_usize(bx.tcx()).expect("expected monomorphic const in codegen");
+            return bx.cx().const_usize(n);
         }
         // use common size calculation for non zero-sized types
         let cg_value = self.codegen_place(bx, place.as_ref());

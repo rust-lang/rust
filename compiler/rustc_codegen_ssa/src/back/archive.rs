@@ -389,11 +389,10 @@ impl<'a> ArchiveBuilder for ArArchiveBuilder<'a> {
         mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
     ) -> io::Result<()> {
         let mut archive_path = archive_path.to_path_buf();
-        if self.sess.target.llvm_target.contains("-apple-macosx") {
-            if let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
-            {
-                archive_path = new_archive_path
-            }
+        if self.sess.target.llvm_target.contains("-apple-macosx")
+            && let Some(new_archive_path) = try_extract_macho_fat_archive(self.sess, &archive_path)?
+        {
+            archive_path = new_archive_path
         }
 
         if self.src_archives.iter().any(|archive| archive.0 == archive_path) {
