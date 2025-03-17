@@ -660,3 +660,19 @@ impl<T> From<crate::thread::JoinHandle<T>> for OwnedHandle {
         join_handle.into_inner().into_handle().into_inner()
     }
 }
+
+#[stable(feature = "scoped_thread_extensions", since = "CURRENT_RUSTC_VERSION")]
+impl<T> AsHandle for crate::thread::ScopedJoinHandle<'_, T> {
+    #[inline]
+    fn as_handle(&self) -> BorrowedHandle<'_> {
+        unsafe { BorrowedHandle::borrow_raw(self.as_raw_handle()) }
+    }
+}
+
+#[stable(feature = "scoped_thread_extensions", since = "CURRENT_RUSTC_VERSION")]
+impl<T> From<crate::thread::ScopedJoinHandle<'_, T>> for OwnedHandle {
+    #[inline]
+    fn from(join_handle: crate::thread::ScopedJoinHandle<'_, T>) -> OwnedHandle {
+        join_handle.into_inner().into_handle().into_inner()
+    }
+}

@@ -23,3 +23,19 @@ impl<T> IntoRawHandle for thread::JoinHandle<T> {
         self.into_inner().into_handle().into_raw_handle() as *mut _
     }
 }
+
+#[stable(feature = "scoped_thread_extensions", since = "CURRENT_RUSTC_VERSION")]
+impl<T> AsRawHandle for thread::ScopedJoinHandle<'_, T> {
+    #[inline]
+    fn as_raw_handle(&self) -> RawHandle {
+        self.as_inner().handle().as_raw_handle() as *mut _
+    }
+}
+
+#[stable(feature = "scoped_thread_extensions", since = "CURRENT_RUSTC_VERSION")]
+impl<T> IntoRawHandle for thread::ScopedJoinHandle<'_, T> {
+    #[inline]
+    fn into_raw_handle(self) -> RawHandle {
+        self.into_inner().into_handle().into_raw_handle() as *mut _
+    }
+}
