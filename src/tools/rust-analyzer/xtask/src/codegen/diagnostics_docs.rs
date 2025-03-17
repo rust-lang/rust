@@ -10,13 +10,15 @@ use crate::{
 
 pub(crate) fn generate(check: bool) {
     let diagnostics = Diagnostic::collect().unwrap();
-    if !check {
-        let contents =
-            diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
-        let contents = add_preamble(crate::flags::CodegenType::DiagnosticsDocs, contents);
-        let dst = project_root().join("docs/book/src/diagnostics_generated.md");
-        fs::write(dst, contents).unwrap();
+    // Do not generate docs when run with `--check`
+    if check {
+        return;
     }
+    let contents =
+        diagnostics.into_iter().map(|it| it.to_string()).collect::<Vec<_>>().join("\n\n");
+    let contents = add_preamble(crate::flags::CodegenType::DiagnosticsDocs, contents);
+    let dst = project_root().join("docs/book/src/diagnostics_generated.md");
+    fs::write(dst, contents).unwrap();
 }
 
 #[derive(Debug)]

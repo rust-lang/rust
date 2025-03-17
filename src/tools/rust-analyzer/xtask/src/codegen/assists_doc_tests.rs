@@ -53,6 +53,11 @@ r#####"
         );
     }
 
+    // Do not generate assists manual when run with `--check`
+    if check {
+        return;
+    }
+
     {
         // Generate assists manual. Note that we do _not_ commit manual to the
         // git repo. Instead, `cargo xtask release` runs this test before making
