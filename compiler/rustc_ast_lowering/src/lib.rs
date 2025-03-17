@@ -1789,10 +1789,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             LifetimeRes::Infer => hir::LifetimeName::Infer,
             LifetimeRes::Static { .. } => hir::LifetimeName::Static,
             LifetimeRes::Error => hir::LifetimeName::Error,
-            res => panic!(
-                "Unexpected lifetime resolution {:?} for {:?} at {:?}",
-                res, ident, ident.span
-            ),
+            LifetimeRes::ElidedAnchor { .. } => {
+                panic!("Unexpected `ElidedAnchar` {:?} at {:?}", ident, ident.span);
+            }
         };
 
         debug!(?res);
