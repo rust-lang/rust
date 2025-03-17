@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tracing::{info_span, span::EnteredSpan};
 
-use crate::command::{CommandHandle, ParseFromLine};
+use crate::command::{CargoParser, CommandHandle};
 
 pub(crate) const ARG_PLACEHOLDER: &str = "{arg}";
 
@@ -66,7 +66,7 @@ impl DiscoverCommand {
         cmd.args(args);
 
         Ok(DiscoverHandle {
-            _handle: CommandHandle::spawn(cmd, self.sender.clone())?,
+            _handle: CommandHandle::spawn(cmd, DiscoverProjectParser, self.sender.clone())?,
             span: info_span!("discover_command").entered(),
         })
     }
@@ -115,8 +115,10 @@ impl DiscoverProjectMessage {
     }
 }
 
-impl ParseFromLine for DiscoverProjectMessage {
-    fn from_line(line: &str, _error: &mut String) -> Option<Self> {
+struct DiscoverProjectParser;
+
+impl CargoParser<DiscoverProjectMessage> for DiscoverProjectParser {
+    fn from_line(&self, line: &str, _error: &mut String) -> Option<DiscoverProjectMessage> {
         // can the line even be deserialized as JSON?
         let Ok(data) = serde_json::from_str::<Value>(line) else {
             let err = DiscoverProjectData::Error { error: line.to_owned(), source: None };
@@ -131,7 +133,7 @@ impl ParseFromLine for DiscoverProjectMessage {
         Some(msg)
     }
 
-    fn from_eof() -> Option<Self> {
+    fn from_eof(&self) -> Option<DiscoverProjectMessage> {
         None
     }
 }

@@ -24,7 +24,6 @@ mod command;
 mod diagnostics;
 mod discover;
 mod flycheck;
-mod hack_recover_crate_name;
 mod line_index;
 mod main_loop;
 mod mem_docs;
