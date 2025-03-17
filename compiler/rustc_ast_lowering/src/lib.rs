@@ -1774,12 +1774,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     #[instrument(level = "debug", skip(self))]
-    fn new_named_lifetime_with_res(
+    fn new_named_lifetime(
         &mut self,
         id: NodeId,
+        new_id: NodeId,
         ident: Ident,
-        res: LifetimeRes,
     ) -> &'hir hir::Lifetime {
+        let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
             LifetimeRes::Param { param, .. } => hir::LifetimeName::Param(param),
             LifetimeRes::Fresh { param, .. } => {
@@ -1797,21 +1798,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         debug!(?res);
         self.arena.alloc(hir::Lifetime {
-            hir_id: self.lower_node_id(id),
+            hir_id: self.lower_node_id(new_id),
             ident: self.lower_ident(ident),
             res,
         })
-    }
-
-    #[instrument(level = "debug", skip(self))]
-    fn new_named_lifetime(
-        &mut self,
-        id: NodeId,
-        new_id: NodeId,
-        ident: Ident,
-    ) -> &'hir hir::Lifetime {
-        let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
-        self.new_named_lifetime_with_res(new_id, ident, res)
     }
 
     fn lower_generic_params_mut(
