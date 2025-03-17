@@ -1966,8 +1966,6 @@ fn add_env(
     target: TargetSelection,
     built_tools: &HashSet<&'static str>,
 ) {
-    // envs for wix should be always defined, even if not used
-    // FIXME: is they affect ccache?
     let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
         .env("CFG_RELEASE_NUM", &builder.version)
@@ -1989,26 +1987,14 @@ fn add_env(
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
     }
 
-    if built_tools.contains("rustfmt") {
-        cmd.env("CFG_RUSTFMT", "1");
-    } else {
-        cmd.env("CFG_RUSTFMT", "0");
-    }
-    if built_tools.contains("clippy") {
-        cmd.env("CFG_CLIPPY", "1");
-    } else {
-        cmd.env("CFG_CLIPPY", "0");
-    }
-    if built_tools.contains("miri") {
-        cmd.env("CFG_MIRI", "1");
-    } else {
-        cmd.env("CFG_MIRI", "0");
-    }
-    if built_tools.contains("rust-analyzer") {
-        cmd.env("CFG_RA", "1");
-    } else {
-        cmd.env("CFG_RA", "0");
-    }
+    // ensure these variables are defined
+    let mut define_optional_tool = |tool_name: &str, env_name: &str| {
+        cmd.env(env_name, if built_tools.contains(tool_name) { "1" } else { "0" });
+    };
+    define_optional_tool("rustfmt", "CFG_RUSTFMT");
+    define_optional_tool("clippy", "CFG_CLIPPY");
+    define_optional_tool("miri", "CFG_MIRI");
+    define_optional_tool("rust-analyzer", "CFG_RA");
 }
 
 fn install_llvm_file(
