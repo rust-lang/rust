@@ -1131,8 +1131,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
             if let Some(builtin_ext_kind) = self.builtin_macros.get(&builtin_name) {
-                // The macro is a built-in, replace its expander function
-                // while still taking everything else from the source code.
                 ext.kind = builtin_ext_kind.clone();
                 rule_spans = Vec::new();
             } else {

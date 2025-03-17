@@ -62,14 +62,8 @@ fn eii_(
 
     let item = item.into_inner();
 
-    let ast::Item {
-        attrs,
-        id: _,
-        span: item_span,
-        vis,
-        kind: ItemKind::Fn(mut func),
-        tokens: _,
-    } = item
+    let ast::Item { attrs, id: _, span: item_span, vis, kind: ItemKind::Fn(mut func), tokens: _ } =
+        item
     else {
         ecx.dcx()
             .emit_err(EIIMacroExpectedFunction { span, name: path_to_string(&meta_item.path) });
@@ -195,7 +189,7 @@ fn eii_(
                     extern_item_path: ast::Path::from_ident(func.ident),
                     impl_unsafe,
                 }),
-            }
+            },
         ),
         tokens: None,
     }));
