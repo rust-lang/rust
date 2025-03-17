@@ -2,7 +2,6 @@
 use std::fmt::Debug;
 
 fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
-    //~^ WARNING elided lifetime has a name
     |x| x
     //~^ ERROR expected generic lifetime parameter, found `'_`
 }
