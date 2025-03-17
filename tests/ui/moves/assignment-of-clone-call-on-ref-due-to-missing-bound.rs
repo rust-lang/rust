@@ -1,4 +1,4 @@
-//@[current] run-rustfix
+//@ run-rustfix
 //@ revisions: current next
 //@[next] compile-flags: -Znext-solver
 #![allow(unused_variables, dead_code)]
