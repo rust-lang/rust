@@ -1,0 +1,21 @@
+warning: panic message is not a string literal
+  --> $DIR/test-should-panic-failed-show-span.rs:41:12
+   |
+LL |     panic!(123);
+   |            ^^^
+   |
+   = note: this usage of `panic!()` is deprecated; it will be a hard error in Rust 2021
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/panic-macro-consistency.html>
+   = note: `#[warn(non_fmt_panics)]` on by default
+help: add a "{}" format string to `Display` the message
+   |
+LL |     panic!("{}", 123);
+   |            +++++
+help: or use std::panic::panic_any instead
+   |
+LL -     panic!(123);
+LL +     std::panic::panic_any(123);
+   |
+
+warning: 1 warning emitted
+

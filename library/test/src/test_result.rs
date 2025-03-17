@@ -77,7 +77,12 @@ pub(crate) fn calc_result(
 
         // The test should have panicked, but didn't panic.
         (ShouldPanic::Yes, None) | (ShouldPanic::YesWithMessage(_), None) => {
-            TestResult::TrFailedMsg("test did not panic as expected".to_string())
+            let fn_location = if !desc.source_file.is_empty() {
+                &format!(" at {}:{}:{}", desc.source_file, desc.start_line, desc.start_col)
+            } else {
+                ""
+            };
+            TestResult::TrFailedMsg(format!("test did not panic as expected{}", fn_location))
         }
 
         // The test should not have panicked, but did panic.
