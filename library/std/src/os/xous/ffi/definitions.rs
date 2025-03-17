@@ -266,7 +266,7 @@ impl Into<[u32; 4]> for ServerAddress {
 pub(crate) struct ThreadId(usize);
 
 impl From<usize> for ThreadId {
-    /// Make a `ThreadId` with `usize` as inner
+    /// Make a `ThreadId` with `usize` as the id
     fn from(src: usize) -> ThreadId {
         ThreadId(src)
     }

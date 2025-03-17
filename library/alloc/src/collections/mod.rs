@@ -130,7 +130,6 @@ pub use realalloc::collections::TryReserveErrorKind;
 )]
 #[cfg(not(test))]
 impl From<TryReserveErrorKind> for TryReserveError {
-    /// Wrap kind in `TryReserveError`.
     #[inline]
     fn from(kind: TryReserveErrorKind) -> Self {
         Self { kind }
