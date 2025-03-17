@@ -61,10 +61,9 @@ pub(super) fn hints(
             if arrow.is_none() { " -> " } else { "" },
         )
     } else {
-        let body = closure.body()?;
-        let body_range = body.syntax().text_range();
-
         Some(config.lazy_text_edit(|| {
+            let body = closure.body();
+            let body_range = body.expect("Closure must have a body").syntax().text_range();
             let mut builder = TextEdit::builder();
             let insert_pos = param_list.syntax().text_range().end();
 
