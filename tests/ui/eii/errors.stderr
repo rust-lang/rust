@@ -1,56 +1,56 @@
 error: `#[eii_macro_for(...)]` is only valid on macros
   --> $DIR/errors.rs:7:1
    |
-LL | #[core::eii_macro_for(bar)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for(bar)]
+   | ^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` is only valid on macros
   --> $DIR/errors.rs:9:5
    |
-LL |     #[core::eii_macro_for(bar)]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |     #[eii_macro_for(bar)]
+   |     ^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:13:1
    |
-LL | #[core::eii_macro_for]
-   | ^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for]
+   | ^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:14:1
    |
-LL | #[core::eii_macro_for()]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for()]
+   | ^^^^^^^^^^^^^^^^^^
 
 error: expected this argument to be "unsafe".
-  --> $DIR/errors.rs:15:28
+  --> $DIR/errors.rs:15:22
    |
-LL | #[core::eii_macro_for(bar, hello)]
-   |                            ^^^^^
+LL | #[eii_macro_for(bar, hello)]
+   |                      ^^^^^
    |
 note: the second argument is optional
-  --> $DIR/errors.rs:15:28
+  --> $DIR/errors.rs:15:22
    |
-LL | #[core::eii_macro_for(bar, hello)]
-   |                            ^^^^^
+LL | #[eii_macro_for(bar, hello)]
+   |                      ^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:16:1
    |
-LL | #[core::eii_macro_for(bar, "unsafe", hello)]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for(bar, "unsafe", hello)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:17:1
    |
-LL | #[core::eii_macro_for(bar, hello, "unsafe")]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for(bar, hello, "unsafe")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[eii_macro_for(...)]` expects a list of one or two elements
   --> $DIR/errors.rs:18:1
    |
-LL | #[core::eii_macro_for = "unsafe"]
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | #[eii_macro_for = "unsafe"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: `#[foo]` is only valid on functions
   --> $DIR/errors.rs:27:1
