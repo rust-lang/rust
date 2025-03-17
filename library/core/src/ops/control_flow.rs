@@ -80,6 +80,7 @@ use crate::{convert, ops};
 /// [`Continue`]: ControlFlow::Continue
 #[stable(feature = "control_flow_enum_type", since = "1.55.0")]
 #[rustc_diagnostic_item = "ControlFlow"]
+#[must_use]
 // ControlFlow should not implement PartialOrd or Ord, per RFC 3058:
 // https://rust-lang.github.io/rfcs/3058-try-trait-v2.html#traits-for-controlflow
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
