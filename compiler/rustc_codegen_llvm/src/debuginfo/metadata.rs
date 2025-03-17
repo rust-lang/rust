@@ -38,8 +38,8 @@ use crate::debuginfo::metadata::type_map::build_type_with_children;
 use crate::debuginfo::utils::{WidePtrKind, wide_pointer_kind};
 use crate::llvm;
 use crate::llvm::debuginfo::{
-    DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType, DebugEmissionKind,
-    DebugNameTableKind,
+    DICompositeType, DIDescriptor, DIFile, DIFlags, DILexicalBlock, DIScope, DIType,
+    DebugEmissionKind, DebugNameTableKind,
 };
 use crate::value::Value;
 
@@ -312,12 +312,7 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
 
     debug_context(cx).type_map.unique_id_to_di_node.borrow_mut().remove(&unique_type_id);
 
-    let fn_di_node = unsafe {
-        llvm::LLVMRustDIBuilderCreateSubroutineType(
-            DIB(cx),
-            create_DIArray(DIB(cx), &signature_di_nodes[..]),
-        )
-    };
+    let fn_di_node = create_subroutine_type(cx, create_DIArray(DIB(cx), &signature_di_nodes[..]));
 
     // This is actually a function pointer, so wrap it in pointer DI.
     let name = compute_debuginfo_type_name(cx.tcx, fn_ty, false);
@@ -339,6 +334,13 @@ fn build_subroutine_type_di_node<'ll, 'tcx>(
     };
 
     DINodeCreationResult::new(di_node, false)
+}
+
+pub(super) fn create_subroutine_type<'ll>(
+    cx: &CodegenCx<'ll, '_>,
+    signature: &'ll DICompositeType,
+) -> &'ll DICompositeType {
+    unsafe { llvm::LLVMRustDIBuilderCreateSubroutineType(DIB(cx), signature) }
 }
 
 /// Create debuginfo for `dyn SomeTrait` types. Currently these are empty structs
