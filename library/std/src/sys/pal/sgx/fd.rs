@@ -29,7 +29,7 @@ impl FileDesc {
     }
 
     pub fn read_buf(&self, buf: BorrowedCursor<'_>) -> io::Result<()> {
-        crate::io::default_read_buf(|b| self.read(b), buf)
+        usercalls::read_buf(self.fd, buf)
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {

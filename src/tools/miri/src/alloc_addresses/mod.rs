@@ -377,7 +377,6 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     fn get_global_alloc_bytes(
         &self,
         id: AllocId,
-        kind: MemoryKind,
         bytes: &[u8],
         align: Align,
     ) -> InterpResult<'tcx, MiriAllocBytes> {
@@ -386,7 +385,7 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
             // In native lib mode, MiriAllocBytes for global allocations are handled via `prepared_alloc_bytes`.
             // This additional call ensures that some `MiriAllocBytes` are always prepared, just in case
             // this function gets called before the first time `addr_from_alloc_id` gets called.
-            this.addr_from_alloc_id(id, kind)?;
+            this.addr_from_alloc_id(id, MiriMemoryKind::Global.into())?;
             // The memory we need here will have already been allocated during an earlier call to
             // `addr_from_alloc_id` for this allocation. So don't create a new `MiriAllocBytes` here, instead
             // fetch the previously prepared bytes from `prepared_alloc_bytes`.

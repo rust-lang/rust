@@ -3,8 +3,7 @@ use std::fmt;
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::traits::query::NoSolution;
 pub use rustc_middle::traits::query::type_op::{DeeplyNormalize, Normalize};
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeVisitableExt};
+use rustc_middle::ty::{self, Lift, ParamEnvAnd, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
 use rustc_span::Span;
 
 use crate::infer::canonical::{CanonicalQueryInput, CanonicalQueryResponse};

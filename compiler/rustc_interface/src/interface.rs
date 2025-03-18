@@ -18,7 +18,7 @@ use rustc_parse::parser::attr::AllowLeadingUnsafe;
 use rustc_query_impl::QueryCtxt;
 use rustc_query_system::query::print_query_stack;
 use rustc_session::config::{self, Cfg, CheckCfg, ExpectedValues, Input, OutFileName};
-use rustc_session::filesearch::{self, sysroot_candidates};
+use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::parse::ParseSess;
 use rustc_session::{CompilerIO, EarlyDiagCtxt, Session, lint};
 use rustc_span::source_map::{FileLoader, RealFileLoader, SourceMapInputs};
@@ -390,7 +390,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
 
     crate::callbacks::setup_callbacks();
 
-    let sysroot = filesearch::materialize_sysroot(config.opts.maybe_sysroot.clone());
+    let sysroot = config.opts.sysroot.clone();
     let target = config::build_target_config(&early_dcx, &config.opts.target_triple, &sysroot);
     let file_loader = config.file_loader.unwrap_or_else(|| Box::new(RealFileLoader));
     let path_mapping = config.opts.file_path_mapping();
@@ -424,7 +424,7 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
             let temps_dir = config.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
 
             let bundle = match rustc_errors::fluent_bundle(
-                config.opts.maybe_sysroot.clone(),
+                config.opts.sysroot.clone(),
                 sysroot_candidates().to_vec(),
                 config.opts.unstable_opts.translate_lang.clone(),
                 config.opts.unstable_opts.translate_additional_ftl.as_deref(),

@@ -6,8 +6,7 @@ use rustc_span::sym;
 
 use crate::error::StrictCoherenceNeedsNegativeCoherence;
 use crate::ty::fast_reject::SimplifiedType;
-use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{self, TyCtxt};
+use crate::ty::{self, TyCtxt, TypeVisitableExt};
 
 /// A per-trait graph of impls in specialization order. At the moment, this
 /// graph forms a tree rooted with the trait itself, with all other nodes

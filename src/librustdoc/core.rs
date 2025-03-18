@@ -210,7 +210,7 @@ pub(crate) fn create_config(
         unstable_opts,
         target,
         edition,
-        maybe_sysroot,
+        sysroot,
         lint_opts,
         describe_lints,
         lint_cap,
@@ -253,7 +253,7 @@ pub(crate) fn create_config(
     let test = scrape_examples_options.map(|opts| opts.scrape_tests).unwrap_or(false);
     // plays with error output here!
     let sessopts = config::Options {
-        maybe_sysroot,
+        sysroot,
         search_paths: libs,
         crate_types,
         lint_opts,

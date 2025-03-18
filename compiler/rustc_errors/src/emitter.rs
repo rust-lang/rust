@@ -297,7 +297,9 @@ pub trait Emitter: Translate {
                     // are some which do actually involve macros.
                     ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
+                    ExpnKind::Macro(macro_kind, name) => {
+                        Some((macro_kind, name, expn_data.hide_backtrace))
+                    }
                 }
             })
             .collect();
@@ -309,13 +311,17 @@ pub trait Emitter: Translate {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some((macro_kind, name)) = has_macro_spans.first() {
+            // Skip builtin macros, as their expansion isn't relevant to the end user. This includes
+            // actual intrinsics, like `asm!`.
+            if let Some((macro_kind, name, _)) = has_macro_spans.first()
+                && let Some((_, _, false)) = has_macro_spans.last()
+            {
                 // Mark the actual macro this originates from
-                let and_then = if let Some((macro_kind, last_name)) = has_macro_spans.last()
+                let and_then = if let Some((macro_kind, last_name, _)) = has_macro_spans.last()
                     && last_name != name
                 {
                     let descr = macro_kind.descr();
-                    format!(" which comes from the expansion of the {descr} `{last_name}`",)
+                    format!(" which comes from the expansion of the {descr} `{last_name}`")
                 } else {
                     "".to_string()
                 };

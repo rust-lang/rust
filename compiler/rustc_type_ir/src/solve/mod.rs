@@ -5,7 +5,7 @@ use std::hash::Hash;
 
 use derive_where::derive_where;
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use rustc_type_ir_macros::{Lift_Generic, TypeFoldable_Generic, TypeVisitable_Generic};
 
 use crate::search_graph::PathKind;
@@ -38,7 +38,10 @@ pub struct NoSolution;
 #[derive_where(Eq; I: Interner, P: Eq)]
 #[derive_where(Debug; I: Interner, P: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic, Lift_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct Goal<I: Interner, P> {
     pub param_env: I::ParamEnv,
     pub predicate: P,
@@ -98,7 +101,10 @@ pub enum GoalSource {
 #[derive_where(Eq; I: Interner, Goal<I, P>: Eq)]
 #[derive_where(Debug; I: Interner, Goal<I, P>: fmt::Debug)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct QueryInput<I: Interner, P> {
     pub goal: Goal<I, P>,
     pub predefined_opaques_in_body: I::PredefinedOpaques,
@@ -107,7 +113,10 @@ pub struct QueryInput<I: Interner, P> {
 /// Opaques that are defined in the inference context before a query is called.
 #[derive_where(Clone, Hash, PartialEq, Eq, Debug, Default; I: Interner)]
 #[derive(TypeVisitable_Generic, TypeFoldable_Generic)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub struct PredefinedOpaquesData<I: Interner> {
     pub opaque_types: Vec<(ty::OpaqueTypeKey<I>, I::Ty)>,
 }
@@ -178,7 +187,10 @@ pub enum CandidateSource<I: Interner> {
 }
 
 #[derive(Clone, Copy, Hash, PartialEq, Eq, Debug)]
-#[cfg_attr(feature = "nightly", derive(HashStable_NoContext, TyEncodable, TyDecodable))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(HashStable_NoContext, Encodable_NoContext, Decodable_NoContext)
+)]
 pub enum BuiltinImplSource {
     /// A built-in impl that is considered trivial, without any nested requirements. They
     /// are preferred over where-clauses, and we want to track them explicitly.

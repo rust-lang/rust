@@ -862,7 +862,7 @@ pub trait Iterator {
     /// Note that `iter.filter(f).next()` is equivalent to `iter.find(f)`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_filter")]
+    #[rustc_diagnostic_item = "iter_filter"]
     fn filter<P>(self, predicate: P) -> Filter<Self, P>
     where
         Self: Sized,
@@ -954,7 +954,7 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "enumerate_method")]
+    #[rustc_diagnostic_item = "enumerate_method"]
     fn enumerate(self) -> Enumerate<Self>
     where
         Self: Sized,
@@ -1972,11 +1972,20 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iterator_collect_fn")]
+    #[rustc_diagnostic_item = "iterator_collect_fn"]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
         Self: Sized,
     {
+        // This is too aggressive to turn on for everything all the time, but PR#137908
+        // accidentally noticed that some rustc iterators had malformed `size_hint`s,
+        // so this will help catch such things in debug-assertions-std runners,
+        // even if users won't actually ever see it.
+        if cfg!(debug_assertions) {
+            let hint = self.size_hint();
+            assert!(hint.1.is_none_or(|high| high >= hint.0), "Malformed size_hint {hint:?}");
+        }
+
         FromIterator::from_iter(self)
     }
 
@@ -3367,7 +3376,7 @@ pub trait Iterator {
     /// assert_eq!(v_map, vec![1, 2, 3]);
     /// ```
     #[stable(feature = "iter_copied", since = "1.36.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_copied")]
+    #[rustc_diagnostic_item = "iter_copied"]
     fn copied<'a, T: 'a>(self) -> Copied<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,
@@ -3415,7 +3424,7 @@ pub trait Iterator {
     /// assert_eq!(&[vec![23]], &faster[..]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "iter_cloned")]
+    #[rustc_diagnostic_item = "iter_cloned"]
     fn cloned<'a, T: 'a>(self) -> Cloned<Self>
     where
         Self: Sized + Iterator<Item = &'a T>,

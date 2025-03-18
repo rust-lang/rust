@@ -5,7 +5,7 @@ use std::{fmt, iter};
 
 use arrayvec::ArrayVec;
 use rustc_abi::{ExternAbi, VariantIdx};
-use rustc_attr_parsing::{ConstStability, Deprecation, Stability, StableSince};
+use rustc_attr_parsing::{AttributeKind, ConstStability, Deprecation, Stability, StableSince};
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap, FxIndexSet};
 use rustc_hir::def::{CtorKind, DefKind, Res};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE, LocalDefId};
@@ -756,12 +756,7 @@ impl Item {
         Some(tcx.visibility(def_id))
     }
 
-    pub(crate) fn attributes(
-        &self,
-        tcx: TyCtxt<'_>,
-        cache: &Cache,
-        keep_as_is: bool,
-    ) -> Vec<String> {
+    pub(crate) fn attributes(&self, tcx: TyCtxt<'_>, cache: &Cache, is_json: bool) -> Vec<String> {
         const ALLOWED_ATTRIBUTES: &[Symbol] =
             &[sym::export_name, sym::link_section, sym::no_mangle, sym::non_exhaustive];
 
@@ -772,8 +767,14 @@ impl Item {
             .other_attrs
             .iter()
             .filter_map(|attr| {
-                if keep_as_is {
-                    Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                if is_json {
+                    if matches!(attr, hir::Attribute::Parsed(AttributeKind::Deprecation { .. })) {
+                        // rustdoc-json stores this in `Item::deprecation`, so we
+                        // don't want it it `Item::attrs`.
+                        None
+                    } else {
+                        Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    }
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
                         rustc_hir_pretty::attribute_to_string(&tcx, attr)
@@ -786,7 +787,9 @@ impl Item {
                 }
             })
             .collect();
-        if !keep_as_is
+
+        // Add #[repr(...)]
+        if !is_json
             && let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
@@ -1240,7 +1243,7 @@ pub(crate) enum GenericBound {
     TraitBound(PolyTrait, hir::TraitBoundModifiers),
     Outlives(Lifetime),
     /// `use<'a, T>` precise-capturing bound syntax
-    Use(Vec<Symbol>),
+    Use(Vec<PreciseCapturingArg>),
 }
 
 impl GenericBound {
@@ -1301,6 +1304,21 @@ impl Lifetime {
 
     pub(crate) fn elided() -> Lifetime {
         Lifetime(kw::UnderscoreLifetime)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
+pub(crate) enum PreciseCapturingArg {
+    Lifetime(Lifetime),
+    Param(Symbol),
+}
+
+impl PreciseCapturingArg {
+    pub(crate) fn name(self) -> Symbol {
+        match self {
+            PreciseCapturingArg::Lifetime(lt) => lt.0,
+            PreciseCapturingArg::Param(param) => param,
+        }
     }
 }
 
@@ -2244,8 +2262,12 @@ impl GenericArg {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum GenericArgs {
+    /// `<args, constraints = ..>`
     AngleBracketed { args: ThinVec<GenericArg>, constraints: ThinVec<AssocItemConstraint> },
+    /// `(inputs) -> output`
     Parenthesized { inputs: ThinVec<Type>, output: Option<Box<Type>> },
+    /// `(..)`
+    ReturnTypeNotation,
 }
 
 impl GenericArgs {
@@ -2255,6 +2277,7 @@ impl GenericArgs {
                 args.is_empty() && constraints.is_empty()
             }
             GenericArgs::Parenthesized { inputs, output } => inputs.is_empty() && output.is_none(),
+            GenericArgs::ReturnTypeNotation => false,
         }
     }
     pub(crate) fn constraints(&self) -> Box<dyn Iterator<Item = AssocItemConstraint> + '_> {
@@ -2279,6 +2302,7 @@ impl GenericArgs {
                     })
                     .into_iter(),
             ),
+            GenericArgs::ReturnTypeNotation => Box::new([].into_iter()),
         }
     }
 }
@@ -2290,8 +2314,10 @@ impl<'a> IntoIterator for &'a GenericArgs {
         match self {
             GenericArgs::AngleBracketed { args, .. } => Box::new(args.iter().cloned()),
             GenericArgs::Parenthesized { inputs, .. } => {
+                // FIXME: This isn't really right, since `Fn(A, B)` is `Fn<(A, B)>`
                 Box::new(inputs.iter().cloned().map(GenericArg::Type))
             }
+            GenericArgs::ReturnTypeNotation => Box::new([].into_iter()),
         }
     }
 }

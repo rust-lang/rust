@@ -81,7 +81,6 @@ pub(crate) const WORKSPACES: &[(&str, ExceptionList, Option<(&[&str], &[&str])>,
     ("src/tools/rust-analyzer", EXCEPTIONS_RUST_ANALYZER, None, &[]),
     ("src/tools/rustbook", EXCEPTIONS_RUSTBOOK, None, &["src/doc/book", "src/doc/reference"]),
     ("src/tools/rustc-perf", EXCEPTIONS_RUSTC_PERF, None, &["src/tools/rustc-perf"]),
-    ("src/tools/x", &[], None, &[]),
     // tidy-alphabetical-end
 ];
 
@@ -319,6 +318,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "libloading",
     "linux-raw-sys",
     "litemap",
+    "literal-escaper",
     "lock_api",
     "log",
     "matchers",
@@ -364,6 +364,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rustc-rayon",
     "rustc-rayon-core",
     "rustc-stable-hash",
+    "rustc-std-workspace-std",
     "rustc_apfloat",
     "rustix",
     "ruzstd", // via object in thorin-dwp

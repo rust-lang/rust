@@ -2,10 +2,9 @@ use std::iter;
 
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_middle::span_bug;
-use rustc_middle::ty::fold::fold_regions;
 use rustc_middle::ty::{
     self, GenericArgKind, OpaqueHiddenType, OpaqueTypeKey, Ty, TyCtxt, TypeSuperVisitable,
-    TypeVisitable, TypeVisitableExt, TypeVisitor,
+    TypeVisitable, TypeVisitableExt, TypeVisitor, fold_regions,
 };
 use tracing::{debug, trace};
 

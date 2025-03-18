@@ -129,7 +129,7 @@ impl BreakAfterExprVisitor {
         };
 
         get_enclosing_block(cx, hir_id).is_some_and(|block| {
-            visitor.visit_block(block);
+            let _ = visitor.visit_block(block);
             visitor.break_after_expr
         })
     }

@@ -103,6 +103,8 @@ pub(crate) struct Options {
     /// compiling doctests from the crate.
     pub(crate) edition: Edition,
     /// The path to the sysroot. Used during the compilation process.
+    pub(crate) sysroot: PathBuf,
+    /// Has the same value as `sysroot` except is `None` when the user didn't pass `---sysroot`.
     pub(crate) maybe_sysroot: Option<PathBuf>,
     /// Lint information passed over the command-line.
     pub(crate) lint_opts: Vec<(String, Level)>,
@@ -202,6 +204,7 @@ impl fmt::Debug for Options {
             .field("unstable_options", &"...")
             .field("target", &self.target)
             .field("edition", &self.edition)
+            .field("sysroot", &self.sysroot)
             .field("maybe_sysroot", &self.maybe_sysroot)
             .field("lint_opts", &self.lint_opts)
             .field("describe_lints", &self.describe_lints)
@@ -729,12 +732,7 @@ impl Options {
         let target = parse_target_triple(early_dcx, matches);
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
 
-        let sysroot = match &maybe_sysroot {
-            Some(s) => s.clone(),
-            None => {
-                rustc_session::filesearch::get_or_default_sysroot().expect("Failed finding sysroot")
-            }
-        };
+        let sysroot = rustc_session::filesearch::materialize_sysroot(maybe_sysroot.clone());
 
         let libs = matches
             .opt_strs("L")
@@ -834,6 +832,7 @@ impl Options {
             unstable_opts_strs,
             target,
             edition,
+            sysroot,
             maybe_sysroot,
             lint_opts,
             describe_lints,

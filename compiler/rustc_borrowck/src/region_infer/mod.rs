@@ -18,8 +18,7 @@ use rustc_middle::mir::{
     ReturnConstraint, TerminatorKind,
 };
 use rustc_middle::traits::{ObligationCause, ObligationCauseCode};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex};
+use rustc_middle::ty::{self, RegionVid, Ty, TyCtxt, TypeFoldable, UniverseIndex, fold_regions};
 use rustc_mir_dataflow::points::DenseLocationMap;
 use rustc_span::hygiene::DesugaringKind;
 use rustc_span::{DUMMY_SP, Span};

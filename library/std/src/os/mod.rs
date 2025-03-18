@@ -125,6 +125,8 @@ pub mod windows;
 pub mod aix;
 #[cfg(target_os = "android")]
 pub mod android;
+#[cfg(target_os = "cygwin")]
+pub mod cygwin;
 #[cfg(target_os = "dragonfly")]
 pub mod dragonfly;
 #[cfg(target_os = "emscripten")]
@@ -169,6 +171,8 @@ pub mod rtems;
 pub mod solaris;
 #[cfg(target_os = "solid_asp3")]
 pub mod solid;
+#[cfg(target_os = "trusty")]
+pub mod trusty;
 #[cfg(target_os = "uefi")]
 pub mod uefi;
 #[cfg(target_os = "vita")]
@@ -178,7 +182,7 @@ pub mod vxworks;
 #[cfg(target_os = "xous")]
 pub mod xous;
 
-#[cfg(any(unix, target_os = "hermit", target_os = "wasi", doc))]
+#[cfg(any(unix, target_os = "hermit", target_os = "trusty", target_os = "wasi", doc))]
 pub mod fd;
 
 #[cfg(any(target_os = "linux", target_os = "android", doc))]

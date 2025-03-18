@@ -8,8 +8,7 @@ use rustc_infer::infer::canonical::{
 };
 use rustc_infer::infer::{InferCtxt, RegionVariableOrigin, TyCtxtInferExt};
 use rustc_infer::traits::solve::Goal;
-use rustc_middle::ty::fold::TypeFoldable;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitableExt as _};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitableExt as _};
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
 use rustc_type_ir::TypingMode;
 use rustc_type_ir::solve::{Certainty, NoSolution};

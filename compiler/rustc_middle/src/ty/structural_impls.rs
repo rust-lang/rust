@@ -11,16 +11,16 @@ use rustc_hir::def::Namespace;
 use rustc_hir::def_id::LocalDefId;
 use rustc_span::Span;
 use rustc_span::source_map::Spanned;
-use rustc_type_ir::ConstKind;
-use rustc_type_ir::visit::{VisitorResult, try_visit};
+use rustc_type_ir::{ConstKind, VisitorResult, try_visit};
 
 use super::print::PrettyPrinter;
 use super::{GenericArg, GenericArgKind, Pattern, Region};
 use crate::mir::PlaceElem;
-use crate::ty::fold::{FallibleTypeFolder, TypeFoldable, TypeSuperFoldable};
 use crate::ty::print::{FmtPrinter, Printer, with_no_trimmed_paths};
-use crate::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
-use crate::ty::{self, InferConst, Lift, Term, TermKind, Ty, TyCtxt};
+use crate::ty::{
+    self, FallibleTypeFolder, InferConst, Lift, Term, TermKind, Ty, TyCtxt, TypeFoldable,
+    TypeSuperFoldable, TypeSuperVisitable, TypeVisitable, TypeVisitor,
+};
 
 impl fmt::Debug for ty::TraitDef {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

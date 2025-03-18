@@ -421,7 +421,7 @@ trigger_files = [
 trigger_files = [
     "Cargo.toml",
     "configure",
-    "config.example.toml",
+    "bootstrap.example.toml",
     "src/bootstrap",
     "src/build_helper",
     "src/tools/rust-installer",
@@ -948,9 +948,9 @@ This PR modifies `src/bootstrap/defaults`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
-[mentions."config.example.toml"]
+[mentions."bootstrap.example.toml"]
 message = """
-This PR modifies `config.example.toml`.
+This PR modifies `bootstrap.example.toml`.
 
 If appropriate, please update `CONFIG_CHANGE_HISTORY` in `src/bootstrap/src/utils/change_tracker.rs`.
 """
@@ -1081,6 +1081,8 @@ warn_non_default_branch.enable = true
 contributing_url = "https://rustc-dev-guide.rust-lang.org/getting-started.html"
 users_on_vacation = [
     "jyn514",
+    "ChrisDenton",
+    "jieyouxu",
 ]
 
 [[assign.warn_non_default_branch.exceptions]]
@@ -1115,7 +1117,6 @@ compiler = [
     "@wesleywiser",
 ]
 libs = [
-    "@cuviper",
     "@Mark-Simulacrum",
     "@Amanieu",
     "@Noratrieb",

@@ -19,8 +19,6 @@ use crate::{fmt, io, ptr};
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
         // fuchsia doesn't have /dev/null
-    } else if #[cfg(target_os = "redox")] {
-        const DEV_NULL: &CStr = c"null:";
     } else if #[cfg(target_os = "vxworks")] {
         const DEV_NULL: &CStr = c"/null";
     } else {
@@ -488,6 +486,12 @@ impl Stdio {
 impl From<AnonPipe> for Stdio {
     fn from(pipe: AnonPipe) -> Stdio {
         Stdio::Fd(pipe.into_inner())
+    }
+}
+
+impl From<FileDesc> for Stdio {
+    fn from(fd: FileDesc) -> Stdio {
+        Stdio::Fd(fd)
     }
 }
 

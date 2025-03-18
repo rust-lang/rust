@@ -1132,7 +1132,7 @@ impl<'tcx> DeadVisitor<'tcx> {
             return;
         }
         dead_codes.sort_by_key(|v| v.level);
-        for group in dead_codes[..].chunk_by(|a, b| a.level == b.level) {
+        for group in dead_codes.chunk_by(|a, b| a.level == b.level) {
             self.lint_at_single_level(&group, participle, Some(def_id), report_on);
         }
     }

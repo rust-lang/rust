@@ -8,10 +8,14 @@ use crate::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 /// as possibly some version-dependent additional information. See [`SocketAddrV4`]'s and
 /// [`SocketAddrV6`]'s respective documentation for more details.
 ///
-/// The size of a `SocketAddr` instance may vary depending on the target operating
-/// system.
-///
 /// [IP address]: IpAddr
+///
+/// # Portability
+///
+/// `SocketAddr` is intended to be a portable representation of socket addresses and is likely not
+/// the same as the internal socket address type used by the target operating system's API. Like all
+/// `repr(Rust)` structs, however, its exact layout remains undefined and should not be relied upon
+/// between builds.
 ///
 /// # Examples
 ///
@@ -42,12 +46,15 @@ pub enum SocketAddr {
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
-/// The size of a `SocketAddrV4` struct may vary depending on the target operating
-/// system. Do not assume that this type has the same memory layout as the underlying
-/// system representation.
-///
 /// [IETF RFC 793]: https://tools.ietf.org/html/rfc793
 /// [`IPv4` address]: Ipv4Addr
+///
+/// # Portability
+///
+/// `SocketAddrV4` is intended to be a portable representation of socket addresses and is likely not
+/// the same as the internal socket address type used by the target operating system's API. Like all
+/// `repr(Rust)` structs, however, its exact layout remains undefined and should not be relied upon
+/// between builds.
 ///
 /// # Textual representation
 ///
@@ -84,12 +91,15 @@ pub struct SocketAddrV4 {
 ///
 /// See [`SocketAddr`] for a type encompassing both IPv4 and IPv6 socket addresses.
 ///
-/// The size of a `SocketAddrV6` struct may vary depending on the target operating
-/// system. Do not assume that this type has the same memory layout as the underlying
-/// system representation.
-///
 /// [IETF RFC 2553, Section 3.3]: https://tools.ietf.org/html/rfc2553#section-3.3
 /// [`IPv6` address]: Ipv6Addr
+///
+/// # Portability
+///
+/// `SocketAddrV6` is intended to be a portable representation of socket addresses and is likely not
+/// the same as the internal socket address type used by the target operating system's API. Like all
+/// `repr(Rust)` structs, however, its exact layout remains undefined and should not be relied upon
+/// between builds.
 ///
 /// # Textual representation
 ///

@@ -7,8 +7,9 @@ use rustc_infer::infer::{self, InferCtxt, SubregionOrigin};
 use rustc_infer::traits::query::type_op::DeeplyNormalize;
 use rustc_middle::bug;
 use rustc_middle::mir::{ClosureOutlivesSubject, ClosureRegionRequirements, ConstraintCategory};
-use rustc_middle::ty::fold::fold_regions;
-use rustc_middle::ty::{self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt};
+use rustc_middle::ty::{
+    self, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeVisitableExt, fold_regions,
+};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
 use tracing::{debug, instrument};

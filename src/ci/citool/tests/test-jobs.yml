@@ -75,6 +75,7 @@ pr:
     <<: *job-linux-4c
   - name: mingw-check-tidy
     continue_on_error: true
+    doc_url: https://foo.bar
     <<: *job-linux-4c
 
 # Jobs that run when you perform a try build (@bors try)

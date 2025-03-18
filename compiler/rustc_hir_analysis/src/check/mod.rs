@@ -84,6 +84,7 @@ use rustc_infer::infer::{self, TyCtxtInferExt as _};
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::print::with_types_for_signature;
 use rustc_middle::ty::{self, GenericArgs, GenericArgsRef, Ty, TyCtxt, TypingMode};
 use rustc_middle::{bug, span_bug};
 use rustc_session::parse::feature_err;
@@ -152,10 +153,9 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     }
 
     // If `#[link_section]` is missing, then nothing to verify
-    let attrs = tcx.codegen_fn_attrs(id);
-    if attrs.link_section.is_none() {
+    let Some(link_section) = tcx.codegen_fn_attrs(id).link_section else {
         return;
-    }
+    };
 
     // For the wasm32 target statics with `#[link_section]` other than `.init_array`
     // are placed into custom sections of the final output file, but this isn't like
@@ -181,11 +181,8 @@ pub(super) fn maybe_check_static_with_link_section(tcx: TyCtxt<'_>, id: LocalDef
     //  continue to work, but would no longer be necessary.
 
     if let Ok(alloc) = tcx.eval_static_initializer(id.to_def_id())
-        && alloc.inner().provenance().ptrs().len() != 0
-        && attrs
-            .link_section
-            .map(|link_section| !link_section.as_str().starts_with(".init_array"))
-            .unwrap()
+        && !alloc.inner().provenance().ptrs().is_empty()
+        && !link_section.as_str().starts_with(".init_array")
     {
         let msg = "statics with a custom `#[link_section]` must be a \
                         simple list of bytes on the wasm target with no \
@@ -240,11 +237,11 @@ fn missing_items_err(
         (Vec::new(), Vec::new(), Vec::new());
 
     for &trait_item in missing_items {
-        let snippet = suggestion_signature(
+        let snippet = with_types_for_signature!(suggestion_signature(
             tcx,
             trait_item,
             tcx.impl_trait_ref(impl_def_id).unwrap().instantiate_identity(),
-        );
+        ));
         let code = format!("{padding}{snippet}\n{padding}");
         if let Some(span) = tcx.hir().span_if_local(trait_item.def_id) {
             missing_trait_item_label

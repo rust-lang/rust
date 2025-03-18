@@ -27,10 +27,10 @@ pub type _Unwind_Trace_Fn =
 #[cfg(target_arch = "x86")]
 pub const unwinder_private_data_size: usize = 5;
 
-#[cfg(all(target_arch = "x86_64", not(target_os = "windows")))]
+#[cfg(all(target_arch = "x86_64", not(any(target_os = "windows", target_os = "cygwin"))))]
 pub const unwinder_private_data_size: usize = 2;
 
-#[cfg(all(target_arch = "x86_64", target_os = "windows"))]
+#[cfg(all(target_arch = "x86_64", any(target_os = "windows", target_os = "cygwin")))]
 pub const unwinder_private_data_size: usize = 6;
 
 #[cfg(all(target_arch = "arm", not(target_vendor = "apple")))]
@@ -128,16 +128,13 @@ if #[cfg(any(target_vendor = "apple", target_os = "netbsd", not(target_arch = "a
     //
     // 32-bit ARM on iOS/tvOS/watchOS use either DWARF/Compact unwinding or
     // "setjmp-longjmp" / SjLj unwinding.
-    #[repr(C)]
-    #[derive(Copy, Clone, PartialEq)]
-    pub enum _Unwind_Action {
-        _UA_SEARCH_PHASE = 1,
-        _UA_CLEANUP_PHASE = 2,
-        _UA_HANDLER_FRAME = 4,
-        _UA_FORCE_UNWIND = 8,
-        _UA_END_OF_STACK = 16,
-    }
-    pub use _Unwind_Action::*;
+    pub type _Unwind_Action = c_int;
+
+    pub const _UA_SEARCH_PHASE: c_int = 1;
+    pub const _UA_CLEANUP_PHASE: c_int = 2;
+    pub const _UA_HANDLER_FRAME: c_int = 4;
+    pub const _UA_FORCE_UNWIND: c_int = 8;
+    pub const _UA_END_OF_STACK: c_int = 16;
 
     #[cfg_attr(
         all(feature = "llvm-libunwind", any(target_os = "fuchsia", target_os = "linux", target_os = "xous")),
@@ -292,7 +289,10 @@ if #[cfg(all(target_vendor = "apple", not(target_os = "watchos"), target_arch = 
 } // cfg_if!
 
 cfg_if::cfg_if! {
-if #[cfg(all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"))] {
+if #[cfg(any(
+        all(windows, any(target_arch = "aarch64", target_arch = "x86_64"), target_env = "gnu"),
+        target_os = "cygwin",
+    ))] {
     // We declare these as opaque types. This is fine since you just need to
     // pass them to _GCC_specific_handler and forget about them.
     pub enum EXCEPTION_RECORD {}

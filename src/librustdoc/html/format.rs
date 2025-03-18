@@ -283,7 +283,7 @@ impl clean::GenericBound {
                 } else {
                     f.write_str("use&lt;")?;
                 }
-                args.iter().joined(", ", f)?;
+                args.iter().map(|arg| arg.name()).joined(", ", f)?;
                 if f.alternate() { f.write_str(">") } else { f.write_str("&gt;") }
             }
         })
@@ -331,6 +331,9 @@ impl clean::GenericArgs {
                             write!(f, " -&gt; {}", ty.print(cx))?;
                         }
                     }
+                }
+                clean::GenericArgs::ReturnTypeNotation => {
+                    f.write_str("(..)")?;
                 }
             }
             Ok(())

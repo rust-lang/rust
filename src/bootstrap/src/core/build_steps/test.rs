@@ -1119,7 +1119,7 @@ impl Step for Tidy {
                         "\
 ERROR: no `rustfmt` binary found in {PATH}
 INFO: `rust.channel` is currently set to \"{CHAN}\"
-HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `config.toml` file
+HELP: if you are testing a beta branch, set `rust.channel` to \"beta\" in the `bootstrap.toml` file
 HELP: to skip test's attempt to check tidiness, pass `--skip src/tools/tidy` to `x.py test`",
                         PATH = inferred_rustfmt_dir.display(),
                         CHAN = builder.config.channel,
@@ -1908,8 +1908,6 @@ NOTE: if you're sure you want to do this, please open an issue as to why. In the
                 llvm_components_passed = true;
             }
             if !builder.is_rust_llvm(target) {
-                // FIXME: missing Rust patches is not the same as being system llvm; we should rename the flag at some point.
-                // Inspecting the tests with `// no-system-llvm` in src/test *looks* like this is doing the right thing, though.
                 cmd.arg("--system-llvm");
             }
 
@@ -3377,7 +3375,7 @@ impl Step for CodegenCranelift {
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare").arg("--download-dir").arg(&download_dir);
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         builder.config.try_run(&mut prepare_cargo.into()).unwrap();
         */
 
@@ -3508,7 +3506,7 @@ impl Step for CodegenGCC {
         /*
         let mut prepare_cargo = build_cargo();
         prepare_cargo.arg("--").arg("prepare");
-        #[allow(deprecated)]
+        #[expect(deprecated)]
         builder.config.try_run(&mut prepare_cargo.into()).unwrap();
         */
 

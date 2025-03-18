@@ -1,12 +1,11 @@
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_hir::def_id::DefId;
 use rustc_type_ir::data_structures::DelayedMap;
-pub use rustc_type_ir::fold::{
-    FallibleTypeFolder, TypeFoldable, TypeFolder, TypeSuperFoldable, fold_regions, shift_region,
-    shift_vars,
-};
 
-use crate::ty::{self, Binder, BoundTy, Ty, TyCtxt, TypeVisitableExt};
+use crate::ty::{
+    self, Binder, BoundTy, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
+    TypeVisitableExt,
+};
 
 ///////////////////////////////////////////////////////////////////////////
 // Some sample folders
@@ -129,7 +128,7 @@ where
             ty::Bound(debruijn, bound_ty) if debruijn == self.current_index => {
                 let ty = self.delegate.replace_ty(bound_ty);
                 debug_assert!(!ty.has_vars_bound_above(ty::INNERMOST));
-                ty::fold::shift_vars(self.tcx, ty, self.current_index.as_u32())
+                ty::shift_vars(self.tcx, ty, self.current_index.as_u32())
             }
             _ => {
                 if !t.has_vars_bound_at_or_above(self.current_index) {
@@ -169,7 +168,7 @@ where
             ty::ConstKind::Bound(debruijn, bound_const) if debruijn == self.current_index => {
                 let ct = self.delegate.replace_const(bound_const);
                 debug_assert!(!ct.has_vars_bound_above(ty::INNERMOST));
-                ty::fold::shift_vars(self.tcx, ct, self.current_index.as_u32())
+                ty::shift_vars(self.tcx, ct, self.current_index.as_u32())
             }
             _ => ct.super_fold_with(self),
         }

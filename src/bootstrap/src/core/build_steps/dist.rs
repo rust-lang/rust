@@ -519,7 +519,7 @@ impl Step for Rustc {
 
             // The REUSE-managed license files
             let license = |path: &Path| {
-                builder.install(path, &image.join("share/doc/rust/licences"), 0o644);
+                builder.install(path, &image.join("share/doc/rust/licenses"), 0o644);
             };
             for entry in t!(std::fs::read_dir(builder.src.join("LICENSES"))).flatten() {
                 license(&entry.path());
@@ -1000,9 +1000,9 @@ impl Step for PlainSourceTarball {
         let src_files = [
             // tidy-alphabetical-start
             ".gitmodules",
+            "bootstrap.example.toml",
             "Cargo.lock",
             "Cargo.toml",
-            "config.example.toml",
             "configure",
             "CONTRIBUTING.md",
             "COPYRIGHT",
@@ -1153,48 +1153,6 @@ impl Step for Cargo {
         tarball.add_dir(etc.join("man"), "share/man/man1");
         tarball.add_legal_and_readme_to("share/doc/cargo");
 
-        Some(tarball.generate())
-    }
-}
-
-#[derive(Debug, PartialOrd, Ord, Clone, Hash, PartialEq, Eq)]
-pub struct Rls {
-    pub compiler: Compiler,
-    pub target: TargetSelection,
-}
-
-impl Step for Rls {
-    type Output = Option<GeneratedTarball>;
-    const ONLY_HOSTS: bool = true;
-    const DEFAULT: bool = true;
-
-    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        let default = should_build_extended_tool(run.builder, "rls");
-        run.alias("rls").default_condition(default)
-    }
-
-    fn make_run(run: RunConfig<'_>) {
-        run.builder.ensure(Rls {
-            compiler: run.builder.compiler_for(
-                run.builder.top_stage,
-                run.builder.config.build,
-                run.target,
-            ),
-            target: run.target,
-        });
-    }
-
-    fn run(self, builder: &Builder<'_>) -> Option<GeneratedTarball> {
-        let compiler = self.compiler;
-        let target = self.target;
-
-        let rls = builder.ensure(tool::Rls { compiler, target });
-
-        let mut tarball = Tarball::new(builder, "rls", &target.triple);
-        tarball.set_overlay(OverlayKind::Rls);
-        tarball.is_preview(true);
-        tarball.add_file(rls.tool_path, "bin", 0o755);
-        tarball.add_legal_and_readme_to("share/doc/rls");
         Some(tarball.generate())
     }
 }
@@ -1528,7 +1486,6 @@ impl Step for Extended {
         add_component!("rust-json-docs" => JsonDocs { host: target });
         add_component!("cargo" => Cargo { compiler, target });
         add_component!("rustfmt" => Rustfmt { compiler, target });
-        add_component!("rls" => Rls { compiler, target });
         add_component!("rust-analyzer" => RustAnalyzer { compiler, target });
         add_component!("llvm-components" => LlvmTools { target });
         add_component!("clippy" => Clippy { compiler, target });
@@ -2421,7 +2378,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 
@@ -2524,7 +2481,7 @@ impl Step for Gcc {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let tarball = Tarball::new(builder, "gcc", &self.target.triple);
         let output = builder.ensure(super::gcc::Gcc { target: self.target });
-        tarball.add_file(output.libgccjit, ".", 0o644);
+        tarball.add_file(output.libgccjit, "lib", 0o644);
         tarball.generate()
     }
 }
