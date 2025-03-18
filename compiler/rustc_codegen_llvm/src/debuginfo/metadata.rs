@@ -245,7 +245,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             cx,
                             owner,
                             addr_field_name,
-                            (addr_field.size, addr_field.align.abi),
+                            addr_field,
                             layout.fields.offset(WIDE_PTR_ADDR),
                             DIFlags::FlagZero,
                             data_ptr_type_di_node,
@@ -255,7 +255,7 @@ fn build_pointer_or_reference_di_node<'ll, 'tcx>(
                             cx,
                             owner,
                             extra_field_name,
-                            (extra_field.size, extra_field.align.abi),
+                            extra_field,
                             layout.fields.offset(WIDE_PTR_EXTRA),
                             DIFlags::FlagZero,
                             type_di_node(cx, extra_field.ty),
@@ -738,7 +738,7 @@ fn build_cpp_f16_di_node<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) -> DINodeCreation
                 cx,
                 float_di_node,
                 "bits",
-                cx.size_and_align_of(bits_ty),
+                cx.layout_of(bits_ty),
                 Size::ZERO,
                 DIFlags::FlagZero,
                 type_di_node(cx, bits_ty),
@@ -972,7 +972,7 @@ fn build_field_di_node<'ll, 'tcx>(
     cx: &CodegenCx<'ll, 'tcx>,
     owner: &'ll DIScope,
     name: &str,
-    size_and_align: (Size, Align),
+    layout: TyAndLayout<'tcx>,
     offset: Size,
     flags: DIFlags,
     type_di_node: &'ll DIType,
@@ -992,8 +992,8 @@ fn build_field_di_node<'ll, 'tcx>(
             name.len(),
             file_metadata,
             line_number,
-            size_and_align.0.bits(),
-            size_and_align.1.bits() as u32,
+            layout.size.bits(),
+            layout.align.abi.bits() as u32,
             offset.bits(),
             flags,
             type_di_node,
@@ -1077,7 +1077,7 @@ fn build_struct_type_di_node<'ll, 'tcx>(
                         cx,
                         owner,
                         &field_name[..],
-                        (field_layout.size, field_layout.align.abi),
+                        field_layout,
                         struct_type_and_layout.fields.offset(i),
                         visibility_di_flags(cx, f.did, adt_def.did()),
                         type_di_node(cx, field_layout.ty),
@@ -1127,7 +1127,7 @@ fn build_upvar_field_di_nodes<'ll, 'tcx>(
                 cx,
                 closure_or_coroutine_di_node,
                 capture_name.as_str(),
-                cx.size_and_align_of(up_var_ty),
+                cx.layout_of(up_var_ty),
                 layout.fields.offset(index),
                 DIFlags::FlagZero,
                 type_di_node(cx, up_var_ty),
@@ -1172,7 +1172,7 @@ fn build_tuple_type_di_node<'ll, 'tcx>(
                         cx,
                         tuple_di_node,
                         &tuple_field_name(index),
-                        cx.size_and_align_of(component_type),
+                        cx.layout_of(component_type),
                         tuple_type_and_layout.fields.offset(index),
                         DIFlags::FlagZero,
                         type_di_node(cx, component_type),
@@ -1270,7 +1270,7 @@ fn build_union_type_di_node<'ll, 'tcx>(
                         cx,
                         owner,
                         f.name.as_str(),
-                        size_and_align_of(field_layout),
+                        field_layout,
                         Size::ZERO,
                         DIFlags::FlagZero,
                         type_di_node(cx, field_layout.ty),
@@ -1418,7 +1418,9 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
     let void_pointer_ty = Ty::new_imm_ptr(tcx, tcx.types.unit);
     let void_pointer_type_di_node = type_di_node(cx, void_pointer_ty);
     let usize_di_node = type_di_node(cx, tcx.types.usize);
-    let (pointer_size, pointer_align) = cx.size_and_align_of(void_pointer_ty);
+    let pointer_layout = cx.layout_of(void_pointer_ty);
+    let pointer_size = pointer_layout.size;
+    let pointer_align = pointer_layout.align.abi;
     // If `usize` is not pointer-sized and -aligned then the size and alignment computations
     // for the vtable as a whole would be wrong. Let's make sure this holds even on weird
     // platforms.
@@ -1474,7 +1476,7 @@ fn build_vtable_type_di_node<'ll, 'tcx>(
                         cx,
                         vtable_type_di_node,
                         &field_name,
-                        (pointer_size, pointer_align),
+                        pointer_layout,
                         field_offset,
                         DIFlags::FlagZero,
                         field_type_di_node,
