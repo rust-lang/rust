@@ -103,7 +103,7 @@ pub fn updated_master_branch(
 
 /// Represents the result of checking whether a set of paths
 /// have been modified locally or not.
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum PathFreshness {
     /// Artifacts should be downloaded from this upstream commit,
     /// there are no local modifications.
