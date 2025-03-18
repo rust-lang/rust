@@ -97,7 +97,7 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
 * The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
   where they're handled by the test runner of bootstrap and
   the supplementary script `src/etc/htmldocck.py`.
-  [These tests have several extra directives available to them](./rustdoc-internals/htmldocck.md).
+  [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
 
 [TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 
