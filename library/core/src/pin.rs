@@ -1101,6 +1101,11 @@ pub struct Pin<Ptr> {
     #[unstable(feature = "unsafe_pin_internals", issue = "none")]
     #[doc(hidden)]
     pub __pointer: Ptr,
+
+    /// See the docs of [`lifetime_extension`] for more info.
+    #[unstable(feature = "unsafe_pin_internals", issue = "none")]
+    #[doc(hidden)]
+    pub __phantom: crate::marker::PhantomData<Ptr>,
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -1355,7 +1360,7 @@ impl<Ptr: Deref> Pin<Ptr> {
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const unsafe fn new_unchecked(pointer: Ptr) -> Pin<Ptr> {
-        Pin { __pointer: pointer }
+        Pin { __pointer: pointer, __phantom: crate::marker::PhantomData }
     }
 
     /// Gets a shared reference to the pinned value this [`Pin`] points to.
@@ -1575,7 +1580,7 @@ impl<'a, T: ?Sized> Pin<&'a mut T> {
     #[rustc_const_stable(feature = "const_pin", since = "1.84.0")]
     #[stable(feature = "pin", since = "1.33.0")]
     pub const fn into_ref(self) -> Pin<&'a T> {
-        Pin { __pointer: self.__pointer }
+        Pin { __pointer: self.__pointer, __phantom: crate::marker::PhantomData }
     }
 
     /// Gets a mutable reference to the data inside of this `Pin`.
@@ -2014,5 +2019,145 @@ pub macro pin($value:expr $(,)?) {
     //
     // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
     // for more info.
-    $crate::pin::Pin::<&mut _> { __pointer: &mut { $value } }
+    $crate::pin::Pin::<&mut _> {
+        __pointer: &mut $crate::pin::__Pinned {
+            value_expression_preserving_lifespan_extension_of_temporaries: $value,
+        } as &mut _,
+        // ^^^^^^^^
+        // DerefMut coërcion, because of --+
+        __phantom: { // <------------------+
+            let pin = $crate::marker::PhantomData;
+            if false {
+                loop {}
+                // We use dead code to disable move semantics (and borrowck) to allow us to refer to
+                // `$value` again even when `$value` happens to consume non-`Copy` stuff or whatnot.
+                #[allow(unreachable_code)] {
+                    $crate::pin::__phantomdata_set_typeof_pointee(pin, $value);
+                }
+            }
+            pin
+        },
+    }
 }
+
+/// Since the 2024 edition, the rules for lifespan-of-temporaries extension have changed,
+/// and `{ $value }` no longer cuts it for all the scenarios where it did in the 2021 edition and
+/// before.
+///
+///   - aside: throughout this documentation the expression "lifespan extension" shall be preferred
+///     to that of "lifetime extension", so as to clarify we are firstly talking of the lifespan of
+///     a temporary, which, when extended, results in the lifetime of a borrow to it to be allowed
+///     to be bigger. This nit seems more in line with the idea that lifetimes themselves are just
+///     descriptive, not prescriptive, so it does not make that much sense to talk of extending one
+///     _directly_. We would not need to lift this ambiguity had Rust chosen a term other than
+///     "lifetime" to talk of the duration of borrows.
+///
+/// Indeed, things such as the following regressed:
+///
+/// ```rust
+/// // Regression test for #138596
+///
+/// fn main() {
+///     match core::pin::pin!(foo(&mut 0)) {
+///         _f => {}
+///     }
+/// }
+///
+/// async fn foo(_s: &mut usize) {}
+/// ```
+///
+/// The reason for that is that we'd end up with `{ foo(&mut temporary(0)) }` among the expansion
+/// of `pin!`, and since this happens in `match`-scrutinee position, temporaries get not to outlive
+/// their encompassing braced block(s), so `temporary(0)` dies before that `}`, and the resulting
+/// `Pin { … }` is born dangling.
+///
+/// But we do need a _value expression_ behind our `Pin { __pointer: &mut`, lest Rust treat it as a
+/// _place expression_, and allow things such as `$value = *&mut non_unpin`, which would break
+/// the soundness requirement of `Pin` (see
+/// https://github.com/rust-lang/rust/issues/138596#issuecomment-2729894350).
+///
+/// This naïvely leaves us with things such as `identity($value)` or `($value, ).0` as
+/// plausible alternatives.
+///
+/// But, alas, this now breaks the lifespan-of-temps extension happening _inside of `$value`_, which
+/// has been an accidental, but stabilized and quite convenient, property of `pin!`.
+/// For instance, the following code would break:
+///
+/// ```rust
+/// fn temporary() {}
+///
+/// let p = core::pin::pin!(&mut temporary());
+/// let _some_usage_of_p = (&p, );
+/// ```
+///
+/// And there are several occurrences of `pin!(&mut …)` in the wild, and whilst most of them are
+/// inlined/short usages of `Pin<&mut _>`, there is at least one instance of such code actually
+/// being multi-statement lived, and thus relying on the lifespan-of-temps extension property of
+/// `pin!()`.
+///
+/// So, unless/until we get `pin!()` —or a helper inner macro thereof— to be using edition 2021
+/// rules for its `{ $value }` expression, the only 2024-edition-compatible workaround found so far
+/// hinges on the following observation:
+///
+/// > `&mut Wrapper { field: $value }` happens to preserve the lifespan-of-temps-extending
+/// > rules of 2021 edition `&mut $value`, and also funnels `$value` through a value expression.
+///
+/// But we get a `&mut Wrapper<typeof<$value>>` rather than a `&mut typeof<$value>`.
+/// So now the challenge is to get `DerefMut` to take place here, and we are good!
+///
+/// Only…, so far, lifespan-extension rules get broken by _explicit_ `Deref{,Mut}` such as `*`,
+/// `&*`, or, in our case, `&mut *`!! 😩
+///
+/// But…, it does not get broken by _implicit_ `Deref{,Mut}`, such as the one triggered by a deref
+/// coërcion!
+///
+/// That is, `&mut Wrapper { field: $value } as &mut typeof<$value>` does preserve lifespan-of-temps
+/// extension!
+///
+/// So, our final challenge now is to express `&mut typeof<$value>` when `typeof` is not available.
+///
+/// The usual approach is
+/// `if false { /* unreachable code to infer type */ } else { /* real code */ }`, but we cannot
+/// do that either since the braced blocks here are the "same" as our originally problematic
+/// `{ $value }` to begin with!
+///
+/// So the only remaining tool available to our disposable are the very fields of `Pin { … }`: we
+/// can have an extra `PhantomData` field, which "redundantly" uses the `Ptr` type, thereby
+/// introducing a type equality constraint between the two fields similar to that of an `if … else`,
+/// and which is where we shall be able to insert our `/* unreachable code to infer type */`.
+#[doc(hidden)]
+#[unstable(feature = "unsafe_pin_internals", issue = "none")]
+mod lifetime_extension {
+    use crate::marker::PhantomData;
+    use crate::ops::{Deref, DerefMut};
+
+    /// Used in an `unreachable_code` branch to guide type inference.
+    #[doc(hidden)]
+    pub fn __phantomdata_set_typeof_pointee<T>(_: PhantomData<&mut T>, _: T) {}
+
+    /// Our `DerefMut` helper wrapper.
+    #[doc(hidden)]
+    #[unstable(feature = "unsafe_pin_internals", issue = "none")]
+    #[allow(missing_debug_implementations)]
+    pub struct __Pinned<T> {
+        pub value_expression_preserving_lifespan_extension_of_temporaries: T,
+    }
+
+    impl<T> Deref for __Pinned<T> {
+        type Target = T;
+
+        fn deref(&self) -> &T {
+            unimplemented!("never to be called");
+        }
+    }
+
+    impl<T> DerefMut for __Pinned<T> {
+        #[inline]
+        fn deref_mut(&mut self) -> &mut T {
+            &mut self.value_expression_preserving_lifespan_extension_of_temporaries
+        }
+    }
+}
+
+#[unstable(feature = "unsafe_pin_internals", issue = "none")]
+pub use lifetime_extension::{__Pinned, __phantomdata_set_typeof_pointee};
