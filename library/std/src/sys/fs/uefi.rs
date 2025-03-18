@@ -315,8 +315,8 @@ pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
     unsupported()
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    crate::path::absolute(p)
 }
 
 pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
