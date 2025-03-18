@@ -55,6 +55,7 @@ where
 #[derive(Hash, Eq, PartialEq, PartialOrd, Ord, Copy, Clone)]
 pub(crate) struct State(u32);
 
+#[cfg(test)]
 #[derive(Hash, Eq, PartialEq, Clone, Copy)]
 pub(crate) enum Transition<R>
 where
@@ -70,6 +71,7 @@ impl fmt::Debug for State {
     }
 }
 
+#[cfg(test)]
 impl<R> fmt::Debug for Transition<R>
 where
     R: Ref,
@@ -166,6 +168,7 @@ impl State {
     }
 }
 
+#[cfg(test)]
 impl<R> From<nfa::Transition<R>> for Transition<R>
 where
     R: Ref,
