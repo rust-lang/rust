@@ -11,7 +11,7 @@ use std::io::IsTerminal;
 use std::path::{Path, PathBuf, absolute};
 use std::process::Command;
 use std::str::FromStr;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
@@ -422,6 +422,9 @@ pub struct Config {
     pub compiletest_use_stage0_libtest: bool,
 
     pub is_running_on_ci: bool,
+
+    /// Cache for determining path modifications
+    pub path_modification_cache: Arc<Mutex<HashMap<Vec<&'static str>, PathFreshness>>>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -3294,7 +3297,7 @@ impl Config {
     }
 
     /// Returns true if any of the `paths` have been modified locally.
-    pub fn has_changes_from_upstream(&self, paths: &[&str]) -> bool {
+    pub fn has_changes_from_upstream(&self, paths: &[&'static str]) -> bool {
         match self.check_path_modifications(paths) {
             PathFreshness::LastModifiedUpstream { .. } => false,
             PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
@@ -3302,9 +3305,26 @@ impl Config {
     }
 
     /// Checks whether any of the given paths have been modified w.r.t. upstream.
-    pub fn check_path_modifications(&self, paths: &[&str]) -> PathFreshness {
-        check_path_modifications(Some(&self.src), &self.git_config(), paths, CiEnv::current())
+    pub fn check_path_modifications(&self, paths: &[&'static str]) -> PathFreshness {
+        // Checking path modifications through git can be relatively expensive (>100ms).
+        // We do not assume that the sources would change during bootstrap's execution,
+        // so we can cache the results here.
+        // Note that we do not use a static variable for the cache, because it would cause problems
+        // in tests that create separate `Config` instsances.
+        self.path_modification_cache
+            .lock()
             .unwrap()
+            .entry(paths.to_vec())
+            .or_insert_with(|| {
+                check_path_modifications(
+                    Some(&self.src),
+                    &self.git_config(),
+                    paths,
+                    CiEnv::current(),
+                )
+                .unwrap()
+            })
+            .clone()
     }
 
     /// Checks if the given target is the same as the host target.
