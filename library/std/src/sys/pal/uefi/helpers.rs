@@ -681,7 +681,7 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
 }
 
 /// Helper for UEFI Protocols which are created and destroyed using
-/// [EFI_SERVICE_BINDING_PROTCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+/// [EFI_SERVICE_BINDING_PROTOCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
 pub(crate) struct ServiceProtocol {
     service_guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,

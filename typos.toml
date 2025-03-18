@@ -7,8 +7,8 @@ extend-exclude = [
     "library/backtrace",
     "library/stdarch",
     # generated lorem ipsum texts
-    "library/alloc/benches/str.rs",
-    "library/alloc/tests/str.rs",
+    "library/alloctests/benches/str.rs",
+    "library/alloctests/tests/str.rs",
 ]
 
 [default.extend-words]
