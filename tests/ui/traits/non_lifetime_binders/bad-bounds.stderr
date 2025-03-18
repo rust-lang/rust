@@ -1,5 +1,5 @@
 error[E0428]: the name `A` is defined multiple times
-  --> $DIR/bad-bounds.rs:10:5
+  --> $DIR/bad-bounds.rs:11:5
    |
 LL |     enum A {}
    |     ------ previous definition of the type `A` here
@@ -16,31 +16,62 @@ LL |   fn produce() -> for<A: A<{
    | |                     |
    | |                     found this type parameter
 LL | |
-LL | |     #[derive(Hash)]
-LL | |     enum A {}
-LL | |     struct A<A>;
-LL | | }>> Trait {}
-   | |__^ not a trait
-
-error[E0405]: cannot find trait `Trait` in this scope
-  --> $DIR/bad-bounds.rs:11:5
-   |
-LL | }>> Trait {}
-   |     ^^^^^ not found in this scope
-
-error: bounds cannot be used in this context
-  --> $DIR/bad-bounds.rs:6:24
-   |
-LL |   fn produce() -> for<A: A<{
-   |  ________________________^
 LL | |
 LL | |     #[derive(Hash)]
-LL | |     enum A {}
-LL | |     struct A<A>;
-LL | | }>> Trait {}
-   | |__^
+...  |
+LL | |     }>> Trait{
+   | |______^ not a trait
 
-error: aborting due to 4 previous errors
+error[E0405]: cannot find trait `Trait` in this scope
+  --> $DIR/bad-bounds.rs:13:9
+   |
+LL |     }>> Trait{
+   |         ^^^^^ not found in this scope
 
-Some errors have detailed explanations: E0404, E0405, E0428.
-For more information about an error, try `rustc --explain E0404`.
+error: late-bound type parameter not allowed on trait object types
+  --> $DIR/bad-bounds.rs:6:21
+   |
+LL | fn produce() -> for<A: A<{
+   |                     ^
+
+error[E0782]: expected a type, found a trait
+  --> $DIR/bad-bounds.rs:6:17
+   |
+LL |   fn produce() -> for<A: A<{
+   |  _________________^
+LL | |
+LL | |
+LL | |     #[derive(Hash)]
+...  |
+LL | |     }>> Trait{
+   | |_____________^
+
+error[E0107]: missing generics for struct `produce::{constant#0}::A`
+  --> $DIR/bad-bounds.rs:10:10
+   |
+LL |     enum A {}
+   |          ^ expected 1 generic argument
+   |
+note: struct defined here, with 1 generic parameter: `A`
+  --> $DIR/bad-bounds.rs:11:12
+   |
+LL |     struct A<A>;
+   |            ^ -
+help: add missing generic argument
+   |
+LL |     enum A<A> {}
+   |           +++
+
+error[E0392]: type parameter `A` is never used
+  --> $DIR/bad-bounds.rs:11:14
+   |
+LL |     struct A<A>;
+   |              ^ unused type parameter
+   |
+   = help: consider removing `A`, referring to it in a field, or using a marker such as `PhantomData`
+   = help: if you intended `A` to be a const parameter, use `const A: /* Type */` instead
+
+error: aborting due to 7 previous errors
+
+Some errors have detailed explanations: E0107, E0392, E0404, E0405, E0428, E0782.
+For more information about an error, try `rustc --explain E0107`.

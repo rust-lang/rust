@@ -66,7 +66,7 @@ impl<'tcx> InferCtxt<'tcx> {
 
         let next_universe = self.create_next_universe();
 
-        // TODO: Deduplicate this with above.
+        // FIXME(non_lifetime_binders): Deduplicate this with above.
         let delegate = FnMutDelegate {
             regions: &mut |br: ty::BoundRegion<'tcx>| {
                 ty::Region::new_placeholder(self.tcx, ty::PlaceholderRegion::new(next_universe, br))

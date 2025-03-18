@@ -42,5 +42,5 @@ fn test<X: PointeeSized + Send>() {}
 
 fn main() {
     test::<A>();
-    //~^ ERROR evaluate(Binder { value: TraitPredicate(<A as std::marker::Send>, polarity:Positive), bound_vars: [] }) = Ok(EvaluatedToOk)
+    //~^ ERROR evaluate(Binder { value: TraitPredicate(<A as std::marker::Send>, polarity:Positive), bound_vars: [], clauses: [] }) = Ok(EvaluatedToOk)
 }
