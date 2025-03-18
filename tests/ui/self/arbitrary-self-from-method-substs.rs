@@ -19,11 +19,13 @@ impl Foo {
         self.0
     }
     fn get3<R: Deref<Target = Self>>(self: std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //[default]~^ ERROR: invalid generic `self` parameter type: `Rc<R>`
+        //[feature]~^^ ERROR: invalid `self` parameter type: `Rc<R>`
         self.0
     }
     fn get4<R: Deref<Target = Self>>(self: &std::rc::Rc<R>) -> u32 {
-        //~^ ERROR: invalid generic `self` parameter type
+        //[default]~^ ERROR: invalid generic `self` parameter type: `&Rc<R>`
+        //[feature]~^^ ERROR: invalid `self` parameter type: `&Rc<R>`
         self.0
     }
     fn get5<R: Deref<Target = Self>>(self: std::rc::Rc<&R>) -> u32 {

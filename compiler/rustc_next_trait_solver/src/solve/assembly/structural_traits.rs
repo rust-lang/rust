@@ -196,7 +196,8 @@ where
 /// trait to be implemented (see the trait goal for that), as these are orthogonal. This means that
 /// the effect predicate can succeed while the trait predicate can fail - this is unintuitive but
 /// allows this function to be much simpler.
-// NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver.
+// NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver and
+// `ProvePredicate::try_fast_path`
 #[instrument(level = "trace", skip(cx), ret)]
 pub(in crate::solve) fn const_conditions_for_sizedness<I: Interner>(
     cx: I,

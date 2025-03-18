@@ -253,7 +253,8 @@ fn evaluate_host_effect_from_builtin_impls<'tcx>(
     }
 }
 
-// NOTE: Keep this in sync with `const_conditions_for_sizedness` in the new solver.
+// NOTE: Keep this in sync with `const_conditions_for_sizedness` in the new solver and
+// `ProvePredicate::try_fast_path`
 fn evaluate_host_effect_for_sizedness_goal<'tcx>(
     selcx: &mut SelectionContext<'_, 'tcx>,
     obligation: &HostEffectObligation<'tcx>,
