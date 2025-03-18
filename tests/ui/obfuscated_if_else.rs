@@ -46,6 +46,18 @@ fn main() {
 
     let partial = true.then_some(1);
     partial.unwrap_or_else(|| n * 2); // not lint
+
+    true.then_some(()).unwrap_or_default();
+    //~^ obfuscated_if_else
+
+    true.then(|| ()).unwrap_or_default();
+    //~^ obfuscated_if_else
+
+    true.then_some(1).unwrap_or_default();
+    //~^ obfuscated_if_else
+
+    true.then(|| 1).unwrap_or_default();
+    //~^ obfuscated_if_else
 }
 
 fn issue11141() {
