@@ -15,7 +15,9 @@ use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, PathFreshness, check_path_modifications, output_result};
+use build_helper::git::{
+    GitConfig, PathFreshness, check_path_modifications, get_closest_merge_commit, output_result,
+};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
@@ -1910,6 +1912,7 @@ impl Config {
                 debug_assertions_requested,
                 config.llvm_assertions,
             );
+            panic!("DOWNLOAD_CI_RUSTC: {:?}", config.download_rustc_commit);
 
             debug = debug_toml;
             rustc_debug_assertions = rustc_debug_assertions_toml;
@@ -2974,12 +2977,22 @@ impl Config {
         // options.
         if !CiEnv::is_ci() {
             allowed_paths.push(":!library");
+        } else {
+            allowed_paths.push(":!src/bootstrap");
+            allowed_paths.push(":!.github");
+            allowed_paths.push(":!Cargo.lock");
+            allowed_paths.push(":!config.example.toml");
+            allowed_paths.push(":!license-metadata.json");
+            allowed_paths.push(":!triagebot.toml");
+            allowed_paths.push(":!src");
         }
 
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.check_modifications(&allowed_paths) {
+            let modifications = self.check_modifications(&allowed_paths);
+            eprintln!("DOWNLOAD_CI_RUSTC freshness: {modifications:?}");
+            match modifications {
                 PathFreshness::LastModifiedUpstream { upstream } => upstream,
                 PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
@@ -3020,6 +3033,35 @@ impl Config {
         asserts: bool,
     ) -> bool {
         let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
+        let freshness = self.check_modifications(&[
+            "src/llvm-project",
+            "src/bootstrap/download-ci-llvm-stamp",
+            "src/version",
+        ]);
+        let sha = get_closest_merge_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &[
+                self.src.join("src/llvm-project"),
+                self.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                self.src.join("src/version"),
+            ],
+        )
+        .unwrap();
+        let head = String::from_utf8(
+            Command::new("git")
+                .current_dir(&self.src)
+                .arg("rev-parse")
+                .arg("HEAD")
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+        eprintln!("LLVM FRESHNESS: {freshness:?}\nOld git SHA: {sha}\nHEAD: {head}");
 
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {

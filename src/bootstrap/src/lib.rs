@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Implementation of bootstrap, the Rust build system.
 //!
 //! This module, and its descendants, are the implementation of the Rust build
