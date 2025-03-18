@@ -1311,7 +1311,7 @@ impl<'a> Parser<'a> {
             return self.parse_match_block(lo, match_span, self_arg, MatchKind::Postfix);
         }
 
-        // Post-fix yield
+        // Parse a postfix `yield`.
         if self.eat_keyword(exp!(Yield)) {
             let yield_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::yield_expr, yield_span);

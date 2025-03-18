@@ -774,7 +774,7 @@ impl<'a> State<'a> {
                 }
             }
             ast::ExprKind::Yield(e, YieldKind::Postfix) => {
-                // it's not possible to have a postfix yield with no expression.
+                // It's not possible to have a postfix yield with no expression.
                 let e = e.as_ref().unwrap();
                 self.print_expr_cond_paren(
                     e,
