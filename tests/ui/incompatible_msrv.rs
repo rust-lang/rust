@@ -1,6 +1,5 @@
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]
-#![feature(panic_internals)]
 #![clippy::msrv = "1.3.0"]
 
 use std::collections::HashMap;
@@ -45,21 +44,22 @@ fn core_special_treatment(p: bool) {
 
     // But still lint code calling `core` functions directly
     if p {
-        core::panicking::panic("foo");
-        //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+        let _ = core::iter::once_with(|| 0);
+        //~^ incompatible_msrv
     }
 
     // Lint code calling `core` from non-`core` macros
     macro_rules! my_panic {
         ($msg:expr) => {
-            core::panicking::panic($msg)
-        }; //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+            let _ = core::iter::once_with(|| $msg);
+            //~^ incompatible_msrv
+        };
     }
     my_panic!("foo");
 
     // Lint even when the macro comes from `core` and calls `core` functions
-    assert!(core::panicking::panic("out of luck"));
-    //~^ ERROR: is `1.3.0` but this item is stable since `1.6.0`
+    assert!(core::iter::once_with(|| 0).next().is_some());
+    //~^ incompatible_msrv
 }
 
 #[clippy::msrv = "1.26.0"]
