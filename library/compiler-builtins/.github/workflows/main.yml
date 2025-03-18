@@ -4,7 +4,6 @@ on: [push, pull_request]
 env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
-  RUST_LLVM_VERSION: 20.1-2025-02-13
   RUST_COMPILER_RT_ROOT: ./compiler-rt
 
 jobs:
@@ -129,12 +128,10 @@ jobs:
       uses: actions/cache@v4
       with:
         path: compiler-rt
-        key: ${{ runner.os }}-compiler-rt-${{ env.RUST_LLVM_VERSION }}
+        key: ${{ runner.os }}-compiler-rt-${{ hashFiles('ci/download-compiler-rt.sh') }}
     - name: Download compiler-rt reference sources
       if: steps.cache-compiler-rt.outputs.cache-hit != 'true'
-      run: |
-        curl -L -o code.tar.gz "https://github.com/rust-lang/llvm-project/archive/rustc/${RUST_LLVM_VERSION}.tar.gz"
-        tar xzf code.tar.gz --strip-components 1 llvm-project-rustc-${RUST_LLVM_VERSION}/compiler-rt
+      run: ./ci/download-compiler-rt.sh
       shell: bash
 
     # Non-linux tests just use our raw script
