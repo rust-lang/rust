@@ -1,5 +1,7 @@
 #![warn(clippy::incompatible_msrv)]
 #![feature(custom_inner_attributes)]
+#![allow(stable_features)]
+#![feature(strict_provenance)] // For use in test
 #![clippy::msrv = "1.3.0"]
 
 use std::collections::HashMap;
@@ -89,6 +91,18 @@ fn local_msrv_change_suggestion() {
         let _ = std::iter::repeat_n((), 5);
         //~^ incompatible_msrv
     }
+}
+
+#[clippy::msrv = "1.78.0"]
+fn feature_enable_14425(ptr: *const u8) -> usize {
+    // Do not warn, because it is enabled through a feature even though
+    // it is stabilized only since Rust 1.84.0.
+    let r = ptr.addr();
+
+    // Warn about this which has been introduced in the same Rust version
+    // but is not allowed through a feature.
+    r.isqrt()
+    //~^ incompatible_msrv
 }
 
 fn main() {}
