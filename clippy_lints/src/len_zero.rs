@@ -17,7 +17,7 @@ use rustc_middle::ty::{self, AssocKind, FnSig, Ty};
 use rustc_session::declare_lint_pass;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::sym;
-use rustc_span::{Span, Symbol};
+use rustc_span::{Ident, Span, Symbol};
 use rustc_trait_selection::traits::supertrait_def_ids;
 
 declare_clippy_lint! {
@@ -123,10 +123,10 @@ declare_lint_pass!(LenZero => [LEN_ZERO, LEN_WITHOUT_IS_EMPTY, COMPARISON_TO_EMP
 
 impl<'tcx> LateLintPass<'tcx> for LenZero {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if let ItemKind::Trait(_, _, _, _, trait_items) = item.kind
+        if let ItemKind::Trait(_, _, ident, _, _, trait_items) = item.kind
             && !item.span.from_expansion()
         {
-            check_trait_items(cx, item, trait_items);
+            check_trait_items(cx, item, ident, trait_items);
         }
     }
 
@@ -150,10 +150,10 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             let (name, kind) = match cx.tcx.hir_node(ty_hir_id) {
                 Node::ForeignItem(x) => (x.ident.name, "extern type"),
                 Node::Item(x) => match x.kind {
-                    ItemKind::Struct(..) => (x.ident.name, "struct"),
-                    ItemKind::Enum(..) => (x.ident.name, "enum"),
-                    ItemKind::Union(..) => (x.ident.name, "union"),
-                    _ => (x.ident.name, "type"),
+                    ItemKind::Struct(ident, ..) => (ident.name, "struct"),
+                    ItemKind::Enum(ident, ..) => (ident.name, "enum"),
+                    ItemKind::Union(ident, ..) => (ident.name, "union"),
+                    _ => (x.kind.ident().unwrap().name, "type"),
                 },
                 _ => return,
             };
@@ -250,7 +250,7 @@ fn span_without_enclosing_paren(cx: &LateContext<'_>, span: Span) -> Span {
     }
 }
 
-fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items: &[TraitItemRef]) {
+fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, ident: Ident, trait_items: &[TraitItemRef]) {
     fn is_named_self(cx: &LateContext<'_>, item: &TraitItemRef, name: Symbol) -> bool {
         item.ident.name == name
             && if let AssocItemKind::Fn { has_self } = item.kind {
@@ -300,7 +300,7 @@ fn check_trait_items(cx: &LateContext<'_>, visited_trait: &Item<'_>, trait_items
                 visited_trait.span,
                 format!(
                     "trait `{}` has a `len` method but no (possibly inherited) `is_empty` method",
-                    visited_trait.ident.name
+                    ident.name
                 ),
             );
         }

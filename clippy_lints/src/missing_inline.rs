@@ -101,7 +101,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                 let attrs = cx.tcx.hir_attrs(it.hir_id());
                 check_missing_inline_attrs(cx, attrs, it.span, desc);
             },
-            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, _generics, _bounds, trait_items) => {
+            hir::ItemKind::Trait(ref _is_auto, ref _unsafe, _ident, _generics, _bounds, trait_items) => {
                 // note: we need to check if the trait is exported so we can't use
                 // `LateLintPass::check_trait_item` here.
                 for tit in trait_items {

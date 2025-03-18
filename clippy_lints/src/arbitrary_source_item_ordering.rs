@@ -5,7 +5,7 @@ use clippy_config::types::{
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_hir::{
-    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, UseKind,
+    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind,
     Variant, VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -178,8 +178,8 @@ impl ArbitrarySourceItemOrdering {
     /// Produces a linting warning for incorrectly ordered item members.
     fn lint_member_name<T: LintContext>(
         cx: &T,
-        ident: &rustc_span::symbol::Ident,
-        before_ident: &rustc_span::symbol::Ident,
+        ident: &rustc_span::Ident,
+        before_ident: &rustc_span::Ident,
     ) {
         span_lint_and_note(
             cx,
@@ -192,21 +192,21 @@ impl ArbitrarySourceItemOrdering {
     }
 
     fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>) {
-        let span = if item.ident.as_str().is_empty() {
-            &item.span
+        let span = if let Some(ident) = item.kind.ident() {
+            ident.span
         } else {
-            &item.ident.span
+            item.span
         };
 
-        let (before_span, note) = if before_item.ident.as_str().is_empty() {
+        let (before_span, note) = if let Some(ident) = before_item.kind.ident() {
             (
-                &before_item.span,
-                "should be placed before the following item".to_owned(),
+                ident.span,
+                format!("should be placed before `{}`", ident.as_str(),),
             )
         } else {
             (
-                &before_item.ident.span,
-                format!("should be placed before `{}`", before_item.ident.as_str(),),
+                before_item.span,
+                "should be placed before the following item".to_owned(),
             )
         };
 
@@ -218,9 +218,9 @@ impl ArbitrarySourceItemOrdering {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
-            *span,
+            span,
             "incorrect ordering of items (must be alphabetically ordered)",
-            Some(*before_span),
+            Some(before_span),
             note,
         );
     }
@@ -244,7 +244,7 @@ impl ArbitrarySourceItemOrdering {
 impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) {
         match &item.kind {
-            ItemKind::Enum(enum_def, _generics) if self.enable_ordering_for_enum => {
+            ItemKind::Enum(_, enum_def, _generics) if self.enable_ordering_for_enum => {
                 let mut cur_v: Option<&Variant<'_>> = None;
                 for variant in enum_def.variants {
                     if variant.span.in_external_macro(cx.sess().source_map()) {
@@ -259,7 +259,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     cur_v = Some(variant);
                 }
             },
-            ItemKind::Struct(VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
+            ItemKind::Struct(_, VariantData::Struct { fields, .. }, _generics) if self.enable_ordering_for_struct => {
                 let mut cur_f: Option<&FieldDef<'_>> = None;
                 for field in *fields {
                     if field.span.in_external_macro(cx.sess().source_map()) {
@@ -274,7 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                     cur_f = Some(field);
                 }
             },
-            ItemKind::Trait(is_auto, _safety, _generics, _generic_bounds, item_ref)
+            ItemKind::Trait(is_auto, _safety, _ident, _generics, _generic_bounds, item_ref)
                 if self.enable_ordering_for_trait && *is_auto == IsAuto::No =>
             {
                 let mut cur_t: Option<&TraitItemRef> = None;
@@ -351,50 +351,24 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 continue;
             }
 
-            // The following exceptions (skipping with `continue;`) may not be
-            // complete, edge cases have not been explored further than what
-            // appears in the existing code base.
-            if item.ident.name == rustc_span::symbol::kw::Empty {
-                if let ItemKind::Impl(_) = item.kind {
-                    // Sorting trait impls for unnamed types makes no sense.
-                    if get_item_name(item).is_empty() {
-                        continue;
-                    }
-                } else if let ItemKind::ForeignMod { .. } = item.kind {
-                    continue;
-                } else if let ItemKind::GlobalAsm { .. } = item.kind {
-                    continue;
-                } else if let ItemKind::Use(path, use_kind) = item.kind {
-                    if path.segments.is_empty() {
-                        // Use statements that contain braces get caught here.
-                        // They will still be linted internally.
-                        continue;
-                    } else if path.segments.len() >= 2
-                        && (path.segments[0].ident.name == rustc_span::sym::std
-                            || path.segments[0].ident.name == rustc_span::sym::core)
-                        && path.segments[1].ident.name == rustc_span::sym::prelude
-                    {
-                        // Filters the autogenerated prelude use statement.
-                        // e.g. `use std::prelude::rustc_2021`
-                    } else if use_kind == UseKind::Glob {
-                        // Filters glob kinds of uses.
-                        // e.g. `use std::sync::*`
-                    } else {
-                        // This can be used for debugging.
-                        // println!("Unknown autogenerated use statement: {:?}", item);
-                    }
-                    continue;
-                }
-            }
+            let ident = if let Some(ident) = item.kind.ident() {
+                ident
+            } else if let ItemKind::Impl(_) = item.kind
+                && !get_item_name(item).is_empty()
+            {
+                rustc_span::Ident::empty() // FIXME: a bit strange, is there a better way to do it?
+            } else {
+                continue;
+            };
 
-            if item.ident.name.as_str().starts_with('_') {
+            if ident.name.as_str().starts_with('_') {
                 // Filters out unnamed macro-like impls for various derives,
                 // e.g. serde::Serialize or num_derive::FromPrimitive.
                 continue;
             }
 
-            if item.ident.name == rustc_span::sym::std && item.span.is_dummy() {
-                if let ItemKind::ExternCrate(None) = item.kind {
+            if ident.name == rustc_span::sym::std && item.span.is_dummy() {
+                if let ItemKind::ExternCrate(None, _) = item.kind {
                     // Filters the auto-included Rust standard library.
                     continue;
                 }
@@ -525,6 +499,8 @@ fn get_item_name(item: &Item<'_>) -> String {
                 String::new()
             }
         },
-        _ => item.ident.name.as_str().to_owned(),
+        // FIXME: `Ident::empty` for anonymous items is a bit strange, is there
+        // a better way to do it?
+        _ => item.kind.ident().unwrap_or(rustc_span::Ident::empty()).name.as_str().to_owned(),
     }
 }

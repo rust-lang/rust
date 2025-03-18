@@ -192,7 +192,7 @@ struct LazyInfo {
 impl LazyInfo {
     fn from_item(state: &NonStdLazyStatic, cx: &LateContext<'_>, item: &Item<'_>) -> Option<Self> {
         // Check if item is a `once_cell:sync::Lazy` static.
-        if let ItemKind::Static(ty, _, body_id) = item.kind
+        if let ItemKind::Static(_, ty, _, body_id) = item.kind
             && let Some(path_def_id) = path_def_id(cx, ty)
             && let hir::TyKind::Path(hir::QPath::Resolved(_, path)) = ty.kind
             && state.once_cell_sync_lazy.contains(&path_def_id)
