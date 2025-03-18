@@ -11,8 +11,13 @@ features! {
     /// * `"f"`
     /// * `"d"`
     /// * `"frecipe"`
+    /// * `"div32"`
     /// * `"lsx"`
     /// * `"lasx"`
+    /// * `"lam-bh"`
+    /// * `"lamcas"`
+    /// * `"ld-seq-sa"`
+    /// * `"scq"`
     /// * `"lbt"`
     /// * `"lvz"`
     /// * `"ual"`
@@ -23,10 +28,20 @@ features! {
     /// D
     @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] frecipe: "frecipe";
     /// Frecipe
+    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] div32: "div32";
+    /// Div32
     @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lsx: "lsx";
     /// LSX
     @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lasx: "lasx";
     /// LASX
+    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lam_bh: "lam-bh";
+    /// LAM-BH
+    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lamcas: "lamcas";
+    /// LAM-CAS
+    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] ld_seq_sa: "ld-seq-sa";
+    /// LD-SEQ-SA
+    @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] scq: "scq";
+    /// SCQ
     @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lbt: "lbt";
     /// LBT
     @FEATURE: #[unstable(feature = "stdarch_loongarch_feature_detection", issue = "117425")] lvz: "lvz";

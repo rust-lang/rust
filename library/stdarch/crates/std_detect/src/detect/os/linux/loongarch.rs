@@ -24,7 +24,20 @@ pub(crate) fn detect_features() -> cache::Initializer {
             options(pure, nomem, preserves_flags, nostack)
         );
     }
+    let cpucfg3: usize;
+    unsafe {
+        asm!(
+            "cpucfg {}, {}",
+            out(reg) cpucfg3, in(reg) 3,
+            options(pure, nomem, preserves_flags, nostack)
+        );
+    }
     enable_feature(&mut value, Feature::frecipe, bit::test(cpucfg2, 25));
+    enable_feature(&mut value, Feature::div32, bit::test(cpucfg2, 26));
+    enable_feature(&mut value, Feature::lam_bh, bit::test(cpucfg2, 27));
+    enable_feature(&mut value, Feature::lamcas, bit::test(cpucfg2, 28));
+    enable_feature(&mut value, Feature::scq, bit::test(cpucfg2, 30));
+    enable_feature(&mut value, Feature::ld_seq_sa, bit::test(cpucfg3, 23));
 
     // The values are part of the platform-specific [asm/hwcap.h][hwcap]
     //
