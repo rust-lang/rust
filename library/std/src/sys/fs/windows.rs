@@ -41,8 +41,8 @@ pub struct FileAttr {
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct FileType {
-    attributes: u32,
-    reparse_tag: u32,
+    is_directory: bool,
+    is_symlink: bool,
 }
 
 pub struct ReadDir {
@@ -1111,32 +1111,29 @@ impl FileTimes {
 }
 
 impl FileType {
-    fn new(attrs: u32, reparse_tag: u32) -> FileType {
-        FileType { attributes: attrs, reparse_tag }
+    fn new(attributes: u32, reparse_tag: u32) -> FileType {
+        let is_directory = attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0;
+        let is_symlink = {
+            let is_reparse_point = attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0;
+            let is_reparse_tag_name_surrogate = reparse_tag & 0x20000000 != 0;
+            is_reparse_point && is_reparse_tag_name_surrogate
+        };
+        FileType { is_directory, is_symlink }
     }
     pub fn is_dir(&self) -> bool {
-        !self.is_symlink() && self.is_directory()
+        !self.is_symlink && self.is_directory
     }
     pub fn is_file(&self) -> bool {
-        !self.is_symlink() && !self.is_directory()
+        !self.is_symlink && !self.is_directory
     }
     pub fn is_symlink(&self) -> bool {
-        self.is_reparse_point() && self.is_reparse_tag_name_surrogate()
+        self.is_symlink
     }
     pub fn is_symlink_dir(&self) -> bool {
-        self.is_symlink() && self.is_directory()
+        self.is_symlink && self.is_directory
     }
     pub fn is_symlink_file(&self) -> bool {
-        self.is_symlink() && !self.is_directory()
-    }
-    fn is_directory(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_DIRECTORY != 0
-    }
-    fn is_reparse_point(&self) -> bool {
-        self.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0
-    }
-    fn is_reparse_tag_name_surrogate(&self) -> bool {
-        self.reparse_tag & 0x20000000 != 0
+        self.is_symlink && !self.is_directory
     }
 }
 
