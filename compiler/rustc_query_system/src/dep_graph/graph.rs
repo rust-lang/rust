@@ -677,7 +677,7 @@ impl<D: Deps> DepGraphData<D> {
             &self.current.nodes_newly_allocated_in_current_session
         {
             outline(|| {
-                let seen = nodes_newly_allocated_in_current_session.lock().contains(dep_node);
+                let seen = nodes_newly_allocated_in_current_session.lock().contains_key(dep_node);
                 assert!(!seen, "{}", msg());
             });
         }
@@ -1141,7 +1141,7 @@ pub(super) struct CurrentDepGraph<D: Deps> {
     ///
     /// The map contains all DepNodes that have been allocated in the current session so far and
     /// for which there is no equivalent in the previous session.
-    nodes_newly_allocated_in_current_session: Option<Lock<FxHashSet<DepNode>>>,
+    nodes_newly_allocated_in_current_session: Option<Lock<FxHashMap<DepNode, DepNodeIndex>>>,
 
     /// Anonymous `DepNode`s are nodes whose IDs we compute from the list of
     /// their edges. This has the beneficial side-effect that multiple anonymous
@@ -1216,7 +1216,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             #[cfg(debug_assertions)]
             fingerprints: Lock::new(IndexVec::from_elem_n(None, new_node_count_estimate)),
             nodes_newly_allocated_in_current_session: new_node_dbg.then(|| {
-                Lock::new(FxHashSet::with_capacity_and_hasher(
+                Lock::new(FxHashMap::with_capacity_and_hasher(
                     new_node_count_estimate,
                     Default::default(),
                 ))
@@ -1253,7 +1253,11 @@ impl<D: Deps> CurrentDepGraph<D> {
             self.nodes_newly_allocated_in_current_session
         {
             outline(|| {
-                if !nodes_newly_allocated_in_current_session.lock().insert(key) {
+                if nodes_newly_allocated_in_current_session
+                    .lock()
+                    .insert(key, dep_node_index)
+                    .is_some()
+                {
                     panic!("Found duplicate dep-node {key:?}");
                 }
             });
@@ -1355,7 +1359,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             !self
                 .nodes_newly_allocated_in_current_session
                 .as_ref()
-                .map_or(false, |set| set.lock().contains(node)),
+                .map_or(false, |set| set.lock().contains_key(node)),
             "node from previous graph present in new node collection"
         );
     }
@@ -1474,6 +1478,15 @@ fn panic_on_forbidden_read<D: Deps>(data: &DepGraphData<D>, dep_node_index: DepN
         if index == &Some(dep_node_index) {
             dep_node = Some(data.previous.index_to_node(prev_index));
             break;
+        }
+    }
+
+    if dep_node.is_none()
+        && let Some(nodes) = &data.current.nodes_newly_allocated_in_current_session
+    {
+        // Try to find it among the nodes allocated so far in this session
+        if let Some((node, _)) = nodes.lock().iter().find(|&(_, index)| *index == dep_node_index) {
+            dep_node = Some(*node);
         }
     }
 
