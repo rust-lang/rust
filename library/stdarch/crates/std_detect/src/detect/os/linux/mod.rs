@@ -6,9 +6,6 @@ use alloc::vec::Vec;
 mod auxvec;
 
 #[cfg(feature = "std_detect_file_io")]
-mod cpuinfo;
-
-#[cfg(feature = "std_detect_file_io")]
 fn read_file(path: &str) -> Result<Vec<u8>, ()> {
     let mut path = Vec::from(path.as_bytes());
     path.push(0);

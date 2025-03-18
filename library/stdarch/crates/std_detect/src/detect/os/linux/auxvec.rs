@@ -53,9 +53,7 @@ pub(crate) struct AuxVec {
 /// - If that fails, this function returns an error.
 ///
 /// Note that run-time feature detection is not invoked for features that can
-/// be detected at compile-time. Also note that if this function returns an
-/// error, cpuinfo still can (and will) be used to try to perform run-time
-/// feature detection on some platforms.
+/// be detected at compile-time.
 ///
 ///  Note: The `std_detect_dlsym_getauxval` cargo feature is ignored on
 /// `*-linux-{gnu,musl,ohos}*` and `*-android*` targets because we can safely assume `getauxval`

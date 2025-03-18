@@ -3,8 +3,7 @@
 use super::auxvec;
 use crate::detect::{Feature, bit, cache};
 
-/// Try to read the features from the auxiliary vector, and if that fails, try
-/// to read them from /proc/cpuinfo.
+/// Try to read the features from the auxiliary vector.
 pub(crate) fn detect_features() -> cache::Initializer {
     #[cfg(target_os = "android")]
     let is_exynos9810 = {
@@ -25,11 +24,6 @@ pub(crate) fn detect_features() -> cache::Initializer {
 
     if let Ok(auxv) = auxvec::auxv() {
         let hwcap: AtHwcap = auxv.into();
-        return hwcap.cache(is_exynos9810);
-    }
-    #[cfg(feature = "std_detect_file_io")]
-    if let Ok(c) = super::cpuinfo::CpuInfo::new() {
-        let hwcap: AtHwcap = c.into();
         return hwcap.cache(is_exynos9810);
     }
     cache::Initializer::default()
@@ -245,117 +239,6 @@ impl From<auxvec::AuxVec> for AtHwcap {
             smesf8dp4: bit::test(auxv.hwcap2, 61),
             smesf8dp2: bit::test(auxv.hwcap2, 62),
             // pauthlr: bit::test(auxv.hwcap2, ??),
-        }
-    }
-}
-
-#[cfg(feature = "std_detect_file_io")]
-impl From<super::cpuinfo::CpuInfo> for AtHwcap {
-    /// Reads AtHwcap from /proc/cpuinfo .
-    fn from(c: super::cpuinfo::CpuInfo) -> Self {
-        let f = &c.field("Features");
-        AtHwcap {
-            // 64-bit names. FIXME: In 32-bit compatibility mode /proc/cpuinfo will
-            // map some of the 64-bit names to some 32-bit feature names. This does not
-            // cover that yet.
-            fp: f.has("fp"),
-            asimd: f.has("asimd"),
-            // evtstrm: f.has("evtstrm"),
-            aes: f.has("aes"),
-            pmull: f.has("pmull"),
-            sha1: f.has("sha1"),
-            sha2: f.has("sha2"),
-            crc32: f.has("crc32"),
-            atomics: f.has("atomics"),
-            fphp: f.has("fphp"),
-            asimdhp: f.has("asimdhp"),
-            // cpuid: f.has("cpuid"),
-            asimdrdm: f.has("asimdrdm"),
-            jscvt: f.has("jscvt"),
-            fcma: f.has("fcma"),
-            lrcpc: f.has("lrcpc"),
-            dcpop: f.has("dcpop"),
-            sha3: f.has("sha3"),
-            sm3: f.has("sm3"),
-            sm4: f.has("sm4"),
-            asimddp: f.has("asimddp"),
-            sha512: f.has("sha512"),
-            sve: f.has("sve"),
-            fhm: f.has("asimdfhm"),
-            dit: f.has("dit"),
-            uscat: f.has("uscat"),
-            ilrcpc: f.has("ilrcpc"),
-            flagm: f.has("flagm"),
-            ssbs: f.has("ssbs"),
-            sb: f.has("sb"),
-            paca: f.has("paca"),
-            pacg: f.has("pacg"),
-
-            // AT_HWCAP2
-            dcpodp: f.has("dcpodp"),
-            sve2: f.has("sve2"),
-            sveaes: f.has("sveaes"),
-            svepmull: f.has("svepmull"),
-            svebitperm: f.has("svebitperm"),
-            svesha3: f.has("svesha3"),
-            svesm4: f.has("svesm4"),
-            flagm2: f.has("flagm2"),
-            frint: f.has("frint"),
-            // svei8mm: f.has("svei8mm"),
-            svef32mm: f.has("svef32mm"),
-            svef64mm: f.has("svef64mm"),
-            // svebf16: f.has("svebf16"),
-            i8mm: f.has("i8mm"),
-            bf16: f.has("bf16"),
-            // dgh: f.has("dgh"),
-            rng: f.has("rng"),
-            bti: f.has("bti"),
-            mte: f.has("mte"),
-            ecv: f.has("ecv"),
-            // afp: f.has("afp"),
-            // rpres: f.has("rpres"),
-            // mte3: f.has("mte3"),
-            sme: f.has("sme"),
-            smei16i64: f.has("smei16i64"),
-            smef64f64: f.has("smef64f64"),
-            // smei8i32: f.has("smei8i32"),
-            // smef16f32: f.has("smef16f32"),
-            // smeb16f32: f.has("smeb16f32"),
-            // smef32f32: f.has("smef32f32"),
-            smefa64: f.has("smefa64"),
-            wfxt: f.has("wfxt"),
-            // ebf16: f.has("ebf16"),
-            // sveebf16: f.has("sveebf16"),
-            cssc: f.has("cssc"),
-            // rprfm: f.has("rprfm"),
-            sve2p1: f.has("sve2p1"),
-            sme2: f.has("sme2"),
-            sme2p1: f.has("sme2p1"),
-            // smei16i32: f.has("smei16i32"),
-            // smebi32i32: f.has("smebi32i32"),
-            smeb16b16: f.has("smeb16b16"),
-            smef16f16: f.has("smef16f16"),
-            mops: f.has("mops"),
-            hbc: f.has("hbc"),
-            sveb16b16: f.has("sveb16b16"),
-            lrcpc3: f.has("lrcpc3"),
-            lse128: f.has("lse128"),
-            fpmr: f.has("fpmr"),
-            lut: f.has("lut"),
-            faminmax: f.has("faminmax"),
-            f8cvt: f.has("f8cvt"),
-            f8fma: f.has("f8fma"),
-            f8dp4: f.has("f8dp4"),
-            f8dp2: f.has("f8dp2"),
-            f8e4m3: f.has("f8e4m3"),
-            f8e5m2: f.has("f8e5m2"),
-            smelutv2: f.has("smelutv2"),
-            smef8f16: f.has("smef8f16"),
-            smef8f32: f.has("smef8f32"),
-            smesf8fma: f.has("smesf8fma"),
-            smesf8dp4: f.has("smesf8dp4"),
-            smesf8dp2: f.has("smesf8dp2"),
-            // pauthlr: f.has("pauthlr"),
         }
     }
 }

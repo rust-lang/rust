@@ -41,7 +41,7 @@ is undefined.
     have the minimum supported API level higher than [Android 4.3 (API level 18) that added `getauxval`](https://github.com/aosp-mirror/platform_bionic/blob/d3ebc2f7c49a9893b114124d4a6b315f3a328764/libc/include/sys/auxv.h#L49).
 
 * `std_detect_file_io` (enabled by default, requires `std`): Enable to perform run-time feature
-detection using file APIs (e.g. `/proc/cpuinfo`, etc.) if other more performant
+detection using file APIs (e.g. `/proc/self/auxv`, etc.) if other more performant
 methods fail. This feature requires `libstd` as a dependency, preventing the
 crate from working on applications in which `std` is not available.
 
@@ -58,7 +58,7 @@ crate from working on applications in which `std` is not available.
 * Linux/Android:
   * `arm{32, 64}`, `mips{32,64}{,el}`, `powerpc{32,64}{,le}`, `loongarch64`, `s390x`:
     `std_detect` supports these on Linux by querying ELF auxiliary vectors (using `getauxval`
-    when available), and if that fails, by querying `/proc/cpuinfo`.
+    when available), and if that fails, by querying `/proc/self/auxv`.
   * `arm64`: partial support for doing run-time feature detection by directly
     querying `mrs` is implemented for Linux >= 4.11, but not enabled by default.
   * `riscv{32,64}`:
