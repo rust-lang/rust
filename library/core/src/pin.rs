@@ -2100,10 +2100,10 @@ pub macro pin($value:expr $(,)?) {
 /// hinges on the following observation:
 ///
 /// > `&mut Wrapper { field: $value }` happens to preserve the lifespan-of-temps-extending
-/// > rules of 2021 edition `&mut $value`, and also funnels `$value` through a value expression.
+/// > rules of 2021 edition `&mut { $value }`, and also funnels `$value` through a value expression.
 ///
-/// But we get a `&mut Wrapper<typeof<$value>>` rather than a `&mut typeof<$value>`.
-/// So now the challenge is to get `DerefMut` to take place here, and we are good!
+/// But of course, we now have a `&mut Wrapper<typeof<$value>>` rather than a `&mut typeof<$value>`.
+/// So now the challenge is to get `DerefMut` to take place here, and we will be good to go!
 ///
 /// Only…, so far, lifespan-extension rules get broken by _explicit_ `Deref{,Mut}` such as `*`,
 /// `&*`, or, in our case, `&mut *`!! 😩
