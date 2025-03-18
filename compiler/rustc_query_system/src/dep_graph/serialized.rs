@@ -253,13 +253,16 @@ impl SerializedDepGraph {
 
         for (idx, node) in nodes.iter_enumerated() {
             if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
-                let name = deps.name(node.kind);
-                panic!(
+                // Side effect nodes can have duplicates
+                if node.kind != D::DEP_KIND_SIDE_EFFECT {
+                    let name = deps.name(node.kind);
+                    panic!(
                     "Error: A dep graph node ({name}) does not have an unique index. \
                      Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
                      can help narrow down the issue for reporting. A clean build may also work around the issue.\n
                      DepNode: {node:?}"
                 )
+                }
             }
         }
 
