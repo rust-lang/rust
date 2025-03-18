@@ -240,7 +240,7 @@ RecordFieldList =
  '{' fields:(RecordField (',' RecordField)* ','?)? '}'
 
 RecordField =
-  Attr* Visibility?
+  Attr* Visibility? 'unsafe'?
   Name ':' Type ('=' Expr)?
 
 TupleFieldList =

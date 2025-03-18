@@ -171,6 +171,7 @@ pub struct FieldData {
     pub name: Name,
     pub type_ref: TypeRefId,
     pub visibility: RawVisibility,
+    pub is_unsafe: bool,
 }
 
 fn repr_from_value(
@@ -329,14 +330,14 @@ impl EnumVariantData {
 impl VariantData {
     pub fn fields(&self) -> &Arena<FieldData> {
         const EMPTY: &Arena<FieldData> = &Arena::new();
-        match &self {
+        match self {
             VariantData::Record { fields, .. } | VariantData::Tuple { fields, .. } => fields,
             _ => EMPTY,
         }
     }
 
     pub fn types_map(&self) -> &TypesMap {
-        match &self {
+        match self {
             VariantData::Record { types_map, .. } | VariantData::Tuple { types_map, .. } => {
                 types_map
             }
@@ -405,5 +406,6 @@ fn lower_field(
         name: field.name.clone(),
         type_ref: field.type_ref,
         visibility: item_tree[override_visibility.unwrap_or(field.visibility)].clone(),
+        is_unsafe: field.is_unsafe,
     }
 }

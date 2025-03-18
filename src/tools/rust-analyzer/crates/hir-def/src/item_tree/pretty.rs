@@ -135,12 +135,17 @@ impl Printer<'_> {
                 self.whitespace();
                 w!(self, "{{");
                 self.indented(|this| {
-                    for (idx, Field { name, type_ref, visibility }) in fields.iter().enumerate() {
+                    for (idx, Field { name, type_ref, visibility, is_unsafe }) in
+                        fields.iter().enumerate()
+                    {
                         this.print_attrs_of(
                             AttrOwner::Field(parent, Idx::from_raw(RawIdx::from(idx as u32))),
                             "\n",
                         );
                         this.print_visibility(*visibility);
+                        if *is_unsafe {
+                            w!(this, "unsafe ");
+                        }
                         w!(this, "{}: ", name.display(self.db.upcast(), edition));
                         this.print_type_ref(*type_ref, map);
                         wln!(this, ",");
@@ -151,12 +156,17 @@ impl Printer<'_> {
             FieldsShape::Tuple => {
                 w!(self, "(");
                 self.indented(|this| {
-                    for (idx, Field { name, type_ref, visibility }) in fields.iter().enumerate() {
+                    for (idx, Field { name, type_ref, visibility, is_unsafe }) in
+                        fields.iter().enumerate()
+                    {
                         this.print_attrs_of(
                             AttrOwner::Field(parent, Idx::from_raw(RawIdx::from(idx as u32))),
                             "\n",
                         );
                         this.print_visibility(*visibility);
+                        if *is_unsafe {
+                            w!(this, "unsafe ");
+                        }
                         w!(this, "{}: ", name.display(self.db.upcast(), edition));
                         this.print_type_ref(*type_ref, map);
                         wln!(this, ",");
