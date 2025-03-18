@@ -33746,8 +33746,9 @@ pub fn _mm512_mask_reduce_or_epi64(k: __mmask8, a: __m512i) -> i64 {
 }
 
 /// Returns vector of type `__m512d` with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_undefined_pd)
 #[inline]
@@ -33759,8 +33760,9 @@ pub fn _mm512_undefined_pd() -> __m512d {
 }
 
 /// Returns vector of type `__m512` with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_undefined_ps)
 #[inline]
@@ -33772,8 +33774,9 @@ pub fn _mm512_undefined_ps() -> __m512 {
 }
 
 /// Return vector of type __m512i with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_undefined_epi32&expand=5995)
 #[inline]
@@ -33785,8 +33788,9 @@ pub fn _mm512_undefined_epi32() -> __m512i {
 }
 
 /// Return vector of type __m512 with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm512_undefined&expand=5994)
 #[inline]

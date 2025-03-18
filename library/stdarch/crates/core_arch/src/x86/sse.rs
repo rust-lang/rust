@@ -1884,9 +1884,10 @@ pub unsafe fn _mm_prefetch<const STRATEGY: i32>(p: *const i8) {
     prefetch(p, (STRATEGY >> 2) & 1, STRATEGY & 3, 1);
 }
 
-/// Returns vector of type __m128 with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Returns vector of type __m128 with indeterminate elements.with indetermination elements.
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_undefined_ps)
 #[inline]

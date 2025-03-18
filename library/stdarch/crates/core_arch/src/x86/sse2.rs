@@ -2956,9 +2956,10 @@ pub fn _mm_castsi128_ps(a: __m128i) -> __m128 {
     unsafe { transmute(a) }
 }
 
-/// Returns vector of type __m128d with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Returns vector of type __m128d with indeterminate elements.with indetermination elements.
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_undefined_pd)
 #[inline]
@@ -2968,9 +2969,10 @@ pub fn _mm_undefined_pd() -> __m128d {
     const { unsafe { mem::zeroed() } }
 }
 
-/// Returns vector of type __m128i with indeterminate elements.
-/// Despite being "undefined", this is some valid value and not equivalent to [`mem::MaybeUninit`].
-/// In practice, this is equivalent to [`mem::zeroed`].
+/// Returns vector of type __m128i with indeterminate elements.with indetermination elements.
+/// Despite using the word "undefined" (following Intel's naming scheme), this non-deterministically
+/// picks some valid value and is not equivalent to [`mem::MaybeUninit`].
+/// In practice, this is typically equivalent to [`mem::zeroed`].
 ///
 /// [Intel's documentation](https://www.intel.com/content/www/us/en/docs/intrinsics-guide/index.html#text=_mm_undefined_si128)
 #[inline]
