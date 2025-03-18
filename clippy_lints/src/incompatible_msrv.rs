@@ -174,14 +174,12 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
                     self.emit_lint_if_under_msrv(cx, method_did, expr.hir_id, span);
                 }
             },
-            ExprKind::Call(call, _) => {
-                // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
-                // not be linted as they will not be generated in older compilers if the function is not available,
-                // and the compiler is allowed to call unstable functions.
-                if let ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) = call.kind
-                    && let Some(path_def_id) = cx.qpath_res(&qpath, call.hir_id).opt_def_id()
-                {
-                    self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, call.span);
+            // Desugaring into function calls by the compiler will use `QPath::LangItem` variants. Those should
+            // not be linted as they will not be generated in older compilers if the function is not available,
+            // and the compiler is allowed to call unstable functions.
+            ExprKind::Path(qpath @ (QPath::Resolved(..) | QPath::TypeRelative(..))) => {
+                if let Some(path_def_id) = cx.qpath_res(&qpath, expr.hir_id).opt_def_id() {
+                    self.emit_lint_if_under_msrv(cx, path_def_id, expr.hir_id, expr.span);
                 }
             },
             _ => {},

@@ -105,4 +105,9 @@ fn feature_enable_14425(ptr: *const u8) -> usize {
     //~^ incompatible_msrv
 }
 
+fn non_fn_items() {
+    let _ = std::io::ErrorKind::CrossesDevices;
+    //~^ incompatible_msrv
+}
+
 fn main() {}
