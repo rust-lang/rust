@@ -58,6 +58,7 @@ pub const PRINT_KINDS: &[(&str, PrintKind)] = &[
     ("relocation-models", PrintKind::RelocationModels),
     ("split-debuginfo", PrintKind::SplitDebuginfo),
     ("stack-protector-strategies", PrintKind::StackProtectorStrategies),
+    ("supported-crate-types", PrintKind::SupportedCrateTypes),
     ("sysroot", PrintKind::Sysroot),
     ("target-cpus", PrintKind::TargetCPUs),
     ("target-features", PrintKind::TargetFeatures),
@@ -888,6 +889,7 @@ pub enum PrintKind {
     RelocationModels,
     SplitDebuginfo,
     StackProtectorStrategies,
+    SupportedCrateTypes,
     Sysroot,
     TargetCPUs,
     TargetFeatures,
@@ -2063,7 +2065,10 @@ fn check_print_request_stability(
     (print_name, print_kind): (&str, PrintKind),
 ) {
     match print_kind {
-        PrintKind::AllTargetSpecsJson | PrintKind::CheckCfg | PrintKind::TargetSpecJson
+        PrintKind::AllTargetSpecsJson
+        | PrintKind::CheckCfg
+        | PrintKind::SupportedCrateTypes
+        | PrintKind::TargetSpecJson
             if !unstable_opts.unstable_options =>
         {
             early_dcx.early_fatal(format!(
