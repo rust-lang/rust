@@ -4,6 +4,14 @@
 million lines of Rust code.[^loc] It has caught a large number of [regressions]
 in the past and was subsequently included in CI.
 
+## What to do if the Fuchsia job breaks?
+
+Please contact the `fuchsia` ping group and ask them for help.
+
+```text
+@rustbot ping fuchsia
+```
+
 ## Building Fuchsia in CI
 
 Fuchsia builds as part of the suite of bors tests that run before a pull request
