@@ -16,8 +16,8 @@ It is distributed as part of Rust's sysroot.
    [C implementation][2] to Rust.
 4. Add a test to compare the behavior of the ported intrinsic(s) with their
    implementation on the testing host.
-5. Add the intrinsic to `examples/intrinsics.rs` to verify it can be linked on
-   all targets.
+5. Add the intrinsic to `builtins-test-intrinsics/src/main.rs` to verify it
+   can be linked on all targets.
 6. Send a Pull Request (PR).
 7. Once the PR passes our extensive testing infrastructure, we'll merge it!
 8. Celebrate :tada:

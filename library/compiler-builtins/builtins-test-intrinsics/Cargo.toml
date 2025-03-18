@@ -1,0 +1,11 @@
+[package]
+name = "builtins-test-intrinsics"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+compiler_builtins = { path = "../", features = ["compiler-builtins"]}
+panic-handler = { path = '../crates/panic-handler' }
+
+[features]
+c = ["compiler_builtins/c"]

@@ -115,5 +115,6 @@ fn main() {
         println!("cargo:rustc-cfg=feature=\"{name}\"");
     }
 
+    builtins_configure::configure_aliases(&target);
     builtins_configure::configure_f16_f128(&target);
 }

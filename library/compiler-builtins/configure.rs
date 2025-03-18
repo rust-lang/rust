@@ -6,6 +6,7 @@ use std::env;
 #[allow(dead_code)]
 pub struct Target {
     pub triple: String,
+    pub triple_split: Vec<String>,
     pub opt_level: String,
     pub cargo_features: Vec<String>,
     pub os: String,
@@ -19,6 +20,8 @@ pub struct Target {
 
 impl Target {
     pub fn from_env() -> Self {
+        let triple = env::var("TARGET").unwrap();
+        let triple_split = triple.split('-').map(ToOwned::to_owned).collect();
         let little_endian = match env::var("CARGO_CFG_TARGET_ENDIAN").unwrap().as_str() {
             "little" => true,
             "big" => false,
@@ -30,7 +33,8 @@ impl Target {
             .collect();
 
         Self {
-            triple: env::var("TARGET").unwrap(),
+            triple,
+            triple_split,
             os: env::var("CARGO_CFG_TARGET_OS").unwrap(),
             opt_level: env::var("OPT_LEVEL").unwrap(),
             cargo_features,
@@ -53,6 +57,22 @@ impl Target {
     #[allow(dead_code)]
     pub fn has_feature(&self, feature: &str) -> bool {
         self.features.iter().any(|f| f == feature)
+    }
+}
+
+pub fn configure_aliases(target: &Target) {
+    // To compile builtins-test-intrinsics for thumb targets, where there is no libc
+    println!("cargo::rustc-check-cfg=cfg(thumb)");
+    if target.triple_split[0].starts_with("thumb") {
+        println!("cargo:rustc-cfg=thumb")
+    }
+
+    // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
+    // these targets do not have full Thumb-2 support but only original Thumb-1.
+    // We have to cfg our code accordingly.
+    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
+    if target.triple_split[0] == "thumbv6m" || target.triple_split[0] == "thumbv8m.base" {
+        println!("cargo:rustc-cfg=thumb_1")
     }
 }
 

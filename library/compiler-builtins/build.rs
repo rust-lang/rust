@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
 
 mod configure;
 
-use configure::{configure_f16_f128, Target};
+use configure::{configure_aliases, configure_f16_f128, Target};
 
 fn main() {
     println!("cargo::rerun-if-changed=build.rs");
@@ -13,6 +13,7 @@ fn main() {
 
     configure_check_cfg();
     configure_f16_f128(&target);
+    configure_aliases(&target);
 
     configure_libm(&target);
 
@@ -69,20 +70,6 @@ fn main() {
             #[cfg(feature = "c")]
             c::compile(&llvm_target, &target);
         }
-    }
-
-    // To compile intrinsics.rs for thumb targets, where there is no libc
-    println!("cargo::rustc-check-cfg=cfg(thumb)");
-    if llvm_target[0].starts_with("thumb") {
-        println!("cargo:rustc-cfg=thumb")
-    }
-
-    // compiler-rt `cfg`s away some intrinsics for thumbv6m and thumbv8m.base because
-    // these targets do not have full Thumb-2 support but only original Thumb-1.
-    // We have to cfg our code accordingly.
-    println!("cargo::rustc-check-cfg=cfg(thumb_1)");
-    if llvm_target[0] == "thumbv6m" || llvm_target[0] == "thumbv8m.base" {
-        println!("cargo:rustc-cfg=thumb_1")
     }
 
     // Only emit the ARM Linux atomic emulation on pre-ARMv6 architectures. This

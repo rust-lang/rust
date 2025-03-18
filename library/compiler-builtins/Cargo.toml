@@ -71,13 +71,20 @@ rustc-dep-of-std = ['compiler-builtins', 'core']
 # are not normally public but are required by the `testcrate`
 public-test-deps = []
 
-[[example]]
-name = "intrinsics"
-required-features = ["compiler-builtins"]
-
 [workspace]
 resolver = "2"
-members = ["testcrate"]
+members = [
+    # Note that builtins-test-intrinsics cannot be  a default member because it
+    # needs the `mangled-names` feature disabled, while `testcrate` needs it
+    # enabled.
+    "builtins-test-intrinsics",
+    "testcrate",
+]
+
+default-members = [
+    ".",
+    "testcrate",
+]
 
 [profile.release]
 panic = 'abort'
