@@ -9,7 +9,9 @@ use rustc_span::{DUMMY_SP, Span, Symbol};
 use rustc_type_ir::TypeVisitableExt;
 
 use super::interpret::ReportedErrorInfo;
-use crate::mir::interpret::{AllocId, ConstAllocation, ErrorHandled, Scalar, alloc_range};
+use crate::mir::interpret::{
+    AllocId, AllocRange, ConstAllocation, ErrorHandled, GlobalAlloc, Scalar, alloc_range,
+};
 use crate::mir::{Promoted, pretty_print_const_value};
 use crate::ty::print::{pretty_print_const, with_no_trimmed_paths};
 use crate::ty::{self, ConstKind, GenericArgsRef, ScalarInt, Ty, TyCtxt};
@@ -192,8 +194,30 @@ impl<'tcx> ConstValue<'tcx> {
                 .unwrap_memory()
                 .inner()
                 .provenance()
-                .range_empty(super::AllocRange::from(offset..offset + size), &tcx),
+                .range_empty(AllocRange::from(offset..offset + size), &tcx),
         }
+    }
+
+    /// Check if a constant only contains uninitialized bytes.
+    pub fn all_bytes_uninit(&self, tcx: TyCtxt<'tcx>) -> bool {
+        let ConstValue::Indirect { alloc_id, .. } = self else {
+            return false;
+        };
+        let alloc = tcx.global_alloc(*alloc_id);
+        let GlobalAlloc::Memory(alloc) = alloc else {
+            return false;
+        };
+        let init_mask = alloc.0.init_mask();
+        let init_range = init_mask.is_range_initialized(AllocRange {
+            start: Size::ZERO,
+            size: Size::from_bytes(alloc.0.len()),
+        });
+        if let Err(range) = init_range {
+            if range.size == alloc.0.size() {
+                return true;
+            }
+        }
+        false
     }
 }
 
