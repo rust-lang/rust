@@ -15,7 +15,7 @@ env:
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
-  RUSTFLAGS: "-D warnings -D elided_lifetimes_in_paths -D explicit_outlives_requirements -D unsafe_op_in_unsafe_fn -D unused_extern_crates -D unused_lifetimes -D unreachable_pub"
+  RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
@@ -58,18 +58,15 @@ jobs:
           rustup component add --toolchain nightly rust-src rustfmt
       # https://github.com/actions-rust-lang/setup-rust-toolchain/blob/main/rust.json
       - name: Install Rust Problem Matcher
-        if: matrix.os == 'ubuntu-latest'
         run: echo "::add-matcher::.github/rust.json"
 
-      - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+      # We don't cache this job, as it will be invalidated every day due to nightly usage
 
       - name: Bump opt-level
-        if: matrix.os == 'ubuntu-latest'
         run: sed -i '/\[profile.dev]/a opt-level=1' Cargo.toml
 
       - name: Test
-        run: cargo test --features sysroot-abi -p rust-analyzer -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
+        run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
 
   rust:
     if: github.repository == 'rust-lang/rust-analyzer'
@@ -79,7 +76,6 @@ jobs:
       CC: deny_c
 
     strategy:
-      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
@@ -103,7 +99,11 @@ jobs:
         run: echo "::add-matcher::.github/rust.json"
 
       - name: Cache Dependencies
-        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        uses: Swatinem/rust-cache@27b8ea9368cf428f0bfe41b0876b1a7e809d9844
+        with:
+          workspaces: |
+            . -> target
+            crates/proc-macro-srv/proc-macro-test/imp -> target
 
       - uses: taiki-e/install-action@nextest
 
