@@ -78,7 +78,7 @@ The following test suites are available, with links for more information:
 
 ### Rustdoc test suites
 
-See [Rustdoc § Tests](../rustdoc.md#tests) for more details.
+See [Rustdoc tests](../rustdoc.md#tests) for more details.
 
 | Test suite       | Purpose                                                                  |
 |------------------|--------------------------------------------------------------------------|
