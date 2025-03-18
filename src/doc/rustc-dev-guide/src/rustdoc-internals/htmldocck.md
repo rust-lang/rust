@@ -9,6 +9,10 @@ This page is specifically about the `rustdoc` test suite, for other test suites 
 ## Directives
 Directives to htmldocck are similar to those given to `compiletest` in that they take the form of `//@` comments.
 
+In addition to the directives listed here,
+`rustdoc` tests also support most
+[compiletest directives](../tests/directives.html).
+
 All `PATH`s in directives are relative to the the rustdoc output directory (`build/TARGET/test/rustdoc/TESTNAME`),
 so it is conventional to use a `#![crate_name = "foo"]` attribute to avoid writing paths.
 To avoid repetion, `-` can be used in any `PATH` argument to re-use the previous `PATH` argument.
@@ -95,7 +99,9 @@ Example: `//@ files "foo/bar" '["index.html", "sidebar-items.js"]'`
 [^1]: Whitespace normalization means that all spans of consecutive whitespace are replaced with a single space.  The files themselves are also whitespace-normalized.
 
 ## Limitations
-All `XPATH` arguments must start with `//` due to a flaw in the implemention.
-
-Only well-formed HTML can be parsed (hopefully rustdoc doesn't output mismatched tags).
+`htmldocck.py` uses the xpath implementation from the standard library.
+This leads to several limitations:
+* All `XPATH` arguments must start with `//` due to a flaw in the implemention.
+* Many XPath features (functions, axies, etc.) are not supported.
+* Only well-formed HTML can be parsed (hopefully rustdoc doesn't output mismatched tags).
 
