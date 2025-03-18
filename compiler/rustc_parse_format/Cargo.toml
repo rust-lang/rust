@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 # tidy-alphabetical-start
-literal-escaper = { path = "../../library/literal-escaper" }
 rustc_index = { path = "../rustc_index", default-features = false }
 rustc_lexer = { path = "../rustc_lexer" }
 # tidy-alphabetical-end

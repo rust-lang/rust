@@ -166,13 +166,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "literal-escaper"
-version = "0.0.0"
-dependencies = [
- "rustc-std-workspace-std",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,7 +236,6 @@ name = "proc_macro"
 version = "0.0.0"
 dependencies = [
  "core",
- "literal-escaper",
  "std",
 ]
 
