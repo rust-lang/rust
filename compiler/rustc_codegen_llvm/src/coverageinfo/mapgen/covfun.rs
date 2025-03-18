@@ -118,9 +118,8 @@ fn fill_region_tables<'tcx>(
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
 
-    let make_cov_span = |span: Span| {
-        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
-    };
+    let make_cov_span =
+        |span: Span| spans::make_coverage_span(local_file_id, source_map, &source_file, span);
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
 
     // For each counter/region pair in this function+file, convert it to a
