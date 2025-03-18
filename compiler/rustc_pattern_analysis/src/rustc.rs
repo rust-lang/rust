@@ -232,7 +232,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             let is_visible =
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
                             let is_uninhabited = cx.is_uninhabited(*ty);
-                            let skip = is_uninhabited && !is_visible;
+                            let is_unstable = cx
+                                .tcx
+                                .lookup_stability(field.did)
+                                .is_some_and(|stab| stab.is_unstable());
+                            let skip = is_uninhabited && (!is_visible || is_unstable);
                             (ty, PrivateUninhabitedField(skip))
                         });
                         cx.dropless_arena.alloc_from_iter(tys)
