@@ -168,6 +168,7 @@ impl IncompatibleMsrv {
 
 impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
+        // TODO: check for const stability when in const context
         match expr.kind {
             ExprKind::MethodCall(_, _, _, span) => {
                 if let Some(method_did) = cx.typeck_results().type_dependent_def_id(expr.hir_id) {

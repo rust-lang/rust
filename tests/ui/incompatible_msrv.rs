@@ -74,7 +74,7 @@ fn lang_items() {
 #[clippy::msrv = "1.80.0"]
 fn issue14212() {
     let _ = std::iter::repeat_n((), 5);
-    //~^ ERROR: is `1.80.0` but this item is stable since `1.82.0`
+    //~^ incompatible_msrv
 }
 
 fn local_msrv_change_suggestion() {
