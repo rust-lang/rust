@@ -140,7 +140,7 @@ impl<D: Deps> DepGraph<D> {
         let colors = DepNodeColorMap::new(prev_graph_node_count);
 
         // Instantiate a dependy-less node only once for anonymous queries.
-        let _green_node_index = current.intern_new_node(
+        let _green_node_index = current.alloc_new_node(
             DepNode { kind: D::DEP_KIND_NULL, hash: current.anon_id_seed.into() },
             EdgesVec::new(),
             Fingerprint::ZERO,
@@ -447,7 +447,7 @@ impl<D: Deps> DepGraphData<D> {
                 // memory impact of this `anon_node_to_index` map remains tolerable, and helps
                 // us avoid useless growth of the graph with almost-equivalent nodes.
                 self.current.anon_node_to_index.get_or_insert_with(target_dep_node, || {
-                    self.current.intern_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
+                    self.current.alloc_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
                 })
             }
         };
@@ -1219,7 +1219,7 @@ impl<D: Deps> CurrentDepGraph<D> {
     /// Writes the node to the current dep-graph and allocates a `DepNodeIndex` for it.
     /// Assumes that this is a node that has no equivalent in the previous dep-graph.
     #[inline(always)]
-    fn intern_new_node(
+    fn alloc_new_node(
         &self,
         key: DepNode,
         edges: EdgesVec,
@@ -1298,7 +1298,7 @@ impl<D: Deps> CurrentDepGraph<D> {
             let fingerprint = fingerprint.unwrap_or(Fingerprint::ZERO);
 
             // This is a new node: it didn't exist in the previous compilation session.
-            let dep_node_index = self.intern_new_node(key, edges, fingerprint);
+            let dep_node_index = self.alloc_new_node(key, edges, fingerprint);
 
             (dep_node_index, None)
         }
