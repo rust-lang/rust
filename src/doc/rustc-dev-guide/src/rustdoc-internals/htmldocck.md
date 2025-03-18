@@ -1,8 +1,10 @@
-# `rustdoc` tests
+# the `rustdoc` test suite
 
 This page is specifically about the `rustdoc` test suite, for other test suites used for testing rustdoc, see [Rustdoc § Tests](../rustdoc.md#tests).
 
-`htmldocck.py` is a custom checker script that uses [XPath] to verify the HTML output of rustdoc.
+The `rustdoc` test suite is specifically used to test the HTML output of rustdoc.
+
+This is achived by means of `htmldocck.py`, a custom checker script that leverages [XPath].
 
 [XPath]: https://en.wikipedia.org/wiki/XPath
 
@@ -14,7 +16,8 @@ In addition to the directives listed here,
 [compiletest directives](../tests/directives.html).
 
 All `PATH`s in directives are relative to the the rustdoc output directory (`build/TARGET/test/rustdoc/TESTNAME`),
-so it is conventional to use a `#![crate_name = "foo"]` attribute to avoid writing paths.
+so it is conventional to use a `#![crate_name = "foo"]` attribute to avoid
+having to write a long crate name multiple times.
 To avoid repetion, `-` can be used in any `PATH` argument to re-use the previous `PATH` argument.
 
 All arguments take the form of quoted strings,
