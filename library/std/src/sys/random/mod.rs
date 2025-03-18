@@ -35,10 +35,10 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "hermit")] {
         mod hermit;
         pub use hermit::fill_bytes;
-    } else if #[cfg(target_os = "horizon")] {
-        // FIXME: add arc4random_buf to shim-3ds
-        mod horizon;
-        pub use horizon::fill_bytes;
+    } else if #[cfg(any(target_os = "horizon", target_os = "cygwin"))] {
+        // FIXME(horizon): add arc4random_buf to shim-3ds
+        mod getrandom;
+        pub use getrandom::fill_bytes;
     } else if #[cfg(any(
         target_os = "aix",
         target_os = "hurd",
@@ -60,6 +60,9 @@ cfg_if::cfg_if! {
     } else if #[cfg(target_os = "teeos")] {
         mod teeos;
         pub use teeos::fill_bytes;
+    } else if #[cfg(target_os = "trusty")] {
+        mod trusty;
+        pub use trusty::fill_bytes;
     } else if #[cfg(target_os = "uefi")] {
         mod uefi;
         pub use uefi::fill_bytes;

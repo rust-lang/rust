@@ -209,7 +209,7 @@ impl Step for ToolBuild {
     }
 }
 
-#[allow(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
+#[expect(clippy::too_many_arguments)] // FIXME: reduce the number of args and remove this.
 pub fn prepare_tool_cargo(
     builder: &Builder<'_>,
     compiler: Compiler,
@@ -228,7 +228,6 @@ pub fn prepare_tool_cargo(
     let mut features = extra_features.to_vec();
     if builder.build.config.cargo_native_static {
         if path.ends_with("cargo")
-            || path.ends_with("rls")
             || path.ends_with("clippy")
             || path.ends_with("miri")
             || path.ends_with("rustfmt")
@@ -1025,7 +1024,7 @@ pub struct LibcxxVersionTool {
     pub target: TargetSelection,
 }
 
-#[allow(dead_code)]
+#[expect(dead_code)]
 #[derive(Debug, Clone)]
 pub enum LibcxxVersion {
     Gnu(usize),
@@ -1231,7 +1230,6 @@ tool_extended!(CargoMiri {
     stable: false,
     add_bins_to_sysroot: ["cargo-miri"]
 });
-tool_extended!(Rls { path: "src/tools/rls", tool_name: "rls", stable: true });
 tool_extended!(Rustfmt {
     path: "src/tools/rustfmt",
     tool_name: "rustfmt",

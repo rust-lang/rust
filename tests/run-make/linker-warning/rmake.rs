@@ -4,7 +4,7 @@ fn run_rustc() -> Rustc {
     let mut rustc = rustc();
     rustc
         .arg("main.rs")
-        // NOTE: `link-self-contained` can vary depending on config.toml.
+        // NOTE: `link-self-contained` can vary depending on bootstrap.toml.
         // Make sure we use a consistent value.
         .arg("-Clink-self-contained=-linker")
         .arg("-Zunstable-options")

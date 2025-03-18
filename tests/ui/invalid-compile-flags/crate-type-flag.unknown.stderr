@@ -1,2 +1,2 @@
-error: unknown crate type: `🤡`
+error: unknown crate type: `🤡`, expected one of: `lib`, `rlib`, `staticlib`, `dylib`, `cdylib`, `bin`, `proc-macro`
 

@@ -7,6 +7,7 @@ use rustc_ast::expand::allocator::{
 };
 use rustc_codegen_ssa::base::allocator_kind_for_codegen;
 use rustc_session::config::OomStrategy;
+use rustc_symbol_mangling::mangle_internal_symbol;
 
 use crate::prelude::*;
 
@@ -14,6 +15,7 @@ use crate::prelude::*;
 pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
     let Some(kind) = allocator_kind_for_codegen(tcx) else { return false };
     codegen_inner(
+        tcx,
         module,
         kind,
         tcx.alloc_error_handler_kind(()).unwrap(),
@@ -23,6 +25,7 @@ pub(crate) fn codegen(tcx: TyCtxt<'_>, module: &mut dyn Module) -> bool {
 }
 
 fn codegen_inner(
+    tcx: TyCtxt<'_>,
     module: &mut dyn Module,
     kind: AllocatorKind,
     alloc_error_handler_kind: AllocatorKind,
@@ -62,8 +65,8 @@ fn codegen_inner(
             crate::common::create_wrapper_function(
                 module,
                 sig,
-                &global_fn_name(method.name),
-                &default_fn_name(method.name),
+                &mangle_internal_symbol(tcx, &global_fn_name(method.name)),
+                &mangle_internal_symbol(tcx, &default_fn_name(method.name)),
             );
         }
     }
@@ -76,19 +79,32 @@ fn codegen_inner(
     crate::common::create_wrapper_function(
         module,
         sig,
-        "__rust_alloc_error_handler",
-        &alloc_error_handler_name(alloc_error_handler_kind),
+        &mangle_internal_symbol(tcx, "__rust_alloc_error_handler"),
+        &mangle_internal_symbol(tcx, alloc_error_handler_name(alloc_error_handler_kind)),
     );
 
-    let data_id = module.declare_data(OomStrategy::SYMBOL, Linkage::Export, false, false).unwrap();
+    let data_id = module
+        .declare_data(
+            &mangle_internal_symbol(tcx, OomStrategy::SYMBOL),
+            Linkage::Export,
+            false,
+            false,
+        )
+        .unwrap();
     let mut data = DataDescription::new();
     data.set_align(1);
     let val = oom_strategy.should_panic();
     data.define(Box::new([val]));
     module.define_data(data_id, &data).unwrap();
 
-    let data_id =
-        module.declare_data(NO_ALLOC_SHIM_IS_UNSTABLE, Linkage::Export, false, false).unwrap();
+    let data_id = module
+        .declare_data(
+            &mangle_internal_symbol(tcx, NO_ALLOC_SHIM_IS_UNSTABLE),
+            Linkage::Export,
+            false,
+            false,
+        )
+        .unwrap();
     let mut data = DataDescription::new();
     data.set_align(1);
     data.define(Box::new([0]));

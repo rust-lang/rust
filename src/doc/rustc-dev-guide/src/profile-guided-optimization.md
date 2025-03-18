@@ -120,7 +120,7 @@ The `rustc` version of this can be found in `library/profiler_builtins` which
 basically packs the C code from `compiler-rt` into a Rust crate.
 
 In order for `profiler_builtins` to be built, `profiler = true` must be set
-in `rustc`'s `config.toml`.
+in `rustc`'s `bootstrap.toml`.
 
 [compiler-rt-profile]: https://github.com/llvm/llvm-project/tree/main/compiler-rt/lib/profile
 

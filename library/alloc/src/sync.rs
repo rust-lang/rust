@@ -84,9 +84,29 @@ macro_rules! acquire {
 ///
 /// Shared references in Rust disallow mutation by default, and `Arc` is no
 /// exception: you cannot generally obtain a mutable reference to something
-/// inside an `Arc`. If you need to mutate through an `Arc`, use
-/// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
-/// types.
+/// inside an `Arc`. If you do need to mutate through an `Arc`, you have several options:
+///
+/// 1. Use interior mutability with synchronization primitives like [`Mutex`][mutex],
+///    [`RwLock`][rwlock], or one of the [`Atomic`][atomic] types.
+///
+/// 2. Use clone-on-write semantics with [`Arc::make_mut`] which provides efficient mutation
+///    without requiring interior mutability. This approach clones the data only when
+///    needed (when there are multiple references) and can be more efficient when mutations
+///    are infrequent.
+///
+/// 3. Use [`Arc::get_mut`] when you know your `Arc` is not shared (has a reference count of 1),
+///    which provides direct mutable access to the inner value without any cloning.
+///
+/// ```
+/// use std::sync::Arc;
+///
+/// let mut data = Arc::new(vec![1, 2, 3]);
+///
+/// // This will clone the vector only if there are other references to it
+/// Arc::make_mut(&mut data).push(4);
+///
+/// assert_eq!(*data, vec![1, 2, 3, 4]);
+/// ```
 ///
 /// **Note**: This type is only available on platforms that support atomic
 /// loads and stores of pointers, which includes all platforms that support
@@ -1453,10 +1473,13 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1488,12 +1511,15 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1806,10 +1832,13 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`, and the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
-    /// least 1) for the duration of this method,, and `ptr` must point to a block of memory
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by `alloc`.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1850,12 +1879,15 @@ impl<T: ?Sized, A: Allocator> Arc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Arc::into_raw`,  the
-    /// associated `Arc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Arc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Arc::from_raw_in`][from_raw_in].
+    /// The associated `Arc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by `alloc`. This method can be used to release the final
     /// `Arc` and backing storage, but **should not** be called after the final `Arc` has been
     /// released.
+    ///
+    /// [from_raw_in]: Arc::from_raw_in
     ///
     /// # Examples
     ///

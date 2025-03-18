@@ -4,7 +4,7 @@ error[E0782]: expected a type, found a trait
 LL |     fn f(a: A) -> A;
    |             ^
    |
-   = note: `A` it is dyn-incompatible, so it can't be `dyn`
+   = note: `A` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `A`
    |
 LL -     fn f(a: A) -> A;
@@ -32,7 +32,7 @@ error[E0782]: expected a type, found a trait
 LL |     fn f(b: B) -> B;
    |             ^
    |
-   = note: `B` it is dyn-incompatible, so it can't be `dyn`
+   = note: `B` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `B`
    |
 LL -     fn f(b: B) -> B;
@@ -60,7 +60,7 @@ error[E0782]: expected a type, found a trait
 LL |     fn f(&self, c: C) -> C;
    |                    ^
    |
-   = note: `C` it is dyn-incompatible, so it can't be `dyn`
+   = note: `C` is dyn-incompatible, otherwise a trait object could be used
 help: use a new generic type parameter, constrained by `C`
    |
 LL -     fn f(&self, c: C) -> C;

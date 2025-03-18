@@ -7,11 +7,10 @@ use rustc_middle::query::Providers;
 use rustc_middle::traits::{BuiltinImplSource, CodegenObligationError};
 use rustc_middle::ty::util::AsyncDropGlueMorphology;
 use rustc_middle::ty::{
-    self, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
+    self, ClosureKind, GenericArgsRef, Instance, PseudoCanonicalInput, TyCtxt, TypeVisitableExt,
 };
 use rustc_span::sym;
 use rustc_trait_selection::traits;
-use rustc_type_ir::ClosureKind;
 use tracing::debug;
 use traits::translate_args;
 

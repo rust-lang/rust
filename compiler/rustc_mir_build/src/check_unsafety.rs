@@ -753,6 +753,11 @@ impl UnsafeOpKind {
         span: Span,
         suggest_unsafe_block: bool,
     ) {
+        if tcx.hir_opt_delegation_sig_id(hir_id.owner.def_id).is_some() {
+            // The body of the delegation item is synthesized, so it makes no sense
+            // to emit this lint.
+            return;
+        }
         let parent_id = tcx.hir_get_parent_item(hir_id);
         let parent_owner = tcx.hir_owner_node(parent_id);
         let should_suggest = parent_owner.fn_sig().is_some_and(|sig| {

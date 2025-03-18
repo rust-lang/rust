@@ -42,6 +42,7 @@ fn main() {
         || target_os == "fuchsia"
         || (target_vendor == "fortanix" && target_env == "sgx")
         || target_os == "hermit"
+        || target_os == "trusty"
         || target_os == "l4re"
         || target_os == "redox"
         || target_os == "haiku"
@@ -61,6 +62,7 @@ fn main() {
         || target_os == "zkvm"
         || target_os == "rtems"
         || target_os == "nuttx"
+        || target_os == "cygwin"
 
         // See src/bootstrap/src/core/build_steps/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()

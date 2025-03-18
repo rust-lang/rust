@@ -32,7 +32,7 @@ implementation:
 
 *  The sanitizer runtime libraries are part of the [compiler-rt] project, and
    [will be built][sanitizer-build] on [supported targets][sanitizer-targets]
-   when enabled in `config.toml`:
+   when enabled in `bootstrap.toml`:
 
    ```toml
    [build]
@@ -80,7 +80,7 @@ Sanitizers are validated by code generation tests in
 [`tests/ui/sanitizer/`][test-ui] directory.
 
 Testing sanitizer functionality requires the sanitizer runtimes (built when
-`sanitizer = true` in `config.toml`) and target providing support for particular
+`sanitizer = true` in `bootstrap.toml`) and target providing support for particular
 sanitizer. When sanitizer is unsupported on given target, sanitizers tests will
 be ignored. This behaviour is controlled by compiletest `needs-sanitizer-*`
 directives.

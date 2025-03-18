@@ -6,6 +6,7 @@ use core::ops::{Bound, ControlFlow};
 use ast::mut_visit::{self, MutVisitor};
 use ast::token::{IdentIsRaw, MetaVarKind};
 use ast::{CoroutineKind, ForLoopKind, GenBlockKind, MatchKind, Pat, Path, PathSegment, Recovered};
+use literal_escaper::unescape_char;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::tokenstream::TokenTree;
@@ -21,7 +22,6 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{Applicability, Diag, PResult, StashKey, Subdiagnostic};
-use rustc_lexer::unescape::unescape_char;
 use rustc_macros::Subdiagnostic;
 use rustc_session::errors::{ExprParenthesesNeeded, report_lit_error};
 use rustc_session::lint::BuiltinLintDiag;
@@ -2588,7 +2588,8 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the condition of a `if` or `while` expression.
-    fn parse_expr_cond(&mut self) -> PResult<'a, P<Expr>> {
+    // Public because it is used in rustfmt forks such as https://github.com/tucant/rustfmt/blob/30c83df9e1db10007bdd16dafce8a86b404329b2/src/parse/macros/html.rs#L57 for custom if expressions.
+    pub fn parse_expr_cond(&mut self) -> PResult<'a, P<Expr>> {
         let attrs = self.parse_outer_attributes()?;
         let (mut cond, _) =
             self.parse_expr_res(Restrictions::NO_STRUCT_LITERAL | Restrictions::ALLOW_LET, attrs)?;

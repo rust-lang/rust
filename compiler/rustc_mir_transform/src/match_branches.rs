@@ -5,7 +5,6 @@ use rustc_index::IndexSlice;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout::{IntegerExt, TyAndLayout};
 use rustc_middle::ty::{self, ScalarInt, Ty, TyCtxt};
-use rustc_type_ir::TyKind::*;
 use tracing::instrument;
 
 use super::simplify::simplify_cfg;
@@ -293,13 +292,13 @@ fn can_cast(
 ) -> bool {
     let from_scalar = ScalarInt::try_from_uint(src_val.into(), src_layout.size).unwrap();
     let v = match src_layout.ty.kind() {
-        Uint(_) => from_scalar.to_uint(src_layout.size),
-        Int(_) => from_scalar.to_int(src_layout.size) as u128,
+        ty::Uint(_) => from_scalar.to_uint(src_layout.size),
+        ty::Int(_) => from_scalar.to_int(src_layout.size) as u128,
         _ => unreachable!("invalid int"),
     };
     let size = match *cast_ty.kind() {
-        Int(t) => Integer::from_int_ty(&tcx, t).size(),
-        Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
+        ty::Int(t) => Integer::from_int_ty(&tcx, t).size(),
+        ty::Uint(t) => Integer::from_uint_ty(&tcx, t).size(),
         _ => unreachable!("invalid int"),
     };
     let v = size.truncate(v);

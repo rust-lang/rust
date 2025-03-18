@@ -8,11 +8,13 @@ IFS=$'\n\t'
 source "$(cd "$(dirname "$0")" && pwd)/../shared.sh"
 
 if isMacOS; then
-    curl -fo /usr/local/bin/sccache "${MIRRORS_BASE}/2021-08-25-sccache-v0.2.15-x86_64-apple-darwin"
+    curl -fo /usr/local/bin/sccache \
+      "${MIRRORS_BASE}/2025-02-24-sccache-v0.10.0-x86_64-apple-darwin"
     chmod +x /usr/local/bin/sccache
 elif isWindows; then
     mkdir -p sccache
-    curl -fo sccache/sccache.exe "${MIRRORS_BASE}/2018-04-26-sccache-x86_64-pc-windows-msvc"
+    curl -fo sccache/sccache.exe \
+      "${MIRRORS_BASE}/2025-02-24-sccache-v0.10.0-x86_64-pc-windows-msvc.exe"
     ciCommandAddPath "$(pwd)/sccache"
 fi
 

@@ -22,7 +22,7 @@ The target can be built by enabling it for a `rustc` build.
 target = ["riscv64gc-unknown-linux-musl"]
 ```
 
-Make sure your C compiler is included in `$PATH`, then add it to the `config.toml`:
+Make sure your C compiler is included in `$PATH`, then add it to the `bootstrap.toml`:
 
 ```toml
 [target.riscv64gc-unknown-linux-musl]

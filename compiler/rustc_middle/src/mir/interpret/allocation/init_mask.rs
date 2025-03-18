@@ -5,9 +5,8 @@ use std::ops::Range;
 use std::{hash, iter};
 
 use rustc_abi::Size;
-use rustc_macros::{HashStable, TyDecodable, TyEncodable};
-use rustc_serialize::{Decodable, Encodable};
-use rustc_type_ir::{TyDecoder, TyEncoder};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable};
+use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use super::AllocRange;
 
@@ -19,13 +18,13 @@ type Block = u64;
 /// possible. Currently, if all the blocks have the same value, then the mask represents either a
 /// fully initialized or fully uninitialized const allocation, so we can only store that single
 /// value.
-#[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, HashStable)]
 pub struct InitMask {
     blocks: InitMaskBlocks,
     len: Size,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(Clone, Debug, Eq, PartialEq, Encodable_NoContext, Decodable_NoContext, Hash, HashStable)]
 enum InitMaskBlocks {
     Lazy {
         /// Whether the lazy init mask is fully initialized or uninitialized.
@@ -194,7 +193,7 @@ struct InitMaskMaterialized {
 // and also produces more output when the high bits of each `u64` are occupied.
 // Note: There is probably a remaining optimization for masks that do not use an entire
 // `Block`.
-impl<E: TyEncoder> Encodable<E> for InitMaskMaterialized {
+impl<E: Encoder> Encodable<E> for InitMaskMaterialized {
     fn encode(&self, encoder: &mut E) {
         encoder.emit_usize(self.blocks.len());
         for block in &self.blocks {
@@ -204,7 +203,7 @@ impl<E: TyEncoder> Encodable<E> for InitMaskMaterialized {
 }
 
 // This implementation is deliberately not derived, see the matching `Encodable` impl.
-impl<D: TyDecoder> Decodable<D> for InitMaskMaterialized {
+impl<D: Decoder> Decodable<D> for InitMaskMaterialized {
     fn decode(decoder: &mut D) -> Self {
         let num_blocks = decoder.read_usize();
         let mut blocks = Vec::with_capacity(num_blocks);

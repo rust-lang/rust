@@ -18,7 +18,7 @@ mod num;
 mod rt;
 
 #[stable(feature = "fmt_flags_align", since = "1.28.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Alignment")]
+#[rustc_diagnostic_item = "Alignment"]
 /// Possible alignments returned by `Formatter::align`
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Alignment {
@@ -2771,7 +2771,14 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        pointer_fmt_inner(self.expose_provenance(), f)
+        if <<T as core::ptr::Pointee>::Metadata as core::unit::IsUnit>::is_unit() {
+            pointer_fmt_inner(self.expose_provenance(), f)
+        } else {
+            f.debug_struct("Pointer")
+                .field_with("addr", |f| pointer_fmt_inner(self.expose_provenance(), f))
+                .field("metadata", &core::ptr::metadata(*self))
+                .finish()
+        }
     }
 }
 

@@ -830,6 +830,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some(rib) = &self.last_block_rib
             && let RibKind::Normal = rib.kind
         {
+            #[allow(rustc::potential_query_instability)] // FIXME
             for (ident, &res) in &rib.bindings {
                 if let Res::Local(_) = res
                     && path.len() == 1
@@ -1018,6 +1019,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if let Some(err_code) = err.code {
             if err_code == E0425 {
                 for label_rib in &self.label_ribs {
+                    #[allow(rustc::potential_query_instability)] // FIXME
                     for (label_ident, node_id) in &label_rib.bindings {
                         let ident = path.last().unwrap().ident;
                         if format!("'{ident}") == label_ident.to_string() {
@@ -1177,7 +1179,10 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let [segment] = path else { return };
         let None = following_seg else { return };
         for rib in self.ribs[ValueNS].iter().rev() {
-            for (def_id, spans) in &rib.patterns_with_skipped_bindings {
+            let patterns_with_skipped_bindings = self.r.tcx.with_stable_hashing_context(|hcx| {
+                rib.patterns_with_skipped_bindings.to_sorted(&hcx, true)
+            });
+            for (def_id, spans) in patterns_with_skipped_bindings {
                 if let DefKind::Struct | DefKind::Variant = self.r.tcx.def_kind(*def_id)
                     && let Some(fields) = self.r.field_idents(*def_id)
                 {
@@ -2052,7 +2057,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         if self
             .r
             .extern_crate_map
-            .iter()
+            .items()
             // FIXME: This doesn't include impls like `impl Default for String`.
             .flat_map(|(_, crate_)| self.r.tcx.implementations_of_trait((*crate_, default_trait)))
             .filter_map(|(_, simplified_self_ty)| *simplified_self_ty)
@@ -2261,6 +2266,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                 };
 
                 // Locals and type parameters
+                #[allow(rustc::potential_query_instability)] // FIXME
                 for (ident, &res) in &rib.bindings {
                     if filter_fn(res) && ident.span.ctxt() == rib_ctxt {
                         names.push(TypoSuggestion::typo_from_ident(*ident, res));
@@ -2788,6 +2794,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
         let within_scope = self.is_label_valid_from_rib(rib_index);
 
         let rib = &self.label_ribs[rib_index];
+        #[allow(rustc::potential_query_instability)] // FIXME
         let names = rib
             .bindings
             .iter()
@@ -2799,6 +2806,7 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             // Upon finding a similar name, get the ident that it was from - the span
             // contained within helps make a useful diagnostic. In addition, determine
             // whether this candidate is within scope.
+            #[allow(rustc::potential_query_instability)] // FIXME
             let (ident, _) = rib.bindings.iter().find(|(ident, _)| ident.name == symbol).unwrap();
             (*ident, within_scope)
         })

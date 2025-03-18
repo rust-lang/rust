@@ -76,7 +76,7 @@ impl BuildMetrics {
 
         // Consider all the stats gathered so far as the parent's.
         if !state.running_steps.is_empty() {
-            self.collect_stats(&mut *state);
+            self.collect_stats(&mut state);
         }
 
         state.system_info.refresh_cpu_usage();
@@ -102,7 +102,7 @@ impl BuildMetrics {
 
         let mut state = self.state.borrow_mut();
 
-        self.collect_stats(&mut *state);
+        self.collect_stats(&mut state);
 
         let step = state.running_steps.pop().unwrap();
         if state.running_steps.is_empty() {
@@ -224,6 +224,7 @@ impl BuildMetrics {
         t!(serde_json::to_writer(&mut file, &json));
     }
 
+    #[expect(clippy::only_used_in_recursion)]
     fn prepare_json_step(&self, step: StepMetrics) -> JsonNode {
         let mut children = Vec::new();
         children.extend(step.children.into_iter().map(|child| self.prepare_json_step(child)));

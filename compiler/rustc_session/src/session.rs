@@ -143,7 +143,6 @@ pub struct Session {
     pub target: Target,
     pub host: Target,
     pub opts: config::Options,
-    pub host_tlib_path: Arc<SearchPath>,
     pub target_tlib_path: Arc<SearchPath>,
     pub psess: ParseSess,
     pub sysroot: PathBuf,
@@ -1042,6 +1041,7 @@ pub fn build_session(
 
     let host_triple = config::host_tuple();
     let target_triple = sopts.target_triple.tuple();
+    // FIXME use host sysroot?
     let host_tlib_path = Arc::new(SearchPath::from_sysroot_and_triple(&sysroot, host_triple));
     let target_tlib_path = if host_triple == target_triple {
         // Use the same `SearchPath` if host and target triple are identical to avoid unnecessary
@@ -1070,7 +1070,6 @@ pub fn build_session(
         target,
         host,
         opts: sopts,
-        host_tlib_path,
         target_tlib_path,
         psess,
         sysroot,

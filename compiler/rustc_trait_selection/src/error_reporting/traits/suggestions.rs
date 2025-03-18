@@ -26,7 +26,7 @@ use rustc_middle::traits::IsConstable;
 use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::print::{
     PrintPolyTraitPredicateExt as _, PrintPolyTraitRefExt, PrintTraitPredicateExt as _,
-    with_forced_trimmed_paths, with_no_trimmed_paths,
+    with_forced_trimmed_paths, with_no_trimmed_paths, with_types_for_suggestion,
 };
 use rustc_middle::ty::{
     self, AdtKind, GenericArgs, InferTy, IsSuggestable, Ty, TyCtxt, TypeFoldable, TypeFolder,
@@ -110,7 +110,7 @@ impl<'a, 'tcx> CoroutineData<'a, 'tcx> {
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
     (
         generics.tail_span_for_predicate_suggestion(),
-        format!("{} {}", generics.add_where_or_trailing_comma(), pred),
+        with_types_for_suggestion!(format!("{} {}", generics.add_where_or_trailing_comma(), pred)),
     )
 }
 
@@ -136,7 +136,8 @@ pub fn suggest_restriction<'tcx, G: EmissionGuarantee>(
     if hir_generics.where_clause_span.from_expansion()
         || hir_generics.where_clause_span.desugaring_kind().is_some()
         || projection.is_some_and(|projection| {
-            tcx.is_impl_trait_in_trait(projection.def_id)
+            (tcx.is_impl_trait_in_trait(projection.def_id)
+                && !tcx.features().return_type_notation())
                 || tcx.lookup_stability(projection.def_id).is_some_and(|stab| stab.is_unstable())
         })
     {
@@ -389,13 +390,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     if let Some((name, term)) = associated_ty {
                         // FIXME: this case overlaps with code in TyCtxt::note_and_explain_type_err.
                         // That should be extracted into a helper function.
-                        if constraint.ends_with('>') {
-                            constraint = format!(
-                                "{}, {} = {}>",
-                                &constraint[..constraint.len() - 1],
-                                name,
-                                term
-                            );
+                        if let Some(stripped) = constraint.strip_suffix('>') {
+                            constraint = format!("{stripped}, {name} = {term}>");
                         } else {
                             constraint.push_str(&format!("<{name} = {term}>"));
                         }
@@ -1997,7 +1993,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 .iter()
                 .enumerate()
                 .map(|(i, ident)| {
-                    if ident.name.is_empty() || ident.name == kw::SelfLower {
+                    if ident.name.is_empty()
+                        || ident.name == kw::Underscore
+                        || ident.name == kw::SelfLower
+                    {
                         format!("arg{i}")
                     } else {
                         format!("{ident}")

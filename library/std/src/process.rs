@@ -154,7 +154,8 @@
         target_os = "emscripten",
         target_os = "wasi",
         target_env = "sgx",
-        target_os = "xous"
+        target_os = "xous",
+        target_os = "trusty",
     ))
 ))]
 mod tests;
@@ -1655,6 +1656,20 @@ impl From<io::Stderr> for Stdio {
     /// ```
     fn from(inherit: io::Stderr) -> Stdio {
         Stdio::from_inner(inherit.into())
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeWriter> for Stdio {
+    fn from(pipe: io::PipeWriter) -> Self {
+        Stdio::from_inner(pipe.into_inner().into())
+    }
+}
+
+#[stable(feature = "anonymous_pipe", since = "CURRENT_RUSTC_VERSION")]
+impl From<io::PipeReader> for Stdio {
+    fn from(pipe: io::PipeReader) -> Self {
+        Stdio::from_inner(pipe.into_inner().into())
     }
 }
 

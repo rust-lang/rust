@@ -250,13 +250,16 @@ fn visit_implementation_of_dispatch_from_dyn(checker: &Checker<'_>) -> Result<()
     // trait, they *do* satisfy the repr(transparent) rules, and then we assume that everything else
     // in the compiler (in particular, all the call ABI logic) will treat them as repr(transparent)
     // even if they do not carry that attribute.
-    use rustc_type_ir::TyKind::*;
     match (source.kind(), target.kind()) {
-        (&Ref(r_a, _, mutbl_a), Ref(r_b, _, mutbl_b)) if r_a == *r_b && mutbl_a == *mutbl_b => {
+        (&ty::Ref(r_a, _, mutbl_a), ty::Ref(r_b, _, mutbl_b))
+            if r_a == *r_b && mutbl_a == *mutbl_b =>
+        {
             Ok(())
         }
-        (&RawPtr(_, a_mutbl), &RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
-        (&Adt(def_a, args_a), &Adt(def_b, args_b)) if def_a.is_struct() && def_b.is_struct() => {
+        (&ty::RawPtr(_, a_mutbl), &ty::RawPtr(_, b_mutbl)) if a_mutbl == b_mutbl => Ok(()),
+        (&ty::Adt(def_a, args_a), &ty::Adt(def_b, args_b))
+            if def_a.is_struct() && def_b.is_struct() =>
+        {
             if def_a != def_b {
                 let source_path = tcx.def_path_str(def_a.did());
                 let target_path = tcx.def_path_str(def_b.did());

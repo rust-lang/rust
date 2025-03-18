@@ -21,7 +21,7 @@ use std::marker::PhantomData;
 use derive_where::derive_where;
 use rustc_index::{Idx, IndexVec};
 #[cfg(feature = "nightly")]
-use rustc_macros::{HashStable_NoContext, TyDecodable, TyEncodable};
+use rustc_macros::{Decodable_NoContext, Encodable_NoContext, HashStable_NoContext};
 use tracing::debug;
 
 use crate::data_structures::HashMap;
@@ -113,7 +113,10 @@ pub trait Delegate {
 /// result. In the case we return an initial provisional result depending
 /// on the kind of cycle.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "nightly", derive(TyDecodable, TyEncodable, HashStable_NoContext))]
+#[cfg_attr(
+    feature = "nightly",
+    derive(Decodable_NoContext, Encodable_NoContext, HashStable_NoContext)
+)]
 pub enum PathKind {
     /// A path consisting of only inductive/unproductive steps. Their initial
     /// provisional result is `Err(NoSolution)`. We currently treat them as

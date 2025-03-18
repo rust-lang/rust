@@ -333,7 +333,7 @@ top_level_options!(
         output_types: OutputTypes [TRACKED],
         search_paths: Vec<SearchPath> [UNTRACKED],
         libs: Vec<NativeLib> [TRACKED],
-        maybe_sysroot: Option<PathBuf> [UNTRACKED],
+        sysroot: PathBuf [UNTRACKED],
 
         target_triple: TargetTuple [TRACKED],
 
@@ -389,7 +389,7 @@ top_level_options!(
         ///
         /// This directory is what the virtual `/rustc/$hash` is translated back to,
         /// if Rust was built with path remapping to `/rustc/$hash` enabled
-        /// (the `rust.remap-debuginfo` option in `config.toml`).
+        /// (the `rust.remap-debuginfo` option in `bootstrap.toml`).
         real_rust_source_base_dir: Option<PathBuf> [TRACKED_NO_CRATE_HASH],
 
         edition: Edition [TRACKED],
