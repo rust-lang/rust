@@ -415,6 +415,7 @@
 #![feature(log_syntax)]
 #![feature(test)]
 #![feature(trace_macros)]
+#![feature(nonpoison_mutex)]
 // tidy-alphabetical-end
 //
 // Only used in tests/benchmarks:
