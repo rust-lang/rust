@@ -4,13 +4,13 @@ Date: Fri, 3 Dec 2021 12:16:30 +0100
 Subject: [PATCH] Disable long running tests
 
 ---
- library/core/tests/slice.rs | 2 ++
+ library/coretests/tests/slice.rs | 2 ++
  1 file changed, 2 insertions(+)
 
-diff --git a/tests/slice.rs b/tests/slice.rs
+diff --git a/coretests/tests/slice.rs b/coretests/tests/slice.rs
 index 8402833..84592e0 100644
---- a/tests/slice.rs
-+++ b/tests/slice.rs
+--- a/coretests/tests/slice.rs
++++ b/coretests/tests/slice.rs
 @@ -1809,6 +1809,7 @@ fn sort_unstable() {
      }
  }
