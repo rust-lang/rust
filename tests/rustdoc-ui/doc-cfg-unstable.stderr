@@ -1,15 +1,5 @@
-error[E0658]: `cfg(false)` is experimental and subject to change
-  --> $DIR/doc-cfg-unstable.rs:5:11
-   |
-LL | #[doc(cfg(false))]
-   |           ^^^^^
-   |
-   = note: see issue #131204 <https://github.com/rust-lang/rust/issues/131204> for more information
-   = help: add `#![feature(cfg_boolean_literals)]` to the crate attributes to enable
-   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
-
 error[E0658]: `cfg(sanitize)` is experimental and subject to change
-  --> $DIR/doc-cfg-unstable.rs:9:11
+  --> $DIR/doc-cfg-unstable.rs:5:11
    |
 LL | #[doc(cfg(sanitize = "thread"))]
    |           ^^^^^^^^^^^^^^^^^^^
@@ -18,6 +8,6 @@ LL | #[doc(cfg(sanitize = "thread"))]
    = help: add `#![feature(cfg_sanitize)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 2 previous errors
+error: aborting due to 1 previous error
 
 For more information about this error, try `rustc --explain E0658`.

@@ -95,6 +95,8 @@ declare_features! (
     (accepted, c_unwind, "1.81.0", Some(74990)),
     /// Allows `#[cfg_attr(predicate, multiple, attributes, here)]`.
     (accepted, cfg_attr_multi, "1.33.0", Some(54881)),
+    /// Allows the use of `#[cfg(<true/false>)]`.
+    (accepted, cfg_boolean_literals, "CURRENT_RUSTC_VERSION", Some(131204)),
     /// Allows the use of `#[cfg(doctest)]`, set when rustdoc is collecting doctests.
     (accepted, cfg_doctest, "1.40.0", Some(62210)),
     /// Enables `#[cfg(panic = "...")]` config key.
