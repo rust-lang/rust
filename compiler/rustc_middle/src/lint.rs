@@ -293,10 +293,10 @@ pub fn lint_level(
         );
 
         // Convert lint level to error level.
-        let err_level = match level {
+        let (err_level, lint_id) = match level {
             Level::Allow => {
                 if has_future_breakage {
-                    rustc_errors::Level::Allow
+                    (rustc_errors::Level::Allow, None)
                 } else {
                     return;
                 }
@@ -309,16 +309,18 @@ pub fn lint_level(
                 // We can also not mark the lint expectation as fulfilled here right away, as it
                 // can still be cancelled in the decorate function. All of this means that we simply
                 // create a `Diag` and continue as we would for warnings.
-                rustc_errors::Level::Expect(expect_id)
+                (rustc_errors::Level::Expect, Some(expect_id))
             }
-            Level::ForceWarn(Some(expect_id)) => rustc_errors::Level::ForceWarning(Some(expect_id)),
-            Level::ForceWarn(None) => rustc_errors::Level::ForceWarning(None),
-            Level::Warn => rustc_errors::Level::Warning,
-            Level::Deny | Level::Forbid => rustc_errors::Level::Error,
+            Level::ForceWarn(expect_id) => (rustc_errors::Level::ForceWarning, expect_id),
+            Level::Warn => (rustc_errors::Level::Warning, None),
+            Level::Deny | Level::Forbid => (rustc_errors::Level::Error, None),
         };
         let mut err = Diag::new(sess.dcx(), err_level, "");
         if let Some(span) = span {
             err.span(span);
+        }
+        if let Some(lint_id) = lint_id {
+            err.lint_id(lint_id);
         }
 
         // If this code originates in a foreign macro, aka something that this crate
