@@ -259,7 +259,7 @@ impl ChainItemKind {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Await, span)
             }
-            ast::ExprKind::Yield(Some(ref nested), ast::YieldKind::Postfix) => {
+            ast::ExprKind::Yield(ast::YieldKind::Postfix(ref nested)) => {
                 let span = mk_sp(nested.span.hi(), expr.span.hi());
                 (ChainItemKind::Yield, span)
             }
@@ -516,7 +516,7 @@ impl Chain {
             ast::ExprKind::Field(ref subexpr, _)
             | ast::ExprKind::Try(ref subexpr)
             | ast::ExprKind::Await(ref subexpr, _)
-            | ast::ExprKind::Yield(Some(ref subexpr), ast::YieldKind::Postfix) => Some(SubExpr {
+            | ast::ExprKind::Yield(ast::YieldKind::Postfix(ref subexpr)) => Some(SubExpr {
                 expr: Self::convert_try(subexpr, context),
                 is_method_call_receiver: false,
             }),

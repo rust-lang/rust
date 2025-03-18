@@ -201,7 +201,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
-        (Yield(l, lk), Yield(r, rk)) => eq_expr_opt(l.as_ref(), r.as_ref()) && lk == rk,
+        (Yield(l), Yield(r)) => eq_expr_opt(l.expr(), r.expr()) && l.same_kind(r),
         (Ret(l), Ret(r)) => eq_expr_opt(l.as_ref(), r.as_ref()),
         (Break(ll, le), Break(rl, re)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (Continue(ll), Continue(rl)) => eq_label(ll.as_ref(), rl.as_ref()),

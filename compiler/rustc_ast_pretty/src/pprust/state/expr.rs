@@ -761,7 +761,7 @@ impl<'a> State<'a> {
                 self.print_expr(e, FixupContext::default());
                 self.pclose();
             }
-            ast::ExprKind::Yield(e, YieldKind::Prefix) => {
+            ast::ExprKind::Yield(YieldKind::Prefix(e)) => {
                 self.word("yield");
 
                 if let Some(expr) = e {
@@ -773,9 +773,7 @@ impl<'a> State<'a> {
                     );
                 }
             }
-            ast::ExprKind::Yield(e, YieldKind::Postfix) => {
-                // It's not possible to have a postfix yield with no expression.
-                let e = e.as_ref().unwrap();
+            ast::ExprKind::Yield(YieldKind::Postfix(e)) => {
                 self.print_expr_cond_paren(
                     e,
                     e.precedence() < ExprPrecedence::Unambiguous,

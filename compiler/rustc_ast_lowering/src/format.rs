@@ -642,7 +642,7 @@ fn may_contain_yield_point(e: &ast::Expr) -> bool {
         type Result = ControlFlow<()>;
 
         fn visit_expr(&mut self, e: &ast::Expr) -> ControlFlow<()> {
-            if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_, _) = e.kind {
+            if let ast::ExprKind::Await(_, _) | ast::ExprKind::Yield(_) = e.kind {
                 ControlFlow::Break(())
             } else {
                 visit::walk_expr(self, e)

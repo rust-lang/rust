@@ -485,7 +485,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Index(_, ref expr, _)
         | ast::ExprKind::Unary(_, ref expr)
         | ast::ExprKind::Try(ref expr)
-        | ast::ExprKind::Yield(Some(ref expr), YieldKind::Prefix) => {
+        | ast::ExprKind::Yield(YieldKind::Prefix(Some(ref expr))) => {
             is_block_expr(context, expr, repr)
         }
         ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
@@ -517,7 +517,7 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Use(..)
         | ast::ExprKind::Type(..)
-        | ast::ExprKind::Yield(_, _)
+        | ast::ExprKind::Yield(..)
         | ast::ExprKind::Underscore => false,
     }
 }

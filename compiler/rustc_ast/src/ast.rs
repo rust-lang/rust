@@ -1657,7 +1657,7 @@ pub enum ExprKind {
     Try(P<Expr>),
 
     /// A `yield`, with an optional value to be yielded.
-    Yield(Option<P<Expr>>, YieldKind),
+    Yield(YieldKind),
 
     /// A `do yeet` (aka `throw`/`fail`/`bail`/`raise`/whatever),
     /// with an optional value to be returned.
@@ -1904,12 +1904,41 @@ pub enum MatchKind {
 }
 
 /// The kind of yield expression
-#[derive(Clone, Copy, Encodable, Decodable, Debug, PartialEq)]
+#[derive(Clone, Encodable, Decodable, Debug)]
 pub enum YieldKind {
     /// yield expr { ... }
-    Prefix,
+    Prefix(Option<P<Expr>>),
     /// expr.yield { ... }
-    Postfix,
+    Postfix(P<Expr>),
+}
+
+impl YieldKind {
+    /// Returns the expression inside the yield expression, if any.
+    ///
+    /// For postfix yields, this is guaranteed to be `Some`.
+    pub const fn expr(&self) -> Option<&P<Expr>> {
+        match self {
+            YieldKind::Prefix(expr) => expr.as_ref(),
+            YieldKind::Postfix(expr) => Some(expr),
+        }
+    }
+
+    /// Returns a mutable reference to the expression being yielded, if any.
+    pub const fn expr_mut(&mut self) -> Option<&mut P<Expr>> {
+        match self {
+            YieldKind::Prefix(expr) => expr.as_mut(),
+            YieldKind::Postfix(expr) => Some(expr),
+        }
+    }
+
+    /// Returns true if both yields are prefix or both are postfix.
+    pub const fn same_kind(&self, other: &Self) -> bool {
+        match (self, other) {
+            (YieldKind::Prefix(_), YieldKind::Prefix(_)) => true,
+            (YieldKind::Postfix(_), YieldKind::Postfix(_)) => true,
+            _ => false,
+        }
+    }
 }
 
 /// A literal in a meta item.
