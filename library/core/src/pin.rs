@@ -2037,7 +2037,7 @@ pub macro pin($value:expr $(,)?) {
             }
             pin
         },
-    }
+    } as $crate::pin::Pin<&mut _> // allow unsized coërcions
 }
 
 /// Since the 2024 edition, the rules for lifespan-of-temporaries extension have changed,
