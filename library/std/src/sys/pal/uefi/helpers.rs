@@ -374,7 +374,6 @@ impl<'a> BorrowedDevicePath<'a> {
         device_path_to_text(self.protocol)
     }
 
-    #[expect(dead_code)]
     pub(crate) const fn iter(&'a self) -> DevicePathIterator<'a> {
         DevicePathIterator::new(DevicePathNode::new(self.protocol))
     }
@@ -452,7 +451,6 @@ impl<'a> DevicePathNode<'a> {
             && self.sub_type() == r_efi::protocols::device_path::End::SUBTYPE_ENTIRE
     }
 
-    #[expect(dead_code)]
     pub(crate) const fn is_end_instance(&self) -> bool {
         self.node_type() == r_efi::protocols::device_path::TYPE_END
             && self.sub_type() == r_efi::protocols::device_path::End::SUBTYPE_INSTANCE
@@ -468,7 +466,6 @@ impl<'a> DevicePathNode<'a> {
         Self::new(node)
     }
 
-    #[expect(dead_code)]
     pub(crate) fn to_path(&'a self) -> BorrowedDevicePath<'a> {
         BorrowedDevicePath::new(self.protocol)
     }
