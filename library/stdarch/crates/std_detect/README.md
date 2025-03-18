@@ -30,12 +30,15 @@ run-time feature detection. When this feature is disabled, `std_detect` assumes
 that [`getauxval`] is linked to the binary. If that is not the case the behavior
 is undefined.
 
-  Note: This feature is ignored on `*-linux-gnu*` and `*-android*` targets
+  Note: This feature is ignored on `*-linux-{gnu,musl,ohos}*` and `*-android*` targets
   because we can safely assume `getauxval` is linked to the binary.
   * `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
-  have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html).
+    have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html).
+  * `*-linux-musl*` targets ([at least since Rust 1.15](https://github.com/rust-lang/rust/blob/1.15.0/src/ci/docker/x86_64-musl/build-musl.sh#L15))
+    use musl newer than [musl 1.1.0 that added `getauxval`](https://git.musl-libc.org/cgit/musl/tree/WHATSNEW?h=v1.1.0#n1197)
+  * `*-linux-ohos*` targets use a [fork of musl 1.2](https://gitee.com/openharmony/docs/blob/master/en/application-dev/reference/native-lib/musl.md)
   * `*-android*` targets ([since Rust 1.68](https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html))
-  have the minimum supported API level higher than [Android 4.3 (API level 18) that added `getauxval`](https://github.com/aosp-mirror/platform_bionic/blob/d3ebc2f7c49a9893b114124d4a6b315f3a328764/libc/include/sys/auxv.h#L49).
+    have the minimum supported API level higher than [Android 4.3 (API level 18) that added `getauxval`](https://github.com/aosp-mirror/platform_bionic/blob/d3ebc2f7c49a9893b114124d4a6b315f3a328764/libc/include/sys/auxv.h#L49).
 
 * `std_detect_file_io` (enabled by default, requires `std`): Enable to perform run-time feature
 detection using file APIs (e.g. `/proc/cpuinfo`, etc.) if other more performant

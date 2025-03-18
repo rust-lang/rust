@@ -58,10 +58,13 @@ pub(crate) struct AuxVec {
 /// feature detection on some platforms.
 ///
 ///  Note: The `std_detect_dlsym_getauxval` cargo feature is ignored on
-/// `*-linux-gnu*` and `*-android*` targets because we can safely assume `getauxval`
+/// `*-linux-{gnu,musl,ohos}*` and `*-android*` targets because we can safely assume `getauxval`
 /// is linked to the binary.
 /// - `*-linux-gnu*` targets ([since Rust 1.64](https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html))
 ///   have glibc requirements higher than [glibc 2.16 that added `getauxval`](https://sourceware.org/legacy-ml/libc-announce/2012/msg00000.html).
+/// - `*-linux-musl*` targets ([at least since Rust 1.15](https://github.com/rust-lang/rust/blob/1.15.0/src/ci/docker/x86_64-musl/build-musl.sh#L15))
+///   use musl newer than [musl 1.1.0 that added `getauxval`](https://git.musl-libc.org/cgit/musl/tree/WHATSNEW?h=v1.1.0#n1197)
+/// - `*-linux-ohos*` targets use a [fork of musl 1.2](https://gitee.com/openharmony/docs/blob/master/en/application-dev/reference/native-lib/musl.md)
 /// - `*-android*` targets ([since Rust 1.68](https://blog.rust-lang.org/2023/01/09/android-ndk-update-r25.html))
 ///   have the minimum supported API level higher than [Android 4.3 (API level 18) that added `getauxval`](https://github.com/aosp-mirror/platform_bionic/blob/d3ebc2f7c49a9893b114124d4a6b315f3a328764/libc/include/sys/auxv.h#L49).
 ///
@@ -73,7 +76,10 @@ pub(crate) struct AuxVec {
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
     #[cfg(all(
         feature = "std_detect_dlsym_getauxval",
-        not(all(target_os = "linux", target_env = "gnu")),
+        not(all(
+            target_os = "linux",
+            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
+        )),
         // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
         not(all(target_os = "android", target_pointer_width = "64")),
     ))]
@@ -120,12 +126,15 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
         }
     }
 
-    #[cfg(any(
-        not(feature = "std_detect_dlsym_getauxval"),
-        all(target_os = "linux", target_env = "gnu"),
+    #[cfg(not(all(
+        feature = "std_detect_dlsym_getauxval",
+        not(all(
+            target_os = "linux",
+            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
+        )),
         // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
-        all(target_os = "android", target_pointer_width = "64"),
-    ))]
+        not(all(target_os = "android", target_pointer_width = "64")),
+    )))]
     {
         // Targets with only AT_HWCAP:
         #[cfg(any(
@@ -184,7 +193,12 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
     test,
     all(
         feature = "std_detect_dlsym_getauxval",
-        not(all(target_os = "linux", target_env = "gnu"))
+        not(all(
+            target_os = "linux",
+            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
+        )),
+        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
+        not(all(target_os = "android", target_pointer_width = "64")),
     )
 ))]
 fn getauxval(key: usize) -> Result<usize, ()> {
