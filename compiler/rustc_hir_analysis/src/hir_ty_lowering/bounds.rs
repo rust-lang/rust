@@ -38,7 +38,9 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
             match param.kind {
                 hir::GenericParamKind::Lifetime { .. } => (),
                 hir::GenericParamKind::Type { .. } => {
-                    // TODO:
+                    // We shift the predicate by one because for a non-lifetime binder like,
+                    // `for<T> T: Trait`, we start out with a `T` with a debruijn index of `N`,
+                    // but we need to shift it to be `N + 1` when we construct a clause below.
                     let param_ty = ty::shift_vars(self.tcx(), self.lower_ty_param(param.hir_id), 1);
                     let mut bounds = Vec::new();
                     // Params are implicitly sized unless a `?Sized` bound is found
@@ -57,10 +59,22 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                     let param_def_id = param.def_id.to_def_id();
                     let ct_ty = tcx.type_of(param_def_id).instantiate_identity();
                     let ct = self.lower_const_param(param_def_id, param.hir_id);
-                    predicates.insert((
-                        ty::ClauseKind::ConstArgHasType(ct, ct_ty).upcast(tcx),
-                        param.span,
-                    ));
+                    if let ty::ConstKind::Bound(..) = ct.kind() {
+                        // We don't allow const params in non-lifetime binders today.
+                        tcx.dcx().span_delayed_bug(
+                            tcx.def_span(param_def_id),
+                            "const param in non-lifetime binder not allowed",
+                        );
+                    } else {
+                        predicates.insert((
+                            ty::Binder::bind_with_vars(
+                                ty::ClauseKind::ConstArgHasType(ct, ct_ty),
+                                ty::List::empty(),
+                            )
+                            .upcast(tcx),
+                            param.span,
+                        ));
+                    }
                 }
             }
         }
