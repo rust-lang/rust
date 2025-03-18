@@ -30,7 +30,9 @@ use rustc_index::IndexVec;
 use rustc_lint_defs::LintId;
 use rustc_macros::rustc_queries;
 use rustc_query_system::ich::StableHashingContext;
-use rustc_query_system::query::{QueryCache, QueryMode, QueryState, try_get_cached};
+use rustc_query_system::query::{
+    QueryCache, QueryMode, QueryStackDeferred, QueryState, try_get_cached,
+};
 use rustc_session::Limits;
 use rustc_session::config::{EntryFnType, OptLevel, OutputFilenames, SymbolManglingVersion};
 use rustc_session::cstore::{

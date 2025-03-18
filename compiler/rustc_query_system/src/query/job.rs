@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::hash::Hash;
 use std::io::Write;
 use std::iter;
@@ -12,6 +13,7 @@ use rustc_hir::def::DefKind;
 use rustc_session::Session;
 use rustc_span::{DUMMY_SP, Span};
 
+use super::QueryStackFrameExtra;
 use crate::dep_graph::DepContext;
 use crate::error::CycleStack;
 use crate::query::plumbing::CycleError;
@@ -19,45 +21,54 @@ use crate::query::{QueryContext, QueryStackFrame};
 
 /// Represents a span and a query key.
 #[derive(Clone, Debug)]
-pub struct QueryInfo {
+pub struct QueryInfo<I> {
     /// The span corresponding to the reason for which this query was required.
     pub span: Span,
-    pub query: QueryStackFrame,
+    pub query: QueryStackFrame<I>,
 }
 
-pub type QueryMap = FxHashMap<QueryJobId, QueryJobInfo>;
+impl<I> QueryInfo<I> {
+    pub(crate) fn lift<Qcx: QueryContext<QueryInfo = I>>(
+        &self,
+        qcx: Qcx,
+    ) -> QueryInfo<QueryStackFrameExtra> {
+        QueryInfo { span: self.span, query: self.query.lift(qcx) }
+    }
+}
+
+pub type QueryMap<I> = FxHashMap<QueryJobId, QueryJobInfo<I>>;
 
 /// A value uniquely identifying an active query job.
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Debug)]
 pub struct QueryJobId(pub NonZero<u64>);
 
 impl QueryJobId {
-    fn query(self, map: &QueryMap) -> QueryStackFrame {
+    fn query<I: Clone>(self, map: &QueryMap<I>) -> QueryStackFrame<I> {
         map.get(&self).unwrap().query.clone()
     }
 
-    fn span(self, map: &QueryMap) -> Span {
+    fn span<I>(self, map: &QueryMap<I>) -> Span {
         map.get(&self).unwrap().job.span
     }
 
-    fn parent(self, map: &QueryMap) -> Option<QueryJobId> {
+    fn parent<I>(self, map: &QueryMap<I>) -> Option<QueryJobId> {
         map.get(&self).unwrap().job.parent
     }
 
-    fn latch(self, map: &QueryMap) -> Option<&QueryLatch> {
+    fn latch<I>(self, map: &QueryMap<I>) -> Option<&QueryLatch<I>> {
         map.get(&self).unwrap().job.latch.as_ref()
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct QueryJobInfo {
-    pub query: QueryStackFrame,
-    pub job: QueryJob,
+pub struct QueryJobInfo<I> {
+    pub query: QueryStackFrame<I>,
+    pub job: QueryJob<I>,
 }
 
 /// Represents an active query job.
-#[derive(Clone, Debug)]
-pub struct QueryJob {
+#[derive(Debug)]
+pub struct QueryJob<I> {
     pub id: QueryJobId,
 
     /// The span corresponding to the reason for which this query was required.
@@ -67,17 +78,23 @@ pub struct QueryJob {
     pub parent: Option<QueryJobId>,
 
     /// The latch that is used to wait on this job.
-    latch: Option<QueryLatch>,
+    latch: Option<QueryLatch<I>>,
 }
 
-impl QueryJob {
+impl<I> Clone for QueryJob<I> {
+    fn clone(&self) -> Self {
+        Self { id: self.id, span: self.span, parent: self.parent, latch: self.latch.clone() }
+    }
+}
+
+impl<I> QueryJob<I> {
     /// Creates a new query job.
     #[inline]
     pub fn new(id: QueryJobId, span: Span, parent: Option<QueryJobId>) -> Self {
         QueryJob { id, span, parent, latch: None }
     }
 
-    pub(super) fn latch(&mut self) -> QueryLatch {
+    pub(super) fn latch(&mut self) -> QueryLatch<I> {
         if self.latch.is_none() {
             self.latch = Some(QueryLatch::new());
         }
@@ -97,12 +114,12 @@ impl QueryJob {
 }
 
 impl QueryJobId {
-    pub(super) fn find_cycle_in_stack(
+    pub(super) fn find_cycle_in_stack<I: Clone>(
         &self,
-        query_map: QueryMap,
+        query_map: QueryMap<I>,
         current_job: &Option<QueryJobId>,
         span: Span,
-    ) -> CycleError {
+    ) -> CycleError<I> {
         // Find the waitee amongst `current_job` parents
         let mut cycle = Vec::new();
         let mut current_job = Option::clone(current_job);
@@ -136,7 +153,7 @@ impl QueryJobId {
 
     #[cold]
     #[inline(never)]
-    pub fn find_dep_kind_root(&self, query_map: QueryMap) -> (QueryJobInfo, usize) {
+    pub fn find_dep_kind_root<I: Clone>(&self, query_map: QueryMap<I>) -> (QueryJobInfo<I>, usize) {
         let mut depth = 1;
         let info = query_map.get(&self).unwrap();
         let dep_kind = info.query.dep_kind;
@@ -156,25 +173,31 @@ impl QueryJobId {
 }
 
 #[derive(Debug)]
-struct QueryWaiter {
+struct QueryWaiter<I> {
     query: Option<QueryJobId>,
     condvar: Condvar,
     span: Span,
-    cycle: Mutex<Option<CycleError>>,
+    cycle: Mutex<Option<CycleError<I>>>,
 }
 
 #[derive(Debug)]
-struct QueryLatchInfo {
+struct QueryLatchInfo<I> {
     complete: bool,
-    waiters: Vec<Arc<QueryWaiter>>,
+    waiters: Vec<Arc<QueryWaiter<I>>>,
 }
 
-#[derive(Clone, Debug)]
-pub(super) struct QueryLatch {
-    info: Arc<Mutex<QueryLatchInfo>>,
+#[derive(Debug)]
+pub(super) struct QueryLatch<I> {
+    info: Arc<Mutex<QueryLatchInfo<I>>>,
 }
 
-impl QueryLatch {
+impl<I> Clone for QueryLatch<I> {
+    fn clone(&self) -> Self {
+        Self { info: Arc::clone(&self.info) }
+    }
+}
+
+impl<I> QueryLatch<I> {
     fn new() -> Self {
         QueryLatch {
             info: Arc::new(Mutex::new(QueryLatchInfo { complete: false, waiters: Vec::new() })),
@@ -182,7 +205,11 @@ impl QueryLatch {
     }
 
     /// Awaits for the query job to complete.
-    pub(super) fn wait_on(&self, query: Option<QueryJobId>, span: Span) -> Result<(), CycleError> {
+    pub(super) fn wait_on(
+        &self,
+        query: Option<QueryJobId>,
+        span: Span,
+    ) -> Result<(), CycleError<I>> {
         let waiter =
             Arc::new(QueryWaiter { query, span, cycle: Mutex::new(None), condvar: Condvar::new() });
         self.wait_on_inner(&waiter);
@@ -197,7 +224,7 @@ impl QueryLatch {
     }
 
     /// Awaits the caller on this latch by blocking the current thread.
-    fn wait_on_inner(&self, waiter: &Arc<QueryWaiter>) {
+    fn wait_on_inner(&self, waiter: &Arc<QueryWaiter<I>>) {
         let mut info = self.info.lock();
         if !info.complete {
             // We push the waiter on to the `waiters` list. It can be accessed inside
@@ -232,7 +259,7 @@ impl QueryLatch {
 
     /// Removes a single waiter from the list of waiters.
     /// This is used to break query cycles.
-    fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter> {
+    fn extract_waiter(&self, waiter: usize) -> Arc<QueryWaiter<I>> {
         let mut info = self.info.lock();
         debug_assert!(!info.complete);
         // Remove the waiter from the list of waiters
@@ -252,7 +279,11 @@ type Waiter = (QueryJobId, usize);
 /// For visits of resumable waiters it returns Some(Some(Waiter)) which has the
 /// required information to resume the waiter.
 /// If all `visit` calls returns None, this function also returns None.
-fn visit_waiters<F>(query_map: &QueryMap, query: QueryJobId, mut visit: F) -> Option<Option<Waiter>>
+fn visit_waiters<I, F>(
+    query_map: &QueryMap<I>,
+    query: QueryJobId,
+    mut visit: F,
+) -> Option<Option<Waiter>>
 where
     F: FnMut(Span, QueryJobId) -> Option<Option<Waiter>>,
 {
@@ -282,8 +313,8 @@ where
 /// `span` is the reason for the `query` to execute. This is initially DUMMY_SP.
 /// If a cycle is detected, this initial value is replaced with the span causing
 /// the cycle.
-fn cycle_check(
-    query_map: &QueryMap,
+fn cycle_check<I>(
+    query_map: &QueryMap<I>,
     query: QueryJobId,
     span: Span,
     stack: &mut Vec<(Span, QueryJobId)>,
@@ -322,8 +353,8 @@ fn cycle_check(
 /// Finds out if there's a path to the compiler root (aka. code which isn't in a query)
 /// from `query` without going through any of the queries in `visited`.
 /// This is achieved with a depth first search.
-fn connected_to_root(
-    query_map: &QueryMap,
+fn connected_to_root<I>(
+    query_map: &QueryMap<I>,
     query: QueryJobId,
     visited: &mut FxHashSet<QueryJobId>,
 ) -> bool {
@@ -344,7 +375,7 @@ fn connected_to_root(
 }
 
 // Deterministically pick an query from a list
-fn pick_query<'a, T, F>(query_map: &QueryMap, queries: &'a [T], f: F) -> &'a T
+fn pick_query<'a, I: Clone, T, F>(query_map: &QueryMap<I>, queries: &'a [T], f: F) -> &'a T
 where
     F: Fn(&T) -> (Span, QueryJobId),
 {
@@ -369,10 +400,10 @@ where
 /// the function return true.
 /// If a cycle was not found, the starting query is removed from `jobs` and
 /// the function returns false.
-fn remove_cycle(
-    query_map: &QueryMap,
+fn remove_cycle<I: Clone>(
+    query_map: &QueryMap<I>,
     jobs: &mut Vec<QueryJobId>,
-    wakelist: &mut Vec<Arc<QueryWaiter>>,
+    wakelist: &mut Vec<Arc<QueryWaiter<I>>>,
 ) -> bool {
     let mut visited = FxHashSet::default();
     let mut stack = Vec::new();
@@ -473,7 +504,10 @@ fn remove_cycle(
 /// uses a query latch and then resuming that waiter.
 /// There may be multiple cycles involved in a deadlock, so this searches
 /// all active queries for cycles before finally resuming all the waiters at once.
-pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) {
+pub fn break_query_cycles<I: Clone + Debug>(
+    query_map: QueryMap<I>,
+    registry: &rayon_core::Registry,
+) {
     let mut wakelist = Vec::new();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
 
@@ -520,7 +554,7 @@ pub fn report_cycle<'a>(
 ) -> Diag<'a> {
     assert!(!stack.is_empty());
 
-    let span = stack[0].query.default_span(stack[1 % stack.len()].span);
+    let span = stack[0].query.info.default_span(stack[1 % stack.len()].span);
 
     let mut cycle_stack = Vec::new();
 
@@ -529,31 +563,31 @@ pub fn report_cycle<'a>(
 
     for i in 1..stack.len() {
         let query = &stack[i].query;
-        let span = query.default_span(stack[(i + 1) % stack.len()].span);
-        cycle_stack.push(CycleStack { span, desc: query.description.to_owned() });
+        let span = query.info.default_span(stack[(i + 1) % stack.len()].span);
+        cycle_stack.push(CycleStack { span, desc: query.info.description.to_owned() });
     }
 
     let mut cycle_usage = None;
     if let Some((span, ref query)) = *usage {
         cycle_usage = Some(crate::error::CycleUsage {
-            span: query.default_span(span),
-            usage: query.description.to_string(),
+            span: query.info.default_span(span),
+            usage: query.info.description.to_string(),
         });
     }
 
-    let alias = if stack.iter().all(|entry| matches!(entry.query.def_kind, Some(DefKind::TyAlias)))
-    {
-        Some(crate::error::Alias::Ty)
-    } else if stack.iter().all(|entry| entry.query.def_kind == Some(DefKind::TraitAlias)) {
-        Some(crate::error::Alias::Trait)
-    } else {
-        None
-    };
+    let alias =
+        if stack.iter().all(|entry| matches!(entry.query.info.def_kind, Some(DefKind::TyAlias))) {
+            Some(crate::error::Alias::Ty)
+        } else if stack.iter().all(|entry| entry.query.info.def_kind == Some(DefKind::TraitAlias)) {
+            Some(crate::error::Alias::Trait)
+        } else {
+            None
+        };
 
     let cycle_diag = crate::error::Cycle {
         span,
         cycle_stack,
-        stack_bottom: stack[0].query.description.to_owned(),
+        stack_bottom: stack[0].query.info.description.to_owned(),
         alias,
         cycle_usage,
         stack_count,
@@ -589,6 +623,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
         let Some(query_info) = query_map.get(&query) else {
             break;
         };
+        let query_extra = qcx.lift_query_info(&query_info.query.info);
         if Some(count_printed) < limit_frames || limit_frames.is_none() {
             // Only print to stderr as many stack frames as `num_frames` when present.
             // FIXME: needs translation
@@ -596,7 +631,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
             #[allow(rustc::untranslatable_diagnostic)]
             dcx.struct_failure_note(format!(
                 "#{} [{:?}] {}",
-                count_printed, query_info.query.dep_kind, query_info.query.description
+                count_printed, query_info.query.dep_kind, query_extra.description
             ))
             .with_span(query_info.job.span)
             .emit();
@@ -609,7 +644,7 @@ pub fn print_query_stack<Qcx: QueryContext>(
                 "#{} [{}] {}",
                 count_total,
                 qcx.dep_context().dep_kind_info(query_info.query.dep_kind).name,
-                query_info.query.description
+                query_extra.description
             );
         }
 
