@@ -233,20 +233,8 @@ mod llvm_enzyme {
             .filter(|a| **a == DiffActivity::Active || **a == DiffActivity::ActiveOnly)
             .count() as u32;
         let (d_sig, new_args, idents, errored) = gen_enzyme_decl(ecx, &sig, &x, span);
-        let new_decl_span = d_sig.span;
         let d_body = gen_enzyme_body(
-            ecx,
-            &x,
-            n_active,
-            &sig,
-            &d_sig,
-            primal,
-            &new_args,
-            span,
-            sig_span,
-            new_decl_span,
-            idents,
-            errored,
+            ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
         );
         let d_ident = first_ident(&meta_item_vec[0]);
 
@@ -440,12 +428,10 @@ mod llvm_enzyme {
 
     /// We only want this function to type-check, since we will replace the body
     /// later on llvm level. Using `loop {}` does not cover all return types anymore,
-    /// so instead we build something that should pass. We also add a inline_asm
-    /// line, as one more barrier for rustc to prevent inlining of this function.
-    /// FIXME(ZuseZ4): We still have cases of incorrect inlining across modules, see
-    /// <https://github.com/EnzymeAD/rust/issues/173>, so this isn't sufficient.
-    /// It also triggers an Enzyme crash if we due to a bug ever try to differentiate
-    /// this function (which should never happen, since it is only a placeholder).
+    /// so instead we manually build something that should pass the type checker.
+    /// We also add a inline_asm line, as one more barrier for rustc to prevent inlining
+    /// or const propagation. inline_asm will also triggers an Enzyme crash if due to another
+    /// bug would ever try to accidentially differentiate this placeholder function body.
     /// Finally, we also add back_box usages of all input arguments, to prevent rustc
     /// from optimizing any arguments away.
     fn gen_enzyme_body(
@@ -458,7 +444,6 @@ mod llvm_enzyme {
         new_names: &[String],
         span: Span,
         sig_span: Span,
-        _new_decl_span: Span,
         idents: Vec<Ident>,
         errored: bool,
     ) -> P<ast::Block> {
