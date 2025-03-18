@@ -178,10 +178,9 @@ jobs:
       with:
         submodules: true
     # Unlike rustfmt, stable clippy does not work on code with nightly features.
-    # This acquires the most recent nightly with a clippy component.
     - name: Install nightly `clippy`
       run: |
-        rustup set profile minimal && rustup default "nightly-$(curl -s https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu/clippy)" && rustup component add clippy
+        rustup set profile minimal && rustup default nightly && rustup component add clippy
     - uses: Swatinem/rust-cache@v2
     - run: cargo clippy -- -D clippy::all
 
