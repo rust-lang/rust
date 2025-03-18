@@ -204,7 +204,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    hir::ItemKind::Const(_, _, init) => {
+                    hir::ItemKind::Const(_, _, _, init) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if
                         // const-eval happens in a downstream crate, all they need is
@@ -232,7 +232,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemKind::ExternCrate(_)
+                    hir::ItemKind::ExternCrate(..)
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Macro(..)

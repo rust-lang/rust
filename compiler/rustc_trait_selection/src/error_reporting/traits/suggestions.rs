@@ -267,8 +267,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             let node = self.tcx.hir_node_by_def_id(body_id);
             match node {
                 hir::Node::Item(hir::Item {
-                    ident,
-                    kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
+                    kind: hir::ItemKind::Trait(_, _, ident, generics, bounds, _),
                     ..
                 }) if self_ty == self.tcx.types.self_param => {
                     assert!(param_ty);
@@ -282,7 +281,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         None,
                         projection,
                         trait_pred,
-                        Some((ident, bounds)),
+                        Some((&ident, bounds)),
                     );
                     return;
                 }
@@ -331,7 +330,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 }
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Trait(_, _, generics, ..)
+                        hir::ItemKind::Trait(_, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. }),
                     ..
                 }) if projection.is_some() => {
@@ -352,15 +351,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, generics)
-                        | hir::ItemKind::Enum(_, generics)
-                        | hir::ItemKind::Union(_, generics)
-                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        hir::ItemKind::Struct(_, _, generics)
+                        | hir::ItemKind::Enum(_, _, generics)
+                        | hir::ItemKind::Union(_, _, generics)
+                        | hir::ItemKind::Trait(_, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
-                        | hir::ItemKind::TyAlias(_, generics)
-                        | hir::ItemKind::Const(_, generics, _)
-                        | hir::ItemKind::TraitAlias(generics, _),
+                        | hir::ItemKind::TyAlias(_, _, generics)
+                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 })
                 | hir::Node::TraitItem(hir::TraitItem { generics, .. })
@@ -412,15 +411,15 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
 
                 hir::Node::Item(hir::Item {
                     kind:
-                        hir::ItemKind::Struct(_, generics)
-                        | hir::ItemKind::Enum(_, generics)
-                        | hir::ItemKind::Union(_, generics)
-                        | hir::ItemKind::Trait(_, _, generics, ..)
+                        hir::ItemKind::Struct(_, _, generics)
+                        | hir::ItemKind::Enum(_, _, generics)
+                        | hir::ItemKind::Union(_, _, generics)
+                        | hir::ItemKind::Trait(_, _, _, generics, ..)
                         | hir::ItemKind::Impl(hir::Impl { generics, .. })
                         | hir::ItemKind::Fn { generics, .. }
-                        | hir::ItemKind::TyAlias(_, generics)
-                        | hir::ItemKind::Const(_, generics, _)
-                        | hir::ItemKind::TraitAlias(generics, _),
+                        | hir::ItemKind::TyAlias(_, _, generics)
+                        | hir::ItemKind::Const(_, _, generics, _)
+                        | hir::ItemKind::TraitAlias(_, generics, _),
                     ..
                 }) if !param_ty => {
                     // Missing generic type parameter bound.
@@ -842,7 +841,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                     name.to_string()
                 }
                 Some(hir::Node::Item(hir::Item {
-                    ident, kind: hir::ItemKind::Fn { .. }, ..
+                    kind: hir::ItemKind::Fn { ident, .. }, ..
                 })) => {
                     err.span_label(ident.span, "consider calling this function");
                     ident.to_string()
@@ -1588,20 +1587,20 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 if let Some(typeck_results) = &self.typeck_results
                     && let ty = typeck_results.expr_ty_adjusted(base)
                     && let ty::FnDef(def_id, _args) = ty.kind()
-                    && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
-                        self.tcx.hir_get_if_local(*def_id)
+                    && let Some(hir::Node::Item(item)) = self.tcx.hir_get_if_local(*def_id)
                 {
+                    let (ident, _, _, _) = item.expect_fn();
                     let msg = format!("alternatively, consider making `fn {ident}` asynchronous");
-                    if vis_span.is_empty() {
+                    if item.vis_span.is_empty() {
                         err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
+                            item.span.shrink_to_lo(),
                             msg,
                             "async ",
                             Applicability::MaybeIncorrect,
                         );
                     } else {
                         err.span_suggestion_verbose(
-                            vis_span.shrink_to_hi(),
+                            item.vis_span.shrink_to_hi(),
                             msg,
                             " async",
                             Applicability::MaybeIncorrect,
@@ -3303,8 +3302,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                 let mut is_auto_trait = false;
                 match tcx.hir_get_if_local(data.impl_or_alias_def_id) {
                     Some(Node::Item(hir::Item {
-                        kind: hir::ItemKind::Trait(is_auto, ..),
-                        ident,
+                        kind: hir::ItemKind::Trait(is_auto, _, ident, ..),
                         ..
                     })) => {
                         // FIXME: we should do something else so that it works even on crate foreign

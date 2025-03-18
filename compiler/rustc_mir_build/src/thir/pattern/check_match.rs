@@ -1044,7 +1044,6 @@ fn find_fallback_pattern_typo<'tcx>(
             if let DefKind::Use = cx.tcx.def_kind(item.owner_id) {
                 // Look for consts being re-exported.
                 let item = cx.tcx.hir_expect_item(item.owner_id.def_id);
-                let use_name = item.ident.name;
                 let hir::ItemKind::Use(path, _) = item.kind else {
                     continue;
                 };
@@ -1064,8 +1063,9 @@ fn find_fallback_pattern_typo<'tcx>(
                         {
                             // The const is accessible only through the re-export, point at
                             // the `use`.
-                            imported.push(use_name);
-                            imported_spans.push(item.ident.span);
+                            let ident = item.kind.ident().unwrap();
+                            imported.push(ident.name);
+                            imported_spans.push(ident.span);
                         }
                     }
                 }

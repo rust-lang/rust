@@ -308,18 +308,18 @@ impl<'tcx> LateLintPass<'tcx> for TypeIr {
             [.., penultimate, segment]
                 if penultimate.res.opt_def_id().is_some_and(is_mod_inherent) =>
             {
-                (segment.ident.span, item.ident.span, "*")
+                (segment.ident.span, item.kind.ident().unwrap().span, "*")
             }
             [.., segment]
                 if path.res.iter().flat_map(Res::opt_def_id).any(is_mod_inherent)
-                    && let rustc_hir::UseKind::Single = kind =>
+                    && let rustc_hir::UseKind::Single(ident) = kind =>
             {
                 let (lo, snippet) =
                     match cx.tcx.sess.source_map().span_to_snippet(path.span).as_deref() {
                         Ok("self") => (path.span, "*"),
                         _ => (segment.ident.span.shrink_to_hi(), "::*"),
                     };
-                (lo, if segment.ident == item.ident { lo } else { item.ident.span }, snippet)
+                (lo, if segment.ident == ident { lo } else { ident.span }, snippet)
             }
             _ => return,
         };

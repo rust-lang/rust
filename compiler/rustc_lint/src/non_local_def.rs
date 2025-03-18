@@ -181,10 +181,10 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     && parent_opt_item_name != Some(kw::Underscore)
                     && let Some(parent) = parent.as_local()
                     && let Node::Item(item) = cx.tcx.hir_node_by_def_id(parent)
-                    && let ItemKind::Const(ty, _, _) = item.kind
+                    && let ItemKind::Const(ident, ty, _, _) = item.kind
                     && let TyKind::Tup(&[]) = ty.kind
                 {
-                    Some(item.ident.span)
+                    Some(ident.span)
                 } else {
                     None
                 };
@@ -238,7 +238,7 @@ impl<'tcx> LateLintPass<'tcx> for NonLocalDefinitions {
                     },
                 )
             }
-            ItemKind::Macro(_macro, MacroKind::Bang)
+            ItemKind::Macro(_, _macro, MacroKind::Bang)
                 if cx.tcx.has_attr(item.owner_id.def_id, sym::macro_export) =>
             {
                 cx.emit_span_lint(

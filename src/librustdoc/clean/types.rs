@@ -226,7 +226,7 @@ impl ExternalCrate {
                 .filter_map(|&id| {
                     let item = tcx.hir_item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => {
+                        hir::ItemKind::Mod(..) => {
                             as_keyword(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
                         _ => None,
@@ -282,7 +282,7 @@ impl ExternalCrate {
                 .filter_map(|&id| {
                     let item = tcx.hir_item(id);
                     match item.kind {
-                        hir::ItemKind::Mod(_) => {
+                        hir::ItemKind::Mod(..) => {
                             as_primitive(Res::Def(DefKind::Mod, id.owner_id.to_def_id()))
                         }
                         _ => None,

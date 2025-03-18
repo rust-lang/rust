@@ -1204,13 +1204,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     Some(
                         Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                            kind:
+                                hir::ItemKind::Trait(_, _, ident, ..)
+                                | hir::ItemKind::TraitAlias(ident, ..),
                             ..
                         })
                         // We may also encounter unsatisfied GAT or method bounds
                         | Node::TraitItem(hir::TraitItem { ident, .. })
-                        | Node::ImplItem(hir::ImplItem { ident, .. }),
+                        | Node::ImplItem(hir::ImplItem { ident, .. })
                     ) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
@@ -3960,8 +3961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(.., bounds, _),
-                            ident,
+                            kind: hir::ItemKind::Trait(_, _, ident, _, bounds, _),
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {

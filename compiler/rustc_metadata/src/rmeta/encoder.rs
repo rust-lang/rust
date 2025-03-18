@@ -1835,7 +1835,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(macro_def, _) = tcx.hir_expect_item(def_id).kind else { bug!() };
+        let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }

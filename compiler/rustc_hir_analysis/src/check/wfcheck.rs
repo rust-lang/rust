@@ -269,26 +269,26 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
             }
             res
         }
-        hir::ItemKind::Fn { sig, .. } => {
-            check_item_fn(tcx, def_id, item.ident, item.span, sig.decl)
+        hir::ItemKind::Fn { ident, sig, .. } => {
+            check_item_fn(tcx, def_id, ident, item.span, sig.decl)
         }
-        hir::ItemKind::Static(ty, ..) => {
+        hir::ItemKind::Static(_, ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Const(ty, ..) => {
+        hir::ItemKind::Const(_, ty, ..) => {
             check_item_type(tcx, def_id, ty.span, UnsizedHandling::Forbid)
         }
-        hir::ItemKind::Struct(_, hir_generics) => {
+        hir::ItemKind::Struct(_, _, hir_generics) => {
             let res = check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Union(_, hir_generics) => {
+        hir::ItemKind::Union(_, _, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, hir_generics);
             res
         }
-        hir::ItemKind::Enum(_, hir_generics) => {
+        hir::ItemKind::Enum(_, _, hir_generics) => {
             let res = check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, hir_generics);
             res
@@ -297,7 +297,9 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) -> Result<()
         hir::ItemKind::TraitAlias(..) => check_trait(tcx, item),
         // `ForeignItem`s are handled separately.
         hir::ItemKind::ForeignMod { .. } => Ok(()),
-        hir::ItemKind::TyAlias(hir_ty, hir_generics) if tcx.type_alias_is_lazy(item.owner_id) => {
+        hir::ItemKind::TyAlias(_, hir_ty, hir_generics)
+            if tcx.type_alias_is_lazy(item.owner_id) =>
+        {
             let res = enter_wf_checking_ctxt(tcx, item.span, def_id, |wfcx| {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 let item_ty = wfcx.normalize(hir_ty.span, Some(WellFormedLoc::Ty(def_id)), ty);
@@ -822,10 +824,10 @@ fn could_be_self(trait_def_id: LocalDefId, ty: &hir::Ty<'_>) -> bool {
 ///
 /// In such cases, suggest using `Self` instead.
 fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitItem<'_>) {
-    let (trait_name, trait_def_id) =
+    let (trait_ident, trait_def_id) =
         match tcx.hir_node_by_def_id(tcx.hir_get_parent_item(item.hir_id()).def_id) {
             hir::Node::Item(item) => match item.kind {
-                hir::ItemKind::Trait(..) => (item.ident, item.owner_id),
+                hir::ItemKind::Trait(_, _, ident, ..) => (ident, item.owner_id),
                 _ => return,
             },
             _ => return,
@@ -862,7 +864,7 @@ fn check_dyn_incompatible_self_trait_by_name(tcx: TyCtxt<'_>, item: &hir::TraitI
                 trait_should_be_self,
                 "associated item referring to unboxed trait object for its own trait",
             )
-            .with_span_label(trait_name.span, "in this trait")
+            .with_span_label(trait_ident.span, "in this trait")
             .with_multipart_suggestion(
                 "you might have meant to use `Self` to refer to the implementing type",
                 sugg,

@@ -239,16 +239,31 @@ jobs:
         if: github.event_name == 'push' || env.DEPLOY == '1' || env.DEPLOY_ALT == '1'
 
       - name: postprocess metrics into the summary
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
         run: |
           if [ -f build/metrics.json ]; then
-            ./build/citool/debug/citool postprocess-metrics build/metrics.json ${GITHUB_STEP_SUMMARY}
+            METRICS=build/metrics.json
           elif [ -f obj/build/metrics.json ]; then
-            ./build/citool/debug/citool postprocess-metrics obj/build/metrics.json ${GITHUB_STEP_SUMMARY}
+            METRICS=obj/build/metrics.json
           else
             echo "No metrics.json found"
+            exit 0
           fi
 
+          # Get closest bors merge commit
+          PARENT_COMMIT=`git rev-list --author='bors <bors@rust-lang.org>' -n1 --first-parent HEAD^1`
+
+          ./build/citool/debug/citool postprocess-metrics \
+              --job-name ${CI_JOB_NAME} \
+              --parent ${PARENT_COMMIT} \
+              ${METRICS} >> ${GITHUB_STEP_SUMMARY}
+
       - name: upload job metrics to DataDog
+        # This step is not critical, and if some I/O problem happens, we don't want
+        # to cancel the build.
+        continue-on-error: true
         if: needs.calculate_matrix.outputs.run_type != 'pr'
         env:
           DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
