@@ -94,7 +94,7 @@ fn test_local_committed_modifications_subdirectory() {
 }
 
 #[test]
-fn test_changes_in_head_upstream() {
+fn test_local_changes_in_head_upstream() {
     git_test(|ctx| {
         // We want to resolve to the upstream commit that made modifications to a,
         // even if it is currently HEAD
@@ -107,7 +107,7 @@ fn test_changes_in_head_upstream() {
 }
 
 #[test]
-fn test_changes_in_previous_upstream() {
+fn test_local_changes_in_previous_upstream() {
     git_test(|ctx| {
         // We want to resolve to this commit, which modified a
         let sha = ctx.create_upstream_merge(&["a", "e"]);
@@ -124,7 +124,33 @@ fn test_changes_in_previous_upstream() {
 }
 
 #[test]
-fn test_changes_negative_path() {
+fn test_local_no_upstream_commit_with_changes() {
+    git_test(|ctx| {
+        ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_upstream_merge(&["a", "e"]);
+        // We want to fall back to this commit, because there are no commits
+        // that modified `x`.
+        let sha = ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_branch("feature");
+        ctx.modify("d");
+        ctx.commit();
+        assert_eq!(
+            ctx.get_source(&["x"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_no_upstream_commit() {
+    git_test(|ctx| {
+        let src = ctx.get_source(&["c", "d"], CiEnv::None);
+        assert_eq!(src, PathFreshness::MissingUpstream);
+    });
+}
+
+#[test]
+fn test_local_changes_negative_path() {
     git_test(|ctx| {
         let upstream = ctx.create_upstream_merge(&["a"]);
         ctx.create_branch("feature");

@@ -129,6 +129,10 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
             eprintln!("Found local GCC modifications, GCC will *not* be downloaded");
             None
         }
+        PathFreshness::MissingUpstream => {
+            eprintln!("No upstream commit found, GCC will *not* be downloaded");
+            None
+        }
     }
 }
 
