@@ -1,3 +1,4 @@
+#![allow(unused)]
 //! Implementation of bootstrap, the Rust build system.
 //!
 //! This module, and its descendants, are the implementation of the Rust build
@@ -27,6 +28,7 @@ use std::{env, fs, io, str};
 
 use build_helper::ci::gha;
 use build_helper::exit;
+use cc::Tool;
 use termcolor::{ColorChoice, StandardStream, WriteColor};
 use utils::build_stamp::BuildStamp;
 use utils::channel::GitInfo;
@@ -1191,6 +1193,16 @@ Executed at: {executed_at}"#,
             return PathBuf::new();
         }
         self.cc.borrow()[&target].path().into()
+    }
+
+    /// Returns the internal `cc::Tool` for the C compiler.
+    fn cc_tool(&self, target: TargetSelection) -> Tool {
+        self.cc.borrow()[&target].clone()
+    }
+
+    /// Returns the internal `cc::Tool` for the C++ compiler.
+    fn cxx_tool(&self, target: TargetSelection) -> Tool {
+        self.cxx.borrow()[&target].clone()
     }
 
     /// Returns C flags that `cc-rs` thinks should be enabled for the

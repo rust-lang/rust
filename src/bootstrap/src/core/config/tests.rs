@@ -39,9 +39,7 @@ fn download_ci_llvm() {
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
     if if_unchanged_config.llvm_from_ci {
-        let has_changes = if_unchanged_config
-            .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
-            .is_none();
+        let has_changes = if_unchanged_config.has_changes_from_upstream(&["src/llvm-project"]);
 
         assert!(
             !has_changes,

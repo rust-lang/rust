@@ -1,3 +1,5 @@
+use std::path::Path;
+
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 
@@ -86,36 +88,57 @@ llvm-config = "{llvm_config}"
     log::info!("Using following `config.toml` for running tests:\n{config_content}");
 
     // Simulate a stage 0 compiler with the extracted optimized dist artifacts.
-    std::fs::write("config.toml", config_content)?;
+    with_backed_up_file(Path::new("config.toml"), &config_content, || {
+        let x_py = env.checkout_path().join("x.py");
+        let mut args = vec![
+            env.python_binary(),
+            x_py.as_str(),
+            "test",
+            "--build",
+            env.host_tuple(),
+            "--stage",
+            "0",
+            "tests/assembly",
+            "tests/codegen",
+            "tests/codegen-units",
+            "tests/incremental",
+            "tests/mir-opt",
+            "tests/pretty",
+            "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
+            "tests/ui",
+            "tests/crashes",
+        ];
+        for test_path in env.skipped_tests() {
+            args.extend(["--skip", test_path]);
+        }
+        cmd(&args)
+            .env("COMPILETEST_FORCE_STAGE0", "1")
+            // Also run dist-only tests
+            .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
+            .run()
+            .context("Cannot execute tests")
+    })
+}
 
-    let x_py = env.checkout_path().join("x.py");
-    let mut args = vec![
-        env.python_binary(),
-        x_py.as_str(),
-        "test",
-        "--build",
-        env.host_tuple(),
-        "--stage",
-        "0",
-        "tests/assembly",
-        "tests/codegen",
-        "tests/codegen-units",
-        "tests/incremental",
-        "tests/mir-opt",
-        "tests/pretty",
-        "tests/run-make/glibc-symbols-x86_64-unknown-linux-gnu",
-        "tests/ui",
-        "tests/crashes",
-    ];
-    for test_path in env.skipped_tests() {
-        args.extend(["--skip", test_path]);
+/// Backup `path` (if it exists), then write `contents` into it, and then restore the original
+/// contents of the file.
+fn with_backed_up_file<F>(path: &Path, contents: &str, func: F) -> anyhow::Result<()>
+where
+    F: FnOnce() -> anyhow::Result<()>,
+{
+    let original_contents =
+        if path.is_file() { Some(std::fs::read_to_string(path)?) } else { None };
+
+    // Overwrite it with new contents
+    std::fs::write(path, contents)?;
+
+    let ret = func();
+
+    if let Some(original_contents) = original_contents {
+        std::fs::write(path, original_contents)?;
     }
-    cmd(&args)
-        .env("COMPILETEST_FORCE_STAGE0", "1")
-        // Also run dist-only tests
-        .env("COMPILETEST_ENABLE_DIST_TESTS", "1")
-        .run()
-        .context("Cannot execute tests")
+
+    ret
 }
 
 /// Tries to find the version of the dist artifacts (either nightly, beta, or 1.XY.Z).

@@ -17,6 +17,7 @@ use std::{env, fs, str};
 
 use serde_derive::Deserialize;
 
+use crate::core::build_steps::gcc::{Gcc, add_cg_gcc_cargo_flags};
 use crate::core::build_steps::tool::SourceType;
 use crate::core::build_steps::{dist, llvm};
 use crate::core::builder;
@@ -30,7 +31,7 @@ use crate::utils::exec::command;
 use crate::utils::helpers::{
     exe, get_clang_cl_resource_dir, is_debug_info, is_dylib, symlink_dir, t, up_to_date,
 };
-use crate::{CLang, Compiler, DependencyType, GitRepo, LLVM_TOOLS, Mode};
+use crate::{CLang, Compiler, DependencyType, GitRepo, LLVM_TOOLS, Mode, trace};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Std {
@@ -107,7 +108,11 @@ impl Step for Std {
         // the `rust.download-rustc=true` option.
         let force_recompile = builder.rust_info().is_managed_git_subrepository()
             && builder.download_rustc()
-            && builder.config.last_modified_commit(&["library"], "download-rustc", true).is_none();
+            && builder.config.has_changes_from_upstream(&["library"]);
+
+        trace!("is managed git repo: {}", builder.rust_info().is_managed_git_subrepository());
+        trace!("download_rustc: {}", builder.download_rustc());
+        trace!(force_recompile);
 
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
@@ -1499,6 +1504,14 @@ impl Step for CodegenBackend {
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{backend}/Cargo.toml")));
         rustc_cargo_env(builder, &mut cargo, target, compiler.stage);
+
+        // Ideally, we'd have a separate step for the individual codegen backends,
+        // like we have in tests (test::CodegenGCC) but that would require a lot of restructuring.
+        // If the logic gets more complicated, it should probably be done.
+        if backend == "gcc" {
+            let gcc = builder.ensure(Gcc { target });
+            add_cg_gcc_cargo_flags(&mut cargo, &gcc);
+        }
 
         let tmp_stamp = BuildStamp::new(&out_dir).with_prefix("tmp");
 
