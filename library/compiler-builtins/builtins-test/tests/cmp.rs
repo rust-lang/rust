@@ -2,7 +2,7 @@
 #![allow(unreachable_code)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
-use testcrate::*;
+use builtins_test::*;
 
 mod float_comparisons {
     use super::*;

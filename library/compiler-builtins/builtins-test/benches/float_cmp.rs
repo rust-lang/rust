@@ -1,7 +1,7 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 
+use builtins_test::float_bench;
 use criterion::{Criterion, criterion_main};
-use testcrate::float_bench;
 
 use compiler_builtins::float::cmp;
 

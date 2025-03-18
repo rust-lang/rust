@@ -1,8 +1,8 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 
+use builtins_test::float_bench;
 use compiler_builtins::float::pow;
 use criterion::{Criterion, criterion_main};
-use testcrate::float_bench;
 
 float_bench! {
     name: powi_f32,

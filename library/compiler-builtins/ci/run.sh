@@ -23,7 +23,7 @@ fi
 if [ "${NO_STD:-}" = "1" ]; then
     echo "nothing to do for no_std"
 else
-    run="cargo test --package testcrate --no-fail-fast --target $target"
+    run="cargo test --package builtins-test --no-fail-fast --target $target"
     $run
     $run --release
     $run --features c
@@ -37,8 +37,8 @@ else
 fi
 
 if [ "${TEST_VERBATIM:-}" = "1" ]; then
-    verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\testcrate\\target2)
-    cargo build --package testcrate \
+    verb_path=$(cmd.exe //C echo \\\\?\\%cd%\\builtins-test\\target2)
+    cargo build --package builtins-test \
         --target "$target" --target-dir "$verb_path" --features c
 fi
 

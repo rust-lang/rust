@@ -1,4 +1,4 @@
-// Configuration that is shared between `compiler_builtins` and `testcrate`.
+// Configuration that is shared between `compiler_builtins` and `builtins_test`.
 
 use std::env;
 

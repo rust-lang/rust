@@ -2,7 +2,7 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg(not(all(target_arch = "x86", not(target_feature = "sse"))))]
 
-use testcrate::*;
+use builtins_test::*;
 
 // This is approximate because of issues related to
 // https://github.com/rust-lang/rust/issues/73920.

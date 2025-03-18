@@ -48,8 +48,8 @@ pub trait Int:
     + ops::BitAnd<Output = Self>
 {
     /// LUT used for maximizing the space covered and minimizing the computational cost of fuzzing
-    /// in `testcrate`. For example, Self = u128 produces [0,1,2,7,8,15,16,31,32,63,64,95,96,111,
-    /// 112,119,120,125,126,127].
+    /// in `builtins-test`. For example, Self = u128 produces [0,1,2,7,8,15,16,31,32,63,64,95,96,
+    /// 111,112,119,120,125,126,127].
     const FUZZ_LENGTHS: [u8; 20] = make_fuzz_lengths(<Self as MinInt>::BITS);
 
     /// The number of entries of `FUZZ_LENGTHS` actually used. The maximum is 20 for u128.

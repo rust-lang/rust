@@ -14,7 +14,7 @@ mod cas {
     pub(super) macro test($_ordering:ident, $bytes:tt, $name:ident) {
         #[test]
         fn $name() {
-            testcrate::fuzz_2(10000, |expected: super::int_ty!($bytes), new| {
+            builtins_test::fuzz_2(10000, |expected: super::int_ty!($bytes), new| {
                 let mut target = expected.wrapping_add(10);
                 assert_eq!(
                     unsafe {
@@ -50,7 +50,7 @@ mod swap {
     pub(super) macro test($_ordering:ident, $bytes:tt, $name:ident) {
         #[test]
         fn $name() {
-            testcrate::fuzz_2(10000, |left: super::int_ty!($bytes), mut right| {
+            builtins_test::fuzz_2(10000, |left: super::int_ty!($bytes), mut right| {
                 let orig_right = right;
                 assert_eq!(
                     unsafe { compiler_builtins::aarch64_linux::$name::$name(left, &mut right) },
@@ -69,7 +69,7 @@ macro_rules! test_op {
                 ($_ordering:ident, $bytes:tt, $name:ident) => {
                     #[test]
                     fn $name() {
-                        testcrate::fuzz_2(10000, |old, val| {
+                        builtins_test::fuzz_2(10000, |old, val| {
                             let mut target = old;
                             let op: fn(super::int_ty!($bytes), super::int_ty!($bytes)) -> _ = $($op)*;
                             let expected = op(old, val);

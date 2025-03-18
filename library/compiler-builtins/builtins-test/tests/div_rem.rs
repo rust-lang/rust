@@ -4,7 +4,7 @@
 use compiler_builtins::int::sdiv::{__divmoddi4, __divmodsi4, __divmodti4};
 use compiler_builtins::int::udiv::{__udivmoddi4, __udivmodsi4, __udivmodti4, u128_divide_sparc};
 
-use testcrate::*;
+use builtins_test::*;
 
 // Division algorithms have by far the nastiest and largest number of edge cases, and experience shows
 // that sometimes 100_000 iterations of the random fuzzer is needed.

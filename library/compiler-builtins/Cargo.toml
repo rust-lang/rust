@@ -2,16 +2,16 @@
 resolver = "3"
 members = [
     # Note that builtins-test-intrinsics cannot be a default member because it
-    # needs the `mangled-names` feature disabled, while `testcrate` needs it
-    # enabled.
+    # needs the `mangled-names` feature disabled, while `builtins-test` needs
+    # it enabled.
+    "builtins-test",
     "builtins-test-intrinsics",
     "compiler-builtins",
-    "testcrate",
 ]
 
 default-members = [
     "compiler-builtins",
-    "testcrate",
+    "builtins-test",
 ]
 
 [profile.release]

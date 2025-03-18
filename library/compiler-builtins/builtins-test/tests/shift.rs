@@ -1,4 +1,4 @@
-use testcrate::*;
+use builtins_test::*;
 
 macro_rules! shift {
     ($($i:ty, $fn_std:ident, $fn_builtins:ident);*;) => {

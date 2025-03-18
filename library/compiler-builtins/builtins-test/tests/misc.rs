@@ -1,7 +1,7 @@
 // makes configuration easier
 #![allow(unused_macros)]
 
-use testcrate::*;
+use builtins_test::*;
 
 /// Make sure that the the edge case tester and randomized tester don't break, and list examples of
 /// fuzz values for documentation purposes.

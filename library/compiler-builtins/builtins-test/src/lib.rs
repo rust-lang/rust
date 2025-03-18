@@ -7,8 +7,8 @@
 //! edge case testing is crucial for checking cases like where both inputs are equal or equal to
 //! special values such as `i128::MIN`, which is unlikely for the random fuzzer by itself to
 //! encounter. The randomized fuzz testing is specially designed to cover wide swaths of search
-//! space in as few iterations as possible. See `fuzz_values` in `testcrate/tests/misc.rs` for an
-//! example.
+//! space in as few iterations as possible. See `fuzz_values` in `builtins-test/tests/misc.rs` for
+//! an example.
 //!
 //! Some floating point tests are disabled for specific architectures, because they do not have
 //! correct rounding.

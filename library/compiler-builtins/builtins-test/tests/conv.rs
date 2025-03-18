@@ -4,9 +4,9 @@
 #![allow(unused_macros)]
 #![allow(unused_imports)]
 
+use builtins_test::*;
 use compiler_builtins::float::Float;
 use rustc_apfloat::{Float as _, FloatConvert as _};
-use testcrate::*;
 
 mod i_to_f {
     use super::*;

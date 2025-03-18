@@ -12,5 +12,5 @@ TARGETS=(x86_64-unknown-linux-gnu
     s390x-unknown-linux-gnu)
 for TARGET in "${TARGETS[@]}"; do
     # Only run the `mem` tests to avoid this taking too long.
-    cargo miri test --manifest-path testcrate/Cargo.toml --features no-asm --target $TARGET -- mem
+    cargo miri test --manifest-path builtins-test/Cargo.toml --features no-asm --target $TARGET -- mem
 done

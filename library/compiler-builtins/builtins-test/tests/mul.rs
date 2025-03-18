@@ -1,7 +1,7 @@
 #![allow(unused_macros)]
 #![cfg_attr(f128_enabled, feature(f128))]
 
-use testcrate::*;
+use builtins_test::*;
 
 mod int_mul {
     use super::*;

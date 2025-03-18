@@ -1,9 +1,9 @@
 #![cfg_attr(f128_enabled, feature(f128))]
 #![cfg_attr(f16_enabled, feature(f16))]
 
+use builtins_test::float_bench;
 use compiler_builtins::float::trunc;
 use criterion::{Criterion, criterion_main};
-use testcrate::float_bench;
 
 #[cfg(f16_enabled)]
 float_bench! {

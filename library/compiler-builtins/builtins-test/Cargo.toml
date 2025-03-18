@@ -1,5 +1,5 @@
 [package]
-name = "testcrate"
+name = "builtins-test"
 version = "0.1.0"
 authors = ["Alex Crichton <alex@alexcrichton.com>"]
 edition = "2024"
@@ -56,8 +56,9 @@ icount = ["dep:iai-callgrind"]
 benchmarking-reports = ["criterion/plotters", "criterion/html_reports"]
 
 # NOTE: benchmarks must be run with `--no-default-features` or with
-# `-p testcrate`, otherwise the default `compiler-builtins` feature of the
-# `compiler_builtins` crate gets activated, resulting in linker errors.
+# `-p builtins-test`, otherwise the default `compiler-builtins` feature
+# of the `compiler_builtins` crate gets activated, resulting in linker
+# errors.
 
 [[bench]]
 name = "float_add"

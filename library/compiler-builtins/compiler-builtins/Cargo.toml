@@ -68,7 +68,7 @@ mangled-names = []
 rustc-dep-of-std = ['compiler-builtins', 'core']
 
 # This makes certain traits and function specializations public that
-# are not normally public but are required by the `testcrate`
+# are not normally public but are required by the `builtins-test`
 public-test-deps = []
 
 [lints.rust]
