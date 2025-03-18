@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
@@ -570,4 +571,69 @@ where
         expected_self_ty == found_self_ty
             && infcx.cx().is_lang_item(c.def_id(), TraitSolverLangItem::Sized)
     })
+}
+
+pub fn sizedness_fast_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    // Proving `Sized`/`MetaSized`/`PointeeSized`, very often on "obviously sized" types like
+    // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
+    // canonicalize and all that for such cases.
+    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
+        predicate.kind().skip_binder()
+    {
+        let sizedness = if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+            Some(SizedTraitKind::Sized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            Some(SizedTraitKind::MetaSized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::PointeeSized) {
+            Some(SizedTraitKind::PointeeSized)
+        } else {
+            None
+        };
+
+        if let Some(sizedness) = sizedness
+            && trait_ref.self_ty().has_trivial_sizedness(tcx, sizedness)
+        {
+            debug!("fast path -- trivial sizedness");
+            return true;
+        }
+
+        if matches!(sizedness, Some(SizedTraitKind::MetaSized)) {
+            let has_sized_in_param_env = param_env
+                .caller_bounds()
+                .iter()
+                .rev() // sizedness predicates are normally at the end for diagnostics reasons
+                .filter_map(|p| p.as_trait_clause())
+                .any(|c| {
+                    trait_ref.self_ty() == c.skip_binder().self_ty()
+                        && tcx.is_lang_item(c.def_id(), LangItem::Sized)
+                });
+            if has_sized_in_param_env {
+                debug!("fast path -- metasized paramenv");
+                return true;
+            }
+        }
+    }
+
+    // Likewise, determining if a sizedness trait is implemented const-ly is a trivial
+    // determination that can happen in the fast path.
+    //
+    // NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver,
+    // `const_conditions_for_sizedness` in the new solver.
+    if let ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(host_pred)) =
+        predicate.kind().skip_binder()
+    {
+        let is_sizedness = tcx.is_lang_item(host_pred.def_id(), LangItem::Sized)
+            || tcx.is_lang_item(host_pred.def_id(), LangItem::MetaSized);
+
+        if is_sizedness && !host_pred.self_ty().has_non_const_sizedness() {
+            debug!("fast path -- host effect");
+            return true;
+        }
+    }
+
+    false
 }

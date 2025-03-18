@@ -1,4 +1,4 @@
-//~ ERROR overflow evaluating the requirement `{closure@$DIR/overflow-during-mono.rs:13:41: 13:44}: Sized`
+//~ ERROR overflow evaluating the requirement `for<'a> {closure@$DIR/overflow-during-mono.rs:13:41: 13:44}: FnMut(&'a _)`
 //@ build-fail
 
 #![recursion_limit = "32"]

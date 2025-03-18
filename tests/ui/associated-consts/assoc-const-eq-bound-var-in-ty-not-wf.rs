@@ -7,6 +7,7 @@ trait Trait<T> {
 }
 
 fn take(
+//~^ ERROR implementation of `Project` is not general enough
     _: impl Trait<
         <<for<'a> fn(&'a str) -> &'a str as Project>::Out as Discard>::Out,
         K = { () }
