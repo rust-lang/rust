@@ -712,10 +712,7 @@ impl<'tcx> Instance<'tcx> {
                             ..
                         })
                     );
-                // We also need to generate a shim if this is an AFIT.
-                let needs_rpitit_shim =
-                    tcx.return_position_impl_trait_in_trait_shim_data(def).is_some();
-                if needs_track_caller_shim || needs_rpitit_shim {
+                if needs_track_caller_shim {
                     if tcx.is_closure_like(def) {
                         debug!(
                             " => vtable fn pointer created for closure with #[track_caller]: {:?} for method {:?} {:?}",
