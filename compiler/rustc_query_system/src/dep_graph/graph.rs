@@ -1,5 +1,4 @@
 use std::assert_matches::assert_matches;
-use std::collections::hash_map::Entry;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;
@@ -10,7 +9,7 @@ use rustc_data_structures::fingerprint::{Fingerprint, PackedFingerprint};
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::outline;
 use rustc_data_structures::profiling::QueryInvocationId;
-use rustc_data_structures::sharded::{self, Sharded};
+use rustc_data_structures::sharded::{self, ShardedHashMap};
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{AtomicU64, Lock};
 use rustc_data_structures::unord::UnordMap;
@@ -447,24 +446,9 @@ impl<D: Deps> DepGraphData<D> {
                 // As anonymous nodes are a small quantity compared to the full dep-graph, the
                 // memory impact of this `anon_node_to_index` map remains tolerable, and helps
                 // us avoid useless growth of the graph with almost-equivalent nodes.
-                match self
-                    .current
-                    .anon_node_to_index
-                    .get_shard_by_value(&target_dep_node)
-                    .lock()
-                    .entry(target_dep_node)
-                {
-                    Entry::Occupied(entry) => *entry.get(),
-                    Entry::Vacant(entry) => {
-                        let dep_node_index = self.current.intern_new_node(
-                            target_dep_node,
-                            task_deps,
-                            Fingerprint::ZERO,
-                        );
-                        entry.insert(dep_node_index);
-                        dep_node_index
-                    }
-                }
+                self.current.anon_node_to_index.get_or_insert_with(target_dep_node, || {
+                    self.current.intern_new_node(target_dep_node, task_deps, Fingerprint::ZERO)
+                })
             }
         };
 
@@ -1123,7 +1107,7 @@ rustc_index::newtype_index! {
 pub(super) struct CurrentDepGraph<D: Deps> {
     encoder: GraphEncoder<D>,
     prev_index_to_index: Lock<IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>>,
-    anon_node_to_index: Sharded<FxHashMap<DepNode, DepNodeIndex>>,
+    anon_node_to_index: ShardedHashMap<DepNode, DepNodeIndex>,
 
     /// This is used to verify that fingerprints do not change between the creation of a node
     /// and its recomputation.
@@ -1202,13 +1186,10 @@ impl<D: Deps> CurrentDepGraph<D> {
                 &session.prof,
                 previous,
             ),
-            anon_node_to_index: Sharded::new(|| {
-                FxHashMap::with_capacity_and_hasher(
-                    // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
-                    new_node_count_estimate / sharded::shards(),
-                    Default::default(),
-                )
-            }),
+            anon_node_to_index: ShardedHashMap::with_capacity(
+                // FIXME: The count estimate is off as anon nodes are only a portion of the nodes.
+                new_node_count_estimate / sharded::shards(),
+            ),
             prev_index_to_index: Lock::new(IndexVec::from_elem_n(None, prev_graph_node_count)),
             anon_id_seed,
             #[cfg(debug_assertions)]
