@@ -2250,18 +2250,18 @@ fn skip_until<R: BufRead + ?Sized>(r: &mut R, delim: u8) -> Result<usize> {
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BufRead: Read {
-    /// Returns the contents of the internal buffer, filling it with more data, via Read methods, if empty.
+    /// Returns the contents of the internal buffer, filling it with more data, via `Read` methods, if empty.
     ///
     /// This is a lower-level method and is meant to be used together with [`consume`],
     /// which can be used to mark bytes that should not be returned by subsequent calls to `read`.
     ///
     /// [`consume`]: BufRead::consume
     ///
-    /// Returns an empty buffer to indicate that the stream has reached EOF.
+    /// Returns an empty buffer when the stream has reached EOF.
     ///
     /// # Errors
     ///
-    /// Passes on I/O errors from Read.
+    /// This function will return an I/O error if a `Read` method was called, but returned an error.
     ///
     /// # Examples
     ///
@@ -2288,12 +2288,12 @@ pub trait BufRead: Read {
     fn fill_buf(&mut self) -> Result<&[u8]>;
 
     /// Marks the given `amount` of additional bytes from the internal buffer as having been read.
-    /// Subsequent calls to `read` return bytes that have not yet been so marked.
+    /// Subsequent calls to `read` only return bytes that have not been marked as read.
     ///
     /// This is a lower-level method and is meant to be used together with [`fill_buf`],
-    /// which can be used to fill the internal buffer via Read methods.
+    /// which can be used to fill the internal buffer via `Read` methods.
     ///
-    /// It is a logic error if `amount` exceeds the number of unread bytes in the internal buffer.
+    /// It is a logic error if `amount` exceeds the number of unread bytes in the internal buffer, which is returned by [`fill_buf`].
     ///
     /// # Examples
     ///
@@ -2315,7 +2315,7 @@ pub trait BufRead: Read {
     ///
     /// # Errors
     ///
-    /// Passes on I/O errors from Read.
+    /// This function will return an I/O error if a `Read` method was called, but returned an error.
     ///
     /// Examples
     ///
