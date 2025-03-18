@@ -4,6 +4,6 @@ impl<T> Foo for T {}
 fn main() {
     let array = [(); { loop {} }]; //~ ERROR constant evaluation is taking a long time
 
-    let tup = (7,);
+    let tup = (7,); //~ ERROR type annotations needed for `({integer},)` [E0282]
     let x: &dyn Foo = &tup.0;
 }

@@ -10,6 +10,7 @@ fn main_ref() {
     }];
 
     let mut ptrs: Vec<*const [u8]> = vec![&array[0..0], &array[0..1], &array, &array[1..]];
+    //~^ ERROR type annotations needed [E0282]
 }
 
 fn main() {}
