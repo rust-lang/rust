@@ -17,6 +17,7 @@ pub mod assertion_helpers;
 pub mod diff;
 pub mod env;
 pub mod external_deps;
+pub mod linker;
 pub mod path_helpers;
 pub mod run;
 pub mod scoped_run;
