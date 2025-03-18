@@ -1,6 +1,6 @@
-# the `rustdoc` test suite
+# The `rustdoc` test suite
 
-This page is specifically about the `rustdoc` test suite, for other test suites used for testing rustdoc, see [Rustdoc § Tests](../rustdoc.md#tests).
+This page is specifically about the test suite named `rustdoc`, for other test suites used for testing rustdoc, see [Rustdoc Tests](../rustdoc.md#tests).
 
 The `rustdoc` test suite is specifically used to test the HTML output of rustdoc.
 
@@ -20,7 +20,8 @@ so it is conventional to use a `#![crate_name = "foo"]` attribute to avoid
 having to write a long crate name multiple times.
 To avoid repetion, `-` can be used in any `PATH` argument to re-use the previous `PATH` argument.
 
-All arguments take the form of quoted strings,
+All arguments take the form of quoted strings
+(both single and double quotes are supported),
 with the exception of `COUNT` and the special `-` form of `PATH`.
 
 Directives are assertions that place constraints on the generated HTML.
