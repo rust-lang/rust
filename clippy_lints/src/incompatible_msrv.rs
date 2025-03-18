@@ -1,5 +1,5 @@
 use clippy_config::Conf;
-use clippy_utils::diagnostics::span_lint;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::is_in_test;
 use clippy_utils::msrvs::Msrv;
 use rustc_attr_data_structures::{RustcVersion, StabilityLevel, StableSince};
@@ -146,13 +146,18 @@ impl IncompatibleMsrv {
             && let version = self.get_def_id_version(cx.tcx, def_id)
             && version > current
         {
-            span_lint(
+            span_lint_and_then(
                 cx,
                 INCOMPATIBLE_MSRV,
                 span,
                 format!(
                     "current MSRV (Minimum Supported Rust Version) is `{current}` but this item is stable since `{version}`"
                 ),
+                |diag| {
+                    if is_under_cfg_attribute(cx, node) {
+                        diag.note_once("you may want to conditionally increase the MSRV considered by Clippy using the `clippy::msrv` attribute");
+                    }
+                },
             );
         }
     }
@@ -179,4 +184,17 @@ impl<'tcx> LateLintPass<'tcx> for IncompatibleMsrv {
             _ => {},
         }
     }
+}
+
+/// Heuristic checking if the node `hir_id` is under a `#[cfg()]` or `#[cfg_attr()]`
+/// attribute.
+fn is_under_cfg_attribute(cx: &LateContext<'_>, hir_id: HirId) -> bool {
+    cx.tcx.hir_parent_id_iter(hir_id).any(|id| {
+        cx.tcx.hir_attrs(id).iter().any(|attr| {
+            matches!(
+                attr.ident().map(|ident| ident.name),
+                Some(sym::cfg_trace | sym::cfg_attr_trace)
+            )
+        })
+    })
 }
