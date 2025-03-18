@@ -263,7 +263,8 @@ macro_rules! impl_trait {
                 unsafe { core::intrinsics::simd::simd_as(self) }
             }
 
-            // https://github.com/llvm/llvm-project/issues/94694
+            // workaround for https://github.com/llvm/llvm-project/issues/94694 (fixed in LLVM 20)
+            // tracked in: https://github.com/rust-lang/rust/issues/135982
             #[cfg(target_arch = "aarch64")]
             #[inline]
             fn cast<T: SimdCast>(self) -> Self::Cast<T>
