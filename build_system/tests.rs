@@ -158,12 +158,12 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
         if runner.is_native {
             let mut test_cmd = SYSROOT_TESTS.test(&runner.target_compiler, &runner.dirs);
-            test_cmd.args(["-p", "coretests", "--", "-q"]);
+            test_cmd.args(["-p", "coretests", "-p", "alloctests", "--", "-q"]);
             spawn_and_wait(test_cmd);
         } else {
             eprintln!("Cross-Compiling: Not running tests");
             let mut build_cmd = SYSROOT_TESTS.build(&runner.target_compiler, &runner.dirs);
-            build_cmd.args(["-p", "coretests", "--tests"]);
+            build_cmd.args(["-p", "coretests", "-p", "alloctests", "--tests"]);
             spawn_and_wait(build_cmd);
         }
     }),
