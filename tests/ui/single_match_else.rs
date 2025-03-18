@@ -1,4 +1,5 @@
 //@aux-build: proc_macros.rs
+//@require-annotations-for-level: WARN
 
 #![warn(clippy::single_match_else)]
 #![allow(unused, clippy::needless_return, clippy::no_effect, clippy::uninlined_format_args)]
@@ -98,6 +99,17 @@ fn main() {
         },
     }
     //~^^^^^^^ single_match_else
+
+    match Some(1) {
+        Some(a) => println!("${:?}", a),
+        // This is an inner comment
+        None => {
+            println!("else block");
+            return;
+        },
+    }
+    //~^^^^^^^^ single_match_else
+    //~| NOTE: you might want to preserve the comments from inside the `match`
 
     // lint here
     use std::convert::Infallible;
