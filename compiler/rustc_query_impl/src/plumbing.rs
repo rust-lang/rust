@@ -863,5 +863,9 @@ macro_rules! define_queries {
         pub fn query_callbacks<'tcx>(arena: &'tcx Arena<'tcx>) -> &'tcx [DepKindStruct<'tcx>] {
             arena.alloc_from_iter(rustc_middle::make_dep_kind_array!(query_callbacks))
         }
+
+        pub fn dep_kind_names() -> Vec<&'static str> {
+            rustc_middle::make_dep_kind_name_array!(query_callbacks)
+        }
     }
 }
