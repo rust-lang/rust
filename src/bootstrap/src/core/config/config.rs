@@ -3210,6 +3210,10 @@ impl Config {
 
                     upstream
                 }
+                PathFreshness::MissingUpstream => {
+                    eprintln!("No upstream commit found");
+                    return None;
+                }
             }
         } else {
             channel::read_commit_info_file(&self.src)
@@ -3289,7 +3293,7 @@ impl Config {
     pub fn has_changes_from_upstream(&self, paths: &[&str]) -> bool {
         match self.check_modifications(paths) {
             PathFreshness::LastModifiedUpstream { .. } => false,
-            PathFreshness::HasLocalModifications { .. } => true,
+            PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
         }
     }
 

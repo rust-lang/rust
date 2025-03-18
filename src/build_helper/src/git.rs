@@ -113,6 +113,9 @@ pub enum PathFreshness {
     /// `upstream` is the latest upstream merge commit that made modifications to the
     /// set of paths.
     HasLocalModifications { upstream: String },
+    /// No upstream commit was found.
+    /// This should not happen in most reasonable circumstances, but one never knows.
+    MissingUpstream,
 }
 
 /// This function figures out if a set of paths was last modified upstream or
@@ -177,21 +180,29 @@ pub fn check_path_modifications(
         // artifacts.
 
         // Do not include HEAD, as it is never an upstream commit
-        get_closest_upstream_commit(git_dir, config, ci_env)?
+        // If we do not find an upstream commit in CI, something is seriously wrong.
+        Some(
+            get_closest_upstream_commit(git_dir, config, ci_env)?
+                .expect("No upstream commit was found on CI"),
+        )
     } else {
-        // Outside CI, we have to find the most recent upstream commit that
-        // modified the set of paths, to have an upstream reference.
-        let upstream_sha = get_latest_commit_that_modified_files(
+        // Outside CI, we want to find the most recent upstream commit that
+        // modified the set of paths, to have an upstream reference that does not change
+        // unnecessarily often.
+        // However, if such commit is not found, we can fall back to the latest upstream commit
+        let upstream_with_modifications = get_latest_commit_that_modified_files(
             git_dir,
             target_paths,
             config.git_merge_commit_email,
         )?;
-        let Some(upstream_sha) = upstream_sha else {
-            eprintln!("No upstream commit that modified paths {target_paths:?} found.");
-            eprintln!("Try to fetch more upstream history.");
-            return Err("No upstream commit with modifications found".to_string());
-        };
-        upstream_sha
+        match upstream_with_modifications {
+            Some(sha) => Some(sha),
+            None => get_closest_upstream_commit(git_dir, config, ci_env)?,
+        }
+    };
+
+    let Some(upstream_sha) = upstream_sha else {
+        return Ok(PathFreshness::MissingUpstream);
     };
 
     // For local environments, we want to find out if something has changed
@@ -253,7 +264,7 @@ fn get_closest_upstream_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
     env: CiEnv,
-) -> Result<String, String> {
+) -> Result<Option<String>, String> {
     let mut git = Command::new("git");
 
     if let Some(git_dir) = git_dir {
@@ -264,7 +275,7 @@ fn get_closest_upstream_commit(
         CiEnv::None => "HEAD",
         CiEnv::GitHubActions => {
             // On CI, we always have a merge commit at the tip.
-            // We thus skip it, because although it can be creatd by
+            // We thus skip it, because although it can be created by
             // `config.git_merge_commit_email`, it should not be upstream.
             "HEAD^1"
         }
@@ -277,7 +288,8 @@ fn get_closest_upstream_commit(
         &base,
     ]);
 
-    Ok(output_result(&mut git)?.trim().to_owned())
+    let output = output_result(&mut git)?.trim().to_owned();
+    if output.is_empty() { Ok(None) } else { Ok(Some(output)) }
 }
 
 /// Returns the files that have been modified in the current branch compared to the master branch.
@@ -291,7 +303,9 @@ pub fn get_git_modified_files(
     git_dir: Option<&Path>,
     extensions: &[&str],
 ) -> Result<Vec<String>, String> {
-    let merge_base = get_closest_upstream_commit(git_dir, config, CiEnv::None)?;
+    let Some(merge_base) = get_closest_upstream_commit(git_dir, config, CiEnv::None)? else {
+        return Err("No upstream commit was found".to_string());
+    };
 
     let mut git = Command::new("git");
     if let Some(git_dir) = git_dir {

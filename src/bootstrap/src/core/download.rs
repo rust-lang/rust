@@ -734,6 +734,10 @@ download-rustc = false
             match detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository()) {
                 PathFreshness::LastModifiedUpstream { upstream } => upstream,
                 PathFreshness::HasLocalModifications { upstream } => upstream,
+                PathFreshness::MissingUpstream => {
+                    eprintln!("No upstream commit for downloading LLVM found");
+                    crate::exit!(1);
+                }
             };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
