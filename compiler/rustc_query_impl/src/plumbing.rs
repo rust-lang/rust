@@ -79,6 +79,8 @@ impl QueryContext for QueryCtxt<'_> {
         tls::with_related_context(self.tcx, |icx| icx.query)
     }
 
+    /// Returns a query map representing active query jobs and a bool being false
+    /// if there was an error constructing the map.
     fn collect_active_jobs(self) -> (QueryMap, bool) {
         let mut jobs = QueryMap::default();
         let mut complete = true;

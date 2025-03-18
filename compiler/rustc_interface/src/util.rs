@@ -195,9 +195,10 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                     tls::with(|tcx| {
                         let (query_map, complete) = QueryCtxt::new(tcx).collect_active_jobs();
                         if !complete {
+                            // There was an unexpected error collecting all active jobs, which we need
+                            // to find cycles to break.
+                            // We want to avoid panicking in the deadlock handler, so we abort instead.
                             eprintln!("internal compiler error: failed to get query map in deadlock handler, aborting process");
-                            // We need to abort here as we failed to resolve the deadlock,
-                            // otherwise the compiler could just hang,
                             process::abort();
                         }
                         query_map
