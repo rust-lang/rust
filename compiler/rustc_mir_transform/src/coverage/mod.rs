@@ -107,7 +107,6 @@ fn instrument_function_for_coverage<'tcx>(tcx: TyCtxt<'tcx>, mir_body: &mut mir:
 
     mir_body.function_coverage_info = Some(Box::new(FunctionCoverageInfo {
         function_source_hash: hir_info.function_source_hash,
-        body_span: hir_info.body_span,
 
         node_flow_data,
         priority_list,

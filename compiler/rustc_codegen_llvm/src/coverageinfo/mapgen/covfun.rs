@@ -105,9 +105,14 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    // Currently a function's mappings must all be in the same file as its body span.
+    // Currently a function's mappings must all be in the same file, so use the
+    // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
+    let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
+        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        return;
+    };
+    let source_file = source_map.lookup_source_file(first_span.lo());
 
     // Look up the global file ID for that file.
     let global_file_id = global_file_table.global_file_id_for_file(&source_file);
