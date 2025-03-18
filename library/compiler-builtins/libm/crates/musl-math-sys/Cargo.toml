@@ -10,4 +10,4 @@ publish = false
 libm = { path = "../../" }
 
 [build-dependencies]
-cc = "1.2.10"
+cc = "1.2.16"

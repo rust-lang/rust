@@ -59,8 +59,7 @@ exclude = [
 ]
 
 [dev-dependencies]
-no-panic = "0.1.33"
-
+no-panic = "0.1.35"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = [

@@ -3,7 +3,7 @@ use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 
 use libm::support::Float;
-use rand::distributions::{Alphanumeric, Standard};
+use rand::distr::{Alphanumeric, StandardUniform};
 use rand::prelude::Distribution;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -16,7 +16,7 @@ pub(crate) const SEED_ENV: &str = "LIBM_SEED";
 
 pub static SEED: LazyLock<[u8; 32]> = LazyLock::new(|| {
     let s = env::var(SEED_ENV).unwrap_or_else(|_| {
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         (0..32).map(|_| rng.sample(Alphanumeric) as char).collect()
     });
 
@@ -33,19 +33,19 @@ pub trait RandomInput: Sized {
 /// Generate a sequence of deterministically random floats.
 fn random_floats<F: Float>(count: u64) -> impl Iterator<Item = F>
 where
-    Standard: Distribution<F::Int>,
+    StandardUniform: Distribution<F::Int>,
 {
     let mut rng = ChaCha8Rng::from_seed(*SEED);
 
     // Generate integers to get a full range of bitpatterns (including NaNs), then convert back
     // to the float type.
-    (0..count).map(move |_| F::from_bits(rng.gen::<F::Int>()))
+    (0..count).map(move |_| F::from_bits(rng.random::<F::Int>()))
 }
 
 /// Generate a sequence of deterministically random `i32`s within a specified range.
 fn random_ints(count: u64, range: RangeInclusive<i32>) -> impl Iterator<Item = i32> {
     let mut rng = ChaCha8Rng::from_seed(*SEED);
-    (0..count).map(move |_| rng.gen_range::<i32, _>(range.clone()))
+    (0..count).map(move |_| rng.random_range::<i32, _>(range.clone()))
 }
 
 macro_rules! impl_random_input {

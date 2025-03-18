@@ -25,8 +25,8 @@ fn hexu(v: u256) -> String {
 }
 
 fn random_u256(rng: &mut ChaCha8Rng) -> u256 {
-    let lo: u128 = rng.gen();
-    let hi: u128 = rng.gen();
+    let lo: u128 = rng.random();
+    let hi: u128 = rng.random();
     u256 { lo, hi }
 }
 
@@ -121,7 +121,7 @@ fn mp_u256_shr() {
 
     for _ in 0..bigint_fuzz_iteration_count() {
         let x = random_u256(&mut rng);
-        let shift: u32 = rng.gen_range(0..255);
+        let shift: u32 = rng.random_range(0..255);
         assign_bigint(&mut bx, x);
         let actual = x >> shift;
         bx >>= shift;
@@ -136,8 +136,8 @@ fn mp_u256_widen_mul() {
     let mut by = BigInt::new();
 
     for _ in 0..bigint_fuzz_iteration_count() {
-        let x: u128 = rng.gen();
-        let y: u128 = rng.gen();
+        let x: u128 = rng.random();
+        let y: u128 = rng.random();
         bx.assign(x);
         by.assign(y);
         let actual = x.widen_mul(y);
