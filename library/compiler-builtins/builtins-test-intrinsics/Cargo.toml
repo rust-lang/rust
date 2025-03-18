@@ -2,6 +2,7 @@
 name = "builtins-test-intrinsics"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 compiler_builtins = { path = "../", features = ["compiler-builtins"]}
