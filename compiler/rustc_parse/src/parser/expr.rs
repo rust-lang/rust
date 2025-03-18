@@ -1315,9 +1315,8 @@ impl<'a> Parser<'a> {
         if self.eat_keyword(exp!(Yield)) {
             let yield_span = self.prev_token.span;
             self.psess.gated_spans.gate(sym::yield_expr, yield_span);
-            return Ok(
-                self.mk_expr(yield_span, ExprKind::Yield(Some(self_arg), YieldKind::Postfix))
-            );
+            return Ok(self
+                .mk_expr(lo.to(yield_span), ExprKind::Yield(Some(self_arg), YieldKind::Postfix)));
         }
 
         let fn_span_lo = self.token.span;
