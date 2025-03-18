@@ -20,7 +20,7 @@
 // tidy-alphabetical-end
 
 use std::cmp::max;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::fs::{self, File};
@@ -61,7 +61,7 @@ use rustc_session::config::{
 };
 use rustc_session::getopts::{self, Matches};
 use rustc_session::lint::{Lint, LintId};
-use rustc_session::output::collect_crate_types;
+use rustc_session::output::{CRATE_TYPES, collect_crate_types, invalid_output_for_target};
 use rustc_session::{EarlyDiagCtxt, Session, config, filesearch};
 use rustc_span::FileName;
 use rustc_target::json::ToJson;
@@ -788,6 +788,16 @@ fn print_crate_info(
                 } else {
                     #[allow(rustc::diagnostic_outside_of_impl)]
                     sess.dcx().fatal("only Apple targets currently support deployment version info")
+                }
+            }
+            SupportedCrateTypes => {
+                let supported_crate_types = CRATE_TYPES
+                    .iter()
+                    .filter(|(_, crate_type)| !invalid_output_for_target(&sess, *crate_type))
+                    .map(|(crate_type_sym, _)| *crate_type_sym)
+                    .collect::<BTreeSet<_>>();
+                for supported_crate_type in supported_crate_types {
+                    println_info!("{}", supported_crate_type.as_str());
                 }
             }
         }
