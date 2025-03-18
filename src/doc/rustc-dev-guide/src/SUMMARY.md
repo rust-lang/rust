@@ -95,7 +95,7 @@
 - [Parallel Compilation](./parallel-rustc.md)
 - [Rustdoc internals](./rustdoc-internals.md)
     - [Search](./rustdoc-internals/search.md)
-
+	- [`rustdoc` tests](./rustdoc-internals/htmldocck.md)
 # Source Code Representation
 
 - [Prologue](./part-3-intro.md)
