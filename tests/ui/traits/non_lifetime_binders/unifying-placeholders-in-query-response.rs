@@ -16,8 +16,8 @@ impl Foo<usize> for () {
 
 pub fn f<T1, T2>(a: T1, b: T2)
 where
-    T1: for<T> Foo<usize, Bar<T> = T>,
-    T2: for<T> Foo<usize, Bar<T> = <T1 as Foo<usize>>::Bar<T>>,
+    T1: for<T: ?Sized> Foo<usize, Bar<T> = T>,
+    T2: for<T: ?Sized> Foo<usize, Bar<T> = <T1 as Foo<usize>>::Bar<T>>,
 {
 }
 

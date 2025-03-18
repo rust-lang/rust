@@ -999,7 +999,10 @@ impl<'tcx> ParamEnv<'tcx> {
         ParamEnvAnd { param_env: self, value }
     }
 
-    /// TODO:
+    /// Creates a new param-env by augmenting the previous param-env with more predicates.
+    ///
+    /// N.B. this method does not elaborate the assumptions, and you probably should do that.
+    // FIXME(non_lifetime_binders): We should elaborate these predicates somewhere.
     pub fn extend(self, tcx: TyCtxt<'tcx>, assumptions: ty::Clauses<'tcx>) -> Self {
         if assumptions.is_empty() {
             self
