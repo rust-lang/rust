@@ -1009,12 +1009,14 @@ pub fn libm() {
 
     // Some inputs to powf and powi result in fixed outputs
     // and thus must be exactly equal to that value
-    // TODO: How to test NaN inputs? f*::NAN is not guaranteed
-    // to be any specific bit pattern (in std).
+    // C standard says:
+    // 1^y = 1 for any y, even a NaN.
     assert_eq!(1f32.powf(10.0), 1f32);
     assert_eq!(1f64.powf(100.0), 1f64);
     assert_eq!(1f32.powf(f32::INFINITY), 1f32);
     assert_eq!(1f64.powf(f64::INFINITY), 1f64);
+    assert_eq!(1f32.powf(f32::NAN), 1f32);
+    assert_eq!(1f64.powf(f64::NAN), 1f64);
 
     assert_eq!((-1f32).powf(f32::INFINITY), 1f32);
     assert_eq!((-1f32).powf(f32::NEG_INFINITY), 1f32);
@@ -1030,6 +1032,18 @@ pub fn libm() {
     assert_eq!(0f64.powi(100), 0f64);
     assert_eq!(0f32.powi(9), 0f32);
     assert_eq!(0f64.powi(99), 0f64);
+
+    // C standard says:
+    // x^0 = 1, if x is not a Signaling NaN
+    assert_eq!(10.0f32.powi(0), 1.0f32);
+    assert_eq!(10.0f64.powi(0), 1.0f64);
+    assert_eq!(f32::INFINITY.powi(0), 1.0f32);
+    assert_eq!(f64::INFINITY.powi(0), 1.0f64);
+    // f*::NAN doesn't specify which what kind of bit pattern
+    // the NAN will have.
+    // We **assume** f*::NAN is not signaling.
+    assert_eq!(f32::NAN.powi(0), 1.0f32);
+    assert_eq!(f64::NAN.powi(0), 1.0f64);
 
     assert_eq!((-0f32).powi(10), 0f32);
     assert_eq!((-0f64).powi(100), 0f64);
