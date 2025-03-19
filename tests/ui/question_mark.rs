@@ -496,3 +496,31 @@ fn issue_13417_weirder(foo: &mut StructWithOptionString, mut bar: Option<Wrapper
     //~^^^ question_mark
     Some(())
 }
+
+#[clippy::msrv = "1.12"]
+fn msrv_1_12(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        return None;
+    }
+    let val = match arg {
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}
+
+#[clippy::msrv = "1.13"]
+fn msrv_1_13(arg: Option<i32>) -> Option<i32> {
+    if arg.is_none() {
+        //~^ question_mark
+        return None;
+    }
+    let val = match arg {
+        //~^ question_mark
+        Some(val) => val,
+        None => return None,
+    };
+    println!("{}", val);
+    Some(val)
+}
