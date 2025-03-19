@@ -86,7 +86,7 @@ pub(crate) fn check<'tcx>(
                                 left.span,
                                 "use the left value directly",
                                 lsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -105,7 +105,7 @@ pub(crate) fn check<'tcx>(
                                 right.span,
                                 "use the right value directly",
                                 rsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -137,7 +137,7 @@ pub(crate) fn check<'tcx>(
                                 left.span,
                                 "use the left value directly",
                                 lsnip,
-                                Applicability::MaybeIncorrect, // FIXME #2597
+                                Applicability::MachineApplicable,
                             );
                         },
                     );
@@ -164,7 +164,7 @@ pub(crate) fn check<'tcx>(
                             right.span,
                             "use the right value directly",
                             rsnip,
-                            Applicability::MaybeIncorrect, // FIXME #2597
+                            Applicability::MachineApplicable,
                         );
                     });
                 }
