@@ -6,7 +6,7 @@ use use_from_trait_xc::Trait::foo;
 //~^ ERROR `use` associated items of traits is unstable [E0658]
 
 use use_from_trait_xc::Trait::Assoc;
-//~^ ERROR `Assoc` is not directly importable
+//~^ ERROR `use` associated items of traits is unstable [E0658]
 
 use use_from_trait_xc::Trait::CONST;
 //~^ ERROR `use` associated items of traits is unstable [E0658]

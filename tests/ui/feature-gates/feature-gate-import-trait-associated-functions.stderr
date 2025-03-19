@@ -48,6 +48,16 @@ LL |     use super::A::{self, DEFAULT, new};
    = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
-error: aborting due to 5 previous errors
+error[E0658]: `use` associated items of traits is unstable
+  --> $DIR/feature-gate-import-trait-associated-functions.rs:64:5
+   |
+LL | use Glob::*;
+   |     ^^^^^^^
+   |
+   = note: see issue #134691 <https://github.com/rust-lang/rust/issues/134691> for more information
+   = help: add `#![feature(import_trait_associated_functions)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0658`.
