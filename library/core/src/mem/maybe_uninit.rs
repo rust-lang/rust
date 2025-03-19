@@ -1065,161 +1065,46 @@ impl<T> MaybeUninit<T> {
         this.write_clone_of_slice(src)
     }
 
-    /// Fills a slice with elements by cloning `value`, returning a mutable reference to the now
-    /// initialized contents of the slice.
-    /// Any previously initialized elements will not be dropped.
-    ///
-    /// This is similar to [`slice::fill`].
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if any call to `Clone` panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = [const { MaybeUninit::uninit() }; 10];
-    /// let initialized = MaybeUninit::fill(&mut buf, 1);
-    /// assert_eq!(initialized, &mut [1; 10]);
-    /// ```
-    #[doc(alias = "memset")]
+    /// Deprecated version of [`slice::write_filled`].
     #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill(this: &mut [MaybeUninit<T>], value: T) -> &mut [T]
+    #[deprecated(
+        note = "replaced by inherent write_filled method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn fill<'a>(this: &'a mut [MaybeUninit<T>], value: T) -> &'a mut [T]
     where
         T: Clone,
     {
-        SpecFill::spec_fill(this, value);
-        // SAFETY: Valid elements have just been filled into `this` so it is initialized
-        unsafe { this.assume_init_mut() }
+        this.write_filled(value)
     }
 
-    /// Fills a slice with elements returned by calling a closure repeatedly.
-    ///
-    /// This method uses a closure to create new values.  If you'd rather `Clone` a given value, use
-    /// [`MaybeUninit::fill`].  If you want to use the `Default` trait to generate values, you can
-    /// pass [`Default::default`] as the argument.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if any call to the provided closure panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = [const { MaybeUninit::<i32>::uninit() }; 10];
-    /// let initialized = MaybeUninit::fill_with(&mut buf, Default::default);
-    /// assert_eq!(initialized, &mut [0; 10]);
-    /// ```
+    /// Deprecated version of [`slice::write_with`].
     #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill_with<F>(this: &mut [MaybeUninit<T>], mut f: F) -> &mut [T]
+    #[deprecated(
+        note = "replaced by inherent write_with method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn fill_with<'a, F>(this: &'a mut [MaybeUninit<T>], mut f: F) -> &'a mut [T]
     where
         F: FnMut() -> T,
     {
-        let mut guard = Guard { slice: this, initialized: 0 };
-
-        for element in guard.slice.iter_mut() {
-            element.write(f());
-            guard.initialized += 1;
-        }
-
-        super::forget(guard);
-
-        // SAFETY: Valid elements have just been written into `this` so it is initialized
-        unsafe { this.assume_init_mut() }
+        this.write_with(|_| f())
     }
 
-    /// Fills a slice with elements yielded by an iterator until either all elements have been
-    /// initialized or the iterator is empty.
-    ///
-    /// Returns two slices. The first slice contains the initialized portion of the original slice.
-    /// The second slice is the still-uninitialized remainder of the original slice.
-    ///
-    /// # Panics
-    ///
-    /// This function panics if the iterator's `next` function panics.
-    ///
-    /// If such a panic occurs, any elements previously initialized during this operation will be
-    /// dropped.
-    ///
-    /// # Examples
-    ///
-    /// Completely filling the slice:
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
-    ///
-    /// let iter = [1, 2, 3].into_iter().cycle();
-    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
-    ///
-    /// assert_eq!(initialized, &mut [1, 2, 3, 1, 2]);
-    /// assert_eq!(remainder.len(), 0);
-    /// ```
-    ///
-    /// Partially filling the slice:
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
-    /// let iter = [1, 2];
-    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter);
-    ///
-    /// assert_eq!(initialized, &mut [1, 2]);
-    /// assert_eq!(remainder.len(), 3);
-    /// ```
-    ///
-    /// Checking an iterator after filling a slice:
-    ///
-    /// ```
-    /// #![feature(maybe_uninit_fill)]
-    /// use std::mem::MaybeUninit;
-    ///
-    /// let mut buf = [const { MaybeUninit::uninit() }; 3];
-    /// let mut iter = [1, 2, 3, 4, 5].into_iter();
-    /// let (initialized, remainder) = MaybeUninit::fill_from(&mut buf, iter.by_ref());
-    ///
-    /// assert_eq!(initialized, &mut [1, 2, 3]);
-    /// assert_eq!(remainder.len(), 0);
-    /// assert_eq!(iter.as_slice(), &[4, 5]);
-    /// ```
+    /// Deprecated version of [`slice::write_iter`].
     #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
-    pub fn fill_from<I>(this: &mut [MaybeUninit<T>], it: I) -> (&mut [T], &mut [MaybeUninit<T>])
+    #[deprecated(
+        note = "replaced by inherent write_iter method; will eventually be removed",
+        since = "1.83.0"
+    )]
+    pub fn fill_from<'a, I>(
+        this: &'a mut [MaybeUninit<T>],
+        it: I,
+    ) -> (&'a mut [T], &'a mut [MaybeUninit<T>])
     where
         I: IntoIterator<Item = T>,
     {
-        let iter = it.into_iter();
-        let mut guard = Guard { slice: this, initialized: 0 };
-
-        for (element, val) in guard.slice.iter_mut().zip(iter) {
-            element.write(val);
-            guard.initialized += 1;
-        }
-
-        let initialized_len = guard.initialized;
-        super::forget(guard);
-
-        // SAFETY: guard.initialized <= this.len()
-        let (initted, remainder) = unsafe { this.split_at_mut_unchecked(initialized_len) };
-
-        // SAFETY: Valid elements have just been written into `init`, so that portion
-        // of `this` is initialized.
-        (unsafe { initted.assume_init_mut() }, remainder)
+        this.write_iter(it)
     }
 
     /// Deprecated version of [`slice::as_bytes`].
@@ -1378,6 +1263,163 @@ impl<T> [MaybeUninit<T>] {
 
         // SAFETY: Valid elements have just been written into `self` so it is initialized
         unsafe { self.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements by cloning `value`, returning a mutable reference to the now
+    /// initialized contents of the slice.
+    /// Any previously initialized elements will not be dropped.
+    ///
+    /// This is similar to [`slice::fill`].
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to `Clone` panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 10];
+    /// let initialized = buf.write_filled(1);
+    /// assert_eq!(initialized, &mut [1; 10]);
+    /// ```
+    #[doc(alias = "memset")]
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn write_filled(&mut self, value: T) -> &mut [T]
+    where
+        T: Clone,
+    {
+        SpecFill::spec_fill(self, value);
+        // SAFETY: Valid elements have just been filled into `self` so it is initialized
+        unsafe { self.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements returned by calling a closure for each index.
+    ///
+    /// This method uses a closure to create new values. If you'd rather `Clone` a given value, use
+    /// [`MaybeUninit::fill`]. If you want to use the `Default` trait to generate values, you can
+    /// pass [`|_| Default::default()`][Default::default] as the argument.
+    ///
+    /// # Panics
+    ///
+    /// This function will panic if any call to the provided closure panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::<usize>::uninit() }; 5];
+    /// let initialized = buf.write_with(|idx| idx + 1);
+    /// assert_eq!(initialized, &mut [1, 2, 3, 4, 5]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn write_with<F>(&mut self, mut f: F) -> &mut [T]
+    where
+        F: FnMut(usize) -> T,
+    {
+        let mut guard = Guard { slice: self, initialized: 0 };
+
+        for (idx, element) in guard.slice.iter_mut().enumerate() {
+            element.write(f(idx));
+            guard.initialized += 1;
+        }
+
+        super::forget(guard);
+
+        // SAFETY: Valid elements have just been written into `this` so it is initialized
+        unsafe { self.assume_init_mut() }
+    }
+
+    /// Fills a slice with elements yielded by an iterator until either all elements have been
+    /// initialized or the iterator is empty.
+    ///
+    /// Returns two slices. The first slice contains the initialized portion of the original slice.
+    /// The second slice is the still-uninitialized remainder of the original slice.
+    ///
+    /// # Panics
+    ///
+    /// This function panics if the iterator's `next` function panics.
+    ///
+    /// If such a panic occurs, any elements previously initialized during this operation will be
+    /// dropped.
+    ///
+    /// # Examples
+    ///
+    /// Completely filling the slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
+    ///
+    /// let iter = [1, 2, 3].into_iter().cycle();
+    /// let (initialized, remainder) = buf.write_iter(iter);
+    ///
+    /// assert_eq!(initialized, &mut [1, 2, 3, 1, 2]);
+    /// assert_eq!(remainder.len(), 0);
+    /// ```
+    ///
+    /// Partially filling the slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 5];
+    /// let iter = [1, 2];
+    /// let (initialized, remainder) = buf.write_iter(iter);
+    ///
+    /// assert_eq!(initialized, &mut [1, 2]);
+    /// assert_eq!(remainder.len(), 3);
+    /// ```
+    ///
+    /// Checking an iterator after filling a slice:
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_fill)]
+    /// use std::mem::MaybeUninit;
+    ///
+    /// let mut buf = [const { MaybeUninit::uninit() }; 3];
+    /// let mut iter = [1, 2, 3, 4, 5].into_iter();
+    /// let (initialized, remainder) = buf.write_iter(iter.by_ref());
+    ///
+    /// assert_eq!(initialized, &mut [1, 2, 3]);
+    /// assert_eq!(remainder.len(), 0);
+    /// assert_eq!(iter.as_slice(), &[4, 5]);
+    /// ```
+    #[unstable(feature = "maybe_uninit_fill", issue = "117428")]
+    pub fn write_iter<I>(&mut self, it: I) -> (&mut [T], &mut [MaybeUninit<T>])
+    where
+        I: IntoIterator<Item = T>,
+    {
+        let iter = it.into_iter();
+        let mut guard = Guard { slice: self, initialized: 0 };
+
+        for (element, val) in guard.slice.iter_mut().zip(iter) {
+            element.write(val);
+            guard.initialized += 1;
+        }
+
+        let initialized_len = guard.initialized;
+        super::forget(guard);
+
+        // SAFETY: guard.initialized <= self.len()
+        let (initted, remainder) = unsafe { self.split_at_mut_unchecked(initialized_len) };
+
+        // SAFETY: Valid elements have just been written into `init`, so that portion
+        // of `this` is initialized.
+        (unsafe { initted.assume_init_mut() }, remainder)
     }
 
     /// Returns the contents of this `MaybeUninit` as a slice of potentially uninitialized bytes.

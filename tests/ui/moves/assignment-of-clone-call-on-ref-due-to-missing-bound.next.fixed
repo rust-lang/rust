@@ -5,6 +5,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 #[derive(Debug, Eq, PartialEq, Hash)]
+#[derive(Clone)]
 enum Day {
     Mon,
 }

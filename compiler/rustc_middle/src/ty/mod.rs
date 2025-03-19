@@ -1208,10 +1208,21 @@ impl VariantDef {
         }
     }
 
-    /// Is this field list non-exhaustive?
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`.
+    ///
+    /// Note that this function will return `true` even if the type has been
+    /// defined in the crate currently being compiled. If that's not what you
+    /// want, see [`Self::field_list_has_applicable_non_exhaustive`].
     #[inline]
     pub fn is_field_list_non_exhaustive(&self) -> bool {
         self.flags.intersects(VariantFlags::IS_FIELD_LIST_NON_EXHAUSTIVE)
+    }
+
+    /// Returns `true` if the field list of this variant is `#[non_exhaustive]`
+    /// and the type has been defined in another crate.
+    #[inline]
+    pub fn field_list_has_applicable_non_exhaustive(&self) -> bool {
+        self.is_field_list_non_exhaustive() && !self.def_id.is_local()
     }
 
     /// Computes the `Ident` of this variant by looking up the `Span`

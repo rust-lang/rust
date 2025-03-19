@@ -2286,7 +2286,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let (attrs, blk) = self.parse_block_common(lo, blk_mode, true)?;
+        let (attrs, blk) = self.parse_block_common(lo, blk_mode, true, None)?;
         Ok(self.mk_expr_with_attrs(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 
@@ -2851,7 +2851,11 @@ impl<'a> Parser<'a> {
             ));
         }
 
-        let (attrs, loop_block) = self.parse_inner_attrs_and_block()?;
+        let (attrs, loop_block) = self.parse_inner_attrs_and_block(
+            // Only suggest moving erroneous block label to the loop header
+            // if there is not already a label there
+            opt_label.is_none().then_some(lo),
+        )?;
 
         let kind = ExprKind::ForLoop { pat, iter: expr, body: loop_block, label: opt_label, kind };
 
@@ -2894,11 +2898,17 @@ impl<'a> Parser<'a> {
             err.span_label(lo, "while parsing the condition of this `while` expression");
             err
         })?;
-        let (attrs, body) = self.parse_inner_attrs_and_block().map_err(|mut err| {
-            err.span_label(lo, "while parsing the body of this `while` expression");
-            err.span_label(cond.span, "this `while` condition successfully parsed");
-            err
-        })?;
+        let (attrs, body) = self
+            .parse_inner_attrs_and_block(
+                // Only suggest moving erroneous block label to the loop header
+                // if there is not already a label there
+                opt_label.is_none().then_some(lo),
+            )
+            .map_err(|mut err| {
+                err.span_label(lo, "while parsing the body of this `while` expression");
+                err.span_label(cond.span, "this `while` condition successfully parsed");
+                err
+            })?;
 
         self.recover_loop_else("while", lo)?;
 
@@ -2912,7 +2922,11 @@ impl<'a> Parser<'a> {
     /// Parses `loop { ... }` (`loop` token already eaten).
     fn parse_expr_loop(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
         let loop_span = self.prev_token.span;
-        let (attrs, body) = self.parse_inner_attrs_and_block()?;
+        let (attrs, body) = self.parse_inner_attrs_and_block(
+            // Only suggest moving erroneous block label to the loop header
+            // if there is not already a label there
+            opt_label.is_none().then_some(lo),
+        )?;
         self.recover_loop_else("loop", lo)?;
         Ok(self.mk_expr_with_attrs(
             lo.to(self.prev_token.span),
@@ -2962,7 +2976,7 @@ impl<'a> Parser<'a> {
                     Applicability::MaybeIncorrect, // speculative
                 );
             }
-            if self.maybe_recover_unexpected_block_label() {
+            if self.maybe_recover_unexpected_block_label(None) {
                 e.cancel();
                 self.bump();
             } else {
@@ -3376,7 +3390,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a `try {...}` expression (`try` token already eaten).
     fn parse_try_block(&mut self, span_lo: Span) -> PResult<'a, P<Expr>> {
-        let (attrs, body) = self.parse_inner_attrs_and_block()?;
+        let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         if self.eat_keyword(exp!(Catch)) {
             Err(self.dcx().create_err(errors::CatchAfterTry { span: self.prev_token.span }))
         } else {
@@ -3424,7 +3438,7 @@ impl<'a> Parser<'a> {
         }
         let capture_clause = self.parse_capture_clause()?;
         let decl_span = lo.to(self.prev_token.span);
-        let (attrs, body) = self.parse_inner_attrs_and_block()?;
+        let (attrs, body) = self.parse_inner_attrs_and_block(None)?;
         let kind = ExprKind::Gen(capture_clause, body, kind, decl_span);
         Ok(self.mk_expr_with_attrs(lo.to(self.prev_token.span), kind, attrs))
     }

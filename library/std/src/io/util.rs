@@ -7,7 +7,6 @@ use crate::fmt;
 use crate::io::{
     self, BorrowedCursor, BufRead, IoSlice, IoSliceMut, Read, Seek, SeekFrom, SizeHint, Write,
 };
-use crate::mem::MaybeUninit;
 
 /// `Empty` ignores any data written via [`Write`], and will always be empty
 /// (returning zero bytes) when read via [`Read`].
@@ -68,6 +67,38 @@ impl Read for Empty {
     fn read_buf(&mut self, _cursor: BorrowedCursor<'_>) -> io::Result<()> {
         Ok(())
     }
+
+    #[inline]
+    fn read_vectored(&mut self, _bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn is_read_vectored(&self) -> bool {
+        // Do not force `Chain<Empty, T>` or `Chain<T, Empty>` to use vectored
+        // reads, unless the other reader is vectored.
+        false
+    }
+
+    #[inline]
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if !buf.is_empty() { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn read_buf_exact(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        if cursor.capacity() != 0 { Err(io::Error::READ_EXACT_EOF) } else { Ok(()) }
+    }
+
+    #[inline]
+    fn read_to_end(&mut self, _buf: &mut Vec<u8>) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn read_to_string(&mut self, _buf: &mut String) -> io::Result<usize> {
+        Ok(0)
+    }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl BufRead for Empty {
@@ -75,20 +106,44 @@ impl BufRead for Empty {
     fn fill_buf(&mut self) -> io::Result<&[u8]> {
         Ok(&[])
     }
+
     #[inline]
     fn consume(&mut self, _n: usize) {}
+
+    #[inline]
+    fn has_data_left(&mut self) -> io::Result<bool> {
+        Ok(false)
+    }
+
+    #[inline]
+    fn read_until(&mut self, _byte: u8, _buf: &mut Vec<u8>) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn skip_until(&mut self, _byte: u8) -> io::Result<usize> {
+        Ok(0)
+    }
+
+    #[inline]
+    fn read_line(&mut self, _buf: &mut String) -> io::Result<usize> {
+        Ok(0)
+    }
 }
 
 #[stable(feature = "empty_seek", since = "1.51.0")]
 impl Seek for Empty {
+    #[inline]
     fn seek(&mut self, _pos: SeekFrom) -> io::Result<u64> {
         Ok(0)
     }
 
+    #[inline]
     fn stream_len(&mut self) -> io::Result<u64> {
         Ok(0)
     }
 
+    #[inline]
     fn stream_position(&mut self) -> io::Result<u64> {
         Ok(0)
     }
@@ -120,6 +175,21 @@ impl Write for Empty {
     }
 
     #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -141,6 +211,21 @@ impl Write for &Empty {
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
     }
 
     #[inline]
@@ -196,7 +281,7 @@ impl Read for Repeat {
     #[inline]
     fn read_buf(&mut self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
         // SAFETY: No uninit bytes are being written.
-        MaybeUninit::fill(unsafe { buf.as_mut() }, self.byte);
+        unsafe { buf.as_mut() }.write_filled(self.byte);
         // SAFETY: the entire unfilled portion of buf has been initialized.
         unsafe { buf.advance_unchecked(buf.capacity()) };
         Ok(())
@@ -303,6 +388,21 @@ impl Write for Sink {
     }
 
     #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
     fn flush(&mut self) -> io::Result<()> {
         Ok(())
     }
@@ -324,6 +424,21 @@ impl Write for &Sink {
     #[inline]
     fn is_write_vectored(&self) -> bool {
         true
+    }
+
+    #[inline]
+    fn write_all(&mut self, _buf: &[u8]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_all_vectored(&mut self, _bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    fn write_fmt(&mut self, _args: fmt::Arguments<'_>) -> io::Result<()> {
+        Ok(())
     }
 
     #[inline]
