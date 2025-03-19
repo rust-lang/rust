@@ -2,7 +2,7 @@
 
 use super::hermit_abi;
 use crate::cmp;
-use crate::io::{self, IoSlice, IoSliceMut, Read, SeekFrom};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, SeekFrom};
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
 use crate::sys::{cvt, unsupported};
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -21,6 +21,21 @@ impl FileDesc {
         let result =
             cvt(unsafe { hermit_abi::read(self.fd.as_raw_fd(), buf.as_mut_ptr(), buf.len()) })?;
         Ok(result as usize)
+    }
+
+    pub fn read_buf(&self, mut buf: BorrowedCursor<'_>) -> io::Result<()> {
+        // SAFETY: The `read` syscall does not read from the buffer, so it is
+        // safe to use `&mut [MaybeUninit<u8>]`.
+        let result = cvt(unsafe {
+            hermit_abi::read(
+                self.fd.as_raw_fd(),
+                buf.as_mut().as_mut_ptr() as *mut u8,
+                buf.capacity(),
+            )
+        })?;
+        // SAFETY: Exactly `result` bytes have been filled.
+        unsafe { buf.advance_unchecked(result as usize) };
+        Ok(())
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
