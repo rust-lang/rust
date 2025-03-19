@@ -439,6 +439,35 @@ impl LinkerFeaturesCli {
             _ => None,
         }
     }
+
+    /// Checks usage of unstable variants for linker features for the given `target_tuple`.
+    /// Returns `Ok` if no unstable variants are used.
+    pub(crate) fn check_unstable_variants(&self, target_tuple: &TargetTuple) -> Result<(), String> {
+        let mentioned_features = self.enabled.union(self.disabled);
+        let has_lld = mentioned_features.is_lld_enabled();
+
+        // Check that -Clinker-features=[-+]lld is not used anywhere else than on x64
+        // without -Zunstable-options.
+        if has_lld && target_tuple.tuple() != "x86_64-unknown-linux-gnu" {
+            return Err(format!(
+                "`-C linker-features` with lld are unstable for the `{target_tuple}` target, \
+the `-Z unstable-options` flag must also be passed to use it on this target",
+            ));
+        }
+
+        for feature in LinkerFeatures::all() {
+            // Check that no other features were enabled without -Zunstable-options
+            // Note that this should currently be unreachable, because the `-Clinker-features` parser
+            // currently only accepts lld.
+            if feature != LinkerFeatures::LLD && mentioned_features.contains(feature) {
+                return Err("`-C linker-features` is stable only for the lld feature, \
+the`-Z unstable-options` flag must also be passed to use it with other features"
+                    .to_string());
+            }
+        }
+
+        Ok(())
+    }
 }
 
 /// Used with `-Z assert-incr-state`.
@@ -2595,9 +2624,8 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
         }
     }
 
-    if !nightly_options::is_unstable_enabled(matches)
-        && cg.force_frame_pointers == FramePointer::NonLeaf
-    {
+    let unstable_options_enabled = nightly_options::is_unstable_enabled(matches);
+    if !unstable_options_enabled && cg.force_frame_pointers == FramePointer::NonLeaf {
         early_dcx.early_fatal(
             "`-Cforce-frame-pointers=non-leaf` or `always` also requires `-Zunstable-options` \
                 and a nightly compiler",
@@ -2607,7 +2635,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     // For testing purposes, until we have more feedback about these options: ensure `-Z
     // unstable-options` is required when using the unstable `-C link-self-contained` and `-C
     // linker-flavor` options.
-    if !nightly_options::is_unstable_enabled(matches) {
+    if !unstable_options_enabled {
         let uses_unstable_self_contained_option =
             cg.link_self_contained.are_unstable_variants_set();
         if uses_unstable_self_contained_option {
@@ -2654,6 +2682,12 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
     let debug_assertions = cg.debug_assertions.unwrap_or(opt_level == OptLevel::No);
     let debuginfo = select_debuginfo(matches, &cg);
     let debuginfo_compression = unstable_opts.debuginfo_compression;
+
+    if !unstable_options_enabled {
+        if let Err(error) = cg.linker_features.check_unstable_variants(&target_triple) {
+            early_dcx.early_fatal(error);
+        }
+    }
 
     let crate_name = matches.opt_str("crate-name");
     let unstable_features = UnstableFeatures::from_environment(crate_name.as_deref());
