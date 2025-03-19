@@ -26,7 +26,6 @@
           debug a => _9;
       }
   
-+     coverage body span: $DIR/branch_match_arms.rs:14:11: 21:2 (#0)
 +     coverage Code { bcb: bcb0 } => $DIR/branch_match_arms.rs:14:1: 15:21 (#0);
 +     coverage Code { bcb: bcb1 } => $DIR/branch_match_arms.rs:16:17: 16:33 (#0);
 +     coverage Code { bcb: bcb3 } => $DIR/branch_match_arms.rs:17:17: 17:33 (#0);

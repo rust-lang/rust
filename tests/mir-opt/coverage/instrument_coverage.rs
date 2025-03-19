@@ -7,7 +7,6 @@
 
 // EMIT_MIR instrument_coverage.main.InstrumentCoverage.diff
 // CHECK-LABEL: fn main()
-// CHECK: coverage body span:
 // CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
 // CHECK: Coverage::VirtualCounter
@@ -21,7 +20,6 @@ fn main() {
 
 // EMIT_MIR instrument_coverage.bar.InstrumentCoverage.diff
 // CHECK-LABEL: fn bar()
-// CHECK: coverage body span:
 // CHECK: coverage Code { bcb: bcb{{[0-9]+}} } =>
 // CHECK: bb0:
 // CHECK: Coverage::VirtualCounter
