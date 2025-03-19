@@ -51,8 +51,12 @@ impl LintLevelSource {
     }
 }
 
-/// A tuple of a lint level and its source.
-pub type LevelAndSource = (Level, LintLevelSource);
+/// Convenience helper for moving things around together that frequently are paired
+#[derive(Copy, Clone, Debug, HashStable, Encodable, Decodable)]
+pub struct LevelAndSource {
+    pub level: Level,
+    pub src: LintLevelSource,
+}
 
 /// Return type for the `shallow_lint_levels_on` query.
 ///
@@ -123,7 +127,7 @@ impl ShallowLintLevelMap {
         start: HirId,
     ) -> (Option<Level>, LintLevelSource) {
         if let Some(map) = self.specs.get(&start.local_id)
-            && let Some(&(level, src)) = map.get(&id)
+            && let Some(&LevelAndSource { level, src }) = map.get(&id)
         {
             return (Some(level), src);
         }
@@ -137,7 +141,7 @@ impl ShallowLintLevelMap {
                 specs = &tcx.shallow_lint_levels_on(owner).specs;
             }
             if let Some(map) = specs.get(&parent.local_id)
-                && let Some(&(level, src)) = map.get(&id)
+                && let Some(&LevelAndSource { level, src }) = map.get(&id)
             {
                 return (Some(level), src);
             }
@@ -153,18 +157,18 @@ impl ShallowLintLevelMap {
         tcx: TyCtxt<'_>,
         lint: LintId,
         cur: HirId,
-    ) -> (Level, LintLevelSource) {
+    ) -> LevelAndSource {
         let (level, mut src) = self.probe_for_lint_level(tcx, lint, cur);
         let level = reveal_actual_level(level, &mut src, tcx.sess, lint, |lint| {
             self.probe_for_lint_level(tcx, lint, cur)
         });
-        (level, src)
+        LevelAndSource { level, src }
     }
 }
 
 impl TyCtxt<'_> {
     /// Fetch and return the user-visible lint level for the given lint at the given HirId.
-    pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> (Level, LintLevelSource) {
+    pub fn lint_level_at_node(self, lint: &'static Lint, id: HirId) -> LevelAndSource {
         self.shallow_lint_levels_on(id.owner).lint_level_id_at_node(self, LintId::of(lint), id)
     }
 }
@@ -267,8 +271,7 @@ fn explain_lint_level_source(
 pub fn lint_level(
     sess: &Session,
     lint: &'static Lint,
-    level: Level,
-    src: LintLevelSource,
+    level: LevelAndSource,
     span: Option<MultiSpan>,
     decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
 ) {
@@ -278,11 +281,12 @@ pub fn lint_level(
     fn lint_level_impl(
         sess: &Session,
         lint: &'static Lint,
-        level: Level,
-        src: LintLevelSource,
+        level: LevelAndSource,
         span: Option<MultiSpan>,
         decorate: Box<dyn '_ + for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>)>,
     ) {
+        let LevelAndSource { level, src } = level;
+
         // Check for future incompatibility lints and issue a stronger warning.
         let future_incompatible = lint.future_incompatible;
 
@@ -421,5 +425,5 @@ pub fn lint_level(
         explain_lint_level_source(lint, level, src, &mut err);
         err.emit()
     }
-    lint_level_impl(sess, lint, level, src, span, Box::new(decorate))
+    lint_level_impl(sess, lint, level, span, Box::new(decorate))
 }

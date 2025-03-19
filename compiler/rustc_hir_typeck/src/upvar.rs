@@ -2325,8 +2325,9 @@ fn should_do_rust_2021_incompatible_closure_captures_analysis(
         return false;
     }
 
-    let (level, _) =
-        tcx.lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id);
+    let level = tcx
+        .lint_level_at_node(lint::builtin::RUST_2021_INCOMPATIBLE_CLOSURE_CAPTURES, closure_id)
+        .level;
 
     !matches!(level, lint::Level::Allow)
 }

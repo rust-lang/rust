@@ -643,7 +643,7 @@ impl<'tcx> LintContext for LateContext<'tcx> {
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {
-        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs).0
+        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs).level
     }
 }
 
@@ -664,7 +664,7 @@ impl LintContext for EarlyContext<'_> {
     }
 
     fn get_lint_level(&self, lint: &'static Lint) -> Level {
-        self.builder.lint_level(lint).0
+        self.builder.lint_level(lint).level
     }
 }
 

@@ -87,7 +87,7 @@ impl LintLevelSets {
         let level = reveal_actual_level(level, &mut src, sess, lint, |id| {
             self.raw_lint_id_level(id, idx, aux)
         });
-        (level, src)
+        LevelAndSource { level, src }
     }
 
     fn raw_lint_id_level(
@@ -97,14 +97,14 @@ impl LintLevelSets {
         aux: Option<&FxIndexMap<LintId, LevelAndSource>>,
     ) -> (Option<Level>, LintLevelSource) {
         if let Some(specs) = aux
-            && let Some(&(level, src)) = specs.get(&id)
+            && let Some(&LevelAndSource { level, src }) = specs.get(&id)
         {
             return (Some(level), src);
         }
 
         loop {
             let LintSet { ref specs, parent } = self.list[idx];
-            if let Some(&(level, src)) = specs.get(&id) {
+            if let Some(&LevelAndSource { level, src }) = specs.get(&id) {
                 return (Some(level), src);
             }
             if idx == COMMAND_LINE {
@@ -131,8 +131,8 @@ fn lints_that_dont_need_to_run(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LintId> {
         })
         .filter_map(|lint| {
             let lint_level = map.lint_level_id_at_node(tcx, LintId::of(lint), CRATE_HIR_ID);
-            if matches!(lint_level, (Level::Allow, ..))
-                || (matches!(lint_level, (.., LintLevelSource::Default)))
+            if matches!(lint_level.level, Level::Allow)
+                || (matches!(lint_level.src, LintLevelSource::Default))
                     && lint.default_level(tcx.sess.edition()) == Level::Allow
             {
                 Some(LintId::of(lint))
@@ -582,7 +582,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             };
             for id in ids {
                 // ForceWarn and Forbid cannot be overridden
-                if let Some((Level::ForceWarn(_) | Level::Forbid, _)) =
+                if let Some(LevelAndSource { level: Level::ForceWarn(_) | Level::Forbid, .. }) =
                     self.current_specs().get(&id)
                 {
                     continue;
@@ -590,7 +590,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
                 if self.check_gated_lint(id, DUMMY_SP, true) {
                     let src = LintLevelSource::CommandLine(lint_flag_val, orig_level);
-                    self.insert(id, (level, src));
+                    self.insert(id, LevelAndSource { level, src });
                 }
             }
         }
@@ -599,8 +599,9 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
     /// Attempts to insert the `id` to `level_src` map entry. If unsuccessful
     /// (e.g. if a forbid was already inserted on the same scope), then emits a
     /// diagnostic with no change to `specs`.
-    fn insert_spec(&mut self, id: LintId, (level, src): LevelAndSource) {
-        let (old_level, old_src) = self.provider.get_lint_level(id.lint, self.sess);
+    fn insert_spec(&mut self, id: LintId, LevelAndSource { level, src }: LevelAndSource) {
+        let LevelAndSource { level: old_level, src: old_src } =
+            self.provider.get_lint_level(id.lint, self.sess);
 
         // Setting to a non-forbid level is an error if the lint previously had
         // a forbid level. Note that this is not necessarily true even with a
@@ -680,13 +681,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
         match (old_level, level) {
             // If the new level is an expectation store it in `ForceWarn`
-            (Level::ForceWarn(_), Level::Expect(expectation_id)) => {
-                self.insert(id, (Level::ForceWarn(Some(expectation_id)), old_src))
-            }
+            (Level::ForceWarn(_), Level::Expect(expectation_id)) => self.insert(
+                id,
+                LevelAndSource { level: Level::ForceWarn(Some(expectation_id)), src: old_src },
+            ),
             // Keep `ForceWarn` level but drop the expectation
-            (Level::ForceWarn(_), _) => self.insert(id, (Level::ForceWarn(None), old_src)),
+            (Level::ForceWarn(_), _) => {
+                self.insert(id, LevelAndSource { level: Level::ForceWarn(None), src: old_src })
+            }
             // Set the lint level as normal
-            _ => self.insert(id, (level, src)),
+            _ => self.insert(id, LevelAndSource { level, src }),
         };
     }
 
@@ -701,7 +705,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
             if attr.has_name(sym::automatically_derived) {
                 self.insert(
                     LintId::of(SINGLE_USE_LIFETIMES),
-                    (Level::Allow, LintLevelSource::Default),
+                    LevelAndSource { level: Level::Allow, src: LintLevelSource::Default },
                 );
                 continue;
             }
@@ -712,7 +716,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                     .meta_item_list()
                     .is_some_and(|l| ast::attr::list_contains_name(&l, sym::hidden))
             {
-                self.insert(LintId::of(MISSING_DOCS), (Level::Allow, LintLevelSource::Default));
+                self.insert(
+                    LintId::of(MISSING_DOCS),
+                    LevelAndSource { level: Level::Allow, src: LintLevelSource::Default },
+                );
                 continue;
             }
 
@@ -920,7 +927,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
                 let src = LintLevelSource::Node { name, span: sp, reason };
                 for &id in ids {
                     if self.check_gated_lint(id, sp, false) {
-                        self.insert_spec(id, (level, src));
+                        self.insert_spec(id, LevelAndSource { level, src });
                     }
                 }
 
@@ -951,7 +958,7 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         }
 
         if self.lint_added_lints && !is_crate_node {
-            for (id, &(level, ref src)) in self.current_specs().iter() {
+            for (id, &LevelAndSource { level, ref src }) in self.current_specs().iter() {
                 if !id.lint.crate_level_only {
                     continue;
                 }
@@ -989,10 +996,10 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
 
         if self.lint_added_lints {
             let lint = builtin::UNKNOWN_LINTS;
-            let (level, src) = self.lint_level(builtin::UNKNOWN_LINTS);
+            let level = self.lint_level(builtin::UNKNOWN_LINTS);
             // FIXME: make this translatable
             #[allow(rustc::diagnostic_outside_of_impl)]
-            lint_level(self.sess, lint, level, src, Some(span.into()), |lint| {
+            lint_level(self.sess, lint, level, Some(span.into()), |lint| {
                 lint.primary_message(fluent::lint_unknown_gated_lint);
                 lint.arg("name", lint_id.lint.name_lower());
                 lint.note(fluent::lint_note);
@@ -1027,8 +1034,8 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         span: Option<MultiSpan>,
         decorate: impl for<'a, 'b> FnOnce(&'b mut Diag<'a, ()>),
     ) {
-        let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, span, decorate)
+        let level = self.lint_level(lint);
+        lint_level(self.sess, lint, level, span, decorate)
     }
 
     #[track_caller]
@@ -1038,16 +1045,16 @@ impl<'s, P: LintLevelsProvider> LintLevelsBuilder<'s, P> {
         span: MultiSpan,
         decorate: impl for<'a> LintDiagnostic<'a, ()>,
     ) {
-        let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, Some(span), |lint| {
+        let level = self.lint_level(lint);
+        lint_level(self.sess, lint, level, Some(span), |lint| {
             decorate.decorate_lint(lint);
         });
     }
 
     #[track_caller]
     pub fn emit_lint(&self, lint: &'static Lint, decorate: impl for<'a> LintDiagnostic<'a, ()>) {
-        let (level, src) = self.lint_level(lint);
-        lint_level(self.sess, lint, level, src, None, |lint| {
+        let level = self.lint_level(lint);
+        lint_level(self.sess, lint, level, None, |lint| {
             decorate.decorate_lint(lint);
         });
     }

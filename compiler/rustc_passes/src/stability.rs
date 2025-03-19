@@ -980,7 +980,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'tcx> {
                                     // Calculating message for lint involves calling `self.def_path_str`,
                                     // which will by default invoke the expensive `visible_parent_map` query.
                                     // Skip all that work if the lint is allowed anyway.
-                                    if self.tcx.lint_level_at_node(DEPRECATED, id).0
+                                    if self.tcx.lint_level_at_node(DEPRECATED, id).level
                                         == lint::Level::Allow
                                     {
                                         return;

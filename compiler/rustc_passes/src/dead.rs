@@ -698,7 +698,7 @@ fn has_allow_dead_code_or_lang_attr(
 
     fn has_allow_expect_dead_code(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
         let hir_id = tcx.local_def_id_to_hir_id(def_id);
-        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).0;
+        let lint_level = tcx.lint_level_at_node(lint::builtin::DEAD_CODE, hir_id).level;
         matches!(lint_level, lint::Allow | lint::Expect(_))
     }
 
@@ -963,7 +963,7 @@ impl<'tcx> DeadVisitor<'tcx> {
 
     fn def_lint_level(&self, id: LocalDefId) -> lint::Level {
         let hir_id = self.tcx.local_def_id_to_hir_id(id);
-        self.tcx.lint_level_at_node(DEAD_CODE, hir_id).0
+        self.tcx.lint_level_at_node(DEAD_CODE, hir_id).level
     }
 
     // # Panics
