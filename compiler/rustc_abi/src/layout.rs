@@ -215,7 +215,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
     >(
         &self,
         local_layouts: &IndexSlice<LocalIdx, F>,
-        prefix_layouts: IndexVec<FieldIdx, F>,
+        relocated_upvars: &IndexSlice<LocalIdx, Option<LocalIdx>>,
         variant_fields: &IndexSlice<VariantIdx, IndexVec<FieldIdx, LocalIdx>>,
         storage_conflicts: &BitMatrix<LocalIdx, LocalIdx>,
         tag_to_layout: impl Fn(Scalar) -> F,
@@ -223,7 +223,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
         coroutine::layout(
             self,
             local_layouts,
-            prefix_layouts,
+            relocated_upvars,
             variant_fields,
             storage_conflicts,
             tag_to_layout,

@@ -1,21 +1,20 @@
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:15:30
+  --> $DIR/ref-upvar-not-send.rs:27:9
    |
-LL |       assert_send(#[coroutine] move || {
-   |  ______________________________^
+LL | /         move || {
 LL | |
 LL | |
-LL | |         yield;
-LL | |         let _x = x;
-LL | |     });
-   | |_____^ coroutine is not `Send`
+LL | |             yield;
+...  |
+LL | |         },
+   | |_________^ coroutine is not `Send`
    |
    = help: the trait `Sync` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
-  --> $DIR/ref-upvar-not-send.rs:19:18
+  --> $DIR/ref-upvar-not-send.rs:31:22
    |
-LL |         let _x = x;
-   |                  ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
+LL |             let _x = x;
+   |                      ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
 note: required by a bound in `assert_send`
   --> $DIR/ref-upvar-not-send.rs:6:19
    |
@@ -23,28 +22,75 @@ LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
 error: coroutine cannot be sent between threads safely
-  --> $DIR/ref-upvar-not-send.rs:23:30
+  --> $DIR/ref-upvar-not-send.rs:40:9
    |
-LL |       assert_send(#[coroutine] move || {
-   |  ______________________________^
+LL | /         move || {
 LL | |
 LL | |
-LL | |         yield;
-LL | |         let _y = y;
-LL | |     });
-   | |_____^ coroutine is not `Send`
+LL | |             yield;
+...  |
+LL | |         },
+   | |_________^ coroutine is not `Send`
    |
-   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:23:30: 23:37}`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:40:9: 40:16}`, the trait `Send` is not implemented for `*mut ()`
 note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
-  --> $DIR/ref-upvar-not-send.rs:27:18
+  --> $DIR/ref-upvar-not-send.rs:44:22
    |
-LL |         let _y = y;
-   |                  ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`
+LL |             let _y = y;
+   |                      ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`
 note: required by a bound in `assert_send`
   --> $DIR/ref-upvar-not-send.rs:6:19
    |
 LL | fn assert_send<T: Send>(_: T) {}
    |                   ^^^^ required by this bound in `assert_send`
 
-error: aborting due to 2 previous errors
+error: coroutine cannot be sent between threads safely
+  --> $DIR/ref-upvar-not-send.rs:23:5
+   |
+LL | /     assert_send(
+LL | |
+LL | |
+LL | |         #[coroutine]
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ coroutine is not `Send`
+   |
+   = help: the trait `Sync` is not implemented for `*mut ()`
+note: captured value is not `Send` because `&` references cannot be sent unless their referent is `Sync`
+  --> $DIR/ref-upvar-not-send.rs:17:9
+   |
+LL |     let x: &*mut () = &std::ptr::null_mut();
+   |         ^ has type `&*mut ()` which is not `Send`, because `*mut ()` is not `Sync`
+note: required by a bound in `assert_send`
+  --> $DIR/ref-upvar-not-send.rs:6:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: coroutine cannot be sent between threads safely
+  --> $DIR/ref-upvar-not-send.rs:36:5
+   |
+LL | /     assert_send(
+LL | |
+LL | |
+LL | |         #[coroutine]
+...  |
+LL | |         },
+LL | |     );
+   | |_____^ coroutine is not `Send`
+   |
+   = help: within `{coroutine@$DIR/ref-upvar-not-send.rs:40:9: 40:16}`, the trait `Send` is not implemented for `*mut ()`
+note: captured value is not `Send` because `&mut` references cannot be sent unless their referent is `Send`
+  --> $DIR/ref-upvar-not-send.rs:20:9
+   |
+LL |     let y: &mut *mut () = &mut std::ptr::null_mut();
+   |         ^ has type `&mut *mut ()` which is not `Send`, because `*mut ()` is not `Send`
+note: required by a bound in `assert_send`
+  --> $DIR/ref-upvar-not-send.rs:6:19
+   |
+LL | fn assert_send<T: Send>(_: T) {}
+   |                   ^^^^ required by this bound in `assert_send`
+
+error: aborting due to 4 previous errors
 
