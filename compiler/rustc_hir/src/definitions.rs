@@ -88,6 +88,10 @@ impl DefPathTable {
         DefPathHash::new(self.stable_crate_id, hash)
     }
 
+    pub fn def_keys(&self) -> impl Iterator<Item = DefIndex> + ExactSizeIterator {
+        self.index_to_key.iter_enumerated().map(|(index, _)| index)
+    }
+
     pub fn enumerated_keys_and_path_hashes(
         &self,
     ) -> impl Iterator<Item = (DefIndex, &DefKey, DefPathHash)> + ExactSizeIterator {

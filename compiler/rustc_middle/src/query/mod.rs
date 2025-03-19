@@ -176,6 +176,7 @@ rustc_queries! {
     query hir_owner(key: LocalDefId) -> rustc_hir::MaybeOwner<'tcx> {
         no_hash
         desc { |tcx| "getting HIR of `{}`", tcx.def_path_str(key) }
+        feedable
     }
 
     /// All items in the crate.
@@ -198,7 +199,6 @@ rustc_queries! {
     /// Returns HIR ID for the given `LocalDefId`.
     query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key) }
-        feedable
     }
 
     /// Gives access to the HIR node's parent for the HIR owner `key`.
@@ -215,7 +215,6 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query opt_hir_owner_nodes(key: LocalDefId) -> Option<&'tcx hir::OwnerNodes<'tcx>> {
         desc { |tcx| "getting HIR owner items in `{}`", tcx.def_path_str(key) }
-        feedable
     }
 
     /// Gives access to the HIR attributes inside the HIR owner `key`.
@@ -224,7 +223,6 @@ rustc_queries! {
     /// Avoid calling this query directly.
     query hir_attr_map(key: hir::OwnerId) -> &'tcx hir::AttributeMap<'tcx> {
         desc { |tcx| "getting HIR owner attributes in `{}`", tcx.def_path_str(key) }
-        feedable
     }
 
     /// Returns the *default* of the const pararameter given by `DefId`.
