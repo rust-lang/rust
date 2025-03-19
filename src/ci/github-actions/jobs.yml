@@ -260,13 +260,16 @@ auto:
   - name: test-various
     <<: *job-linux-4c
 
-  - name: x86_64-fuchsia
-    # Only run this job on the nightly channel. Fuchsia requires
-    # nightly features to compile, and this job would fail if
-    # executed on beta and stable.
-    only_on_channel: nightly
-    doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
-    <<: *job-linux-8c
+  # FIXME: temporarily disabled due to fuchsia server rate limits. See
+  # <https://rust-lang.zulipchat.com/#narrow/channel/242791-t-infra/topic/fuchsia.20failure/with/506637259>.
+  #
+  #- name: x86_64-fuchsia
+  #  # Only run this job on the nightly channel. Fuchsia requires
+  #  # nightly features to compile, and this job would fail if
+  #  # executed on beta and stable.
+  #  only_on_channel: nightly
+  #  doc_url: https://rustc-dev-guide.rust-lang.org/tests/fuchsia.html
+  #  <<: *job-linux-8c
 
   # Tests integration with Rust for Linux.
   # Builds stage 1 compiler and tries to compile a few RfL examples with it.
