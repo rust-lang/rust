@@ -399,7 +399,7 @@ impl LinkSelfContained {
     }
 }
 
-/// The different values that `-Z linker-features` can take on the CLI: a list of individually
+/// The different values that `-C linker-features` can take on the CLI: a list of individually
 /// enabled or disabled features used during linking.
 ///
 /// There is no need to enable or disable them in bulk. Each feature is fine-grained, and can be
