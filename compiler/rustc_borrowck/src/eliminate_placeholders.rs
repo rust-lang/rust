@@ -12,10 +12,10 @@ use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::graph::scc::{self, Sccs};
 use rustc_index::IndexVec;
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::infer::outlives::test_type_match::MatchAgainstHigherRankedOutlives;
 use rustc_infer::infer::region_constraints::{GenericKind, VarInfos, VerifyBound};
 use rustc_infer::infer::relate::TypeRelation;
-use rustc_middle::ty::{self, Region, RegionVid, TyCtxt, UniverseIndex};
+use rustc_middle::ty::relate::{self, Relate, RelateResult};
+use rustc_middle::ty::{self, Region, RegionVid, Ty, TyCtxt, UniverseIndex};
 use rustc_span::Span;
 use tracing::{debug, instrument, trace};
 
@@ -627,33 +627,27 @@ fn rewrite_verify_bound<'t>(
         // are both empty. This bit ensures that whatever comes out of the
         // bound also matches the placeholder reachability of the lower bound.
         VerifyBound::IfEq(verify_if_eq_b) => {
-            let mut m = MatchAgainstHigherRankedOutlives::new(tcx);
+            let mut m = MatchUniverses::new(tcx, sccs, scc_annotations, universal_regions);
             let verify_if_eq = verify_if_eq_b.skip_binder();
-            // We ignore the error here because we are not concerned with if the
-            // match actually held -- we can't tell that yet -- we just want to
-            // see if the resulting region can't match for universe-related
-            // reasons.
-            let _what_error = m.relate(verify_if_eq.ty, generic_kind.to_ty(tcx));
+            let what_error = m.relate(verify_if_eq.ty, generic_kind.to_ty(tcx));
+            if let Err(e) = what_error {
+                debug!("Type test {verify_if_eq_b:?} {generic_kind:?} failed to match with {e:?}");
+                return Either::Right(RewrittenVerifyBound::Unsatisfied);
+            }
 
-            let r = if let ty::RegionKind::ReBound(depth, br) = verify_if_eq.bound.kind() {
+            let r = if let ty::RegionKind::ReBound(depth, _) = verify_if_eq.bound.kind() {
                 assert!(depth == ty::INNERMOST);
-                match m.map.get(&br) {
-                    Some(&r) => r,
-                    None => tcx.lifetimes.re_static,
-                }
+                m.max_universe_region.map_or(tcx.lifetimes.re_static, |pair| pair.1)
             } else {
                 verify_if_eq.bound
             };
 
-            let r_vid = universal_regions.to_region_vid(r);
-            let r_scc = scc_annotations[sccs.scc(r_vid)];
             let l_scc = scc_annotations[lower_scc];
-            let in_same_universe =
-                r_scc.universe_compatible_with(l_scc) && l_scc.universe_compatible_with(r_scc);
-            let reaches_same_placeholders =
-                r_scc.reachable_placeholders == l_scc.reachable_placeholders;
+            let rvid = universal_regions.to_region_vid(r);
 
-            if in_same_universe && reaches_same_placeholders {
+            if rvid == universal_regions.fr_static
+                || scc_annotations[sccs.scc(rvid)].universe_compatible_with(l_scc)
+            {
                 Either::Left(bound)
             } else {
                 Either::Right(RewrittenVerifyBound::Unsatisfied)
@@ -747,6 +741,125 @@ impl<'t> TypeTest<'t> {
                 lower_bound: self.lower_bound,
                 span: self.span,
             },
+        }
+    }
+}
+
+impl<'tcx, 'v> TypeRelation<TyCtxt<'tcx>> for MatchUniverses<'tcx, 'v> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    #[instrument(level = "trace", skip(self))]
+    fn relate_with_variance<T: Relate<TyCtxt<'tcx>>>(
+        &mut self,
+        variance: ty::Variance,
+        _: ty::VarianceDiagInfo<TyCtxt<'tcx>>,
+        a: T,
+        b: T,
+    ) -> RelateResult<'tcx, T> {
+        // Opaque types args have lifetime parameters.
+        // We must not check them to be equal, as we never insert anything to make them so.
+        if variance != ty::Bivariant { self.relate(a, b) } else { Ok(a) }
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn regions(
+        &mut self,
+        pattern: ty::Region<'tcx>,
+        value: ty::Region<'tcx>,
+    ) -> RelateResult<'tcx, ty::Region<'tcx>> {
+        // `pattern` is from inside `VerifyBound::IfEq`, and `value` from `generic_kind` (what we're looking for).
+        if pattern == value {
+            self.update_max_universe(pattern);
+        } else {
+            assert!(
+                pattern.is_bound() || self.universe_of(pattern).is_root(),
+                "{pattern:?} neither bound nor in root universe. Universe is: {:?}, kind: {:?}",
+                self.universe_of(pattern),
+                pattern.kind()
+            );
+        }
+
+        if let Some((_, max_universed_region)) = self.max_universe_region.as_ref() {
+            Ok(*max_universed_region)
+        } else {
+            Ok(pattern)
+        }
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn tys(&mut self, pattern: Ty<'tcx>, value: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        relate::structurally_relate_tys(self, pattern, value)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn consts(
+        &mut self,
+        pattern: ty::Const<'tcx>,
+        value: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        relate::structurally_relate_consts(self, pattern, value)
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn binders<T>(
+        &mut self,
+        pattern: ty::Binder<'tcx, T>,
+        value: ty::Binder<'tcx, T>,
+    ) -> RelateResult<'tcx, ty::Binder<'tcx, T>>
+    where
+        T: Relate<TyCtxt<'tcx>>,
+    {
+        self.pattern_depth.shift_in(1);
+        let result = Ok(pattern.rebind(self.relate(pattern.skip_binder(), value.skip_binder())?));
+        self.pattern_depth.shift_out(1);
+        result
+    }
+}
+
+struct MatchUniverses<'tcx, 'v> {
+    tcx: TyCtxt<'tcx>,
+    pattern_depth: ty::DebruijnIndex,
+    max_universe_region: Option<(UniverseIndex, ty::Region<'tcx>)>,
+    sccs: &'v Sccs<RegionVid, ConstraintSccIndex>,
+    scc_annotations: &'v IndexVec<ConstraintSccIndex, RegionTracker>,
+    universal_regions: &'v UniversalRegions<'tcx>,
+}
+
+impl<'tcx, 'v> MatchUniverses<'tcx, 'v> {
+    fn new(
+        tcx: TyCtxt<'tcx>,
+        sccs: &'v Sccs<RegionVid, ConstraintSccIndex>,
+        scc_annotations: &'v IndexVec<ConstraintSccIndex, RegionTracker>,
+        universal_regions: &'v UniversalRegions<'tcx>,
+    ) -> MatchUniverses<'tcx, 'v> {
+        MatchUniverses {
+            tcx,
+            pattern_depth: ty::INNERMOST,
+            max_universe_region: None,
+            scc_annotations,
+            sccs,
+            universal_regions,
+        }
+    }
+
+    fn universe_of(&self, r: ty::Region<'tcx>) -> UniverseIndex {
+        self.scc_annotations[self.sccs.scc(self.universal_regions.to_region_vid(r))].min_universe()
+    }
+
+    #[instrument(skip(self), level = "trace")]
+    fn update_max_universe(&mut self, r: ty::Region<'tcx>) {
+        let r_universe = self.universe_of(r);
+
+        let Some((current_max_u, current_max_r)) = self.max_universe_region else {
+            self.max_universe_region = Some((r_universe, r));
+            return;
+        };
+        self.max_universe_region = if r_universe > current_max_u {
+            Some((r_universe, r))
+        } else {
+            Some((current_max_u, current_max_r))
         }
     }
 }
