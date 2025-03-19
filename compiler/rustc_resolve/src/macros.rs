@@ -1125,7 +1125,10 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             edition,
         );
 
-        if find_attr!(attrs.iter(), AttributeKind::RustcMacroEdition2021 {}) {
+        // The #[rustc_macro_edition_2021] attribute is used by the pin!() macro
+        // as a temporary workaround for a regression in expressiveness in Rust 2024.
+        // See https://github.com/rust-lang/rust/issues/138718.
+        if find_attr!(attrs.iter(), AttributeKind::RustcMacroEdition2021) {
             ext.edition = Edition::Edition2021;
         }
 
