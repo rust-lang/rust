@@ -23,7 +23,7 @@ fn main() {
         rustc()
             .crate_type("cdylib")
             .target("custom-target.json")
-            .arg("-Zlinker-features=-lld")
+            .arg("-Clinker-features=-lld")
             .input("lib.rs"),
     );
 }
