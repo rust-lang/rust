@@ -1,10 +1,10 @@
 use super::{Attribute, DEPRECATED_CFG_ATTR, DEPRECATED_CLIPPY_CFG_ATTR, unnecessary_clippy_cfg};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::msrvs::{self, MsrvStack};
+use clippy_utils::sym;
 use rustc_ast::AttrStyle;
 use rustc_errors::Applicability;
 use rustc_lint::EarlyContext;
-use rustc_span::sym;
 
 pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
     // check cfg_attr
@@ -18,7 +18,7 @@ pub(super) fn check(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &MsrvStack) {
             && msrv.meets(msrvs::TOOL_ATTRIBUTES)
             // check for `rustfmt_skip` and `rustfmt::skip`
             && let Some(skip_item) = &items[1].meta_item()
-            && (skip_item.has_name(sym!(rustfmt_skip))
+            && (skip_item.has_name(sym::rustfmt_skip)
                 || skip_item
                     .path
                     .segments
