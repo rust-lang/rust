@@ -10,7 +10,6 @@ use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
-use rustc_index::IndexSlice;
 use rustc_span::def_id::StableCrateId;
 use rustc_span::{ErrorGuaranteed, Ident, Span, Symbol, kw, sym, with_metavar_spans};
 
@@ -1133,16 +1132,16 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_hir_hash(
-    tcx: TyCtxt<'_>,
-    owners: &IndexSlice<LocalDefId, MaybeOwner<'_>>,
-) -> Fingerprint {
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            let def_path_hash = tcx.hir_def_path_hash(def_id);
-            Some((def_path_hash, info))
+fn compute_hir_hash(tcx: TyCtxt<'_>) -> Fingerprint {
+    let mut hir_body_nodes: Vec<_> = tcx
+        .hir_crate_items(())
+        .owners()
+        .map(|owner_id| {
+            let def_path_hash = tcx.hir_def_path_hash(owner_id.def_id);
+            let nodes = tcx.opt_hir_owner_nodes(owner_id).unwrap();
+            let attrs = tcx.hir_attr_map(owner_id);
+            let in_scope_traits_map = tcx.in_scope_traits_map(owner_id).unwrap();
+            (def_path_hash, nodes, attrs, in_scope_traits_map)
         })
         .collect();
     hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
@@ -1155,8 +1154,7 @@ fn compute_hir_hash(
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let krate = tcx.hir_crate(());
-    let hir_body_hash = compute_hir_hash(tcx, &krate.owners);
+    let hir_body_hash = compute_hir_hash(tcx);
 
     let upstream_crates = upstream_crates(tcx);
 
