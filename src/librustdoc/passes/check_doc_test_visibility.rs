@@ -107,7 +107,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     {
         return false;
     }
-    let LevelAndSource { level, src } = cx.tcx.lint_level_at_node(
+    let LevelAndSource { level, src, .. } = cx.tcx.lint_level_at_node(
         crate::lint::MISSING_DOC_CODE_EXAMPLES,
         cx.tcx.local_def_id_to_hir_id(def_id),
     );

@@ -89,7 +89,7 @@ pub(crate) fn lint_nonexhaustive_missing_variants<'p, 'tcx>(
         // arm. This no longer makes sense so we warn users, to avoid silently breaking their
         // usage of the lint.
         for arm in arms {
-            let LevelAndSource { level, src } =
+            let LevelAndSource { level, src, .. } =
                 rcx.tcx.lint_level_at_node(NON_EXHAUSTIVE_OMITTED_PATTERNS, arm.arm_data);
             if !matches!(level, rustc_session::lint::Level::Allow) {
                 let decorator = NonExhaustiveOmittedPatternLintOnArm {
