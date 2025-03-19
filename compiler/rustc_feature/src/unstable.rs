@@ -213,13 +213,9 @@ declare_features! (
     (internal, custom_mir, "1.65.0", None),
     /// Outputs useful `assert!` messages
     (unstable, generic_assert, "1.63.0", None),
-<<<<<<< HEAD
-    /// Allows using the #[rustc_intrinsic] attribute.
-=======
     /// Allow declaring an impl as unstable.
     (internal, impl_stability, "CURRENT_RUSTC_VERSION", None),
-    /// Allows using the `rust-intrinsic`'s "ABI".
->>>>>>> bde3d4141a1 (Add a no-op feature gate)
+    /// Allows using the #[rustc_intrinsic] attribute.
     (internal, intrinsics, "1.0.0", None),
     /// Allows using `#[lang = ".."]` attribute for linking items to special compiler logic.
     (internal, lang_items, "1.0.0", None),

@@ -639,6 +639,8 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
                         }
                     }
 
+                    ty::PredicateKind::Clause(ty::ClauseKind::UnstableImpl) => todo!(), // TODO: is this for error reporting?
+
                     // Errors for `ConstEvaluatable` predicates show up as
                     // `SelectionError::ConstEvalFailure`,
                     // not `Unimplemented`.

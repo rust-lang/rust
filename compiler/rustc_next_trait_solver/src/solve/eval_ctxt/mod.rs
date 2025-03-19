@@ -596,6 +596,7 @@ where
                 ty::PredicateKind::Clause(ty::ClauseKind::ConstArgHasType(ct, ty)) => {
                     self.compute_const_arg_has_type_goal(Goal { param_env, predicate: (ct, ty) })
                 }
+                ty::PredicateKind::Clause(ty::ClauseKind::UnstableImpl) => todo!(),
                 ty::PredicateKind::Subtype(predicate) => {
                     self.compute_subtype_goal(Goal { param_env, predicate })
                 }
@@ -624,7 +625,8 @@ where
                     }),
                 ty::PredicateKind::Ambiguous => {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
-                }
+                },
+
             }
         } else {
             self.enter_forall(kind, |ecx, kind| {

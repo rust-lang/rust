@@ -238,6 +238,7 @@ fn predicate_references_self<'tcx>(
         // FIXME(generic_const_exprs): this can mention `Self`
         | ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::HostEffect(..)
+        | ty::ClauseKind::UnstableImpl
          => None,
     }
 }
@@ -278,6 +279,7 @@ fn generics_require_sized_self(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
         | ty::ClauseKind::ConstArgHasType(_, _)
         | ty::ClauseKind::WellFormed(_)
         | ty::ClauseKind::ConstEvaluatable(_)
+        | ty::ClauseKind::UnstableImpl
         | ty::ClauseKind::HostEffect(..) => false,
     })
 }
