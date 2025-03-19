@@ -81,13 +81,17 @@ impl GitCtx {
     }
 
     pub fn modify(&self, path: &str) {
+        self.write(path, "line");
+    }
+
+    pub fn write(&self, path: &str, data: &str) {
         use std::io::Write;
 
         let path = self.dir.path().join(path);
         std::fs::create_dir_all(&path.parent().unwrap()).unwrap();
 
         let mut file = OpenOptions::new().create(true).append(true).open(path).unwrap();
-        writeln!(file, "line").unwrap();
+        writeln!(file, "{data}").unwrap();
     }
 
     pub fn commit(&self) -> String {

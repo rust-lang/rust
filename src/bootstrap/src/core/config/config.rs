@@ -3010,6 +3010,7 @@ impl Config {
         llvm_assertions: bool,
     ) -> Option<String> {
         if !is_download_ci_available(&self.build.triple, llvm_assertions) {
+            eprintln!("DOWNLOAD NOT AVAILABLE");
             return None;
         }
 
@@ -3051,17 +3052,21 @@ impl Config {
             allowed_paths.push(":!library");
         }
 
+        eprintln!("{:?}", self.rust_info);
+        eprintln!("{:?}", self.src);
+        eprintln!("{:?}", self.git_config());
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
             let freshness = self.check_path_modifications(&allowed_paths);
-            self.verbose(|| {
-                eprintln!("rustc freshness: {freshness:?}");
-            });
+            // self.verbose(|| {
+            eprintln!("rustc freshness: {freshness:?}");
+            // });
             match freshness {
                 PathFreshness::LastModifiedUpstream { upstream } => upstream,
                 PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
+                        eprintln!("LOCAL MODIFICATIONS IF UNCHANGED");
                         return None;
                     }
 
@@ -3070,6 +3075,7 @@ impl Config {
                         eprintln!(
                             "`rustc.download-ci` functionality will be skipped as artifacts are not available."
                         );
+                        eprintln!("WE ARE ON CI");
                         return None;
                     }
 
@@ -3091,6 +3097,7 @@ impl Config {
                 "WARN: `rust.debug-assertions = true` will prevent downloading CI rustc as alt CI \
                 rustc is not currently built with debug assertions."
             );
+            eprintln!("REQUESTING DEBUG ASSERTIONS");
             return None;
         }
 
