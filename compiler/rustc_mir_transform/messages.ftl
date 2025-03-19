@@ -84,3 +84,4 @@ mir_transform_undefined_transmute = pointers cannot be transmuted to integers du
     .help = for more information, see https://doc.rust-lang.org/std/mem/fn.transmute.html
 
 mir_transform_unknown_pass_name = MIR pass `{$name}` is unknown and will be ignored
+mir_transform_unnecessary_transmute = unnecessary transmute

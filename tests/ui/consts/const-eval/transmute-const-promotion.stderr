@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/transmute-const-promotion.rs:4:37
+  --> $DIR/transmute-const-promotion.rs:5:37
    |
 LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
    |            ------------             ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use

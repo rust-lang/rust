@@ -1,5 +1,5 @@
 // ignore-tidy-linelength
-#![allow(unused)]
+#![allow(unused, unnecessary_transmutate)]
 #![feature(ptr_metadata)]
 
 use std::{ptr, mem};
