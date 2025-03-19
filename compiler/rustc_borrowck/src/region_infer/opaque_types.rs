@@ -15,6 +15,7 @@ use rustc_trait_selection::traits::ObligationCtxt;
 use tracing::{debug, instrument};
 
 use super::RegionInferenceContext;
+use crate::opaque_types::ConcreteOpaqueTypes;
 use crate::session_diagnostics::{LifetimeMismatchOpaqueParam, NonGenericOpaqueTypeParam};
 use crate::universal_regions::RegionClassification;
 
@@ -67,8 +68,8 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         opaque_ty_decls: FxIndexMap<OpaqueTypeKey<'tcx>, OpaqueHiddenType<'tcx>>,
-    ) -> FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> {
-        let mut result: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>> = FxIndexMap::default();
+        concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
+    ) {
         let mut decls_modulo_regions: FxIndexMap<OpaqueTypeKey<'tcx>, (OpaqueTypeKey<'tcx>, Span)> =
             FxIndexMap::default();
 
@@ -143,33 +144,12 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                     continue;
                 }
             }
-            // Sometimes two opaque types are the same only after we remap the generic parameters
-            // back to the opaque type definition. E.g. we may have `OpaqueType<X, Y>` mapped to
-            // `(X, Y)` and `OpaqueType<Y, X>` mapped to `(Y, X)`, and those are the same, but we
-            // only know that once we convert the generic parameters to those of the opaque type.
-            if let Some(prev) = result.get_mut(&opaque_type_key.def_id) {
-                if prev.ty != ty {
-                    let guar = ty.error_reported().err().unwrap_or_else(|| {
-                        let (Ok(e) | Err(e)) = prev
-                            .build_mismatch_error(
-                                &OpaqueHiddenType { ty, span: concrete_type.span },
-                                infcx.tcx,
-                            )
-                            .map(|d| d.emit());
-                        e
-                    });
-                    prev.ty = Ty::new_error(infcx.tcx, guar);
-                }
-                // Pick a better span if there is one.
-                // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
-                prev.span = prev.span.substitute_dummy(concrete_type.span);
-            } else {
-                result.insert(
-                    opaque_type_key.def_id,
-                    OpaqueHiddenType { ty, span: concrete_type.span },
-                );
-            }
 
+            concrete_opaque_types.insert(
+                infcx.tcx,
+                opaque_type_key.def_id,
+                OpaqueHiddenType { ty, span: concrete_type.span },
+            );
             // Check that all opaque types have the same region parameters if they have the same
             // non-region parameters. This is necessary because within the new solver we perform
             // various query operations modulo regions, and thus could unsoundly select some impls
@@ -193,7 +173,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
                 });
             }
         }
-        result
     }
 
     /// Map the regions in the type to named regions. This is similar to what
