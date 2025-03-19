@@ -116,9 +116,13 @@ pub struct SessionGlobals {
 }
 
 impl SessionGlobals {
-    pub fn new(edition: Edition, sm_inputs: Option<SourceMapInputs>) -> SessionGlobals {
+    pub fn new(
+        edition: Edition,
+        extra_symbols: &[&'static str],
+        sm_inputs: Option<SourceMapInputs>,
+    ) -> SessionGlobals {
         SessionGlobals {
-            symbol_interner: symbol::Interner::fresh(),
+            symbol_interner: symbol::Interner::with_extra_symbols(extra_symbols),
             span_interner: Lock::new(span_encoding::SpanInterner::default()),
             metavar_spans: Default::default(),
             hygiene_data: Lock::new(hygiene::HygieneData::new(edition)),
@@ -129,6 +133,7 @@ impl SessionGlobals {
 
 pub fn create_session_globals_then<R>(
     edition: Edition,
+    extra_symbols: &[&'static str],
     sm_inputs: Option<SourceMapInputs>,
     f: impl FnOnce() -> R,
 ) -> R {
@@ -137,7 +142,7 @@ pub fn create_session_globals_then<R>(
         "SESSION_GLOBALS should never be overwritten! \
          Use another thread if you need another SessionGlobals"
     );
-    let session_globals = SessionGlobals::new(edition, sm_inputs);
+    let session_globals = SessionGlobals::new(edition, extra_symbols, sm_inputs);
     SESSION_GLOBALS.set(&session_globals, f)
 }
 
@@ -156,7 +161,7 @@ where
     F: FnOnce(&SessionGlobals) -> R,
 {
     if !SESSION_GLOBALS.is_set() {
-        let session_globals = SessionGlobals::new(edition, None);
+        let session_globals = SessionGlobals::new(edition, &[], None);
         SESSION_GLOBALS.set(&session_globals, || SESSION_GLOBALS.with(f))
     } else {
         SESSION_GLOBALS.with(f)
@@ -172,7 +177,7 @@ where
 
 /// Default edition, no source map.
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
-    create_session_globals_then(edition::DEFAULT_EDITION, None, f)
+    create_session_globals_then(edition::DEFAULT_EDITION, &[], None, f)
 }
 
 // If this ever becomes non thread-local, `decode_syntax_context`
