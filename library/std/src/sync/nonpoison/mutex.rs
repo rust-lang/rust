@@ -17,6 +17,7 @@ use crate::sys::sync as sys;
 /// # Example
 ///
 /// ```
+/// #![feature(nonpoison_mutex)]
 /// use std::sync::{Arc, nonpoison::Mutex};
 /// use std::thread;
 /// use std::sync::mpsc::channel;
@@ -135,6 +136,7 @@ impl<T> Mutex<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(nonpoison_mutex)]
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
@@ -166,6 +168,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(nonpoison_mutex)]
     /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
@@ -201,6 +204,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(nonpoison_mutex)]
     /// use std::sync::{Arc, nonpoison::Mutex};
     /// use std::thread;
     ///
@@ -227,6 +231,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(nonpoison_mutex)]
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mutex = Mutex::new(0);
@@ -249,6 +254,7 @@ impl<T: ?Sized> Mutex<T> {
     /// # Examples
     ///
     /// ```
+    /// #![feature(nonpoison_mutex)]
     /// use std::sync::nonpoison::Mutex;
     ///
     /// let mut mutex = Mutex::new(0);
