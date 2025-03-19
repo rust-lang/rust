@@ -92,10 +92,8 @@ impl<'tcx> Visitor<'tcx> for UnnecessaryTransmuteChecker<'_, 'tcx> {
                 self.tcx.sess.source_map().span_to_snippet(arg).expect("ok"),
                 span,
             )
-            && let Some(call_id) = self.body.source.def_id().as_local()
+            && let Some(hir_id) = terminator.source_info.scope.lint_root(&self.body.source_scopes)
         {
-            let hir_id = self.tcx.local_def_id_to_hir_id(call_id);
-
             self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTATE, hir_id, span, lint);
         }
     }

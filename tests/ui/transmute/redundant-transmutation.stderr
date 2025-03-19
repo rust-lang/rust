@@ -9,7 +9,7 @@ note: the lint level is defined here
   --> $DIR/redundant-transmutation.rs:2:9
    |
 LL | #![deny(unnecessary_transmutate)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |         ^^^^^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary transmute
   --> $DIR/redundant-transmutation.rs:13:22
