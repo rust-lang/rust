@@ -550,7 +550,8 @@ pub trait EvalContextExt<'tcx>: crate::MiriInterpCxExt<'tcx> {
     }
 }
 
-/// Applies a random 16ULP floating point error to `val` and returns the new value.
+/// Applies a random ULP floating point error to `val` and returns the new value.
+/// So if you want an X ULP error, `ulp_exponent` should be log2(X).
 /// Will fail if `val` is not a floating point number.
 fn apply_random_float_error_to_imm<'tcx>(
     ecx: &mut MiriInterpCx<'tcx>,
@@ -573,7 +574,6 @@ fn apply_random_float_error_to_imm<'tcx>(
     interp_ok(ImmTy::from_scalar_int(res, val.layout))
 }
 
-// TODO(lorrens): This can be moved to `helpers` when we implement the other intrinsics.
 /// For the intrinsics:
 /// - sinf32, sinf64
 /// - cosf32, cosf64
@@ -581,16 +581,12 @@ fn apply_random_float_error_to_imm<'tcx>(
 /// - logf32, logf64, log2f32, log2f64, log10f32, log10f64
 /// - powf32, powf64
 ///
-/// Returns Some(`output`) if the operation results in a defined fixed `output` specified in the C standard when given `args`
+/// Returns Some(`output`) if the `intrinsic` results in a defined fixed `output` specified in the C standard when given `args`
 /// as arguments, else None.
 fn fixed_float_value<S: Semantics>(
     intrinsic_name: &str,
     args: &[IeeeFloat<S>],
 ) -> Option<IeeeFloat<S>> {
-    // TODO: not sure about this pattern matching stuff. It's definitly cleaner than if-else chains
-    // Error code 0158 explains this: https://doc.rust-lang.org/stable/error_codes/E0158.html
-    // The only reason I did this is to use the same function for powf as for sin/cos/exp/log
-    // TODO: I can't fit powi logic in this because of the exponent being a i32 -> seperate fn "fixed_powi_float_value" for now
     let one = IeeeFloat::<S>::one();
     match (intrinsic_name, args) {
         // sin(+- 0) = +- 0.
@@ -620,21 +616,22 @@ fn fixed_float_value<S: Semantics>(
         // x^(±0) = 1 for any x, even a NaN
         ("powf32" | "powf64", [_, exp]) if exp.is_zero() => Some(one),
 
-        // C standard doesn't specify or invalid combination
+        // C standard doesn't specify any fixed outputs for other combinations of `intrinsic_name` and `args`,
+        // or an invalid combination was given.
         _ => None,
     }
 }
 
-/// Returns Some(`output`) if powi results in a fixed value specified in the C standard when doing `base^exp` else None.
+/// Returns Some(`output`) if `powi` results in a fixed value specified in the C standard when doing `base^exp` else None.
 fn fixed_powi_float_value<S: Semantics>(base: IeeeFloat<S>, exp: i32) -> Option<IeeeFloat<S>> {
     match (base.category(), exp) {
         // ±0^x = ±0 with x an odd integer.
-        (Category::Zero, x) if x % 2 != 0 => Some(base), // preserve sign of zero.
+        (Category::Zero, x) if x % 2 != 0 => Some(base), // preserve sign of zero
 
         // ±0^x = +0 with x an even integer.
         (Category::Zero, x) if x % 2 == 0 => Some(IeeeFloat::<S>::ZERO),
 
-        // x^y = 1, if y is not a Signaling NaN
+        // x^0 = 1, if x is not a Signaling NaN
         (_, 0) if !base.is_signaling() => Some(IeeeFloat::<S>::one()),
 
         _ => None,
@@ -653,40 +650,3 @@ fn clamp_float_value<S: Semantics>(intrinsic_name: &str, val: IeeeFloat<S>) -> I
         _ => val,
     }
 }
-
-// TODO: clean up when I'm sure this is not needed, because powf is now included in fixed_float_value
-// fn powf_impl<'tcx, S: Semantics, Op>(
-//     ecx: &mut MiriInterpCx<'tcx>,
-//     base: IeeeFloat<S>,
-//     exp: IeeeFloat<S>,
-//     op: Op,
-// ) -> IeeeFloat<S>
-// where
-//     IeeeFloat<S>: ToHost,
-//     Op: Fn(IeeeFloat<S>, IeeeFloat<S>) -> IeeeFloat<S>,
-// {
-//     let one = IeeeFloat::<S>::one();
-//     let fixed_res = match (base.category(), exp.category()) {
-//         // 1^y = 1 for any y, even a NaN.
-//         (Category::Normal, _) if base == one => Some(one),
-
-//         // (-1)^(±INF) = 1
-//         (Category::Normal, Category::Infinity) if base == -one => Some(one),
-
-//         // x^(±0) = 1 for any x, even a NaN
-//         (_, Category::Zero) => Some(one),
-
-//         // TODO: pow has a lot of "edge" cases which mostly result in ±0 or ±INF
-//         // do we have to catch them all?
-//         _ => None,
-//     };
-
-//     fixed_res.unwrap_or_else(|| {
-//         let res = op(base, exp);
-//         // Apply a relative error of 4ULP to introduce some non-determinism
-//         // simulating imprecise implementations and optimizations.
-//         apply_random_float_error_ulp(
-//             ecx, res, 2, // log2(4)
-//         )
-//     })
-// }
