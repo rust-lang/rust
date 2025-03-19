@@ -1366,6 +1366,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &Self,
         alloc_extra: &AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1390,6 +1391,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prov_extra): (AllocId, Self::ProvenanceExtra),
         range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -1414,6 +1416,7 @@ impl<'tcx> Machine<'tcx> for MiriMachine<'tcx> {
         _tcx: TyCtxtAt<'tcx>,
         machine: &mut Self,
         alloc_extra: &mut AllocExtra<'tcx>,
+        _ptr: Pointer,
         (alloc_id, prove_extra): (AllocId, Self::ProvenanceExtra),
         size: Size,
         align: Align,
