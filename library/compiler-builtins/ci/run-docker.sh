@@ -38,7 +38,7 @@ run() {
     fi
 
     if [ -d compiler-rt ]; then
-      export RUST_COMPILER_RT_ROOT=./compiler-rt
+      export RUST_COMPILER_RT_ROOT="/checkout/compiler-rt"
     fi
 
     if [ "${GITHUB_ACTIONS:-}" = "true" ]; then

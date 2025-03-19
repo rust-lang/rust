@@ -4,7 +4,6 @@ on: [push, pull_request]
 env:
   RUSTDOCFLAGS: -Dwarnings
   RUSTFLAGS: -Dwarnings
-  RUST_COMPILER_RT_ROOT: ./compiler-rt
 
 jobs:
   test:
@@ -132,6 +131,8 @@ jobs:
     - name: Download compiler-rt reference sources
       if: steps.cache-compiler-rt.outputs.cache-hit != 'true'
       run: ./ci/download-compiler-rt.sh
+      shell: bash
+    - run: echo "RUST_COMPILER_RT_ROOT=$(realpath ./compiler-rt)" >> "$GITHUB_ENV"
       shell: bash
 
     # Non-linux tests just use our raw script

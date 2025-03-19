@@ -1,6 +1,6 @@
-use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
-
 mod configure;
+
+use std::{collections::BTreeMap, env, path::PathBuf, sync::atomic::Ordering};
 
 use configure::{configure_aliases, configure_f16_f128, Target};
 

@@ -44,8 +44,7 @@ pub mod int;
 pub mod math;
 pub mod mem;
 
-// `libm` expects its `support` module to be available in the crate root. This config can be
-// cleaned up once `libm` is made always available.
+// `libm` expects its `support` module to be available in the crate root.
 use math::libm::support;
 
 #[cfg(target_arch = "arm")]

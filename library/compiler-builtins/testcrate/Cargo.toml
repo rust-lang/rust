@@ -18,7 +18,7 @@ rand_xoshiro = "0.6"
 rustc_apfloat = "0.2.1"
 
 [dependencies.compiler_builtins]
-path = ".."
+path = "../compiler-builtins"
 default-features = false
 features = ["public-test-deps"]
 

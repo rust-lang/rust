@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 mod builtins_configure {
-    include!("../configure.rs");
+    include!("../compiler-builtins/configure.rs");
 }
 
 /// Features to enable

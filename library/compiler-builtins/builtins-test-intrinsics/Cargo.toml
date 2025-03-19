@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dependencies]
-compiler_builtins = { path = "../", features = ["compiler-builtins"]}
+compiler_builtins = { path = "../compiler-builtins", features = ["compiler-builtins"]}
 panic-handler = { path = '../crates/panic-handler' }
 
 [features]

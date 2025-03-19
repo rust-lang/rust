@@ -1,3 +1,3 @@
-[submodule "libm"]
-	path = libm
+[submodule "compiler-builtins/libm"]
+	path = compiler-builtins/libm
 	url = https://github.com/rust-lang/libm.git
