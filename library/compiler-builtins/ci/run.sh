@@ -63,23 +63,33 @@ symcheck+=(-- build-and-check)
 "${symcheck[@]}" -p compiler_builtins --target "$target" --features no-f16-f128
 "${symcheck[@]}" -p compiler_builtins --target "$target" --features no-f16-f128 --release
 
-build_intrinsics_test() {
-    # symcheck also checks the results of builtins-test-intrinsics
-    "${symcheck[@]}" \
+run_intrinsics_test() {
+    args=(
         --target "$target" --verbose \
-        --manifest-path builtins-test-intrinsics/Cargo.toml "$@"
+        --manifest-path builtins-test-intrinsics/Cargo.toml
+    )
+    args+=( "$@" )
+
+    # symcheck also checks the results of builtins-test-intrinsics
+    "${symcheck[@]}" "${args[@]}"
+
+    # FIXME: we get access violations on Windows, our entrypoint may need to
+    # be tweaked.
+    if [ "${BUILD_ONLY:-}" != "1" ] && ! [[ "$target" = *"windows"* ]]; then
+        cargo run "${args[@]}"
+    fi
 }
 
 # Verify that we haven't dropped any intrinsics/symbols
-build_intrinsics_test
-build_intrinsics_test --release
-build_intrinsics_test --features c
-build_intrinsics_test --features c --release
+run_intrinsics_test
+run_intrinsics_test --release
+run_intrinsics_test --features c
+run_intrinsics_test --features c --release
 
 # Verify that there are no undefined symbols to `panic` within our
 # implementations
-CARGO_PROFILE_DEV_LTO=true build_intrinsics_test
-CARGO_PROFILE_RELEASE_LTO=true build_intrinsics_test --release
+CARGO_PROFILE_DEV_LTO=true run_intrinsics_test
+CARGO_PROFILE_RELEASE_LTO=true run_intrinsics_test --release
 
 # Test libm
 
