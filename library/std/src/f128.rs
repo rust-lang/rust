@@ -468,6 +468,8 @@ impl f128 {
 
     /// Returns the natural logarithm of the number.
     ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -489,6 +491,16 @@ impl f128 {
     /// assert!(abs_difference <= f128::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// assert_eq!(0_f128.ln(), f128::NEG_INFINITY);
+    /// assert!((-42_f128).ln().is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
@@ -498,6 +510,8 @@ impl f128 {
     }
 
     /// Returns the logarithm of the number with respect to an arbitrary base.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// The result might not be correctly rounded owing to implementation details;
     /// `self.log2()` can produce more accurate results for base 2, and
@@ -522,6 +536,16 @@ impl f128 {
     /// assert!(abs_difference <= f128::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// assert_eq!(0_f128.log(10.0), f128::NEG_INFINITY);
+    /// assert!((-42_f128).log(10.0).is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
@@ -531,6 +555,8 @@ impl f128 {
     }
 
     /// Returns the base 2 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -551,6 +577,16 @@ impl f128 {
     /// assert!(abs_difference <= f128::EPSILON);
     /// # }
     /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// assert_eq!(0_f128.log2(), f128::NEG_INFINITY);
+    /// assert!((-42_f128).log2().is_nan());
+    /// # }
+    /// ```
     #[inline]
     #[rustc_allow_incoherent_impl]
     #[unstable(feature = "f128", issue = "116909")]
@@ -560,6 +596,8 @@ impl f128 {
     }
 
     /// Returns the base 10 logarithm of the number.
+    ///
+    /// This returns NaN when the number is negative, and negative infinity when number is zero.
     ///
     /// # Unspecified precision
     ///
@@ -578,6 +616,16 @@ impl f128 {
     /// let abs_difference = (ten.log10() - 1.0).abs();
     ///
     /// assert!(abs_difference <= f128::EPSILON);
+    /// # }
+    /// ```
+    ///
+    /// Non-positive values:
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// assert_eq!(0_f128.log10(), f128::NEG_INFINITY);
+    /// assert!((-42_f128).log10().is_nan());
     /// # }
     /// ```
     #[inline]
@@ -966,6 +1014,8 @@ impl f128 {
     /// Returns `ln(1+n)` (natural logarithm) more accurately than if
     /// the operations were performed separately.
     ///
+    /// This returns NaN when `n < -1.0`, and negative infinity when `n == -1.0`.
+    ///
     /// # Unspecified precision
     ///
     /// The precision of this function is non-deterministic. This means it varies by platform,
@@ -987,6 +1037,16 @@ impl f128 {
     /// let abs_difference = (x.ln_1p() - approx).abs();
     ///
     /// assert!(abs_difference < 1e-10);
+    /// # }
+    /// ```
+    ///
+    /// Out-of-range values:
+    /// ```
+    /// #![feature(f128)]
+    /// # #[cfg(reliable_f128_math)] {
+    ///
+    /// assert_eq!((-1.0_f128).ln_1p(), f128::NEG_INFINITY);
+    /// assert!((-2.0_f128).ln_1p().is_nan());
     /// # }
     /// ```
     #[inline]
