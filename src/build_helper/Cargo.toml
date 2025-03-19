@@ -8,6 +8,3 @@ edition = "2021"
 [dependencies]
 serde = "1"
 serde_derive = "1"
-
-[dev-dependencies]
-tempfile = "3.19"

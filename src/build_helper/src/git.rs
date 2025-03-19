@@ -1,11 +1,9 @@
-#[cfg(test)]
-mod tests;
-
 use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::ci::CiEnv;
 
+#[derive(Debug)]
 pub struct GitConfig<'a> {
     pub git_repository: &'a str,
     pub nightly_branch: &'a str,
