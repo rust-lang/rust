@@ -1704,11 +1704,7 @@ pub trait Iterator {
     ///         self.state = self.state + 1;
     ///
     ///         // if it's even, Some(i32), else None
-    ///         if val % 2 == 0 {
-    ///             Some(val)
-    ///         } else {
-    ///             None
-    ///         }
+    ///         (val % 2 == 0).then_some(val)
     ///     }
     /// }
     ///
