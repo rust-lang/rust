@@ -4,7 +4,7 @@
 
 pub mod domain;
 mod f8_impl;
-pub mod gen;
+pub mod generate;
 #[cfg(feature = "build-mpfr")]
 pub mod mpfloat;
 mod num;

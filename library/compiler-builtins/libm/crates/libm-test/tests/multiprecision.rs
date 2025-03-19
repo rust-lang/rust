@@ -2,7 +2,7 @@
 
 #![cfg(feature = "build-mpfr")]
 
-use libm_test::gen::{case_list, edge_cases, random, spaced};
+use libm_test::generate::{case_list, edge_cases, random, spaced};
 use libm_test::mpfloat::MpOp;
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TupleCall};
 

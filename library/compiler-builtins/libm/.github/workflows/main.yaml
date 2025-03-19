@@ -212,14 +212,17 @@ jobs:
       RUSTFLAGS: # No need to check warnings on old MSRV, unset `-Dwarnings`
     steps:
     - uses: actions/checkout@master
-    - run: |
+    - name: Install Rust
+      run: |
         msrv="$(perl -ne 'print if s/rust-version\s*=\s*"(.*)"/\1/g' libm/Cargo.toml)"
         echo "MSRV: $msrv"
-        echo "MSRV=$msrv" >> "$GITHUB_ENV"
-    - name: Install Rust
-      run: rustup update "$MSRV" --no-self-update && rustup default "$MSRV"
+        rustup update "$msrv" --no-self-update && rustup default "$msrv"
     - uses: Swatinem/rust-cache@v2
-    - run: cargo build -p libm
+    - run: |
+        # FIXME(msrv): Remove the workspace Cargo.toml so 1.63 cargo doesn't see
+        # `edition = "2024"` and get spooked.
+        rm Cargo.toml
+        cargo build --manifest-path libm/Cargo.toml
 
   rustfmt:
     name: Rustfmt

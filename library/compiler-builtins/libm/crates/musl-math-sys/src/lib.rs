@@ -10,7 +10,7 @@ macro_rules! functions {
         $( #[$meta:meta] )*
         $pfx_name:ident: $name:ident( $($arg:ident: $aty:ty),+ ) -> $rty:ty;
     )* ) => {
-        extern "C" {
+        unsafe extern "C" {
             $( fn $pfx_name( $($arg: $aty),+ ) -> $rty; )*
         }
 

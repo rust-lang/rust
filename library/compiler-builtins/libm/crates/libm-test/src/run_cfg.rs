@@ -4,7 +4,7 @@ use std::ops::RangeInclusive;
 use std::sync::LazyLock;
 use std::{env, str};
 
-use crate::gen::random::{SEED, SEED_ENV};
+use crate::generate::random::{SEED, SEED_ENV};
 use crate::{BaseName, FloatTy, Identifier, test_log};
 
 /// The environment variable indicating which extensive tests should be run.
@@ -241,7 +241,7 @@ pub fn iteration_count(ctx: &CheckCtx, argnum: usize) -> u64 {
     // Some tests are significantly slower than others and need to be further reduced.
     if let Some((_id, _gen, scale)) = EXTEMELY_SLOW_TESTS
         .iter()
-        .find(|(id, gen, _scale)| *id == ctx.fn_ident && *gen == ctx.gen_kind)
+        .find(|(id, generator, _scale)| *id == ctx.fn_ident && *generator == ctx.gen_kind)
     {
         // However, do not override if the extensive iteration count has been manually set.
         if !(ctx.gen_kind == GeneratorKind::Extensive && EXTENSIVE_ITER_OVERRIDE.is_some()) {

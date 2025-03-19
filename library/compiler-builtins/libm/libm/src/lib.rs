@@ -17,6 +17,7 @@
 #![allow(clippy::needless_return)]
 #![allow(clippy::unreadable_literal)]
 #![allow(clippy::zero_divided_by_zero)]
+#![forbid(unsafe_op_in_unsafe_fn)]
 
 mod libm_helper;
 mod math;

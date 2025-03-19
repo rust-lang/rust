@@ -1,6 +1,6 @@
 //! Test cases that have both an input and an output, so do not require a basis.
 
-use libm_test::gen::case_list;
+use libm_test::generate::case_list;
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TupleCall};
 
 const BASIS: CheckBasis = CheckBasis::None;

@@ -14,7 +14,7 @@ macro_rules! no_mangle {
 
     // Handle simple functions with single return types
     (@inner $name:ident( $($arg:ident: $aty:ty),+ ) -> $ret:ty) => {
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         extern "C" fn $name($($arg: $aty),+) -> $ret {
             libm::$name($($arg),+)
         }
@@ -26,7 +26,7 @@ macro_rules! no_mangle {
     (
         @inner $name:ident( $($arg:ident: $aty:ty),+ | $($rarg:ident: $rty:ty),+) -> $ret:ty
     ) => {
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         extern "C" fn $name($($arg: $aty,)+ $($rarg: $rty),+) -> $ret {
             let ret;
             (ret, $(*$rarg),+) = libm::$name($($arg),+);
@@ -166,12 +166,12 @@ no_mangle! {
 
 /* sincos has no direct return type, not worth handling in the macro */
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn sincos(x: f64, s: &mut f64, c: &mut f64) {
     (*s, *c) = libm::sincos(x);
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 extern "C" fn sincosf(x: f32, s: &mut f32, c: &mut f32) {
     (*s, *c) = libm::sincosf(x);
 }

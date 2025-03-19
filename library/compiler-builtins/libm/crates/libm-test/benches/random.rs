@@ -2,8 +2,8 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use criterion::{Criterion, criterion_main};
-use libm_test::gen::random;
-use libm_test::gen::random::RandomInput;
+use libm_test::generate::random;
+use libm_test::generate::random::RandomInput;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, TupleCall};
 
 /// Benchmark with this many items to get a variety

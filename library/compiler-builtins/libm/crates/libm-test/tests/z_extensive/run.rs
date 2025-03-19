@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use indicatif::{ProgressBar, ProgressStyle};
-use libm_test::gen::spaced;
+use libm_test::generate::spaced;
 use libm_test::mpfloat::MpOp;
 use libm_test::{
     CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TestResult, TupleCall,

@@ -9,7 +9,7 @@
 // There are some targets we can't build musl for
 #![cfg(feature = "build-musl")]
 
-use libm_test::gen::{case_list, edge_cases, random, spaced};
+use libm_test::generate::{case_list, edge_cases, random, spaced};
 use libm_test::{CheckBasis, CheckCtx, CheckOutput, GeneratorKind, MathOp, TupleCall};
 
 const BASIS: CheckBasis = CheckBasis::Musl;

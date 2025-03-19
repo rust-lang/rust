@@ -4,7 +4,7 @@ use std::hint::black_box;
 
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 use libm::support::{HInt, u256};
-use libm_test::gen::spaced;
+use libm_test::generate::spaced;
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, OpRustArgs, TupleCall, op};
 
 const BENCH_ITER_ITEMS: u64 = 500;

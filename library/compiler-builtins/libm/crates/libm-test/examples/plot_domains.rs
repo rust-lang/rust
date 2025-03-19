@@ -12,8 +12,8 @@ use std::path::Path;
 use std::process::Command;
 use std::{env, fs};
 
-use libm_test::gen::spaced::SpacedInput;
-use libm_test::gen::{edge_cases, spaced};
+use libm_test::generate::spaced::SpacedInput;
+use libm_test::generate::{edge_cases, spaced};
 use libm_test::{CheckBasis, CheckCtx, GeneratorKind, MathOp, op};
 
 const JL_PLOT: &str = "examples/plot_file.jl";
@@ -73,7 +73,7 @@ fn plot_one_generator(
     ctx: &CheckCtx,
     gen_name: &str,
     config: &mut String,
-    gen: impl Iterator<Item = (f32,)>,
+    generator: impl Iterator<Item = (f32,)>,
 ) {
     let fn_name = ctx.base_name_str;
     let text_file = out_dir.join(format!("input-{fn_name}-{gen_name}.txt"));
@@ -82,7 +82,7 @@ fn plot_one_generator(
     let mut w = BufWriter::new(f);
     let mut count = 0u64;
 
-    for input in gen {
+    for input in generator {
         writeln!(w, "{:e}", input.0).unwrap();
         count += 1;
     }

@@ -3,7 +3,7 @@
 use libm::support::{CastInto, Float, Int, MinInt};
 
 use crate::domain::get_domain;
-use crate::gen::KnownSize;
+use crate::generate::KnownSize;
 use crate::op::OpITy;
 use crate::run_cfg::{check_near_count, check_point_count};
 use crate::{BaseName, CheckCtx, FloatExt, FloatTy, MathOp, test_log};
