@@ -81,3 +81,16 @@ mod pin_coerce_unsized {
         arg
     }
 }
+
+#[test]
+fn spans_2021() {
+    // Check that we accept a Rust 2024 $expr.
+    std::pin::pin!(const { 1 });
+
+    // Check that temporary lifetimes work as in Rust 2021.
+    match std::pin::pin!(foo(&mut 0)) {
+        _f => {}
+    }
+}
+
+async fn foo(_: &mut usize) {}

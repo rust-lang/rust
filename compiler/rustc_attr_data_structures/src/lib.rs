@@ -182,21 +182,18 @@ macro_rules! find_attr {
     }};
 
     ($attributes_list: expr, $pattern: pat $(if $guard: expr)? => $e: expr) => {{
-        fn check_attribute_iterator<'a>(_: &'_ impl IntoIterator<Item = &'a rustc_hir::Attribute>) {}
-        check_attribute_iterator(&$attributes_list);
-
-        let find_attribute = |iter| {
+        'done: {
             for i in $attributes_list {
+                let i: &rustc_hir::Attribute = i;
                 match i {
                     rustc_hir::Attribute::Parsed($pattern) $(if $guard)? => {
-                        return Some($e);
+                        break 'done Some($e);
                     }
                     _ => {}
                 }
             }
 
             None
-        };
-        find_attribute($attributes_list)
+        }
     }};
 }
