@@ -3,7 +3,7 @@ use crate::question_mark_used::QUESTION_MARK_USED;
 use clippy_config::Conf;
 use clippy_config::types::MatchLintBehaviour;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::msrvs::Msrv;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use clippy_utils::{
@@ -524,7 +524,8 @@ fn is_inferred_ret_closure(expr: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for QuestionMark {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) {
+        if !is_lint_allowed(cx, QUESTION_MARK_USED, stmt.hir_id) || !self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
+        {
             return;
         }
 
@@ -540,7 +541,10 @@ impl<'tcx> LateLintPass<'tcx> for QuestionMark {
             return;
         }
 
-        if !self.inside_try_block() && !is_in_const_context(cx) && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
+        if !self.inside_try_block()
+            && !is_in_const_context(cx)
+            && is_lint_allowed(cx, QUESTION_MARK_USED, expr.hir_id)
+            && self.msrv.meets(cx, msrvs::QUESTION_MARK_OPERATOR)
         {
             check_is_none_or_err_and_early_return(cx, expr);
             check_if_let_some_or_err_and_early_return(cx, expr);

@@ -668,6 +668,7 @@ define_Conf! {
         option_as_ref_deref,
         option_map_unwrap_or,
         ptr_as_ptr,
+        question_mark,
         redundant_field_names,
         redundant_static_lifetimes,
         repeat_vec_with_capacity,

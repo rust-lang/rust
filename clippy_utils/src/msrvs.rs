@@ -74,6 +74,7 @@ msrv_aliases! {
     1,17,0 { FIELD_INIT_SHORTHAND, STATIC_IN_CONST, EXPECT_ERR }
     1,16,0 { STR_REPEAT }
     1,15,0 { MAYBE_BOUND_IN_WHERE }
+    1,13,0 { QUESTION_MARK_OPERATOR }
 }
 
 /// `#[clippy::msrv]` attributes are rarely used outside of Clippy's test suite, as a basic
