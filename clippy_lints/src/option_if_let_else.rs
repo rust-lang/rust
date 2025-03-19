@@ -1,16 +1,23 @@
+use std::ops::ControlFlow;
+
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::sugg::Sugg;
+use clippy_utils::ty::is_copy;
 use clippy_utils::{
     CaptureKind, can_move_expr_to_closure, eager_or_lazy, higher, is_else_clause, is_in_const_context,
     is_res_lang_ctor, peel_blocks, peel_hir_expr_while,
 };
+use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
 use rustc_hir::LangItem::{OptionNone, OptionSome, ResultErr, ResultOk};
 use rustc_hir::def::Res;
+use rustc_hir::intravisit::{Visitor, walk_expr, walk_path};
 use rustc_hir::{
-    Arm, BindingMode, Expr, ExprKind, MatchSource, Mutability, Pat, PatExpr, PatExprKind, PatKind, Path, QPath, UnOp,
+    Arm, BindingMode, Expr, ExprKind, HirId, MatchSource, Mutability, Node, Pat, PatExpr, PatExprKind, PatKind, Path,
+    QPath, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::hir::nested_filter;
 use rustc_session::declare_lint_pass;
 use rustc_span::SyntaxContext;
 
@@ -110,11 +117,12 @@ fn format_option_in_sugg(cond_sugg: Sugg<'_>, as_ref: bool, as_mut: bool) -> Str
     )
 }
 
+#[expect(clippy::too_many_lines)]
 fn try_get_option_occurrence<'tcx>(
     cx: &LateContext<'tcx>,
     ctxt: SyntaxContext,
     pat: &Pat<'tcx>,
-    expr: &Expr<'_>,
+    expr: &'tcx Expr<'_>,
     if_then: &'tcx Expr<'_>,
     if_else: &'tcx Expr<'_>,
 ) -> Option<OptionOccurrence> {
@@ -182,6 +190,26 @@ fn try_get_option_occurrence<'tcx>(
                     Some(CaptureKind::Ref(Mutability::Not)) | None => (),
                 }
             }
+        } else if !is_copy(cx, cx.typeck_results().expr_ty(expr))
+        // TODO: Cover more match cases
+            && matches!(
+                expr.kind,
+                ExprKind::Field(_, _) | ExprKind::Path(_) | ExprKind::Index(_, _, _)
+            )
+        {
+            let mut condition_visitor = ConditionVisitor {
+                cx,
+                identifiers: FxHashSet::default(),
+            };
+            condition_visitor.visit_expr(cond_expr);
+
+            let mut reference_visitor = ReferenceVisitor {
+                cx,
+                identifiers: condition_visitor.identifiers,
+            };
+            if reference_visitor.visit_expr(none_body).is_break() {
+                return None;
+            }
         }
 
         let mut app = Applicability::Unspecified;
@@ -217,6 +245,60 @@ fn try_get_option_occurrence<'tcx>(
     }
 
     None
+}
+
+/// This visitor looks for bindings in the <then> block that mention a local variable. Then gets the
+/// identifiers. The list of identifiers will then be used to check if the <none> block mentions the
+/// same local. See [`ReferenceVisitor`] for more.
+struct ConditionVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    identifiers: FxHashSet<HirId>,
+}
+
+impl<'tcx> Visitor<'tcx> for ConditionVisitor<'_, 'tcx> {
+    type NestedFilter = nested_filter::All;
+
+    fn visit_path(&mut self, path: &Path<'tcx>, _: HirId) {
+        if let Res::Local(local_id) = path.res
+            && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
+            && let PatKind::Binding(_, local_id, ..) = pat.kind
+        {
+            self.identifiers.insert(local_id);
+        }
+        walk_path(self, path);
+    }
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
+    }
+}
+
+/// This visitor checks if the <none> block contains references to the local variables that are
+/// used in the <then> block. See [`ConditionVisitor`] for more.
+struct ReferenceVisitor<'a, 'tcx> {
+    cx: &'a LateContext<'tcx>,
+    identifiers: FxHashSet<HirId>,
+}
+
+impl<'tcx> Visitor<'tcx> for ReferenceVisitor<'_, 'tcx> {
+    type NestedFilter = nested_filter::All;
+    type Result = ControlFlow<()>;
+    fn visit_expr(&mut self, expr: &'tcx Expr<'_>) -> ControlFlow<()> {
+        if let ExprKind::Path(ref path) = expr.kind
+            && let QPath::Resolved(_, path) = path
+            && let Res::Local(local_id) = path.res
+            && let Node::Pat(pat) = self.cx.tcx.hir_node(local_id)
+            && let PatKind::Binding(_, local_id, ..) = pat.kind
+            && self.identifiers.contains(&local_id)
+        {
+            return ControlFlow::Break(());
+        }
+        walk_expr(self, expr)
+    }
+
+    fn maybe_tcx(&mut self) -> Self::MaybeTyCtxt {
+        self.cx.tcx
+    }
 }
 
 fn try_get_inner_pat_and_is_result<'tcx>(cx: &LateContext<'tcx>, pat: &Pat<'tcx>) -> Option<(&'tcx Pat<'tcx>, bool)> {
