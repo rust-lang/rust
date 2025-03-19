@@ -482,7 +482,7 @@ impl<'a> Parser<'a> {
 
     /// Parses a block. No inner attributes are allowed.
     pub fn parse_block(&mut self) -> PResult<'a, P<Block>> {
-        let (attrs, block) = self.parse_inner_attrs_and_block()?;
+        let (attrs, block) = self.parse_inner_attrs_and_block(None)?;
         if let [.., last] = &*attrs {
             let suggest_to_outer = match &last.kind {
                 ast::AttrKind::Normal(attr) => attr.item.is_valid_for_outer_style(),
@@ -660,22 +660,32 @@ impl<'a> Parser<'a> {
         Err(self.error_block_no_opening_brace_msg(Cow::from(msg)))
     }
 
-    /// Parses a block. Inner attributes are allowed.
-    pub(super) fn parse_inner_attrs_and_block(&mut self) -> PResult<'a, (AttrVec, P<Block>)> {
-        self.parse_block_common(self.token.span, BlockCheckMode::Default, true)
+    /// Parses a block. Inner attributes are allowed, block labels are not.
+    ///
+    /// If `loop_header` is `Some` and an unexpected block label is encountered,
+    /// it is suggested to be moved just before `loop_header`, else it is suggested to be removed.
+    pub(super) fn parse_inner_attrs_and_block(
+        &mut self,
+        loop_header: Option<Span>,
+    ) -> PResult<'a, (AttrVec, P<Block>)> {
+        self.parse_block_common(self.token.span, BlockCheckMode::Default, true, loop_header)
     }
 
-    /// Parses a block. Inner attributes are allowed.
+    /// Parses a block. Inner attributes are allowed, block labels are not.
+    ///
+    /// If `loop_header` is `Some` and an unexpected block label is encountered,
+    /// it is suggested to be moved just before `loop_header`, else it is suggested to be removed.
     pub(super) fn parse_block_common(
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
         can_be_struct_literal: bool,
+        loop_header: Option<Span>,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
         maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
 
         let maybe_ident = self.prev_token.clone();
-        self.maybe_recover_unexpected_block_label();
+        self.maybe_recover_unexpected_block_label(loop_header);
         if !self.eat(exp!(OpenBrace)) {
             return self.error_block_no_opening_brace();
         }

@@ -2874,7 +2874,12 @@ impl<'a> Parser<'a> {
         first_pat
     }
 
-    pub(crate) fn maybe_recover_unexpected_block_label(&mut self) -> bool {
+    /// If `loop_header` is `Some` and an unexpected block label is encountered,
+    /// it is suggested to be moved just before `loop_header`, else it is suggested to be removed.
+    pub(crate) fn maybe_recover_unexpected_block_label(
+        &mut self,
+        loop_header: Option<Span>,
+    ) -> bool {
         // Check for `'a : {`
         if !(self.check_lifetime()
             && self.look_ahead(1, |t| *t == token::Colon)
@@ -2885,16 +2890,28 @@ impl<'a> Parser<'a> {
         let label = self.eat_label().expect("just checked if a label exists");
         self.bump(); // eat `:`
         let span = label.ident.span.to(self.prev_token.span);
-        self.dcx()
+        let mut diag = self
+            .dcx()
             .struct_span_err(span, "block label not supported here")
-            .with_span_label(span, "not supported here")
-            .with_tool_only_span_suggestion(
+            .with_span_label(span, "not supported here");
+        if let Some(loop_header) = loop_header {
+            diag.multipart_suggestion(
+                "if you meant to label the loop, move this label before the loop",
+                vec![
+                    (label.ident.span.until(self.token.span), String::from("")),
+                    (loop_header.shrink_to_lo(), format!("{}: ", label.ident)),
+                ],
+                Applicability::MachineApplicable,
+            );
+        } else {
+            diag.tool_only_span_suggestion(
                 label.ident.span.until(self.token.span),
                 "remove this block label",
                 "",
                 Applicability::MachineApplicable,
-            )
-            .emit();
+            );
+        }
+        diag.emit();
         true
     }
 
