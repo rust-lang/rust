@@ -409,9 +409,9 @@
 #![feature(edition_panic)]
 #![feature(format_args_nl)]
 #![feature(log_syntax)]
+#![feature(nonpoison_mutex)]
 #![feature(test)]
 #![feature(trace_macros)]
-#![feature(nonpoison_mutex)]
 // tidy-alphabetical-end
 //
 // Only used in tests/benchmarks:
