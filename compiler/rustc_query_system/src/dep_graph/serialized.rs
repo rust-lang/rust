@@ -50,6 +50,7 @@ use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixed
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use tracing::{debug, instrument};
 
+use super::graph::{DepNodeColor, DepNodeColorMap};
 use super::query::DepGraphQuery;
 use super::{DepKind, DepNode, DepNodeIndex, Deps};
 use crate::dep_graph::edges::EdgesVec;
@@ -441,7 +442,7 @@ impl NodeInfo {
         node: DepNode,
         fingerprint: Fingerprint,
         prev_index: SerializedDepNodeIndex,
-        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+        colors: &DepNodeColorMap,
         previous: &SerializedDepGraph,
     ) -> usize {
         let edges = previous.edge_targets_from(prev_index);
@@ -449,7 +450,7 @@ impl NodeInfo {
 
         // Find the highest edge in the new dep node indices
         let edge_max =
-            edges.clone().map(|i| prev_index_to_index[i].unwrap().as_u32()).max().unwrap_or(0);
+            edges.clone().map(|i| colors.current(i).unwrap().as_u32()).max().unwrap_or(0);
 
         let header = SerializedNodeHeader::<D>::new(node, fingerprint, edge_max, edge_count);
         e.write_array(header.bytes);
@@ -460,7 +461,7 @@ impl NodeInfo {
 
         let bytes_per_index = header.bytes_per_index();
         for node_index in edges {
-            let node_index = prev_index_to_index[node_index].unwrap();
+            let node_index = colors.current(node_index).unwrap();
             e.write_with(|dest| {
                 *dest = node_index.as_u32().to_le_bytes();
                 bytes_per_index
@@ -565,7 +566,7 @@ impl<D: Deps> EncoderState<D> {
         &mut self,
         prev_index: SerializedDepNodeIndex,
         record_graph: &Option<Lock<DepGraphQuery>>,
-        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+        colors: &DepNodeColorMap,
     ) -> DepNodeIndex {
         let node = self.previous.index_to_node(prev_index);
 
@@ -575,7 +576,7 @@ impl<D: Deps> EncoderState<D> {
             node,
             fingerprint,
             prev_index,
-            prev_index_to_index,
+            colors,
             &self.previous,
         );
 
@@ -585,7 +586,7 @@ impl<D: Deps> EncoderState<D> {
             |this| {
                 this.previous
                     .edge_targets_from(prev_index)
-                    .map(|i| prev_index_to_index[i].unwrap())
+                    .map(|i| colors.current(i).unwrap())
                     .collect()
             },
             record_graph,
@@ -719,18 +720,31 @@ impl<D: Deps> GraphEncoder<D> {
 
     /// Encodes a node that was promoted from the previous graph. It reads the information directly from
     /// the previous dep graph and expects all edges to already have a new dep node index assigned.
+    ///
+    /// This will also ensure the dep node is marked green.
     #[inline]
     pub(crate) fn send_promoted(
         &self,
         prev_index: SerializedDepNodeIndex,
-        prev_index_to_index: &IndexVec<SerializedDepNodeIndex, Option<DepNodeIndex>>,
+        colors: &DepNodeColorMap,
     ) -> DepNodeIndex {
         let _prof_timer = self.profiler.generic_activity("incr_comp_encode_dep_graph");
-        self.status.lock().as_mut().unwrap().encode_promoted_node(
-            prev_index,
-            &self.record_graph,
-            prev_index_to_index,
-        )
+
+        let mut status = self.status.lock();
+        let status = status.as_mut().unwrap();
+
+        // Check colors inside the lock to avoid racing when `send_promoted` is called concurrently
+        // on the same index.
+        match colors.get(prev_index) {
+            None => {
+                let dep_node_index =
+                    status.encode_promoted_node(prev_index, &self.record_graph, colors);
+                colors.insert(prev_index, DepNodeColor::Green(dep_node_index));
+                dep_node_index
+            }
+            Some(DepNodeColor::Green(dep_node_index)) => dep_node_index,
+            Some(DepNodeColor::Red) => panic!(),
+        }
     }
 
     pub(crate) fn finish(&self) -> FileEncodeResult {
