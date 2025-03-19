@@ -1977,14 +1977,14 @@ pub fn fulfill_or_allowed(cx: &LateContext<'_>, lint: &'static Lint, ids: impl I
     let mut suppress_lint = false;
 
     for id in ids {
-        let LevelAndSource { level, .. } = cx.tcx.lint_level_at_node(lint, id);
-        if let Some(expectation) = level.get_expectation_id() {
+        let LevelAndSource { level, lint_id, .. } = cx.tcx.lint_level_at_node(lint, id);
+        if let Some(expectation) = lint_id {
             cx.fulfill_expectation(expectation);
         }
 
         match level {
-            Level::Allow | Level::Expect(_) => suppress_lint = true,
-            Level::Warn | Level::ForceWarn(_) | Level::Deny | Level::Forbid => {},
+            Level::Allow | Level::Expect => suppress_lint = true,
+            Level::Warn | Level::ForceWarn | Level::Deny | Level::Forbid => {},
         }
     }
 
