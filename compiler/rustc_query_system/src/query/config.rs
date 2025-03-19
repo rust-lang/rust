@@ -6,6 +6,7 @@ use std::hash::Hash;
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_span::ErrorGuaranteed;
 
+use super::QueryStackFrameExtra;
 use crate::dep_graph::{DepKind, DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
@@ -27,7 +28,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn format_value(self) -> fn(&Self::Value) -> String;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key>
+    fn query_state<'a>(self, tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::QueryInfo>
     where
         Qcx: 'a;
 
@@ -57,7 +58,7 @@ pub trait QueryConfig<Qcx: QueryContext>: Copy {
     fn value_from_cycle_error(
         self,
         tcx: Qcx::DepContext,
-        cycle_error: &CycleError,
+        cycle_error: &CycleError<QueryStackFrameExtra>,
         guar: ErrorGuaranteed,
     ) -> Self::Value;
 

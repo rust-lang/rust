@@ -88,7 +88,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
             if info.query.dep_kind == dep_kinds::representability
                 && let Some(field_id) = info.query.def_id
                 && let Some(field_id) = field_id.as_local()
-                && let Some(DefKind::Field) = info.query.def_kind
+                && let Some(DefKind::Field) = info.query.info.def_kind
             {
                 let parent_id = tcx.parent(field_id.to_def_id());
                 let item_id = match tcx.def_kind(parent_id) {
@@ -216,7 +216,7 @@ impl<'tcx, T> Value<TyCtxt<'tcx>> for Result<T, &'_ ty::layout::LayoutError<'_>>
                             continue;
                         };
                         let frame_span =
-                            frame.query.default_span(cycle[(i + 1) % cycle.len()].span);
+                            frame.query.info.default_span(cycle[(i + 1) % cycle.len()].span);
                         if frame_span.is_dummy() {
                             continue;
                         }
