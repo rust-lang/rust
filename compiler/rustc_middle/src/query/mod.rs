@@ -172,6 +172,12 @@ rustc_queries! {
         desc { "getting the crate HIR" }
     }
 
+    /// A query decoupling the `hir_crate` query from everything else
+    query hir_owner(key: LocalDefId) -> rustc_hir::MaybeOwner<'tcx> {
+        no_hash
+        desc { |tcx| "getting HIR of `{}`", tcx.def_path_str(key) }
+    }
+
     /// All items in the crate.
     query hir_crate_items(_: ()) -> &'tcx rustc_middle::hir::ModuleItems {
         arena_cache
