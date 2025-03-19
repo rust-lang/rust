@@ -34,6 +34,9 @@ fn pin_const() {
     }
 
     pin_mut_const();
+
+    // Check that we accept a Rust 2024 $expr.
+    std::pin::pin!(const { 1 });
 }
 
 #[allow(unused)]
@@ -83,14 +86,11 @@ mod pin_coerce_unsized {
 }
 
 #[test]
-fn spans_2021() {
-    // Check that we accept a Rust 2024 $expr.
-    std::pin::pin!(const { 1 });
-
+fn temp_lifetime() {
     // Check that temporary lifetimes work as in Rust 2021.
+    // Regression test for https://github.com/rust-lang/rust/issues/138596
     match std::pin::pin!(foo(&mut 0)) {
-        _f => {}
+        _ => {}
     }
+    async fn foo(_: &mut usize) {}
 }
-
-async fn foo(_: &mut usize) {}
