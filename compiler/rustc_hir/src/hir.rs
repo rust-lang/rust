@@ -1462,11 +1462,15 @@ pub struct AttributeMap<'tcx> {
 }
 
 impl<'tcx> AttributeMap<'tcx> {
-    pub const EMPTY: &'static AttributeMap<'static> = &AttributeMap {
-        map: SortedMap::new(),
-        opt_hash: Some(Fingerprint::ZERO),
-        define_opaque: None,
-    };
+    pub const EMPTY: &'static AttributeMap<'static> = &Self::empty();
+
+    pub const fn empty() -> AttributeMap<'static> {
+        AttributeMap {
+            map: SortedMap::new(),
+            opt_hash: Some(Fingerprint::ZERO),
+            define_opaque: None,
+        }
+    }
 
     #[inline]
     pub fn get(&self, id: ItemLocalId) -> &'tcx [Attribute] {
