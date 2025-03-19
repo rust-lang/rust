@@ -214,6 +214,17 @@ where
     /// Rotates the vector such that the first `OFFSET` elements of the slice move to the end
     /// while the last `self.len() - OFFSET` elements move to the front. After calling `rotate_elements_left`,
     /// the element previously at index `OFFSET` will become the first element in the slice.
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd::Simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd::Simd;
+    /// let a = Simd::from_array([0, 1, 2, 3]);
+    /// let x = a.rotate_elements_left::<3>();
+    /// assert_eq!(x.to_array(), [3, 0, 1, 2]);
+    ///
+    /// let y = a.rotate_elements_left::<7>();
+    /// assert_eq!(y.to_array(), [3, 0, 1, 2]);
+    /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_elements_left<const OFFSET: usize>(self) -> Self {
@@ -238,6 +249,17 @@ where
     /// Rotates the vector such that the first `self.len() - OFFSET` elements of the vector move to
     /// the end while the last `OFFSET` elements move to the front. After calling `rotate_elements_right`,
     /// the element previously at index `self.len() - OFFSET` will become the first element in the slice.
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd::Simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd::Simd;
+    /// let a = Simd::from_array([0, 1, 2, 3]);
+    /// let x = a.rotate_elements_right::<3>();
+    /// assert_eq!(x.to_array(), [1, 2, 3, 0]);
+    ///
+    /// let y = a.rotate_elements_right::<7>();
+    /// assert_eq!(y.to_array(), [1, 2, 3, 0]);
+    /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn rotate_elements_right<const OFFSET: usize>(self) -> Self {
@@ -261,6 +283,17 @@ where
 
     /// Shifts the vector elements to the left by `OFFSET`, filling in with
     /// `padding` from the right.
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd::Simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd::Simd;
+    /// let a = Simd::from_array([0, 1, 2, 3]);
+    /// let x = a.shift_elements_left::<3>(255);
+    /// assert_eq!(x.to_array(), [3, 255, 255, 255]);
+    ///
+    /// let y = a.shift_elements_left::<7>(255);
+    /// assert_eq!(y.to_array(), [255, 255, 255, 255]);
+    /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn shift_elements_left<const OFFSET: usize>(self, padding: T) -> Self {
@@ -283,6 +316,17 @@ where
 
     /// Shifts the vector elements to the right by `OFFSET`, filling in with
     /// `padding` from the left.
+    /// ```
+    /// # #![feature(portable_simd)]
+    /// # #[cfg(feature = "as_crate")] use core_simd::simd::Simd;
+    /// # #[cfg(not(feature = "as_crate"))] use core::simd::Simd;
+    /// let a = Simd::from_array([0, 1, 2, 3]);
+    /// let x = a.shift_elements_right::<3>(255);
+    /// assert_eq!(x.to_array(), [255, 255, 255, 0]);
+    ///
+    /// let y = a.shift_elements_right::<7>(255);
+    /// assert_eq!(y.to_array(), [255, 255, 255, 255]);
+    /// ```
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original inputs"]
     pub fn shift_elements_right<const OFFSET: usize>(self, padding: T) -> Self {

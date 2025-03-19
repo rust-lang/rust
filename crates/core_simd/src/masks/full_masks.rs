@@ -3,7 +3,7 @@
 use crate::simd::{LaneCount, MaskElement, Simd, SupportedLaneCount};
 
 #[repr(transparent)]
-pub struct Mask<T, const N: usize>(Simd<T, N>)
+pub(crate) struct Mask<T, const N: usize>(Simd<T, N>)
 where
     T: MaskElement,
     LaneCount<N>: SupportedLaneCount;
@@ -80,7 +80,7 @@ macro_rules! impl_reverse_bits {
             #[inline(always)]
             fn reverse_bits(self, n: usize) -> Self {
                 let rev = <$int>::reverse_bits(self);
-                let bitsize = core::mem::size_of::<$int>() * 8;
+                let bitsize = size_of::<$int>() * 8;
                 if n < bitsize {
                     // Shift things back to the right
                     rev >> (bitsize - n)
@@ -102,36 +102,36 @@ where
 {
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn splat(value: bool) -> Self {
+    pub(crate) fn splat(value: bool) -> Self {
         Self(Simd::splat(if value { T::TRUE } else { T::FALSE }))
     }
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub unsafe fn test_unchecked(&self, lane: usize) -> bool {
+    pub(crate) unsafe fn test_unchecked(&self, lane: usize) -> bool {
         T::eq(self.0[lane], T::TRUE)
     }
 
     #[inline]
-    pub unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
+    pub(crate) unsafe fn set_unchecked(&mut self, lane: usize, value: bool) {
         self.0[lane] = if value { T::TRUE } else { T::FALSE }
     }
 
     #[inline]
     #[must_use = "method returns a new vector and does not mutate the original value"]
-    pub fn to_int(self) -> Simd<T, N> {
+    pub(crate) fn to_int(self) -> Simd<T, N> {
         self.0
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
+    pub(crate) unsafe fn from_int_unchecked(value: Simd<T, N>) -> Self {
         Self(value)
     }
 
     #[inline]
     #[must_use = "method returns a new mask and does not mutate the original value"]
-    pub fn convert<U>(self) -> Mask<U, N>
+    pub(crate) fn convert<U>(self) -> Mask<U, N>
     where
         U: MaskElement,
     {
@@ -220,14 +220,14 @@ where
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub fn any(self) -> bool {
+    pub(crate) fn any(self) -> bool {
         // Safety: use `self` as an integer vector
         unsafe { core::intrinsics::simd::simd_reduce_any(self.to_int()) }
     }
 
     #[inline]
     #[must_use = "method returns a new bool and does not mutate the original value"]
-    pub fn all(self) -> bool {
+    pub(crate) fn all(self) -> bool {
         // Safety: use `self` as an integer vector
         unsafe { core::intrinsics::simd::simd_reduce_all(self.to_int()) }
     }
