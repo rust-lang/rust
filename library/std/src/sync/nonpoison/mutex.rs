@@ -219,13 +219,7 @@ impl<T: ?Sized> Mutex<T> {
     /// ```
     #[unstable(feature = "nonpoison_mutex", issue = "134645")]
     pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
-        unsafe {
-            if self.inner.try_lock() {
-                Some(MutexGuard::new(self))
-            } else {
-                None
-            }
-        }
+        unsafe { if self.inner.try_lock() { Some(MutexGuard::new(self)) } else { None } }
     }
 
     /// Consumes this mutex, returning the underlying data.
