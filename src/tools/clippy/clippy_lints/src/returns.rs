@@ -404,7 +404,7 @@ fn check_final_expr<'tcx>(
             match cx.tcx.hir_attrs(expr.hir_id) {
                 [] => {},
                 [attr] => {
-                    if matches!(Level::from_attr(attr), Some(Level::Expect(_)))
+                    if matches!(Level::from_attr(attr), Some((Level::Expect, _)))
                         && let metas = attr.meta_item_list()
                         && let Some(lst) = metas
                         && let [MetaItemInner::MetaItem(meta_item), ..] = lst.as_slice()

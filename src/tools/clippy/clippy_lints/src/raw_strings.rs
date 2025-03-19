@@ -138,7 +138,7 @@ impl RawStrings {
                     );
                 },
             );
-            if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS), rustc_lint::Allow) {
+            if !matches!(cx.get_lint_level(NEEDLESS_RAW_STRINGS).level, rustc_lint::Allow) {
                 return;
             }
         }

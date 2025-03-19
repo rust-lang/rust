@@ -216,7 +216,7 @@ impl DocVisitor<'_> for CoverageCalculator<'_, '_> {
 
                 let has_doc_example = tests.found_tests != 0;
                 let hir_id = DocContext::as_local_hir_id(self.ctx.tcx, i.item_id).unwrap();
-                let LevelAndSource { level, src } =
+                let LevelAndSource { level, src, .. } =
                     self.ctx.tcx.lint_level_at_node(MISSING_DOCS, hir_id);
 
                 // In case we have:
