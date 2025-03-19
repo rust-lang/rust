@@ -86,6 +86,7 @@ mod pin_coerce_unsized {
 }
 
 #[test]
+#[cfg(not(bootstrap))]
 fn temp_lifetime() {
     // Check that temporary lifetimes work as in Rust 2021.
     // Regression test for https://github.com/rust-lang/rust/issues/138596
