@@ -23,6 +23,7 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
+use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::download::is_download_ci_available;
@@ -3109,9 +3110,9 @@ impl Config {
             #[cfg(not(test))]
             self.update_submodule("src/llvm-project");
 
-            // Check for untracked changes in `src/llvm-project`.
+            // Check for untracked changes in `src/llvm-project` and other important places.
             let has_changes = self
-                .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
                 .is_none();
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.

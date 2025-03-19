@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Command, Stdio};
 
 use crate::ci::CiEnv;
@@ -121,7 +121,7 @@ fn git_upstream_merge_base(
 pub fn get_closest_merge_commit(
     git_dir: Option<&Path>,
     config: &GitConfig<'_>,
-    target_paths: &[PathBuf],
+    target_paths: &[&str],
 ) -> Result<String, String> {
     let mut git = Command::new("git");
 
