@@ -568,6 +568,13 @@ fn test_assembly_mode_forbidden_revisions() {
 }
 
 #[test]
+#[should_panic(expected = "revision name `true` is not permitted")]
+fn test_forbidden_revisions() {
+    let config = cfg().mode("ui").build();
+    parse_rs(&config, "//@ revisions: true");
+}
+
+#[test]
 #[should_panic(
     expected = "revision name `CHECK` is not permitted in a test suite that uses `FileCheck` annotations"
 )]

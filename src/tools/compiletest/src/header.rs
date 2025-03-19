@@ -924,7 +924,14 @@ fn iter_header(
 
 impl Config {
     fn parse_and_update_revisions(&self, testfile: &Path, line: &str, existing: &mut Vec<String>) {
-        const FORBIDDEN_REVISION_NAMES: [&str; 9] =
+        const FORBIDDEN_REVISION_NAMES: [&str; 2] = [
+            // `//@ revisions: true false` Implying `--cfg=true` and `--cfg=false` makes it very
+            // weird for the test, since if the test writer wants a cfg of the same revision name
+            // they'd have to use `cfg(r#true)` and `cfg(r#false)`.
+            "true", "false",
+        ];
+
+        const FILECHECK_FORBIDDEN_REVISION_NAMES: [&str; 9] =
             ["CHECK", "COM", "NEXT", "SAME", "EMPTY", "NOT", "COUNT", "DAG", "LABEL"];
 
         if let Some(raw) = self.parse_name_value_directive(line, "revisions") {
@@ -933,25 +940,38 @@ impl Config {
             }
 
             let mut duplicates: HashSet<_> = existing.iter().cloned().collect();
-            for revision in raw.split_whitespace().map(|r| r.to_string()) {
-                if !duplicates.insert(revision.clone()) {
+            for revision in raw.split_whitespace() {
+                if !duplicates.insert(revision.to_string()) {
                     panic!(
                         "duplicate revision: `{}` in line `{}`: {}",
                         revision,
                         raw,
                         testfile.display()
                     );
-                } else if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
-                    && FORBIDDEN_REVISION_NAMES.contains(&revision.as_str())
-                {
+                }
+
+                if FORBIDDEN_REVISION_NAMES.contains(&revision) {
                     panic!(
-                        "revision name `{revision}` is not permitted in a test suite that uses `FileCheck` annotations\n\
-                         as it is confusing when used as custom `FileCheck` prefix: `{revision}` in line `{}`: {}",
+                        "revision name `{revision}` is not permitted: `{}` in line `{}`: {}",
+                        revision,
                         raw,
                         testfile.display()
                     );
                 }
-                existing.push(revision);
+
+                if matches!(self.mode, Mode::Assembly | Mode::Codegen | Mode::MirOpt)
+                    && FILECHECK_FORBIDDEN_REVISION_NAMES.contains(&revision)
+                {
+                    panic!(
+                        "revision name `{revision}` is not permitted in a test suite that uses \
+                        `FileCheck` annotations as it is confusing when used as custom `FileCheck` \
+                        prefix: `{revision}` in line `{}`: {}",
+                        raw,
+                        testfile.display()
+                    );
+                }
+
+                existing.push(revision.to_string());
             }
         }
     }
