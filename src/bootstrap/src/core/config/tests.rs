@@ -25,13 +25,21 @@ pub(crate) fn parse(config: &str) -> Config {
 #[test]
 fn download_ci_llvm() {
     let config = parse("");
-    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    let is_available = llvm::is_ci_llvm_available_for_target(&config, config.llvm_assertions);
     if is_available {
         assert!(config.llvm_from_ci);
     }
 
-    let config = parse("llvm.download-ci-llvm = true");
-    let is_available = llvm::is_ci_llvm_available(&config, config.llvm_assertions);
+    let config = Config::parse_inner(
+        Flags::parse(&[
+            "check".to_string(),
+            "--config=/does/not/exist".to_string(),
+            "--ci".to_string(),
+            "false".to_string(),
+        ]),
+        |&_| toml::from_str("llvm.download-ci-llvm = true"),
+    );
+    let is_available = llvm::is_ci_llvm_available_for_target(&config, config.llvm_assertions);
     if is_available {
         assert!(config.llvm_from_ci);
     }
