@@ -649,14 +649,14 @@ fn something_with_a_dtor(f: &dyn Fn()) {
     f();
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg(not(thumb))]
 fn main(_argc: core::ffi::c_int, _argv: *const *const u8) -> core::ffi::c_int {
     run();
     0
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[cfg(thumb)]
 pub fn _start() -> ! {
     run();
@@ -669,30 +669,30 @@ pub fn _start() -> ! {
 extern "C" {}
 
 // ARM targets need these symbols
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr0() {}
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn __aeabi_unwind_cpp_pr1() {}
 
 #[cfg(not(any(windows, target_os = "cygwin")))]
 #[allow(non_snake_case)]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub fn _Unwind_Resume() {}
 
 #[cfg(not(any(windows, target_os = "cygwin")))]
 #[lang = "eh_personality"]
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub extern "C" fn eh_personality() {}
 
 #[cfg(any(all(windows, target_env = "gnu"), target_os = "cygwin"))]
 mod mingw_unwinding {
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn rust_eh_personality() {}
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn rust_eh_unwind_resume() {}
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn rust_eh_register_frames() {}
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     pub fn rust_eh_unregister_frames() {}
 }

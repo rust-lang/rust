@@ -22,6 +22,9 @@
 #![allow(clippy::manual_swap)]
 // Support compiling on both stage0 and stage1 which may differ in supported stable features.
 #![allow(stable_features)]
+// By default, disallow this as it is forbidden in edition 2024. There is a lot of unsafe code to
+// be migrated, however, so exceptions exist.
+#![warn(unsafe_op_in_unsafe_fn)]
 
 // We disable #[no_mangle] for tests so that we can verify the test results
 // against the native compiler-rt implementations of the builtins.

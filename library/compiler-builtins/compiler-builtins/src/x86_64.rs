@@ -44,7 +44,7 @@ intrinsics! {
 // HACK(https://github.com/rust-lang/rust/issues/62785): x86_64-unknown-uefi needs special LLVM
 // support unless we emit the _fltused
 mod _fltused {
-    #[no_mangle]
+    #[unsafe(no_mangle)]
     #[used]
     #[cfg(target_os = "uefi")]
     static _fltused: i32 = 0;

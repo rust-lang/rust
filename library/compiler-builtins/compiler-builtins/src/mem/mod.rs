@@ -1,5 +1,7 @@
 // Trying to satisfy clippy here is hopeless
 #![allow(clippy::style)]
+// FIXME(e2024): this eventually needs to be removed.
+#![allow(unsafe_op_in_unsafe_fn)]
 
 #[allow(warnings)]
 #[cfg(target_pointer_width = "16")]
