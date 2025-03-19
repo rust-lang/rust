@@ -60,4 +60,7 @@ fn f() {
     let t: Option<S> = DEFAULT;
 }
 
+trait Glob {}
+use Glob::*; //~ ERROR `use` associated items of traits is unstable
+
 fn main() {}
