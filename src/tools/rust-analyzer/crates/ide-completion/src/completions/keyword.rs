@@ -76,6 +76,7 @@ fn foo(a: A) { a.$0 }
                 kw await                                                           expr.await
                 sn box                                                         Box::new(expr)
                 sn call                                                        function(expr)
+                sn const                                                             const {}
                 sn dbg                                                             dbg!(expr)
                 sn dbgr                                                           dbg!(&expr)
                 sn deref                                                                *expr
@@ -103,6 +104,7 @@ fn foo() {
                 kw await                                                                          expr.await
                 sn box                                                                        Box::new(expr)
                 sn call                                                                       function(expr)
+                sn const                                                                            const {}
                 sn dbg                                                                            dbg!(expr)
                 sn dbgr                                                                          dbg!(&expr)
                 sn deref                                                                               *expr
@@ -132,6 +134,7 @@ fn foo(a: A) { a.$0 }
                 kw await                                                           expr.await
                 sn box                                                         Box::new(expr)
                 sn call                                                        function(expr)
+                sn const                                                             const {}
                 sn dbg                                                             dbg!(expr)
                 sn dbgr                                                           dbg!(&expr)
                 sn deref                                                                *expr

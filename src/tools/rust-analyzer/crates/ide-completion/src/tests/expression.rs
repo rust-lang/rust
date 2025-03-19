@@ -58,6 +58,7 @@ fn baz() {
             un Union                  Union
             ev TupleV(…)        TupleV(u32)
             bt u32                      u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -101,6 +102,7 @@ fn func(param0 @ (param1, param2): (i32, i32)) {
             lc param1             i32
             lc param2             i32
             bt u32                u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -335,6 +337,7 @@ fn complete_in_match_arm() {
         expect![[r#"
             fn foo() fn()
             bt u32    u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -400,6 +403,7 @@ fn completes_in_loop_ctx() {
             sn box  Box::new(expr)
             sn break    break expr
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -424,6 +428,7 @@ fn completes_in_let_initializer() {
         expect![[r#"
             fn main() fn()
             bt u32     u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -448,6 +453,7 @@ fn completes_after_ref_expr() {
         expect![[r#"
             fn main() fn()
             bt u32     u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -471,6 +477,7 @@ fn completes_after_ref_expr() {
             fn main() fn()
             bt u32     u32
             kw const
+            kw const
             kw crate::
             kw false
             kw for
@@ -492,6 +499,7 @@ fn completes_after_ref_expr() {
         expect![[r#"
             fn main() fn()
             bt u32     u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -512,6 +520,7 @@ fn completes_after_ref_expr() {
         expect![[r#"
             fn main() fn()
             bt u32     u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -532,6 +541,7 @@ fn completes_after_ref_expr() {
         expect![[r#"
             fn main() fn()
             bt u32     u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -566,6 +576,7 @@ fn foo() {
             fn foo() fn()
             st Foo    Foo
             bt u32    u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -601,6 +612,7 @@ fn foo() {
             fn foo() fn()
             lc bar    i32
             bt u32    u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -632,6 +644,7 @@ fn quux(x: i32) {
             lc x                i32
             ma m!(…) macro_rules! m
             bt u32              u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -659,6 +672,7 @@ fn quux(x: i32) {
             lc x                i32
             ma m!(…) macro_rules! m
             bt u32              u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -688,6 +702,7 @@ fn quux(x: i32) {
             lc y                i32
             ma m!(…) macro_rules! m
             bt u32              u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -870,6 +885,7 @@ fn brr() {
             st YoloVariant                  YoloVariant
             st YoloVariant {…} YoloVariant { f: usize }
             bt u32                                  u32
+            kw const
             kw crate::
             kw false
             kw for
@@ -1016,6 +1032,7 @@ fn foo() { bar(if foo {} $0) }
         expect![[r#"
             fn foo() fn()
             bt u32    u32
+            kw const
             kw crate::
             kw else
             kw else if
@@ -1040,6 +1057,7 @@ fn foo() { bar(if foo {} el$0) }
         expect![[r#"
             fn foo() fn()
             bt u32    u32
+            kw const
             kw crate::
             kw else
             kw else if
@@ -1309,6 +1327,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1335,6 +1354,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1365,6 +1385,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1391,6 +1412,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1417,6 +1439,7 @@ fn main() {
             me foo()     fn(&self)
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1442,6 +1465,7 @@ fn main() {
         expect![[r#"
             sn box  Box::new(expr)
             sn call function(expr)
+            sn const      const {}
             sn dbg      dbg!(expr)
             sn dbgr    dbg!(&expr)
             sn deref         *expr
@@ -1557,6 +1581,7 @@ fn foo() {
             me inherent()               fn(&self)
             sn box                 Box::new(expr)
             sn call                function(expr)
+            sn const                     const {}
             sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
             sn deref                        *expr
@@ -1594,6 +1619,7 @@ fn foo(v: &dyn ExcludedTrait) {
             me foo() (as ExcludedTrait) fn(&self)
             sn box                 Box::new(expr)
             sn call                function(expr)
+            sn const                     const {}
             sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
             sn deref                        *expr
@@ -1627,6 +1653,7 @@ fn foo(v: impl ExcludedTrait) {
             me foo() (as ExcludedTrait) fn(&self)
             sn box                 Box::new(expr)
             sn call                function(expr)
+            sn const                     const {}
             sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
             sn deref                        *expr
@@ -1660,6 +1687,7 @@ fn foo<T: ExcludedTrait>(v: T) {
             me foo() (as ExcludedTrait) fn(&self)
             sn box                 Box::new(expr)
             sn call                function(expr)
+            sn const                     const {}
             sn dbg                     dbg!(expr)
             sn dbgr                   dbg!(&expr)
             sn deref                        *expr
@@ -1708,6 +1736,7 @@ fn foo() {
             me inherent()                         fn(&self)
             sn box                           Box::new(expr)
             sn call                          function(expr)
+            sn const                               const {}
             sn dbg                               dbg!(expr)
             sn dbgr                             dbg!(&expr)
             sn deref                                  *expr
@@ -1759,6 +1788,7 @@ fn foo() {
             me inherent()                         fn(&self)
             sn box                           Box::new(expr)
             sn call                          function(expr)
+            sn const                               const {}
             sn dbg                               dbg!(expr)
             sn dbgr                             dbg!(&expr)
             sn deref                                  *expr

@@ -1146,6 +1146,7 @@ fn here_we_go() {
             me baz() (alias qux) fn(&self) -> u8
             sn box                Box::new(expr)
             sn call               function(expr)
+            sn const                    const {}
             sn dbg                    dbg!(expr)
             sn dbgr                  dbg!(&expr)
             sn deref                       *expr
@@ -1264,6 +1265,7 @@ fn here_we_go() {
             md foo
             st Bar (alias Qux) (use foo::Bar) Bar
             bt u32                            u32
+            kw const
             kw crate::
             kw false
             kw for
