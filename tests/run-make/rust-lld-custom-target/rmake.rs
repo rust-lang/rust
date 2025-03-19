@@ -24,6 +24,7 @@ fn main() {
             .crate_type("cdylib")
             .target("custom-target.json")
             .arg("-Clinker-features=-lld")
+            .arg("-Zunstable-options")
             .input("lib.rs"),
     );
 }
