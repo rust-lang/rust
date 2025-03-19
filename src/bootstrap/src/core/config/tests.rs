@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use std::{env, fs};
 
 use build_helper::ci::CiEnv;
+use build_helper::git::PathFreshness;
 use clap::CommandFactory;
 use serde::Deserialize;
 
@@ -15,6 +16,7 @@ use crate::core::build_steps::clippy::{LintConfig, get_clippy_rules_in_order};
 use crate::core::build_steps::llvm;
 use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 use crate::core::config::{LldMode, Target, TargetSelection, TomlConfig};
+use crate::utils::tests::git::git_test;
 
 pub(crate) fn parse(config: &str) -> Config {
     Config::parse_inner(
@@ -743,4 +745,172 @@ fn test_include_precedence_over_profile() {
     // "dist" profile would normally set the channel to "auto-detect", but includes should
     // override profile settings, so we expect this to be "dev" here.
     assert_eq!(config.channel, "dev");
+}
+
+#[test]
+fn test_pr_ci_unchanged_anywhere() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_nonupstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
+fn test_pr_ci_changed_in_pr() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_nonupstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["b"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
+    });
+}
+
+#[test]
+fn test_auto_ci_unchanged_anywhere_select_parent() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b"]);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
+    });
+}
+
+#[test]
+fn test_auto_ci_changed_in_pr() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::GitHubActions);
+        assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
+    });
+}
+
+#[test]
+fn test_local_uncommitted_modifications() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_branch("feature");
+        ctx.modify("a");
+
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_committed_modifications() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("x");
+        ctx.commit();
+        ctx.modify("a");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_committed_modifications_subdirectory() {
+    git_test(|ctx| {
+        let sha = ctx.create_upstream_merge(&["a/b/c"]);
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("a/b/d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&["a/b"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_in_head_upstream() {
+    git_test(|ctx| {
+        // We want to resolve to the upstream commit that made modifications to a,
+        // even if it is currently HEAD
+        let sha = ctx.create_upstream_merge(&["a"]);
+        assert_eq!(
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_changes_in_previous_upstream() {
+    git_test(|ctx| {
+        // We want to resolve to this commit, which modified a
+        let sha = ctx.create_upstream_merge(&["a", "e"]);
+        // Not to this commit, which is the latest upstream commit
+        ctx.create_upstream_merge(&["b", "c"]);
+        ctx.create_branch("feature");
+        ctx.modify("d");
+        ctx.commit();
+        assert_eq!(
+            ctx.check_modifications(&["a"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_no_upstream_commit_with_changes() {
+    git_test(|ctx| {
+        ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_upstream_merge(&["a", "e"]);
+        // We want to fall back to this commit, because there are no commits
+        // that modified `x`.
+        let sha = ctx.create_upstream_merge(&["a", "e"]);
+        ctx.create_branch("feature");
+        ctx.modify("d");
+        ctx.commit();
+        assert_eq!(
+            ctx.check_modifications(&["x"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: sha }
+        );
+    });
+}
+
+#[test]
+fn test_local_no_upstream_commit() {
+    git_test(|ctx| {
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::None);
+        assert_eq!(src, PathFreshness::MissingUpstream);
+    });
+}
+
+#[test]
+fn test_local_changes_negative_path() {
+    git_test(|ctx| {
+        let upstream = ctx.create_upstream_merge(&["a"]);
+        ctx.create_branch("feature");
+        ctx.modify("b");
+        ctx.modify("d");
+        ctx.commit();
+
+        assert_eq!(
+            ctx.check_modifications(&[":!b", ":!d"], CiEnv::None),
+            PathFreshness::LastModifiedUpstream { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.check_modifications(&[":!c"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream: upstream.clone() }
+        );
+        assert_eq!(
+            ctx.check_modifications(&[":!d", ":!x"], CiEnv::None),
+            PathFreshness::HasLocalModifications { upstream }
+        );
+    });
 }
