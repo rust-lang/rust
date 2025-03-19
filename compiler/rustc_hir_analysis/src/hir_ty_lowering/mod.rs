@@ -2177,7 +2177,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 }
             }
             Res::Def(DefKind::AssocTy, def_id) => {
-                debug_assert!(path.segments.len() >= 2);
+                if path.segments.len() < 2 {
+                    let guar = self
+                        .dcx()
+                        .struct_span_err(span, "cannot infer type, type annotations needed")
+                        .emit();
+                    return Ty::new_error(tcx, guar);
+                }
                 let _ = self.prohibit_generic_args(
                     path.segments[..path.segments.len() - 2].iter(),
                     GenericsArgsErrExtend::None,
@@ -2394,7 +2400,13 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 ty::Const::new_unevaluated(tcx, ty::UnevaluatedConst::new(did, args))
             }
             Res::Def(DefKind::AssocConst, did) => {
-                debug_assert!(path.segments.len() >= 2);
+                if path.segments.len() < 2 {
+                    let guar = self
+                        .dcx()
+                        .struct_span_err(span, "cannot infer type, type annotations needed")
+                        .emit();
+                    return Const::new_error(tcx, guar);
+                }
                 let _ = self.prohibit_generic_args(
                     path.segments[..path.segments.len() - 2].iter(),
                     GenericsArgsErrExtend::None,
