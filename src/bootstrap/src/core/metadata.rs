@@ -62,11 +62,6 @@ pub fn build(build: &mut Build) {
             let relative_path = krate.local_path(build);
             build.crates.insert(name.clone(), krate);
             let existing_path = build.crate_paths.insert(relative_path, name);
-            // `literal-escaper` is both a dependency of `compiler/rustc_lexer` and of
-            // `library/proc-macro`, making it appear multiple times in the workspace.
-            if existing_path.as_deref() == Some("literal-escaper") {
-                continue;
-            }
             assert!(
                 existing_path.is_none(),
                 "multiple crates with the same path: {}",

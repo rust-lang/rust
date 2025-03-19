@@ -85,7 +85,6 @@ version = "0.0.0"
 dependencies = [
  "rand",
  "rand_xorshift",
- "regex",
 ]
 
 [[package]]
@@ -166,13 +165,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "literal-escaper"
-version = "0.0.0"
-dependencies = [
- "rustc-std-workspace-std",
-]
-
-[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -243,7 +235,6 @@ name = "proc_macro"
 version = "0.0.0"
 dependencies = [
  "core",
- "literal-escaper",
  "std",
 ]
 
@@ -311,31 +302,6 @@ checksum = "513962919efc330f829edb2535844d1b912b0fbe2ca165d613e4e8788bb05a5a"
 dependencies = [
  "rand_core",
 ]
-
-[[package]]
-name = "regex"
-version = "1.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
-dependencies = [
- "regex-automata",
- "regex-syntax",
-]
-
-[[package]]
-name = "regex-automata"
-version = "0.4.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
-dependencies = [
- "regex-syntax",
-]
-
-[[package]]
-name = "regex-syntax"
-version = "0.8.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rustc-demangle"

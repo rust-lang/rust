@@ -105,9 +105,14 @@ fn fill_region_tables<'tcx>(
     ids_info: &'tcx CoverageIdsInfo,
     covfun: &mut CovfunRecord<'tcx>,
 ) {
-    // Currently a function's mappings must all be in the same file as its body span.
+    // Currently a function's mappings must all be in the same file, so use the
+    // first mapping's span to determine the file.
     let source_map = tcx.sess.source_map();
-    let source_file = source_map.lookup_source_file(fn_cov_info.body_span.lo());
+    let Some(first_span) = (try { fn_cov_info.mappings.first()?.span }) else {
+        debug_assert!(false, "function has no mappings: {:?}", covfun.mangled_function_name);
+        return;
+    };
+    let source_file = source_map.lookup_source_file(first_span.lo());
 
     // Look up the global file ID for that file.
     let global_file_id = global_file_table.global_file_id_for_file(&source_file);
@@ -118,9 +123,8 @@ fn fill_region_tables<'tcx>(
     let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
         &mut covfun.regions;
 
-    let make_cov_span = |span: Span| {
-        spans::make_coverage_span(local_file_id, source_map, fn_cov_info, &source_file, span)
-    };
+    let make_cov_span =
+        |span: Span| spans::make_coverage_span(local_file_id, source_map, &source_file, span);
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
 
     // For each counter/region pair in this function+file, convert it to a

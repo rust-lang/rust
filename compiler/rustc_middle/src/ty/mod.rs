@@ -149,7 +149,6 @@ mod opaque_types;
 mod parameterized;
 mod predicate;
 mod region;
-mod return_position_impl_trait_in_trait;
 mod rvalue_scopes;
 mod structural_impls;
 #[allow(hidden_glob_reexports)]

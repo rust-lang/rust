@@ -13,9 +13,9 @@ use smallvec::smallvec;
 use crate::common::{AsCCharPtr, CodegenCx};
 use crate::debuginfo::metadata::type_map::{self, Stub, StubInfo, UniqueTypeId};
 use crate::debuginfo::metadata::{
-    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, file_metadata,
-    file_metadata_from_def_id, size_and_align_of, type_di_node, unknown_file_metadata,
-    visibility_di_flags,
+    DINodeCreationResult, NO_GENERICS, SmallVec, UNKNOWN_LINE_NUMBER, create_member_type,
+    file_metadata, file_metadata_from_def_id, size_and_align_of, type_di_node,
+    unknown_file_metadata, visibility_di_flags,
 };
 use crate::debuginfo::utils::{DIB, create_DIArray, get_namespace_for_item};
 use crate::llvm::debuginfo::{DIFile, DIFlags, DIType};
@@ -363,23 +363,22 @@ fn build_discr_member_di_node<'ll, 'tcx>(
 
         &Variants::Multiple { tag_field, .. } => {
             let tag_base_type = tag_base_type(cx.tcx, enum_or_coroutine_type_and_layout);
-            let (size, align) = cx.size_and_align_of(tag_base_type);
+            let ty = type_di_node(cx, tag_base_type);
+            let file = unknown_file_metadata(cx);
 
-            unsafe {
-                Some(llvm::LLVMRustDIBuilderCreateMemberType(
-                    DIB(cx),
-                    containing_scope,
-                    tag_name.as_c_char_ptr(),
-                    tag_name.len(),
-                    unknown_file_metadata(cx),
-                    UNKNOWN_LINE_NUMBER,
-                    size.bits(),
-                    align.bits() as u32,
-                    enum_or_coroutine_type_and_layout.fields.offset(tag_field).bits(),
-                    DIFlags::FlagArtificial,
-                    type_di_node(cx, tag_base_type),
-                ))
-            }
+            let layout = cx.layout_of(tag_base_type);
+
+            Some(create_member_type(
+                cx,
+                containing_scope,
+                &tag_name,
+                file,
+                UNKNOWN_LINE_NUMBER,
+                layout,
+                enum_or_coroutine_type_and_layout.fields.offset(tag_field),
+                DIFlags::FlagArtificial,
+                ty,
+            ))
         }
     }
 }
