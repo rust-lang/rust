@@ -1726,8 +1726,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             body
         } else {
-            let err =
-                errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token.clone());
+            let err = errors::UnexpectedTokenAfterStructName::new(self.token.span, self.token);
             return Err(self.dcx().create_err(err));
         };
 
@@ -2295,7 +2294,7 @@ impl<'a> Parser<'a> {
             || self.token.is_keyword(kw::Union))
             && self.look_ahead(1, |t| t.is_ident())
         {
-            let kw_token = self.token.clone();
+            let kw_token = self.token;
             let kw_str = pprust::token_to_string(&kw_token);
             let item = self.parse_item(ForceCollect::No)?;
             let mut item = item.unwrap().span;
@@ -2528,7 +2527,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
             *sig_hi = self.prev_token.span;
             (AttrVec::new(), None)
-        } else if self.check(exp!(OpenBrace)) || self.token.is_whole_block() {
+        } else if self.check(exp!(OpenBrace)) || self.token.is_metavar_block() {
             self.parse_block_common(self.token.span, BlockCheckMode::Default, false)
                 .map(|(attrs, body)| (attrs, Some(body)))?
         } else if self.token == token::Eq {
@@ -2601,13 +2600,18 @@ impl<'a> Parser<'a> {
                 })
             // `extern ABI fn`
             || self.check_keyword_case(exp!(Extern), case)
+                // Use `tree_look_ahead` because `ABI` might be a metavariable,
+                // i.e. an invisible-delimited sequence, and `tree_look_ahead`
+                // will consider that a single element when looking ahead.
                 && self.look_ahead(1, |t| t.can_begin_string_literal())
-                && (self.look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) ||
+                && (self.tree_look_ahead(2, |t| t.is_keyword_case(kw::Fn, case)) == Some(true) ||
                     // This branch is only for better diagnostics; `pub`, `unsafe`, etc. are not
                     // allowed here.
                     (self.may_recover()
-                        && self.look_ahead(2, |t| ALL_QUALS.iter().any(|exp| t.is_keyword(exp.kw)))
-                        && self.look_ahead(3, |t| t.is_keyword_case(kw::Fn, case))))
+                        && self.tree_look_ahead(2, |t| ALL_QUALS.iter().any(|exp| t.is_keyword(exp.kw))) == Some(true)
+                        && self.tree_look_ahead(3, |t| t.is_keyword_case(kw::Fn, case)) == Some(true)
+                    )
+                )
     }
 
     /// Parses all the "front matter" (or "qualifiers") for a `fn` declaration,
