@@ -25,6 +25,7 @@ path = "src/driver.rs"
 [dependencies]
 clippy_config = { path = "clippy_config" }
 clippy_lints = { path = "clippy_lints" }
+clippy_utils = { path = "clippy_utils" }
 rustc_tools_util = { path = "rustc_tools_util", version = "0.4.2" }
 tempfile = { version = "3.3", optional = true }
 termize = "0.1"
