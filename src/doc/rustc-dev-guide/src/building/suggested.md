@@ -123,6 +123,30 @@ Another way is without a plugin, and creating your own logic in your
 configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
 
 ```lua
+local function expand_config_variables(option)
+    local var_placeholders = {
+        ['${workspaceFolder}'] = function(_)
+            return vim.lsp.buf.list_workspace_folders()[1]
+        end,
+    }
+
+    if type(option) == "table" then
+        local mt = getmetatable(option)
+        local result = {}
+        for k, v in pairs(option) do
+            result[expand_config_variables(k)] = expand_config_variables(v)
+        end
+        return setmetatable(result, mt)
+    end
+    if type(option) ~= "string" then
+        return option
+    end
+    local ret = option
+    for key, fn in pairs(var_placeholders) do
+        ret = ret:gsub(key, fn)
+    end
+    return ret
+end
 lspconfig.rust_analyzer.setup {
     root_dir = function()
         local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
@@ -142,7 +166,7 @@ lspconfig.rust_analyzer.setup {
             -- load rust-lang/rust settings
             local file = io.open(config)
             local json = vim.json.decode(file:read("*a"))
-            client.config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
+            client.config.settings["rust-analyzer"] = expand_config_variables(json.lsp["rust-analyzer"].initialization_options)
             client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
         end
         return true
