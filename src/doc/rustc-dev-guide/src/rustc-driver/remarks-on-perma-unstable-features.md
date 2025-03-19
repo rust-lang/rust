@@ -1,4 +1,3 @@
-
 # Remarks on perma unstable features
 
 ## `rustc_private`
@@ -18,7 +17,7 @@ When using the `rustc_private` feature with official Rust toolchains distributed
 
 Install both components using rustup:
 
-```bash
+```text
 rustup component add rustc-dev llvm-tools
 ```
 
@@ -26,7 +25,7 @@ rustup component add rustc-dev llvm-tools
 
 Without the `llvm-tools` component, you'll encounter linking errors like:
 
-```
+```text
 error: linking with `cc` failed: exit status: 1
   |
   = note: rust-lld: error: unable to find library -lLLVM-{version}
@@ -45,7 +44,7 @@ For custom-built toolchains or environments not using rustup, additional configu
 
 1. **Check LLVM installation**: Verify LLVM is installed and accessible
 2. **Configure library paths**: You may need to set environment variables:
-   ```bash
+   ```text
    export LD_LIBRARY_PATH=/path/to/llvm/lib:$LD_LIBRARY_PATH
    ```
 3. **Check version compatibility**: Ensure your LLVM version is compatible with your Rust toolchain
