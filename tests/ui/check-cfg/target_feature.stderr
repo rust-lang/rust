@@ -245,6 +245,7 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `trustzone`
 `ual`
 `unaligned-scalar-mem`
+`unaligned-vector-mem`
 `v`
 `v5te`
 `v6`
@@ -325,7 +326,42 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `zkr`
 `zks`
 `zksed`
-`zksh`, and `zkt`
+`zksh`
+`zkt`
+`zvbb`
+`zvbc`
+`zve32f`
+`zve32x`
+`zve64d`
+`zve64f`
+`zve64x`
+`zvfh`
+`zvfhmin`
+`zvkb`
+`zvkg`
+`zvkn`
+`zvknc`
+`zvkned`
+`zvkng`
+`zvknha`
+`zvknhb`
+`zvks`
+`zvksc`
+`zvksed`
+`zvksg`
+`zvksh`
+`zvkt`
+`zvl1024b`
+`zvl128b`
+`zvl16384b`
+`zvl2048b`
+`zvl256b`
+`zvl32768b`
+`zvl32b`
+`zvl4096b`
+`zvl512b`
+`zvl64b`
+`zvl65536b`, and `zvl8192b`
    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg.html> for more information about checking conditional configuration
    = note: `#[warn(unexpected_cfgs)]` on by default
 
