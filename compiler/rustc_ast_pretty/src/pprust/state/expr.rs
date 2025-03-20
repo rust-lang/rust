@@ -8,7 +8,7 @@ use rustc_ast::util::literal::escape_byte_str_symbol;
 use rustc_ast::util::parser::{self, ExprPrecedence, Fixity};
 use rustc_ast::{
     self as ast, BlockCheckMode, FormatAlignment, FormatArgPosition, FormatArgsPiece, FormatCount,
-    FormatDebugHex, FormatSign, FormatTrait, token,
+    FormatDebugHex, FormatSign, FormatTrait, YieldKind, token,
 };
 
 use crate::pp::Breaks::Inconsistent;
@@ -761,7 +761,7 @@ impl<'a> State<'a> {
                 self.print_expr(e, FixupContext::default());
                 self.pclose();
             }
-            ast::ExprKind::Yield(e) => {
+            ast::ExprKind::Yield(YieldKind::Prefix(e)) => {
                 self.word("yield");
 
                 if let Some(expr) = e {
@@ -772,6 +772,14 @@ impl<'a> State<'a> {
                         fixup.subsequent_subexpression(),
                     );
                 }
+            }
+            ast::ExprKind::Yield(YieldKind::Postfix(e)) => {
+                self.print_expr_cond_paren(
+                    e,
+                    e.precedence() < ExprPrecedence::Unambiguous,
+                    fixup.leftmost_subexpression_with_dot(),
+                );
+                self.word(".yield");
             }
             ast::ExprKind::Try(e) => {
                 self.print_expr_cond_paren(
