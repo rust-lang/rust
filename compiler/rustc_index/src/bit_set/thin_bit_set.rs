@@ -221,7 +221,7 @@ impl<T> BitRelations<ThinBitSet<T>> for ThinBitSet<T> {
 
 impl<T: Idx> ThinBitSet<T> {
     /// Checks if the bit set contains `elem`.
-    #[inline]
+    #[inline(always)]
     pub fn contains(&self, elem: T) -> bool {
         // Check if the `i`th bit is set in a word.
         let contains_bit = |word: usize, bit_idx: u32| {
