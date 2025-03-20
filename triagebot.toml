@@ -47,7 +47,6 @@ add_labels = ["S-waiting-on-review"]
 [glacier]
 
 [ping.icebreakers-llvm]
-alias = ["llvm", "llvms"]
 message = """\
 Hey LLVM ICE-breakers! This bug has been identified as a good
 "LLVM ICE-breaking candidate". In case it's useful, here are some
