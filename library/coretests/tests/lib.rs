@@ -39,7 +39,6 @@
 #![feature(generic_assert_internals)]
 #![feature(hasher_prefixfree_extras)]
 #![feature(hashmap_internals)]
-#![feature(inline_const_pat)]
 #![feature(int_roundings)]
 #![feature(ip)]
 #![feature(ip_from)]
@@ -95,16 +94,17 @@
 
 /// Version of `assert_matches` that ignores fancy runtime printing in const context and uses structural equality.
 macro_rules! assert_eq_const_safe {
-    ($left:expr, $right:expr) => {
-        assert_eq_const_safe!($left, $right, concat!(stringify!($left), " == ", stringify!($right)));
+    ($t:ty: $left:expr, $right:expr) => {
+        assert_eq_const_safe!($t: $left, $right, concat!(stringify!($left), " == ", stringify!($right)));
     };
-    ($left:expr, $right:expr$(, $($arg:tt)+)?) => {
+    ($t:ty: $left:expr, $right:expr$(, $($arg:tt)+)?) => {
         {
             fn runtime() {
                 assert_eq!($left, $right, $($($arg)*),*);
             }
             const fn compiletime() {
-                assert!(matches!($left, const { $right }));
+                const PAT: $t = $right;
+                assert!(matches!($left, PAT), $($($arg)*),*);
             }
             core::intrinsics::const_eval_select((), compiletime, runtime)
         }
