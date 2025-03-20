@@ -5,6 +5,9 @@
 # Docker Hub has a rate limit, while ghcr.io doesn't.
 # Those images are pushed to ghcr.io by this job.
 #
+# While Docker Hub rate limit *shouldn't* be an issue on GitHub Actions,
+# it certainly is for AWS codebuild.
+#
 # Note that authenticating to DockerHub or other registries isn't possible
 # for PR jobs, because forks can't access secrets.
 # That's why we use ghcr.io: it has no rate limit and it doesn't require authentication.
@@ -54,6 +57,10 @@ jobs:
             "ubuntu:22.04"
             # Mirrored because used by all linux CI jobs, including mingw-check-tidy
             "moby/buildkit:buildx-stable-1"
+            # Mirrored because used when CI is running inside a Docker container
+            "alpine:3.4"
+            # Mirrored because used by dist-x86_64-linux
+            "centos:7"
           )
 
           # Mirror each image from DockerHub to ghcr.io

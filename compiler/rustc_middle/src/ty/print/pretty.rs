@@ -3406,20 +3406,18 @@ define_print_and_forward_display! {
 }
 
 fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, Namespace, DefId)) {
-    // Iterate all local crate items no matter where they are defined.
+    // Iterate all (non-anonymous) local crate items no matter where they are defined.
     for id in tcx.hir_free_items() {
         if matches!(tcx.def_kind(id.owner_id), DefKind::Use) {
             continue;
         }
 
         let item = tcx.hir_item(id);
-        if item.ident.name == kw::Empty {
-            continue;
-        }
+        let Some(ident) = item.kind.ident() else { continue };
 
         let def_id = item.owner_id.to_def_id();
         let ns = tcx.def_kind(def_id).ns().unwrap_or(Namespace::TypeNS);
-        collect_fn(&item.ident, ns, def_id);
+        collect_fn(&ident, ns, def_id);
     }
 
     // Now take care of extern crate items.

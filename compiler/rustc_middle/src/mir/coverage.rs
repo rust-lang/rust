@@ -194,7 +194,6 @@ pub struct Mapping {
 #[derive(TyEncodable, TyDecodable, Hash, HashStable)]
 pub struct FunctionCoverageInfo {
     pub function_source_hash: u64,
-    pub body_span: Span,
 
     /// Used in conjunction with `priority_list` to create physical counters
     /// and counter expressions, after MIR optimizations.

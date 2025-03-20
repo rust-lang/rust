@@ -681,17 +681,18 @@ impl MacResult for DummyResult {
 }
 
 /// A syntax extension kind.
+#[derive(Clone)]
 pub enum SyntaxExtensionKind {
     /// A token-based function-like macro.
     Bang(
         /// An expander with signature TokenStream -> TokenStream.
-        Box<dyn BangProcMacro + sync::DynSync + sync::DynSend>,
+        Arc<dyn BangProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based function-like macro.
     LegacyBang(
         /// An expander with signature TokenStream -> AST.
-        Box<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
+        Arc<dyn TTMacroExpander + sync::DynSync + sync::DynSend>,
     ),
 
     /// A token-based attribute macro.
@@ -699,7 +700,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (TokenStream, TokenStream) -> TokenStream.
         /// The first TokenStream is the attribute itself, the second is the annotated item.
         /// The produced TokenStream replaces the input TokenStream.
-        Box<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
+        Arc<dyn AttrProcMacro + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based attribute macro.
@@ -707,7 +708,7 @@ pub enum SyntaxExtensionKind {
         /// An expander with signature (AST, AST) -> AST.
         /// The first AST fragment is the attribute itself, the second is the annotated item.
         /// The produced AST fragment replaces the input AST fragment.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// A trivial attribute "macro" that does nothing,
@@ -724,18 +725,18 @@ pub enum SyntaxExtensionKind {
         /// is handled identically to `LegacyDerive`. It should be migrated to
         /// a token-based representation like `Bang` and `Attr`, instead of
         /// using `MultiItemModifier`.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// An AST-based derive macro.
     LegacyDerive(
         /// An expander with signature AST -> AST.
         /// The produced AST fragment is appended to the input AST fragment.
-        Box<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
+        Arc<dyn MultiItemModifier + sync::DynSync + sync::DynSend>,
     ),
 
     /// A glob delegation.
-    GlobDelegation(Box<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
+    GlobDelegation(Arc<dyn GlobDelegationExpander + sync::DynSync + sync::DynSend>),
 }
 
 /// A struct representing a macro definition in "lowered" form ready for expansion.
@@ -937,7 +938,7 @@ impl SyntaxExtension {
                 cx.dcx().span_delayed_bug(span, "expanded a dummy bang macro"),
             ))
         }
-        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::LegacyBang(Arc::new(expander)), edition)
     }
 
     /// A dummy derive macro `#[derive(Foo)]`.
@@ -950,7 +951,7 @@ impl SyntaxExtension {
         ) -> Vec<Annotatable> {
             Vec::new()
         }
-        SyntaxExtension::default(SyntaxExtensionKind::Derive(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::Derive(Arc::new(expander)), edition)
     }
 
     pub fn non_macro_attr(edition: Edition) -> SyntaxExtension {
@@ -980,7 +981,7 @@ impl SyntaxExtension {
         }
 
         let expander = GlobDelegationExpanderImpl { trait_def_id, impl_def_id };
-        SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Box::new(expander)), edition)
+        SyntaxExtension::default(SyntaxExtensionKind::GlobDelegation(Arc::new(expander)), edition)
     }
 
     pub fn expn_data(

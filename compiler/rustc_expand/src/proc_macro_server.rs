@@ -394,8 +394,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let integer = TokenKind::lit(token::Integer, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(integer, span);
@@ -406,8 +406,8 @@ impl ToInternal<SmallVec<[tokenstream::TokenTree; 2]>>
                 symbol,
                 suffix,
                 span,
-            }) if symbol.as_str().starts_with('-') => {
-                let symbol = Symbol::intern(&symbol.as_str()[1..]);
+            }) if let Some(symbol) = symbol.as_str().strip_prefix('-') => {
+                let symbol = Symbol::intern(symbol);
                 let float = TokenKind::lit(token::Float, symbol, suffix);
                 let a = tokenstream::TokenTree::token_joint_hidden(Minus, span);
                 let b = tokenstream::TokenTree::token_alone(float, span);

@@ -82,7 +82,7 @@ macro marker_impls {
 /// [arc]: ../../std/sync/struct.Arc.html
 /// [ub]: ../../reference/behavior-considered-undefined.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Send")]
+#[rustc_diagnostic_item = "Send"]
 #[diagnostic::on_unimplemented(
     message = "`{Self}` cannot be sent between threads safely",
     label = "`{Self}` cannot be sent between threads safely"
@@ -545,7 +545,7 @@ pub trait BikeshedGuaranteedNoDrop {}
 /// [transmute]: crate::mem::transmute
 /// [nomicon-send-and-sync]: ../../nomicon/send-and-sync.html
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(not(test), rustc_diagnostic_item = "Sync")]
+#[rustc_diagnostic_item = "Sync"]
 #[lang = "sync"]
 #[rustc_on_unimplemented(
     on(
@@ -1305,7 +1305,7 @@ pub trait FnPtr: Copy + Clone {
 /// ```
 #[rustc_builtin_macro(CoercePointee, attributes(pointee))]
 #[allow_internal_unstable(dispatch_from_dyn, coerce_unsized, unsize, coerce_pointee_validated)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "CoercePointee")]
+#[rustc_diagnostic_item = "CoercePointee"]
 #[unstable(feature = "derive_coerce_pointee", issue = "123430")]
 pub macro CoercePointee($item:item) {
     /* compiler built-in */

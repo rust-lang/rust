@@ -1774,10 +1774,14 @@ pub fn ptr_mask<T>(ptr: *const T, mask: usize) -> *const T;
 /// a size of `count` * `size_of::<T>()` and an alignment of
 /// `min_align_of::<T>()`
 ///
-/// The volatile parameter is set to `true`, so it will not be optimized out
-/// unless size is equal to zero.
-///
 /// This intrinsic does not have a stable counterpart.
+/// # Safety
+///
+/// The safety requirements are consistent with [`copy_nonoverlapping`]
+/// while the read and write behaviors are volatile,
+/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
+///
+/// [`copy_nonoverlapping`]: ptr::copy_nonoverlapping
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
@@ -1796,10 +1800,13 @@ pub unsafe fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 /// size of `count * size_of::<T>()` and an alignment of
 /// `min_align_of::<T>()`.
 ///
-/// The volatile parameter is set to `true`, so it will not be optimized out
-/// unless size is equal to zero.
-///
 /// This intrinsic does not have a stable counterpart.
+/// # Safety
+///
+/// The safety requirements are consistent with [`write_bytes`] while the write behavior is volatile,
+/// which means it will not be optimized out unless `_count` or `size_of::<T>()` is equal to zero.
+///
+/// [`write_bytes`]: ptr::write_bytes
 #[rustc_intrinsic]
 #[rustc_nounwind]
 pub unsafe fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
@@ -3341,8 +3348,18 @@ pub const fn is_val_statically_known<T: Copy>(_arg: T) -> bool {
 /// The stabilized form of this intrinsic is [`crate::mem::swap`].
 ///
 /// # Safety
+/// Behavior is undefined if any of the following conditions are violated:
 ///
-/// `x` and `y` are readable and writable as `T`, and non-overlapping.
+/// * Both `x` and `y` must be [valid] for both reads and writes.
+///
+/// * Both `x` and `y` must be properly aligned.
+///
+/// * The region of memory beginning at `x` must *not* overlap with the region of memory
+///   beginning at `y`.
+///
+/// * The memory pointed by `x` and `y` must both contain values of type `T`.
+///
+/// [valid]: crate::ptr#safety
 #[rustc_nounwind]
 #[inline]
 #[rustc_intrinsic]
@@ -3624,7 +3641,8 @@ pub const fn ptr_metadata<P: ptr::Pointee<Metadata = M> + ?Sized, M>(ptr: *const
 /// For regions of memory which might overlap, use [`copy`] instead.
 ///
 /// `copy_nonoverlapping` is semantically equivalent to C's [`memcpy`], but
-/// with the argument order swapped.
+/// with the source and destination arguments swapped,
+/// and `count` counting the number of `T`s instead of bytes.
 ///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the
 /// requirements of `T`. The initialization state is preserved exactly.
@@ -3744,8 +3762,10 @@ pub const unsafe fn copy_nonoverlapping<T>(src: *const T, dst: *mut T, count: us
 /// If the source and destination will *never* overlap,
 /// [`copy_nonoverlapping`] can be used instead.
 ///
-/// `copy` is semantically equivalent to C's [`memmove`], but with the argument
-/// order swapped. Copying takes place as if the bytes were copied from `src`
+/// `copy` is semantically equivalent to C's [`memmove`], but
+/// with the source and destination arguments swapped,
+/// and `count` counting the number of `T`s instead of bytes.
+/// Copying takes place as if the bytes were copied from `src`
 /// to a temporary array and then copied from the array to `dst`.
 ///
 /// The copy is "untyped" in the sense that data may be uninitialized or otherwise violate the

@@ -242,10 +242,9 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
             if let Node::Item(item) = self.tcx.hir_node(id) {
-                self.matches.insert(
-                    item.ident.span,
-                    LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),
-                );
+                let (ident, _) = item.expect_mod();
+                self.matches
+                    .insert(ident.span, LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)));
             }
         } else {
             // If it's a "mod foo {}", we want to look to its documentation page.
@@ -273,22 +272,22 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
     fn visit_item(&mut self, item: &'tcx Item<'tcx>) {
         match item.kind {
             ItemKind::Static(..)
-            | ItemKind::Const(_, _, _)
+            | ItemKind::Const(..)
             | ItemKind::Fn { .. }
-            | ItemKind::Macro(_, _)
-            | ItemKind::TyAlias(_, _)
-            | ItemKind::Enum(_, _)
-            | ItemKind::Struct(_, _)
-            | ItemKind::Union(_, _)
-            | ItemKind::Trait(_, _, _, _, _)
-            | ItemKind::TraitAlias(_, _) => self.extract_info_from_hir_id(item.hir_id()),
+            | ItemKind::Macro(..)
+            | ItemKind::TyAlias(..)
+            | ItemKind::Enum(..)
+            | ItemKind::Struct(..)
+            | ItemKind::Union(..)
+            | ItemKind::Trait(..)
+            | ItemKind::TraitAlias(..) => self.extract_info_from_hir_id(item.hir_id()),
             ItemKind::Impl(_)
-            | ItemKind::Use(_, _)
-            | ItemKind::ExternCrate(_)
+            | ItemKind::Use(..)
+            | ItemKind::ExternCrate(..)
             | ItemKind::ForeignMod { .. }
             | ItemKind::GlobalAsm { .. }
             // We already have "visit_mod" above so no need to check it here.
-            | ItemKind::Mod(_) => {}
+            | ItemKind::Mod(..) => {}
         }
         intravisit::walk_item(self, item);
     }

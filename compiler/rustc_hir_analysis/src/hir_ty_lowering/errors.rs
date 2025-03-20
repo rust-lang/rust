@@ -901,12 +901,12 @@ impl<'tcx> dyn HirTyLowerer<'tcx> + '_ {
                 .iter()
                 .map(|(item, _)| format!("{} = Type", item.name))
                 .collect();
-            let code = if snippet.ends_with('>') {
+            let code = if let Some(snippet) = snippet.strip_suffix('>') {
                 // The user wrote `Trait<'a>` or similar and we don't have a type we can
                 // suggest, but at least we can clue them to the correct syntax
                 // `Trait<'a, Item = Type>` while accounting for the `<'a>` in the
                 // suggestion.
-                format!("{}, {}>", &snippet[..snippet.len() - 1], types.join(", "))
+                format!("{}, {}>", snippet, types.join(", "))
             } else if in_expr_or_pat {
                 // The user wrote `Iterator`, so we don't have a type we can suggest, but at
                 // least we can clue them to the correct syntax `Iterator::<Item = Type>`.

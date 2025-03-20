@@ -44,6 +44,10 @@ use rustc_errors::emitter::stderr_destination;
 use rustc_errors::registry::Registry;
 use rustc_errors::{ColorConfig, DiagCtxt, ErrCode, FatalError, PResult, markdown};
 use rustc_feature::find_gated_cfg;
+// This avoids a false positive with `-Wunused_crate_dependencies`.
+// `rust_index` isn't used in this crate's code, but it must be named in the
+// `Cargo.toml` for the `rustc_randomized_layouts` feature.
+use rustc_index as _;
 use rustc_interface::util::{self, get_codegen_backend};
 use rustc_interface::{Linker, create_and_enter_global_ctxt, interface, passes};
 use rustc_lint::unerased_lint_store;
@@ -89,6 +93,10 @@ pub mod pretty;
 #[macro_use]
 mod print;
 mod session_diagnostics;
+
+// Keep the OS parts of this `cfg` in sync with the `cfg` on the `libc`
+// dependency in `compiler/rustc_driver/Cargo.toml`, to keep
+// `-Wunused-crated-dependencies` satisfied.
 #[cfg(all(not(miri), unix, any(target_env = "gnu", target_os = "macos")))]
 mod signal_handler;
 
@@ -457,8 +465,7 @@ pub enum Compilation {
 fn handle_explain(early_dcx: &EarlyDiagCtxt, registry: Registry, code: &str, color: ColorConfig) {
     // Allow "E0123" or "0123" form.
     let upper_cased_code = code.to_ascii_uppercase();
-    let start = if upper_cased_code.starts_with('E') { 1 } else { 0 };
-    if let Ok(code) = upper_cased_code[start..].parse::<u32>()
+    if let Ok(code) = upper_cased_code.strip_prefix('E').unwrap_or(&upper_cased_code).parse::<u32>()
         && let Ok(description) = registry.try_find_description(ErrCode::from_u32(code))
     {
         let mut is_in_code_block = false;
@@ -649,10 +656,10 @@ fn print_crate_info(
             HostTuple => println_info!("{}", rustc_session::config::host_tuple()),
             Sysroot => println_info!("{}", sess.sysroot.display()),
             TargetLibdir => println_info!("{}", sess.target_tlib_path.dir.display()),
-            TargetSpec => {
+            TargetSpecJson => {
                 println_info!("{}", serde_json::to_string_pretty(&sess.target.to_json()).unwrap());
             }
-            AllTargetSpecs => {
+            AllTargetSpecsJson => {
                 let mut targets = BTreeMap::new();
                 for name in rustc_target::spec::TARGETS {
                     let triple = TargetTuple::from_tuple(name);

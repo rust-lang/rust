@@ -519,7 +519,7 @@ impl Step for Rustc {
 
             // The REUSE-managed license files
             let license = |path: &Path| {
-                builder.install(path, &image.join("share/doc/rust/licences"), 0o644);
+                builder.install(path, &image.join("share/doc/rust/licenses"), 0o644);
             };
             for entry in t!(std::fs::read_dir(builder.src.join("LICENSES"))).flatten() {
                 license(&entry.path());
@@ -1000,9 +1000,9 @@ impl Step for PlainSourceTarball {
         let src_files = [
             // tidy-alphabetical-start
             ".gitmodules",
+            "bootstrap.example.toml",
             "Cargo.lock",
             "Cargo.toml",
-            "config.example.toml",
             "configure",
             "CONTRIBUTING.md",
             "COPYRIGHT",

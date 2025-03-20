@@ -115,7 +115,7 @@ pub fn setup(
         // https://github.com/rust-lang/miri/issues/1421,
         // https://github.com/rust-lang/miri/issues/2429). Looks like setting
         // `RUSTC_WRAPPER` to the empty string overwrites `build.rustc-wrapper` set via
-        // `config.toml`.
+        // `bootstrap.toml`.
         command.env("RUSTC_WRAPPER", "");
 
         if show_setup {

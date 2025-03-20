@@ -1010,12 +1010,6 @@ impl ExternPreludeEntry<'_> {
     }
 }
 
-/// Used for better errors for E0773
-enum BuiltinMacroState {
-    NotYetSeen(SyntaxExtensionKind),
-    AlreadySeen(Span),
-}
-
 struct DeriveData {
     resolutions: Vec<DeriveResolution>,
     helper_attrs: Vec<(usize, Ident)>,
@@ -1134,7 +1128,7 @@ pub struct Resolver<'ra, 'tcx> {
 
     used_extern_options: FxHashSet<Symbol>,
     macro_names: FxHashSet<Ident>,
-    builtin_macros: FxHashMap<Symbol, BuiltinMacroState>,
+    builtin_macros: FxHashMap<Symbol, SyntaxExtensionKind>,
     registered_tools: &'tcx RegisteredTools,
     macro_use_prelude: FxIndexMap<Symbol, NameBinding<'ra>>,
     macro_map: FxHashMap<DefId, MacroData>,

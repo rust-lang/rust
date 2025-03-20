@@ -81,7 +81,7 @@ smaller user-facing changes.
 into a PR that ends up not getting merged!** [See this document][mcpinfo] for
 more info on MCPs.
 
-[mcpinfo]: https://forge.rust-lang.org/compiler/mcp.html
+[mcpinfo]: https://forge.rust-lang.org/compiler/proposals-and-stabilization.html#how-do-i-submit-an-mcp
 [zulip]: https://rust-lang.zulipchat.com/#narrow/stream/131828-t-compiler
 
 ### Performance

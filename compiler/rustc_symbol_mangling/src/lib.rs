@@ -112,6 +112,8 @@ mod v0;
 pub mod errors;
 pub mod test;
 
+pub use v0::mangle_internal_symbol;
+
 /// This function computes the symbol name for the given `instance` and the
 /// given instantiating crate. That is, if you know that instance X is
 /// instantiated in crate Y, this is the symbol name this instance would have.
@@ -183,6 +185,39 @@ fn compute_symbol_name<'tcx>(
         CodegenFnAttrs::EMPTY
     };
 
+    if attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL) {
+        // Items marked as #[rustc_std_internal_symbol] need to have a fixed
+        // symbol name because it is used to import items from another crate
+        // without a direct dependency. As such it is not possible to look up
+        // the mangled name for the `Instance` from the crate metadata of the
+        // defining crate.
+        // Weak lang items automatically get #[rustc_std_internal_symbol]
+        // applied by the code computing the CodegenFnAttrs.
+        // We are mangling all #[rustc_std_internal_symbol] items that don't
+        // also have #[no_mangle] as a combination of the rustc version and the
+        // unmangled linkage name. This is to ensure that if we link against a
+        // staticlib compiled by a different rustc version, we don't get symbol
+        // conflicts or even UB due to a different implementation/ABI. Rust
+        // staticlibs currently export all symbols, including those that are
+        // hidden in cdylibs.
+        // We are using the v0 symbol mangling scheme here as we need to be
+        // consistent across all crates and in some contexts the legacy symbol
+        // mangling scheme can't be used. For example both the GCC backend and
+        // Rust-for-Linux don't support some of the characters used by the
+        // legacy symbol mangling scheme.
+        let name = if tcx.is_foreign_item(def_id) {
+            if let Some(name) = attrs.link_name { name } else { tcx.item_name(def_id) }
+        } else {
+            if let Some(name) = attrs.export_name { name } else { tcx.item_name(def_id) }
+        };
+
+        if attrs.flags.contains(CodegenFnAttrFlags::NO_MANGLE) {
+            return name.to_string();
+        } else {
+            return v0::mangle_internal_symbol(tcx, name.as_str());
+        }
+    }
+
     // Foreign items by default use no mangling for their symbol name. There's a
     // few exceptions to this rule though:
     //
@@ -198,6 +233,8 @@ fn compute_symbol_name<'tcx>(
     //   is present we mangle everything on wasm because the demangled form will
     //   show up in the `wasm-import-name` custom attribute in LLVM IR.
     //
+    // * `#[rustc_std_internal_symbol]` mangles the symbol name in a special way
+    //   both for exports and imports through foreign items. This is handled above.
     // [1]: https://bugs.llvm.org/show_bug.cgi?id=44316
     if tcx.is_foreign_item(def_id)
         && (!tcx.sess.target.is_like_wasm

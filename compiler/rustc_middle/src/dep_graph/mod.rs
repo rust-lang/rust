@@ -46,6 +46,7 @@ impl Deps for DepsType {
 
     const DEP_KIND_NULL: DepKind = dep_kinds::Null;
     const DEP_KIND_RED: DepKind = dep_kinds::Red;
+    const DEP_KIND_SIDE_EFFECT: DepKind = dep_kinds::SideEffect;
     const DEP_KIND_MAX: u16 = dep_node::DEP_KIND_VARIANTS - 1;
 }
 

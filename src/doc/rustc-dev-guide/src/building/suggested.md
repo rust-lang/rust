@@ -123,6 +123,30 @@ Another way is without a plugin, and creating your own logic in your
 configuration. The following code will work for any checkout of rust-lang/rust (newer than Febuary 2025):
 
 ```lua
+local function expand_config_variables(option)
+    local var_placeholders = {
+        ['${workspaceFolder}'] = function(_)
+            return vim.lsp.buf.list_workspace_folders()[1]
+        end,
+    }
+
+    if type(option) == "table" then
+        local mt = getmetatable(option)
+        local result = {}
+        for k, v in pairs(option) do
+            result[expand_config_variables(k)] = expand_config_variables(v)
+        end
+        return setmetatable(result, mt)
+    end
+    if type(option) ~= "string" then
+        return option
+    end
+    local ret = option
+    for key, fn in pairs(var_placeholders) do
+        ret = ret:gsub(key, fn)
+    end
+    return ret
+end
 lspconfig.rust_analyzer.setup {
     root_dir = function()
         local default = lspconfig.rust_analyzer.config_def.default_config.root_dir()
@@ -142,7 +166,7 @@ lspconfig.rust_analyzer.setup {
             -- load rust-lang/rust settings
             local file = io.open(config)
             local json = vim.json.decode(file:read("*a"))
-            client.config.settings["rust-analyzer"] = json.lsp["rust-analyzer"].initialization_options
+            client.config.settings["rust-analyzer"] = expand_config_variables(json.lsp["rust-analyzer"].initialization_options)
             client.notify("workspace/didChangeConfiguration", { settings = client.config.settings })
         end
         return true
@@ -305,7 +329,7 @@ subsequent rebuilds:
 ```
 
 If you don't want to include the flag with every command, you can enable it in
-the `config.toml`:
+the `bootstrap.toml`:
 
 ```toml
 [rust]
@@ -384,20 +408,20 @@ ln -s ./src/tools/nix-dev-shell/envrc-shell ./.envrc # Use nix-shell
 ### Note
 
 Note that when using nix on a not-NixOS distribution, it may be necessary to set
-**`patch-binaries-for-nix = true` in `config.toml`**. Bootstrap tries to detect
+**`patch-binaries-for-nix = true` in `bootstrap.toml`**. Bootstrap tries to detect
 whether it's running in nix and enable patching automatically, but this
 detection can have false negatives.
 
-You can also use your nix shell to manage `config.toml`:
+You can also use your nix shell to manage `bootstrap.toml`:
 
 ```nix
 let
   config = pkgs.writeText "rustc-config" ''
-    # Your config.toml content goes here
+    # Your bootstrap.toml content goes here
   ''
 pkgs.mkShell {
   /* ... */
-  # This environment variable tells bootstrap where our config.toml is.
+  # This environment variable tells bootstrap where our bootstrap.toml is.
   RUST_BOOTSTRAP_CONFIG = config;
 }
 ```

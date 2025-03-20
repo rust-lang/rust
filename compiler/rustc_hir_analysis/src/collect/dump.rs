@@ -134,7 +134,7 @@ pub(crate) fn vtables<'tcx>(tcx: TyCtxt<'tcx>) {
                 };
                 tcx.vtable_entries(trait_ref)
             }
-            hir::ItemKind::TyAlias(_, _) => {
+            hir::ItemKind::TyAlias(..) => {
                 let ty = tcx.type_of(def_id).instantiate_identity();
                 if ty.has_non_region_param() {
                     tcx.dcx().span_err(

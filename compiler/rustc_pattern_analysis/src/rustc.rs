@@ -150,9 +150,7 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
     /// Returns whether the given type is an enum from another crate declared `#[non_exhaustive]`.
     pub fn is_foreign_non_exhaustive_enum(&self, ty: RevealedTy<'tcx>) -> bool {
         match ty.kind() {
-            ty::Adt(def, ..) => {
-                def.is_enum() && def.is_variant_list_non_exhaustive() && !def.did().is_local()
-            }
+            ty::Adt(def, ..) => def.variant_list_has_applicable_non_exhaustive(),
             _ => false,
         }
     }

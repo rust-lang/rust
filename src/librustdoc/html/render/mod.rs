@@ -1465,8 +1465,6 @@ pub(crate) fn notable_traits_button(
     ty: &clean::Type,
     cx: &Context<'_>,
 ) -> Option<impl fmt::Display> {
-    let mut has_notable_trait = false;
-
     if ty.is_unit() {
         // Very common fast path.
         return None;
@@ -1484,27 +1482,19 @@ pub(crate) fn notable_traits_button(
         return None;
     }
 
-    if let Some(impls) = cx.cache().impls.get(&did) {
-        for i in impls {
-            let impl_ = i.inner_impl();
-            if impl_.polarity != ty::ImplPolarity::Positive {
-                continue;
-            }
-
-            if !ty.is_doc_subtype_of(&impl_.for_, cx.cache()) {
+    let impls = cx.cache().impls.get(&did)?;
+    let has_notable_trait = impls
+        .iter()
+        .map(Impl::inner_impl)
+        .filter(|impl_| {
+            impl_.polarity == ty::ImplPolarity::Positive
                 // Two different types might have the same did,
                 // without actually being the same.
-                continue;
-            }
-            if let Some(trait_) = &impl_.trait_ {
-                let trait_did = trait_.def_id();
-
-                if cx.cache().traits.get(&trait_did).is_some_and(|t| t.is_notable_trait(cx.tcx())) {
-                    has_notable_trait = true;
-                }
-            }
-        }
-    }
+                && ty.is_doc_subtype_of(&impl_.for_, cx.cache())
+        })
+        .filter_map(|impl_| impl_.trait_.as_ref())
+        .filter_map(|trait_| cx.cache().traits.get(&trait_.def_id()))
+        .any(|t| t.is_notable_trait(cx.tcx()));
 
     has_notable_trait.then(|| {
         cx.types_with_notable_traits.borrow_mut().insert(ty.clone());

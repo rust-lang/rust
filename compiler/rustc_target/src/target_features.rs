@@ -923,6 +923,28 @@ impl Target {
                     _ => unreachable!(),
                 }
             }
+            "loongarch64" => {
+                // LoongArch handles ABI in a very sane way, being fully explicit via `llvm_abiname`
+                // about what the intended ABI is.
+                match &*self.llvm_abiname {
+                    "ilp32d" | "lp64d" => {
+                        // Requires d (which implies f), incompatible with nothing.
+                        FeatureConstraints { required: &["d"], incompatible: &[] }
+                    }
+                    "ilp32f" | "lp64f" => {
+                        // Requires f, incompatible with nothing.
+                        FeatureConstraints { required: &["f"], incompatible: &[] }
+                    }
+                    "ilp32s" | "lp64s" => {
+                        // The soft-float ABI does not require any features and is also not
+                        // incompatible with any features. Rust targets explicitly specify the
+                        // LLVM ABI names, which allows for enabling hard-float support even on
+                        // soft-float targets, and ensures that the ABI behavior is as expected.
+                        NOTHING
+                    }
+                    _ => unreachable!(),
+                }
+            }
             _ => NOTHING,
         }
     }

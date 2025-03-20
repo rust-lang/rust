@@ -97,7 +97,6 @@ enum Direction {
     Back,
 }
 
-#[cfg(not(test))]
 impl<T> [T] {
     /// Returns the number of elements in the slice.
     ///
@@ -1045,7 +1044,7 @@ impl<T> [T] {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    #[cfg_attr(not(test), rustc_diagnostic_item = "slice_iter")]
+    #[rustc_diagnostic_item = "slice_iter"]
     pub fn iter(&self) -> Iter<'_, T> {
         Iter::new(self)
     }
@@ -4446,8 +4445,10 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
-    pub fn split_off_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
-        let (first, rem) = self.split_first()?;
+    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    pub const fn split_off_first<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
+        let Some((first, rem)) = self.split_first() else { return None };
         *self = rem;
         Some(first)
     }
@@ -4469,8 +4470,11 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
-    pub fn split_off_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
-        let (first, rem) = mem::take(self).split_first_mut()?;
+    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    pub const fn split_off_first_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        // FIXME(const-hack): Use `mem::take` and `?` when available in const.
+        // Original: `mem::take(self).split_first_mut()?`
+        let Some((first, rem)) = mem::replace(self, &mut []).split_first_mut() else { return None };
         *self = rem;
         Some(first)
     }
@@ -4491,8 +4495,10 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
-    pub fn split_off_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
-        let (last, rem) = self.split_last()?;
+    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    pub const fn split_off_last<'a>(self: &mut &'a Self) -> Option<&'a T> {
+        // FIXME(const-hack): Use `?` when available in const instead of `let-else`.
+        let Some((last, rem)) = self.split_last() else { return None };
         *self = rem;
         Some(last)
     }
@@ -4514,8 +4520,11 @@ impl<T> [T] {
     /// ```
     #[inline]
     #[stable(feature = "slice_take", since = "CURRENT_RUSTC_VERSION")]
-    pub fn split_off_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
-        let (last, rem) = mem::take(self).split_last_mut()?;
+    #[rustc_const_unstable(feature = "const_split_off_first_last", issue = "138539")]
+    pub const fn split_off_last_mut<'a>(self: &mut &'a mut Self) -> Option<&'a mut T> {
+        // FIXME(const-hack): Use `mem::take` and `?` when available in const.
+        // Original: `mem::take(self).split_last_mut()?`
+        let Some((last, rem)) = mem::replace(self, &mut []).split_last_mut() else { return None };
         *self = rem;
         Some(last)
     }
@@ -4844,7 +4853,6 @@ impl<T, const N: usize> [[T; N]] {
     }
 }
 
-#[cfg(not(test))]
 impl [f32] {
     /// Sorts the slice of floats.
     ///
@@ -4873,7 +4881,6 @@ impl [f32] {
     }
 }
 
-#[cfg(not(test))]
 impl [f64] {
     /// Sorts the slice of floats.
     ///

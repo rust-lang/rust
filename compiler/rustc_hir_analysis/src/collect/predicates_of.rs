@@ -163,7 +163,8 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Gen
                 }
             }
 
-            ItemKind::Trait(_, _, _, self_bounds, ..) | ItemKind::TraitAlias(_, self_bounds) => {
+            ItemKind::Trait(_, _, _, _, self_bounds, ..)
+            | ItemKind::TraitAlias(_, _, self_bounds) => {
                 is_trait = Some(self_bounds);
             }
             _ => {}
@@ -615,7 +616,7 @@ pub(super) fn implied_predicates_with_filter<'tcx>(
 
     let (generics, superbounds) = match item.kind {
         hir::ItemKind::Trait(.., generics, supertraits, _) => (generics, supertraits),
-        hir::ItemKind::TraitAlias(generics, supertraits) => (generics, supertraits),
+        hir::ItemKind::TraitAlias(_, generics, supertraits) => (generics, supertraits),
         _ => span_bug!(item.span, "super_predicates invoked on non-trait"),
     };
 
@@ -959,7 +960,7 @@ pub(super) fn const_conditions<'tcx>(
         Node::Item(item) => match item.kind {
             hir::ItemKind::Impl(impl_) => (impl_.generics, None, false),
             hir::ItemKind::Fn { generics, .. } => (generics, None, false),
-            hir::ItemKind::Trait(_, _, generics, supertraits, _) => {
+            hir::ItemKind::Trait(_, _, _, generics, supertraits, _) => {
                 (generics, Some((item.owner_id.def_id, supertraits)), false)
             }
             _ => bug!("const_conditions called on wrong item: {def_id:?}"),

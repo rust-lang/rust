@@ -966,15 +966,6 @@ pub(crate) struct StaticLifetimeIsReserved {
 }
 
 #[derive(Diagnostic)]
-#[diag(resolve_attempt_to_define_builtin_macro_twice, code = E0773)]
-pub(crate) struct AttemptToDefineBuiltinMacroTwice {
-    #[primary_span]
-    pub(crate) span: Span,
-    #[note]
-    pub(crate) note_span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(resolve_variable_is_not_bound_in_all_patterns, code = E0408)]
 pub(crate) struct VariableIsNotBoundInAllPatterns {
     #[primary_span]

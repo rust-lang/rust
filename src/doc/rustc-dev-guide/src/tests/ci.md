@@ -180,6 +180,8 @@ their results can be seen [here](https://github.com/rust-lang-ci/rust/actions),
 although usually you will be notified of the result by a comment made by bors on
 the corresponding PR.
 
+Note that if you start the default try job using `@bors try`, it will skip building several `dist` components and running post-optimization tests, to make the build duration shorter. If you want to execute the full build as it would happen before a merge, add an explicit `try-job` pattern with the name of the default try job (currently `dist-x86_64-linux`).
+
 Multiple try builds can execute concurrently across different PRs.
 
 <div class="warning">
@@ -435,7 +437,7 @@ To learn more about the dashboard, see the [Datadog CI docs].
 
 ## Determining the CI configuration
 
-If you want to determine which `config.toml` settings are used in CI for a
+If you want to determine which `bootstrap.toml` settings are used in CI for a
 particular job, it is probably easiest to just look at the build log. To do
 this:
 

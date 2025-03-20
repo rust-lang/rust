@@ -80,7 +80,7 @@ impl<'tcx> HirCollector<'tcx> {
 
     pub fn collect_crate(mut self) -> Vec<ScrapedDocTest> {
         let tcx = self.tcx;
-        self.visit_testable("".to_string(), CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
+        self.visit_testable(None, CRATE_DEF_ID, tcx.hir().span(CRATE_HIR_ID), |this| {
             tcx.hir_walk_toplevel_module(this)
         });
         self.collector.tests
@@ -90,7 +90,7 @@ impl<'tcx> HirCollector<'tcx> {
 impl HirCollector<'_> {
     fn visit_testable<F: FnOnce(&mut Self)>(
         &mut self,
-        name: String,
+        name: Option<String>,
         def_id: LocalDefId,
         sp: Span,
         nested: F,
@@ -103,9 +103,10 @@ impl HirCollector<'_> {
             return;
         }
 
-        let has_name = !name.is_empty();
-        if has_name {
+        let mut has_name = false;
+        if let Some(name) = name {
             self.collector.cur_path.push(name);
+            has_name = true;
         }
 
         // The collapse-docs pass won't combine sugared/raw doc attributes, or included files with
@@ -153,9 +154,9 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     fn visit_item(&mut self, item: &'tcx hir::Item<'_>) {
         let name = match &item.kind {
             hir::ItemKind::Impl(impl_) => {
-                rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id)
+                Some(rustc_hir_pretty::id_to_string(&self.tcx, impl_.self_ty.hir_id))
             }
-            _ => item.ident.to_string(),
+            _ => item.kind.ident().map(|ident| ident.to_string()),
         };
 
         self.visit_testable(name, item.owner_id.def_id, item.span, |this| {
@@ -164,31 +165,46 @@ impl<'tcx> intravisit::Visitor<'tcx> for HirCollector<'tcx> {
     }
 
     fn visit_trait_item(&mut self, item: &'tcx hir::TraitItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_trait_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_trait_item(this, item);
+            },
+        );
     }
 
     fn visit_impl_item(&mut self, item: &'tcx hir::ImplItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_impl_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_impl_item(this, item);
+            },
+        );
     }
 
     fn visit_foreign_item(&mut self, item: &'tcx hir::ForeignItem<'_>) {
-        self.visit_testable(item.ident.to_string(), item.owner_id.def_id, item.span, |this| {
-            intravisit::walk_foreign_item(this, item);
-        });
+        self.visit_testable(
+            Some(item.ident.to_string()),
+            item.owner_id.def_id,
+            item.span,
+            |this| {
+                intravisit::walk_foreign_item(this, item);
+            },
+        );
     }
 
     fn visit_variant(&mut self, v: &'tcx hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.def_id, v.span, |this| {
+        self.visit_testable(Some(v.ident.to_string()), v.def_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }
 
     fn visit_field_def(&mut self, f: &'tcx hir::FieldDef<'_>) {
-        self.visit_testable(f.ident.to_string(), f.def_id, f.span, |this| {
+        self.visit_testable(Some(f.ident.to_string()), f.def_id, f.span, |this| {
             intravisit::walk_field_def(this, f);
         });
     }

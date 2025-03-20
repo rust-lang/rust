@@ -112,7 +112,11 @@ export RUST_RELEASE_CHANNEL=$(releaseChannel)
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --release-channel=$RUST_RELEASE_CHANNEL"
 
 if [ "$DEPLOY$DEPLOY_ALT" = "1" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
+  if [[ "$CI_JOB_NAME" == *ohos* ]]; then
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-llvm-static-stdcpp"
+  else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-llvm-static-stdcpp"
+  fi
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.remap-debuginfo"
 
   if [ "$DEPLOY_ALT" != "" ] && isLinux; then
@@ -225,8 +229,8 @@ trap datecheck EXIT
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-# Our build may overwrite config.toml, so we remove it here
-rm -f config.toml
+# Our build may overwrite bootstrap.toml, so we remove it here
+rm -f bootstrap.toml
 
 $SRC/configure $RUST_CONFIGURE_ARGS
 

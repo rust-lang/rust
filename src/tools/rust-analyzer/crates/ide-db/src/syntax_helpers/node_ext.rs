@@ -121,7 +121,7 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
         match ast::Stmt::cast(node.clone()) {
             Some(ast::Stmt::LetStmt(l)) => {
                 if let Some(pat) = l.pat() {
-                    walk_pat(&pat, &mut |pat| {
+                    let _ = walk_pat(&pat, &mut |pat| {
                         cb(pat);
                         ControlFlow::<(), ()>::Continue(())
                     });
@@ -159,7 +159,7 @@ pub fn walk_patterns_in_expr(start: &ast::Expr, cb: &mut dyn FnMut(ast::Pat)) {
                     }
                 } else if let Some(pat) = ast::Pat::cast(node) {
                     preorder.skip_subtree();
-                    walk_pat(&pat, &mut |pat| {
+                    let _ = walk_pat(&pat, &mut |pat| {
                         cb(pat);
                         ControlFlow::<(), ()>::Continue(())
                     });

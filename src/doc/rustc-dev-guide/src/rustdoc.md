@@ -58,12 +58,12 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   * If you want to copy those docs to a webserver, copy all of
     `build/host/doc`, since that's where the CSS, JS, fonts, and landing
     page are.
-  * For frontend debugging, disable the `rust.docs-minification` option in [`config.toml`].
+  * For frontend debugging, disable the `rust.docs-minification` option in [`bootstrap.toml`].
 * Use `./x test tests/rustdoc*` to run the tests using a stage1
   rustdoc.
   * See [Rustdoc internals] for more information about tests.
 
-[`config.toml`]: ./building/how-to-build-and-run.md
+[`bootstrap.toml`]: ./building/how-to-build-and-run.md
 
 ## Code structure
 
