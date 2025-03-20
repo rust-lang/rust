@@ -565,7 +565,7 @@ impl TcpStream {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    /// let stream = TcpStream::connect("[::1]:12345")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
@@ -584,7 +584,7 @@ impl TcpStream {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::TcpStream;
     ///
-    /// let stream = TcpStream::connect("127.0.0.1:54321")
+    /// let stream = TcpStream::connect("[::1]:12345")
     ///                        .expect("Couldn't connect to the server...");
     /// stream.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// assert_eq!(stream.hop_limit_v6().unwrap(), 88);
@@ -999,7 +999,7 @@ impl TcpListener {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:54321").unwrap();
+    /// let listener = TcpListener::bind("[::1]:12345").unwrap();
     /// listener.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
@@ -1017,7 +1017,7 @@ impl TcpListener {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::TcpListener;
     ///
-    /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
+    /// let listener = TcpListener::bind("[::1]:12345").unwrap();
     /// listener.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// assert_eq!(listener.hop_limit_v6().unwrap(), 88);
     /// ```
