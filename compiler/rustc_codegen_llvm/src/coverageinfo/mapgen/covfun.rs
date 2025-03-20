@@ -120,9 +120,14 @@ fn fill_region_tables<'tcx>(
     // Associate that global file ID with a local file ID for this function.
     let local_file_id = covfun.virtual_file_mapping.local_id_for_global(global_file_id);
 
-    let make_cov_span =
-        |span: Span| spans::make_coverage_span(local_file_id, source_map, &source_file, span);
+    // In rare cases, _all_ of a function's spans are discarded, and coverage
+    // codegen needs to handle that gracefully to avoid #133606.
+    // It's hard for tests to trigger this organically, so instead we set
+    // `-Zcoverage-options=discard-all-spans-in-codegen` to force it to occur.
     let discard_all = tcx.sess.coverage_discard_all_spans_in_codegen();
+    let make_coords = |span: Span| {
+        if discard_all { None } else { spans::make_coords(source_map, &source_file, span) }
+    };
 
     let ffi::Regions {
         code_regions,
@@ -145,17 +150,8 @@ fn fill_region_tables<'tcx>(
             ffi::Counter::from_term(term)
         };
 
-        // Convert the `Span` into coordinates that we can pass to LLVM, or
-        // discard the span if conversion fails. In rare, cases _all_ of a
-        // function's spans are discarded, and the rest of coverage codegen
-        // needs to handle that gracefully to avoid a repeat of #133606.
-        // We don't have a good test case for triggering that organically, so
-        // instead we set `-Zcoverage-options=discard-all-spans-in-codegen`
-        // to force it to occur.
-        let Some(cov_span) = make_cov_span(span) else { continue };
-        if discard_all {
-            continue;
-        }
+        let Some(coords) = make_coords(span) else { continue };
+        let cov_span = coords.make_coverage_span(local_file_id);
 
         match *kind {
             MappingKind::Code { bcb } => {
