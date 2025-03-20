@@ -53,7 +53,7 @@ declare_lint_pass!(CrateInMacroDef => [CRATE_IN_MACRO_DEF]);
 
 impl EarlyLintPass for CrateInMacroDef {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        if let ItemKind::MacroDef(macro_def) = &item.kind
+        if let ItemKind::MacroDef(_, macro_def) = &item.kind
             && item.attrs.iter().any(is_macro_export)
             && let Some(span) = contains_unhygienic_crate_reference(&macro_def.body.tokens)
         {

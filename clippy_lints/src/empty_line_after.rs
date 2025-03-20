@@ -9,7 +9,7 @@ use rustc_lexer::TokenKind;
 use rustc_lint::{EarlyContext, EarlyLintPass, LintContext};
 use rustc_session::impl_lint_pass;
 use rustc_span::symbol::kw;
-use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol};
+use rustc_span::{BytePos, ExpnKind, Ident, InnerSpan, Span, SpanData, Symbol, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -375,21 +375,21 @@ impl EmptyLineAfter {
         &mut self,
         cx: &EarlyContext<'_>,
         kind: &ItemKind,
-        ident: &Ident,
+        ident: &Option<Ident>,
         span: Span,
         attrs: &[Attribute],
         id: NodeId,
     ) {
         self.items.push(ItemInfo {
             kind: kind.descr(),
-            name: ident.name,
-            span: if span.contains(ident.span) {
+            name: if let Some(ident) = ident { ident.name } else { sym::dummy },
+            span: if let Some(ident) = ident {
                 span.with_hi(ident.span.hi())
             } else {
                 span.with_hi(span.lo())
             },
             mod_items: match kind {
-                ItemKind::Mod(_, ModKind::Loaded(items, _, _, _)) => items
+                ItemKind::Mod(_, _, ModKind::Loaded(items, _, _, _)) => items
                     .iter()
                     .filter(|i| !matches!(i.span.ctxt().outer_expn_data().kind, ExpnKind::AstPass(_)))
                     .map(|i| i.id)
@@ -471,7 +471,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.ident,
+            &item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -482,7 +482,7 @@ impl EarlyLintPass for EmptyLineAfter {
         self.check_item_kind(
             cx,
             &item.kind.clone().into(),
-            &item.ident,
+            &item.kind.ident(),
             item.span,
             &item.attrs,
             item.id,
@@ -490,6 +490,6 @@ impl EarlyLintPass for EmptyLineAfter {
     }
 
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &Item) {
-        self.check_item_kind(cx, &item.kind, &item.ident, item.span, &item.attrs, item.id);
+        self.check_item_kind(cx, &item.kind, &item.kind.ident(), item.span, &item.attrs, item.id);
     }
 }
