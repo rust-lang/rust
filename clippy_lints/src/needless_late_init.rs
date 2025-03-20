@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
-use clippy_utils::source::{SourceText, SpanRangeExt};
+use clippy_utils::source::{SourceText, SpanRangeExt, snippet};
 use clippy_utils::ty::needs_ordered_drop;
 use clippy_utils::visitors::{for_each_expr, for_each_expr_without_closures, is_local_used};
 use core::ops::ControlFlow;
@@ -100,7 +100,6 @@ fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
 #[derive(Debug)]
 struct LocalAssign {
     lhs_id: HirId,
-    lhs_span: Span,
     rhs_span: Span,
     span: Span,
 }
@@ -118,7 +117,6 @@ impl LocalAssign {
 
             Some(Self {
                 lhs_id: path_to_local(lhs)?,
-                lhs_span: lhs.span,
                 rhs_span: rhs.span.source_callsite(),
                 span,
             })
@@ -281,7 +279,10 @@ fn check<'tcx>(
                         format!("move the declaration `{binding_name}` here"),
                         vec![
                             (local_stmt.span, String::new()),
-                            (assign.lhs_span, let_snippet.to_owned()),
+                            (
+                                assign.span,
+                                let_snippet.to_owned() + " = " + &snippet(cx, assign.rhs_span, ".."),
+                            ),
                         ],
                         Applicability::MachineApplicable,
                     );

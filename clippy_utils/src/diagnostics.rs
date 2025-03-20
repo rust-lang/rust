@@ -85,7 +85,7 @@ fn validate_diag(diag: &Diag<'_, impl EmissionGuarantee>) {
 /// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
 /// highlighted in the displayed warning.
 ///
-/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir`] instead.
 ///
@@ -128,7 +128,7 @@ pub fn span_lint<T: LintContext>(cx: &T, lint: &'static Lint, sp: impl Into<Mult
 /// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
 /// highlighted in the displayed warning.
 ///
-/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
@@ -183,7 +183,7 @@ pub fn span_lint_and_help<T: LintContext>(
 /// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
 /// highlighted in the displayed warning.
 ///
-/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///
@@ -241,7 +241,7 @@ pub fn span_lint_and_note<T: LintContext>(
 /// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
 /// highlighted in the displayed warning.
 ///
-/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 pub fn span_lint_and_then<C, S, M, F>(cx: &C, lint: &'static Lint, sp: S, msg: M, f: F)
@@ -358,7 +358,7 @@ pub fn span_lint_hir_and_then(
 /// This is needed for `#[allow]` and `#[expect]` attributes to work on the node
 /// highlighted in the displayed warning.
 ///
-/// If you're unsure which function you should use, you can test if the `#[allow]` attribute works
+/// If you're unsure which function you should use, you can test if the `#[expect]` attribute works
 /// where you would expect it to.
 /// If it doesn't, you likely need to use [`span_lint_hir_and_then`] instead.
 ///

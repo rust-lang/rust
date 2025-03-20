@@ -102,8 +102,7 @@ is responsible for maintaining Clippy.
 
 5. **Update the changelog**
 
-    This needs to be done for every release, every six weeks. This is usually
-    done by @xFrednet.
+    This needs to be done for every release, every six weeks.
 
 ### Membership
 

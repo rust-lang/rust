@@ -688,7 +688,7 @@ pub fn eq_generics(l: &Generics, r: &Generics) -> bool {
 
 pub fn eq_where_predicate(l: &WherePredicate, r: &WherePredicate) -> bool {
     use WherePredicateKind::*;
-    over(&l.attrs, &r.attrs, eq_attr) 
+    over(&l.attrs, &r.attrs, eq_attr)
         && match (&l.kind, &r.kind) {
             (BoundPredicate(l), BoundPredicate(r)) => {
                 over(&l.bound_generic_params, &r.bound_generic_params, |l, r| {
