@@ -201,7 +201,8 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
-        (Yield(l), Yield(r)) | (Ret(l), Ret(r)) => eq_expr_opt(l.as_ref(), r.as_ref()),
+        (Yield(l), Yield(r)) => eq_expr_opt(l.expr(), r.expr()) && l.same_kind(r),
+        (Ret(l), Ret(r)) => eq_expr_opt(l.as_ref(), r.as_ref()),
         (Break(ll, le), Break(rl, re)) => eq_label(ll.as_ref(), rl.as_ref()) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (Continue(ll), Continue(rl)) => eq_label(ll.as_ref(), rl.as_ref()),
         (Assign(l1, l2, _), Assign(r1, r2, _)) | (Index(l1, l2, _), Index(r1, r2, _)) => {
@@ -688,7 +689,7 @@ pub fn eq_generics(l: &Generics, r: &Generics) -> bool {
 
 pub fn eq_where_predicate(l: &WherePredicate, r: &WherePredicate) -> bool {
     use WherePredicateKind::*;
-    over(&l.attrs, &r.attrs, eq_attr) 
+    over(&l.attrs, &r.attrs, eq_attr)
         && match (&l.kind, &r.kind) {
             (BoundPredicate(l), BoundPredicate(r)) => {
                 over(&l.bound_generic_params, &r.bound_generic_params, |l, r| {
