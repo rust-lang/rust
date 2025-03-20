@@ -18,7 +18,6 @@ macro_rules! deref_lhs {
             type Output = Simd<T, N>;
 
             #[inline]
-            #[must_use = "operator returns a new vector without mutating the inputs"]
             fn $call(self, rhs: $simd) -> Self::Output {
                 (*self).$call(rhs)
             }
@@ -39,7 +38,6 @@ macro_rules! deref_rhs {
             type Output = Simd<T, N>;
 
             #[inline]
-            #[must_use = "operator returns a new vector without mutating the inputs"]
             fn $call(self, rhs: &$simd) -> Self::Output {
                 self.$call(*rhs)
             }
@@ -71,7 +69,6 @@ macro_rules! deref_ops {
                 type Output = $simd;
 
                 #[inline]
-                #[must_use = "operator returns a new vector without mutating the inputs"]
                 fn $call(self, rhs: &'rhs $simd) -> Self::Output {
                     (*self).$call(*rhs)
                 }
