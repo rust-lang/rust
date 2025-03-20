@@ -2,6 +2,7 @@
 //
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Cno-prepopulate-passes -Ctarget-feature=-crt-static -Zsanitizer=cfi -Zsanitizer-cfi-generalize-pointers -Copt-level=0
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 
 #![crate_type = "lib"]
 

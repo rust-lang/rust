@@ -1,5 +1,7 @@
 //@ revisions: emit_mir instrument cfi
 
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+
 // Make sure we don't try to emit MIR for it.
 //@[emit_mir] compile-flags: --emit=mir
 

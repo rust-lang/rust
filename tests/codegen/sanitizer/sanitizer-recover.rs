@@ -7,6 +7,7 @@
 //@ no-prefer-dynamic
 //
 //@                   compile-flags: -Ctarget-feature=-crt-static
+//@                   compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
 //@[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
 //@[MSAN]             compile-flags: -Zsanitizer=memory

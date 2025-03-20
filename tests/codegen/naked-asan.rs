@@ -4,6 +4,8 @@
 //@ needs-sanitizer-address
 //@ compile-flags: -Zsanitizer=address -Ctarget-feature=-crt-static
 
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+
 #![crate_type = "lib"]
 #![no_std]
 #![feature(abi_x86_interrupt)]
