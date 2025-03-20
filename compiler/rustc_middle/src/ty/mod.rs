@@ -187,6 +187,11 @@ pub struct ResolverGlobalCtxt {
     pub stripped_cfg_items: Steal<Vec<StrippedCfgItem>>,
 }
 
+#[derive(Debug, Default)]
+pub struct PerOwnerResolverData {
+    pub node_id_to_def_id: NodeMap<LocalDefId>,
+}
+
 /// Resolutions that should only be used for lowering.
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
@@ -204,9 +209,9 @@ pub struct ResolverAstLowering {
     /// Lifetime parameters that lowering will have to introduce.
     pub extra_lifetime_params_map: NodeMap<Vec<(Ident, ast::NodeId, LifetimeRes)>>,
 
-    pub next_node_id: ast::NodeId,
+    pub owners: NodeMap<PerOwnerResolverData>,
 
-    pub node_id_to_def_id: NodeMap<LocalDefId>,
+    pub next_node_id: ast::NodeId,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// List functions and methods for which lifetime elision was successful.
