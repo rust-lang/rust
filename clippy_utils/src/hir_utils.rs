@@ -393,6 +393,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                     && over(lf, rf, |l, r| self.eq_expr_field(l, r))
             },
             (&ExprKind::Tup(l_tup), &ExprKind::Tup(r_tup)) => self.eq_exprs(l_tup, r_tup),
+            (&ExprKind::Use(l_expr, _), &ExprKind::Use(r_expr, _)) => self.eq_expr(l_expr, r_expr),
             (&ExprKind::Type(le, lt), &ExprKind::Type(re, rt)) => self.eq_expr(le, re) && self.eq_ty(lt, rt),
             (&ExprKind::Unary(l_op, le), &ExprKind::Unary(r_op, re)) => l_op == r_op && self.eq_expr(le, re),
             (&ExprKind::Yield(le, _), &ExprKind::Yield(re, _)) => return self.eq_expr(le, re),
@@ -425,6 +426,7 @@ impl HirEqInterExpr<'_, '_, '_> {
                 | &ExprKind::Ret(..)
                 | &ExprKind::Struct(..)
                 | &ExprKind::Tup(..)
+                | &ExprKind::Use(..)
                 | &ExprKind::Type(..)
                 | &ExprKind::Unary(..)
                 | &ExprKind::Yield(..)
@@ -1053,6 +1055,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
             ExprKind::Tup(tup) => {
                 self.hash_exprs(tup);
             },
+            ExprKind::Use(expr, _) => {
+                self.hash_expr(expr);
+            },
             ExprKind::Unary(lop, le) => {
                 std::mem::discriminant(&lop).hash(&mut self.s);
                 self.hash_expr(le);
@@ -1108,14 +1113,9 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_ty_pat(&mut self, pat: &TyPat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
-            TyPatKind::Range(s, e, i) => {
-                if let Some(s) = s {
-                    self.hash_const_arg(s);
-                }
-                if let Some(e) = e {
-                    self.hash_const_arg(e);
-                }
-                std::mem::discriminant(&i).hash(&mut self.s);
+            TyPatKind::Range(s, e) => {
+                self.hash_const_arg(s);
+                self.hash_const_arg(e);
             },
             TyPatKind::Err(_) => {},
         }

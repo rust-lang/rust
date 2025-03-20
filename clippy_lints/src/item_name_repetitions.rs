@@ -206,7 +206,10 @@ impl ItemNameRepetitions {
             return;
         }
 
-        let item_name = item.ident.name.as_str();
+        let Some(ident) = item.kind.ident() else {
+            return;
+        };
+        let item_name = ident.name.as_str();
         for var in def.variants {
             check_enum_start(cx, item_name, var);
             check_enum_end(cx, item_name, var);
@@ -278,7 +281,10 @@ impl ItemNameRepetitions {
     fn check_struct_common_affix(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
         // if the SyntaxContext of the identifiers of the fields and struct differ dont lint them.
         // this prevents linting in macros in which the location of the field identifier names differ
-        if !fields.iter().all(|field| item.ident.span.eq_ctxt(field.ident.span)) {
+        if !fields
+            .iter()
+            .all(|field| item.kind.ident().is_some_and(|i| i.span.eq_ctxt(field.ident.span)))
+        {
             return;
         }
 
@@ -346,14 +352,15 @@ impl ItemNameRepetitions {
     }
 
     fn check_struct_name_repetition(&self, cx: &LateContext<'_>, item: &Item<'_>, fields: &[FieldDef<'_>]) {
-        let snake_name = to_snake_case(item.ident.name.as_str());
+        let Some(ident) = item.kind.ident() else { return };
+        let snake_name = to_snake_case(ident.name.as_str());
         let item_name_words: Vec<&str> = snake_name.split('_').collect();
         for field in fields {
             if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(field.def_id) {
                 continue;
             }
 
-            if !field.ident.span.eq_ctxt(item.ident.span) {
+            if !field.ident.span.eq_ctxt(ident.span) {
                 // consider linting only if the field identifier has the same SyntaxContext as the item(struct)
                 continue;
             }
@@ -426,19 +433,23 @@ fn check_enum_end(cx: &LateContext<'_>, item_name: &str, variant: &Variant<'_>) 
 }
 
 impl LateLintPass<'_> for ItemNameRepetitions {
-    fn check_item_post(&mut self, _cx: &LateContext<'_>, _item: &Item<'_>) {
+    fn check_item_post(&mut self, _cx: &LateContext<'_>, item: &Item<'_>) {
+        let Some(_ident) = item.kind.ident() else { return };
+
         let last = self.modules.pop();
         assert!(last.is_some());
     }
 
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
-        let item_name = item.ident.name.as_str();
+        let Some(ident) = item.kind.ident() else { return };
+
+        let item_name = ident.name.as_str();
         let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
             if let [.., (mod_name, mod_camel, mod_owner_id)] = &*self.modules {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
-                    if mod_name == &item.ident.name
+                    if mod_name == &ident.name
                         && let ItemKind::Mod(..) = item.kind
                         && (!self.allow_private_module_inception || cx.tcx.visibility(mod_owner_id.def_id).is_public())
                     {
@@ -467,7 +478,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                                 Some(c) if is_word_beginning(c) => span_lint(
                                     cx,
                                     MODULE_NAME_REPETITIONS,
-                                    item.ident.span,
+                                    ident.span,
                                     "item name starts with its containing module's name",
                                 ),
                                 _ => (),
@@ -479,7 +490,7 @@ impl LateLintPass<'_> for ItemNameRepetitions {
                             span_lint(
                                 cx,
                                 MODULE_NAME_REPETITIONS,
-                                item.ident.span,
+                                ident.span,
                                 "item name ends with its containing module's name",
                             );
                         }
@@ -490,16 +501,15 @@ impl LateLintPass<'_> for ItemNameRepetitions {
 
         if span_is_local(item.span) {
             match item.kind {
-                ItemKind::Enum(def, _) => {
+                ItemKind::Enum(_, def, _) => {
                     self.check_variants(cx, item, &def);
                 },
-                ItemKind::Struct(VariantData::Struct { fields, .. }, _) => {
+                ItemKind::Struct(_, VariantData::Struct { fields, .. }, _) => {
                     self.check_fields(cx, item, fields);
                 },
                 _ => (),
             }
         }
-
-        self.modules.push((item.ident.name, item_camel, item.owner_id));
+        self.modules.push((ident.name, item_camel, item.owner_id));
     }
 }

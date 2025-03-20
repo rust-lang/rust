@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
 
         match kind {
             FnKind::ItemFn(.., header) => {
-                let attrs = cx.tcx.hir().attrs(hir_id);
+                let attrs = cx.tcx.hir_attrs(hir_id);
                 if header.abi != ExternAbi::Rust || requires_exact_signature(attrs) {
                     return;
                 }
@@ -325,6 +325,8 @@ impl<'tcx> euv::Delegate<'tcx> for MovedVariablesCtxt {
     fn consume(&mut self, cmt: &euv::PlaceWithHirId<'tcx>, _: HirId) {
         self.move_common(cmt);
     }
+
+    fn use_cloned(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId) {}
 
     fn borrow(&mut self, _: &euv::PlaceWithHirId<'tcx>, _: HirId, _: ty::BorrowKind) {}
 

@@ -37,7 +37,7 @@ use crate::{def_path_def_ids, match_def_path, path_res};
 mod type_certainty;
 pub use type_certainty::expr_type_is_certain;
 
-/// Lower a [`hir::Ty`] to a [`rustc_middle::Ty`].
+/// Lower a [`hir::Ty`] to a [`rustc_middle::ty::Ty`].
 pub fn ty_from_hir_ty<'tcx>(cx: &LateContext<'tcx>, hir_ty: &hir::Ty<'tcx>) -> Ty<'tcx> {
     cx.maybe_typeck_results()
         .and_then(|results| {

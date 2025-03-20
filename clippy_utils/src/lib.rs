@@ -31,7 +31,6 @@
 // (Currently there is no way to opt into sysroot crates without `extern crate`.)
 extern crate rustc_abi;
 extern crate rustc_ast;
-extern crate rustc_ast_pretty;
 extern crate rustc_attr_parsing;
 extern crate rustc_const_eval;
 extern crate rustc_data_structures;
@@ -645,7 +644,7 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let root_mod;
     let item_kind = match tcx.hir_node_by_def_id(local_id) {
         Node::Crate(r#mod) => {
-            root_mod = ItemKind::Mod(r#mod);
+            root_mod = ItemKind::Mod(Ident::dummy(), r#mod);
             &root_mod
         },
         Node::Item(item) => &item.kind,
@@ -662,10 +661,13 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     };
 
     match item_kind {
-        ItemKind::Mod(r#mod) => r#mod
+        ItemKind::Mod(_, r#mod) => r#mod
             .item_ids
             .iter()
-            .filter_map(|&item_id| res(tcx.hir_item(item_id).ident, item_id.owner_id))
+            .filter_map(|&item_id| {
+                let ident = tcx.hir_item(item_id).kind.ident()?;
+                res(ident, item_id.owner_id)
+            })
             .collect(),
         ItemKind::Impl(r#impl) => r#impl
             .items
@@ -1130,6 +1132,7 @@ pub fn can_move_expr_to_closure_no_visit<'tcx>(
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CaptureKind {
     Value,
+    Use,
     Ref(Mutability),
 }
 impl CaptureKind {
@@ -1142,6 +1145,7 @@ impl std::ops::BitOr for CaptureKind {
     fn bitor(self, rhs: Self) -> Self::Output {
         match (self, rhs) {
             (CaptureKind::Value, _) | (_, CaptureKind::Value) => CaptureKind::Value,
+            (CaptureKind::Use, _) | (_, CaptureKind::Use) => CaptureKind::Use,
             (CaptureKind::Ref(Mutability::Mut), CaptureKind::Ref(_))
             | (CaptureKind::Ref(_), CaptureKind::Ref(Mutability::Mut)) => CaptureKind::Ref(Mutability::Mut),
             (CaptureKind::Ref(Mutability::Not), CaptureKind::Ref(Mutability::Not)) => CaptureKind::Ref(Mutability::Not),
@@ -1165,7 +1169,6 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
         pat.each_binding_or_first(&mut |_, id, span, _| match cx
             .typeck_results()
             .extract_binding_mode(cx.sess(), id, span)
-            .unwrap()
             .0
         {
             ByRef::No if !is_copy(cx, cx.typeck_results().node_type(id)) => {
@@ -1222,7 +1225,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 },
                 ExprKind::Let(let_expr) => {
                     let mutability = match pat_capture_kind(cx, let_expr.pat) {
-                        CaptureKind::Value => Mutability::Not,
+                        CaptureKind::Value | CaptureKind::Use => Mutability::Not,
                         CaptureKind::Ref(m) => m,
                     };
                     return CaptureKind::Ref(mutability);
@@ -1231,7 +1234,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                     let mut mutability = Mutability::Not;
                     for capture in arms.iter().map(|arm| pat_capture_kind(cx, arm.pat)) {
                         match capture {
-                            CaptureKind::Value => break,
+                            CaptureKind::Value | CaptureKind::Use => break,
                             CaptureKind::Ref(Mutability::Mut) => mutability = Mutability::Mut,
                             CaptureKind::Ref(Mutability::Not) => (),
                         }
@@ -1241,7 +1244,7 @@ pub fn capture_local_usage(cx: &LateContext<'_>, e: &Expr<'_>) -> CaptureKind {
                 _ => break,
             },
             Node::LetStmt(l) => match pat_capture_kind(cx, l.pat) {
-                CaptureKind::Value => break,
+                CaptureKind::Value | CaptureKind::Use => break,
                 capture @ CaptureKind::Ref(_) => return capture,
             },
             _ => break,
@@ -1296,6 +1299,7 @@ pub fn can_move_expr_to_closure<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'
                         if !self.locals.contains(&local_id) {
                             let capture = match capture.info.capture_kind {
                                 UpvarCapture::ByValue => CaptureKind::Value,
+                                UpvarCapture::ByUse => CaptureKind::Use,
                                 UpvarCapture::ByRef(kind) => match kind {
                                     BorrowKind::Immutable => CaptureKind::Ref(Mutability::Not),
                                     BorrowKind::UniqueImmutable | BorrowKind::Mutable => {
@@ -1415,9 +1419,8 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir_get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir_node_by_def_id(parent_id) {
-        Node::Item(Item { ident, .. })
-        | Node::TraitItem(TraitItem { ident, .. })
-        | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
+        Node::Item(item) => item.kind.ident().map(|ident| ident.name),
+        Node::TraitItem(TraitItem { ident, .. }) | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
         _ => None,
     }
 }
@@ -2035,15 +2038,14 @@ pub fn has_attr(attrs: &[hir::Attribute], symbol: Symbol) -> bool {
 }
 
 pub fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    find_attr!(cx.tcx.hir().attrs(hir_id), AttributeKind::Repr(..))
+    find_attr!(cx.tcx.hir_attrs(hir_id), AttributeKind::Repr(..))
 }
 
 pub fn any_parent_has_attr(tcx: TyCtxt<'_>, node: HirId, symbol: Symbol) -> bool {
-    let map = &tcx.hir();
     let mut prev_enclosing_node = None;
     let mut enclosing_node = node;
     while Some(enclosing_node) != prev_enclosing_node {
-        if has_attr(map.attrs(enclosing_node), symbol) {
+        if has_attr(tcx.hir_attrs(enclosing_node), symbol) {
             return true;
         }
         prev_enclosing_node = Some(enclosing_node);
@@ -2060,7 +2062,7 @@ pub fn in_automatically_derived(tcx: TyCtxt<'_>, id: HirId) -> bool {
         .filter(|(_, node)| matches!(node, OwnerNode::Item(item) if matches!(item.kind, ItemKind::Impl(_))))
         .any(|(id, _)| {
             has_attr(
-                tcx.hir().attrs(tcx.local_def_id_to_hir_id(id.def_id)),
+                tcx.hir_attrs(tcx.local_def_id_to_hir_id(id.def_id)),
                 sym::automatically_derived,
             )
         })
@@ -2355,16 +2357,14 @@ pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
 
 pub fn is_no_std_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
-        .hir()
-        .attrs(hir::CRATE_HIR_ID)
+        .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
         .any(|attr| attr.name_or_empty() == sym::no_std)
 }
 
 pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
     cx.tcx
-        .hir()
-        .attrs(hir::CRATE_HIR_ID)
+        .hir_attrs(hir::CRATE_HIR_ID)
         .iter()
         .any(|attr| attr.name_or_empty() == sym::no_core)
 }
@@ -2648,18 +2648,17 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
             for id in tcx.hir_module_free_items(module) {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir_item(id)
-                    && let ItemKind::Const(ty, _generics, _body) = item.kind
+                    && let ItemKind::Const(ident, ty, _generics, _body) = item.kind
                 {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
                         // We could also check for the type name `test::TestDescAndFn`
                         if let Res::Def(DefKind::Struct, _) = path.res {
                             let has_test_marker = tcx
-                                .hir()
-                                .attrs(item.hir_id())
+                                .hir_attrs(item.hir_id())
                                 .iter()
                                 .any(|a| a.has_name(sym::rustc_test_marker));
                             if has_test_marker {
-                                names.push(item.ident.name);
+                                names.push(ident.name);
                             }
                         }
                     }
@@ -2683,10 +2682,10 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // function scope
             .any(|(_id, node)| {
                 if let Node::Item(item) = node {
-                    if let ItemKind::Fn { .. } = item.kind {
+                    if let ItemKind::Fn { ident, .. } = item.kind {
                         // Note that we have sorted the item names in the visitor,
                         // so the binary_search gets the same as `contains`, but faster.
-                        return names.binary_search(&item.ident.name).is_ok();
+                        return names.binary_search(&ident.name).is_ok();
                     }
                 }
                 false
@@ -2699,7 +2698,7 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
 /// This only checks directly applied attributes, to see if a node is inside a `#[cfg(test)]` parent
 /// use [`is_in_cfg_test`]
 pub fn is_cfg_test(tcx: TyCtxt<'_>, id: HirId) -> bool {
-    tcx.hir().attrs(id).iter().any(|attr| {
+    tcx.hir_attrs(id).iter().any(|attr| {
         if attr.has_name(sym::cfg)
             && let Some(items) = attr.meta_item_list()
             && let [item] = &*items
@@ -2724,12 +2723,10 @@ pub fn is_in_test(tcx: TyCtxt<'_>, hir_id: HirId) -> bool {
 
 /// Checks if the item of any of its parents has `#[cfg(...)]` attribute applied.
 pub fn inherits_cfg(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
-    let hir = tcx.hir();
-
     tcx.has_attr(def_id, sym::cfg)
         || tcx
             .hir_parent_iter(tcx.local_def_id_to_hir_id(def_id))
-            .flat_map(|(parent_id, _)| hir.attrs(parent_id))
+            .flat_map(|(parent_id, _)| tcx.hir_attrs(parent_id))
             .any(|attr| attr.has_name(sym::cfg))
 }
 
@@ -3503,7 +3500,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
                 // a::b::c  ::d::sym refers to
                 // e::f::sym:: ::
                 // result should be super::super::super::super::e::f
-                if let DefPathData::TypeNs(s) = l {
+                if let DefPathData::TypeNs(Some(s)) = l {
                     path.push(s.to_string());
                 }
                 if let DefPathData::TypeNs(_) = r {
@@ -3514,7 +3511,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
             // a::b::sym:: ::    refers to
             // c::d::e  ::f::sym
             // when looking at `f`
-            Left(DefPathData::TypeNs(sym)) => path.push(sym.to_string()),
+            Left(DefPathData::TypeNs(Some(sym))) => path.push(sym.to_string()),
             // consider:
             // a::b::c  ::d::sym refers to
             // e::f::sym:: ::
@@ -3528,7 +3525,7 @@ fn maybe_get_relative_path(from: &DefPath, to: &DefPath, max_super: usize) -> St
         // `super` chain would be too long, just use the absolute path instead
         once(String::from("crate"))
             .chain(to.data.iter().filter_map(|el| {
-                if let DefPathData::TypeNs(sym) = el.data {
+                if let DefPathData::TypeNs(Some(sym)) = el.data {
                     Some(sym.to_string())
                 } else {
                     None

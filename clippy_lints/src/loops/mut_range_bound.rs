@@ -79,6 +79,8 @@ struct MutatePairDelegate<'a, 'tcx> {
 impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
     fn consume(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
 
+    fn use_cloned(&mut self, _: &PlaceWithHirId<'tcx>, _: HirId) {}
+
     fn borrow(&mut self, cmt: &PlaceWithHirId<'tcx>, diag_expr_id: HirId, bk: ty::BorrowKind) {
         if bk == ty::BorrowKind::Mutable {
             if let PlaceBase::Local(id) = cmt.place.base {
@@ -127,7 +129,7 @@ impl BreakAfterExprVisitor {
         };
 
         get_enclosing_block(cx, hir_id).is_some_and(|block| {
-            visitor.visit_block(block);
+            let _ = visitor.visit_block(block);
             visitor.break_after_expr
         })
     }

@@ -460,7 +460,7 @@ fn block_has_safety_comment(cx: &LateContext<'_>, span: Span) -> bool {
 }
 
 fn include_attrs_in_span(cx: &LateContext<'_>, hir_id: HirId, span: Span) -> Span {
-    span.to(cx.tcx.hir().attrs(hir_id).iter().fold(span, |acc, attr| {
+    span.to(cx.tcx.hir_attrs(hir_id).iter().fold(span, |acc, attr| {
         if attr.is_doc_comment() {
             return acc;
         }
@@ -488,7 +488,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     let comment_start = match cx.tcx.parent_hir_node(item.hir_id()) {
         Node::Crate(parent_mod) => comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item),
         Node::Item(parent_item) => {
-            if let ItemKind::Mod(parent_mod) = &parent_item.kind {
+            if let ItemKind::Mod(_, parent_mod) = &parent_item.kind {
                 comment_start_before_item_in_mod(cx, parent_mod, parent_item.span, item)
             } else {
                 // Doesn't support impls in this position. Pretend a comment was found.
@@ -643,7 +643,7 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
         match parent_node {
             Node::Crate(mod_) => return Some(mod_.spans.inner_span),
             Node::Item(hir::Item {
-                kind: ItemKind::Mod(mod_),
+                kind: ItemKind::Mod(_, mod_),
                 span,
                 ..
             }) => {
