@@ -107,9 +107,6 @@ impl std::fmt::Debug for RegionErrors<'_> {
 #[derive(Clone, Debug)]
 pub(crate) enum RegionErrorKind<'tcx> {
     /// 'a outlives 'b, and both are placeholders.
-    /// This is a more general variant of `UnexpectedHiddenRegion`,
-    /// for cases where the mismatched region is a hidden region
-    /// from an opaque type.
     PlaceholderMismatch {
         rvid_a: RegionVid,
         rvid_b: RegionVid,
@@ -127,6 +124,10 @@ pub(crate) enum RegionErrorKind<'tcx> {
     },
 
     /// An unexpected hidden region for an opaque type.
+    /// This is a more specific variant of `UnexpectedHiddenRegion`,
+    /// for cases where the mismatched region isn't a hidden region
+    /// from an opaque type, but rather any other unexpected, invalid,
+    /// or undeclared element.
     UnexpectedHiddenRegion {
         /// The span for the member constraint.
         span: Span,
@@ -330,8 +331,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     generic_kind,
                     lower_bound,
                     span,
-                    failed_due_to_placeholders,
-                } if failed_due_to_placeholders => {
+                    failed_due_to_placeholders: true,
+                } => {
                     // FIXME. We should handle this case better. It
                     // indicates that we have e.g., some region variable
                     // whose value is like `'a+'b` where `'a` and `'b` are
@@ -357,26 +358,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     lower_bound,
                     span,
                     generic_kind,
-                    failed_due_to_placeholders: _,
+                    failed_due_to_placeholders: false,
                 } => {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
-                    let lower_bound_region = self.to_error_region(lower_bound);
-
-                    let type_test_span = span;
-
-                    let Some(lower_bound_region) = lower_bound_region else {
+                    let Some(lower_bound_region) = self.to_error_region(lower_bound) else {
                         unreachable!(
-                            "Found nothing good; lower bound was: {lower_bound:?} for {generic_kind:?} at {type_test_span:?}"
+                            "Found nothing good; lower bound was: {lower_bound:?} for {generic_kind:?} at {span:?}"
                         );
                     };
                     debug!(?lower_bound_region);
                     let generic_ty =
                         self.name_regions(self.infcx.tcx, generic_kind.to_ty(self.infcx.tcx));
-                    let origin = RelateParamBound(type_test_span, generic_ty, None);
+                    let origin = RelateParamBound(span, generic_ty, None);
                     self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                         self.body.source.def_id().expect_local(),
-                        type_test_span,
+                        span,
                         Some(origin),
                         self.name_regions(self.infcx.tcx, generic_kind),
                         lower_bound_region,
