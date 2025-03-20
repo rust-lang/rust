@@ -93,7 +93,7 @@ const_eval_expected_inbounds_pointer =
     }
 
 const_eval_extern_static =
-    cannot access extern static ({$did})
+    cannot access extern static `{$did}`
 const_eval_extern_type_field = `extern type` field does not have a known offset
 
 const_eval_fn_ptr_call =
@@ -381,7 +381,7 @@ const_eval_thread_local_access =
     thread-local statics cannot be accessed at compile-time
 
 const_eval_thread_local_static =
-    cannot access thread local static ({$did})
+    cannot access thread local static `{$did}`
 const_eval_too_generic =
     encountered overly generic constant
 const_eval_too_many_caller_args =
