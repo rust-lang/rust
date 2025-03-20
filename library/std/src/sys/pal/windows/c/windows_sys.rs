@@ -2742,7 +2742,9 @@ pub struct IPV6_MREQ {
     pub ipv6mr_multiaddr: IN6_ADDR,
     pub ipv6mr_interface: u32,
 }
+pub const IPV6_MULTICAST_HOPS: i32 = 10i32;
 pub const IPV6_MULTICAST_LOOP: i32 = 11i32;
+pub const IPV6_UNICAST_HOPS: i32 = 4i32;
 pub const IPV6_V6ONLY: i32 = 27i32;
 pub const IP_ADD_MEMBERSHIP: i32 = 12i32;
 pub const IP_DROP_MEMBERSHIP: i32 = 13i32;
