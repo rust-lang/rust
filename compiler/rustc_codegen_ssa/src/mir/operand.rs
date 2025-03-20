@@ -2,7 +2,7 @@ use std::fmt;
 
 use rustc_abi as abi;
 use rustc_abi::{
-    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, Variants,
+    Align, BackendRepr, FIRST_VARIANT, FieldIdx, Primitive, Size, TagEncoding, VariantIdx, Variants,
 };
 use rustc_middle::mir::interpret::{Pointer, Scalar, alloc_range};
 use rustc_middle::mir::{self, ConstValue};
@@ -580,67 +580,109 @@ impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, V> {
         };
         OperandRef { val, layout }
     }
+
+    pub(crate) fn supports_builder(layout: TyAndLayout<'tcx>) -> bool {
+        match layout.backend_repr {
+            BackendRepr::Memory { .. } if layout.is_zst() => true,
+            BackendRepr::Scalar(_) | BackendRepr::ScalarPair(_, _) => true,
+            _ => false,
+        }
+    }
 }
 
 impl<'a, 'tcx, V: CodegenObject> OperandRef<'tcx, Result<V, abi::Scalar>> {
     pub(crate) fn insert_field<Bx: BuilderMethods<'a, 'tcx, Value = V>>(
         &mut self,
         bx: &mut Bx,
+        v: VariantIdx,
         f: FieldIdx,
         operand: OperandRef<'tcx, V>,
     ) {
-        let field_layout = self.layout.field(bx.cx(), f.as_usize());
-        let field_offset = self.layout.fields.offset(f.as_usize());
+        let (expect_zst, is_zero_offset) = if let abi::FieldsShape::Primitive = self.layout.fields {
+            // Don't ask for field layout for primitives, because that will panic.
+            if !self.layout.uninhabited {
+                // Real primitives only have one variant, but weird types like
+                // `Result<!, !>` turn out to also be "Primitive", and dead code
+                // like `Err(never)` needs to not ICE.
+                assert_eq!(v, FIRST_VARIANT);
+            }
+            let first_field = f == FieldIdx::ZERO;
+            (self.layout.is_zst() || !first_field, first_field)
+        } else {
+            let variant_layout = self.layout.for_variant(bx.cx(), v);
+            let field_layout = variant_layout.field(bx.cx(), f.as_usize());
+            let field_offset = variant_layout.fields.offset(f.as_usize());
+            (field_layout.is_zst(), field_offset == Size::ZERO)
+        };
 
         let mut update = |tgt: &mut Result<V, abi::Scalar>, src, from_scalar| {
             let from_bty = bx.cx().type_from_scalar(from_scalar);
             let to_scalar = tgt.unwrap_err();
             let to_bty = bx.cx().type_from_scalar(to_scalar);
-            let v = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
-            *tgt = Ok(v);
+            let imm = transmute_immediate(bx, src, from_scalar, from_bty, to_scalar, to_bty);
+            *tgt = Ok(imm);
         };
 
         match (operand.val, operand.layout.backend_repr) {
-            (OperandValue::ZeroSized, _) => {
-                debug_assert_eq!(field_layout.size, Size::ZERO);
-            }
+            (OperandValue::ZeroSized, _) if expect_zst => {}
             (OperandValue::Immediate(v), BackendRepr::Scalar(from_scalar)) => match &mut self.val {
-                OperandValue::Immediate(val @ Err(_)) => {
-                    debug_assert_eq!(field_offset, Size::ZERO);
+                OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
                     update(val, v, from_scalar);
-                    //*val = Ok(v);
                 }
-                OperandValue::Pair(fst @ Err(_), _) if field_offset == Size::ZERO => {
+                OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
                     update(fst, v, from_scalar);
-                    //*fst = Ok(v);
                 }
-                OperandValue::Pair(_, snd @ Err(_)) if field_offset != Size::ZERO => {
+                OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
                     update(snd, v, from_scalar);
-                    //*snd = Ok(v);
                 }
-                _ => bug!("Tried to insert {operand:?} into field {f:?} of {self:?}"),
+                _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
             },
             (OperandValue::Pair(a, b), BackendRepr::ScalarPair(from_sa, from_sb)) => {
                 match &mut self.val {
                     OperandValue::Pair(fst @ Err(_), snd @ Err(_)) => {
                         update(fst, a, from_sa);
-                        //*fst = Ok(a);
                         update(snd, b, from_sb);
-                        //*snd = Ok(b);
                     }
-                    _ => bug!("Tried to insert {operand:?} into field {f:?} of {self:?}"),
+                    _ => bug!("Tried to insert {operand:?} into {v:?}.{f:?} of {self:?}"),
                 }
             }
-            _ => bug!("Unsupported operand {operand:?} inserting into field {f:?} of {self:?}"),
+            _ => bug!("Unsupported operand {operand:?} inserting into {v:?}.{f:?} of {self:?}"),
         }
     }
 
-    pub fn finalize(self) -> OperandRef<'tcx, V> {
-        let OperandRef { val, layout } = self;
+    pub(super) fn insert_imm(&mut self, f: FieldIdx, imm: V) {
+        let field_offset = self.layout.fields.offset(f.as_usize());
+        let is_zero_offset = field_offset == Size::ZERO;
+        match &mut self.val {
+            OperandValue::Immediate(val @ Err(_)) if is_zero_offset => {
+                *val = Ok(imm);
+            }
+            OperandValue::Pair(fst @ Err(_), _) if is_zero_offset => {
+                *fst = Ok(imm);
+            }
+            OperandValue::Pair(_, snd @ Err(_)) if !is_zero_offset => {
+                *snd = Ok(imm);
+            }
+            _ => bug!("Tried to insert {imm:?} into field {f:?} of {self:?}"),
+        }
+    }
+
+    pub fn finalize(&self, cx: &impl CodegenMethods<'tcx, Value = V>) -> OperandRef<'tcx, V> {
+        let OperandRef { val, layout } = *self;
+
+        let unwrap = |r: Result<V, abi::Scalar>| match r {
+            Ok(v) => v,
+            Err(s) if s.is_uninit_valid() => {
+                let bty = cx.type_from_scalar(s);
+                cx.const_undef(bty)
+            }
+            Err(_) => bug!("OperandRef::finalize called while fields are missing {self:?}"),
+        };
+
         let val = match val {
             OperandValue::ZeroSized => OperandValue::ZeroSized,
-            OperandValue::Immediate(v) => OperandValue::Immediate(v.unwrap()),
-            OperandValue::Pair(a, b) => OperandValue::Pair(a.unwrap(), b.unwrap()),
+            OperandValue::Immediate(v) => OperandValue::Immediate(unwrap(v)),
+            OperandValue::Pair(a, b) => OperandValue::Pair(unwrap(a), unwrap(b)),
             OperandValue::Ref(_) => bug!(),
         };
         OperandRef { val, layout }

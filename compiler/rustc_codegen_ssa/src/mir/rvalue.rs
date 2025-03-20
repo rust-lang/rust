@@ -10,7 +10,7 @@ use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
 use super::operand::{OperandRef, OperandValue, assume_scalar_range, transmute_immediate};
-use super::place::PlaceRef;
+use super::place::{PlaceRef, codegen_tagged_field_value};
 use super::{FunctionCx, LocalRef};
 use crate::common::IntPredicate;
 use crate::traits::*;
@@ -699,7 +699,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
             mir::Rvalue::Use(ref operand) => self.codegen_operand(bx, operand),
             mir::Rvalue::Repeat(..) => bug!("{rvalue:?} in codegen_rvalue_operand"),
-            mir::Rvalue::Aggregate(_, ref fields) => {
+            mir::Rvalue::Aggregate(ref kind, ref fields) => {
+                let (variant_index, active_field_index) = match **kind {
+                    mir::AggregateKind::Adt(_, variant_index, _, _, active_field_index) => {
+                        (variant_index, active_field_index)
+                    }
+                    _ => (FIRST_VARIANT, None),
+                };
+
                 let ty = rvalue.ty(self.mir, self.cx.tcx());
                 let ty = self.monomorphize(ty);
                 let layout = self.cx.layout_of(ty);
@@ -707,9 +714,27 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let mut builder = OperandRef::builder(layout);
                 for (field_idx, field) in fields.iter_enumerated() {
                     let op = self.codegen_operand(bx, field);
-                    builder.insert_field(bx, field_idx, op);
+                    let fi = active_field_index.unwrap_or(field_idx);
+                    builder.insert_field(bx, variant_index, fi, op);
                 }
-                builder.finalize()
+
+                let tag_result = codegen_tagged_field_value(self.cx, variant_index, layout);
+                match tag_result {
+                    Err(super::place::UninhabitedVariantError) => {
+                        // Like codegen_set_discr we use a sound abort, but could
+                        // potentially `unreachable` or just return the poison for
+                        // more optimizability, if that turns out to be helpful.
+                        bx.abort();
+                        let val = OperandValue::poison(bx, layout);
+                        OperandRef { val, layout }
+                    }
+                    Ok(maybe_tag_value) => {
+                        if let Some((tag_field, tag_imm)) = maybe_tag_value {
+                            builder.insert_imm(tag_field, tag_imm);
+                        }
+                        builder.finalize(bx.cx())
+                    }
+                }
             }
             mir::Rvalue::ShallowInitBox(ref operand, content_ty) => {
                 let operand = self.codegen_operand(bx, operand);
@@ -1043,19 +1068,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     mir::AggregateKind::RawPtr(..) => true,
                     mir::AggregateKind::Array(..) => false,
                     mir::AggregateKind::Tuple => true,
-                    mir::AggregateKind::Adt(def_id, ..) => {
-                        let adt_def = self.cx.tcx().adt_def(def_id);
-                        adt_def.is_struct() && !adt_def.repr().simd()
-                    }
+                    mir::AggregateKind::Adt(..) => true,
                     mir::AggregateKind::Closure(..) => true,
                     // FIXME: Can we do this for simple coroutines too?
                     mir::AggregateKind::Coroutine(..) | mir::AggregateKind::CoroutineClosure(..) => false,
                 };
                 allowed_kind && {
-                let ty = rvalue.ty(self.mir, self.cx.tcx());
-                let ty = self.monomorphize(ty);
+                    let ty = rvalue.ty(self.mir, self.cx.tcx());
+                    let ty = self.monomorphize(ty);
                     let layout = self.cx.spanned_layout_of(ty, span);
-                    !self.cx.is_backend_ref(layout)
+                    OperandRef::<Bx::Value>::supports_builder(layout)
                 }
             }
         }
