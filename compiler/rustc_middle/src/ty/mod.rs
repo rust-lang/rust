@@ -189,6 +189,7 @@ pub struct ResolverGlobalCtxt {
 
 #[derive(Debug)]
 pub struct PerOwnerResolverData {
+    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     pub node_id_to_def_id: NodeMap<LocalDefId>,
     /// The id of the owner
     pub id: ast::NodeId,
@@ -196,7 +197,11 @@ pub struct PerOwnerResolverData {
 
 impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId) -> Self {
-        Self { node_id_to_def_id: Default::default(), id }
+        Self {
+            node_id_to_def_id: Default::default(),
+            legacy_const_generic_args: Default::default(),
+            id,
+        }
     }
 }
 
@@ -204,8 +209,6 @@ impl PerOwnerResolverData {
 /// This struct is meant to be consumed by lowering.
 #[derive(Debug)]
 pub struct ResolverAstLowering {
-    pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
-
     /// Resolutions for nodes that have a single resolution.
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.

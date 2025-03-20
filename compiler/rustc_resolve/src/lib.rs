@@ -1200,7 +1200,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
-    legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
     delegation_fn_sigs: LocalDefIdMap<DelegationFnSig>,
@@ -1585,7 +1584,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
             main_def: Default::default(),
             trait_impls: Default::default(),
@@ -1705,7 +1703,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         };
         let ast_lowering = ty::ResolverAstLowering {
             owners: self.owners,
-            legacy_const_generic_args: self.legacy_const_generic_args,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
             label_res_map: self.label_res_map,

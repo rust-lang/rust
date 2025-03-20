@@ -236,7 +236,7 @@ impl PerOwnerResolver<'_> {
                     return None;
                 }
 
-                if let Some(v) = self.general.legacy_const_generic_args.get(&def_id) {
+                if let Some(v) = self.item.legacy_const_generic_args.get(&def_id) {
                     return v.clone();
                 }
             }
