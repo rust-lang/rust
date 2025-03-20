@@ -164,11 +164,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
                 let interior = self.next_ty_var(expr_span);
-                self.deferred_coroutine_interiors.borrow_mut().push((
-                    expr_def_id,
-                    body.id(),
-                    interior,
-                ));
+                self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 
                 // Coroutines that come from coroutine closures have not yet determined
                 // their kind ty, so make a fresh infer var which will be constrained
