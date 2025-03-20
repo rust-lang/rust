@@ -2190,7 +2190,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_array_like_block(&mut self) -> bool {
-        self.look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
+        matches!(self.token.kind, TokenKind::OpenDelim(Delimiter::Brace))
+            && self
+                .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
             && self.look_ahead(2, |t| t == &token::Comma)
             && self.look_ahead(3, |t| t.can_begin_expr())
     }
@@ -2202,9 +2204,9 @@ impl<'a> Parser<'a> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
             Ok(arr) => {
-                let guar = self.dcx().emit_err(errors::ArrayBracketsInsteadOfSpaces {
+                let guar = self.dcx().emit_err(errors::ArrayBracketsInsteadOfBraces {
                     span: arr.span,
-                    sub: errors::ArrayBracketsInsteadOfSpacesSugg {
+                    sub: errors::ArrayBracketsInsteadOfBracesSugg {
                         left: lo,
                         right: snapshot.prev_token.span,
                     },

@@ -810,16 +810,16 @@ pub(crate) enum WrapInParentheses {
 
 #[derive(Diagnostic)]
 #[diag(parse_array_brackets_instead_of_braces)]
-pub(crate) struct ArrayBracketsInsteadOfSpaces {
+pub(crate) struct ArrayBracketsInsteadOfBraces {
     #[primary_span]
     pub span: Span,
     #[subdiagnostic]
-    pub sub: ArrayBracketsInsteadOfSpacesSugg,
+    pub sub: ArrayBracketsInsteadOfBracesSugg,
 }
 
 #[derive(Subdiagnostic)]
 #[multipart_suggestion(parse_suggestion, applicability = "maybe-incorrect")]
-pub(crate) struct ArrayBracketsInsteadOfSpacesSugg {
+pub(crate) struct ArrayBracketsInsteadOfBracesSugg {
     #[suggestion_part(code = "[")]
     pub left: Span,
     #[suggestion_part(code = "]")]
