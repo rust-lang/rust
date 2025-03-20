@@ -77,27 +77,27 @@ does is call the `main()` that's in this crate's `lib.rs`, though.)
   `doctest.rs`.
 * The Markdown renderer is loaded up in `html/markdown.rs`, including functions
   for extracting doctests from a given block of Markdown.
-* The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`, where
-  they're handled by the test runner of bootstrap and the supplementary script
-  `src/etc/htmldocck.py`.
 * Frontend CSS and JavaScript are stored in `html/static/`.
 
 ## Tests
 
-* All paths in this section are relative to `tests` in the rust-lang/rust repository.
-* Tests on search engine and index are located in `rustdoc-js` and `rustdoc-js-std`.
+* Tests on search engine and index are located in `tests/rustdoc-js` and `tests/rustdoc-js-std`.
   The format is specified
   [in the search guide](rustdoc-internals/search.md#testing-the-search-engine).
 * Tests on the "UI" of rustdoc (the terminal output it produces when run) are in
-  `rustdoc-ui`
+  `tests/rustdoc-ui`
 * Tests on the "GUI" of rustdoc (the HTML, JS, and CSS as rendered in a browser)
-  are in `rustdoc-gui`. These use a [NodeJS tool called
+  are in `tests/rustdoc-gui`. These use a [NodeJS tool called
   browser-UI-test](https://github.com/GuillaumeGomez/browser-UI-test/) that uses
   puppeteer to run tests in a headless browser and check rendering and
   interactivity.
 * Additionally, JavaScript type annotations are written using [TypeScript-flavored JSDoc]
   comments and an external d.ts file. The code itself is plain, valid JavaScript; we only
   use tsc as a linter.
+* The tests on the structure of rustdoc HTML output are located in `tests/rustdoc`,
+  where they're handled by the test runner of bootstrap and
+  the supplementary script `src/etc/htmldocck.py`.
+  [These tests have several extra directives available to them](./rustdoc-internals/rustdoc-test-suite.md).
 
 [TypeScript-flavored JSDoc]: https://www.typescriptlang.org/docs/handbook/jsdoc-supported-types.html
 
