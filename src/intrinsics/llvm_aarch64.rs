@@ -21,7 +21,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             fx.bcx.ins().fence();
         }
 
-        "llvm.aarch64.neon.ld1x4.v16i8.p0i8" => {
+        "llvm.aarch64.neon.ld1x4.v16i8.p0" => {
             intrinsic_args!(fx, args => (ptr); intrinsic);
 
             let ptr = ptr.load_scalar(fx);
