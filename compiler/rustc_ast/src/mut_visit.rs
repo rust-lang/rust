@@ -238,6 +238,10 @@ pub trait MutVisitor: Sized {
         walk_ident(self, i);
     }
 
+    fn visit_modifiers(&mut self, m: &mut TraitBoundModifiers) {
+        walk_modifiers(self, m);
+    }
+
     fn visit_path(&mut self, p: &mut Path) {
         walk_path(self, p);
     }
@@ -1156,10 +1160,27 @@ fn walk_trait_ref<T: MutVisitor>(vis: &mut T, TraitRef { path, ref_id }: &mut Tr
 }
 
 fn walk_poly_trait_ref<T: MutVisitor>(vis: &mut T, p: &mut PolyTraitRef) {
-    let PolyTraitRef { bound_generic_params, modifiers: _, trait_ref, span } = p;
+    let PolyTraitRef { bound_generic_params, modifiers, trait_ref, span } = p;
+    vis.visit_modifiers(modifiers);
     bound_generic_params.flat_map_in_place(|param| vis.flat_map_generic_param(param));
     vis.visit_trait_ref(trait_ref);
     vis.visit_span(span);
+}
+
+fn walk_modifiers<V: MutVisitor>(vis: &mut V, m: &mut TraitBoundModifiers) {
+    let TraitBoundModifiers { constness, asyncness, polarity } = m;
+    match constness {
+        BoundConstness::Never => {}
+        BoundConstness::Always(span) | BoundConstness::Maybe(span) => vis.visit_span(span),
+    }
+    match asyncness {
+        BoundAsyncness::Normal => {}
+        BoundAsyncness::Async(span) => vis.visit_span(span),
+    }
+    match polarity {
+        BoundPolarity::Positive => {}
+        BoundPolarity::Negative(span) | BoundPolarity::Maybe(span) => vis.visit_span(span),
+    }
 }
 
 pub fn walk_field_def<T: MutVisitor>(visitor: &mut T, fd: &mut FieldDef) {
