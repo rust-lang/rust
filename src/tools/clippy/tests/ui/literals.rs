@@ -30,6 +30,10 @@ fn main() {
     //~^ separated_literal_suffix
     //~| mixed_case_hex_literals
 
+    let fail2 = 0xab_CD_isize;
+    //~^ separated_literal_suffix
+    //~| mixed_case_hex_literals
+
     let fail_multi_zero = 000_123usize;
     //~^ unseparated_literal_suffix
     //~| zero_prefixed_literal

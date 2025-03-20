@@ -61,10 +61,6 @@ declare_clippy_lint! {
     /// `Vec` already keeps its contents in a separate area on
     /// the heap. So if you `Box` its contents, you just add another level of indirection.
     ///
-    /// ### Known problems
-    /// Vec<Box<T: Sized>> makes sense if T is a large type (see [#3530](https://github.com/rust-lang/rust-clippy/issues/3530),
-    /// 1st comment).
-    ///
     /// ### Example
     /// ```no_run
     /// struct X {

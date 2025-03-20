@@ -53,7 +53,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.40.0"]
     pub COMPARISON_CHAIN,
-    style,
+    pedantic,
     "`if`s that can be rewritten with `match` and `cmp`"
 }
 

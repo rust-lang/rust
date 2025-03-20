@@ -23,7 +23,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// let f = async {
-    ///    1 + 2
+    ///     1 + 2
     /// };
     /// let fut = async {
     ///     f.await
@@ -32,7 +32,7 @@ declare_clippy_lint! {
     /// Use instead:
     /// ```no_run
     /// let f = async {
-    ///    1 + 2
+    ///     1 + 2
     /// };
     /// let fut = f;
     /// ```

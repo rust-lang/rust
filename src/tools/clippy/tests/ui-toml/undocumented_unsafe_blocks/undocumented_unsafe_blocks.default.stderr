@@ -310,5 +310,49 @@ LL |             let bar = unsafe {};
    |
    = help: consider adding a safety comment on the preceding line
 
-error: aborting due to 35 previous errors
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:638:52
+   |
+LL |         const NO_SAFETY_IN_TRAIT_BUT_IN_IMPL: u8 = unsafe { 0 };
+   |                                                    ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:647:41
+   |
+LL |         const NO_SAFETY_IN_TRAIT: i32 = unsafe { 1 };
+   |                                         ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:657:42
+   |
+LL |         const HAS_SAFETY_IN_TRAIT: i32 = unsafe { 3 };
+   |                                          ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: unsafe block missing a safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:662:40
+   |
+LL |         const NO_SAFETY_IN_IMPL: i32 = unsafe { 1 };
+   |                                        ^^^^^^^^^^^^
+   |
+   = help: consider adding a safety comment on the preceding line
+
+error: statement has unnecessary safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:719:5
+   |
+LL |     _ = bar();
+   |     ^^^^^^^^^^
+   |
+help: consider removing the safety comment
+  --> tests/ui-toml/undocumented_unsafe_blocks/undocumented_unsafe_blocks.rs:718:5
+   |
+LL |     // SAFETY: unnecessary_safety_comment triggers here
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 40 previous errors
 

@@ -2,11 +2,12 @@ use clippy_config::Conf;
 use clippy_config::types::{
     SourceItemOrderingCategory, SourceItemOrderingModuleItemGroupings, SourceItemOrderingModuleItemKind,
     SourceItemOrderingTraitAssocItemKind, SourceItemOrderingTraitAssocItemKinds,
+    SourceItemOrderingWithinModuleItemGroupings,
 };
 use clippy_utils::diagnostics::span_lint_and_note;
 use rustc_hir::{
-    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind,
-    Variant, VariantData,
+    AssocItemKind, FieldDef, HirId, ImplItemRef, IsAuto, Item, ItemKind, Mod, QPath, TraitItemRef, TyKind, Variant,
+    VariantData,
 };
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_session::impl_lint_pass;
@@ -36,7 +37,7 @@ declare_clippy_lint! {
     /// 2. Individual ordering rules per item kind.
     ///
     /// The item kinds that can be linted are:
-    /// - Module (with customized groupings, alphabetical within)
+    /// - Module (with customized groupings, alphabetical within - configurable)
     /// - Trait (with customized order of associated items, alphabetical within)
     /// - Enum, Impl, Struct (purely alphabetical)
     ///
@@ -57,8 +58,31 @@ declare_clippy_lint! {
     /// | `PascalCase`       | "ty_alias", "opaque_ty", "enum", "struct", "union", "trait", "trait_alias", "impl" |
     /// | `lower_snake_case` | "fn"                 |
     ///
+    /// The groups' names are arbitrary and can be changed to suit the
+    /// conventions that should be enforced for a specific project.
+    ///
     /// All item kinds must be accounted for to create an enforceable linting
-    /// rule set.
+    /// rule set. Following are some example configurations that may be useful.
+    ///
+    /// Example: *module inclusions and use statements to be at the top*
+    ///
+    /// ```toml
+    /// module-item-order-groupings = [
+    ///     [ "modules", [ "extern_crate", "mod", "foreign_mod" ], ],
+    ///     [ "use", [ "use", ], ],
+    ///     [ "everything_else", [ "macro", "global_asm", "static", "const", "ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl", "fn", ], ],
+    /// ]
+    /// ```
+    ///
+    /// Example: *only consts and statics should be alphabetically ordered*
+    ///
+    /// It is also possible to configure a selection of module item groups that
+    /// should be ordered alphabetically. This may be useful if for example
+    /// statics and consts should be ordered, but the rest should be left open.
+    ///
+    /// ```toml
+    /// module-items-ordered-within-groupings = ["UPPER_SNAKE_CASE"]
+    /// ```
     ///
     /// ### Known Problems
     ///
@@ -143,6 +167,7 @@ pub struct ArbitrarySourceItemOrdering {
     enable_ordering_for_struct: bool,
     enable_ordering_for_trait: bool,
     module_item_order_groupings: SourceItemOrderingModuleItemGroupings,
+    module_items_ordered_within_groupings: SourceItemOrderingWithinModuleItemGroupings,
 }
 
 impl ArbitrarySourceItemOrdering {
@@ -157,6 +182,7 @@ impl ArbitrarySourceItemOrdering {
             enable_ordering_for_struct: conf.source_item_ordering.contains(&Struct),
             enable_ordering_for_trait: conf.source_item_ordering.contains(&Trait),
             module_item_order_groupings: conf.module_item_order_groupings.clone(),
+            module_items_ordered_within_groupings: conf.module_items_ordered_within_groupings.clone(),
         }
     }
 
@@ -176,11 +202,7 @@ impl ArbitrarySourceItemOrdering {
     }
 
     /// Produces a linting warning for incorrectly ordered item members.
-    fn lint_member_name<T: LintContext>(
-        cx: &T,
-        ident: &rustc_span::Ident,
-        before_ident: &rustc_span::Ident,
-    ) {
+    fn lint_member_name<T: LintContext>(cx: &T, ident: &rustc_span::Ident, before_ident: &rustc_span::Ident) {
         span_lint_and_note(
             cx,
             ARBITRARY_SOURCE_ITEM_ORDERING,
@@ -191,7 +213,7 @@ impl ArbitrarySourceItemOrdering {
         );
     }
 
-    fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>) {
+    fn lint_member_item<T: LintContext>(cx: &T, item: &Item<'_>, before_item: &Item<'_>, msg: &'static str) {
         let span = if let Some(ident) = item.kind.ident() {
             ident.span
         } else {
@@ -199,10 +221,7 @@ impl ArbitrarySourceItemOrdering {
         };
 
         let (before_span, note) = if let Some(ident) = before_item.kind.ident() {
-            (
-                ident.span,
-                format!("should be placed before `{}`", ident.as_str(),),
-            )
+            (ident.span, format!("should be placed before `{}`", ident.as_str(),))
         } else {
             (
                 before_item.span,
@@ -215,14 +234,7 @@ impl ArbitrarySourceItemOrdering {
             return;
         }
 
-        span_lint_and_note(
-            cx,
-            ARBITRARY_SOURCE_ITEM_ORDERING,
-            span,
-            "incorrect ordering of items (must be alphabetically ordered)",
-            Some(before_span),
-            note,
-        );
+        span_lint_and_note(cx, ARBITRARY_SOURCE_ITEM_ORDERING, span, msg, Some(before_span), note);
     }
 
     /// Produces a linting warning for incorrectly ordered trait items.
@@ -376,6 +388,7 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
             }
 
             let item_kind = convert_module_item_kind(&item.kind);
+            let grouping_name = self.module_item_order_groupings.grouping_name_of(&item_kind);
             let module_level_order = self
                 .module_item_order_groupings
                 .module_level_order_of(&item_kind)
@@ -385,13 +398,27 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                 use std::cmp::Ordering; // Better legibility.
                 match module_level_order.cmp(&cur_t.order) {
                     Ordering::Less => {
-                        Self::lint_member_item(cx, item, cur_t.item);
+                        Self::lint_member_item(
+                            cx,
+                            item,
+                            cur_t.item,
+                            "incorrect ordering of items (module item groupings specify another order)",
+                        );
                     },
                     Ordering::Equal if item_kind == SourceItemOrderingModuleItemKind::Use => {
                         // Skip ordering use statements, as these should be ordered by rustfmt.
                     },
-                    Ordering::Equal if cur_t.name > get_item_name(item) => {
-                        Self::lint_member_item(cx, item, cur_t.item);
+                    Ordering::Equal
+                        if (grouping_name.is_some_and(|grouping_name| {
+                            self.module_items_ordered_within_groupings.ordered_within(grouping_name)
+                        }) && cur_t.name > get_item_name(item)) =>
+                    {
+                        Self::lint_member_item(
+                            cx,
+                            item,
+                            cur_t.item,
+                            "incorrect ordering of items (must be alphabetically ordered)",
+                        );
                     },
                     Ordering::Equal | Ordering::Greater => {
                         // Nothing to do in this case, they're already in the right order.
@@ -501,6 +528,12 @@ fn get_item_name(item: &Item<'_>) -> String {
         },
         // FIXME: `Ident::empty` for anonymous items is a bit strange, is there
         // a better way to do it?
-        _ => item.kind.ident().unwrap_or(rustc_span::Ident::empty()).name.as_str().to_owned(),
+        _ => item
+            .kind
+            .ident()
+            .unwrap_or(rustc_span::Ident::empty())
+            .name
+            .as_str()
+            .to_owned(),
     }
 }
