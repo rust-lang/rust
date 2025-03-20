@@ -1,7 +1,7 @@
 [package]
 name = "core_simd"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 homepage = "https://github.com/rust-lang/portable-simd"
 repository = "https://github.com/rust-lang/portable-simd"
 keywords = ["core", "simd", "intrinsics"]
