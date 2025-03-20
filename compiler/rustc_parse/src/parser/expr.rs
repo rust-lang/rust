@@ -17,6 +17,7 @@ use rustc_ast::{
     self as ast, AnonConst, Arm, AttrStyle, AttrVec, BinOp, BinOpKind, BlockCheckMode, CaptureBy,
     ClosureBinder, DUMMY_NODE_ID, Expr, ExprField, ExprKind, FnDecl, FnRetTy, Label, MacCall,
     MetaItemLit, Movability, Param, RangeLimits, StmtKind, Ty, TyKind, UnOp, UnsafeBinderCastKind,
+    YieldKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::stack::ensure_sufficient_stack;
@@ -1310,6 +1311,15 @@ impl<'a> Parser<'a> {
             return self.parse_match_block(lo, match_span, self_arg, MatchKind::Postfix);
         }
 
+        // Parse a postfix `yield`.
+        if self.eat_keyword(exp!(Yield)) {
+            let yield_span = self.prev_token.span;
+            self.psess.gated_spans.gate(sym::yield_expr, yield_span);
+            return Ok(
+                self.mk_expr(lo.to(yield_span), ExprKind::Yield(YieldKind::Postfix(self_arg)))
+            );
+        }
+
         let fn_span_lo = self.token.span;
         let mut seg = self.parse_path_segment(PathStyle::Expr, None)?;
         self.check_trailing_angle_brackets(&seg, &[exp!(OpenParen)]);
@@ -1884,7 +1894,7 @@ impl<'a> Parser<'a> {
     /// Parse `"yield" expr?`.
     fn parse_expr_yield(&mut self) -> PResult<'a, P<Expr>> {
         let lo = self.prev_token.span;
-        let kind = ExprKind::Yield(self.parse_expr_opt()?);
+        let kind = ExprKind::Yield(YieldKind::Prefix(self.parse_expr_opt()?));
         let span = lo.to(self.prev_token.span);
         self.psess.gated_spans.gate(sym::yield_expr, span);
         let expr = self.mk_expr(span, kind);
