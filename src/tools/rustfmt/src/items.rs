@@ -3508,7 +3508,7 @@ impl Rewrite for ast::ForeignItem {
                 )
             }
             ast::ForeignItemKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Item)
+                rewrite_macro(mac, context, shape, MacroPosition::Item)
             }
         }?;
 

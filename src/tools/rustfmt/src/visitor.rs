@@ -172,7 +172,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                         get_span_without_attrs(stmt.as_ast_node()),
                     );
                 } else {
-                    self.visit_mac(&mac_stmt.mac, None, MacroPosition::Statement);
+                    self.visit_mac(&mac_stmt.mac, MacroPosition::Statement);
                 }
                 self.format_missing(stmt.span().hi());
             }
@@ -531,7 +531,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                     self.format_mod(mod_kind, safety, &item.vis, item.span, item.ident, attrs);
                 }
                 ast::ItemKind::MacCall(ref mac) => {
-                    self.visit_mac(mac, Some(item.ident), MacroPosition::Item);
+                    self.visit_mac(mac, MacroPosition::Item);
                 }
                 ast::ItemKind::ForeignMod(ref foreign_mod) => {
                     self.format_missing_with_indent(source!(self, item.span).lo());
@@ -678,7 +678,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 self.visit_ty_alias_kind(ty_alias, &ai.vis, ai.ident, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
-                self.visit_mac(mac, Some(ai.ident), MacroPosition::Item);
+                self.visit_mac(mac, MacroPosition::Item);
             }
             _ => unreachable!(),
         }
@@ -692,12 +692,12 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.visit_assoc_item(ii, ItemVisitorKind::AssocImplItem);
     }
 
-    fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<symbol::Ident>, pos: MacroPosition) {
+    fn visit_mac(&mut self, mac: &ast::MacCall, pos: MacroPosition) {
         skip_out_of_file_lines_range_visitor!(self, mac.span());
 
         // 1 = ;
         let shape = self.shape().saturating_sub_width(1);
-        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ident, ctx, shape, pos).ok());
+        let rewrite = self.with_context(|ctx| rewrite_macro(mac, ctx, shape, pos).ok());
         // As of v638 of the rustc-ap-* crates, the associated span no longer includes
         // the trailing semicolon. This determines the correct span to ensure scenarios
         // with whitespace between the delimiters and trailing semi (i.e. `foo!(abc)     ;`)
