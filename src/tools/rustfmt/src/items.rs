@@ -6,7 +6,7 @@ use std::cmp::{Ordering, max, min};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{BytePos, DUMMY_SP, Span, symbol};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
 use tracing::debug;
 
 use crate::attr::filter_inline_attrs;
@@ -1679,11 +1679,12 @@ fn format_tuple_struct(
     Some(result)
 }
 
-pub(crate) enum ItemVisitorKind<'a> {
-    Item(&'a ast::Item),
-    AssocTraitItem(&'a ast::AssocItem),
-    AssocImplItem(&'a ast::AssocItem),
-    ForeignItem(&'a ast::ForeignItem),
+#[derive(Clone, Copy)]
+pub(crate) enum ItemVisitorKind {
+    Item,
+    AssocTraitItem,
+    AssocImplItem,
+    ForeignItem,
 }
 
 struct TyAliasRewriteInfo<'c, 'g>(
@@ -1695,11 +1696,13 @@ struct TyAliasRewriteInfo<'c, 'g>(
     Span,
 );
 
-pub(crate) fn rewrite_type_alias<'a, 'b>(
+pub(crate) fn rewrite_type_alias<'a>(
     ty_alias_kind: &ast::TyAlias,
+    vis: &ast::Visibility,
+    ident: Ident,
     context: &RewriteContext<'a>,
     indent: Indent,
-    visitor_kind: &ItemVisitorKind<'b>,
+    visitor_kind: ItemVisitorKind,
     span: Span,
 ) -> RewriteResult {
     use ItemVisitorKind::*;
@@ -1715,11 +1718,6 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
     let rhs_hi = ty
         .as_ref()
         .map_or(where_clauses.before.span.hi(), |ty| ty.span.hi());
-    let (ident, vis) = match visitor_kind {
-        Item(i) => (i.ident, &i.vis),
-        AssocTraitItem(i) | AssocImplItem(i) => (i.ident, &i.vis),
-        ForeignItem(i) => (i.ident, &i.vis),
-    };
     let rw_info = &TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span);
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
@@ -1727,14 +1725,14 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
     // https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
     // https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/items.md#type-aliases
     match (visitor_kind, &op_ty) {
-        (Item(_) | AssocTraitItem(_) | ForeignItem(_), Some(op_bounds)) => {
+        (Item | AssocTraitItem | ForeignItem, Some(op_bounds)) => {
             let op = OpaqueType { bounds: op_bounds };
             rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis)
         }
-        (Item(_) | AssocTraitItem(_) | ForeignItem(_), None) => {
+        (Item | AssocTraitItem | ForeignItem, None) => {
             rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
         }
-        (AssocImplItem(_), _) => {
+        (AssocImplItem, _) => {
             let result = if let Some(op_bounds) = op_ty {
                 let op = OpaqueType { bounds: op_bounds };
                 rewrite_ty(
@@ -3498,8 +3496,16 @@ impl Rewrite for ast::ForeignItem {
                 .map(|s| s + ";")
             }
             ast::ForeignItemKind::TyAlias(ref ty_alias) => {
-                let (kind, span) = (&ItemVisitorKind::ForeignItem(self), self.span);
-                rewrite_type_alias(ty_alias, context, shape.indent, kind, span)
+                let kind = ItemVisitorKind::ForeignItem;
+                rewrite_type_alias(
+                    ty_alias,
+                    &self.vis,
+                    self.ident,
+                    context,
+                    shape.indent,
+                    kind,
+                    self.span,
+                )
             }
             ast::ForeignItemKind::MacCall(ref mac) => {
                 rewrite_macro(mac, None, context, shape, MacroPosition::Item)
