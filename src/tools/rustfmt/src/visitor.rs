@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 use rustc_ast::{ast, token::Delimiter, visit};
-use rustc_span::{BytePos, Pos, Span, symbol};
+use rustc_span::{BytePos, Ident, Pos, Span, symbol};
 use tracing::debug;
 
 use crate::attr::*;
@@ -573,7 +573,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
                 ast::ItemKind::TyAlias(ref ty_alias) => {
                     use ItemVisitorKind::Item;
-                    self.visit_ty_alias_kind(ty_alias, &Item(item), item.span);
+                    self.visit_ty_alias_kind(ty_alias, &item.vis, item.ident, Item, item.span);
                 }
                 ast::ItemKind::GlobalAsm(..) => {
                     let snippet = Some(self.snippet(item.span).to_owned());
@@ -605,11 +605,15 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     fn visit_ty_alias_kind(
         &mut self,
         ty_kind: &ast::TyAlias,
-        visitor_kind: &ItemVisitorKind<'_>,
+        vis: &ast::Visibility,
+        ident: Ident,
+        visitor_kind: ItemVisitorKind,
         span: Span,
     ) {
         let rewrite = rewrite_type_alias(
             ty_kind,
+            vis,
+            ident,
             &self.get_context(),
             self.block_indent,
             visitor_kind,
@@ -619,15 +623,16 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         self.push_rewrite(span, rewrite);
     }
 
-    fn visit_assoc_item(&mut self, visitor_kind: &ItemVisitorKind<'_>) {
+    fn visit_assoc_item(&mut self, ai: &ast::AssocItem, visitor_kind: ItemVisitorKind) {
         use ItemVisitorKind::*;
         // TODO(calebcartwright): Not sure the skip spans are correct
-        let (ai, skip_span, assoc_ctxt) = match visitor_kind {
-            AssocTraitItem(ai) => (*ai, ai.span(), visit::AssocCtxt::Trait),
+        let assoc_ctxt = match visitor_kind {
+            AssocTraitItem => visit::AssocCtxt::Trait,
             // There is no difference between trait and inherent assoc item formatting
-            AssocImplItem(ai) => (*ai, ai.span, visit::AssocCtxt::Impl { of_trait: false }),
+            AssocImplItem => visit::AssocCtxt::Impl { of_trait: false },
             _ => unreachable!(),
         };
+        let skip_span = ai.span;
         skip_out_of_file_lines_range_visitor!(self, ai.span);
 
         if self.visit_attrs(&ai.attrs, ast::AttrStyle::Outer) {
@@ -637,10 +642,10 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
 
         // TODO(calebcartwright): consider enabling box_patterns feature gate
         match (&ai.kind, visitor_kind) {
-            (ast::AssocItemKind::Const(..), AssocTraitItem(_)) => {
+            (ast::AssocItemKind::Const(..), AssocTraitItem) => {
                 self.visit_static(&StaticParts::from_trait_item(ai))
             }
-            (ast::AssocItemKind::Const(..), AssocImplItem(_)) => {
+            (ast::AssocItemKind::Const(..), AssocImplItem) => {
                 self.visit_static(&StaticParts::from_impl_item(ai))
             }
             (ast::AssocItemKind::Fn(ref fn_kind), _) => {
@@ -670,7 +675,7 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
                 }
             }
             (ast::AssocItemKind::Type(ref ty_alias), _) => {
-                self.visit_ty_alias_kind(ty_alias, visitor_kind, ai.span);
+                self.visit_ty_alias_kind(ty_alias, &ai.vis, ai.ident, visitor_kind, ai.span);
             }
             (ast::AssocItemKind::MacCall(ref mac), _) => {
                 self.visit_mac(mac, Some(ai.ident), MacroPosition::Item);
@@ -680,11 +685,11 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
     }
 
     pub(crate) fn visit_trait_item(&mut self, ti: &ast::AssocItem) {
-        self.visit_assoc_item(&ItemVisitorKind::AssocTraitItem(ti));
+        self.visit_assoc_item(ti, ItemVisitorKind::AssocTraitItem);
     }
 
     pub(crate) fn visit_impl_item(&mut self, ii: &ast::AssocItem) {
-        self.visit_assoc_item(&ItemVisitorKind::AssocImplItem(ii));
+        self.visit_assoc_item(ii, ItemVisitorKind::AssocImplItem);
     }
 
     fn visit_mac(&mut self, mac: &ast::MacCall, ident: Option<symbol::Ident>, pos: MacroPosition) {
