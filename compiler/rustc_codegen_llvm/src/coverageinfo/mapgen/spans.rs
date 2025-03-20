@@ -5,22 +5,40 @@ use tracing::debug;
 use crate::coverageinfo::ffi;
 use crate::coverageinfo::mapgen::LocalFileId;
 
+/// Line and byte-column coordinates of a source code span within some file.
+/// The file itself must be tracked separately.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Coords {
+    /// 1-based starting line of the source code span.
+    pub(crate) start_line: u32,
+    /// 1-based starting column (in bytes) of the source code span.
+    pub(crate) start_col: u32,
+    /// 1-based ending line of the source code span.
+    pub(crate) end_line: u32,
+    /// 1-based ending column (in bytes) of the source code span. High bit must be unset.
+    pub(crate) end_col: u32,
+}
+
+impl Coords {
+    /// Attaches a local file ID to these coordinates to produce an `ffi::CoverageSpan`.
+    pub(crate) fn make_coverage_span(&self, local_file_id: LocalFileId) -> ffi::CoverageSpan {
+        let &Self { start_line, start_col, end_line, end_col } = self;
+        let file_id = local_file_id.as_u32();
+        ffi::CoverageSpan { file_id, start_line, start_col, end_line, end_col }
+    }
+}
+
 /// Converts the span into its start line and column, and end line and column.
 ///
 /// Line numbers and column numbers are 1-based. Unlike most column numbers emitted by
 /// the compiler, these column numbers are denoted in **bytes**, because that's what
 /// LLVM's `llvm-cov` tool expects to see in coverage maps.
 ///
-/// Returns `None` if the conversion failed for some reason. This shouldn't happen,
+/// Returns `None` if the conversion failed for some reason. This should be uncommon,
 /// but it's hard to rule out entirely (especially in the presence of complex macros
 /// or other expansions), and if it does happen then skipping a span or function is
 /// better than an ICE or `llvm-cov` failure that the user might have no way to avoid.
-pub(crate) fn make_coverage_span(
-    file_id: LocalFileId,
-    source_map: &SourceMap,
-    file: &SourceFile,
-    span: Span,
-) -> Option<ffi::CoverageSpan> {
+pub(crate) fn make_coords(source_map: &SourceMap, file: &SourceFile, span: Span) -> Option<Coords> {
     let span = ensure_non_empty_span(source_map, span)?;
 
     let lo = span.lo();
@@ -44,8 +62,7 @@ pub(crate) fn make_coverage_span(
     start_line = source_map.doctest_offset_line(&file.name, start_line);
     end_line = source_map.doctest_offset_line(&file.name, end_line);
 
-    check_coverage_span(ffi::CoverageSpan {
-        file_id: file_id.as_u32(),
+    check_coords(Coords {
         start_line: start_line as u32,
         start_col: start_col as u32,
         end_line: end_line as u32,
@@ -80,8 +97,8 @@ fn ensure_non_empty_span(source_map: &SourceMap, span: Span) -> Option<Span> {
 /// it will immediately exit with a fatal error. To prevent that from happening,
 /// discard regions that are improperly ordered, or might be interpreted in a
 /// way that makes them improperly ordered.
-fn check_coverage_span(cov_span: ffi::CoverageSpan) -> Option<ffi::CoverageSpan> {
-    let ffi::CoverageSpan { file_id: _, start_line, start_col, end_line, end_col } = cov_span;
+fn check_coords(coords: Coords) -> Option<Coords> {
+    let Coords { start_line, start_col, end_line, end_col } = coords;
 
     // Line/column coordinates are supposed to be 1-based. If we ever emit
     // coordinates of 0, `llvm-cov` might misinterpret them.
@@ -94,17 +111,17 @@ fn check_coverage_span(cov_span: ffi::CoverageSpan) -> Option<ffi::CoverageSpan>
     let is_ordered = (start_line, start_col) <= (end_line, end_col);
 
     if all_nonzero && end_col_has_high_bit_unset && is_ordered {
-        Some(cov_span)
+        Some(coords)
     } else {
         debug!(
-            ?cov_span,
+            ?coords,
             ?all_nonzero,
             ?end_col_has_high_bit_unset,
             ?is_ordered,
             "Skipping source region that would be misinterpreted or rejected by LLVM"
         );
         // If this happens in a debug build, ICE to make it easier to notice.
-        debug_assert!(false, "Improper source region: {cov_span:?}");
+        debug_assert!(false, "Improper source region: {coords:?}");
         None
     }
 }

@@ -63,8 +63,18 @@ pub(crate) fn write_function_mappings_to_buffer(
     expressions: &[ffi::CounterExpression],
     regions: &ffi::Regions,
 ) -> Vec<u8> {
-    let ffi::Regions { code_regions, branch_regions, mcdc_branch_regions, mcdc_decision_regions } =
-        regions;
+    let ffi::Regions {
+        code_regions,
+        expansion_regions,
+        branch_regions,
+        mcdc_branch_regions,
+        mcdc_decision_regions,
+    } = regions;
+
+    // SAFETY:
+    // - All types are FFI-compatible and have matching representations in Rust/C++.
+    // - For pointer/length pairs, the pointer and length come from the same vector or slice.
+    // - C++ code does not retain any pointers after the call returns.
     llvm::build_byte_buffer(|buffer| unsafe {
         llvm::LLVMRustCoverageWriteFunctionMappingsToBuffer(
             virtual_file_mapping.as_ptr(),
@@ -73,6 +83,8 @@ pub(crate) fn write_function_mappings_to_buffer(
             expressions.len(),
             code_regions.as_ptr(),
             code_regions.len(),
+            expansion_regions.as_ptr(),
+            expansion_regions.len(),
             branch_regions.as_ptr(),
             branch_regions.len(),
             mcdc_branch_regions.as_ptr(),

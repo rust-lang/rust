@@ -1269,8 +1269,8 @@ pub fn walk_expr<'a, V: Visitor<'a>>(visitor: &mut V, expression: &'a Expr) -> V
             try_visit!(visitor.visit_ty(container));
             walk_list!(visitor, visit_ident, fields.iter());
         }
-        ExprKind::Yield(optional_expression) => {
-            visit_opt!(visitor, visit_expr, optional_expression);
+        ExprKind::Yield(kind) => {
+            visit_opt!(visitor, visit_expr, kind.expr());
         }
         ExprKind::Try(subexpression) => try_visit!(visitor.visit_expr(subexpression)),
         ExprKind::TryBlock(body) => try_visit!(visitor.visit_block(body)),
