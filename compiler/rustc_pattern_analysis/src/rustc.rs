@@ -15,7 +15,7 @@ use rustc_middle::ty::{
 };
 use rustc_middle::{bug, span_bug};
 use rustc_session::lint;
-use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span};
+use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, sym};
 
 use crate::constructor::Constructor::*;
 use crate::constructor::{
@@ -230,7 +230,11 @@ impl<'p, 'tcx: 'p> RustcPatCtxt<'p, 'tcx> {
                             let is_visible =
                                 adt.is_enum() || field.vis.is_accessible_from(cx.module, cx.tcx);
                             let is_uninhabited = cx.is_uninhabited(*ty);
-                            let skip = is_uninhabited && !is_visible;
+                            let is_unstable =
+                                cx.tcx.lookup_stability(field.did).is_some_and(|stab| {
+                                    stab.is_unstable() && stab.feature != sym::rustc_private
+                                });
+                            let skip = is_uninhabited && (!is_visible || is_unstable);
                             (ty, PrivateUninhabitedField(skip))
                         });
                         cx.dropless_arena.alloc_from_iter(tys)
