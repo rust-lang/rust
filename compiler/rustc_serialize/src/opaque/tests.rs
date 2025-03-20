@@ -1,11 +1,10 @@
-#![allow(rustc::internal)]
-
 use std::fmt::Debug;
 use std::fs;
 
 use rustc_macros::{Decodable_NoContext, Encodable_NoContext};
-use rustc_serialize::opaque::{FileEncoder, MemDecoder};
-use rustc_serialize::{Decodable, Encodable};
+
+use crate::opaque::{FileEncoder, MemDecoder};
+use crate::{Decodable, Encodable};
 
 #[derive(PartialEq, Clone, Debug, Encodable_NoContext, Decodable_NoContext)]
 struct Struct {
