@@ -1,20 +1,21 @@
-task:
-  name: freebsd
-  freebsd_instance:
-    image: freebsd-13-2-release-amd64
-  setup_rust_script:
-    - pkg install -y git-tiny binutils
-    - curl https://sh.rustup.rs -sSf --output rustup.sh
-    - sh rustup.sh --default-toolchain none -y --profile=minimal
-  target_cache:
-    folder: build/cg_clif
-  prepare_script:
-    - . $HOME/.cargo/env
-    - ./y.sh prepare
-  test_script:
-    - . $HOME/.cargo/env
-    # Disabling incr comp reduces cache size and incr comp doesn't save as much
-    # on CI anyway.
-    - export CARGO_BUILD_INCREMENTAL=false
-    # Skip rand as it fails on FreeBSD due to rust-random/rand#1355
-    - ./y.sh test --skip-test test.rust-random/rand
+# FIXME re-enable once https://github.com/rust-lang/rust/issues/134863 is fixed.
+# task:
+#   name: freebsd
+#   freebsd_instance:
+#     image: freebsd-13-2-release-amd64
+#   setup_rust_script:
+#     - pkg install -y git-tiny binutils
+#     - curl https://sh.rustup.rs -sSf --output rustup.sh
+#     - sh rustup.sh --default-toolchain none -y --profile=minimal
+#   target_cache:
+#     folder: build/cg_clif
+#   prepare_script:
+#     - . $HOME/.cargo/env
+#     - ./y.sh prepare
+#   test_script:
+#     - . $HOME/.cargo/env
+#     # Disabling incr comp reduces cache size and incr comp doesn't save as much
+#     # on CI anyway.
+#     - export CARGO_BUILD_INCREMENTAL=false
+#     # Skip rand as it fails on FreeBSD due to rust-random/rand#1355
+#     - ./y.sh test --skip-test test.rust-random/rand
