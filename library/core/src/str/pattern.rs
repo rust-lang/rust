@@ -644,21 +644,21 @@ where
 impl<const N: usize> MultiCharEq for [char; N] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
+        self.contains(&c)
     }
 }
 
 impl<const N: usize> MultiCharEq for &[char; N] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
+        self.contains(&c)
     }
 }
 
 impl MultiCharEq for &[char] {
     #[inline]
     fn matches(&mut self, c: char) -> bool {
-        self.iter().any(|&m| m == c)
+        self.contains(&c)
     }
 }
 

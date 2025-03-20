@@ -145,19 +145,19 @@ impl chalk_solve::RustIrDatabase<Interner> for ChalkContext<'_> {
         let mut result = vec![];
         if fps.is_empty() {
             debug!("Unrestricted search for {:?} impls...", trait_);
-            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+            let _ = self.for_trait_impls(trait_, self_ty_fp, |impls| {
                 result.extend(impls.for_trait(trait_).map(id_to_chalk));
                 ControlFlow::Continue(())
-            })
+            });
         } else {
-            self.for_trait_impls(trait_, self_ty_fp, |impls| {
+            let _ = self.for_trait_impls(trait_, self_ty_fp, |impls| {
                 result.extend(
                     fps.iter().flat_map(move |fp| {
                         impls.for_trait_and_self_ty(trait_, *fp).map(id_to_chalk)
                     }),
                 );
                 ControlFlow::Continue(())
-            })
+            });
         };
 
         debug!("impls_for_trait returned {} impls", result.len());

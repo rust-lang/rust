@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/assignment-of-clone-call-on-ref-due-to-missing-bound.rs:19:39
+   |
+LL |             let mut x: HashSet<Day> = v.clone();
+   |                        ------------   ^^^^^^^^^ expected `HashSet<Day>`, found `&HashSet<Day>`
+   |                        |
+   |                        expected due to this
+   |
+   = note: expected struct `HashSet<_>`
+           found reference `&HashSet<_>`
+note: `HashSet<Day>` does not implement `Clone`, so `&HashSet<Day>` was cloned instead
+  --> $DIR/assignment-of-clone-call-on-ref-due-to-missing-bound.rs:19:39
+   |
+LL |             let mut x: HashSet<Day> = v.clone();
+   |                                       ^
+   = help: `Clone` is not implemented because the trait bound `Day: Clone` is not satisfied
+help: consider annotating `Day` with `#[derive(Clone)]`
+   |
+LL + #[derive(Clone)]
+LL | enum Day {
+   |
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0308`.

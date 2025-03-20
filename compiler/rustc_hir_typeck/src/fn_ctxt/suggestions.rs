@@ -904,7 +904,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Assumes given function doesn't have a explicit return type.
     fn can_add_return_type(&self, fn_id: LocalDefId) -> bool {
         match self.tcx.hir_node_by_def_id(fn_id) {
-            Node::Item(&hir::Item { ident, .. }) => {
+            Node::Item(item) => {
+                let (ident, _, _, _) = item.expect_fn();
                 // This is less than ideal, it will not suggest a return type span on any
                 // method called `main`, regardless of whether it is actually the entry point,
                 // but it will still present it as the reason for the expected type.
@@ -1532,30 +1533,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if self.may_coerce(blk_ty, *elem_ty)
                 && blk.stmts.is_empty()
                 && blk.rules == hir::BlockCheckMode::DefaultBlock
+                && let source_map = self.tcx.sess.source_map()
+                && let Ok(snippet) = source_map.span_to_snippet(blk.span)
+                && snippet.starts_with('{')
+                && snippet.ends_with('}')
             {
-                let source_map = self.tcx.sess.source_map();
-                if let Ok(snippet) = source_map.span_to_snippet(blk.span) {
-                    if snippet.starts_with('{') && snippet.ends_with('}') {
-                        diag.multipart_suggestion_verbose(
-                            "to create an array, use square brackets instead of curly braces",
-                            vec![
-                                (
-                                    blk.span
-                                        .shrink_to_lo()
-                                        .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
-                                    "[".to_string(),
-                                ),
-                                (
-                                    blk.span
-                                        .shrink_to_hi()
-                                        .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
-                                    "]".to_string(),
-                                ),
-                            ],
-                            Applicability::MachineApplicable,
-                        );
-                    }
-                }
+                diag.multipart_suggestion_verbose(
+                    "to create an array, use square brackets instead of curly braces",
+                    vec![
+                        (
+                            blk.span
+                                .shrink_to_lo()
+                                .with_hi(rustc_span::BytePos(blk.span.lo().0 + 1)),
+                            "[".to_string(),
+                        ),
+                        (
+                            blk.span
+                                .shrink_to_hi()
+                                .with_lo(rustc_span::BytePos(blk.span.hi().0 - 1)),
+                            "]".to_string(),
+                        ),
+                    ],
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }
@@ -2983,7 +2983,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return false;
         }
 
-        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(expr.span) else {
+        let span = if let hir::ExprKind::Lit(lit) = &expr.kind { lit.span } else { expr.span };
+        let Ok(src) = self.tcx.sess.source_map().span_to_snippet(span) else {
             return false;
         };
 
@@ -3078,10 +3079,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Remove fractional part from literal, for example `42.0f32` into `42`
                 let src = src.trim_end_matches(&checked_ty.to_string());
                 let len = src.split('.').next().unwrap().len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             } else {
                 let len = src.trim_end_matches(&checked_ty.to_string()).len();
-                expr.span.with_lo(expr.span.lo() + BytePos(len as u32))
+                span.with_lo(span.lo() + BytePos(len as u32))
             },
             if expr.precedence() < ExprPrecedence::Unambiguous {
                 // Readd `)`

@@ -11,13 +11,13 @@ chapter](./backend/debugging.md)).
 ## Configuring the compiler
 
 By default, rustc is built without most debug information. To enable debug info,
-set `debug = true` in your config.toml.
+set `debug = true` in your bootstrap.toml.
 
 Setting `debug = true` turns on many different debug options (e.g., `debug-assertions`,
 `debug-logging`, etc.) which can be individually tweaked if you want to, but many people
 simply set `debug = true`.
 
-If you want to use GDB to debug rustc, please set `config.toml` with options:
+If you want to use GDB to debug rustc, please set `bootstrap.toml` with options:
 
 ```toml
 [rust]
@@ -35,14 +35,14 @@ debuginfo-level = 2
 
 The default configuration will enable `symbol-mangling-version` v0.
 This requires at least GDB v10.2,
-otherwise you need to disable new symbol-mangling-version in `config.toml`.
+otherwise you need to disable new symbol-mangling-version in `bootstrap.toml`.
 
 ```toml
 [rust]
 new-symbol-mangling = false
 ```
 
-> See the comments in `config.example.toml` for more info.
+> See the comments in `bootstrap.example.toml` for more info.
 
 You will need to rebuild the compiler after changing any configuration option.
 
@@ -373,7 +373,7 @@ error: aborting due to previous error
 
 ## Configuring CodeLLDB for debugging `rustc`
 
-If you are using VSCode, and have edited your `config.toml` to request debugging
+If you are using VSCode, and have edited your `bootstrap.toml` to request debugging
 level 1 or 2 for the parts of the code you're interested in, then you should be
 able to use the [CodeLLDB] extension in VSCode to debug it.
 

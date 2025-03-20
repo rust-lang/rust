@@ -137,7 +137,8 @@ impl Thread {
         target_os = "linux",
         target_os = "freebsd",
         target_os = "dragonfly",
-        target_os = "nuttx"
+        target_os = "nuttx",
+        target_os = "cygwin"
     ))]
     pub fn set_name(name: &CStr) {
         unsafe {
@@ -365,6 +366,7 @@ pub fn available_parallelism() -> io::Result<NonZero<usize>> {
             target_os = "linux",
             target_os = "aix",
             target_vendor = "apple",
+            target_os = "cygwin",
         ))] {
             #[allow(unused_assignments)]
             #[allow(unused_mut)]

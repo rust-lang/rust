@@ -40,9 +40,9 @@ use crate::errors::{
 };
 use crate::imports::Import;
 use crate::{
-    BindingKey, BuiltinMacroState, DeriveData, Determinacy, Finalize, InvocationParent, MacroData,
-    ModuleKind, ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult,
-    ResolutionError, Resolver, ScopeSet, Segment, ToNameBinding, Used,
+    BindingKey, DeriveData, Determinacy, Finalize, InvocationParent, MacroData, ModuleKind,
+    ModuleOrUniformRoot, NameBinding, NameBindingKind, ParentScope, PathResult, ResolutionError,
+    Resolver, ScopeSet, Segment, ToNameBinding, Used,
 };
 
 type Res = def::Res<NodeId>;
@@ -194,7 +194,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
     }
 
     fn register_builtin_macro(&mut self, name: Symbol, ext: SyntaxExtensionKind) {
-        if self.builtin_macros.insert(name, BuiltinMacroState::NotYetSeen(ext)).is_some() {
+        if self.builtin_macros.insert(name, ext).is_some() {
             self.dcx().bug(format!("built-in macro `{name}` was already registered"));
         }
     }
@@ -1127,20 +1127,11 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         if let Some(builtin_name) = ext.builtin_name {
             // The macro was marked with `#[rustc_builtin_macro]`.
-            if let Some(builtin_macro) = self.builtin_macros.get_mut(&builtin_name) {
+            if let Some(builtin_ext_kind) = self.builtin_macros.get(&builtin_name) {
                 // The macro is a built-in, replace its expander function
                 // while still taking everything else from the source code.
-                // If we already loaded this builtin macro, give a better error message than 'no such builtin macro'.
-                match mem::replace(builtin_macro, BuiltinMacroState::AlreadySeen(span)) {
-                    BuiltinMacroState::NotYetSeen(builtin_ext) => {
-                        ext.kind = builtin_ext;
-                        rule_spans = Vec::new();
-                    }
-                    BuiltinMacroState::AlreadySeen(note_span) => {
-                        self.dcx()
-                            .emit_err(errors::AttemptToDefineBuiltinMacroTwice { span, note_span });
-                    }
-                }
+                ext.kind = builtin_ext_kind.clone();
+                rule_spans = Vec::new();
             } else {
                 self.dcx().emit_err(errors::CannotFindBuiltinMacroWithName { span, ident });
             }

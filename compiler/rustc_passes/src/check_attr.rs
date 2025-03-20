@@ -743,7 +743,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
         match target {
             Target::Struct => {
                 if let Some(ItemLike::Item(hir::Item {
-                    kind: hir::ItemKind::Struct(hir::VariantData::Struct { fields, .. }, _),
+                    kind: hir::ItemKind::Struct(_, hir::VariantData::Struct { fields, .. }, _),
                     ..
                 })) = item
                     && !fields.is_empty()
@@ -1019,7 +1019,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             _ => None,
         };
         match item_kind {
-            Some(ItemKind::Mod(module)) => {
+            Some(ItemKind::Mod(_, module)) => {
                 if !module.item_ids.is_empty() {
                     self.dcx().emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
                     return;
@@ -1072,9 +1072,9 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             return;
         };
         match item.kind {
-            ItemKind::Enum(_, generics) | ItemKind::Struct(_, generics)
+            ItemKind::Enum(_, _, generics) | ItemKind::Struct(_, _, generics)
                 if generics.params.len() != 0 => {}
-            ItemKind::Trait(_, _, generics, _, items)
+            ItemKind::Trait(_, _, _, generics, _, items)
                 if generics.params.len() != 0
                     || items.iter().any(|item| matches!(item.kind, AssocItemKind::Type)) => {}
             _ => {
@@ -2203,7 +2203,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
 
     fn check_rustc_std_internal_symbol(&self, attr: &Attribute, span: Span, target: Target) {
         match target {
-            Target::Fn | Target::Static => {}
+            Target::Fn | Target::Static | Target::ForeignFn | Target::ForeignStatic => {}
             _ => {
                 self.tcx
                     .dcx()
@@ -2293,7 +2293,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             }
         } else {
             // special case when `#[macro_export]` is applied to a macro 2.0
-            let (macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
+            let (_, macro_definition, _) = self.tcx.hir_node(hir_id).expect_item().expect_macro();
             let is_decl_macro = !macro_definition.macro_rules;
 
             if is_decl_macro {
@@ -2624,7 +2624,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // Historically we've run more checks on non-exported than exported macros,
         // so this lets us continue to run them while maintaining backwards compatibility.
         // In the long run, the checks should be harmonized.
-        if let ItemKind::Macro(macro_def, _) = item.kind {
+        if let ItemKind::Macro(_, macro_def, _) = item.kind {
             let def_id = item.owner_id.to_def_id();
             if macro_def.macro_rules && !self.tcx.has_attr(def_id, sym::macro_export) {
                 check_non_exported_macro_for_invalid_attrs(self.tcx, item);
@@ -2736,7 +2736,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
 }
 
 fn is_c_like_enum(item: &Item<'_>) -> bool {
-    if let ItemKind::Enum(ref def, _) = item.kind {
+    if let ItemKind::Enum(_, ref def, _) = item.kind {
         for variant in def.variants {
             match variant.data {
                 hir::VariantData::Unit(..) => { /* continue */ }
@@ -2784,7 +2784,7 @@ fn check_invalid_crate_level_attr(tcx: TyCtxt<'_>, attrs: &[Attribute]) {
             .map(|id| tcx.hir_item(id))
             .find(|item| !item.span.is_dummy()) // Skip prelude `use`s
             .map(|item| errors::ItemFollowingInnerAttr {
-                span: item.ident.span,
+                span: if let Some(ident) = item.kind.ident() { ident.span } else { item.span },
                 kind: item.kind.descr(),
             });
         let err = tcx.dcx().create_err(errors::InvalidAttrAtCrateLevel {

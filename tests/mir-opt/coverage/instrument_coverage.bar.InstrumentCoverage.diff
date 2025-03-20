@@ -4,8 +4,7 @@
   fn bar() -> bool {
       let mut _0: bool;
   
-+     coverage body span: $DIR/instrument_coverage.rs:29:18: 31:2 (#0)
-+     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:29:1: 31:2 (#0);
++     coverage Code { bcb: bcb0 } => $DIR/instrument_coverage.rs:27:1: 29:2 (#0);
 + 
       bb0: {
 +         Coverage::VirtualCounter(bcb0);

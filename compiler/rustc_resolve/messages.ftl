@@ -26,10 +26,6 @@ resolve_associated_fn_with_similar_name_exists =
 resolve_associated_type_with_similar_name_exists =
     there is an associated type with a similar name
 
-resolve_attempt_to_define_builtin_macro_twice =
-    attempted to define built-in macro more than once
-    .note = previously defined here
-
 resolve_attempt_to_use_non_constant_value_in_constant =
     attempt to use a non-constant value in a constant
 

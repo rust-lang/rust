@@ -151,17 +151,17 @@ pub fn link_binary(
                 sess.dcx().emit_artifact_notification(&out_filename, "link");
             }
 
-            if sess.prof.enabled() {
-                if let Some(artifact_name) = out_filename.file_name() {
-                    // Record size for self-profiling
-                    let file_size = std::fs::metadata(&out_filename).map(|m| m.len()).unwrap_or(0);
+            if sess.prof.enabled()
+                && let Some(artifact_name) = out_filename.file_name()
+            {
+                // Record size for self-profiling
+                let file_size = std::fs::metadata(&out_filename).map(|m| m.len()).unwrap_or(0);
 
-                    sess.prof.artifact_size(
-                        "linked_artifact",
-                        artifact_name.to_string_lossy(),
-                        file_size,
-                    );
-                }
+                sess.prof.artifact_size(
+                    "linked_artifact",
+                    artifact_name.to_string_lossy(),
+                    file_size,
+                );
             }
 
             if output.is_stdout() {
@@ -186,16 +186,12 @@ pub fn link_binary(
 
         let maybe_remove_temps_from_module =
             |preserve_objects: bool, preserve_dwarf_objects: bool, module: &CompiledModule| {
-                if !preserve_objects {
-                    if let Some(ref obj) = module.object {
-                        ensure_removed(sess.dcx(), obj);
-                    }
+                if !preserve_objects && let Some(ref obj) = module.object {
+                    ensure_removed(sess.dcx(), obj);
                 }
 
-                if !preserve_dwarf_objects {
-                    if let Some(ref dwo_obj) = module.dwarf_object {
-                        ensure_removed(sess.dcx(), dwo_obj);
-                    }
+                if !preserve_dwarf_objects && let Some(ref dwo_obj) = module.dwarf_object {
+                    ensure_removed(sess.dcx(), dwo_obj);
                 }
             };
 
@@ -1538,8 +1534,13 @@ fn print_native_static_libs(
         }
         let stem = path.file_stem().unwrap().to_str().unwrap();
         // Convert library file-stem into a cc -l argument.
-        let prefix = if stem.starts_with("lib") && !sess.target.is_like_windows { 3 } else { 0 };
-        let lib = &stem[prefix..];
+        let lib = if let Some(lib) = stem.strip_prefix("lib")
+            && !sess.target.is_like_windows
+        {
+            lib
+        } else {
+            stem
+        };
         let path = parent.unwrap_or_else(|| Path::new(""));
         if sess.target.is_like_msvc {
             // When producing a dll, the MSVC linker may not actually emit a
@@ -2111,11 +2112,11 @@ fn add_local_crate_metadata_objects(
     // When linking a dynamic library, we put the metadata into a section of the
     // executable. This metadata is in a separate object file from the main
     // object file, so we link that in here.
-    if crate_type == CrateType::Dylib || crate_type == CrateType::ProcMacro {
-        if let Some(obj) = codegen_results.metadata_module.as_ref().and_then(|m| m.object.as_ref())
-        {
-            cmd.add_object(obj);
-        }
+    if matches!(crate_type, CrateType::Dylib | CrateType::ProcMacro)
+        && let Some(m) = &codegen_results.metadata_module
+        && let Some(obj) = &m.object
+    {
+        cmd.add_object(obj);
     }
 }
 
@@ -2131,7 +2132,7 @@ fn add_library_search_dirs(
     }
 
     let fallback = Some(NativeLibSearchFallback { self_contained_components, apple_sdk_root });
-    walk_native_lib_search_dirs(sess, fallback, |dir, is_framework| {
+    let _ = walk_native_lib_search_dirs(sess, fallback, |dir, is_framework| {
         if is_framework {
             cmd.framework_path(dir);
         } else {
@@ -2535,10 +2536,11 @@ fn add_order_independent_options(
 
     cmd.output_filename(out_filename);
 
-    if crate_type == CrateType::Executable && sess.target.is_like_windows {
-        if let Some(ref s) = codegen_results.crate_info.windows_subsystem {
-            cmd.subsystem(s);
-        }
+    if crate_type == CrateType::Executable
+        && sess.target.is_like_windows
+        && let Some(s) = &codegen_results.crate_info.windows_subsystem
+    {
+        cmd.subsystem(s);
     }
 
     // Try to strip as much out of the generated object by removing unused

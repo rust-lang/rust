@@ -454,7 +454,7 @@ fn item_has_safety_comment(cx: &LateContext<'_>, item: &hir::Item<'_>) -> HasSaf
     let comment_start = match cx.tcx.parent_hir_node(item.hir_id()) {
         Node::Crate(parent_mod) => comment_start_before_item_in_mod(cx, parent_mod, parent_mod.spans.inner_span, item),
         Node::Item(parent_item) => {
-            if let ItemKind::Mod(parent_mod) = &parent_item.kind {
+            if let ItemKind::Mod(_, parent_mod) = &parent_item.kind {
                 comment_start_before_item_in_mod(cx, parent_mod, parent_item.span, item)
             } else {
                 // Doesn't support impls in this position. Pretend a comment was found.
@@ -614,7 +614,7 @@ fn get_body_search_span(cx: &LateContext<'_>) -> Option<Span> {
                 ..
             }) => maybe_global_var = true,
             Node::Item(hir::Item {
-                kind: ItemKind::Mod(_),
+                kind: ItemKind::Mod(..),
                 span: item_span,
                 ..
             }) => {

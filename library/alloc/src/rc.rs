@@ -1327,10 +1327,13 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1360,11 +1363,14 @@ impl<T: ?Sized> Rc<T> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw`and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
     /// allocated by the global allocator. This method can be used to release the final `Rc` and
     /// backing storage, but **should not** be called after the final `Rc` has been released.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1623,10 +1629,13 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw` and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) for the duration of this method, and `ptr` must point to a block of memory
-    /// allocated by `alloc`
+    /// allocated by `alloc`.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///
@@ -1665,11 +1674,14 @@ impl<T: ?Sized, A: Allocator> Rc<T, A> {
     ///
     /// # Safety
     ///
-    /// The pointer must have been obtained through `Rc::into_raw`, the
-    /// associated `Rc` instance must be valid (i.e. the strong count must be at
+    /// The pointer must have been obtained through `Rc::into_raw`and must satisfy the
+    /// same layout requirements specified in [`Rc::from_raw_in`][from_raw_in].
+    /// The associated `Rc` instance must be valid (i.e. the strong count must be at
     /// least 1) when invoking this method, and `ptr` must point to a block of memory
-    /// allocated by `alloc`. This method can be used to release the final `Rc` and backing storage,
-    /// but **should not** be called after the final `Rc` has been released.
+    /// allocated by `alloc`. This method can be used to release the final `Rc` and
+    /// backing storage, but **should not** be called after the final `Rc` has been released.
+    ///
+    /// [from_raw_in]: Rc::from_raw_in
     ///
     /// # Examples
     ///

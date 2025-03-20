@@ -15,8 +15,31 @@ fn test_format_flags() {
 fn test_pointer_formats_data_pointer() {
     let b: &[u8] = b"";
     let s: &str = "";
-    assert_eq!(format!("{s:p}"), format!("{:p}", s.as_ptr()));
-    assert_eq!(format!("{b:p}"), format!("{:p}", b.as_ptr()));
+    assert_eq!(format!("{s:p}"), format!("{:p}", s as *const _));
+    assert_eq!(format!("{b:p}"), format!("{:p}", b as *const _));
+}
+
+#[test]
+fn test_fmt_debug_of_raw_pointers() {
+    use core::fmt::Debug;
+    use core::ptr;
+
+    fn check_fmt<T: Debug>(t: T, start: &str, contains: &str) {
+        let formatted = format!("{:?}", t);
+        assert!(formatted.starts_with(start), "{formatted:?} doesn't start with {start:?}");
+        assert!(formatted.contains(contains), "{formatted:?} doesn't contain {contains:?}");
+    }
+
+    assert_eq!(format!("{:?}", ptr::without_provenance_mut::<i32>(0x100)), "0x100");
+    assert_eq!(format!("{:?}", ptr::without_provenance::<i32>(0x100)), "0x100");
+
+    let slice = ptr::slice_from_raw_parts(ptr::without_provenance::<i32>(0x100), 3);
+    assert_eq!(format!("{:?}", slice as *mut [i32]), "Pointer { addr: 0x100, metadata: 3 }");
+    assert_eq!(format!("{:?}", slice as *const [i32]), "Pointer { addr: 0x100, metadata: 3 }");
+
+    let vtable = &mut 500 as &mut dyn Debug;
+    check_fmt(vtable as *mut dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
+    check_fmt(vtable as *const dyn Debug, "Pointer { addr: ", ", metadata: DynMetadata(");
 }
 
 #[test]

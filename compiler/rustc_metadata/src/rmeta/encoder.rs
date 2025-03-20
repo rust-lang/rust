@@ -843,9 +843,8 @@ fn analyze_attr(attr: &impl AttributeExt, state: &mut AnalyzeAttrState<'_>) -> b
                 }
             }
         }
-    } else if attr.path().starts_with(&[sym::diagnostic]) && attr.path().len() == 2 {
-        should_encode =
-            rustc_feature::is_stable_diagnostic_attribute(attr.path()[1], state.features);
+    } else if let &[sym::diagnostic, seg] = &*attr.path() {
+        should_encode = rustc_feature::is_stable_diagnostic_attribute(seg, state.features);
     } else {
         should_encode = true;
     }
@@ -1836,7 +1835,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
     fn encode_info_for_macro(&mut self, def_id: LocalDefId) {
         let tcx = self.tcx;
 
-        let hir::ItemKind::Macro(macro_def, _) = tcx.hir_expect_item(def_id).kind else { bug!() };
+        let (_, macro_def, _) = tcx.hir_expect_item(def_id).expect_macro();
         self.tables.is_macro_rules.set(def_id.local_def_index, macro_def.macro_rules);
         record!(self.tables.macro_definition[def_id.to_def_id()] <- &*macro_def.body);
     }

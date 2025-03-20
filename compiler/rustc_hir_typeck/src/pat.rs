@@ -1250,7 +1250,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match opt_def_id {
             Some(def_id) => match self.tcx.hir_get_if_local(def_id) {
                 Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Const(_, _, body_id),
+                    kind: hir::ItemKind::Const(_, _, _, body_id),
                     ..
                 })) => match self.tcx.hir_node(body_id.hir_id) {
                     hir::Node::Expr(expr) => {
@@ -1724,7 +1724,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         // Require `..` if struct has non_exhaustive attribute.
-        let non_exhaustive = variant.is_field_list_non_exhaustive() && !adt.did().is_local();
+        let non_exhaustive = variant.field_list_has_applicable_non_exhaustive();
         if non_exhaustive && !has_rest_pat {
             self.error_foreign_non_exhaustive_spat(pat, adt.variant_descr(), fields.is_empty());
         }

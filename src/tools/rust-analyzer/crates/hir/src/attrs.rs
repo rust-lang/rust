@@ -260,7 +260,7 @@ fn resolve_impl_trait_item(
     // attributes here. Use path resolution directly instead.
     //
     // FIXME: resolve type aliases (which are not yielded by iterate_path_candidates)
-    method_resolution::iterate_path_candidates(
+    let _ = method_resolution::iterate_path_candidates(
         &canonical,
         db,
         environment,

@@ -644,7 +644,7 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let root_mod;
     let item_kind = match tcx.hir_node_by_def_id(local_id) {
         Node::Crate(r#mod) => {
-            root_mod = ItemKind::Mod(r#mod);
+            root_mod = ItemKind::Mod(Ident::dummy(), r#mod);
             &root_mod
         },
         Node::Item(item) => &item.kind,
@@ -661,10 +661,13 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     };
 
     match item_kind {
-        ItemKind::Mod(r#mod) => r#mod
+        ItemKind::Mod(_, r#mod) => r#mod
             .item_ids
             .iter()
-            .filter_map(|&item_id| res(tcx.hir_item(item_id).ident, item_id.owner_id))
+            .filter_map(|&item_id| {
+                let ident = tcx.hir_item(item_id).kind.ident()?;
+                res(ident, item_id.owner_id)
+            })
             .collect(),
         ItemKind::Impl(r#impl) => r#impl
             .items
@@ -1416,8 +1419,8 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir_get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir_node_by_def_id(parent_id) {
-        Node::Item(Item { ident, .. })
-        | Node::TraitItem(TraitItem { ident, .. })
+        Node::Item(item) => item.kind.ident().map(|ident| ident.name),
+        Node::TraitItem(TraitItem { ident, .. })
         | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
         _ => None,
     }
@@ -2634,7 +2637,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
             for id in tcx.hir_module_free_items(module) {
                 if matches!(tcx.def_kind(id.owner_id), DefKind::Const)
                     && let item = tcx.hir_item(id)
-                    && let ItemKind::Const(ty, _generics, _body) = item.kind
+                    && let ItemKind::Const(ident, ty, _generics, _body) = item.kind
                 {
                     if let TyKind::Path(QPath::Resolved(_, path)) = ty.kind {
                         // We could also check for the type name `test::TestDescAndFn`
@@ -2644,7 +2647,7 @@ fn with_test_item_names(tcx: TyCtxt<'_>, module: LocalModDefId, f: impl Fn(&[Sym
                                 .iter()
                                 .any(|a| a.has_name(sym::rustc_test_marker));
                             if has_test_marker {
-                                names.push(item.ident.name);
+                                names.push(ident.name);
                             }
                         }
                     }
@@ -2668,10 +2671,10 @@ pub fn is_in_test_function(tcx: TyCtxt<'_>, id: HirId) -> bool {
             // function scope
             .any(|(_id, node)| {
                 if let Node::Item(item) = node {
-                    if let ItemKind::Fn { .. } = item.kind {
+                    if let ItemKind::Fn { ident, .. } = item.kind {
                         // Note that we have sorted the item names in the visitor,
                         // so the binary_search gets the same as `contains`, but faster.
-                        return names.binary_search(&item.ident.name).is_ok();
+                        return names.binary_search(&ident.name).is_ok();
                     }
                 }
                 false

@@ -616,12 +616,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         for assoc_type in assoc_types {
             let defs: &ty::Generics = tcx.generics_of(assoc_type);
 
-            // When `async_fn_in_dyn_trait` is enabled, we don't need to check the
-            // RPITIT for compatibility, since it's not provided by the user.
-            if tcx.features().async_fn_in_dyn_trait() && tcx.is_impl_trait_in_trait(assoc_type) {
-                continue;
-            }
-
             if !defs.own_params.is_empty() {
                 tcx.dcx().span_delayed_bug(
                     obligation.cause.span,

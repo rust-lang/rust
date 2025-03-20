@@ -282,4 +282,4 @@ macro_rules! impl_slice_contains {
     };
 }
 
-impl_slice_contains!(u16, u32, u64, i16, i32, i64, f32, f64, usize, isize);
+impl_slice_contains!(u16, u32, u64, i16, i32, i64, f32, f64, usize, isize, char);

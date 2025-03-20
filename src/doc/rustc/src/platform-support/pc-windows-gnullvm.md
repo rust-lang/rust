@@ -29,7 +29,7 @@ Like with any other Windows target, created binaries are in PE format.
 
 These targets can be easily cross-compiled
 using [llvm-mingw](https://github.com/mstorsjo/llvm-mingw) toolchain or [MSYS2 CLANG*](https://www.msys2.org/docs/environments/) environments.
-Just fill `[target.*]` sections for both build and resulting compiler and set installation prefix in `config.toml`.
+Just fill `[target.*]` sections for both build and resulting compiler and set installation prefix in `bootstrap.toml`.
 Then run `./x.py install`.
 In my case I had ran `./x.py install --host x86_64-pc-windows-gnullvm --target x86_64-pc-windows-gnullvm` inside MSYS2 MINGW64 shell
 so `x86_64-pc-windows-gnu` was my build toolchain.

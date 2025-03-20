@@ -533,7 +533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     _ => {
-                        intravisit::walk_pat(self, p);
+                        let _ = intravisit::walk_pat(self, p);
                     }
                 }
                 ControlFlow::Continue(())
@@ -556,7 +556,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     method_name,
                     sugg_let: None,
                 };
-                let_visitor.visit_body(&body);
+                let _ = let_visitor.visit_body(&body);
                 if let Some(sugg_let) = let_visitor.sugg_let
                     && let Some(self_ty) = self.node_ty_opt(sugg_let.init_hir_id)
                 {
@@ -1204,13 +1204,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     Some(
                         Node::Item(hir::Item {
-                            ident,
-                            kind: hir::ItemKind::Trait(..) | hir::ItemKind::TraitAlias(..),
+                            kind:
+                                hir::ItemKind::Trait(_, _, ident, ..)
+                                | hir::ItemKind::TraitAlias(ident, ..),
                             ..
                         })
                         // We may also encounter unsatisfied GAT or method bounds
                         | Node::TraitItem(hir::TraitItem { ident, .. })
-                        | Node::ImplItem(hir::ImplItem { ident, .. }),
+                        | Node::ImplItem(hir::ImplItem { ident, .. })
                     ) => {
                         skip_list.insert(p);
                         let entry = spanned_predicates.entry(ident.span);
@@ -3960,8 +3961,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return;
                         }
                         Node::Item(hir::Item {
-                            kind: hir::ItemKind::Trait(.., bounds, _),
-                            ident,
+                            kind: hir::ItemKind::Trait(_, _, ident, _, bounds, _),
                             ..
                         }) => {
                             let (sp, sep, article) = if bounds.is_empty() {

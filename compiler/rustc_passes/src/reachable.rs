@@ -184,9 +184,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 CodegenFnAttrs::EMPTY
             };
             let is_extern = codegen_attrs.contains_extern_indicator();
-            let std_internal =
-                codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL);
-            if is_extern || std_internal {
+            if is_extern {
                 self.reachable_symbols.insert(search_item);
             }
         } else {
@@ -206,7 +204,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         }
                     }
 
-                    hir::ItemKind::Const(_, _, init) => {
+                    hir::ItemKind::Const(_, _, _, init) => {
                         // Only things actually ending up in the final constant value are reachable
                         // for codegen. Everything else is only needed during const-eval, so even if
                         // const-eval happens in a downstream crate, all they need is
@@ -234,7 +232,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     // These are normal, nothing reachable about these
                     // inherently and their children are already in the
                     // worklist, as determined by the privacy pass
-                    hir::ItemKind::ExternCrate(_)
+                    hir::ItemKind::ExternCrate(..)
                     | hir::ItemKind::Use(..)
                     | hir::ItemKind::TyAlias(..)
                     | hir::ItemKind::Macro(..)
@@ -426,7 +424,6 @@ fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     }
     let codegen_attrs = tcx.codegen_fn_attrs(def_id);
     codegen_attrs.contains_extern_indicator()
-        || codegen_attrs.flags.contains(CodegenFnAttrFlags::RUSTC_STD_INTERNAL_SYMBOL)
         // FIXME(nbdd0121): `#[used]` are marked as reachable here so it's picked up by
         // `linked_symbols` in cg_ssa. They won't be exported in binary or cdylib due to their
         // `SymbolExportLevel::Rust` export level but may end up being exported in dylibs.

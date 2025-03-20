@@ -1,7 +1,5 @@
 //@ only-x86_64
 
-#![feature(asm_goto)]
-
 use std::arch::asm;
 
 fn main() {
