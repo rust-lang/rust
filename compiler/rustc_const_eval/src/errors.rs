@@ -898,6 +898,7 @@ impl ReportErrorExt for UnsupportedOpInfo {
             UnsupportedOpInfo::ExternStatic(_) => const_eval_extern_static,
         }
     }
+
     fn add_args<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         use UnsupportedOpInfo::*;
 
@@ -917,9 +918,9 @@ impl ReportErrorExt for UnsupportedOpInfo {
             OverwritePartialPointer(ptr) | ReadPartialPointer(ptr) => {
                 diag.arg("ptr", ptr);
             }
-            ThreadLocalStatic(did) | ExternStatic(did) => {
-                diag.arg("did", format!("{did:?}"));
-            }
+            ThreadLocalStatic(did) | ExternStatic(did) => rustc_middle::ty::tls::with(|tcx| {
+                diag.arg("did", tcx.def_path_str(did));
+            }),
         }
     }
 }
