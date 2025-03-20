@@ -740,8 +740,20 @@ const ARM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(1
 const POWERPC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "altivec")];
 const WASM_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "simd128")];
 const S390X_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[(128, "vector")];
-const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] =
-    &[/*(64, "zvl64b"), */ (128, "v")];
+const RISCV_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[
+    (32, "zvl32b"),
+    (64, "zvl64b"),
+    (128, "zvl128b"),
+    (256, "zvl256b"),
+    (512, "zvl512b"),
+    (1024, "zvl1024b"),
+    (2048, "zvl2048b"),
+    (4096, "zvl4096b"),
+    (8192, "zvl8192b"),
+    (16384, "zvl16384b"),
+    (32768, "zvl32768b"),
+    (65536, "zvl65536b"),
+];
 // Always warn on SPARC, as the necessary target features cannot be enabled in Rust at the moment.
 const SPARC_FEATURES_FOR_CORRECT_VECTOR_ABI: &'static [(u64, &'static str)] = &[/*(64, "vis")*/];
 
