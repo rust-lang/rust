@@ -156,7 +156,7 @@ rustc_queries! {
 
     /// A query decoupling the `hir_crate` query from everything else
     query hir_owner(key: LocalDefId) -> rustc_hir::MaybeOwner<'tcx> {
-        eval_always
+        no_hash
         desc { |tcx| "getting HIR of `{}`", tcx.def_path_str(key) }
     }
 
