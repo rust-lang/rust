@@ -3097,7 +3097,14 @@ impl Config {
         download_ci_llvm: Option<StringOrBool>,
         asserts: bool,
     ) -> bool {
-        let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
+        // We don't ever want to use `true` on CI, as we should not
+        // download upstream artifacts if there are any local modifications.
+        let default = if self.is_running_on_ci {
+            StringOrBool::String("if-unchanged".to_string())
+        } else {
+            StringOrBool::Bool(true)
+        };
+        let download_ci_llvm = download_ci_llvm.unwrap_or(default);
 
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
