@@ -3,6 +3,7 @@
 
 //@ run-pass
 //@ compile-flags:-Zsanitizer=address
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@ aux-build: asan_odr_win-2.rs
 //@ only-windows-msvc
 //@ needs-sanitizer-support

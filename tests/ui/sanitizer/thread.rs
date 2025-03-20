@@ -14,6 +14,7 @@
 //@ needs-sanitizer-thread
 //
 //@ compile-flags: -Z sanitizer=thread -O
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //
 //@ run-fail
 //@ error-pattern: WARNING: ThreadSanitizer: data race
