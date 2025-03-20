@@ -10,7 +10,6 @@ use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{ChildStdout, Stdio};
 use std::time::Duration;
 
-use build_helper::ci::CiEnv;
 use termcolor::{Color, ColorSpec, WriteColor};
 
 use crate::core::builder::Builder;
@@ -187,7 +186,7 @@ impl<'a> Renderer<'a> {
 
         if self.builder.config.verbose_tests {
             self.render_test_outcome_verbose(outcome, test);
-        } else if CiEnv::is_ci() {
+        } else if self.builder.config.is_running_on_ci {
             self.render_test_outcome_ci(outcome, test);
         } else {
             self.render_test_outcome_terse(outcome, test);
