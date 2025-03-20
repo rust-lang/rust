@@ -13,16 +13,16 @@ use rustc_parse::parser::ForceCollect;
 use rustc_session::parse::ParseSess;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{FileName, Pos, sym};
+use rustc_span::{FileName, Ident, Pos, sym};
 
 use super::Fragments;
 
-fn get_test_spans(item: &Item, test_attr_spans: &mut Vec<Range<usize>>) {
+fn get_test_spans(item: &Item, ident: Ident, test_attr_spans: &mut Vec<Range<usize>>) {
     test_attr_spans.extend(
         item.attrs
             .iter()
             .find(|attr| attr.has_name(sym::test))
-            .map(|attr| attr.span.lo().to_usize()..item.ident.span.hi().to_usize()),
+            .map(|attr| attr.span.lo().to_usize()..ident.span.hi().to_usize()),
     );
 }
 
@@ -64,10 +64,10 @@ pub fn check(
                     match parser.parse_item(ForceCollect::No) {
                         Ok(Some(item)) => match &item.kind {
                             ItemKind::Fn(box Fn {
-                                sig, body: Some(block), ..
-                            }) if item.ident.name == sym::main => {
+                                ident, sig, body: Some(block), ..
+                            }) if ident.name == sym::main => {
                                 if !ignore {
-                                    get_test_spans(&item, &mut test_attr_spans);
+                                    get_test_spans(&item, *ident, &mut test_attr_spans);
                                 }
                                 let is_async = matches!(sig.header.coroutine_kind, Some(CoroutineKind::Async { .. }));
                                 let returns_nothing = match &sig.decl.output {
@@ -85,10 +85,10 @@ pub fn check(
                                 }
                             },
                             // Another function was found; this case is ignored for needless_doctest_main
-                            ItemKind::Fn(box Fn { .. }) => {
+                            ItemKind::Fn(fn_) => {
                                 eligible = false;
                                 if !ignore {
-                                    get_test_spans(&item, &mut test_attr_spans);
+                                    get_test_spans(&item, fn_.ident, &mut test_attr_spans);
                                 }
                             },
                             // Tests with one of these items are ignored
