@@ -75,6 +75,7 @@ impl<T> ThinBitSet<T> {
     }
 
     /// Checks if the bit set is empty.
+    #[inline(always)]
     pub fn is_empty(&self) -> bool {
         if self.is_inline() {
             let x = unsafe { self.inline };
@@ -87,7 +88,7 @@ impl<T> ThinBitSet<T> {
     }
 
     /// Clear the set.
-    #[inline]
+    #[inline(always)]
     pub fn clear(&mut self) {
         if self.is_inline() {
             unsafe { self.inline &= 0x01 }
@@ -102,7 +103,7 @@ impl<T> ThinBitSet<T> {
     /// Checks if `self` is a (non-strict) superset of `other`.
     ///
     /// May panic if `self` and other have different sizes.
-    #[inline]
+    #[inline(always)]
     pub fn superset(&self, other: &Self) -> bool {
         // Function to check that a usize is a superset of another.
         let word_is_superset = |x: usize, other: usize| (!x & other) == 0;
@@ -134,7 +135,7 @@ impl<T> ThinBitSet<T> {
     /// If the sets are inlined, this will leave the tag bit set to 1. You must not change it. If
     /// you change it, it will lead to undefined behaviour. This might be inconvenient for
     /// operations like subtraction. In that case, use `binary_operation_safe` instead.
-    #[inline]
+    #[inline(always)]
     unsafe fn binary_operation(&mut self, other: &Self, op: impl Fn(&mut usize, usize)) -> bool {
         // Apply `op` and return if the word changed.
         let apply_and_check_change = |x: &mut usize, y: usize| -> bool {
@@ -167,7 +168,7 @@ impl<T> ThinBitSet<T> {
     ///
     /// Note that the tag bit will still be set in the call to `op`, but there is no dangour in
     /// changing it as it will be restored afterusizes.
-    #[inline]
+    #[inline(always)]
     fn binary_operation_safe(&mut self, other: &Self, op: impl Fn(&mut usize, usize)) -> bool {
         if self.is_inline() {
             let x = unsafe { &mut self.inline };
@@ -199,21 +200,21 @@ impl<T> ThinBitSet<T> {
 }
 
 impl<T> BitRelations<ThinBitSet<T>> for ThinBitSet<T> {
-    #[inline]
+    #[inline(always)]
     fn union(&mut self, other: &Self) -> bool {
         // SAFETY: The union operation does not remove any bit set to 1, so the tag bit is
         // unaffected.
         unsafe { self.binary_operation(other, |x, y| *x |= y) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn intersect(&mut self, other: &Self) -> bool {
         // SAFETY: Since the tag bit is set in both `self` and `other`, the intersection won't
         // remove it.
         unsafe { self.binary_operation(other, |x, y| *x &= y) }
     }
 
-    #[inline]
+    #[inline(always)]
     fn subtract(&mut self, other: &Self) -> bool {
         self.binary_operation_safe(other, |x, y| *x &= !y)
     }
@@ -246,7 +247,7 @@ impl<T: Idx> ThinBitSet<T> {
     }
 
     /// Insert `elem`. Returns `true` if the set has changed.
-    #[inline]
+    #[inline(always)]
     pub fn insert(&mut self, elem: T) -> bool {
         // Insert the `i`th bit in a word and return `true` if it changed.
         let insert_bit = |word: &mut usize, bit_idx: u32| {
@@ -273,7 +274,7 @@ impl<T: Idx> ThinBitSet<T> {
     }
 
     /// Remove `elem`. Returns `true` if the set has changed.
-    #[inline]
+    #[inline(always)]
     pub fn remove(&mut self, elem: T) -> bool {
         // Remove the `i`th bit in a word and return `true` if it changed.
         let remove_bit = |word: &mut usize, bit_idx: u32| {
@@ -300,7 +301,7 @@ impl<T: Idx> ThinBitSet<T> {
     }
 
     /// Returns an iterator over all elements in this set.
-    #[inline]
+    #[inline(always)]
     pub fn iter(&self) -> impl Iterator<Item = T> + use<'_, T> {
         if self.is_inline() {
             let x = unsafe { self.inline };
@@ -375,7 +376,7 @@ impl BitSetOnHeap {
 }
 
 impl<T> Clone for ThinBitSet<T> {
-    #[inline]
+    #[inline(always)]
     fn clone(&self) -> Self {
         if self.is_inline() {
             let inline = unsafe { self.inline };
@@ -407,7 +408,7 @@ impl Clone for BitSetOnHeap {
 }
 
 impl<T> Drop for ThinBitSet<T> {
-    #[inline]
+    #[inline(always)]
     fn drop(&mut self) {
         // Deallocate if `self` is not inlined.
         if !self.is_inline() {
@@ -448,7 +449,6 @@ struct BitIter<'a, T: Idx> {
 }
 
 impl<'a, T: Idx> BitIter<'a, T> {
-    #[inline]
     fn from_slice(words: &'a [usize]) -> Self {
         // We initialize `word` and `offset` to degenerate values. On the first
         // call to `next()` we will fall through to getting the first word from
@@ -463,7 +463,7 @@ impl<'a, T: Idx> BitIter<'a, T> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     fn from_single_word(word: usize) -> Self {
         Self { word, offset: 0, iter: [].iter(), marker: PhantomData }
     }
@@ -471,6 +471,8 @@ impl<'a, T: Idx> BitIter<'a, T> {
 
 impl<'a, T: Idx> Iterator for BitIter<'a, T> {
     type Item = T;
+
+    #[inline(always)]
     fn next(&mut self) -> Option<T> {
         loop {
             if self.word != 0 {
