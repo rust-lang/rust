@@ -952,8 +952,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             tcx.dcx().emit_err(errors::DocAliasBadLocation { span, attr_str, location });
             return;
         }
-        let item_name = self.tcx.hir_name(hir_id);
-        if item_name == doc_alias {
+        if self.tcx.hir_opt_name(hir_id) == Some(doc_alias) {
             tcx.dcx().emit_err(errors::DocAliasNotAnAlias { span, attr_str });
             return;
         }
