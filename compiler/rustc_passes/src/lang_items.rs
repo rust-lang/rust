@@ -268,22 +268,22 @@ fn get_lang_items(tcx: TyCtxt<'_>, (): ()) -> LanguageItems {
 impl<'ast, 'tcx> visit::Visitor<'ast> for LanguageItemCollector<'ast, 'tcx> {
     fn visit_item(&mut self, i: &'ast ast::Item) {
         let target = match &i.kind {
-            ast::ItemKind::ExternCrate(_) => Target::ExternCrate,
+            ast::ItemKind::ExternCrate(..) => Target::ExternCrate,
             ast::ItemKind::Use(_) => Target::Use,
             ast::ItemKind::Static(_) => Target::Static,
             ast::ItemKind::Const(_) => Target::Const,
             ast::ItemKind::Fn(_) | ast::ItemKind::Delegation(..) => Target::Fn,
-            ast::ItemKind::Mod(_, _) => Target::Mod,
+            ast::ItemKind::Mod(..) => Target::Mod,
             ast::ItemKind::ForeignMod(_) => Target::ForeignFn,
             ast::ItemKind::GlobalAsm(_) => Target::GlobalAsm,
             ast::ItemKind::TyAlias(_) => Target::TyAlias,
-            ast::ItemKind::Enum(_, _) => Target::Enum,
-            ast::ItemKind::Struct(_, _) => Target::Struct,
-            ast::ItemKind::Union(_, _) => Target::Union,
+            ast::ItemKind::Enum(..) => Target::Enum,
+            ast::ItemKind::Struct(..) => Target::Struct,
+            ast::ItemKind::Union(..) => Target::Union,
             ast::ItemKind::Trait(_) => Target::Trait,
-            ast::ItemKind::TraitAlias(_, _) => Target::TraitAlias,
+            ast::ItemKind::TraitAlias(..) => Target::TraitAlias,
             ast::ItemKind::Impl(_) => Target::Impl,
-            ast::ItemKind::MacroDef(_) => Target::MacroDef,
+            ast::ItemKind::MacroDef(..) => Target::MacroDef,
             ast::ItemKind::MacCall(_) | ast::ItemKind::DelegationMac(_) => {
                 unreachable!("macros should have been expanded")
             }

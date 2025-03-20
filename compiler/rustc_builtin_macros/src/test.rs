@@ -55,12 +55,14 @@ pub(crate) fn expand_test_case(
     // `#[test_case]` is valid on functions, consts, and statics. Only modify
     // the item in those cases.
     match &mut item.kind {
-        ast::ItemKind::Fn(_) | ast::ItemKind::Const(_) | ast::ItemKind::Static(_) => {
-            item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
+        ast::ItemKind::Fn(box ast::Fn { ident, .. })
+        | ast::ItemKind::Const(box ast::ConstItem { ident, .. })
+        | ast::ItemKind::Static(box ast::StaticItem { ident, .. }) => {
+            ident.span = ident.span.with_ctxt(sp.ctxt());
             let test_path_symbol = Symbol::intern(&item_path(
                 // skip the name of the root module
                 &ecx.current_expansion.module.mod_path[1..],
-                &item.ident,
+                ident,
             ));
             item.vis = ast::Visibility {
                 span: item.vis.span,
@@ -228,7 +230,7 @@ pub(crate) fn expand_test_or_bench(
                             // super::$test_fn(b)
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
                                 thin_vec![cx.expr_ident(sp, b)],
                             ),
                         ],
@@ -254,7 +256,7 @@ pub(crate) fn expand_test_or_bench(
                             // $test_fn()
                             cx.expr_call(
                                 ret_ty_sp,
-                                cx.expr_path(cx.path(sp, vec![item.ident])),
+                                cx.expr_path(cx.path(sp, vec![fn_.ident])),
                                 ThinVec::new(),
                             ), // )
                         ],
@@ -267,15 +269,14 @@ pub(crate) fn expand_test_or_bench(
     let test_path_symbol = Symbol::intern(&item_path(
         // skip the name of the root module
         &cx.current_expansion.module.mod_path[1..],
-        &item.ident,
+        &fn_.ident,
     ));
 
-    let location_info = get_location_info(cx, &item);
+    let location_info = get_location_info(cx, &fn_);
 
     let mut test_const =
         cx.item(
             sp,
-            Ident::new(item.ident.name, sp),
             thin_vec![
                 // #[cfg(test)]
                 cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
@@ -288,6 +289,7 @@ pub(crate) fn expand_test_or_bench(
             ast::ItemKind::Const(
                 ast::ConstItem {
                     defaultness: ast::Defaultness::Final,
+                    ident: Ident::new(fn_.ident.name, sp),
                     generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
                     define_opaque: None,
@@ -386,7 +388,7 @@ pub(crate) fn expand_test_or_bench(
 
     // extern crate test
     let test_extern =
-        cx.item(sp, test_ident, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
+        cx.item(sp, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None, test_ident));
 
     debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
@@ -440,8 +442,8 @@ fn not_testable_error(cx: &ExtCtxt<'_>, attr_sp: Span, item: Option<&ast::Item>)
         .emit();
 }
 
-fn get_location_info(cx: &ExtCtxt<'_>, item: &ast::Item) -> (Symbol, usize, usize, usize, usize) {
-    let span = item.ident.span;
+fn get_location_info(cx: &ExtCtxt<'_>, fn_: &ast::Fn) -> (Symbol, usize, usize, usize, usize) {
+    let span = fn_.ident.span;
     let (source_file, lo_line, lo_col, hi_line, hi_col) =
         cx.sess.source_map().span_to_location_info(span);
 

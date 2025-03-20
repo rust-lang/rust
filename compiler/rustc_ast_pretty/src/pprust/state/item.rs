@@ -28,23 +28,24 @@ impl<'a> State<'a> {
     }
 
     fn print_foreign_item(&mut self, item: &ast::ForeignItem) {
-        let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
+        let ast::Item { id, span, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
             ast::ForeignItemKind::Fn(func) => {
-                self.print_fn_full(ident, vis, attrs, &*func);
+                self.print_fn_full(vis, attrs, &*func);
             }
             ast::ForeignItemKind::Static(box ast::StaticItem {
+                ident,
                 ty,
                 mutability,
                 expr,
                 safety,
                 define_opaque,
             }) => self.print_item_const(
-                ident,
+                *ident,
                 Some(*mutability),
                 &ast::Generics::default(),
                 ty,
@@ -56,13 +57,14 @@ impl<'a> State<'a> {
             ),
             ast::ForeignItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
+                ident,
                 generics,
                 where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
-                    ident,
+                    *ident,
                     generics,
                     *where_clauses,
                     bounds,
@@ -162,7 +164,7 @@ impl<'a> State<'a> {
         self.print_outer_attributes(&item.attrs);
         self.ann.pre(self, AnnNode::Item(item));
         match &item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
+            ast::ItemKind::ExternCrate(orig_name, ident) => {
                 self.head(visibility_qualified(&item.vis, "extern crate"));
                 if let &Some(orig_name) = orig_name {
                     self.print_name(orig_name);
@@ -170,7 +172,7 @@ impl<'a> State<'a> {
                     self.word("as");
                     self.space();
                 }
-                self.print_ident(item.ident);
+                self.print_ident(*ident);
                 self.word(";");
                 self.end(); // end inner head-block
                 self.end(); // end outer head-block
@@ -182,6 +184,7 @@ impl<'a> State<'a> {
                 self.word(";");
             }
             ast::ItemKind::Static(box StaticItem {
+                ident,
                 ty,
                 safety,
                 mutability: mutbl,
@@ -190,7 +193,7 @@ impl<'a> State<'a> {
             }) => {
                 self.print_safety(*safety);
                 self.print_item_const(
-                    item.ident,
+                    *ident,
                     Some(*mutbl),
                     &ast::Generics::default(),
                     ty,
@@ -203,13 +206,14 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::Const(box ast::ConstItem {
                 defaultness,
+                ident,
                 generics,
                 ty,
                 expr,
                 define_opaque,
             }) => {
                 self.print_item_const(
-                    item.ident,
+                    *ident,
                     None,
                     generics,
                     ty,
@@ -221,15 +225,15 @@ impl<'a> State<'a> {
                 );
             }
             ast::ItemKind::Fn(func) => {
-                self.print_fn_full(item.ident, &item.vis, &item.attrs, &*func);
+                self.print_fn_full(&item.vis, &item.attrs, &*func);
             }
-            ast::ItemKind::Mod(safety, mod_kind) => {
+            ast::ItemKind::Mod(safety, ident, mod_kind) => {
                 self.head(Self::to_string(|s| {
                     s.print_visibility(&item.vis);
                     s.print_safety(*safety);
                     s.word("mod");
                 }));
-                self.print_ident(item.ident);
+                self.print_ident(*ident);
 
                 match mod_kind {
                     ModKind::Loaded(items, ..) => {
@@ -273,13 +277,14 @@ impl<'a> State<'a> {
             }
             ast::ItemKind::TyAlias(box ast::TyAlias {
                 defaultness,
+                ident,
                 generics,
                 where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
-                    item.ident,
+                    *ident,
                     generics,
                     *where_clauses,
                     bounds,
@@ -288,16 +293,16 @@ impl<'a> State<'a> {
                     *defaultness,
                 );
             }
-            ast::ItemKind::Enum(enum_definition, params) => {
-                self.print_enum_def(enum_definition, params, item.ident, item.span, &item.vis);
+            ast::ItemKind::Enum(ident, enum_definition, params) => {
+                self.print_enum_def(enum_definition, params, *ident, item.span, &item.vis);
             }
-            ast::ItemKind::Struct(struct_def, generics) => {
+            ast::ItemKind::Struct(ident, struct_def, generics) => {
                 self.head(visibility_qualified(&item.vis, "struct"));
-                self.print_struct(struct_def, generics, item.ident, item.span, true);
+                self.print_struct(struct_def, generics, *ident, item.span, true);
             }
-            ast::ItemKind::Union(struct_def, generics) => {
+            ast::ItemKind::Union(ident, struct_def, generics) => {
                 self.head(visibility_qualified(&item.vis, "union"));
-                self.print_struct(struct_def, generics, item.ident, item.span, true);
+                self.print_struct(struct_def, generics, *ident, item.span, true);
             }
             ast::ItemKind::Impl(box ast::Impl {
                 safety,
@@ -347,19 +352,19 @@ impl<'a> State<'a> {
                 self.bclose(item.span, empty);
             }
             ast::ItemKind::Trait(box ast::Trait {
-                is_auto,
                 safety,
+                is_auto,
+                ident,
                 generics,
                 bounds,
                 items,
-                ..
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
                 self.print_safety(*safety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
-                self.print_ident(item.ident);
+                self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
                 if !bounds.is_empty() {
                     self.word_nbsp(":");
@@ -375,9 +380,9 @@ impl<'a> State<'a> {
                 let empty = item.attrs.is_empty() && items.is_empty();
                 self.bclose(item.span, empty);
             }
-            ast::ItemKind::TraitAlias(generics, bounds) => {
+            ast::ItemKind::TraitAlias(ident, generics, bounds) => {
                 self.head(visibility_qualified(&item.vis, "trait"));
-                self.print_ident(item.ident);
+                self.print_ident(*ident);
                 self.print_generic_params(&generics.params);
                 self.nbsp();
                 if !bounds.is_empty() {
@@ -395,8 +400,8 @@ impl<'a> State<'a> {
                     self.word(";");
                 }
             }
-            ast::ItemKind::MacroDef(macro_def) => {
-                self.print_mac_def(macro_def, &item.ident, item.span, |state| {
+            ast::ItemKind::MacroDef(ident, macro_def) => {
+                self.print_mac_def(macro_def, &ident, item.span, |state| {
                     state.print_visibility(&item.vis)
                 });
             }
@@ -549,24 +554,25 @@ impl<'a> State<'a> {
     }
 
     fn print_assoc_item(&mut self, item: &ast::AssocItem) {
-        let ast::Item { id, span, ident, ref attrs, ref kind, ref vis, tokens: _ } = *item;
+        let ast::Item { id, span, ref attrs, ref kind, ref vis, tokens: _ } = *item;
         self.ann.pre(self, AnnNode::SubItem(id));
         self.hardbreak_if_not_bol();
         self.maybe_print_comment(span.lo());
         self.print_outer_attributes(attrs);
         match kind {
             ast::AssocItemKind::Fn(func) => {
-                self.print_fn_full(ident, vis, attrs, &*func);
+                self.print_fn_full(vis, attrs, &*func);
             }
             ast::AssocItemKind::Const(box ast::ConstItem {
                 defaultness,
+                ident,
                 generics,
                 ty,
                 expr,
                 define_opaque,
             }) => {
                 self.print_item_const(
-                    ident,
+                    *ident,
                     None,
                     generics,
                     ty,
@@ -579,13 +585,14 @@ impl<'a> State<'a> {
             }
             ast::AssocItemKind::Type(box ast::TyAlias {
                 defaultness,
+                ident,
                 generics,
                 where_clauses,
                 bounds,
                 ty,
             }) => {
                 self.print_associated_type(
-                    ident,
+                    *ident,
                     generics,
                     *where_clauses,
                     bounds,
@@ -671,14 +678,8 @@ impl<'a> State<'a> {
         }
     }
 
-    fn print_fn_full(
-        &mut self,
-        name: Ident,
-        vis: &ast::Visibility,
-        attrs: &[ast::Attribute],
-        func: &ast::Fn,
-    ) {
-        let ast::Fn { defaultness, generics, sig, contract, body, define_opaque } = func;
+    fn print_fn_full(&mut self, vis: &ast::Visibility, attrs: &[ast::Attribute], func: &ast::Fn) {
+        let ast::Fn { defaultness, ident, generics, sig, contract, body, define_opaque } = func;
 
         self.print_define_opaques(define_opaque.as_deref());
 
@@ -687,7 +688,7 @@ impl<'a> State<'a> {
         }
         self.print_visibility(vis);
         self.print_defaultness(*defaultness);
-        self.print_fn(&sig.decl, sig.header, Some(name), generics);
+        self.print_fn(&sig.decl, sig.header, Some(*ident), generics);
         if let Some(contract) = &contract {
             self.nbsp();
             self.print_contract(contract);
@@ -734,13 +735,13 @@ impl<'a> State<'a> {
         &mut self,
         decl: &ast::FnDecl,
         header: ast::FnHeader,
-        name: Option<Ident>,
+        ident: Option<Ident>,
         generics: &ast::Generics,
     ) {
         self.print_fn_header_info(header);
-        if let Some(name) = name {
+        if let Some(ident) = ident {
             self.nbsp();
-            self.print_ident(name);
+            self.print_ident(ident);
         }
         self.print_generic_params(&generics.params);
         self.print_fn_params_and_ret(decl, false);

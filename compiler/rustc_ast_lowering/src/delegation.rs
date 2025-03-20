@@ -56,6 +56,7 @@ use crate::{AllowReturnTypeNotation, ImplTraitPosition, ResolverAstLoweringExt};
 pub(crate) struct DelegationResults<'hir> {
     pub body_id: hir::BodyId,
     pub sig: hir::FnSig<'hir>,
+    pub ident: Ident,
     pub generics: &'hir hir::Generics<'hir>,
 }
 
@@ -104,9 +105,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 let decl = self.lower_delegation_decl(sig_id, param_count, c_variadic, span);
                 let sig = self.lower_delegation_sig(sig_id, decl, span);
                 let body_id = self.lower_delegation_body(delegation, param_count, span);
-
+                let ident = self.lower_ident(delegation.ident);
                 let generics = self.lower_delegation_generics(span);
-                DelegationResults { body_id, sig, generics }
+                DelegationResults { body_id, sig, ident, generics }
             }
             Err(err) => self.generate_delegation_error(err, span),
         }
@@ -405,8 +406,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         let header = self.generate_header_error();
         let sig = hir::FnSig { decl, header, span };
 
+        let ident = Ident::dummy();
         let body_id = self.lower_body(|this| (&[], this.mk_expr(hir::ExprKind::Err(err), span)));
-        DelegationResults { generics, body_id, sig }
+        DelegationResults { ident, generics, body_id, sig }
     }
 
     fn generate_header_error(&self) -> hir::FnHeader {

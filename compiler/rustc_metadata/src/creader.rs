@@ -1315,17 +1315,14 @@ impl<'a, 'tcx> CrateLoader<'a, 'tcx> {
         definitions: &Definitions,
     ) -> Option<CrateNum> {
         match item.kind {
-            ast::ItemKind::ExternCrate(orig_name) => {
-                debug!(
-                    "resolving extern crate stmt. ident: {} orig_name: {:?}",
-                    item.ident, orig_name
-                );
+            ast::ItemKind::ExternCrate(orig_name, ident) => {
+                debug!("resolving extern crate stmt. ident: {} orig_name: {:?}", ident, orig_name);
                 let name = match orig_name {
                     Some(orig_name) => {
                         validate_crate_name(self.sess, orig_name, Some(item.span));
                         orig_name
                     }
-                    None => item.ident.name,
+                    None => ident.name,
                 };
                 let dep_kind = if attr::contains_name(&item.attrs, sym::no_link) {
                     CrateDepKind::MacrosOnly
@@ -1380,7 +1377,8 @@ fn fn_spans(krate: &ast::Crate, name: Symbol) -> Vec<Span> {
     }
     impl<'ast> visit::Visitor<'ast> for Finder {
         fn visit_item(&mut self, item: &'ast ast::Item) {
-            if item.ident.name == self.name
+            if let Some(ident) = item.kind.ident()
+                && ident.name == self.name
                 && attr::contains_name(&item.attrs, sym::rustc_std_internal_symbol)
             {
                 self.spans.push(item.span);

@@ -146,26 +146,26 @@ mod llvm_enzyme {
         }
         let dcx = ecx.sess.dcx();
         // first get the annotable item:
-        let (sig, is_impl): (FnSig, bool) = match &item {
+        let (primal, sig, is_impl): (Ident, FnSig, bool) = match &item {
             Annotatable::Item(iitem) => {
-                let sig = match &iitem.kind {
-                    ItemKind::Fn(box ast::Fn { sig, .. }) => sig,
+                let (ident, sig) = match &iitem.kind {
+                    ItemKind::Fn(box ast::Fn { ident, sig, .. }) => (ident, sig),
                     _ => {
                         dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
                         return vec![item];
                     }
                 };
-                (sig.clone(), false)
+                (*ident, sig.clone(), false)
             }
             Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
-                let sig = match &assoc_item.kind {
-                    ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) => sig,
+                let (ident, sig) = match &assoc_item.kind {
+                    ast::AssocItemKind::Fn(box ast::Fn { ident, sig, .. }) => (ident, sig),
                     _ => {
                         dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
                         return vec![item];
                     }
                 };
-                (sig.clone(), true)
+                (*ident, sig.clone(), true)
             }
             _ => {
                 dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
@@ -184,11 +184,9 @@ mod llvm_enzyme {
         let has_ret = has_ret(&sig.decl.output);
         let sig_span = ecx.with_call_site_ctxt(sig.span);
 
-        let (vis, primal) = match &item {
-            Annotatable::Item(iitem) => (iitem.vis.clone(), iitem.ident.clone()),
-            Annotatable::AssocItem(assoc_item, _) => {
-                (assoc_item.vis.clone(), assoc_item.ident.clone())
-            }
+        let vis = match &item {
+            Annotatable::Item(iitem) => iitem.vis.clone(),
+            Annotatable::AssocItem(assoc_item, _) => assoc_item.vis.clone(),
             _ => {
                 dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
                 return vec![item];
@@ -237,12 +235,12 @@ mod llvm_enzyme {
         let d_body = gen_enzyme_body(
             ecx, &x, n_active, &sig, &d_sig, primal, &new_args, span, sig_span, idents, errored,
         );
-        let d_ident = first_ident(&meta_item_vec[0]);
 
         // The first element of it is the name of the function to be generated
         let asdf = Box::new(ast::Fn {
             defaultness: ast::Defaultness::Final,
             sig: d_sig,
+            ident: first_ident(&meta_item_vec[0]),
             generics: Generics::default(),
             contract: None,
             body: Some(d_body),
@@ -323,14 +321,12 @@ mod llvm_enzyme {
                 id: ast::DUMMY_NODE_ID,
                 span,
                 vis,
-                ident: d_ident,
                 kind: assoc_item,
                 tokens: None,
             });
             Annotatable::AssocItem(d_fn, Impl { of_trait: false })
         } else {
-            let mut d_fn =
-                ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
+            let mut d_fn = ecx.item(span, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
             d_fn.vis = vis;
             Annotatable::Item(d_fn)
         };

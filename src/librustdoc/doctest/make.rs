@@ -350,21 +350,21 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             info.has_global_allocator = true;
         }
         match item.kind {
-            ast::ItemKind::Fn(_) if !info.has_main_fn => {
+            ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
                 // We only push if it's the top item because otherwise, we would duplicate
                 // its content since the top-level item was already added.
-                if item.ident.name == sym::main {
+                if fn_item.ident.name == sym::main {
                     info.has_main_fn = true;
                 }
             }
-            ast::ItemKind::ExternCrate(original) => {
+            ast::ItemKind::ExternCrate(original, ident) => {
                 is_extern_crate = true;
                 if !info.already_has_extern_crate
                     && let Some(crate_name) = crate_name
                 {
                     info.already_has_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
-                        None => item.ident.as_str() == *crate_name,
+                        None => ident.as_str() == *crate_name,
                     };
                 }
             }
