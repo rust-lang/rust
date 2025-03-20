@@ -12,10 +12,10 @@ fn main() {
     let _ = variable2.map(|x| {
         println!();
         x.to_string()
+        //~^ ERROR: implicitly cloning a `String` by calling `to_string` on its dereferenced type
     });
-    //~^^ string_to_string
 
     let x = Some(String::new());
     let _ = x.unwrap_or_else(|| v.to_string());
-    //~^ string_to_string
+    //~^ ERROR: implicitly cloning a `String` by calling `to_string` on its dereferenced type
 }

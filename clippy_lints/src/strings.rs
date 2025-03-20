@@ -494,21 +494,9 @@ impl<'tcx> LateLintPass<'tcx> for StringToString {
                 if path.ident.name == sym::to_string
                     && let ty = cx.typeck_results().expr_ty(self_arg)
                     && is_type_lang_item(cx, ty.peel_refs(), LangItem::String)
+                    && let Some(parent_span) = is_called_from_map_like(cx, expr)
                 {
-                    if let Some(parent_span) = is_called_from_map_like(cx, expr) {
-                        suggest_cloned_string_to_string(cx, parent_span);
-                    } else {
-                        #[expect(clippy::collapsible_span_lint_calls, reason = "rust-clippy#7797")]
-                        span_lint_and_then(
-                            cx,
-                            STRING_TO_STRING,
-                            expr.span,
-                            "`to_string()` called on a `String`",
-                            |diag| {
-                                diag.help("consider using `.clone()`");
-                            },
-                        );
-                    }
+                    suggest_cloned_string_to_string(cx, parent_span);
                 }
             },
             ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
