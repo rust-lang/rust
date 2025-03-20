@@ -38,7 +38,7 @@ pub type U2 = InPubMod2;
 pub type U3 = InPubMod3;
 
 // Check we only have paths for structs at their original path
-//@ ismany "$.paths[*][?(@.crate_id==0 && @.kind=='struct')].path" '["path_name", "priv_mod", "InPrivMod"]' '["path_name", "pub_mod", "InPubMod"]'
+//@ ismany "$.paths[?(@.crate_id==0 && @.kind=='struct')].path" '["path_name", "priv_mod", "InPrivMod"]' '["path_name", "pub_mod", "InPubMod"]'
 
 pub use defines_and_reexports::{InPrivMod as XPrivMod, InPubMod as XPubMod};
 use defines_and_reexports::{InPrivMod as XPrivMod2, InPubMod as XPubMod2};
