@@ -10,7 +10,7 @@ use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::intravisit::{Visitor, walk_expr};
 
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
+use rustc_hir::{AssignOpKind, Block, Expr, ExprKind, LetStmt, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
@@ -307,7 +307,7 @@ fn extract_sides_of_xor_assign<'a, 'hir>(
     if let StmtKind::Semi(expr) = stmt.kind
         && let ExprKind::AssignOp(
             Spanned {
-                node: BinOpKind::BitXor,
+                node: AssignOpKind::BitXorAssign,
                 ..
             },
             lhs,

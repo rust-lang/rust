@@ -27,7 +27,7 @@ use tracing::instrument;
 
 use crate::middle::region;
 use crate::mir::interpret::AllocId;
-use crate::mir::{self, BinOp, BorrowKind, FakeReadCause, UnOp};
+use crate::mir::{self, AssignOp, BinOp, BorrowKind, FakeReadCause, UnOp};
 use crate::thir::visit::for_each_immediate_subpat;
 use crate::ty::adjustment::PointerCoercion;
 use crate::ty::layout::IntegerExt;
@@ -403,7 +403,7 @@ pub enum ExprKind<'tcx> {
     },
     /// A *non-overloaded* operation assignment, e.g. `lhs += rhs`.
     AssignOp {
-        op: BinOp,
+        op: AssignOp,
         lhs: ExprId,
         rhs: ExprId,
     },
