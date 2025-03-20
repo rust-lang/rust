@@ -218,3 +218,91 @@ mod with_ty_alias {
 fn mut_add(x: &mut i32) {
     *x += 1;
 }
+
+#[clippy::msrv = "1.87"]
+mod issue14020 {
+    use std::ops::Add;
+
+    fn f<T: Add>(a: T, b: T) -> <T as Add>::Output {
+        a + b
+    }
+}
+
+#[clippy::msrv = "1.87"]
+mod issue14290 {
+    use std::ops::{Deref, DerefMut};
+
+    struct Wrapper<T> {
+        t: T,
+    }
+
+    impl<T> Deref for Wrapper<T> {
+        type Target = T;
+
+        fn deref(&self) -> &Self::Target {
+            &self.t
+        }
+    }
+    impl<T> DerefMut for Wrapper<T> {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.t
+        }
+    }
+
+    struct Example(bool);
+
+    fn do_something(mut a: Wrapper<Example>) {
+        a.0 = !a.0;
+    }
+
+    pub struct Stream(Vec<u8>);
+
+    impl Stream {
+        pub fn bytes(&self) -> &[u8] {
+            &self.0
+        }
+    }
+}
+
+#[clippy::msrv = "1.87"]
+mod issue14091 {
+    use std::mem::ManuallyDrop;
+
+    struct BucketSlotGuard<'a> {
+        id: u32,
+        free_list: &'a mut Vec<u32>,
+    }
+
+    impl BucketSlotGuard<'_> {
+        fn into_inner(self) -> u32 {
+            let this = ManuallyDrop::new(self);
+            this.id
+        }
+    }
+
+    use std::ops::{Deref, DerefMut};
+
+    struct Wrap<T>(T);
+
+    impl<T> Deref for Wrap<T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            &self.0
+        }
+    }
+
+    impl<T> DerefMut for Wrap<T> {
+        fn deref_mut(&mut self) -> &mut T {
+            &mut self.0
+        }
+    }
+
+    fn smart_two_field(v: &mut Wrap<(i32, i32)>) {
+        let _a = &mut v.0;
+        let _b = &mut v.1;
+    }
+
+    fn smart_destructure(v: &mut Wrap<(i32, i32)>) {
+        let (ref mut _head, ref mut _tail) = **v;
+    }
+}

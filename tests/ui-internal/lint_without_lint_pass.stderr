@@ -2,6 +2,7 @@ error: the lint `TEST_LINT` is not added to any `LintPass`
   --> tests/ui-internal/lint_without_lint_pass.rs:12:1
    |
 LL | / declare_tool_lint! {
+LL | |
 LL | |     pub clippy::TEST_LINT,
 LL | |     Warn,
 LL | |     "",

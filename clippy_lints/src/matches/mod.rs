@@ -1110,11 +1110,9 @@ impl<'tcx> LateLintPass<'tcx> for Matches {
                             }
                         }
                     }
-                    // If there are still comments, it means they are outside of the arms, therefore
-                    // we should not lint.
-                    if match_comments.is_empty() {
-                        single_match::check(cx, ex, arms, expr);
-                    }
+                    // If there are still comments, it means they are outside of the arms. Tell the lint
+                    // code about it.
+                    single_match::check(cx, ex, arms, expr, !match_comments.is_empty());
                     match_bool::check(cx, ex, arms, expr);
                     overlapping_arms::check(cx, ex, arms);
                     match_wild_enum::check(cx, ex, arms);

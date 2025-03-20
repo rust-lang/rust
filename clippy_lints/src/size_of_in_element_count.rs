@@ -18,7 +18,6 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust,no_run
     /// # use std::ptr::copy_nonoverlapping;
-    /// # use std::mem::size_of;
     /// const SIZE: usize = 128;
     /// let x = [2u8; SIZE];
     /// let mut y = [2u8; SIZE];

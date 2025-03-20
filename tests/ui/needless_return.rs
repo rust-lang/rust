@@ -6,7 +6,8 @@
     clippy::single_match,
     clippy::needless_bool,
     clippy::equatable_if_let,
-    clippy::needless_else
+    clippy::needless_else,
+    clippy::missing_safety_doc
 )]
 #![warn(clippy::needless_return)]
 
@@ -450,4 +451,13 @@ fn b(x: Option<u8>) -> Option<u8> {
             return None;
         },
     }
+}
+
+unsafe fn todo() -> *const u8 {
+    todo!()
+}
+
+pub unsafe fn issue_12157() -> *const i32 {
+    return unsafe { todo() } as *const i32;
+    //~^ needless_return
 }

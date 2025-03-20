@@ -9,4 +9,4 @@ module-item-order-groupings = [
     ["PascalCase", ["ty_alias", "enum", "struct", "union", "trait", "trait_alias", "impl"]],
     ["lower_snake_case", ["fn"]]
 ]
-
+module-items-ordered-within-groupings = "none"

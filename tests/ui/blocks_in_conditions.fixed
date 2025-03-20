@@ -118,6 +118,13 @@ mod issue_12016 {
     }
 }
 
+fn issue_9911() {
+    if { return } {}
+
+    let a = 1;
+    if { if a == 1 { return } else { true } } {}
+}
+
 fn in_closure() {
     let v = vec![1, 2, 3];
     if v.into_iter()
