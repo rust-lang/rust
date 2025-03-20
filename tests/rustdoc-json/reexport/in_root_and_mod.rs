@@ -1,6 +1,6 @@
-//@ !has "$.index[*][?(@.name=='foo')]"
+//@ !has "$.index[?(@.name=='foo')]"
 mod foo {
-    //@ has "$.index[*][?(@.name=='Foo')]"
+    //@ has "$.index[?(@.name=='Foo')]"
     pub struct Foo;
 }
 

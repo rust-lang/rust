@@ -6,15 +6,15 @@
 #![feature(rustdoc_internals)]
 #![no_std]
 
-//@ !has "$.index[*][?(@.name=='match')]"
-//@ has "$.index[*][?(@.name=='foo')]"
+//@ !has "$.index[?(@.name=='match')]"
+//@ has "$.index[?(@.name=='foo')]"
 
 #[doc(keyword = "match")]
 /// this is a test!
 pub mod foo {}
 
-//@ !has "$.index[*][?(@.name=='break')]"
-//@ !has "$.index[*][?(@.name=='bar')]"
+//@ !has "$.index[?(@.name=='break')]"
+//@ !has "$.index[?(@.name=='bar')]"
 #[doc(keyword = "break")]
 /// hello
 mod bar {}

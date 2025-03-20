@@ -1,12 +1,12 @@
 // Regression test for <https://github.com/rust-lang/rust/issues/107677>.
 
 pub mod nested {
-    //@ set foo_struct = "$.index[*][?(@.docs == 'Foo the struct')].id"
+    //@ set foo_struct = "$.index[?(@.docs == 'Foo the struct')].id"
 
     /// Foo the struct
     pub struct Foo {}
 
-    //@ set foo_fn = "$.index[*][?(@.docs == 'Foo the function')].id"
+    //@ set foo_fn = "$.index[?(@.docs == 'Foo the function')].id"
 
     #[allow(non_snake_case)]
     /// Foo the function
