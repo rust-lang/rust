@@ -96,13 +96,14 @@ pub fn try_find_native_static_library(
     verbatim: bool,
 ) -> Option<PathBuf> {
     let default = sess.staticlib_components(verbatim);
+    let unix = ("lib", ".a");
     let formats = if verbatim {
         vec![default]
+    } else if default != unix && sess.target.is_like_msvc {
+        // On Windows MSVC naming scheme `libfoo.a` is used as a fallback from default `foo.lib`.
+        vec![default, unix]
     } else {
-        // On Windows, static libraries sometimes show up as libfoo.a and other
-        // times show up as foo.lib
-        let unix = ("lib", ".a");
-        if default == unix { vec![default] } else { vec![default, unix] }
+        vec![default]
     };
 
     walk_native_lib_search_dirs(sess, None, |dir, is_framework| {
