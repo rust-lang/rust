@@ -36,6 +36,7 @@
 #![doc(rust_logo)]
 #![feature(assert_matches)]
 #![feature(box_patterns)]
+#![feature(closure_track_caller)]
 #![feature(exact_size_is_empty)]
 #![feature(if_let_guard)]
 #![feature(let_chains)]
@@ -61,7 +62,7 @@ use rustc_hir::{
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
-use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
+use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
 use rustc_span::symbol::{Ident, Symbol, kw, sym};
 use rustc_span::{DUMMY_SP, DesugaringKind, Span};
@@ -125,6 +126,7 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
+    current_ast_id_owner: NodeId,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
@@ -163,6 +165,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             children: Vec::default(),
             contract_ensures: None,
             current_hir_id_owner: hir::CRATE_OWNER_ID,
+            current_ast_id_owner: CRATE_NODE_ID,
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
             #[cfg(debug_assertions)]
@@ -365,10 +368,14 @@ enum AstOwner<'a> {
 }
 
 fn index_crate<'a>(
-    node_id_to_def_id: &NodeMap<LocalDefId>,
+    owners: &NodeMap<PerOwnerResolverData>,
     krate: &'a Crate,
 ) -> IndexVec<LocalDefId, AstOwner<'a>> {
-    let mut indexer = Indexer { node_id_to_def_id, index: IndexVec::new() };
+    let mut indexer = Indexer {
+        owners,
+        node_id_to_def_id: &owners[&CRATE_NODE_ID].node_id_to_def_id,
+        index: IndexVec::new(),
+    };
     *indexer.index.ensure_contains_elem(CRATE_DEF_ID, || AstOwner::NonOwner) =
         AstOwner::Crate(krate);
     visit::walk_crate(&mut indexer, krate);
@@ -376,6 +383,7 @@ fn index_crate<'a>(
 
     struct Indexer<'s, 'a> {
         node_id_to_def_id: &'s NodeMap<LocalDefId>,
+        owners: &'s NodeMap<PerOwnerResolverData>,
         index: IndexVec<LocalDefId, AstOwner<'a>>,
     }
 
@@ -386,23 +394,38 @@ fn index_crate<'a>(
         }
 
         fn visit_item(&mut self, item: &'a ast::Item) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) = AstOwner::Item(item);
-            visit::walk_item(self, item)
+            visit::walk_item(self, item);
+            self.node_id_to_def_id = old;
         }
 
         fn visit_assoc_item(&mut self, item: &'a ast::AssocItem, ctxt: visit::AssocCtxt) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::AssocItem(item, ctxt);
             visit::walk_assoc_item(self, item, ctxt);
+            self.node_id_to_def_id = old;
         }
 
         fn visit_foreign_item(&mut self, item: &'a ast::ForeignItem) {
+            let old = std::mem::replace(
+                &mut self.node_id_to_def_id,
+                &self.owners[&item.id].node_id_to_def_id,
+            );
             let def_id = self.node_id_to_def_id[&item.id];
             *self.index.ensure_contains_elem(def_id, || AstOwner::NonOwner) =
                 AstOwner::ForeignItem(item);
             visit::walk_item(self, item);
+            self.node_id_to_def_id = old;
         }
     }
 }
@@ -439,7 +462,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     tcx.ensure_done().get_lang_items(());
     let (mut resolver, krate) = tcx.resolver_for_lowering().steal();
 
-    let ast_index = index_crate(&resolver.node_id_to_def_id, &krate);
+    let ast_index = index_crate(&resolver.owners, &krate);
     let mut owners = IndexVec::from_fn_n(
         |_| hir::MaybeOwner::Phantom,
         tcx.definitions_untracked().def_index_count(),
@@ -513,7 +536,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.at(span).create_def(self.current_hir_id_owner.def_id, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-        self.resolver.node_id_to_def_id.insert(node_id, def_id);
+        self.resolver
+            .owners
+            .get_mut(&self.current_ast_id_owner)
+            .unwrap()
+            .node_id_to_def_id
+            .insert(node_id, def_id);
 
         def_id
     }
@@ -528,16 +556,31 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.resolver.node_id_to_def_id.get(&node).copied()
+        self.resolver.owners[&self.current_ast_id_owner].node_id_to_def_id.get(&node).copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
+        self.opt_local_def_id(node).unwrap_or_else(|| {
+            self.resolver.owners.items().any(|(id, items)| {
+                items.node_id_to_def_id.items().any(|(node_id, def_id)| {
+                    if *node_id == node {
+                        panic!(
+                            "{def_id:?} ({node_id}) was found in {:?} ({id}) instead of in {:?} ({})",
+                            items.node_id_to_def_id.get(id),
+                            self.resolver.owners[&self.current_ast_id_owner].node_id_to_def_id[&self.current_ast_id_owner],
+                            self.current_ast_id_owner,
+                        )
+                    }
+                    false
+                })
+            });
+            panic!("no entry for node id: `{node:?}`");
+        })
     }
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
     fn owner_id(&self, node: NodeId) -> hir::OwnerId {
-        hir::OwnerId { def_id: self.local_def_id(node) }
+        hir::OwnerId { def_id: self.resolver.owners[&node].node_id_to_def_id[&node] }
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -556,6 +599,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
+        let current_ast_owner = std::mem::replace(&mut self.current_ast_id_owner, owner);
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
 
@@ -600,6 +644,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
+        self.current_ast_id_owner = current_ast_owner;
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
         self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));

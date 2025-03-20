@@ -6,7 +6,7 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_ast::expand::StrippedCfgItem;
-use rustc_ast::{self as ast, Crate, NodeId, attr};
+use rustc_ast::{self as ast, Crate, DUMMY_NODE_ID, NodeId, attr};
 use rustc_ast_pretty::pprust;
 use rustc_attr_parsing::{AttributeKind, StabilityLevel, find_attr};
 use rustc_data_structures::intern::Interned;
@@ -507,6 +507,23 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
         });
         Ok(idents)
+    }
+
+    fn set_owner(&mut self, id: NodeId) -> NodeId {
+        assert_ne!(id, DUMMY_NODE_ID);
+        let old = std::mem::replace(&mut self.current_owner, id);
+        self.owners.entry(id).or_default();
+        old
+    }
+
+    fn reset_owner(&mut self, id: NodeId) {
+        let old = std::mem::replace(&mut self.current_owner, id);
+        if cfg!(debug_assertions) {
+            if id != DUMMY_NODE_ID {
+                self.owners.get(&id).unwrap();
+            }
+            self.owners.get(&old).unwrap();
+        }
     }
 }
 
