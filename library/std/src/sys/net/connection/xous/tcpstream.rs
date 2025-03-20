@@ -392,6 +392,14 @@ impl TcpStream {
         .map(|res| res[0] as _)?)
     }
 
+    pub fn set_hop_limit_v6(&self, hlim: u8) -> io::Result<()> {
+        unimpl!();
+    }
+
+    pub fn hop_limit_v6(&self) -> io::Result<u8> {
+        unimpl!();
+    }
+
     pub fn take_error(&self) -> io::Result<Option<io::Error>> {
         // this call doesn't have a meaning on our platform, but we can at least not panic if it's used.
         Ok(None)
