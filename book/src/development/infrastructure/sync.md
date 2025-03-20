@@ -86,7 +86,7 @@ to be run inside the `rust` directory):
 4. Bump the nightly version in the Clippy repository by running these commands:
    ```bash
    cargo dev sync update_nightly
-   git commit -m "Bump nightly version -> YYYY-MM-DD" rust-toolchain clippy_utils/README.md
+   git commit -m "Bump nightly version -> YYYY-MM-DD" rust-toolchain.toml clippy_utils/README.md
    ```
 5. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
    accelerate the process ping the `@rust-lang/clippy` team in your PR and/or

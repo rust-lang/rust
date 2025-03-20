@@ -334,7 +334,7 @@ struct SyncCommand {
 #[derive(Subcommand)]
 enum SyncSubcommand {
     #[command(name = "update_nightly")]
-    /// Update nightly version in rust-toolchain and `clippy_utils`
+    /// Update nightly version in `rust-toolchain.toml` and `clippy_utils`
     UpdateNightly,
 }
 
