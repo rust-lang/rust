@@ -280,11 +280,11 @@ impl<'tcx> TyCtxt<'tcx> {
         })
     }
 
-    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Ident> {
+    pub fn hir_body_param_names(self, id: BodyId) -> impl Iterator<Item = Option<Ident>> {
         self.hir_body(id).params.iter().map(|param| match param.pat.kind {
-            PatKind::Binding(_, _, ident, _) => ident,
-            PatKind::Wild => Ident::new(kw::Underscore, param.pat.span),
-            _ => Ident::empty(),
+            PatKind::Binding(_, _, ident, _) => Some(ident),
+            PatKind::Wild => Some(Ident::new(kw::Underscore, param.pat.span)),
+            _ => None,
         })
     }
 
