@@ -259,16 +259,10 @@ fn ci_rustc_if_unchanged_logic() {
     builder.run_step_descriptions(&Builder::get_step_descriptions(config.cmd.kind()), &[]);
 
     // Make sure "if-unchanged" logic doesn't try to use CI rustc while there are changes
-    // in compiler and/or library.
+    // in "compiler" tree.
     if config.download_rustc_commit.is_some() {
-        let mut paths = vec!["compiler"];
-
-        // Handle library tree the same way as in `Config::download_ci_rustc_commit`.
-        if builder.config.is_running_on_ci {
-            paths.push("library");
-        }
-
-        let has_changes = config.last_modified_commit(&paths, "download-rustc", true).is_none();
+        let has_changes =
+            config.last_modified_commit(&["compiler"], "download-rustc", true).is_none();
 
         assert!(
             !has_changes,
