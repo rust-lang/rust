@@ -443,7 +443,7 @@ define_tables! {
     rendered_const: Table<DefIndex, LazyValue<String>>,
     rendered_precise_capturing_args: Table<DefIndex, LazyArray<PreciseCapturingArgKind<Symbol, Symbol>>>,
     asyncness: Table<DefIndex, ty::Asyncness>,
-    fn_arg_names: Table<DefIndex, LazyArray<Ident>>,
+    fn_arg_names: Table<DefIndex, LazyArray<Option<Ident>>>,
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     coroutine_by_move_body_def_id: Table<DefIndex, RawDefId>,

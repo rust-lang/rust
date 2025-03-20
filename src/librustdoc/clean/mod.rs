@@ -1088,7 +1088,7 @@ fn clean_fn_decl_legacy_const_generics(func: &mut Function, attrs: &[hir::Attrib
 
 enum FunctionArgs<'tcx> {
     Body(hir::BodyId),
-    Names(&'tcx [Ident]),
+    Names(&'tcx [Option<Ident>]),
 }
 
 fn clean_function<'tcx>(
@@ -1117,13 +1117,15 @@ fn clean_function<'tcx>(
 fn clean_args_from_types_and_names<'tcx>(
     cx: &mut DocContext<'tcx>,
     types: &[hir::Ty<'tcx>],
-    names: &[Ident],
+    names: &[Option<Ident>],
 ) -> Arguments {
-    fn nonempty_name(ident: &Ident) -> Option<Symbol> {
-        if ident.name == kw::Underscore || ident.name == kw::Empty {
-            None
-        } else {
+    fn nonempty_name(ident: &Option<Ident>) -> Option<Symbol> {
+        if let Some(ident) = ident
+            && ident.name != kw::Underscore
+        {
             Some(ident.name)
+        } else {
+            None
         }
     }
 
@@ -1216,11 +1218,11 @@ fn clean_poly_fn_sig<'tcx>(
                 .iter()
                 .map(|t| Argument {
                     type_: clean_middle_ty(t.map_bound(|t| *t), cx, None, None),
-                    name: names
-                        .next()
-                        .map(|i| i.name)
-                        .filter(|i| !i.is_empty())
-                        .unwrap_or(kw::Underscore),
+                    name: if let Some(Some(ident)) = names.next() {
+                        ident.name
+                    } else {
+                        kw::Underscore
+                    },
                     is_const: false,
                 })
                 .collect(),
