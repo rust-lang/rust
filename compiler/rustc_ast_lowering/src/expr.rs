@@ -24,7 +24,7 @@ use super::errors::{
     UnderscoreExprLhsAssign,
 };
 use super::{
-    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode, ResolverAstLoweringExt,
+    GenericArgsMode, ImplTraitContext, LoweringContext, ParamMode,
 };
 use crate::errors::{InvalidLegacyConstGenericArg, UseConstGenericArg, YieldInClosure};
 use crate::{AllowReturnTypeNotation, FnDeclKind, ImplTraitPosition, fluent_generated};

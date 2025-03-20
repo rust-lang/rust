@@ -60,7 +60,6 @@ use rustc_hir::{
     TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
-use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{PerOwnerResolverData, ResolverAstLowering, TyCtxt};
 use rustc_session::parse::{add_feature_diagnostics, feature_err};
@@ -94,7 +93,7 @@ rustc_fluent_macro::fluent_messages! { "../messages.ftl" }
 
 struct LoweringContext<'a, 'hir> {
     tcx: TyCtxt<'hir>,
-    resolver: &'a mut ResolverAstLowering,
+    resolver: PerOwnerResolver<'a>,
 
     /// Used to allocate HIR nodes.
     arena: &'hir hir::Arena<'hir>,
@@ -126,7 +125,6 @@ struct LoweringContext<'a, 'hir> {
     is_in_dyn_type: bool,
 
     current_hir_id_owner: hir::OwnerId,
-    current_ast_id_owner: PerOwnerResolverData,
     item_local_id_counter: hir::ItemLocalId,
     trait_map: ItemLocalMap<Box<[TraitCandidate]>>,
 
@@ -155,7 +153,10 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         Self {
             // Pseudo-globals.
             tcx,
-            resolver,
+            resolver: PerOwnerResolver {
+                general: resolver,
+                item: PerOwnerResolverData::new(DUMMY_NODE_ID),
+            },
             arena: tcx.hir_arena,
 
             // HirId handling.
@@ -165,7 +166,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             children: Vec::default(),
             contract_ensures: None,
             current_hir_id_owner: hir::CRATE_OWNER_ID,
-            current_ast_id_owner: PerOwnerResolverData::new(DUMMY_NODE_ID),
             item_local_id_counter: hir::ItemLocalId::ZERO,
             ident_and_label_to_local_id: Default::default(),
             #[cfg(debug_assertions)]
@@ -204,8 +204,20 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 }
 
-#[extension(trait ResolverAstLoweringExt)]
-impl ResolverAstLowering {
+pub(crate) struct PerOwnerResolver<'a> {
+    pub general: &'a mut ResolverAstLowering,
+    pub item: PerOwnerResolverData,
+}
+
+impl<'a> std::ops::Deref for PerOwnerResolver<'a> {
+    type Target = PerOwnerResolverData;
+
+    fn deref(&self) -> &Self::Target {
+        &self.item
+    }
+}
+
+impl PerOwnerResolver<'_> {
     fn legacy_const_generic_args(&self, expr: &Expr) -> Option<Vec<usize>> {
         if let ExprKind::Path(None, path) = &expr.kind {
             // Don't perform legacy const generics rewriting if the path already
@@ -214,7 +226,9 @@ impl ResolverAstLowering {
                 return None;
             }
 
-            if let Res::Def(DefKind::Fn, def_id) = self.partial_res_map.get(&expr.id)?.full_res()? {
+            if let Res::Def(DefKind::Fn, def_id) =
+                self.general.partial_res_map.get(&expr.id)?.full_res()?
+            {
                 // We only support cross-crate argument rewriting. Uses
                 // within the same crate should be updated to use the new
                 // const generics style.
@@ -222,7 +236,7 @@ impl ResolverAstLowering {
                     return None;
                 }
 
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+                if let Some(v) = self.general.legacy_const_generic_args.get(&def_id) {
                     return v.clone();
                 }
             }
@@ -232,22 +246,22 @@ impl ResolverAstLowering {
     }
 
     fn get_partial_res(&self, id: NodeId) -> Option<PartialRes> {
-        self.partial_res_map.get(&id).copied()
+        self.general.partial_res_map.get(&id).copied()
     }
 
     /// Obtains per-namespace resolutions for `use` statement with the given `NodeId`.
     fn get_import_res(&self, id: NodeId) -> PerNS<Option<Res<NodeId>>> {
-        self.import_res_map.get(&id).copied().unwrap_or_default()
+        self.general.import_res_map.get(&id).copied().unwrap_or_default()
     }
 
     /// Obtains resolution for a label with the given `NodeId`.
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.label_res_map.get(&id).copied()
+        self.general.label_res_map.get(&id).copied()
     }
 
     /// Obtains resolution for a lifetime with the given `NodeId`.
     fn get_lifetime_res(&self, id: NodeId) -> Option<LifetimeRes> {
-        self.lifetimes_res_map.get(&id).copied()
+        self.general.lifetimes_res_map.get(&id).copied()
     }
 
     /// Obtain the list of lifetimes parameters to add to an item.
@@ -258,7 +272,7 @@ impl ResolverAstLowering {
     /// The extra lifetimes that appear from the parenthesized `Fn`-trait desugaring
     /// should appear at the enclosing `PolyTraitRef`.
     fn extra_lifetime_params(&self, id: NodeId) -> Vec<(Ident, NodeId, LifetimeRes)> {
-        self.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
+        self.general.extra_lifetime_params_map.get(&id).cloned().unwrap_or_default()
     }
 }
 
@@ -537,27 +551,27 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.tcx.at(span).create_def(self.current_hir_id_owner.def_id, name, def_kind).def_id();
 
         debug!("create_def: def_id_to_node_id[{:?}] <-> {:?}", def_id, node_id);
-        self.current_ast_id_owner.node_id_to_def_id.insert(node_id, def_id);
+        self.resolver.item.node_id_to_def_id.insert(node_id, def_id);
 
         def_id
     }
 
     fn next_node_id(&mut self) -> NodeId {
-        let start = self.resolver.next_node_id;
+        let start = self.resolver.general.next_node_id;
         let next = start.as_u32().checked_add(1).expect("input too large; ran out of NodeIds");
-        self.resolver.next_node_id = ast::NodeId::from_u32(next);
+        self.resolver.general.next_node_id = ast::NodeId::from_u32(next);
         start
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
     /// resolver (if any).
     fn opt_local_def_id(&self, node: NodeId) -> Option<LocalDefId> {
-        self.current_ast_id_owner.node_id_to_def_id.get(&node).copied()
+        self.resolver.item.node_id_to_def_id.get(&node).copied()
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
         self.opt_local_def_id(node).unwrap_or_else(|| {
-            self.resolver.owners.items().any(|(id, items)| {
+            self.resolver.general.owners.items().any(|(id, items)| {
                 items.node_id_to_def_id.items().any(|(node_id, def_id)| {
                     if *node_id == node {
                         panic!(
@@ -574,7 +588,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
     fn owner_id(&self, node: NodeId) -> hir::OwnerId {
-        hir::OwnerId { def_id: self.resolver.owners[&node].node_id_to_def_id[&node] }
+        hir::OwnerId { def_id: self.resolver.general.owners[&node].node_id_to_def_id[&node] }
     }
 
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
@@ -593,9 +607,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
         let current_define_opaque = std::mem::take(&mut self.define_opaque);
-        let current_ast_owner = std::mem::replace(
-            &mut self.current_ast_id_owner,
-            self.resolver.owners.remove(&owner).unwrap(),
+        let current_item_resolver = std::mem::replace(
+            &mut self.resolver.item,
+            self.resolver.general.owners.remove(&owner).unwrap(),
         );
         let current_ident_and_label_to_local_id =
             std::mem::take(&mut self.ident_and_label_to_local_id);
@@ -641,7 +655,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.item_local_id_counter = current_local_counter;
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
-        self.current_ast_id_owner = current_ast_owner;
+        self.resolver.item = current_item_resolver;
 
         debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
         self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));
@@ -694,7 +708,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.trait_map.remove(&ast_node_id) {
+        if let Some(traits) = self.resolver.general.trait_map.remove(&ast_node_id) {
             self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
         }
 
@@ -1646,7 +1660,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             inputs,
             output,
             c_variadic,
-            lifetime_elision_allowed: self.resolver.lifetime_elision_allowed.contains(&fn_node_id),
+            lifetime_elision_allowed: self
+                .resolver
+                .general
+                .lifetime_elision_allowed
+                .contains(&fn_node_id),
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {
                 let is_mutable_pat = matches!(
                     arg.pat.kind,
