@@ -272,6 +272,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                             | sym::forbid
                             | sym::cfg
                             | sym::cfg_attr
+                            | sym::cfg_attr_trace
                             // need to be fixed
                             | sym::cfi_encoding // FIXME(cfi_encoding)
                             | sym::pointee // FIXME(derive_coerce_pointee)
@@ -575,6 +576,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             // conditional compilation
             sym::cfg,
             sym::cfg_attr,
+            sym::cfg_attr_trace,
             // testing (allowed here so better errors can be generated in `rustc_builtin_macros::test`)
             sym::test,
             sym::ignore,
@@ -2641,7 +2643,7 @@ impl<'tcx> Visitor<'tcx> for CheckAttrVisitor<'tcx> {
         // only `#[cfg]` and `#[cfg_attr]` are allowed, but it should be removed
         // if we allow more attributes (e.g., tool attributes and `allow/deny/warn`)
         // in where clauses. After that, only `self.check_attributes` should be enough.
-        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr];
+        const ATTRS_ALLOWED: &[Symbol] = &[sym::cfg, sym::cfg_attr, sym::cfg_attr_trace];
         let spans = self
             .tcx
             .hir_attrs(where_predicate.hir_id)
