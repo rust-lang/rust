@@ -592,7 +592,7 @@ impl UdpSocket {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("[::1]:12345").expect("couldn't bind to address");
     /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
@@ -610,7 +610,7 @@ impl UdpSocket {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("[::1]:12345").expect("couldn't bind to address");
     /// socket.set_hop_limit_v6(88).expect("set_hop_limit_v6 call failed");
     /// assert_eq!(socket.hop_limit_v6().unwrap(), 88);
     /// ```
@@ -630,7 +630,7 @@ impl UdpSocket {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("[::1]:12345").expect("couldn't bind to address");
     /// socket.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
     /// ```
     #[unstable(feature = "ipv6_hop_limit", issue = "47727")]
@@ -648,7 +648,7 @@ impl UdpSocket {
     /// #![feature(ipv6_hop_limit)]
     /// use std::net::UdpSocket;
     ///
-    /// let socket = UdpSocket::bind("127.0.0.1:54321").expect("couldn't bind to address");
+    /// let socket = UdpSocket::bind("[::1]:12345").expect("couldn't bind to address");
     /// socket.set_multicast_hop_limit_v6(88).expect("set_multicast_hop_limit_v6 call failed");
     /// assert_eq!(socket.multicast_hop_limit_v6().unwrap(), 88);
     /// ```
