@@ -2019,6 +2019,8 @@ unsafe extern "C" {
         NumExpressions: size_t,
         CodeRegions: *const crate::coverageinfo::ffi::CodeRegion,
         NumCodeRegions: size_t,
+        ExpansionRegions: *const crate::coverageinfo::ffi::ExpansionRegion,
+        NumExpansionRegions: size_t,
         BranchRegions: *const crate::coverageinfo::ffi::BranchRegion,
         NumBranchRegions: size_t,
         MCDCBranchRegions: *const crate::coverageinfo::ffi::MCDCBranchRegion,
