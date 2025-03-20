@@ -29,7 +29,7 @@ use hir_def::{
     type_ref::{Mutability, TypesMap, TypesSourceMap},
 };
 use hir_expand::{
-    HirFileId, InFile, InMacroFile, MacroFileId, MacroFileIdExt,
+    HirFileId, InFile, MacroFileId, MacroFileIdExt,
     mod_path::path,
     name::{AsName, Name},
 };
@@ -129,13 +129,8 @@ impl SourceAnalyzer {
         )
     }
 
-    fn expr_id(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<ExprOrPatId> {
-        let src = match expr {
-            ast::Expr::MacroExpr(expr) => {
-                self.expand_expr(db, InFile::new(self.file_id, expr.macro_call()?))?.into()
-            }
-            _ => InFile::new(self.file_id, expr.clone()),
-        };
+    fn expr_id(&self, expr: ast::Expr) -> Option<ExprOrPatId> {
+        let src = InFile::new(self.file_id, expr);
         let sm = self.body_source_map()?;
         sm.node_expr(src.as_ref())
     }
@@ -151,37 +146,10 @@ impl SourceAnalyzer {
         if let Pat::Bind { id, .. } = self.body()?.pats[pat_id.as_pat()?] { Some(id) } else { None }
     }
 
-    fn expand_expr(
-        &self,
-        db: &dyn HirDatabase,
-        expr: InFile<ast::MacroCall>,
-    ) -> Option<InMacroFile<ast::Expr>> {
-        let macro_file = self.body_source_map()?.node_macro_file(expr.as_ref())?;
-        let expanded = db.parse_macro_expansion(macro_file).value.0.syntax_node();
-        let res = if let Some(stmts) = ast::MacroStmts::cast(expanded.clone()) {
-            match stmts.expr()? {
-                ast::Expr::MacroExpr(mac) => {
-                    self.expand_expr(db, InFile::new(macro_file.into(), mac.macro_call()?))?
-                }
-                expr => InMacroFile::new(macro_file, expr),
-            }
-        } else if let Some(call) = ast::MacroCall::cast(expanded.clone()) {
-            self.expand_expr(db, InFile::new(macro_file.into(), call))?
-        } else {
-            InMacroFile::new(macro_file, ast::Expr::cast(expanded)?)
-        };
-
-        Some(res)
-    }
-
-    pub(crate) fn expr_adjustments(
-        &self,
-        db: &dyn HirDatabase,
-        expr: &ast::Expr,
-    ) -> Option<&[Adjustment]> {
+    pub(crate) fn expr_adjustments(&self, expr: &ast::Expr) -> Option<&[Adjustment]> {
         // It is safe to omit destructuring assignments here because they have no adjustments (neither
         // expressions nor patterns).
-        let expr_id = self.expr_id(db, expr)?.as_expr()?;
+        let expr_id = self.expr_id(expr.clone())?.as_expr()?;
         let infer = self.infer.as_ref()?;
         infer.expr_adjustments.get(&expr_id).map(|v| &**v)
     }
@@ -191,7 +159,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         expr: &ast::Expr,
     ) -> Option<(Type, Option<Type>)> {
-        let expr_id = self.expr_id(db, expr)?;
+        let expr_id = self.expr_id(expr.clone())?;
         let infer = self.infer.as_ref()?;
         let coerced = expr_id
             .as_expr()
@@ -284,7 +252,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
     ) -> Option<Callable> {
-        let expr_id = self.expr_id(db, &call.clone().into())?.as_expr()?;
+        let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (func, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
         let ty = db.value_ty(func.into())?.substitute(Interner, &substs);
         let ty = Type::new_with_resolver(db, &self.resolver, ty);
@@ -298,7 +266,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
     ) -> Option<Function> {
-        let expr_id = self.expr_id(db, &call.clone().into())?.as_expr()?;
+        let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
 
         Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs).into())
@@ -309,7 +277,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         call: &ast::MethodCallExpr,
     ) -> Option<(Either<Function, Field>, Option<GenericSubstitution>)> {
-        let expr_id = self.expr_id(db, &call.clone().into())?.as_expr()?;
+        let expr_id = self.expr_id(call.clone().into())?.as_expr()?;
         let inference_result = self.infer.as_ref()?;
         match inference_result.method_resolution(expr_id) {
             Some((f_in_trait, substs)) => {
@@ -339,11 +307,10 @@ impl SourceAnalyzer {
 
     pub(crate) fn resolve_field(
         &self,
-        db: &dyn HirDatabase,
         field: &ast::FieldExpr,
     ) -> Option<Either<Field, TupleField>> {
         let &(def, ..) = self.def.as_ref()?;
-        let expr_id = self.expr_id(db, &field.clone().into())?.as_expr()?;
+        let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         self.infer.as_ref()?.field_resolution(expr_id).map(|it| {
             it.map_either(Into::into, |f| TupleField { owner: def, tuple: f.tuple, index: f.index })
         })
@@ -373,7 +340,7 @@ impl SourceAnalyzer {
         field: &ast::FieldExpr,
     ) -> Option<(Either<Either<Field, TupleField>, Function>, Option<GenericSubstitution>)> {
         let &(def, ..) = self.def.as_ref()?;
-        let expr_id = self.expr_id(db, &field.clone().into())?.as_expr()?;
+        let expr_id = self.expr_id(field.clone().into())?.as_expr()?;
         let inference_result = self.infer.as_ref()?;
         match inference_result.field_resolution(expr_id) {
             Some(field) => match field {
@@ -444,7 +411,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
     ) -> Option<FunctionId> {
-        let mut ty = self.ty_of_expr(db, &await_expr.expr()?)?.clone();
+        let mut ty = self.ty_of_expr(await_expr.expr()?)?.clone();
 
         let into_future_trait = self
             .resolver
@@ -494,7 +461,7 @@ impl SourceAnalyzer {
                 self.infer
                     .as_ref()
                     .and_then(|infer| {
-                        let expr = self.expr_id(db, &prefix_expr.clone().into())?.as_expr()?;
+                        let expr = self.expr_id(prefix_expr.clone().into())?.as_expr()?;
                         let (func, _) = infer.method_resolution(expr)?;
                         let (deref_mut_trait, deref_mut) = self.lang_trait_fn(
                             db,
@@ -513,7 +480,7 @@ impl SourceAnalyzer {
             }
         };
 
-        let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
+        let ty = self.ty_of_expr(prefix_expr.expr()?)?;
 
         // HACK: subst for all methods coincides with that for their trait because the methods
         // don't have any generic parameters, so we skip building another subst for the methods.
@@ -527,8 +494,8 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         index_expr: &ast::IndexExpr,
     ) -> Option<FunctionId> {
-        let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
-        let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
+        let base_ty = self.ty_of_expr(index_expr.base()?)?;
+        let index_ty = self.ty_of_expr(index_expr.index()?)?;
 
         let (index_trait, index_fn) =
             self.lang_trait_fn(db, LangItem::Index, &Name::new_symbol_root(sym::index.clone()))?;
@@ -536,7 +503,7 @@ impl SourceAnalyzer {
             .infer
             .as_ref()
             .and_then(|infer| {
-                let expr = self.expr_id(db, &index_expr.clone().into())?.as_expr()?;
+                let expr = self.expr_id(index_expr.clone().into())?.as_expr()?;
                 let (func, _) = infer.method_resolution(expr)?;
                 let (index_mut_trait, index_mut_fn) = self.lang_trait_fn(
                     db,
@@ -561,8 +528,8 @@ impl SourceAnalyzer {
         binop_expr: &ast::BinExpr,
     ) -> Option<FunctionId> {
         let op = binop_expr.op_kind()?;
-        let lhs = self.ty_of_expr(db, &binop_expr.lhs()?)?;
-        let rhs = self.ty_of_expr(db, &binop_expr.rhs()?)?;
+        let lhs = self.ty_of_expr(binop_expr.lhs()?)?;
+        let rhs = self.ty_of_expr(binop_expr.rhs()?)?;
 
         let (op_trait, op_fn) = lang_items_for_bin_op(op)
             .and_then(|(name, lang_item)| self.lang_trait_fn(db, lang_item, &name))?;
@@ -581,7 +548,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         try_expr: &ast::TryExpr,
     ) -> Option<FunctionId> {
-        let ty = self.ty_of_expr(db, &try_expr.expr()?)?;
+        let ty = self.ty_of_expr(try_expr.expr()?)?;
 
         let op_fn = db.lang_item(self.resolver.krate(), LangItem::TryTraitBranch)?.as_function()?;
         let op_trait = match op_fn.lookup(db.upcast()).container {
@@ -721,7 +688,7 @@ impl SourceAnalyzer {
         let resolved = (|| {
             let infer = self.infer.as_deref()?;
             if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
-                let expr_id = self.expr_id(db, &path_expr.into())?;
+                let expr_id = self.expr_id(path_expr.into())?;
                 if let Some((assoc, subs)) = infer.assoc_resolutions_for_expr_or_pat(expr_id) {
                     let (assoc, subst) = match assoc {
                         AssocItemId::FunctionId(f_in_trait) => {
@@ -819,7 +786,7 @@ impl SourceAnalyzer {
                     return Some((PathResolution::Def(ModuleDef::Variant(variant.into())), None));
                 }
             } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
-                let expr_id = self.expr_id(db, &rec_lit.into())?;
+                let expr_id = self.expr_id(rec_lit.into())?;
                 if let Some(VariantId::EnumVariantId(variant)) =
                     infer.variant_resolution_for_expr_or_pat(expr_id)
                 {
@@ -1010,7 +977,7 @@ impl SourceAnalyzer {
             let subst = (|| {
                 let parent = parent()?;
                 let ty = if let Some(expr) = ast::Expr::cast(parent.clone()) {
-                    let expr_id = self.expr_id(db, &expr)?;
+                    let expr_id = self.expr_id(expr)?;
                     self.infer.as_ref()?.type_of_expr_or_pat(expr_id)?
                 } else if let Some(pat) = ast::Pat::cast(parent) {
                     let pat_id = self.pat_id(&pat)?;
@@ -1064,7 +1031,7 @@ impl SourceAnalyzer {
         let body = self.body()?;
         let infer = self.infer.as_ref()?;
 
-        let expr_id = self.expr_id(db, &literal.clone().into())?;
+        let expr_id = self.expr_id(literal.clone().into())?;
         let substs = infer[expr_id].as_adt()?.1;
 
         let (variant, missing_fields, _exhaustive) = match expr_id {
@@ -1130,13 +1097,9 @@ impl SourceAnalyzer {
         Some(macro_call_id.as_macro_file()).filter(|it| it.expansion_level(db.upcast()) < 64)
     }
 
-    pub(crate) fn resolve_variant(
-        &self,
-        db: &dyn HirDatabase,
-        record_lit: ast::RecordExpr,
-    ) -> Option<VariantId> {
+    pub(crate) fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
         let infer = self.infer.as_ref()?;
-        let expr_id = self.expr_id(db, &record_lit.into())?;
+        let expr_id = self.expr_id(record_lit.into())?;
         infer.variant_resolution_for_expr_or_pat(expr_id)
     }
 
@@ -1284,8 +1247,8 @@ impl SourceAnalyzer {
         Some((trait_id, fn_id))
     }
 
-    fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {
-        self.infer.as_ref()?.type_of_expr_or_pat(self.expr_id(db, expr)?)
+    fn ty_of_expr(&self, expr: ast::Expr) -> Option<&Ty> {
+        self.infer.as_ref()?.type_of_expr_or_pat(self.expr_id(expr.clone())?)
     }
 }
 
