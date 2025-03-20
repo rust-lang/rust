@@ -253,7 +253,7 @@ pub(crate) fn codegen_aarch64_llvm_intrinsic_call<'tcx>(
             }
             let res = CValue::by_val(
                 fx.bcx.ins().uextend(types::I32, res_val),
-                fx.layout_of(fx.tcx.types.u32),
+                fx.layout_of(fx.tcx.types.i32),
             );
             ret.write_cvalue(fx, res);
         }
