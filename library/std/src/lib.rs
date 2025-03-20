@@ -349,6 +349,7 @@
 #![feature(hashmap_internals)]
 #![feature(hint_must_use)]
 #![feature(ip)]
+#![feature(ipv6_hop_limit)]
 #![feature(lazy_get)]
 #![feature(maybe_uninit_slice)]
 #![feature(maybe_uninit_write_slice)]
