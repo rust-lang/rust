@@ -17,7 +17,7 @@ use super::errors::{
 };
 use super::{
     AllowReturnTypeNotation, GenericArgsCtor, GenericArgsMode, ImplTraitContext, ImplTraitPosition,
-    LifetimeRes, LoweringContext, ParamMode, ResolverAstLoweringExt,
+    LifetimeRes, LoweringContext, ParamMode,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {

@@ -20,7 +20,7 @@ use super::errors::{
 };
 use crate::{
     AllowReturnTypeNotation, ImplTraitContext, ImplTraitPosition, ParamMode,
-    ResolverAstLoweringExt, fluent_generated as fluent,
+    fluent_generated as fluent,
 };
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {

@@ -20,7 +20,6 @@ use super::errors::{
 use super::stability::{enabled_names, gate_unstable_abi};
 use super::{
     AstOwner, FnDeclKind, ImplTraitContext, ImplTraitPosition, LoweringContext, ParamMode,
-    ResolverAstLoweringExt,
 };
 
 pub(super) struct ItemLowerer<'a, 'hir> {
