@@ -1029,7 +1029,7 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                 method_args,
                 *fn_span,
                 call_source.from_hir_call(),
-                Some(self.infcx.tcx.fn_arg_names(method_did)[0]),
+                self.infcx.tcx.fn_arg_names(method_did)[0],
             );
 
             return FnSelfUse {

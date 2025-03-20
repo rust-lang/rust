@@ -189,7 +189,7 @@ fn check_fn_inner<'tcx>(
     cx: &LateContext<'tcx>,
     sig: &'tcx FnSig<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     generics: &'tcx Generics<'_>,
     span: Span,
     report_extra_lifetimes: bool,
@@ -264,7 +264,7 @@ fn could_use_elision<'tcx>(
     cx: &LateContext<'tcx>,
     func: &'tcx FnDecl<'_>,
     body: Option<BodyId>,
-    trait_sig: Option<&[Ident]>,
+    trait_sig: Option<&[Option<Ident>]>,
     named_generics: &'tcx [GenericParam<'_>],
     msrv: Msrv,
 ) -> Option<(Vec<LocalDefId>, Vec<Lifetime>)> {
@@ -310,7 +310,7 @@ fn could_use_elision<'tcx>(
         let body = cx.tcx.hir_body(body_id);
 
         let first_ident = body.params.first().and_then(|param| param.pat.simple_ident());
-        if non_elidable_self_type(cx, func, first_ident, msrv) {
+        if non_elidable_self_type(cx, func, Some(first_ident), msrv) {
             return None;
         }
 
@@ -384,8 +384,8 @@ fn allowed_lts_from(named_generics: &[GenericParam<'_>]) -> FxIndexSet<LocalDefI
 }
 
 // elision doesn't work for explicit self types before Rust 1.81, see rust-lang/rust#69064
-fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Ident>, msrv: Msrv) -> bool {
-    if let Some(ident) = ident
+fn non_elidable_self_type<'tcx>(cx: &LateContext<'tcx>, func: &FnDecl<'tcx>, ident: Option<Option<Ident>>, msrv: Msrv) -> bool {
+    if let Some(Some(ident)) = ident
         && ident.name == kw::SelfLower
         && !func.implicit_self.has_implicit_self()
         && let Some(self_ty) = func.inputs.first()
