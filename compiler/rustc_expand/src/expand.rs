@@ -4,16 +4,15 @@ use std::rc::Rc;
 use std::sync::Arc;
 use std::{iter, mem};
 
-use rustc_ast as ast;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor, VisitorResult, try_visit, walk_list};
 use rustc_ast::{
-    AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind, ForeignItemKind,
-    HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle, MetaItemInner, MetaItemKind, ModKind,
-    NodeId, PatKind, StmtKind, TyKind,
+    self as ast, AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, CRATE_NODE_ID,
+    DUMMY_NODE_ID, ExprKind, ForeignItemKind, HasAttrs, HasNodeId, Inline, ItemKind, MacStmtStyle,
+    MetaItemInner, MetaItemKind, ModKind, NodeId, PatKind, StmtKind, TyKind,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::flat_map_in_place::FlatMapInPlace;
@@ -2178,11 +2177,22 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
             };
         }
     }
+
+    fn with_owner<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
+        if id == DUMMY_NODE_ID {
+            f(self)
+        } else {
+            let old = self.cx.resolver.set_owner(id);
+            let val = f(self);
+            self.cx.resolver.reset_owner(old);
+            val
+        }
+    }
 }
 
 impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     fn flat_map_item(&mut self, node: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
-        self.flat_map_node(node)
+        self.with_owner(node.id, |this| this.flat_map_node(node))
     }
 
     fn flat_map_assoc_item(
@@ -2190,22 +2200,22 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         node: P<ast::AssocItem>,
         ctxt: AssocCtxt,
     ) -> SmallVec<[P<ast::AssocItem>; 1]> {
-        match ctxt {
-            AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
+        self.with_owner(node.id, |this| match ctxt {
+            AssocCtxt::Trait => this.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
             AssocCtxt::Impl { of_trait: false } => {
-                self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
+                this.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
             }
             AssocCtxt::Impl { of_trait: true } => {
-                self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
+                this.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
             }
-        }
+        })
     }
 
     fn flat_map_foreign_item(
         &mut self,
         node: P<ast::ForeignItem>,
     ) -> SmallVec<[P<ast::ForeignItem>; 1]> {
-        self.flat_map_node(node)
+        self.with_owner(node.id, |this| this.flat_map_node(node))
     }
 
     fn flat_map_variant(&mut self, node: ast::Variant) -> SmallVec<[ast::Variant; 1]> {
@@ -2276,7 +2286,7 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     }
 
     fn visit_crate(&mut self, node: &mut ast::Crate) {
-        self.visit_node(node)
+        self.with_owner(CRATE_NODE_ID, |this| this.visit_node(node))
     }
 
     fn visit_ty(&mut self, node: &mut P<ast::Ty>) {

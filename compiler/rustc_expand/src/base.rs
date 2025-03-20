@@ -1116,6 +1116,13 @@ pub trait ResolverExpand {
         trait_def_id: DefId,
         impl_def_id: LocalDefId,
     ) -> Result<Vec<(Ident, Option<Ident>)>, Indeterminate>;
+
+    /// Set a new owner and return the old one. Use only in the implementation
+    /// of `with_owner` and always call [Self::reset_owner] afterwards
+    fn set_owner(&mut self, id: NodeId) -> NodeId;
+
+    /// Switch back to the original owner.
+    fn reset_owner(&mut self, id: NodeId);
 }
 
 pub trait LintStoreExpand {
