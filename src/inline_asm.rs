@@ -612,6 +612,15 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             generated_asm.push_str(".att_syntax\n");
         }
 
+        if self.arch == InlineAsmArch::AArch64 {
+            for feature in &self.tcx.codegen_fn_attrs(self.enclosing_def_id).target_features {
+                if feature.name == sym::neon {
+                    continue;
+                }
+                writeln!(generated_asm, ".arch_extension {}", feature.name).unwrap();
+            }
+        }
+
         // The actual inline asm
         for piece in self.template {
             match piece {
@@ -678,6 +687,15 @@ impl<'tcx> InlineAssemblyGenerator<'_, 'tcx> {
             }
         }
         generated_asm.push('\n');
+
+        if self.arch == InlineAsmArch::AArch64 {
+            for feature in &self.tcx.codegen_fn_attrs(self.enclosing_def_id).target_features {
+                if feature.name == sym::neon {
+                    continue;
+                }
+                writeln!(generated_asm, ".arch_extension no{}", feature.name).unwrap();
+            }
+        }
 
         if is_x86 && self.options.contains(InlineAsmOptions::ATT_SYNTAX) {
             generated_asm.push_str(".intel_syntax noprefix\n");
