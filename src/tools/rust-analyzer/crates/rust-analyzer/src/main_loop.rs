@@ -10,7 +10,7 @@ use std::{
 
 use always_assert::always;
 use crossbeam_channel::{Receiver, select};
-use ide_db::base_db::{SourceDatabase, VfsPath};
+use ide_db::base_db::{SourceDatabase, VfsPath, salsa::Database as _};
 use lsp_server::{Connection, Notification, Request};
 use lsp_types::{TextDocumentIdentifier, notification::Notification as _};
 use stdx::thread::ThreadIntent;
@@ -364,6 +364,7 @@ impl GlobalState {
                             fraction = 1.0;
                             title = "Indexing";
 
+                            self.analysis_host.raw_database_mut().trigger_lru_eviction();
                             self.prime_caches_queue.op_completed(());
                             if cancelled {
                                 self.prime_caches_queue
