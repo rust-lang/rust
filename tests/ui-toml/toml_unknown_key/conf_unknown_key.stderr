@@ -60,6 +60,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -152,6 +153,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior
@@ -244,6 +246,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            min-ident-chars-threshold
            missing-docs-in-crate-items
            module-item-order-groupings
+           module-items-ordered-within-groupings
            msrv
            pass-by-value-size-limit
            pub-underscore-fields-behavior

@@ -1,3 +1,9 @@
+//! JSON output and comparison functionality for Clippy warnings.
+//!
+//! This module handles serialization of Clippy warnings to JSON format,
+//! loading warnings from JSON files, and generating human-readable diffs
+//! between different linting runs.
+
 use std::fs;
 use std::path::Path;
 
@@ -8,8 +14,10 @@ use crate::ClippyWarning;
 
 /// This is the total number. 300 warnings results in 100 messages per section.
 const DEFAULT_LIMIT_PER_LINT: usize = 300;
+/// Target for total warnings to display across all lints when truncating output.
 const TRUNCATION_TOTAL_TARGET: usize = 1000;
 
+/// Representation of a single Clippy warning for JSON serialization.
 #[derive(Debug, Deserialize, Serialize)]
 struct LintJson {
     /// The lint name e.g. `clippy::bytes_nth`
@@ -21,10 +29,12 @@ struct LintJson {
 }
 
 impl LintJson {
+    /// Returns a tuple of name and `file_line` for sorting and comparison.
     fn key(&self) -> impl Ord + '_ {
         (self.name.as_str(), self.file_line.as_str())
     }
 
+    /// Formats the warning information with an action verb for display.
     fn info_text(&self, action: &str) -> String {
         format!("{action} `{}` at [`{}`]({})", self.name, self.file_line, self.file_url)
     }
@@ -53,12 +63,17 @@ pub(crate) fn output(clippy_warnings: Vec<ClippyWarning>) -> String {
     serde_json::to_string(&lints).unwrap()
 }
 
+/// Loads lint warnings from a JSON file at the given path.
 fn load_warnings(path: &Path) -> Vec<LintJson> {
     let file = fs::read(path).unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()));
 
     serde_json::from_slice(&file).unwrap_or_else(|e| panic!("failed to deserialize {}: {e}", path.display()))
 }
 
+/// Generates and prints a diff between two sets of lint warnings.
+///
+/// Compares warnings from `old_path` and `new_path`, then displays a summary table
+/// and detailed information about added, removed, and changed warnings.
 pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     let old_warnings = load_warnings(old_path);
     let new_warnings = load_warnings(new_path);
@@ -116,6 +131,7 @@ pub(crate) fn diff(old_path: &Path, new_path: &Path, truncate: bool) {
     }
 }
 
+/// Container for grouped lint warnings organized by status (added/removed/changed).
 #[derive(Debug)]
 struct LintWarnings {
     name: String,
@@ -124,6 +140,7 @@ struct LintWarnings {
     changed: Vec<(LintJson, LintJson)>,
 }
 
+/// Prints a formatted report for a single lint type with its warnings.
 fn print_lint_warnings(lint: &LintWarnings, truncate_after: usize) {
     let name = &lint.name;
     let html_id = to_html_id(name);
@@ -145,6 +162,7 @@ fn print_lint_warnings(lint: &LintWarnings, truncate_after: usize) {
     print_changed_diff(&lint.changed, truncate_after / 3);
 }
 
+/// Prints a summary table of all lints with counts of added, removed, and changed warnings.
 fn print_summary_table(lints: &[LintWarnings]) {
     println!("| Lint                                       | Added   | Removed | Changed |");
     println!("| ------------------------------------------ | ------: | ------: | ------: |");
@@ -160,6 +178,7 @@ fn print_summary_table(lints: &[LintWarnings]) {
     }
 }
 
+/// Prints a section of warnings with a header and formatted code blocks.
 fn print_warnings(title: &str, warnings: &[LintJson], truncate_after: usize) {
     if warnings.is_empty() {
         return;
@@ -180,6 +199,7 @@ fn print_warnings(title: &str, warnings: &[LintJson], truncate_after: usize) {
     }
 }
 
+/// Prints a section of changed warnings with unified diff format.
 fn print_changed_diff(changed: &[(LintJson, LintJson)], truncate_after: usize) {
     if changed.is_empty() {
         return;
@@ -213,6 +233,7 @@ fn print_changed_diff(changed: &[(LintJson, LintJson)], truncate_after: usize) {
     }
 }
 
+/// Truncates a list to a maximum number of items and prints a message about truncation.
 fn truncate<T>(list: &[T], truncate_after: usize) -> &[T] {
     if list.len() > truncate_after {
         println!(
@@ -227,6 +248,7 @@ fn truncate<T>(list: &[T], truncate_after: usize) -> &[T] {
     }
 }
 
+/// Prints a level 3 heading with an appropriate HTML ID for linking.
 fn print_h3(lint: &str, title: &str) {
     let html_id = to_html_id(lint);
     // We have to use HTML here to be able to manually add an id.

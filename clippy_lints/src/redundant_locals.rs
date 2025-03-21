@@ -26,7 +26,7 @@ declare_clippy_lint! {
     /// let a = a;
     ///
     /// fn foo(b: i32) {
-    ///    let b = b;
+    ///     let b = b;
     /// }
     /// ```
     /// Use instead:

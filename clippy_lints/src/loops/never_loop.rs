@@ -4,11 +4,13 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::macros::root_macro_call_first_node;
 use clippy_utils::source::snippet;
+use clippy_utils::visitors::{Descend, for_each_expr_without_closures};
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Destination, Expr, ExprKind, HirId, InlineAsmOperand, Pat, Stmt, StmtKind, StructTailExpr};
 use rustc_lint::LateContext;
 use rustc_span::{Span, sym};
 use std::iter::once;
+use std::ops::ControlFlow;
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
@@ -24,23 +26,38 @@ pub(super) fn check<'tcx>(
                     arg: iterator,
                     pat,
                     span: for_span,
+                    label,
                     ..
                 }) = for_loop
                 {
-                    // Suggests using an `if let` instead. This is `Unspecified` because the
-                    // loop may (probably) contain `break` statements which would be invalid
-                    // in an `if let`.
+                    // If the block contains a break or continue, or if the loop has a label, `MachineApplicable` is not
+                    // appropriate.
+                    let app = if !contains_any_break_or_continue(block) && label.is_none() {
+                        Applicability::MachineApplicable
+                    } else {
+                        Applicability::Unspecified
+                    };
+
                     diag.span_suggestion_verbose(
                         for_span.with_hi(iterator.span.hi()),
                         "if you need the first element of the iterator, try writing",
                         for_to_if_let_sugg(cx, iterator, pat),
-                        Applicability::Unspecified,
+                        app,
                     );
                 }
             });
         },
         NeverLoopResult::MayContinueMainLoop | NeverLoopResult::Normal => (),
     }
+}
+
+fn contains_any_break_or_continue(block: &Block<'_>) -> bool {
+    for_each_expr_without_closures(block, |e| match e.kind {
+        ExprKind::Break(..) | ExprKind::Continue(..) => ControlFlow::Break(()),
+        ExprKind::Loop(..) => ControlFlow::Continue(Descend::No),
+        _ => ControlFlow::Continue(Descend::Yes),
+    })
+    .is_some()
 }
 
 /// The `never_loop` analysis keeps track of three things:

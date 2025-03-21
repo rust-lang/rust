@@ -10,6 +10,7 @@ extern crate rustc_lint;
 use rustc_lint::{LintPass, LintVec};
 
 declare_tool_lint! {
+//~^ lint_without_lint_pass
     pub clippy::TEST_LINT,
     Warn,
     "",

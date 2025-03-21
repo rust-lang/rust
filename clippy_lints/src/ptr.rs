@@ -148,7 +148,36 @@ declare_clippy_lint! {
     "invalid usage of a null pointer, suggesting `NonNull::dangling()` instead"
 }
 
-declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE]);
+declare_clippy_lint! {
+    /// ### What it does
+    /// Use `std::ptr::eq` when applicable
+    ///
+    /// ### Why is this bad?
+    /// `ptr::eq` can be used to compare `&T` references
+    /// (which coerce to `*const T` implicitly) by their address rather than
+    /// comparing the values they point to.
+    ///
+    /// ### Example
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
+    ///
+    /// assert!(a as *const _ as usize == b as *const _ as usize);
+    /// ```
+    /// Use instead:
+    /// ```no_run
+    /// let a = &[1, 2, 3];
+    /// let b = &[1, 2, 3];
+    ///
+    /// assert!(std::ptr::eq(a, b));
+    /// ```
+    #[clippy::version = "1.49.0"]
+    pub PTR_EQ,
+    style,
+    "use `std::ptr::eq` when comparing raw pointers"
+}
+
+declare_lint_pass!(Ptr => [PTR_ARG, CMP_NULL, MUT_FROM_REF, INVALID_NULL_PTR_USAGE, PTR_EQ]);
 
 impl<'tcx> LateLintPass<'tcx> for Ptr {
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'_>) {
@@ -253,10 +282,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         if let ExprKind::Binary(op, l, r) = expr.kind
             && (op.node == BinOpKind::Eq || op.node == BinOpKind::Ne)
         {
-            let non_null_path_snippet = match (is_null_path(cx, l), is_null_path(cx, r)) {
-                (true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
-                (false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
-                _ => return,
+            let non_null_path_snippet = match (
+                is_lint_allowed(cx, CMP_NULL, expr.hir_id),
+                is_null_path(cx, l),
+                is_null_path(cx, r),
+            ) {
+                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
+                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                _ => return check_ptr_eq(cx, expr, op.node, l, r),
             };
 
             span_lint_and_sugg(
@@ -738,5 +771,73 @@ fn is_null_path(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
             .is_some_and(|id| matches!(cx.tcx.get_diagnostic_name(id), Some(sym::ptr_null | sym::ptr_null_mut)))
     } else {
         false
+    }
+}
+
+fn check_ptr_eq<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+    op: BinOpKind,
+    left: &'tcx Expr<'_>,
+    right: &'tcx Expr<'_>,
+) {
+    if expr.span.from_expansion() {
+        return;
+    }
+
+    // Remove one level of usize conversion if any
+    let (left, right) = match (expr_as_cast_to_usize(cx, left), expr_as_cast_to_usize(cx, right)) {
+        (Some(lhs), Some(rhs)) => (lhs, rhs),
+        _ => (left, right),
+    };
+
+    // This lint concerns raw pointers
+    let (left_ty, right_ty) = (cx.typeck_results().expr_ty(left), cx.typeck_results().expr_ty(right));
+    if !left_ty.is_raw_ptr() || !right_ty.is_raw_ptr() {
+        return;
+    }
+
+    let (left_var, right_var) = (peel_raw_casts(cx, left, left_ty), peel_raw_casts(cx, right, right_ty));
+
+    if let Some(left_snip) = left_var.span.get_source_text(cx)
+        && let Some(right_snip) = right_var.span.get_source_text(cx)
+    {
+        let Some(top_crate) = std_or_core(cx) else { return };
+        let invert = if op == BinOpKind::Eq { "" } else { "!" };
+        span_lint_and_sugg(
+            cx,
+            PTR_EQ,
+            expr.span,
+            format!("use `{top_crate}::ptr::eq` when comparing raw pointers"),
+            "try",
+            format!("{invert}{top_crate}::ptr::eq({left_snip}, {right_snip})"),
+            Applicability::MachineApplicable,
+        );
+    }
+}
+
+// If the given expression is a cast to a usize, return the lhs of the cast
+// E.g., `foo as *const _ as usize` returns `foo as *const _`.
+fn expr_as_cast_to_usize<'tcx>(cx: &LateContext<'tcx>, cast_expr: &'tcx Expr<'_>) -> Option<&'tcx Expr<'tcx>> {
+    if cx.typeck_results().expr_ty(cast_expr) == cx.tcx.types.usize
+        && let ExprKind::Cast(expr, _) = cast_expr.kind
+    {
+        Some(expr)
+    } else {
+        None
+    }
+}
+
+// Peel raw casts if the remaining expression can be coerced to it
+fn peel_raw_casts<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>, expr_ty: Ty<'tcx>) -> &'tcx Expr<'tcx> {
+    if let ExprKind::Cast(inner, _) = expr.kind
+        && let ty::RawPtr(target_ty, _) = expr_ty.kind()
+        && let inner_ty = cx.typeck_results().expr_ty(inner)
+        && let ty::RawPtr(inner_target_ty, _) | ty::Ref(_, inner_target_ty, _) = inner_ty.kind()
+        && target_ty == inner_target_ty
+    {
+        peel_raw_casts(cx, inner, inner_ty)
+    } else {
+        expr
     }
 }
