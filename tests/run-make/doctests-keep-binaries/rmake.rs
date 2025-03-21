@@ -4,12 +4,12 @@
 use std::path::Path;
 
 use run_make_support::rfs::{create_dir, remove_dir_all};
-use run_make_support::{run, rustc, rustdoc};
+use run_make_support::{run, rustc, rustdoc, target};
 
 fn setup_test_env<F: FnOnce(&Path, &Path)>(callback: F) {
     let out_dir = Path::new("doctests");
     create_dir(&out_dir);
-    rustc().input("t.rs").crate_type("rlib").run();
+    rustc().target(target()).input("t.rs").crate_type("rlib").run();
     callback(&out_dir, Path::new("libt.rlib"));
     remove_dir_all(out_dir);
 }
@@ -22,6 +22,7 @@ fn check_generated_binaries() {
 fn main() {
     setup_test_env(|out_dir, extern_path| {
         rustdoc()
+            .target(target())
             .input("t.rs")
             .arg("-Zunstable-options")
             .arg("--test")
@@ -33,6 +34,7 @@ fn main() {
     });
     setup_test_env(|out_dir, extern_path| {
         rustdoc()
+            .target(target())
             .input("t.rs")
             .arg("-Zunstable-options")
             .arg("--test")
@@ -49,6 +51,7 @@ fn main() {
         create_dir(&run_dir_path);
 
         rustdoc()
+            .target(target())
             .input("t.rs")
             .arg("-Zunstable-options")
             .arg("--test")
