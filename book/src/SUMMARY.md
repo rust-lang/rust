@@ -13,6 +13,7 @@
     - [GitLab CI](continuous_integration/gitlab.md)
     - [Travis CI](continuous_integration/travis.md)
 - [Development](development/README.md)
+    - [IMPORTANT: FEATURE FREEZE](development/feature_freeze.md)
     - [Basics](development/basics.md)
     - [Adding Lints](development/adding_lints.md)
     - [Defining Lints](development/defining_lints.md)
