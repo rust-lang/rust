@@ -55,6 +55,10 @@ features = [
 ctrlc = "3.4.4"
 # tidy-alphabetical-end
 
+[target.'cfg(target_os = "windows")'.dependencies.mimalloc]
+version = "0.1.49"
+optional = true
+
 [features]
 # tidy-alphabetical-start
 check_only = ['rustc_interface/check_only']
@@ -62,6 +66,7 @@ llvm = ['rustc_interface/llvm']
 llvm_enzyme = ['rustc_interface/llvm_enzyme']
 llvm_offload = ['rustc_interface/llvm_offload']
 max_level_info = ['rustc_log/max_level_info']
+override_allocator = ['dep:mimalloc']
 rustc_randomized_layouts = [
     'rustc_index/rustc_randomized_layouts',
     'rustc_middle/rustc_randomized_layouts'
