@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ghcr.io/rust-lang/ubuntu:22.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh

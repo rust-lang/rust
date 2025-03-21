@@ -159,6 +159,8 @@ jobs:
         run: src/ci/scripts/install-ninja.sh
 
       - name: enable ipv6 on Docker
+        # Don't run on codebuild because systemctl is not available
+        if: ${{ !contains(matrix.os, 'codebuild-ubuntu') }}
         run: src/ci/scripts/enable-docker-ipv6.sh
 
       # Disable automatic line ending conversion (again). On Windows, when we're
@@ -187,6 +189,13 @@ jobs:
       # Build it into the build directory, to avoid modifying sources
       - name: build citool
         run: |
+          # Check if cargo is installed
+          if ! command -v cargo &> /dev/null; then
+            echo "Cargo not found, installing Rust..."
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            # Make cargo available in PATH
+            . "$HOME/.cargo/env"
+          fi
           cd src/ci/citool
           CARGO_INCREMENTAL=0 CARGO_TARGET_DIR=../../../build/citool cargo build
 
