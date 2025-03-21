@@ -10,7 +10,7 @@ fn test_pr_ci_unchanged_anywhere() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
         ctx.create_nonupstream_merge(&["b"]);
-        let src = ctx.get_source(&["c"], CiEnv::GitHubActions);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
         assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
     });
 }
@@ -20,7 +20,7 @@ fn test_pr_ci_changed_in_pr() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
         ctx.create_nonupstream_merge(&["b"]);
-        let src = ctx.get_source(&["b"], CiEnv::GitHubActions);
+        let src = ctx.check_modifications(&["b"], CiEnv::GitHubActions);
         assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
     });
 }
@@ -30,7 +30,7 @@ fn test_auto_ci_unchanged_anywhere_select_parent() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
         ctx.create_upstream_merge(&["b"]);
-        let src = ctx.get_source(&["c"], CiEnv::GitHubActions);
+        let src = ctx.check_modifications(&["c"], CiEnv::GitHubActions);
         assert_eq!(src, PathFreshness::LastModifiedUpstream { upstream: sha });
     });
 }
@@ -40,7 +40,7 @@ fn test_auto_ci_changed_in_pr() {
     git_test(|ctx| {
         let sha = ctx.create_upstream_merge(&["a"]);
         ctx.create_upstream_merge(&["b", "c"]);
-        let src = ctx.get_source(&["c", "d"], CiEnv::GitHubActions);
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::GitHubActions);
         assert_eq!(src, PathFreshness::HasLocalModifications { upstream: sha });
     });
 }
@@ -53,7 +53,7 @@ fn test_local_uncommitted_modifications() {
         ctx.modify("a");
 
         assert_eq!(
-            ctx.get_source(&["a", "d"], CiEnv::None),
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream: sha }
         );
     });
@@ -71,7 +71,7 @@ fn test_local_committed_modifications() {
         ctx.commit();
 
         assert_eq!(
-            ctx.get_source(&["a", "d"], CiEnv::None),
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream: sha }
         );
     });
@@ -87,7 +87,7 @@ fn test_local_committed_modifications_subdirectory() {
         ctx.commit();
 
         assert_eq!(
-            ctx.get_source(&["a/b"], CiEnv::None),
+            ctx.check_modifications(&["a/b"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream: sha }
         );
     });
@@ -100,7 +100,7 @@ fn test_local_changes_in_head_upstream() {
         // even if it is currently HEAD
         let sha = ctx.create_upstream_merge(&["a"]);
         assert_eq!(
-            ctx.get_source(&["a", "d"], CiEnv::None),
+            ctx.check_modifications(&["a", "d"], CiEnv::None),
             PathFreshness::LastModifiedUpstream { upstream: sha }
         );
     });
@@ -117,7 +117,7 @@ fn test_local_changes_in_previous_upstream() {
         ctx.modify("d");
         ctx.commit();
         assert_eq!(
-            ctx.get_source(&["a"], CiEnv::None),
+            ctx.check_modifications(&["a"], CiEnv::None),
             PathFreshness::LastModifiedUpstream { upstream: sha }
         );
     });
@@ -135,7 +135,7 @@ fn test_local_no_upstream_commit_with_changes() {
         ctx.modify("d");
         ctx.commit();
         assert_eq!(
-            ctx.get_source(&["x"], CiEnv::None),
+            ctx.check_modifications(&["x"], CiEnv::None),
             PathFreshness::LastModifiedUpstream { upstream: sha }
         );
     });
@@ -144,7 +144,7 @@ fn test_local_no_upstream_commit_with_changes() {
 #[test]
 fn test_local_no_upstream_commit() {
     git_test(|ctx| {
-        let src = ctx.get_source(&["c", "d"], CiEnv::None);
+        let src = ctx.check_modifications(&["c", "d"], CiEnv::None);
         assert_eq!(src, PathFreshness::MissingUpstream);
     });
 }
@@ -159,15 +159,15 @@ fn test_local_changes_negative_path() {
         ctx.commit();
 
         assert_eq!(
-            ctx.get_source(&[":!b", ":!d"], CiEnv::None),
+            ctx.check_modifications(&[":!b", ":!d"], CiEnv::None),
             PathFreshness::LastModifiedUpstream { upstream: upstream.clone() }
         );
         assert_eq!(
-            ctx.get_source(&[":!c"], CiEnv::None),
+            ctx.check_modifications(&[":!c"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream: upstream.clone() }
         );
         assert_eq!(
-            ctx.get_source(&[":!d", ":!x"], CiEnv::None),
+            ctx.check_modifications(&[":!d", ":!x"], CiEnv::None),
             PathFreshness::HasLocalModifications { upstream }
         );
     });
@@ -198,7 +198,7 @@ impl GitCtx {
         ctx
     }
 
-    fn get_source(&self, target_paths: &[&str], ci_env: CiEnv) -> PathFreshness {
+    fn check_modifications(&self, target_paths: &[&str], ci_env: CiEnv) -> PathFreshness {
         check_path_modifications(Some(self.dir.path()), &self.git_config(), target_paths, ci_env)
             .unwrap()
     }

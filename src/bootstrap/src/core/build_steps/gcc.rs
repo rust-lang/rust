@@ -110,6 +110,9 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
         &builder.config,
         builder.config.rust_info.is_managed_git_subrepository(),
     );
+    builder.verbose(|| {
+        eprintln!("GCC freshness: {source:?}");
+    });
     match source {
         PathFreshness::LastModifiedUpstream { upstream } => {
             // Download from upstream CI
@@ -285,31 +288,17 @@ fn ci_gcc_root(config: &crate::Config) -> PathBuf {
 /// Detect whether GCC sources have been modified locally or not.
 #[cfg(not(test))]
 fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::git::PathFreshness {
-    use build_helper::git::{PathFreshness, check_path_modifications};
+    use build_helper::git::PathFreshness;
 
-    let freshness = if is_git {
-        Some(
-            check_path_modifications(
-                Some(&config.src),
-                &config.git_config(),
-                &["src/gcc", "src/bootstrap/download-ci-gcc-stamp"],
-                config.ci_env(),
-            )
-            .unwrap(),
-        )
+    if is_git {
+        config.check_path_modifications(&["src/gcc", "src/bootstrap/download-ci-gcc-stamp"])
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
-        Some(PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() })
+        PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        None
-    };
-
-    let Some(freshness) = freshness else {
         eprintln!("error: could not find commit hash for downloading GCC");
         eprintln!("HELP: maybe your repository history is too shallow?");
         eprintln!("HELP: consider disabling `download-ci-gcc`");
         eprintln!("HELP: or fetch enough history to include one upstream commit");
-        panic!();
-    };
-
-    freshness
+        crate::exit!(1);
+    }
 }

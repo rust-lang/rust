@@ -3193,7 +3193,11 @@ impl Config {
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.check_modifications(&allowed_paths) {
+            let freshness = self.check_path_modifications(&allowed_paths);
+            self.verbose(|| {
+                eprintln!("rustc freshness: {freshness:?}");
+            });
+            match freshness {
                 PathFreshness::LastModifiedUpstream { upstream } => upstream,
                 PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
@@ -3291,13 +3295,14 @@ impl Config {
 
     /// Returns true if any of the `paths` have been modified locally.
     pub fn has_changes_from_upstream(&self, paths: &[&str]) -> bool {
-        match self.check_modifications(paths) {
+        match self.check_path_modifications(paths) {
             PathFreshness::LastModifiedUpstream { .. } => false,
             PathFreshness::HasLocalModifications { .. } | PathFreshness::MissingUpstream => true,
         }
     }
 
-    fn check_modifications(&self, paths: &[&str]) -> PathFreshness {
+    /// Checks whether any of the given paths have been modified w.r.t. upstream.
+    pub fn check_path_modifications(&self, paths: &[&str]) -> PathFreshness {
         check_path_modifications(Some(&self.src), &self.git_config(), paths, CiEnv::current())
             .unwrap()
     }

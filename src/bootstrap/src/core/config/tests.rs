@@ -51,7 +51,7 @@ fn download_ci_llvm() {
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
     if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
-        let has_changes = if_unchanged_config.has_changes_from_upstream(&["src/llvm-project"]);
+        let has_changes = if_unchanged_config.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
         assert!(
             !has_changes,
