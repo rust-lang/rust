@@ -1,3 +1,4 @@
+use rustc_codegen_ssa::traits::{BaseTypeCodegenMethods, ConstCodegenMethods};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir;
@@ -6,6 +7,9 @@ use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::def_id::DefIdSet;
 
 use crate::common::CodegenCx;
+use crate::coverageinfo::mapgen::GlobalFileTable;
+use crate::coverageinfo::mapgen::covfun::{CovfunRecord, prepare_covfun_record};
+use crate::llvm;
 
 /// Each CGU will normally only emit coverage metadata for the functions that it actually generates.
 /// But since we don't want unused functions to disappear from coverage reports, we also scan for
@@ -15,9 +19,48 @@ use crate::common::CodegenCx;
 /// coverage map (in a single designated CGU) so that we still emit coverage mappings for them.
 /// We also end up adding their symbol names to a special global array that LLVM will include in
 /// its embedded coverage data.
-pub(crate) fn gather_unused_function_instances<'tcx>(
+pub(crate) fn prepare_covfun_records_for_unused_functions<'tcx>(
     cx: &CodegenCx<'_, 'tcx>,
-) -> Vec<ty::Instance<'tcx>> {
+    global_file_table: &mut GlobalFileTable,
+    covfun_records: &mut Vec<CovfunRecord<'tcx>>,
+) {
+    assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
+
+    let mut unused_instances = gather_unused_function_instances(cx);
+    // Sort the unused instances by symbol name, so that their order isn't hash-sensitive.
+    unused_instances.sort_by_key(|instance| instance.symbol_name);
+
+    // Try to create a covfun record for each unused function.
+    let mut name_globals = Vec::with_capacity(unused_instances.len());
+    covfun_records.extend(unused_instances.into_iter().filter_map(|unused| try {
+        let record = prepare_covfun_record(cx.tcx, global_file_table, unused.instance, false)?;
+        // If successful, also store its symbol name in a global constant.
+        name_globals.push(cx.const_str(unused.symbol_name.name).0);
+        record
+    }));
+
+    // Store the names of unused functions in a specially-named global array.
+    // LLVM's `InstrProfilling` pass will detect this array, and include the
+    // referenced names in its `__llvm_prf_names` section.
+    // (See `llvm/lib/Transforms/Instrumentation/InstrProfiling.cpp`.)
+    if !name_globals.is_empty() {
+        let initializer = cx.const_array(cx.type_ptr(), &name_globals);
+
+        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), c"__llvm_coverage_names");
+        llvm::set_global_constant(array, true);
+        llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
+        llvm::set_initializer(array, initializer);
+    }
+}
+
+/// Holds a dummy function instance along with its symbol name, to avoid having
+/// to repeatedly query for the name.
+struct UnusedInstance<'tcx> {
+    instance: ty::Instance<'tcx>,
+    symbol_name: ty::SymbolName<'tcx>,
+}
+
+fn gather_unused_function_instances<'tcx>(cx: &CodegenCx<'_, 'tcx>) -> Vec<UnusedInstance<'tcx>> {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;
@@ -45,6 +88,7 @@ pub(crate) fn gather_unused_function_instances<'tcx>(
         .copied()
         .filter(|&def_id| is_unused_fn(def_id))
         .map(|def_id| make_dummy_instance(tcx, def_id))
+        .map(|instance| UnusedInstance { instance, symbol_name: tcx.symbol_name(instance) })
         .collect::<Vec<_>>()
 }
 
