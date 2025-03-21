@@ -28,7 +28,7 @@ features! {
     /// * RV32I: `"rv32i"`
     /// * RV64I: `"rv64i"`
     /// * A: `"a"`
-    /// * B: `"b"`
+    /// * Bit-Manipulation Extensions:
     ///   * Zba: `"zba"`
     ///   * Zbb: `"zbb"`
     ///   * Zbc: `"zbc"`
