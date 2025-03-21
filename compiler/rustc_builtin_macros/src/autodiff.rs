@@ -19,6 +19,8 @@ mod llvm_enzyme {
         self as ast, AssocItemKind, BindingMode, FnRetTy, FnSig, Generics, ItemKind, MetaItemInner,
         PatKind, TyKind,
     };
+    use rustc_attr_parsing::AttributeParser;
+    // use rustc_hir::Attribute;
     use rustc_expand::base::{Annotatable, ExtCtxt};
     use rustc_span::{Ident, Span, Symbol, kw, sym};
     use thin_vec::{ThinVec, thin_vec};
@@ -287,27 +289,61 @@ mod llvm_enzyme {
         // Don't add it multiple times:
         let orig_annotatable: Annotatable = match item {
             Annotatable::Item(ref mut iitem) => {
-                if !iitem.attrs.iter().any(|a| a.id == attr.id) {
+                if !AttributeParser::parse_limited(
+                    ecx.sess,
+                    &iitem.attrs,
+                    sym::rustc_autodiff,
+                    iitem.span,
+                    true,
+                )
+                .map_or(false, |parsed| {
+                    parsed.path().len() == 1 && parsed.path()[0] == sym::rustc_autodiff
+                }) {
                     iitem.attrs.push(attr);
                 }
-                if !iitem.attrs.iter().any(|a| a.id == inline_never.id) {
+
+                if !AttributeParser::parse_limited(
+                    ecx.sess,
+                    &iitem.attrs,
+                    sym::inline,
+                    iitem.span,
+                    true,
+                )
+                .map_or(false, |parsed| parsed.path().len() == 1 && parsed.path()[0] == sym::inline)
+                {
                     iitem.attrs.push(inline_never.clone());
                 }
                 Annotatable::Item(iitem.clone())
             }
             Annotatable::AssocItem(ref mut assoc_item, i @ Impl) => {
-                if !assoc_item.attrs.iter().any(|a| a.id == attr.id) {
+                if !AttributeParser::parse_limited(
+                    ecx.sess,
+                    &assoc_item.attrs,
+                    sym::rustc_autodiff,
+                    assoc_item.span,
+                    true,
+                )
+                .map_or(false, |parsed| {
+                    parsed.path().len() == 1 && parsed.path()[0] == sym::rustc_autodiff
+                }) {
                     assoc_item.attrs.push(attr);
                 }
-                if !assoc_item.attrs.iter().any(|a| a.id == inline_never.id) {
+                if !AttributeParser::parse_limited(
+                    ecx.sess,
+                    &assoc_item.attrs,
+                    sym::inline,
+                    assoc_item.span,
+                    true,
+                )
+                .map_or(false, |parsed| parsed.path().len() == 1 && parsed.path()[0] == sym::inline)
+                {
                     assoc_item.attrs.push(inline_never.clone());
                 }
                 Annotatable::AssocItem(assoc_item.clone(), i)
             }
-            _ => {
-                unreachable!("annotatable kind checked previously")
-            }
+            _ => unreachable!("annotatable kind checked previously"),
         };
+
         // Now update for d_fn
         rustc_ad_attr.item.args = rustc_ast::AttrArgs::Delimited(rustc_ast::DelimArgs {
             dspan: DelimSpan::dummy(),
