@@ -24,5 +24,5 @@ there aren't any significant regressions.
 We have CI jobs that build large open-source Rust projects that are used as
 regression tests in CI. Our integration jobs build the following projects:
 
-- [Fuchsia](fuchsia.md)
-- [Rust for Linux](rust-for-linux.md)
+- [Fuchsia](./ecosystem-test-jobs/fuchsia.md)
+- [Rust for Linux](./ecosystem-test-jobs/rust-for-linux.md)
