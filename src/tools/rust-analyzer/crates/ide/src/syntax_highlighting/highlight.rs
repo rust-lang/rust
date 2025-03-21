@@ -852,7 +852,7 @@ fn highlight_name_ref_by_syntax(
             }
         }
         ASSOC_TYPE_ARG => SymbolKind::TypeAlias.into(),
-        USE_BOUND_GENERIC_ARG => SymbolKind::TypeParam.into(),
+        USE_BOUND_GENERIC_ARGS => SymbolKind::TypeParam.into(),
         _ => default.into(),
     }
 }

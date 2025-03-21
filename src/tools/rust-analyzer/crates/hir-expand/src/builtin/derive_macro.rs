@@ -969,7 +969,7 @@ fn partial_ord_expand(
             span,
         );
         quote! {span =>
-            fn partial_cmp(&self, other: &Self) -> #krate::option::Option::Option<#krate::cmp::Ordering> {
+            fn partial_cmp(&self, other: &Self) -> #krate::option::Option<#krate::cmp::Ordering> {
                 #body
             }
         }
