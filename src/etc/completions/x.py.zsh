@@ -38,6 +38,7 @@ _x.py() {
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -88,6 +89,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -130,6 +132,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--all-targets[Check all targets]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
@@ -177,6 +180,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--fix[]' \
 '--allow-dirty[]' \
 '--allow-staged[]' \
@@ -222,6 +226,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -264,6 +269,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--check[check formatting instead of applying]' \
 '--all[apply to all appropriate files, not just those that have been modified]' \
 '*-v[use verbose output (-vv for very verbose)]' \
@@ -308,6 +314,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--open[open the docs in a browser]' \
 '--json[render the documentation in JSON format in addition to the usual HTML format]' \
 '*-v[use verbose output (-vv for very verbose)]' \
@@ -358,6 +365,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--no-fail-fast[run all tests regardless of failure]' \
 '--no-doc[do not run doc tests]' \
 '--doc[only run doc tests]' \
@@ -409,6 +417,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--no-fail-fast[run all tests regardless of failure]' \
 '--no-doc[do not run doc tests]' \
 '--doc[only run doc tests]' \
@@ -455,6 +464,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -497,6 +507,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--all[Clean the entire build directory (not used by default)]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
@@ -540,6 +551,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -582,6 +594,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -625,6 +638,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -667,6 +681,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -710,6 +725,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--run[run suggested tests]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
@@ -754,6 +770,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '--versioned-dirs[Always include version in subdir name]' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
@@ -797,6 +814,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -851,6 +869,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -896,6 +915,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -941,6 +961,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -986,6 +1007,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \
@@ -1029,6 +1051,7 @@ _arguments "${_arguments_options[@]}" : \
 '--llvm-profile-use=[use PGO profile for LLVM build]:PROFILE:_files' \
 '*--reproducible-artifact=[Additional reproducible artifacts that should be added to the reproducible artifacts archive]:REPRODUCIBLE_ARTIFACT:_default' \
 '*--set=[override options in bootstrap.toml]:section.option=value:' \
+'--ci=[Make bootstrap to behave as it'\''s running on the CI environment or not]:bool:(true false)' \
 '*-v[use verbose output (-vv for very verbose)]' \
 '*--verbose[use verbose output (-vv for very verbose)]' \
 '-i[use incremental compilation]' \

@@ -12,8 +12,6 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use build_helper::ci::CiEnv;
-
 use crate::core::builder::{Builder, Cargo, Kind, RunConfig, ShouldRun, Step};
 use crate::core::config::TargetSelection;
 use crate::utils::build_stamp::{BuildStamp, generate_smart_stamp_hash};
@@ -202,7 +200,7 @@ fn build_gcc(metadata: &Meta, builder: &Builder<'_>, target: TargetSelection) {
     // source directories as read-only on Linux.
     // Therefore, as a part of the build in CI, we first copy the whole source directory
     // to the build directory, and perform the build from there.
-    let src_dir = if CiEnv::is_ci() {
+    let src_dir = if builder.config.is_running_on_ci {
         let src_dir = builder.gcc_out(target).join("src");
         if src_dir.exists() {
             builder.remove_dir(&src_dir);

@@ -415,6 +415,8 @@ pub struct Config {
 
     /// Command for visual diff display, e.g. `diff-tool --color=always`.
     pub compiletest_diff_tool: Option<String>,
+
+    pub is_running_on_ci: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1422,6 +1424,7 @@ impl Config {
         config.llvm_profile_generate = flags.llvm_profile_generate;
         config.enable_bolt_settings = flags.enable_bolt_settings;
         config.bypass_bootstrap_lock = flags.bypass_bootstrap_lock;
+        config.is_running_on_ci = flags.ci.unwrap_or(CiEnv::is_ci());
 
         // Infer the rest of the configuration.
 
@@ -2425,7 +2428,7 @@ impl Config {
 
         // CI should always run stage 2 builds, unless it specifically states otherwise
         #[cfg(not(test))]
-        if flags.stage.is_none() && build_helper::ci::CiEnv::is_ci() {
+        if flags.stage.is_none() && config.is_running_on_ci {
             match config.cmd {
                 Subcommand::Test { .. }
                 | Subcommand::Miri { .. }
@@ -2647,7 +2650,7 @@ impl Config {
                     if !self.llvm_from_ci {
                         // This happens when LLVM submodule is updated in CI, we should disable ci-rustc without an error
                         // to not break CI. For non-CI environments, we should return an error.
-                        if CiEnv::is_ci() {
+                        if self.is_running_on_ci {
                             println!("WARNING: LLVM submodule has changes, `download-rustc` will be disabled.");
                             return None;
                         } else {
@@ -3036,7 +3039,7 @@ impl Config {
         //
         // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
         // logic accordingly.
-        if !CiEnv::is_ci() {
+        if !self.is_running_on_ci {
             allowed_paths.push(":!library");
         }
 
@@ -3064,7 +3067,7 @@ impl Config {
                 .expect("git-commit-info is missing in the project root")
         };
 
-        if CiEnv::is_ci() && {
+        if self.is_running_on_ci && {
             let head_sha =
                 output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
             let head_sha = head_sha.trim();

@@ -264,7 +264,7 @@ fn ci_rustc_if_unchanged_logic() {
         let mut paths = vec!["compiler"];
 
         // Handle library tree the same way as in `Config::download_ci_rustc_commit`.
-        if build_helper::ci::CiEnv::is_ci() {
+        if builder.config.is_running_on_ci {
             paths.push("library");
         }
 
