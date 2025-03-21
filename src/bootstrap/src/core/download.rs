@@ -730,15 +730,19 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_sha =
-            match detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository()) {
-                PathFreshness::LastModifiedUpstream { upstream } => upstream,
-                PathFreshness::HasLocalModifications { upstream } => upstream,
-                PathFreshness::MissingUpstream => {
-                    eprintln!("No upstream commit for downloading LLVM found");
-                    crate::exit!(1);
-                }
-            };
+        let llvm_freshness =
+            detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository());
+        self.verbose(|| {
+            eprintln!("LLVM freshness: {llvm_freshness:?}");
+        });
+        let llvm_sha = match llvm_freshness {
+            PathFreshness::LastModifiedUpstream { upstream } => upstream,
+            PathFreshness::HasLocalModifications { upstream } => upstream,
+            PathFreshness::MissingUpstream => {
+                eprintln!("No upstream commit for downloading LLVM found");
+                crate::exit!(1);
+            }
+        };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
