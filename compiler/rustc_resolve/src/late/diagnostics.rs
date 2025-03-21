@@ -2217,12 +2217,11 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                                     .delegation_fn_sigs
                                     .get(&def_id)
                                     .is_some_and(|sig| sig.has_self),
-                                None => self
-                                    .r
-                                    .tcx
-                                    .fn_arg_names(def_id)
-                                    .first()
-                                    .is_some_and(|ident| ident.name == kw::SelfLower),
+                                None => {
+                                    self.r.tcx.fn_arg_names(def_id).first().is_some_and(|&ident| {
+                                        matches!(ident, Some(Ident { name: kw::SelfLower, .. }))
+                                    })
+                                }
                             };
                             if has_self {
                                 return Some(AssocSuggestion::MethodWithSelf { called });

@@ -14,7 +14,6 @@ use bootstrap::{
     Build, CONFIG_CHANGE_HISTORY, Config, Flags, Subcommand, debug, find_recent_config_change_ids,
     human_readable_changes, t,
 };
-use build_helper::ci::CiEnv;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -70,12 +69,14 @@ fn main() {
     }
 
     // check_version warnings are not printed during setup, or during CI
-    let changelog_suggestion =
-        if matches!(config.cmd, Subcommand::Setup { .. }) || CiEnv::is_ci() || config.dry_run() {
-            None
-        } else {
-            check_version(&config)
-        };
+    let changelog_suggestion = if matches!(config.cmd, Subcommand::Setup { .. })
+        || config.is_running_on_ci
+        || config.dry_run()
+    {
+        None
+    } else {
+        check_version(&config)
+    };
 
     // NOTE: Since `./configure` generates a `bootstrap.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.

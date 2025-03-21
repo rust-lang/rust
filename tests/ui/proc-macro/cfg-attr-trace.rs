@@ -1,0 +1,17 @@
+// Ensure that `cfg_attr_trace` attributes aren't observable by proc-macros.
+
+//@ check-pass
+//@ proc-macro: test-macros.rs
+
+#![feature(cfg_eval)]
+
+#[macro_use]
+extern crate test_macros;
+
+#[cfg_eval]
+#[test_macros::print_attr]
+#[cfg_attr(FALSE, test_macros::print_attr)]
+#[cfg_attr(all(), test_macros::print_attr)]
+struct S;
+
+fn main() {}

@@ -385,6 +385,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             self.tcx,
             &mut self.machine,
             &mut alloc.extra,
+            ptr,
             (alloc_id, prov),
             size,
             alloc.align,
@@ -727,6 +728,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
                     self.tcx,
                     &self.machine,
                     &alloc.extra,
+                    ptr,
                     (alloc_id, prov),
                     range,
                 )?;
@@ -816,7 +818,14 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
         if let Some((alloc_id, offset, prov, alloc, machine)) = ptr_and_alloc {
             let range = alloc_range(offset, size);
             if !validation_in_progress {
-                M::before_memory_write(tcx, machine, &mut alloc.extra, (alloc_id, prov), range)?;
+                M::before_memory_write(
+                    tcx,
+                    machine,
+                    &mut alloc.extra,
+                    ptr,
+                    (alloc_id, prov),
+                    range,
+                )?;
             }
             interp_ok(Some(AllocRefMut { alloc, range, tcx: *tcx, alloc_id }))
         } else {
@@ -1373,6 +1382,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tcx,
             &self.machine,
             &src_alloc.extra,
+            src,
             (src_alloc_id, src_prov),
             src_range,
         )?;
@@ -1403,6 +1413,7 @@ impl<'tcx, M: Machine<'tcx>> InterpCx<'tcx, M> {
             tcx,
             extra,
             &mut dest_alloc.extra,
+            dest,
             (dest_alloc_id, dest_prov),
             dest_range,
         )?;

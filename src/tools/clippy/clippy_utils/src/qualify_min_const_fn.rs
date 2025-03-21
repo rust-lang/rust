@@ -395,24 +395,32 @@ fn check_terminator<'tcx>(
 
 fn is_stable_const_fn(cx: &LateContext<'_>, def_id: DefId, msrv: Msrv) -> bool {
     cx.tcx.is_const_fn(def_id)
-        && cx.tcx.lookup_const_stability(def_id).is_none_or(|const_stab| {
-            if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
-                // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
-                // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
-                // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
+        && cx
+            .tcx
+            .lookup_const_stability(def_id)
+            .or_else(|| {
+                cx.tcx
+                    .trait_of_item(def_id)
+                    .and_then(|trait_def_id| cx.tcx.lookup_const_stability(trait_def_id))
+            })
+            .is_none_or(|const_stab| {
+                if let rustc_attr_parsing::StabilityLevel::Stable { since, .. } = const_stab.level {
+                    // Checking MSRV is manually necessary because `rustc` has no such concept. This entire
+                    // function could be removed if `rustc` provided a MSRV-aware version of `is_stable_const_fn`.
+                    // as a part of an unimplemented MSRV check https://github.com/rust-lang/rust/issues/65262.
 
-                let const_stab_rust_version = match since {
-                    StableSince::Version(version) => version,
-                    StableSince::Current => RustcVersion::CURRENT,
-                    StableSince::Err => return false,
-                };
+                    let const_stab_rust_version = match since {
+                        StableSince::Version(version) => version,
+                        StableSince::Current => RustcVersion::CURRENT,
+                        StableSince::Err => return false,
+                    };
 
-                msrv.meets(cx, const_stab_rust_version)
-            } else {
-                // Unstable const fn, check if the feature is enabled.
-                cx.tcx.features().enabled(const_stab.feature) && msrv.current(cx).is_none()
-            }
-        })
+                    msrv.meets(cx, const_stab_rust_version)
+                } else {
+                    // Unstable const fn, check if the feature is enabled.
+                    cx.tcx.features().enabled(const_stab.feature) && msrv.current(cx).is_none()
+                }
+            })
 }
 
 fn is_ty_const_destruct<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, body: &Body<'tcx>) -> bool {

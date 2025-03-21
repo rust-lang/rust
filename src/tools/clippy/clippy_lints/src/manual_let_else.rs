@@ -5,7 +5,8 @@ use clippy_utils::higher::IfLetOrMatch;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::{is_lint_allowed, is_never_expr, msrvs, pat_and_expr_can_be_question_mark, peel_blocks};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_ast::BindingMode;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, MatchSource, Pat, PatExpr, PatExprKind, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LintContext};
@@ -113,7 +114,7 @@ fn emit_manual_let_else(
     cx: &LateContext<'_>,
     span: Span,
     expr: &Expr<'_>,
-    ident_map: &FxHashMap<Symbol, &Pat<'_>>,
+    ident_map: &FxHashMap<Symbol, (&Pat<'_>, BindingMode)>,
     pat: &Pat<'_>,
     else_body: &Expr<'_>,
 ) {
@@ -167,7 +168,7 @@ fn emit_manual_let_else(
 fn replace_in_pattern(
     cx: &LateContext<'_>,
     span: Span,
-    ident_map: &FxHashMap<Symbol, &Pat<'_>>,
+    ident_map: &FxHashMap<Symbol, (&Pat<'_>, BindingMode)>,
     pat: &Pat<'_>,
     app: &mut Applicability,
     top_level: bool,
@@ -185,15 +186,16 @@ fn replace_in_pattern(
 
         match pat.kind {
             PatKind::Binding(_ann, _id, binding_name, opt_subpt) => {
-                let Some(pat_to_put) = ident_map.get(&binding_name.name) else {
+                let Some((pat_to_put, binding_mode)) = ident_map.get(&binding_name.name) else {
                     break 'a;
                 };
+                let sn_pfx = binding_mode.prefix_str();
                 let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
                 if let Some(subpt) = opt_subpt {
                     let subpt = replace_in_pattern(cx, span, ident_map, subpt, app, false);
-                    return format!("{sn_ptp} @ {subpt}");
+                    return format!("{sn_pfx}{sn_ptp} @ {subpt}");
                 }
-                return sn_ptp.to_string();
+                return format!("{sn_pfx}{sn_ptp}");
             },
             PatKind::Or(pats) => {
                 let patterns = pats
@@ -211,17 +213,18 @@ fn replace_in_pattern(
                     .iter()
                     .map(|fld| {
                         if let PatKind::Binding(_, _, name, None) = fld.pat.kind
-                            && let Some(pat_to_put) = ident_map.get(&name.name)
+                            && let Some((pat_to_put, binding_mode)) = ident_map.get(&name.name)
                         {
+                            let sn_pfx = binding_mode.prefix_str();
                             let (sn_fld_name, _) = snippet_with_context(cx, fld.ident.span, span.ctxt(), "", app);
                             let (sn_ptp, _) = snippet_with_context(cx, pat_to_put.span, span.ctxt(), "", app);
                             // TODO: this is a bit of a hack, but it does its job. Ideally, we'd check if pat_to_put is
                             // a PatKind::Binding but that is also hard to get right.
                             if sn_fld_name == sn_ptp {
                                 // Field init shorthand
-                                return format!("{sn_fld_name}");
+                                return format!("{sn_pfx}{sn_fld_name}");
                             }
-                            return format!("{sn_fld_name}: {sn_ptp}");
+                            return format!("{sn_fld_name}: {sn_pfx}{sn_ptp}");
                         }
                         let (sn_fld, _) = snippet_with_context(cx, fld.span, span.ctxt(), "", app);
                         sn_fld.into_owned()
@@ -334,7 +337,7 @@ fn expr_simple_identity_map<'a, 'hir>(
     local_pat: &'a Pat<'hir>,
     let_pat: &'_ Pat<'hir>,
     expr: &'_ Expr<'hir>,
-) -> Option<FxHashMap<Symbol, &'a Pat<'hir>>> {
+) -> Option<FxHashMap<Symbol, (&'a Pat<'hir>, BindingMode)>> {
     let peeled = peel_blocks(expr);
     let (sub_pats, paths) = match (local_pat.kind, peeled.kind) {
         (PatKind::Tuple(pats, _), ExprKind::Tup(exprs)) | (PatKind::Slice(pats, ..), ExprKind::Array(exprs)) => {
@@ -351,9 +354,9 @@ fn expr_simple_identity_map<'a, 'hir>(
         return None;
     }
 
-    let mut pat_bindings = FxHashSet::default();
-    let_pat.each_binding_or_first(&mut |_ann, _hir_id, _sp, ident| {
-        pat_bindings.insert(ident);
+    let mut pat_bindings = FxHashMap::default();
+    let_pat.each_binding_or_first(&mut |binding_mode, _hir_id, _sp, ident| {
+        pat_bindings.insert(ident, binding_mode);
     });
     if pat_bindings.len() < paths.len() {
         // This rebinds some bindings from the outer scope, or it repeats some copy-able bindings multiple
@@ -366,12 +369,10 @@ fn expr_simple_identity_map<'a, 'hir>(
     for (sub_pat, path) in sub_pats.iter().zip(paths.iter()) {
         if let ExprKind::Path(QPath::Resolved(_ty, path)) = path.kind
             && let [path_seg] = path.segments
+            && let ident = path_seg.ident
+            && let Some(let_binding_mode) = pat_bindings.remove(&ident)
         {
-            let ident = path_seg.ident;
-            if !pat_bindings.remove(&ident) {
-                return None;
-            }
-            ident_map.insert(ident.name, sub_pat);
+            ident_map.insert(ident.name, (sub_pat, let_binding_mode));
         } else {
             return None;
         }

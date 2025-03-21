@@ -1,13 +1,16 @@
-# LLVM Notification group
+# LLVM Icebreakers Notification group
 
 **Github Label:** [A-LLVM] <br>
-**Ping command:** `@rustbot ping llvm`
+**Ping command:** `@rustbot ping icebreakers-llvm`
 
 [A-LLVM]: https://github.com/rust-lang/rust/labels/A-LLVM
 
-The "LLVM Notification Group" are focused on bugs that center around LLVM.
-These bugs often arise because of LLVM optimizations gone awry, or as
-the result of an LLVM upgrade. The goal here is:
+*Note*: this notification group is *not* the same as the LLVM working group
+(WG-llvm).
+
+The "LLVM Icebreakers Notification Group" are focused on bugs that center around
+LLVM. These bugs often arise because of LLVM optimizations gone awry, or as the
+result of an LLVM upgrade. The goal here is:
 
 - to determine whether the bug is a result of us generating invalid LLVM IR,
   or LLVM misoptimizing;

@@ -2949,7 +2949,7 @@ impl<'hir> TraitItem<'hir> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum TraitFn<'hir> {
     /// No default body in the trait, just a signature.
-    Required(&'hir [Ident]),
+    Required(&'hir [Option<Ident>]),
 
     /// Both signature and body are provided in the trait.
     Provided(BodyId),
@@ -3354,7 +3354,9 @@ pub struct BareFnTy<'hir> {
     pub abi: ExternAbi,
     pub generic_params: &'hir [GenericParam<'hir>],
     pub decl: &'hir FnDecl<'hir>,
-    pub param_names: &'hir [Ident],
+    // `Option` because bare fn parameter names are optional. We also end up
+    // with `None` in some error cases, e.g. invalid parameter patterns.
+    pub param_names: &'hir [Option<Ident>],
 }
 
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
@@ -4335,7 +4337,12 @@ impl ForeignItem<'_> {
 #[derive(Debug, Clone, Copy, HashStable_Generic)]
 pub enum ForeignItemKind<'hir> {
     /// A foreign function.
-    Fn(FnSig<'hir>, &'hir [Ident], &'hir Generics<'hir>),
+    ///
+    /// All argument idents are actually always present (i.e. `Some`), but
+    /// `&[Option<Ident>]` is used because of code paths shared with `TraitFn`
+    /// and `BareFnTy`. The sharing is due to all of these cases not allowing
+    /// arbitrary patterns for parameters.
+    Fn(FnSig<'hir>, &'hir [Option<Ident>], &'hir Generics<'hir>),
     /// A foreign static item (`static ext: u8`).
     Static(&'hir Ty<'hir>, Mutability, Safety),
     /// A foreign type.

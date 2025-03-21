@@ -1,10 +1,5 @@
 #![warn(clippy::ifs_same_cond)]
-#![allow(
-    clippy::if_same_then_else,
-    clippy::comparison_chain,
-    clippy::needless_if,
-    clippy::needless_else
-)] // all empty blocks
+#![allow(clippy::if_same_then_else, clippy::needless_if, clippy::needless_else)] // all empty blocks
 
 fn ifs_same_cond() {
     let a = 0;

@@ -55,7 +55,9 @@ impl<'tcx> LateLintPass<'tcx> for RedundantPubCrate {
             // FIXME: `DUMMY_SP` isn't right here, because it causes the
             // resulting span to begin at the start of the file.
             let span = item.span.with_hi(
-                item.kind.ident().map(|ident| ident.span.hi()).unwrap_or(rustc_span::DUMMY_SP.hi())
+                item.kind
+                    .ident()
+                    .map_or(rustc_span::DUMMY_SP.hi(), |ident| ident.span.hi()),
             );
             let descr = cx.tcx.def_kind(item.owner_id).descr(item.owner_id.to_def_id());
             span_lint_and_then(

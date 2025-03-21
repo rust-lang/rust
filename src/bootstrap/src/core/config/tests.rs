@@ -4,6 +4,7 @@ use std::fs::{File, remove_file};
 use std::io::Write;
 use std::path::Path;
 
+use build_helper::ci::CiEnv;
 use clap::CommandFactory;
 use serde::Deserialize;
 
@@ -531,4 +532,20 @@ fn test_exclude() {
         .expect("Failed to convert excluded path to string");
 
     assert_eq!(first_excluded, exclude_path);
+}
+
+#[test]
+fn test_ci_flag() {
+    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=false".into()]), |&_| {
+        toml::from_str("")
+    });
+    assert!(!config.is_running_on_ci);
+
+    let config = Config::parse_inner(Flags::parse(&["check".into(), "--ci=true".into()]), |&_| {
+        toml::from_str("")
+    });
+    assert!(config.is_running_on_ci);
+
+    let config = Config::parse_inner(Flags::parse(&["check".into()]), |&_| toml::from_str(""));
+    assert_eq!(config.is_running_on_ci, CiEnv::is_ci());
 }
