@@ -266,7 +266,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
 /// Returns true if we're running in CI with modified LLVM (and thus can't download it)
 pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
     // If not running in a CI environment, return false.
-    if !CiEnv::is_ci() {
+    if !config.is_running_on_ci {
         return false;
     }
 

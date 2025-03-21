@@ -710,9 +710,10 @@ impl<'a> Arguments<'a> {
     }
 
     /// Same as [`Arguments::as_str`], but will only return `Some(s)` if it can be determined at compile time.
+    #[unstable(feature = "fmt_internals", reason = "internal to standard library", issue = "none")]
     #[must_use]
     #[inline]
-    fn as_statically_known_str(&self) -> Option<&'static str> {
+    pub fn as_statically_known_str(&self) -> Option<&'static str> {
         let s = self.as_str();
         if core::intrinsics::is_val_statically_known(s.is_some()) { s } else { None }
     }
