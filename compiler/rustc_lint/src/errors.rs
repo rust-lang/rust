@@ -1,5 +1,5 @@
 use rustc_errors::codes::*;
-use rustc_errors::{Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic};
+use rustc_errors::{Diag, EmissionGuarantee, Subdiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::lint::Level;
 use rustc_span::{Span, Symbol};
@@ -26,11 +26,7 @@ pub(crate) enum OverruledAttributeSub {
 }
 
 impl Subdiagnostic for OverruledAttributeSub {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         match self {
             OverruledAttributeSub::DefaultSource { id } => {
                 diag.note(fluent::lint_default_source);
