@@ -6,7 +6,7 @@ use rustc_data_structures::svh::Svh;
 use rustc_data_structures::sync::{DynSend, DynSync, par_for_each_in, try_par_for_each_in};
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LOCAL_CRATE, LocalDefId, LocalModDefId};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_hir::definitions::{DefKey, DefPath, Definitions};
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::*;
 use rustc_hir_pretty as pprust_hir;
@@ -191,12 +191,6 @@ impl<'tcx> TyCtxt<'tcx> {
     pub fn hir_def_path(self, def_id: LocalDefId) -> DefPath {
         // Accessing the DefPath is ok, since it is part of DefPathHash.
         self.definitions_untracked().def_path(def_id)
-    }
-
-    #[inline]
-    pub fn hir_def_path_hash(self, def_id: LocalDefId) -> DefPathHash {
-        // Accessing the DefPathHash is ok, it is incr. comp. stable.
-        self.definitions_untracked().def_path_hash(def_id)
     }
 
     pub fn hir_get_if_local(self, id: DefId) -> Option<Node<'tcx>> {
@@ -1132,12 +1126,12 @@ impl<'tcx> pprust_hir::PpAnn for TyCtxt<'tcx> {
 
 /// Compute the hash for the HIR of the full crate.
 /// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_hir_hash(tcx: TyCtxt<'_>) -> Fingerprint {
+fn compute_hir_hash(tcx: TyCtxt<'_>, definitions: &Definitions) -> Fingerprint {
     let mut hir_body_nodes: Vec<_> = tcx
         .hir_crate_items(())
         .owners()
         .map(|owner_id| {
-            let def_path_hash = tcx.hir_def_path_hash(owner_id.def_id);
+            let def_path_hash = definitions.def_path_hash(owner_id.def_id);
             let nodes = tcx.opt_hir_owner_nodes(owner_id).unwrap();
             let attrs = tcx.hir_attr_map(owner_id);
             let in_scope_traits_map = tcx.in_scope_traits_map(owner_id).unwrap();
@@ -1154,7 +1148,8 @@ fn compute_hir_hash(tcx: TyCtxt<'_>) -> Fingerprint {
 }
 
 pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
-    let hir_body_hash = compute_hir_hash(tcx);
+    let definitions = tcx.untracked().definitions.freeze();
+    let hir_body_hash = compute_hir_hash(tcx, definitions);
 
     let upstream_crates = upstream_crates(tcx);
 
@@ -1197,7 +1192,6 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, _: LocalCrate) -> Svh {
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
         debugger_visualizers.hash_stable(&mut hcx, &mut stable_hasher);
         if tcx.sess.opts.incremental.is_some() {
-            let definitions = tcx.untracked().definitions.freeze();
             let mut owner_spans: Vec<_> = tcx
                 .hir_crate_items(())
                 .definitions()
