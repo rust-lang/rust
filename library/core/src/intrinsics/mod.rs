@@ -3002,6 +3002,7 @@ pub const fn discriminant_value<T>(v: &T) -> <T as DiscriminantKind>::Discrimina
 
 /// Rust's "try catch" construct for unwinding. Invokes the function pointer `try_fn` with the
 /// data pointer `data`, and calls `catch_fn` if unwinding occurs while `try_fn` runs.
+/// Returns `1` if unwinding occurred and `catch_fn` was called; returns `0` otherwise.
 ///
 /// `catch_fn` must not unwind.
 ///
