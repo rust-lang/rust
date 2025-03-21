@@ -470,7 +470,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.85.0"]
     pub IGNORE_WITHOUT_REASON,
-    restriction,
+    pedantic,
     "ignored tests without messages"
 }
 
