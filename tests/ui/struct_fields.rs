@@ -344,4 +344,31 @@ struct Use {
     //~^ struct_field_names
 }
 
+// should lint on private fields of public structs (renaming them is not breaking-exported-api)
+pub struct PubStructFieldNamedAfterStruct {
+    pub_struct_field_named_after_struct: bool,
+    //~^ ERROR: field name starts with the struct's name
+    other1: bool,
+    other2: bool,
+}
+pub struct PubStructFieldPrefix {
+    //~^ ERROR: all fields have the same prefix: `field`
+    field_foo: u8,
+    field_bar: u8,
+    field_baz: u8,
+}
+// ...but should not lint on structs with public fields.
+pub struct PubStructPubAndPrivateFields {
+    /// One could argue that this field should be linted, but currently, any public field stops all
+    /// checking.
+    pub_struct_pub_and_private_fields_1: bool,
+    pub pub_struct_pub_and_private_fields_2: bool,
+}
+// nor on common prefixes if one of the involved fields is public
+pub struct PubStructPubAndPrivateFieldPrefix {
+    pub field_foo: u8,
+    field_bar: u8,
+    field_baz: u8,
+}
+
 fn main() {}

@@ -72,7 +72,9 @@ impl<'tcx> LateLintPass<'tcx> for LegacyNumericConstants {
                     "importing a legacy numeric constant"
                 },
                 |diag| {
-                    if let UseKind::Single(ident) = kind && ident.name == kw::Underscore {
+                    if let UseKind::Single(ident) = kind
+                        && ident.name == kw::Underscore
+                    {
                         diag.help("remove this import");
                         return;
                     }

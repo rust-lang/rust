@@ -489,5 +489,45 @@ error: this could be rewritten as `let...else`
 LL |         let v = if let Some(v_some) = g() { v_some } else { return };
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider writing: `let Some(v) = g() else { return };`
 
-error: aborting due to 31 previous errors
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:491:9
+   |
+LL | /         let signature = match value {
+LL | |
+LL | |             Foo::Str(ref val) => val,
+LL | |             _ => {
+...  |
+LL | |             },
+LL | |         };
+   | |__________^
+   |
+help: consider writing
+   |
+LL ~         let Foo::Str(ref signature) = value else {
+LL +                 println!("No signature found");
+LL +                 return;
+LL +             };
+   |
+
+error: this could be rewritten as `let...else`
+  --> tests/ui/manual_let_else.rs:507:9
+   |
+LL | /         let signature = match value {
+LL | |
+LL | |             Bar::Str { ref mut inner } => inner,
+LL | |             _ => {
+...  |
+LL | |             },
+LL | |         };
+   | |__________^
+   |
+help: consider writing
+   |
+LL ~         let Bar::Str { inner: ref mut signature } = value else {
+LL +                 println!("No signature found");
+LL +                 return;
+LL +             };
+   |
+
+error: aborting due to 33 previous errors
 

@@ -220,5 +220,23 @@ LL | |         b - a
 LL | |     }
    | |_____^ help: replace it with: `{ b.saturating_sub(a) }`
 
-error: aborting due to 24 previous errors
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:314:13
+   |
+LL |     let _ = if a * 2 > b { a * 2 - b } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `(a * 2).saturating_sub(b)`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:317:13
+   |
+LL |     let _ = if a > b * 2 { a - b * 2 } else { 0 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b * 2)`
+
+error: manual arithmetic check found
+  --> tests/ui/implicit_saturating_sub.rs:320:13
+   |
+LL |     let _ = if a < b * 2 { 0 } else { a - b * 2 };
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `a.saturating_sub(b * 2)`
+
+error: aborting due to 27 previous errors
 
