@@ -45,9 +45,9 @@ pub(crate) struct AuxVec {
 /// There is no perfect way of reading the auxiliary vector.
 ///
 /// - If the `std_detect_dlsym_getauxval` cargo feature is enabled, this will use
-/// `getauxval` if its linked to the binary, and otherwise proceed to a fallback implementation.
-/// When `std_detect_dlsym_getauxval` is disabled, this will assume that `getauxval` is
-/// linked to the binary - if that is not the case the behavior is undefined.
+///   `getauxval` if its linked to the binary, and otherwise proceed to a fallback implementation.
+///   When `std_detect_dlsym_getauxval` is disabled, this will assume that `getauxval` is
+///   linked to the binary - if that is not the case the behavior is undefined.
 /// - Otherwise, if the `std_detect_file_io` cargo feature is enabled, it will
 ///   try to read `/proc/self/auxv`.
 /// - If that fails, this function returns an error.
