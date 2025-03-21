@@ -294,13 +294,20 @@ pub trait Iterator {
     #[inline]
     #[unstable(feature = "iter_advance_by", reason = "recently added", issue = "77404")]
     fn advance_by(&mut self, n: usize) -> Result<(), NonZero<usize>> {
-        for i in 0..n {
-            if self.next().is_none() {
-                // SAFETY: `i` is always less than `n`.
-                return Err(unsafe { NonZero::new_unchecked(n - i) });
+        if let Some(n) = NonZero::new(n) {
+            // Drop all items until the count is zero.
+            match self.try_fold(n, |n, item| {
+                drop(item);
+                NonZero::new(n.get() - 1)
+            }) {
+                // The count is zero, so we've advanced by n items.
+                None => Ok(()),
+                // There are still n steps remaining.
+                Some(n) => Err(n),
             }
+        } else {
+            Ok(())
         }
-        Ok(())
     }
 
     /// Returns the `n`th element of the iterator.
