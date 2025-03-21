@@ -83,20 +83,21 @@ that contains only loops and breakable blocks. It tracks where a `break`,
 
 use std::mem;
 
-use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{ExprId, LintLevel};
+use rustc_middle::thir::{ArmId, ExprId, LintLevel};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_middle::{bug, span_bug};
+use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_session::lint::Level;
 use rustc_span::source_map::Spanned;
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument};
 
+use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 
 #[derive(Debug)]
@@ -185,7 +186,9 @@ struct ConstContinuableScope<'tcx> {
     /// the result of a `break` or `return` expression)
     state_place: Place<'tcx>,
 
-    match_arms: SwitchTargets,
+    arms: Box<[ArmId]>,
+    built_match_tree: BuiltMatchTree<'tcx>,
+
     /// Drops that happen on the `return` path and would have happened on the `break` path.
     break_drops: DropTree,
 }
@@ -574,32 +577,48 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// branch to.
     pub(crate) fn in_const_continuable_scope<F>(
         &mut self,
-        match_arms: SwitchTargets,
+        arms: Box<[ArmId]>,
+        built_match_tree: BuiltMatchTree<'tcx>,
         state_place: Place<'tcx>,
         span: Span,
         f: F,
     ) -> BlockAnd<()>
     where
-        F: FnOnce(&mut Builder<'a, 'tcx>),
+        F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<()>,
     {
         let region_scope = self.scopes.topmost();
         let scope = ConstContinuableScope {
             region_scope,
             state_place,
             break_drops: DropTree::new(),
-            match_arms,
+            arms,
+            built_match_tree,
         };
         self.scopes.const_continuable_scopes.push(scope);
-        f(self);
+        let normal_exit_block = f(self);
         let breakable_scope = self.scopes.const_continuable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
 
         let break_block =
             self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
 
-        match break_block {
-            Some(block) => block,
-            None => self.cfg.start_new_block().unit(),
+        match (normal_exit_block, break_block) {
+            (block, None) => block,
+            (normal_block, Some(exit_block)) => {
+                let target = self.cfg.start_new_block();
+                let source_info = self.source_info(span);
+                self.cfg.terminate(
+                    normal_block.into_block(),
+                    source_info,
+                    TerminatorKind::Goto { target },
+                );
+                self.cfg.terminate(
+                    exit_block.into_block(),
+                    source_info,
+                    TerminatorKind::Goto { target },
+                );
+                target.unit()
+            }
         }
     }
 
@@ -766,23 +785,32 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => todo!(),
                 };
 
-                let real_target = match &self.thir[value].kind {
-                    rustc_middle::thir::ExprKind::Adt(value_adt) => scope
-                        .match_arms
-                        .target_for_value(u128::from(value_adt.variant_index.as_u32())),
-                    rustc_middle::thir::ExprKind::Literal { lit, neg } => match lit.node {
-                        LitKind::Int(n, _) => {
-                            let n = if *neg {
-                                (n.get() as i128).overflowing_neg().0 as u128
-                            } else {
-                                n.get()
-                            };
-                            let result = state_ty.primitive_size(self.tcx).truncate(n);
-                            scope.match_arms.target_for_value(result)
-                        }
-                        _ => todo!(),
-                    },
-                    other => todo!("{other:?}"),
+                // the PatCtxt is normally used in pattern exhaustiveness checking, but reused here
+                // because it performs normalization and const evaluation.
+                let dropless_arena = rustc_arena::DroplessArena::default();
+                let typeck_results = self.tcx.typeck(self.def_id);
+                let cx = RustcPatCtxt {
+                    tcx: self.tcx,
+                    typeck_results,
+                    module: self.tcx.parent_module(self.hir_id).to_def_id(),
+                    // FIXME(#132279): We're in a body, should handle opaques.
+                    typing_env: rustc_middle::ty::TypingEnv::non_body_analysis(
+                        self.tcx,
+                        self.def_id,
+                    ),
+                    dropless_arena: &dropless_arena,
+                    match_lint_level: self.hir_id,
+                    whole_match_span: Some(rustc_span::Span::default()),
+                    scrut_span: rustc_span::Span::default(),
+                    refutable: true,
+                    known_valid_scrutinee: true,
+                };
+
+                let Some(real_target) =
+                    self.static_pattern_match(&cx, value, &*scope.arms, &scope.built_match_tree)
+                else {
+                    // self.tcx.dcx().emit_fatal()
+                    todo!()
                 };
 
                 self.block_context.push(BlockFrame::SubExpr);

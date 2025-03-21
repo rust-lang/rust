@@ -2685,7 +2685,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir().span(hir_id);
+        let node_span = self.tcx.hir_span(hir_id);
 
         if !matches!(target, Target::Expression) {
             self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
@@ -2698,7 +2698,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
     }
 
     fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
-        let node_span = self.tcx.hir().span(hir_id);
+        let node_span = self.tcx.hir_span(hir_id);
 
         if !matches!(target, Target::Expression) {
             self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
