@@ -106,10 +106,10 @@ use rustc_hir::hir_id::{HirIdMap, HirIdSet};
 use rustc_hir::intravisit::{FnKind, Visitor, walk_expr};
 use rustc_hir::{
     self as hir, Arm, BindingMode, Block, BlockCheckMode, Body, ByRef, Closure, ConstArgKind, ConstContext,
-    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArgs, HirId, Impl, ImplItem, ImplItemKind,
-    ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode, Param, Pat,
-    PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitFn, TraitItem, TraitItemKind,
-    TraitItemRef, TraitRef, TyKind, UnOp, def,
+    Destination, Expr, ExprField, ExprKind, FnDecl, FnRetTy, GenericArg, GenericArgs, HirId, Impl, ImplItem,
+    ImplItemKind, ImplItemRef, Item, ItemKind, LangItem, LetStmt, MatchSource, Mutability, Node, OwnerId, OwnerNode,
+    Param, Pat, PatExpr, PatExprKind, PatKind, Path, PathSegment, PrimTy, QPath, Stmt, StmtKind, TraitFn, TraitItem,
+    TraitItemKind, TraitItemRef, TraitRef, TyKind, UnOp, def,
 };
 use rustc_lexer::{TokenKind, tokenize};
 use rustc_lint::{LateContext, Level, Lint, LintContext};
@@ -434,7 +434,7 @@ pub fn qpath_generic_tys<'tcx>(qpath: &QPath<'tcx>) -> impl Iterator<Item = &'tc
         .map_or(&[][..], |a| a.args)
         .iter()
         .filter_map(|a| match a {
-            hir::GenericArg::Type(ty) => Some(ty.as_unambig_ty()),
+            GenericArg::Type(ty) => Some(ty.as_unambig_ty()),
             _ => None,
         })
 }
@@ -1420,8 +1420,7 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir_get_parent_item(expr.hir_id).def_id;
     match cx.tcx.hir_node_by_def_id(parent_id) {
         Node::Item(item) => item.kind.ident().map(|ident| ident.name),
-        Node::TraitItem(TraitItem { ident, .. })
-        | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
+        Node::TraitItem(TraitItem { ident, .. }) | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
         _ => None,
     }
 }
@@ -2332,6 +2331,18 @@ pub fn is_expr_used_or_unified(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
 /// Checks if the expression is the final expression returned from a block.
 pub fn is_expr_final_block_expr(tcx: TyCtxt<'_>, expr: &Expr<'_>) -> bool {
     matches!(tcx.parent_hir_node(expr.hir_id), Node::Block(..))
+}
+
+/// Checks if the expression is a temporary value.
+// This logic is the same as the one used in rustc's `check_named_place_expr function`.
+// https://github.com/rust-lang/rust/blob/3ed2a10d173d6c2e0232776af338ca7d080b1cd4/compiler/rustc_hir_typeck/src/expr.rs#L482-L499
+pub fn is_expr_temporary_value(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    !expr.is_place_expr(|base| {
+        cx.typeck_results()
+            .adjustments()
+            .get(base.hir_id)
+            .is_some_and(|x| x.iter().any(|adj| matches!(adj.kind, Adjust::Deref(_))))
+    })
 }
 
 pub fn std_or_core(cx: &LateContext<'_>) -> Option<&'static str> {
@@ -3548,7 +3559,7 @@ pub fn is_block_like(expr: &Expr<'_>) -> bool {
 pub fn binary_expr_needs_parentheses(expr: &Expr<'_>) -> bool {
     fn contains_block(expr: &Expr<'_>, is_operand: bool) -> bool {
         match expr.kind {
-            ExprKind::Binary(_, lhs, _) => contains_block(lhs, true),
+            ExprKind::Binary(_, lhs, _) | ExprKind::Cast(lhs, _) => contains_block(lhs, true),
             _ if is_block_like(expr) => is_operand,
             _ => false,
         }
@@ -3694,4 +3705,22 @@ pub fn is_mutable(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     } else {
         true
     }
+}
+
+/// Peel `Option<…>` from `hir_ty` as long as the HIR name is `Option` and it corresponds to the
+/// `core::Option<_>` type.
+pub fn peel_hir_ty_options<'tcx>(cx: &LateContext<'tcx>, mut hir_ty: &'tcx hir::Ty<'tcx>) -> &'tcx hir::Ty<'tcx> {
+    let Some(option_def_id) = cx.tcx.get_diagnostic_item(sym::Option) else {
+        return hir_ty;
+    };
+    while let TyKind::Path(QPath::Resolved(None, path)) = hir_ty.kind
+        && let Some(segment) = path.segments.last()
+        && segment.ident.name == sym::Option
+        && let Res::Def(DefKind::Enum, def_id) = segment.res
+        && def_id == option_def_id
+        && let [GenericArg::Type(arg_ty)] = segment.args().args
+    {
+        hir_ty = arg_ty.as_unambig_ty();
+    }
+    hir_ty
 }

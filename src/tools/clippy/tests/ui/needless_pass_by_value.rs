@@ -189,6 +189,42 @@ struct Obj(String);
 
 fn prefix_test(_unused_with_prefix: Obj) {}
 
+// Regression test for <https://github.com/rust-lang/rust-clippy/issues/13744>.
+// It's more idiomatic to write `Option<&T>` rather than `&Option<T>`.
+fn option_inner_ref(x: Option<String>) {
+    //~^ ERROR: this argument is passed by value, but not consumed in the function body
+    assert!(x.is_some());
+}
+
+mod non_standard {
+    #[derive(Debug)]
+    pub struct Option<T>(T);
+}
+
+fn non_standard_option(x: non_standard::Option<String>) {
+    //~^ needless_pass_by_value
+    dbg!(&x);
+}
+
+fn option_by_name(x: Option<std::option::Option<core::option::Option<non_standard::Option<String>>>>) {
+    //~^ needless_pass_by_value
+    dbg!(&x);
+}
+
+type OptStr = Option<String>;
+
+fn non_option(x: OptStr) {
+    //~^ needless_pass_by_value
+    dbg!(&x);
+}
+
+type Opt<T> = Option<T>;
+
+fn non_option_either(x: Opt<String>) {
+    //~^ needless_pass_by_value
+    dbg!(&x);
+}
+
 fn main() {
     // This should not cause an ICE either
     // https://github.com/rust-lang/rust-clippy/issues/3144

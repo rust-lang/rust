@@ -17,15 +17,15 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// match std::fs::create_dir("tmp-work-dir") {
-    ///    Ok(_) => println!("Working directory created"),
-    ///    Err(s) => eprintln!("Could not create directory: {s}"),
+    ///     Ok(_) => println!("Working directory created"),
+    ///     Err(s) => eprintln!("Could not create directory: {s}"),
     /// }
     /// ```
     /// Use instead:
     /// ```no_run
     /// match std::fs::create_dir("tmp-work-dir") {
-    ///    Ok(()) => println!("Working directory created"),
-    ///    Err(s) => eprintln!("Could not create directory: {s}"),
+    ///     Ok(()) => println!("Working directory created"),
+    ///     Err(s) => eprintln!("Could not create directory: {s}"),
     /// }
     /// ```
     #[clippy::version = "1.73.0"]

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_block_with_applicability;
-use clippy_utils::{higher, is_from_proc_macro};
+use clippy_utils::{contains_return, higher, is_from_proc_macro};
 use rustc_errors::Applicability;
 use rustc_hir::{BlockCheckMode, Expr, ExprKind, MatchSource};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -86,6 +86,13 @@ impl<'tcx> LateLintPass<'tcx> for BlocksInConditions {
                         if expr.span.from_expansion() || ex.span.from_expansion() {
                             return;
                         }
+
+                        // Linting should not be triggered to cases where `return` is included in the condition.
+                        // #9911
+                        if contains_return(block.expr) {
+                            return;
+                        }
+
                         let mut applicability = Applicability::MachineApplicable;
                         span_lint_and_sugg(
                             cx,

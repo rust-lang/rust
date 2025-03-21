@@ -162,25 +162,23 @@ impl<'tcx> Delegate<'tcx> for EscapeDelegate<'_, 'tcx> {
     }
 
     fn mutate(&mut self, cmt: &PlaceWithHirId<'tcx>, _: HirId) {
-        if cmt.place.projections.is_empty() {
-            if is_argument(self.cx.tcx, cmt.hir_id) {
-                // Skip closure arguments
-                let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
-                if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
+        if cmt.place.projections.is_empty() && is_argument(self.cx.tcx, cmt.hir_id) {
+            // Skip closure arguments
+            let parent_id = self.cx.tcx.parent_hir_id(cmt.hir_id);
+            if let Node::Expr(..) = self.cx.tcx.parent_hir_node(parent_id) {
+                return;
+            }
+
+            // skip if there is a `self` parameter binding to a type
+            // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
+            if let Some(trait_self_ty) = self.trait_self_ty {
+                if self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower && cmt.place.ty().contains(trait_self_ty) {
                     return;
                 }
+            }
 
-                // skip if there is a `self` parameter binding to a type
-                // that contains `Self` (i.e.: `self: Box<Self>`), see #4804
-                if let Some(trait_self_ty) = self.trait_self_ty {
-                    if self.cx.tcx.hir_name(cmt.hir_id) == kw::SelfLower && cmt.place.ty().contains(trait_self_ty) {
-                        return;
-                    }
-                }
-
-                if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
-                    self.set.insert(cmt.hir_id);
-                }
+            if is_non_trait_box(cmt.place.ty()) && !self.is_large_box(cmt.place.ty()) {
+                self.set.insert(cmt.hir_id);
             }
         }
     }
