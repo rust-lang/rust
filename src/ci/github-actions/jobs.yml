@@ -108,8 +108,6 @@ pr:
   - name: x86_64-gnu-llvm-19
     env:
       ENABLE_GCC_CODEGEN: "1"
-      # We are adding (temporarily) a dummy commit on the compiler
-      READ_ONLY_SRC: "0"
       DOCKER_SCRIPT: x86_64-gnu-llvm.sh
     <<: *job-linux-16c
   - name: x86_64-gnu-tools
