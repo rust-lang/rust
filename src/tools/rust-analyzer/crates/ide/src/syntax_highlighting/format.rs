@@ -15,7 +15,7 @@ use crate::{
 pub(super) fn highlight_format_string(
     stack: &mut Highlights,
     sema: &hir::Semantics<'_, ide_db::RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     string: &ast::String,
     expanded_string: &ast::String,
     edition: Edition,

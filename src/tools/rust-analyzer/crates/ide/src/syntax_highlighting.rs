@@ -222,10 +222,7 @@ pub(crate) fn highlight(
     };
 
     let mut hl = highlights::Highlights::new(root.text_range());
-    let krate = match sema.scope(&root) {
-        Some(it) => it.krate(),
-        None => return hl.to_vec(),
-    };
+    let krate = sema.scope(&root).map(|it| it.krate());
     traverse(&mut hl, &sema, config, InRealFile::new(file_id, &root), krate, range_to_highlight);
     hl.to_vec()
 }
@@ -235,7 +232,7 @@ fn traverse(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
     InRealFile { file_id, value: root }: InRealFile<&SyntaxNode>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     range_to_highlight: TextRange,
 ) {
     let is_unlinked = sema.file_to_module_def(file_id).is_none();
@@ -498,7 +495,7 @@ fn string_injections(
     sema: &Semantics<'_, RootDatabase>,
     config: HighlightConfig,
     file_id: EditionedFileId,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     token: SyntaxToken,
     descended_token: &SyntaxToken,
 ) -> ControlFlow<()> {
