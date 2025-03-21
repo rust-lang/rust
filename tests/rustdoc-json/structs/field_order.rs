@@ -15,24 +15,24 @@ pub struct Foo {
     pub vll_9: i32,
 }
 
-//@ set 0 = '$.index[*][?(@.name == "ews_0")].id'
-//@ set 1 = '$.index[*][?(@.name == "dik_1")].id'
-//@ set 2 = '$.index[*][?(@.name == "hsk_2")].id'
-//@ set 3 = '$.index[*][?(@.name == "djt_3")].id'
-//@ set 4 = '$.index[*][?(@.name == "jnr_4")].id'
-//@ set 5 = '$.index[*][?(@.name == "dfs_5")].id'
-//@ set 6 = '$.index[*][?(@.name == "bja_6")].id'
-//@ set 7 = '$.index[*][?(@.name == "lyc_7")].id'
-//@ set 8 = '$.index[*][?(@.name == "yqd_8")].id'
-//@ set 9 = '$.index[*][?(@.name == "vll_9")].id'
+//@ set 0 = '$.index[?(@.name == "ews_0")].id'
+//@ set 1 = '$.index[?(@.name == "dik_1")].id'
+//@ set 2 = '$.index[?(@.name == "hsk_2")].id'
+//@ set 3 = '$.index[?(@.name == "djt_3")].id'
+//@ set 4 = '$.index[?(@.name == "jnr_4")].id'
+//@ set 5 = '$.index[?(@.name == "dfs_5")].id'
+//@ set 6 = '$.index[?(@.name == "bja_6")].id'
+//@ set 7 = '$.index[?(@.name == "lyc_7")].id'
+//@ set 8 = '$.index[?(@.name == "yqd_8")].id'
+//@ set 9 = '$.index[?(@.name == "vll_9")].id'
 
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[0]' $0
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[1]' $1
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[2]' $2
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[3]' $3
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[4]' $4
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[5]' $5
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[6]' $6
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[7]' $7
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[8]' $8
-//@ is '$.index[*][?(@.name == "Foo")].inner.struct.kind.plain.fields[9]' $9
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[0]' $0
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[1]' $1
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[2]' $2
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[3]' $3
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[4]' $4
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[5]' $5
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[6]' $6
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[7]' $7
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[8]' $8
+//@ is '$.index[?(@.name == "Foo")].inner.struct.kind.plain.fields[9]' $9
