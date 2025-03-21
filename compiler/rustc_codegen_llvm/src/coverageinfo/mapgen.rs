@@ -73,12 +73,11 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     // In a single designated CGU, also prepare covfun records for functions
     // in this crate that were instrumented for coverage, but are unused.
     if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
-        let mut unused_instances = unused::gather_unused_function_instances(cx);
-        // Sort the unused instances by symbol name, for the same reason as the used ones.
-        unused_instances.sort_by_cached_key(|&instance| tcx.symbol_name(instance).name);
-        covfun_records.extend(unused_instances.into_iter().filter_map(|instance| {
-            prepare_covfun_record(tcx, &mut global_file_table, instance, false)
-        }));
+        unused::prepare_covfun_records_for_unused_functions(
+            cx,
+            &mut global_file_table,
+            &mut covfun_records,
+        );
     }
 
     // If there are no covfun records for this CGU, don't generate a covmap record.
@@ -97,31 +96,8 @@ pub(crate) fn finalize(cx: &CodegenCx<'_, '_>) {
     // contain multiple covmap records from different compilation units.
     let filenames_hash = llvm_cov::hash_bytes(&filenames_buffer);
 
-    let mut unused_function_names = vec![];
-
     for covfun in &covfun_records {
-        unused_function_names.extend(covfun.mangled_function_name_if_unused());
-
         covfun::generate_covfun_record(cx, filenames_hash, covfun)
-    }
-
-    // For unused functions, we need to take their mangled names and store them
-    // in a specially-named global array. LLVM's `InstrProfiling` pass will
-    // detect this global and include those names in its `__llvm_prf_names`
-    // section. (See `llvm/lib/Transforms/Instrumentation/InstrProfiling.cpp`.)
-    if !unused_function_names.is_empty() {
-        assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
-
-        let name_globals = unused_function_names
-            .into_iter()
-            .map(|mangled_function_name| cx.const_str(mangled_function_name).0)
-            .collect::<Vec<_>>();
-        let initializer = cx.const_array(cx.type_ptr(), &name_globals);
-
-        let array = llvm::add_global(cx.llmod, cx.val_ty(initializer), c"__llvm_coverage_names");
-        llvm::set_global_constant(array, true);
-        llvm::set_linkage(array, llvm::Linkage::InternalLinkage);
-        llvm::set_initializer(array, initializer);
     }
 
     // Generate the coverage map header, which contains the filenames used by
