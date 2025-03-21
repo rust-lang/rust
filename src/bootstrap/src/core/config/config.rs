@@ -16,7 +16,9 @@ use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
+use build_helper::git::{
+    GitConfig, PathFreshness, check_path_modifications, get_closest_merge_commit, output_result,
+};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
@@ -3264,9 +3266,7 @@ impl Config {
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project` and other important places.
-            let has_changes = self
-                .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
-                .is_none();
+            let has_changes = self.has_changes_from_upstream(LLVM_INVALIDATION_PATHS);
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
             if has_changes { false } else { llvm::is_ci_llvm_available_for_target(self, asserts) }
@@ -3294,6 +3294,17 @@ impl Config {
             StringOrBool::String(other) => {
                 panic!("unrecognized option for download-ci-llvm: {:?}", other)
             }
+        }
+    }
+
+    /// Returns true if any of the `paths` have been modified locally.
+    fn has_changes_from_upstream(&self, paths: &[&str]) -> bool {
+        let freshness =
+            check_path_modifications(Some(&self.src), &self.git_config(), paths, CiEnv::current())
+                .unwrap();
+        match freshness {
+            PathFreshness::LastModifiedUpstream { .. } => false,
+            PathFreshness::HasLocalModifications { .. } => true,
         }
     }
 
