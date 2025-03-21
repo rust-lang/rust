@@ -20,14 +20,12 @@ use crate::diagnostics::utils::{
 /// The central struct for constructing the `add_to_diag` method from an annotated struct.
 pub(crate) struct SubdiagnosticDerive {
     diag: syn::Ident,
-    f: syn::Ident,
 }
 
 impl SubdiagnosticDerive {
     pub(crate) fn new() -> Self {
         let diag = format_ident!("diag");
-        let f = format_ident!("f");
-        Self { diag, f }
+        Self { diag }
     }
 
     pub(crate) fn into_tokens(self, mut structure: Structure<'_>) -> TokenStream {
@@ -86,19 +84,16 @@ impl SubdiagnosticDerive {
         };
 
         let diag = &self.diag;
-        let f = &self.f;
 
         // FIXME(edition_2024): Fix the `keyword_idents_2024` lint to not trigger here?
         #[allow(keyword_idents_2024)]
         let ret = structure.gen_impl(quote! {
             gen impl rustc_errors::Subdiagnostic for @Self {
-                fn add_to_diag_with<__G, __F>(
+                fn add_to_diag<__G>(
                     self,
                     #diag: &mut rustc_errors::Diag<'_, __G>,
-                    #f: &__F
                 ) where
                     __G: rustc_errors::EmissionGuarantee,
-                    __F: rustc_errors::SubdiagMessageOp<__G>,
                 {
                     #implementation
                 }
@@ -384,11 +379,10 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 Ok(quote! {})
             }
             "subdiagnostic" => {
-                let f = &self.parent.f;
                 let diag = &self.parent.diag;
                 let binding = &info.binding;
                 self.has_subdiagnostic = true;
-                Ok(quote! { #binding.add_to_diag_with(#diag, #f); })
+                Ok(quote! { #binding.add_to_diag(#diag); })
             }
             _ => {
                 let mut span_attrs = vec![];
@@ -531,12 +525,11 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
         let span_field = self.span_field.value_ref();
 
         let diag = &self.parent.diag;
-        let f = &self.parent.f;
         let mut calls = TokenStream::new();
         for (kind, slug, no_span) in kind_slugs {
             let message = format_ident!("__message");
             calls.extend(
-                quote! { let #message = #f(#diag, crate::fluent_generated::#slug.into()); },
+                quote! { let #message = #diag.eagerly_translate(crate::fluent_generated::#slug); },
             );
 
             let name = format_ident!(
