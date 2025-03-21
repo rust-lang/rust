@@ -23,6 +23,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
     //
     // [hwcap]: https://github.com/torvalds/linux/blob/master/arch/riscv/include/asm/hwcap.h
     let auxv = auxvec::auxv().expect("read auxvec"); // should not fail on RISC-V platform
+    #[allow(clippy::eq_op)]
     enable_feature(
         &mut value,
         Feature::a,
