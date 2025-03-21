@@ -1,5 +1,5 @@
 //@ only-x86_64
-//@ compile-flags: -C opt-level=3
+//@ compile-flags: -C opt-level=3 -C target-cpu=x86-64
 #![crate_type = "lib"]
 
 /// Check that the fast-path of `is_ascii` uses a `pmovmskb` instruction.
