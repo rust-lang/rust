@@ -25,4 +25,16 @@ impl example_runner::Testable for IsFoo {
 const TEST_1: IsFoo = IsFoo("hello");
 
 #[test_case]
-const TEST_2: IsFoo = IsFoo("foo");
+static TEST_2: IsFoo = IsFoo("foo");
+
+// FIXME: `test_case` is currently ignored on anything other than
+// fn/const/static. Should this be a warning/error?
+#[test_case]
+struct _S;
+
+// FIXME: `test_case` is currently ignored on anything other than
+// fn/const/static. Should this be a warning/error?
+#[test_case]
+impl _S {
+    fn _f() {}
+}

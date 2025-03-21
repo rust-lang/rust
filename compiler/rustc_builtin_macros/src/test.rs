@@ -51,21 +51,26 @@ pub(crate) fn expand_test_case(
             return vec![];
         }
     };
-    item = item.map(|mut item| {
-        let test_path_symbol = Symbol::intern(&item_path(
-            // skip the name of the root module
-            &ecx.current_expansion.module.mod_path[1..],
-            &item.ident,
-        ));
-        item.vis = ast::Visibility {
-            span: item.vis.span,
-            kind: ast::VisibilityKind::Public,
-            tokens: None,
-        };
-        item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
-        item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
-        item
-    });
+
+    // `#[test_case]` is valid on functions, consts, and statics. Only modify
+    // the item in those cases.
+    match &mut item.kind {
+        ast::ItemKind::Fn(_) | ast::ItemKind::Const(_) | ast::ItemKind::Static(_) => {
+            item.ident.span = item.ident.span.with_ctxt(sp.ctxt());
+            let test_path_symbol = Symbol::intern(&item_path(
+                // skip the name of the root module
+                &ecx.current_expansion.module.mod_path[1..],
+                &item.ident,
+            ));
+            item.vis = ast::Visibility {
+                span: item.vis.span,
+                kind: ast::VisibilityKind::Public,
+                tokens: None,
+            };
+            item.attrs.push(ecx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, sp));
+        }
+        _ => {}
+    }
 
     let ret = if is_stmt {
         Annotatable::Stmt(P(ecx.stmt_item(item.span, item)))
@@ -162,17 +167,17 @@ pub(crate) fn expand_test_or_bench(
     let ret_ty_sp = cx.with_def_site_ctxt(fn_.sig.decl.output.span());
     let attr_sp = cx.with_def_site_ctxt(attr_sp);
 
-    let test_id = Ident::new(sym::test, attr_sp);
+    let test_ident = Ident::new(sym::test, attr_sp);
 
     // creates test::$name
-    let test_path = |name| cx.path(ret_ty_sp, vec![test_id, Ident::from_str_and_span(name, sp)]);
+    let test_path = |name| cx.path(ret_ty_sp, vec![test_ident, Ident::from_str_and_span(name, sp)]);
 
     // creates test::ShouldPanic::$name
     let should_panic_path = |name| {
         cx.path(
             sp,
             vec![
-                test_id,
+                test_ident,
                 Ident::from_str_and_span("ShouldPanic", sp),
                 Ident::from_str_and_span(name, sp),
             ],
@@ -184,7 +189,7 @@ pub(crate) fn expand_test_or_bench(
         cx.path(
             sp,
             vec![
-                test_id,
+                test_ident,
                 Ident::from_str_and_span("TestType", sp),
                 Ident::from_str_and_span(name, sp),
             ],
@@ -380,7 +385,8 @@ pub(crate) fn expand_test_or_bench(
     });
 
     // extern crate test
-    let test_extern = cx.item(sp, test_id, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
+    let test_extern =
+        cx.item(sp, test_ident, ast::AttrVec::new(), ast::ItemKind::ExternCrate(None));
 
     debug!("synthetic test item:\n{}\n", pprust::item_to_string(&test_const));
 
