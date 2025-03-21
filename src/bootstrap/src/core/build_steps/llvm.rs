@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::git::{PathFreshness, check_path_modifications};
+use build_helper::git::PathFreshness;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
 
@@ -183,31 +183,17 @@ pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
 
 /// Detect whether LLVM sources have been modified locally or not.
 pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshness {
-    let freshness = if is_git {
-        Some(
-            check_path_modifications(
-                Some(&config.src),
-                &config.git_config(),
-                LLVM_INVALIDATION_PATHS,
-                config.ci_env(),
-            )
-            .unwrap(),
-        )
+    if is_git {
+        config.check_path_modifications(LLVM_INVALIDATION_PATHS)
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
-        Some(PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() })
+        PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        None
-    };
-
-    let Some(freshness) = freshness else {
         eprintln!("error: could not find commit hash for downloading LLVM");
         eprintln!("HELP: maybe your repository history is too shallow?");
         eprintln!("HELP: consider disabling `download-ci-llvm`");
         eprintln!("HELP: or fetch enough history to include one upstream commit");
-        panic!();
-    };
-
-    freshness
+        crate::exit!(1);
+    }
 }
 
 /// Returns whether the CI-found LLVM is currently usable.
