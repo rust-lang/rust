@@ -1008,7 +1008,7 @@ impl ::core::cmp::Eq for SyntaxKind {}
 impl ::core::cmp::PartialOrd for SyntaxKind {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> core::option::Option<core::cmp::Ordering> {
-        (*self as u16).partial_cmp(&(*other as u16))
+        Some(self.cmp(other))
     }
 }
 impl ::core::cmp::Ord for SyntaxKind {
