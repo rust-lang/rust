@@ -444,7 +444,6 @@ impl Step for Llvm {
 
         if helpers::forcing_clang_based_tests() {
             enabled_llvm_projects.push("clang");
-            enabled_llvm_projects.push("compiler-rt");
         }
 
         if builder.config.llvm_polly {
@@ -466,6 +465,10 @@ impl Step for Llvm {
         }
 
         let mut enabled_llvm_runtimes = Vec::new();
+
+        if helpers::forcing_clang_based_tests() {
+            enabled_llvm_runtimes.push("compiler-rt");
+        }
 
         if builder.config.llvm_offload {
             enabled_llvm_runtimes.push("offload");

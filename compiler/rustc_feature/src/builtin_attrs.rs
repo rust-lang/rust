@@ -661,6 +661,14 @@ pub static BUILTIN_ATTRIBUTES: &[BuiltinAttribute] = &[
         "`rustc_never_type_options` is used to experiment with never type fallback and work on \
          never type stabilization, and will never be stable"
     ),
+    rustc_attr!(
+        rustc_macro_edition_2021,
+        Normal,
+        template!(Word),
+        ErrorFollowing,
+        EncodeCrossCrate::No,
+        "makes spans in this macro edition 2021"
+    ),
 
     // ==========================================================================
     // Internal attributes: Runtime related:

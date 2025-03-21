@@ -566,6 +566,8 @@ declare_features! (
     (incomplete, mut_ref, "1.79.0", Some(123076)),
     /// Allows using `#[naked]` on functions.
     (unstable, naked_functions, "1.9.0", Some(90957)),
+    /// Allows using `#[target_feature(enable = "...")]` on `#[naked]` on functions.
+    (unstable, naked_functions_target_feature, "1.86.0", Some(138568)),
     /// Allows specifying the as-needed link modifier
     (unstable, native_link_modifiers_as_needed, "1.53.0", Some(81490)),
     /// Allow negative trait implementations.

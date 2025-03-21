@@ -14,11 +14,7 @@ fn main() -> ExitCode {
         &Vec::new(),
     );
     let modified_files = match modified_files {
-        Ok(Some(files)) => files,
-        Ok(None) => {
-            eprintln!("git error");
-            return ExitCode::FAILURE;
-        }
+        Ok(files) => files,
         Err(err) => {
             eprintln!("Could not get modified files from git: \"{err}\"");
             return ExitCode::FAILURE;
