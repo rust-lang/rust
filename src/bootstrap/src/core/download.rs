@@ -720,8 +720,9 @@ download-rustc = false
     #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
         use build_helper::exit;
+        use build_helper::git::PathFreshness;
 
-        use crate::core::build_steps::llvm::detect_llvm_sha;
+        use crate::core::build_steps::llvm::detect_llvm_freshness;
         use crate::core::config::check_incompatible_options_for_ci_llvm;
 
         if !self.llvm_from_ci {
@@ -729,7 +730,11 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
+        let llvm_sha =
+            match detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository()) {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => upstream,
+            };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
