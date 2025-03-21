@@ -1388,7 +1388,7 @@ impl<'db> SemanticsImpl<'db> {
 
         let (mut source_ty, _) = analyzer.type_of_expr(self.db, expr)?;
 
-        analyzer.expr_adjustments(self.db, expr).map(|it| {
+        analyzer.expr_adjustments(expr).map(|it| {
             it.iter()
                 .map(|adjust| {
                     let target =
@@ -1521,7 +1521,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     pub fn resolve_field(&self, field: &ast::FieldExpr) -> Option<Either<Field, TupleField>> {
-        self.analyze(field.syntax())?.resolve_field(self.db, field)
+        self.analyze(field.syntax())?.resolve_field(field)
     }
 
     pub fn resolve_field_fallback(
@@ -1664,7 +1664,7 @@ impl<'db> SemanticsImpl<'db> {
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {
-        self.analyze(record_lit.syntax())?.resolve_variant(self.db, record_lit)
+        self.analyze(record_lit.syntax())?.resolve_variant(record_lit)
     }
 
     pub fn resolve_bind_pat_to_const(&self, pat: &ast::IdentPat) -> Option<ModuleDef> {
