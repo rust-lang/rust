@@ -6,26 +6,21 @@
 #![feature(loop_match)]
 
 fn main() {
-    let mut state = 0;
+    let mut state = 0i32;
     #[loop_match]
     'a: loop {
         state = 'blk: {
             match state {
                 -1 => {
-                    if true {
-                        #[const_continue]
-                        break 'blk 2;
-                    } else {
-                        #[const_continue]
-                        break 'blk 0;
-                    }
+                    #[const_continue]
+                    break 'blk 2;
                 }
                 0 => {
                     #[const_continue]
                     break 'blk -1;
                 }
                 2 => break 'a,
-                _ => break 'a,
+                _ => unreachable!("weird value {:?}", state),
             }
         }
     }
