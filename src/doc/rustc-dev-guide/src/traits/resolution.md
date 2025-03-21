@@ -183,7 +183,7 @@ in that list. If so, it is considered satisfied. More precisely, we
 want to check whether there is a where-clause obligation that is for
 the same trait (or some subtrait) and which can match against the obligation.
 
-[parameter environment]: ../param_env/param_env_summary.html
+[parameter environment]: ../typing_parameter_envs.html
 
 Consider this simple example:
 

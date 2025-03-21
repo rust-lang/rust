@@ -35,7 +35,7 @@ They're the wrappers of the `const_eval` query.
   Statics are special; all other functions do not represent statics correctly
   and have thus assertions preventing their use on statics.
 
-The `const_eval_*` functions use a [`ParamEnv`](./param_env/param_env_summary.html) of environment
+The `const_eval_*` functions use a [`ParamEnv`](./typing_parameter_envs.html) of environment
 in which the constant is evaluated (e.g. the function within which the constant is used)
 and a [`GlobalId`]. The `GlobalId` is made up of an `Instance` referring to a constant
 or static or of an `Instance` of a function and an index into the function's `Promoted` table.
