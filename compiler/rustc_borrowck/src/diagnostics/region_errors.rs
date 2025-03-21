@@ -323,6 +323,30 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
         let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
             None;
 
+        let emit_generic_does_not_live_long_enough =
+            |cx: &mut Self, generic_kind: GenericKind<'_>, span: Span, lower_bound: RegionVid| {
+                // FIXME. We should handle this case better. It
+                // indicates that we have e.g., some region variable
+                // whose value is like `'a+'b` where `'a` and `'b` are
+                // distinct unrelated universal regions that are not
+                // known to outlive one another. It'd be nice to have
+                // some examples where this arises to decide how best
+                // to report it; we could probably handle it by
+                // iterating over the universal regions and reporting
+                // an error that multiple bounds are required.
+                let mut diag = cx.dcx().create_err(GenericDoesNotLiveLongEnough {
+                    kind: generic_kind.to_string(),
+                    span,
+                });
+
+                // Add notes and suggestions for the case of 'static lifetime
+                // implied but not specified when a generic associated types
+                // are from higher-ranked trait bounds
+                cx.suggest_static_lifetime_for_gat_from_hrtb(&mut diag, lower_bound);
+
+                cx.buffer_error(diag);
+            };
+
         for (nll_error, _) in nll_errors.into_iter() {
             match nll_error {
                 // A type-test failed and the constraint was rewritten due
@@ -332,28 +356,8 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     lower_bound,
                     span,
                     failed_due_to_placeholders: true,
-                } => {
-                    // FIXME. We should handle this case better. It
-                    // indicates that we have e.g., some region variable
-                    // whose value is like `'a+'b` where `'a` and `'b` are
-                    // distinct unrelated universal regions that are not
-                    // known to outlive one another. It'd be nice to have
-                    // some examples where this arises to decide how best
-                    // to report it; we could probably handle it by
-                    // iterating over the universal regions and reporting
-                    // an error that multiple bounds are required.
-                    let mut diag = self.dcx().create_err(GenericDoesNotLiveLongEnough {
-                        kind: generic_kind.to_string(),
-                        span,
-                    });
+                } => emit_generic_does_not_live_long_enough(self, generic_kind, span, lower_bound),
 
-                    // Add notes and suggestions for the case of 'static lifetime
-                    // implied but not specified when a generic associated types
-                    // are from higher-ranked trait bounds
-                    self.suggest_static_lifetime_for_gat_from_hrtb(&mut diag, lower_bound);
-
-                    self.buffer_error(diag);
-                }
                 RegionErrorKind::TypeTestError {
                     lower_bound,
                     span,
@@ -363,9 +367,22 @@ impl<'infcx, 'tcx> MirBorrowckCtxt<'_, 'infcx, 'tcx> {
                     // Try to convert the lower-bound region into something named we can print for
                     // the user.
                     let Some(lower_bound_region) = self.to_error_region(lower_bound) else {
-                        unreachable!(
-                            "Found nothing good; lower bound was: {lower_bound:?} for {generic_kind:?} at {span:?}"
+                        // FIXME: this can possibly never happen along this error branch. It's possible
+                        // (and the case in the UI tests) that any lower_bound that's an internal region
+                        // and not something we want in error output and fails the type-test
+                        // evaluation would have been triggered by a higher-ranked misfire that would have
+                        // set `failed_due_to_placeholders` to `true`. The previous code structure
+                        // before elimination of placeholders in borrowck suggests this, since this
+                        // failure was used to trigger related diagnostics. If you think you can figure this out,
+                        // either add a counterexample where this branch is taken and remove this comment,
+                        // or replace this with an `unreachable!()` or similar and describe why.
+                        emit_generic_does_not_live_long_enough(
+                            self,
+                            generic_kind,
+                            span,
+                            lower_bound,
                         );
+                        continue;
                     };
                     debug!(?lower_bound_region);
                     let generic_ty =
