@@ -16,6 +16,7 @@ use rustc_middle::ty::{
 };
 use rustc_span::{Span, sym};
 use rustc_trait_selection::error_reporting::infer::need_type_info::TypeAnnotationNeeded;
+use rustc_trait_selection::opaque_types::check_opaque_type_parameter_valid;
 use rustc_trait_selection::solve;
 use tracing::{debug, instrument};
 
@@ -556,6 +557,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
 
     #[instrument(skip(self), level = "debug")]
     fn visit_opaque_types(&mut self) {
+        let tcx = self.tcx();
         // We clone the opaques instead of stealing them here as they are still used for
         // normalization in the next generation trait solver.
         //
@@ -578,16 +580,43 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                 }
             }
 
-            // Here we only detect impl trait definition conflicts when they
-            // are equal modulo regions.
-            if let Some(last_opaque_ty) =
-                self.typeck_results.concrete_opaque_types.insert(opaque_type_key, hidden_type)
-                && last_opaque_ty.ty != hidden_type.ty
+            if let Err(guar) = check_opaque_type_parameter_valid(
+                &self.fcx,
+                opaque_type_key,
+                hidden_type.span,
+                true,
+            ) {
+                self.typeck_results
+                    .concrete_opaque_types
+                    .insert(opaque_type_key.def_id, ty::OpaqueHiddenType::new_error(tcx, guar));
+            }
+
+            let hidden_type =
+                hidden_type.remap_generic_params_to_declaration_params(opaque_type_key, tcx, true);
+
+            if let Some(prev) = self
+                .typeck_results
+                .concrete_opaque_types
+                .insert(opaque_type_key.def_id, hidden_type)
             {
-                assert!(!self.fcx.next_trait_solver());
-                if let Ok(d) = hidden_type.build_mismatch_error(&last_opaque_ty, self.tcx()) {
-                    d.emit();
+                let entry = &mut self
+                    .typeck_results
+                    .concrete_opaque_types
+                    .get_mut(&opaque_type_key.def_id)
+                    .unwrap();
+                if prev.ty != hidden_type.ty {
+                    if let Some(guar) = self.typeck_results.tainted_by_errors {
+                        entry.ty = Ty::new_error(tcx, guar);
+                    } else {
+                        let (Ok(guar) | Err(guar)) =
+                            prev.build_mismatch_error(&hidden_type, tcx).map(|d| d.emit());
+                        entry.ty = Ty::new_error(tcx, guar);
+                    }
                 }
+
+                // Pick a better span if there is one.
+                // FIXME(oli-obk): collect multiple spans for better diagnostics down the road.
+                entry.span = prev.span.substitute_dummy(hidden_type.span);
             }
         }
     }

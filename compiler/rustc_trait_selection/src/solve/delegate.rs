@@ -149,16 +149,16 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         self.0.instantiate_canonical_var(span, cv_info, universe_map)
     }
 
-    fn insert_hidden_type(
+    fn register_hidden_type_in_storage(
         &self,
-        opaque_type_key: ty::OpaqueTypeKey<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        hidden_ty: Ty<'tcx>,
-        goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
-    ) -> Result<(), NoSolution> {
-        self.0
-            .insert_hidden_type(opaque_type_key, DUMMY_SP, param_env, hidden_ty, goals)
-            .map_err(|_| NoSolution)
+        opaque_type_key: rustc_type_ir::OpaqueTypeKey<Self::Interner>,
+        hidden_ty: <Self::Interner as ty::Interner>::Ty,
+        span: <Self::Interner as ty::Interner>::Span,
+    ) -> Option<<Self::Interner as ty::Interner>::Ty> {
+        self.0.register_hidden_type_in_storage(
+            opaque_type_key,
+            ty::OpaqueHiddenType { span, ty: hidden_ty },
+        )
     }
 
     fn add_item_bounds_for_hidden_type(
@@ -170,15 +170,6 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
         goals: &mut Vec<Goal<'tcx, ty::Predicate<'tcx>>>,
     ) {
         self.0.add_item_bounds_for_hidden_type(def_id, args, param_env, hidden_ty, goals);
-    }
-
-    fn inject_new_hidden_type_unchecked(
-        &self,
-        key: ty::OpaqueTypeKey<'tcx>,
-        hidden_ty: Ty<'tcx>,
-        span: Span,
-    ) {
-        self.0.inject_new_hidden_type_unchecked(key, ty::OpaqueHiddenType { ty: hidden_ty, span })
     }
 
     fn reset_opaque_types(&self) {
@@ -204,6 +195,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
             match self.typing_mode() {
                 TypingMode::Coherence
                 | TypingMode::Analysis { .. }
+                | TypingMode::Borrowck { .. }
                 | TypingMode::PostBorrowckAnalysis { .. } => false,
                 TypingMode::PostAnalysis => {
                     let poly_trait_ref = self.resolve_vars_if_possible(goal_trait_ref);

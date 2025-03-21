@@ -330,6 +330,7 @@ where
             // During analysis, opaques are rigid unless they may be defined by
             // the current body.
             TypingMode::Analysis { defining_opaque_types: non_rigid_opaques }
+            | TypingMode::Borrowck { defining_opaque_types: non_rigid_opaques }
             | TypingMode::PostBorrowckAnalysis { defined_opaque_types: non_rigid_opaques } => {
                 !def_id.as_local().is_some_and(|def_id| non_rigid_opaques.contains(&def_id))
             }

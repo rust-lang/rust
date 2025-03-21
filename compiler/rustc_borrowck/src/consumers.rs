@@ -1,7 +1,7 @@
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
-use rustc_index::{IndexSlice, IndexVec};
+use rustc_index::IndexVec;
 use rustc_middle::mir::{Body, Promoted};
 use rustc_middle::ty::TyCtxt;
 
@@ -100,8 +100,5 @@ pub fn get_body_with_borrowck_facts(
     def: LocalDefId,
     options: ConsumerOptions,
 ) -> BodyWithBorrowckFacts<'_> {
-    let (input_body, promoted) = tcx.mir_promoted(def);
-    let input_body: &Body<'_> = &input_body.borrow();
-    let promoted: &IndexSlice<_, _> = &promoted.borrow();
-    *super::do_mir_borrowck(tcx, input_body, promoted, Some(options)).1.unwrap()
+    *super::do_mir_borrowck(tcx, def, Some(options)).1.unwrap()
 }

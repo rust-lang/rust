@@ -48,7 +48,7 @@ use rustc_serialize::{Decodable, Encodable};
 use rustc_session::lint::LintBuffer;
 pub use rustc_session::lint::RegisteredTools;
 use rustc_span::hygiene::MacroKind;
-use rustc_span::{ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
+use rustc_span::{DUMMY_SP, ExpnId, ExpnKind, Ident, Span, Symbol, kw, sym};
 pub use rustc_type_ir::relate::VarianceDiagInfo;
 pub use rustc_type_ir::*;
 use tracing::{debug, instrument};
@@ -783,6 +783,10 @@ pub struct OpaqueHiddenType<'tcx> {
 }
 
 impl<'tcx> OpaqueHiddenType<'tcx> {
+    pub fn new_error(tcx: TyCtxt<'tcx>, guar: ErrorGuaranteed) -> OpaqueHiddenType<'tcx> {
+        OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(tcx, guar) }
+    }
+
     pub fn build_mismatch_error(
         &self,
         other: &Self,
@@ -808,8 +812,9 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         self,
         opaque_type_key: OpaqueTypeKey<'tcx>,
         tcx: TyCtxt<'tcx>,
-        // typeck errors have subpar spans for opaque types, so delay error reporting until borrowck.
-        ignore_errors: bool,
+        // During writeback in typeck, we don't care about regions and simply
+        // erase them.
+        erase_regions: bool,
     ) -> Self {
         let OpaqueTypeKey { def_id, args } = opaque_type_key;
 
@@ -828,10 +833,10 @@ impl<'tcx> OpaqueHiddenType<'tcx> {
         let map = args.iter().zip(id_args).collect();
         debug!("map = {:#?}", map);
 
-        // Convert the type from the function into a type valid outside
-        // the function, by replacing invalid regions with 'static,
-        // after producing an error for each of them.
-        self.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span, ignore_errors))
+        // Convert the type from the function into a type valid outside by mapping generic
+        // parameters to into the context of the opaque.
+        let this = if erase_regions { tcx.erase_regions(self) } else { self };
+        this.fold_with(&mut opaque_types::ReverseMapper::new(tcx, map, self.span))
     }
 }
 

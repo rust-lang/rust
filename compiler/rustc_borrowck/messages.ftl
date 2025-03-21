@@ -162,13 +162,6 @@ borrowck_opaque_type_lifetime_mismatch =
     .prev_lifetime_label = lifetime `{$prev}` previously used here
     .note = if all non-lifetime generic parameters are the same, but the lifetime parameters differ, it is not possible to differentiate the opaque types
 
-borrowck_opaque_type_non_generic_param =
-    expected generic {$kind} parameter, found `{$ty}`
-    .label = {STREQ($ty, "'static") ->
-        [true] cannot use static lifetime; use a bound lifetime instead or remove the lifetime parameter from the opaque type
-        *[other] this generic parameter must be used with a generic {$kind} parameter
-    }
-
 borrowck_partial_var_move_by_use_in_closure =
     variable {$is_partial ->
         [true] partially moved
