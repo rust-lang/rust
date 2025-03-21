@@ -13,10 +13,10 @@ pub mod nested {
     pub fn Foo() {}
 }
 
-//@ ismany "$.index[*].inner[?(@.use.name == 'Foo')].use.id" $foo_fn $foo_struct
-//@ ismany "$.index[*].inner[?(@.use.name == 'Bar')].use.id" $foo_fn $foo_struct
+//@ ismany "$.index[?(@.inner.use.name == 'Foo')].inner.use.id" $foo_fn $foo_struct
+//@ ismany "$.index[?(@.inner.use.name == 'Bar')].inner.use.id" $foo_fn $foo_struct
 
-//@ count "$.index[*].inner[?(@.use.name == 'Foo')]" 2
-//@ count "$.index[*].inner[?(@.use.name == 'Bar')]" 2
+//@ count "$.index[?(@.inner.use.name == 'Foo')]" 2
+//@ count "$.index[?(@.inner.use.name == 'Bar')]" 2
 pub use Foo as Bar;
 pub use nested::Foo;

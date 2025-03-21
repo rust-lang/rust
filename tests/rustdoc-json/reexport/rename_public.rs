@@ -7,8 +7,8 @@ pub mod inner {
     pub struct Public;
 }
 //@ set import_id = "$.index[?(@.docs=='Re-export')].id"
-//@ !has "$.index[*].inner[?(@.use.name=='Public')]"
-//@ is "$.index[*].inner[?(@.use.name=='NewName')].use.source" \"inner::Public\"
+//@ !has "$.index[?(@.inner.use.name=='Public')]"
+//@ is "$.index[?(@.inner.use.name=='NewName')].inner.use.source" \"inner::Public\"
 /// Re-export
 pub use inner::Public as NewName;
 
