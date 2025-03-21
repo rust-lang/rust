@@ -23,8 +23,8 @@ impl Bar for u32 {
 
 #[define_opaque(Two)]
 fn four<T: Debug, U: Bar>(t: T) -> Two<T, U> {
-    (t, <U as Bar>::FOO)
     //~^ ERROR concrete type differs
+    (t, <U as Bar>::FOO)
 }
 
 fn is_sync<T: Sync>() {}

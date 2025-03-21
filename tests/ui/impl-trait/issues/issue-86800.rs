@@ -29,7 +29,6 @@ where
     F: FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O> + 'f,
 {
     f
-    //~^ ERROR expected generic lifetime parameter, found `'_`
 }
 
 impl Context {
@@ -39,7 +38,6 @@ impl Context {
         &self,
         f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>,
     ) -> TransactionResult<O> {
-        //~^ ERROR expected generic lifetime parameter, found `'_`
         let mut conn = Connection {};
         let mut transaction = TestTransaction { conn: &mut conn };
         f(&mut transaction).await

@@ -17,38 +17,37 @@ mod ex0 {
 }
 mod ex1 {
     type Tait1 = impl Sized;
-    //[current]~^ ERROR unconstrained opaque type
     #[define_opaque(Tait1)]
     fn foo(x: Tait1) -> impl Sized {
+        //[current]~^ ERROR item does not constrain `ex1::Tait1::{opaque#0}`
         let () = x;
     }
 }
 
 mod ex2 {
     type Tait1 = impl Sized;
-    //[current]~^ ERROR unconstrained opaque type
     type Tait2 = impl Sized;
     #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
+        //[current]~^ ERROR item does not constrain `ex2::Tait1::{opaque#0}`
         let () = x;
     }
 }
 
 mod ex3 {
     type Tait1 = impl Sized;
-    //[current]~^ ERROR unconstrained opaque type
     trait Something<T> {}
     impl<T, U> Something<U> for T {}
     type Tait2 = impl Something<Tait1>;
     #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
+        //[current]~^ ERROR item does not constrain `ex3::Tait1::{opaque#0}`
         let () = x;
     }
 }
 
 mod ex4 {
     type Tait1 = impl Sized;
-    //[current]~^ ERROR unconstrained opaque type
     trait Trait<U> {
         type Assoc;
     }
@@ -63,6 +62,7 @@ mod ex4 {
     type Tait2 = impl Trait<(), Assoc = impl Trait<Tait1>>;
     #[define_opaque(Tait1, Tait2)]
     fn foo(x: Tait1) -> Tait2 {
+        //[current]~^ ERROR item does not constrain `ex4::Tait1::{opaque#0}`
         let () = x;
     }
 }
