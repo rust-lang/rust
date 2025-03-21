@@ -38,7 +38,7 @@ directory, and `x` will essentially run `cargo test` on that package.
 Examples:
 
 | Command                                   | Description                           |
-| ----------------------------------------- | ------------------------------------- |
+|-------------------------------------------|---------------------------------------|
 | `./x test library/std`                    | Runs tests on `std` only              |
 | `./x test library/core`                   | Runs tests on `core` only             |
 | `./x test compiler/rustc_data_structures` | Runs tests on `rustc_data_structures` |
@@ -86,7 +86,7 @@ above.
 Examples:
 
 | Command                 | Description                                                        |
-| ----------------------- | ------------------------------------------------------------------ |
+|-------------------------|--------------------------------------------------------------------|
 | `./x fmt --check`       | Checks formatting and exits with an error if formatting is needed. |
 | `./x fmt`               | Runs rustfmt across the entire codebase.                           |
 | `./x test tidy --bless` | First runs rustfmt to format the codebase, then runs tidy checks.  |
@@ -154,6 +154,10 @@ chapter](ecosystem.md) for more details.
 
 A separate infrastructure is used for testing and tracking performance of the
 compiler. See the [Performance testing chapter](perf.md) for more details.
+
+### Codegen backend testing
+
+See [Codegen backend testing](./codegen-backend-tests/intro.md).
 
 ## Miscellaneous information
 
