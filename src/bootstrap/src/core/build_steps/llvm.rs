@@ -14,7 +14,6 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::{env, fs};
 
-use build_helper::ci::CiEnv;
 use build_helper::git::get_closest_merge_commit;
 #[cfg(feature = "tracing")]
 use tracing::instrument;
@@ -174,20 +173,19 @@ pub fn prebuilt_llvm_config(
     LlvmBuildStatus::ShouldBuild(Meta { stamp, res, out_dir, root: root.into() })
 }
 
+/// Paths whose changes invalidate LLVM downloads.
+pub const LLVM_INVALIDATION_PATHS: &[&str] = &[
+    "src/llvm-project",
+    "src/bootstrap/download-ci-llvm-stamp",
+    // the LLVM shared object file is named `LLVM-<LLVM-version>-rust-{version}-nightly`
+    "src/version",
+];
+
 /// This retrieves the LLVM sha we *want* to use, according to git history.
 pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
-        get_closest_merge_commit(
-            Some(&config.src),
-            &config.git_config(),
-            &[
-                config.src.join("src/llvm-project"),
-                config.src.join("src/bootstrap/download-ci-llvm-stamp"),
-                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
-                config.src.join("src/version"),
-            ],
-        )
-        .unwrap()
+        get_closest_merge_commit(Some(&config.src), &config.git_config(), LLVM_INVALIDATION_PATHS)
+            .unwrap()
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         info.sha.trim().to_owned()
     } else {
@@ -207,10 +205,9 @@ pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
 
 /// Returns whether the CI-found LLVM is currently usable.
 ///
-/// This checks both the build triple platform to confirm we're usable at all,
-/// and then verifies if the current HEAD matches the detected LLVM SHA head,
-/// in which case LLVM is indicated as not available.
-pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
+/// This checks the build triple platform to confirm we're usable at all, and if LLVM
+/// with/without assertions is available.
+pub(crate) fn is_ci_llvm_available_for_target(config: &Config, asserts: bool) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -255,39 +252,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         return false;
     }
 
-    if is_ci_llvm_modified(config) {
-        eprintln!("Detected LLVM as non-available: running in CI and modified LLVM in this change");
-        return false;
-    }
-
     true
-}
-
-/// Returns true if we're running in CI with modified LLVM (and thus can't download it)
-pub(crate) fn is_ci_llvm_modified(config: &Config) -> bool {
-    // If not running in a CI environment, return false.
-    if !config.is_running_on_ci {
-        return false;
-    }
-
-    // In rust-lang/rust managed CI, assert the existence of the LLVM submodule.
-    if CiEnv::is_rust_lang_managed_ci_job() {
-        assert!(
-            config.in_tree_llvm_info.is_managed_git_subrepository(),
-            "LLVM submodule must be fetched in rust-lang/rust managed CI builders."
-        );
-    }
-    // If LLVM submodule isn't present, skip the change check as it won't work.
-    else if !config.in_tree_llvm_info.is_managed_git_subrepository() {
-        return false;
-    }
-
-    let llvm_sha = detect_llvm_sha(config, true);
-    let head_sha = crate::output(
-        helpers::git(Some(&config.src)).arg("rev-parse").arg("HEAD").as_command_mut(),
-    );
-    let head_sha = head_sha.trim();
-    llvm_sha == head_sha
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]

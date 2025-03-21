@@ -23,6 +23,7 @@ use tracing::{instrument, span};
 
 use crate::core::build_steps::compile::CODEGEN_BACKEND_PREFIX;
 use crate::core::build_steps::llvm;
+use crate::core::build_steps::llvm::LLVM_INVALIDATION_PATHS;
 pub use crate::core::config::flags::Subcommand;
 use crate::core::config::flags::{Color, Flags, Warnings};
 use crate::core::download::is_download_ci_available;
@@ -3096,7 +3097,14 @@ impl Config {
         download_ci_llvm: Option<StringOrBool>,
         asserts: bool,
     ) -> bool {
-        let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
+        // We don't ever want to use `true` on CI, as we should not
+        // download upstream artifacts if there are any local modifications.
+        let default = if self.is_running_on_ci {
+            StringOrBool::String("if-unchanged".to_string())
+        } else {
+            StringOrBool::Bool(true)
+        };
+        let download_ci_llvm = download_ci_llvm.unwrap_or(default);
 
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
@@ -3109,13 +3117,13 @@ impl Config {
             #[cfg(not(test))]
             self.update_submodule("src/llvm-project");
 
-            // Check for untracked changes in `src/llvm-project`.
+            // Check for untracked changes in `src/llvm-project` and other important places.
             let has_changes = self
-                .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
+                .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
                 .is_none();
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
-            if has_changes { false } else { llvm::is_ci_llvm_available(self, asserts) }
+            if has_changes { false } else { llvm::is_ci_llvm_available_for_target(self, asserts) }
         };
 
         match download_ci_llvm {
@@ -3126,8 +3134,15 @@ impl Config {
                     );
                 }
 
+                if b && self.is_running_on_ci {
+                    // On CI, we must always rebuild LLVM if there were any modifications to it
+                    panic!(
+                        "`llvm.download-ci-llvm` cannot be set to `true` on CI. Use `if-unchanged` instead."
+                    );
+                }
+
                 // If download-ci-llvm=true we also want to check that CI llvm is available
-                b && llvm::is_ci_llvm_available(self, asserts)
+                b && llvm::is_ci_llvm_available_for_target(self, asserts)
             }
             StringOrBool::String(s) if s == "if-unchanged" => if_unchanged(),
             StringOrBool::String(other) => {
