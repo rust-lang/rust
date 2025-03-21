@@ -476,7 +476,6 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
 
     let tokens = grammar.tokens.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
-    // FIXME: This generates enum kinds?
     let nodes = grammar.nodes.iter().map(|name| format_ident!("{}", name)).collect::<Vec<_>>();
 
     let ast = quote! {
@@ -484,7 +483,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         use crate::Edition;
 
         /// The kind of syntax node, e.g. `IDENT`, `USE_KW`, or `STRUCT`.
-        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+        #[derive(Debug)]
         #[repr(u16)]
         pub enum SyntaxKind {
             // Technical SyntaxKinds: they appear temporally during parsing,
@@ -585,7 +584,7 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
         }
 
         #[macro_export]
-        macro_rules! T {
+        macro_rules! T_ {
             #([#punctuation_values] => { $crate::SyntaxKind::#punctuation };)*
             #([#strict_keywords_tokens] => { $crate::SyntaxKind::#strict_keywords_variants };)*
             #([#contextual_keywords_tokens] => { $crate::SyntaxKind::#contextual_keywords_variants };)*
@@ -595,6 +594,38 @@ fn generate_syntax_kinds(grammar: KindsSrc) -> String {
             [ident] => { $crate::SyntaxKind::IDENT };
             [string] => { $crate::SyntaxKind::STRING };
             [shebang] => { $crate::SyntaxKind::SHEBANG };
+        }
+
+        impl ::core::marker::Copy for SyntaxKind {}
+        impl ::core::clone::Clone for SyntaxKind {
+            #[inline]
+            fn clone(&self) -> Self {
+                *self
+            }
+        }
+        impl ::core::cmp::PartialEq for SyntaxKind {
+            #[inline]
+            fn eq(&self, other: &Self) -> bool {
+                (*self as u16) == (*other as u16)
+            }
+        }
+        impl ::core::cmp::Eq for SyntaxKind {}
+        impl ::core::cmp::PartialOrd for SyntaxKind {
+            #[inline]
+            fn partial_cmp(&self, other: &Self) -> core::option::Option<core::cmp::Ordering> {
+                (*self as u16).partial_cmp(&(*other as u16))
+            }
+        }
+        impl ::core::cmp::Ord for SyntaxKind {
+            #[inline]
+            fn cmp(&self, other: &Self) -> core::cmp::Ordering {
+                (*self as u16).cmp(&(*other as u16))
+            }
+        }
+        impl ::core::hash::Hash for SyntaxKind {
+            fn hash<H: ::core::hash::Hasher>(&self, state: &mut H) {
+                ::core::mem::discriminant(self).hash(state);
+            }
         }
     };
 
