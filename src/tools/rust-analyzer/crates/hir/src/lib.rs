@@ -599,6 +599,18 @@ impl Module {
             .collect()
     }
 
+    pub fn resolve_mod_path(
+        &self,
+        db: &dyn HirDatabase,
+        segments: impl IntoIterator<Item = Name>,
+    ) -> Option<impl Iterator<Item = ItemInNs>> {
+        let items = self.id.resolver(db.upcast()).resolve_module_path_in_items(
+            db.upcast(),
+            &ModPath::from_segments(hir_def::path::PathKind::Plain, segments),
+        );
+        Some(items.iter_items().map(|(item, _)| item.into()))
+    }
+
     /// Fills `acc` with the module's diagnostics.
     pub fn diagnostics(
         self,

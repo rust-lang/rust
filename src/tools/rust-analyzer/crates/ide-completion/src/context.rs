@@ -823,6 +823,7 @@ impl<'a> CompletionContext<'a> {
         exclude_flyimport
             .extend(exclude_traits.iter().map(|&t| (t.into(), AutoImportExclusionType::Always)));
 
+        // FIXME: This should be part of `CompletionAnalysis` / `expand_and_analyze`
         let complete_semicolon = if config.add_semicolon_to_unit {
             let inside_closure_ret = token.parent_ancestors().try_for_each(|ancestor| {
                 match_ast! {
