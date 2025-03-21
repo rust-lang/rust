@@ -25,6 +25,8 @@ pub fn f1(x: &[f64], y: f64) -> f64 {
 
     // We want to be sure that the same function can be differentiated in different ways
 
+    // We want to make sure that we can use the macro for functions defined inside of functions
+
     ::core::panicking::panic("not implemented")
 }
 #[rustc_autodiff(Forward, Dual, Const, Dual,)]
@@ -99,5 +101,18 @@ pub fn df5_rev(x: &[f64], dx: &mut [f64], y: f64, dret: f64) -> f64 {
     ::core::hint::black_box(f5(x, y));
     ::core::hint::black_box((dx, dret));
     ::core::hint::black_box(f5(x, y))
+}
+pub fn f6() {
+    #[rustc_autodiff]
+    #[inline(never)]
+    fn inner(x: f32) -> f32 { x * x }
+    #[rustc_autodiff(Forward, Dual, DualOnly,)]
+    #[inline(never)]
+    fn d_inner(x: f32, bx: f32) -> f32 {
+        unsafe { asm!("NOP", options(pure, nomem)); };
+        ::core::hint::black_box(inner(x));
+        ::core::hint::black_box((bx,));
+        ::core::hint::black_box(inner(x))
+    }
 }
 fn main() {}
