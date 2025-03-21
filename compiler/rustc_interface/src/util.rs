@@ -193,15 +193,16 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
             let query_map = current_gcx2.access(|gcx| {
                 tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
                     tls::with(|tcx| {
-                        let (query_map, complete) = QueryCtxt::new(tcx).collect_active_jobs();
-                        if !complete {
-                            // There was an unexpected error collecting all active jobs, which we need
-                            // to find cycles to break.
-                            // We want to avoid panicking in the deadlock handler, so we abort instead.
-                            eprintln!("internal compiler error: failed to get query map in deadlock handler, aborting process");
-                            process::abort();
+                        match QueryCtxt::new(tcx).collect_active_jobs() {
+                            Ok(query_map) => query_map,
+                            Err(_) => {
+                                // There was an unexpected error collecting all active jobs, which we need
+                                // to find cycles to break.
+                                // We want to avoid panicking in the deadlock handler, so we abort instead.
+                                eprintln!("internal compiler error: failed to get query map in deadlock handler, aborting process");
+                                process::abort();
+                            }
                         }
-                        query_map
                     })
                 })
             });
