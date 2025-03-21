@@ -62,7 +62,7 @@ pub fn create(standalone: bool, force: bool, release: bool, name: &str) {
 
     println!("Created toolchain {name}, use it in other projects with e.g. `cargo +{name} clippy`");
     if !standalone {
-        println!("Note: This will need to be re-run whenever the Clippy `rust-toolchain` changes");
+        println!("Note: This will need to be re-run whenever the Clippy `rust-toolchain.toml` changes");
     }
 }
 
