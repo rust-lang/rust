@@ -1824,7 +1824,9 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,
