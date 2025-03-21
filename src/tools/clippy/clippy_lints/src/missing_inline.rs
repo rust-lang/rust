@@ -37,7 +37,7 @@ declare_clippy_lint! {
     ///
     /// struct Baz;
     /// impl Baz {
-    ///    fn private() {} // ok
+    ///     fn private() {} // ok
     /// }
     ///
     /// impl Bar for Baz {
@@ -46,13 +46,13 @@ declare_clippy_lint! {
     ///
     /// pub struct PubBaz;
     /// impl PubBaz {
-    ///    fn private() {} // ok
-    ///    pub fn not_private() {} // missing #[inline]
+    ///     fn private() {} // ok
+    ///     pub fn not_private() {} // missing #[inline]
     /// }
     ///
     /// impl Bar for PubBaz {
-    ///    fn bar() {} // missing #[inline]
-    ///    fn def_bar() {} // missing #[inline]
+    ///     fn bar() {} // missing #[inline]
+    ///     fn def_bar() {} // missing #[inline]
     /// }
     /// ```
     ///

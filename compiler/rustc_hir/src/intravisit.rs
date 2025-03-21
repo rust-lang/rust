@@ -655,7 +655,9 @@ pub fn walk_foreign_item<'v, V: Visitor<'v>>(
         ForeignItemKind::Fn(ref sig, param_names, ref generics) => {
             try_visit!(visitor.visit_generics(generics));
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            walk_list!(visitor, visit_ident, param_names.iter().copied());
+            for ident in param_names.iter().copied() {
+                visit_opt!(visitor, visit_ident, ident);
+            }
         }
         ForeignItemKind::Static(ref typ, _, _) => {
             try_visit!(visitor.visit_ty_unambig(typ));
@@ -1169,7 +1171,9 @@ pub fn walk_trait_item<'v, V: Visitor<'v>>(
         }
         TraitItemKind::Fn(ref sig, TraitFn::Required(param_names)) => {
             try_visit!(visitor.visit_fn_decl(sig.decl));
-            walk_list!(visitor, visit_ident, param_names.iter().copied());
+            for ident in param_names.iter().copied() {
+                visit_opt!(visitor, visit_ident, ident);
+            }
         }
         TraitItemKind::Fn(ref sig, TraitFn::Provided(body_id)) => {
             try_visit!(visitor.visit_fn(

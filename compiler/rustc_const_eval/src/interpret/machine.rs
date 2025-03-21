@@ -400,6 +400,8 @@ pub trait Machine<'tcx>: Sized {
     ) -> InterpResult<'tcx, Self::AllocExtra>;
 
     /// Hook for performing extra checks on a memory read access.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// `range`.
     ///
     /// This will *not* be called during validation!
     ///
@@ -413,6 +415,7 @@ pub trait Machine<'tcx>: Sized {
         _tcx: TyCtxtAt<'tcx>,
         _machine: &Self,
         _alloc_extra: &Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -432,11 +435,14 @@ pub trait Machine<'tcx>: Sized {
 
     /// Hook for performing extra checks on a memory write access.
     /// This is not invoked for ZST accesses, as no write actually happens.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// `range`.
     #[inline(always)]
     fn before_memory_write(
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _range: AllocRange,
     ) -> InterpResult<'tcx> {
@@ -444,11 +450,14 @@ pub trait Machine<'tcx>: Sized {
     }
 
     /// Hook for performing extra operations on a memory deallocation.
+    /// `ptr` will always be a pointer with the provenance in `prov` pointing to the beginning of
+    /// the allocation.
     #[inline(always)]
     fn before_memory_deallocation(
         _tcx: TyCtxtAt<'tcx>,
         _machine: &mut Self,
         _alloc_extra: &mut Self::AllocExtra,
+        _ptr: Pointer<Option<Self::Provenance>>,
         _prov: (AllocId, Self::ProvenanceExtra),
         _size: Size,
         _align: Align,

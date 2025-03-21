@@ -24,12 +24,12 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// # let data : &[i32] = &[1, 2, 3];
-    /// let newlen = data.len() * std::mem::size_of::<i32>();
+    /// let newlen = data.len() * size_of::<i32>();
     /// ```
     /// Use instead:
     /// ```no_run
     /// # let data : &[i32] = &[1, 2, 3];
-    /// let newlen = std::mem::size_of_val(data);
+    /// let newlen = size_of_val(data);
     /// ```
     #[clippy::version = "1.70.0"]
     pub MANUAL_SLICE_SIZE_CALCULATION,

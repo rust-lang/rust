@@ -19,6 +19,7 @@
         target_os = "netbsd",
         target_os = "nto",
         target_os = "openbsd",
+        target_os = "fuchsia",
     ),
     link_section = ".init_array"
 )]

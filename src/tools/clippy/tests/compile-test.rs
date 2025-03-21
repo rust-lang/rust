@@ -16,7 +16,7 @@ use test_utils::IS_RUSTC_TEST_SUITE;
 use ui_test::custom_flags::Flag;
 use ui_test::custom_flags::rustfix::RustfixMode;
 use ui_test::spanned::Spanned;
-use ui_test::{Args, CommandBuilder, Config, Match, OutputConflictHandling, status_emitter};
+use ui_test::{Args, CommandBuilder, Config, Match, error_on_output_conflict, status_emitter};
 
 use std::collections::{BTreeMap, HashMap};
 use std::env::{self, set_var, var_os};
@@ -142,7 +142,7 @@ impl TestContext {
     fn base_config(&self, test_dir: &str, mandatory_annotations: bool) -> Config {
         let target_dir = PathBuf::from(var_os("CARGO_TARGET_DIR").unwrap_or_else(|| "target".into()));
         let mut config = Config {
-            output_conflict_handling: OutputConflictHandling::Error,
+            output_conflict_handling: error_on_output_conflict,
             filter_files: env::var("TESTNAME")
                 .map(|filters| filters.split(',').map(str::to_string).collect())
                 .unwrap_or_default(),
@@ -220,7 +220,7 @@ fn run_internal_tests(cx: &TestContext) {
     if !RUN_INTERNAL_TESTS {
         return;
     }
-    let mut config = cx.base_config("ui-internal", false);
+    let mut config = cx.base_config("ui-internal", true);
     config.bless_command = Some("cargo uitest --features internal -- -- --bless".into());
 
     ui_test::run_tests_generic(
