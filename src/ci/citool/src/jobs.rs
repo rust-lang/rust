@@ -6,7 +6,8 @@ use std::collections::BTreeMap;
 use anyhow::Context as _;
 use serde_yaml::Value;
 
-use crate::{GitHubContext, utils::load_env_var};
+use crate::GitHubContext;
+use crate::utils::load_env_var;
 
 /// Representation of a job loaded from the `src/ci/github-actions/jobs.yml` file.
 #[derive(serde::Deserialize, Debug, Clone)]
