@@ -76,7 +76,7 @@ impl<'tcx> Visitor<'tcx> for V<'_> {
                 }
                 if matches!(
                     ctx,
-                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Move)
+                    PlaceContext::NonMutatingUse(NonMutatingUseContext::Move | NonMutatingUseContext::Inspect)
                         | PlaceContext::MutatingUse(MutatingUseContext::Borrow)
                 ) {
                     self.results[i].local_consume_or_mutate_locs.push(loc);
