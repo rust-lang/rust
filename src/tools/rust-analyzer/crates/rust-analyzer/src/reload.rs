@@ -18,7 +18,7 @@ use std::{iter, mem};
 use hir::{ChangeWithProcMacros, ProcMacrosBuilder, db::DefDatabase};
 use ide_db::{
     FxHashMap,
-    base_db::{CrateGraphBuilder, ProcMacroPaths, RootQueryDb, salsa::Durability},
+    base_db::{CrateGraphBuilder, ProcMacroPaths, salsa::Durability},
 };
 use itertools::Itertools;
 use load_cargo::{ProjectFolders, load_proc_macro};
@@ -408,11 +408,11 @@ impl GlobalState {
             };
 
             let mut builder = ProcMacrosBuilder::default();
-            let chain = proc_macro_clients
+            let proc_macro_clients = proc_macro_clients
                 .iter()
                 .map(|res| res.as_ref().map_err(|e| e.to_string()))
                 .chain(iter::repeat_with(|| Err("proc-macro-srv is not running".into())));
-            for (client, paths) in chain.zip(paths) {
+            for (client, paths) in proc_macro_clients.zip(paths) {
                 paths
                     .into_iter()
                     .map(move |(crate_id, res)| {
@@ -458,11 +458,12 @@ impl GlobalState {
         else {
             return;
         };
+        let switching_from_empty_workspace = self.workspaces.is_empty();
 
-        info!(%cause, ?force_crate_graph_reload);
-        if self.fetch_workspace_error().is_err() && !self.workspaces.is_empty() {
+        info!(%cause, ?force_crate_graph_reload, %switching_from_empty_workspace);
+        if self.fetch_workspace_error().is_err() && !switching_from_empty_workspace {
             if *force_crate_graph_reload {
-                self.recreate_crate_graph(cause);
+                self.recreate_crate_graph(cause, false);
             }
             // It only makes sense to switch to a partially broken workspace
             // if we don't have any workspace at all yet.
@@ -479,36 +480,44 @@ impl GlobalState {
                 .all(|(l, r)| l.eq_ignore_build_data(r));
 
         if same_workspaces {
-            let (workspaces, build_scripts) = match self.fetch_build_data_queue.last_op_result() {
-                Some(FetchBuildDataResponse { workspaces, build_scripts }) => {
-                    (workspaces.clone(), build_scripts.as_slice())
+            if switching_from_empty_workspace {
+                // Switching from empty to empty is a no-op
+                return;
+            }
+            if let Some(FetchBuildDataResponse { workspaces, build_scripts }) =
+                self.fetch_build_data_queue.last_op_result()
+            {
+                if Arc::ptr_eq(workspaces, &self.workspaces) {
+                    info!("set build scripts to workspaces");
+
+                    let workspaces = workspaces
+                        .iter()
+                        .cloned()
+                        .zip(build_scripts)
+                        .map(|(mut ws, bs)| {
+                            ws.set_build_scripts(bs.as_ref().ok().cloned().unwrap_or_default());
+                            ws
+                        })
+                        .collect::<Vec<_>>();
+                    // Workspaces are the same, but we've updated build data.
+                    info!("same workspace, but new build data");
+                    self.workspaces = Arc::new(workspaces);
+                } else {
+                    info!("build scripts do not match the version of the active workspace");
+                    if *force_crate_graph_reload {
+                        self.recreate_crate_graph(cause, switching_from_empty_workspace);
+                    }
+
+                    // Current build scripts do not match the version of the active
+                    // workspace, so there's nothing for us to update.
+                    return;
                 }
-                None => (Default::default(), Default::default()),
-            };
-
-            if Arc::ptr_eq(&workspaces, &self.workspaces) {
-                info!("set build scripts to workspaces");
-
-                let workspaces = workspaces
-                    .iter()
-                    .cloned()
-                    .zip(build_scripts)
-                    .map(|(mut ws, bs)| {
-                        ws.set_build_scripts(bs.as_ref().ok().cloned().unwrap_or_default());
-                        ws
-                    })
-                    .collect::<Vec<_>>();
-                // Workspaces are the same, but we've updated build data.
-                info!("same workspace, but new build data");
-                self.workspaces = Arc::new(workspaces);
             } else {
-                info!("build scripts do not match the version of the active workspace");
                 if *force_crate_graph_reload {
-                    self.recreate_crate_graph(cause);
+                    self.recreate_crate_graph(cause, switching_from_empty_workspace);
                 }
 
-                // Current build scripts do not match the version of the active
-                // workspace, so there's nothing for us to update.
+                // No build scripts but unchanged workspaces, nothing to do here
                 return;
             }
         } else {
@@ -528,8 +537,7 @@ impl GlobalState {
                 self.build_deps_changed = false;
                 self.fetch_build_data_queue.request_op("workspace updated".to_owned(), ());
 
-                let initial_build = self.analysis_host.raw_database().all_crates().is_empty();
-                if !initial_build {
+                if !switching_from_empty_workspace {
                     // `switch_workspaces()` will be called again when build scripts already run, which should
                     // take a short time. If we update the workspace now we will invalidate proc macros and cfgs,
                     // and then when build scripts complete we will invalidate them again.
@@ -691,12 +699,12 @@ impl GlobalState {
         self.local_roots_parent_map = Arc::new(self.source_root_config.source_root_parent_map());
 
         info!(?cause, "recreating the crate graph");
-        self.recreate_crate_graph(cause);
+        self.recreate_crate_graph(cause, switching_from_empty_workspace);
 
         info!("did switch workspaces");
     }
 
-    fn recreate_crate_graph(&mut self, cause: String) {
+    fn recreate_crate_graph(&mut self, cause: String, initial_build: bool) {
         info!(?cause, "Building Crate Graph");
         self.report_progress(
             "Building CrateGraph",
@@ -732,7 +740,6 @@ impl GlobalState {
             ws_to_crate_graph(&self.workspaces, self.config.extra_env(None), load)
         };
         let mut change = ChangeWithProcMacros::new();
-        let initial_build = self.analysis_host.raw_database().all_crates().is_empty();
         if initial_build || !self.config.expand_proc_macros() {
             if self.config.expand_proc_macros() {
                 change.set_proc_macros(
