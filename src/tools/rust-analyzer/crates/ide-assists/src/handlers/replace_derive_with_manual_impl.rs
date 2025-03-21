@@ -73,7 +73,7 @@ pub(crate) fn replace_derive_with_manual_impl(
     let current_edition = current_crate.edition(ctx.db());
 
     let found_traits = items_locator::items_with_name(
-        &ctx.sema,
+        ctx.db(),
         current_crate,
         NameToImport::exact_case_sensitive(path.segments().last()?.to_string()),
         items_locator::AssocSearchMode::Exclude,

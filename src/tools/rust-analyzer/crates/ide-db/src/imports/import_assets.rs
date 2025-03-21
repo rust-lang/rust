@@ -273,12 +273,13 @@ impl ImportAssets {
             Some(it) => it,
             None => return <FxIndexSet<_>>::default().into_iter(),
         };
+        let db = sema.db;
         let krate = self.module_with_candidate.krate();
         let scope_definitions = self.scope_definitions(sema);
         let mod_path = |item| {
             get_mod_path(
-                sema.db,
-                item_for_path_search(sema.db, item)?,
+                db,
+                item_for_path_search(db, item)?,
                 &self.module_with_candidate,
                 prefixed,
                 cfg,
@@ -288,7 +289,7 @@ impl ImportAssets {
 
         match &self.import_candidate {
             ImportCandidate::Path(path_candidate) => path_applicable_imports(
-                sema,
+                db,
                 &scope,
                 krate,
                 path_candidate,
@@ -297,7 +298,7 @@ impl ImportAssets {
             ),
             ImportCandidate::TraitAssocItem(trait_candidate)
             | ImportCandidate::TraitMethod(trait_candidate) => trait_applicable_items(
-                sema,
+                db,
                 krate,
                 &scope,
                 trait_candidate,
@@ -325,7 +326,7 @@ impl ImportAssets {
 }
 
 fn path_applicable_imports(
-    sema: &Semantics<'_, RootDatabase>,
+    db: &RootDatabase,
     scope: &SemanticsScope<'_>,
     current_crate: Crate,
     path_candidate: &PathImportCandidate,
@@ -337,7 +338,7 @@ fn path_applicable_imports(
     match &*path_candidate.qualifier {
         [] => {
             items_locator::items_with_name(
-                sema,
+                db,
                 current_crate,
                 path_candidate.name.clone(),
                 // FIXME: we could look up assoc items by the input and propose those in completion,
@@ -365,7 +366,7 @@ fn path_applicable_imports(
         // what follows
         // FIXME: This doesn't handle visibility
         [first_qsegment, qualifier_rest @ ..] => items_locator::items_with_name(
-            sema,
+            db,
             current_crate,
             NameToImport::Exact(first_qsegment.as_str().to_owned(), true),
             AssocSearchMode::Exclude,
@@ -374,7 +375,7 @@ fn path_applicable_imports(
             // we found imports for `first_qsegment`, now we need to filter these imports by whether
             // they result in resolving the rest of the path successfully
             validate_resolvable(
-                sema,
+                db,
                 scope,
                 mod_path,
                 scope_filter,
@@ -391,7 +392,7 @@ fn path_applicable_imports(
 /// Validates and builds an import for `resolved_qualifier` if the `unresolved_qualifier` appended
 /// to it resolves and there is a validate `candidate` after that.
 fn validate_resolvable(
-    sema: &Semantics<'_, RootDatabase>,
+    db: &RootDatabase,
     scope: &SemanticsScope<'_>,
     mod_path: impl Fn(ItemInNs) -> Option<ModPath>,
     scope_filter: impl Fn(ItemInNs) -> bool,
@@ -406,8 +407,8 @@ fn validate_resolvable(
         if !unresolved_qualifier.is_empty() {
             match resolved_qualifier {
                 ItemInNs::Types(ModuleDef::Module(module)) => {
-                    adjusted_resolved_qualifier = sema
-                        .resolve_mod_path_relative(module, unresolved_qualifier.iter().cloned())?
+                    adjusted_resolved_qualifier = module
+                        .resolve_mod_path(db, unresolved_qualifier.iter().cloned())?
                         .next()?;
                 }
                 // can't resolve multiple segments for non-module item path bases
@@ -424,7 +425,7 @@ fn validate_resolvable(
     let ty = match qualifier {
         ModuleDef::Module(module) => {
             return items_locator::items_with_name_in_module(
-                sema,
+                db,
                 module,
                 candidate.clone(),
                 AssocSearchMode::Exclude,
@@ -439,17 +440,17 @@ fn validate_resolvable(
         ModuleDef::Trait(_) => return None,
         // FIXME
         ModuleDef::TraitAlias(_) => return None,
-        ModuleDef::TypeAlias(alias) => alias.ty(sema.db),
-        ModuleDef::BuiltinType(builtin) => builtin.ty(sema.db),
-        ModuleDef::Adt(adt) => adt.ty(sema.db),
+        ModuleDef::TypeAlias(alias) => alias.ty(db),
+        ModuleDef::BuiltinType(builtin) => builtin.ty(db),
+        ModuleDef::Adt(adt) => adt.ty(db),
         _ => return None,
     };
-    ty.iterate_path_candidates(sema.db, scope, &FxHashSet::default(), None, None, |assoc| {
+    ty.iterate_path_candidates(db, scope, &FxHashSet::default(), None, None, |assoc| {
         // FIXME: Support extra trait imports
-        if assoc.container_or_implemented_trait(sema.db).is_some() {
+        if assoc.container_or_implemented_trait(db).is_some() {
             return None;
         }
-        let name = assoc.name(sema.db)?;
+        let name = assoc.name(db)?;
         let is_match = match candidate {
             NameToImport::Prefix(text, true) => name.as_str().starts_with(text),
             NameToImport::Prefix(text, false) => {
@@ -495,7 +496,7 @@ fn item_for_path_search_assoc(db: &RootDatabase, assoc_item: AssocItem) -> Optio
 }
 
 fn trait_applicable_items(
-    sema: &Semantics<'_, RootDatabase>,
+    db: &RootDatabase,
     current_crate: Crate,
     scope: &SemanticsScope<'_>,
     trait_candidate: &TraitImportCandidate,
@@ -505,15 +506,13 @@ fn trait_applicable_items(
 ) -> FxIndexSet<LocatedImport> {
     let _p = tracing::info_span!("ImportAssets::trait_applicable_items").entered();
 
-    let db = sema.db;
-
     let inherent_traits = trait_candidate.receiver_ty.applicable_inherent_traits(db);
     let env_traits = trait_candidate.receiver_ty.env_traits(db);
     let related_traits = inherent_traits.chain(env_traits).collect::<FxHashSet<_>>();
 
     let mut required_assoc_items = FxHashSet::default();
     let mut trait_candidates: FxHashSet<_> = items_locator::items_with_name(
-        sema,
+        db,
         current_crate,
         trait_candidate.assoc_item_name.clone(),
         AssocSearchMode::AssocItemsOnly,
