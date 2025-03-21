@@ -261,6 +261,11 @@ pub fn check_path_modifications(
         upstream_sha
     };
 
+    // For local environments, we want to find out if something has changed
+    // from the latest upstream commit.
+    // However, that should be equivalent to checking if something has changed
+    // from the latest upstream commit *that modified `target_paths`*, and
+    // with this approach we do not need to invoke git an additional time.
     if has_changed_since(git_dir, &upstream_sha, target_paths) {
         Ok(PathFreshness::HasLocalModifications { upstream: upstream_sha })
     } else {
