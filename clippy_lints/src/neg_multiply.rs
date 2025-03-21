@@ -16,9 +16,6 @@ declare_clippy_lint! {
     /// ### Why is this bad?
     /// It's more readable to just negate.
     ///
-    /// ### Known problems
-    /// This only catches integers (for now).
-    ///
     /// ### Example
     /// ```rust,ignore
     /// let a = x * -1;
@@ -53,8 +50,11 @@ impl<'tcx> LateLintPass<'tcx> for NegMultiply {
 
 fn check_mul(cx: &LateContext<'_>, span: Span, lit: &Expr<'_>, exp: &Expr<'_>) {
     if let ExprKind::Lit(l) = lit.kind
-        && consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)) == Constant::Int(1)
-        && cx.typeck_results().expr_ty(exp).is_integral()
+        && matches!(
+            consts::lit_to_mir_constant(&l.node, cx.typeck_results().expr_ty_opt(lit)),
+            Constant::Int(1) | Constant::F16(1.0) | Constant::F32(1.0) | Constant::F64(1.0) | Constant::F128(1.0)
+        )
+        && cx.typeck_results().expr_ty(exp).is_numeric()
     {
         let mut applicability = Applicability::MachineApplicable;
         let (snip, from_macro) = snippet_with_context(cx, exp.span, span.ctxt(), "..", &mut applicability);
