@@ -1,8 +1,8 @@
 //! Implementation of "closure return type" inlay hints.
 //!
 //! Tests live in [`bind_pat`][super::bind_pat] module.
-use hir::DisplayTarget;
-use ide_db::famous_defs::FamousDefs;
+use hir::{DisplayTarget, HirDisplay};
+use ide_db::{famous_defs::FamousDefs, text_edit::TextEdit};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -48,7 +48,6 @@ pub(super) fn hints(
     if arrow.is_none() {
         label.prepend_str(" -> ");
     }
-    // FIXME?: We could provide text edit to insert braces for closures with non-block body.
     let text_edit = if has_block_body {
         ty_to_text_edit(
             sema,
@@ -62,7 +61,30 @@ pub(super) fn hints(
             if arrow.is_none() { " -> " } else { "" },
         )
     } else {
-        None
+        Some(config.lazy_text_edit(|| {
+            let body = closure.body();
+            let body_range = match body {
+                Some(body) => body.syntax().text_range(),
+                None => return TextEdit::builder().finish(),
+            };
+            let mut builder = TextEdit::builder();
+            let insert_pos = param_list.syntax().text_range().end();
+
+            let rendered = match sema.scope(closure.syntax()).and_then(|scope| {
+                ty.display_source_code(scope.db, scope.module().into(), false).ok()
+            }) {
+                Some(rendered) => rendered,
+                None => return TextEdit::builder().finish(),
+            };
+
+            let arrow_text = if arrow.is_none() { " -> ".to_owned() } else { "".to_owned() };
+            builder.insert(insert_pos, arrow_text);
+            builder.insert(insert_pos, rendered);
+            builder.insert(body_range.start(), "{ ".to_owned());
+            builder.insert(body_range.end(), " }".to_owned());
+
+            builder.finish()
+        }))
     };
 
     acc.push(InlayHint {
