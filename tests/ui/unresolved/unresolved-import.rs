@@ -31,6 +31,8 @@ mod food {
 
     mod zug {
         pub mod baz {
+        //~^ NOTE module `food::zug::baz` exists but is inaccessible
+        //~| NOTE not accessible
             pub struct Foobar;
         }
     }
