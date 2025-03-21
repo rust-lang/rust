@@ -51,7 +51,7 @@ pub fn df2() {
 pub fn f3(x: &[f64], y: f64) -> f64 {
     ::core::panicking::panic("not implemented")
 }
-#[rustc_autodiff(ReverseFirst, Duplicated, Const, Active,)]
+#[rustc_autodiff(Reverse, Duplicated, Const, Active,)]
 #[inline(never)]
 pub fn df3(x: &[f64], dx: &mut [f64], y: f64, dret: f64) -> f64 {
     unsafe { asm!("NOP", options(pure, nomem)); };
