@@ -3,17 +3,17 @@
 #![no_std]
 
 mod inner {
-    //@ set trait_id = "$.index[*][?(@.name=='Trait')].id"
+    //@ set trait_id = "$.index[?(@.name=='Trait')].id"
     pub trait Trait {}
 }
 
-//@ set export_id = "$.index[*][?(@.docs=='First re-export')].id"
-//@ is "$.index[*].inner[?(@.use.name=='Trait')].use.id" $trait_id
+//@ set export_id = "$.index[?(@.docs=='First re-export')].id"
+//@ is "$.index[?(@.inner.use.name=='Trait')].inner.use.id" $trait_id
 /// First re-export
 pub use inner::Trait;
-//@ set reexport_id = "$.index[*][?(@.docs=='Second re-export')].id"
-//@ is "$.index[*].inner[?(@.use.name=='Reexport')].use.id" $trait_id
+//@ set reexport_id = "$.index[?(@.docs=='Second re-export')].id"
+//@ is "$.index[?(@.inner.use.name=='Reexport')].inner.use.id" $trait_id
 /// Second re-export
 pub use inner::Trait as Reexport;
 
-//@ ismany "$.index[*][?(@.name=='same_type_reexported_more_than_once')].inner.module.items[*]" $reexport_id $export_id
+//@ ismany "$.index[?(@.name=='same_type_reexported_more_than_once')].inner.module.items[*]" $reexport_id $export_id
