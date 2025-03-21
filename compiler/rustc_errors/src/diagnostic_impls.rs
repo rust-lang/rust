@@ -19,7 +19,7 @@ use {rustc_ast as ast, rustc_hir as hir};
 use crate::diagnostic::DiagLocation;
 use crate::{
     Diag, DiagArgValue, DiagCtxtHandle, Diagnostic, EmissionGuarantee, ErrCode, IntoDiagArg, Level,
-    SubdiagMessageOp, Subdiagnostic, fluent_generated as fluent,
+    Subdiagnostic, fluent_generated as fluent,
 };
 
 pub struct DiagArgFromDisplay<'a>(pub &'a dyn fmt::Display);
@@ -384,11 +384,7 @@ pub struct SingleLabelManySpans {
     pub label: &'static str,
 }
 impl Subdiagnostic for SingleLabelManySpans {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        _: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         diag.span_labels(self.spans, self.label);
     }
 }

@@ -3,9 +3,7 @@ use std::ops::ControlFlow;
 
 use hir::intravisit::{self, Visitor};
 use rustc_ast::Recovered;
-use rustc_errors::{
-    Applicability, Diag, EmissionGuarantee, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
-};
+use rustc_errors::{Applicability, Diag, EmissionGuarantee, Subdiagnostic, SuggestionStyle};
 use rustc_hir::{self as hir, HirIdSet};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::adjustment::Adjust;
@@ -327,11 +325,7 @@ struct IfLetRescopeRewrite {
 }
 
 impl Subdiagnostic for IfLetRescopeRewrite {
-    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
-        self,
-        diag: &mut Diag<'_, G>,
-        f: &F,
-    ) {
+    fn add_to_diag<G: EmissionGuarantee>(self, diag: &mut Diag<'_, G>) {
         let mut suggestions = vec![];
         for match_head in self.match_heads {
             match match_head {
@@ -360,7 +354,7 @@ impl Subdiagnostic for IfLetRescopeRewrite {
                 .chain(repeat('}').take(closing_brackets.count))
                 .collect(),
         ));
-        let msg = f(diag, crate::fluent_generated::lint_suggestion);
+        let msg = diag.eagerly_translate(crate::fluent_generated::lint_suggestion);
         diag.multipart_suggestion_with_style(
             msg,
             suggestions,
