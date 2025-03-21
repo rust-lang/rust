@@ -35,11 +35,11 @@ if [ "$NO_CHANGE_USER" = "" ]; then
     export HOME=/home/user
     unset LOCAL_USER_ID
 
-    # Give ownership of necessary directories to the user
-    change_ownership_if_needed .
-    mkdir -p /cargo
-    change_ownership_if_needed /cargo
-    change_ownership_if_needed /checkout
+#   # Give ownership of necessary directories to the user
+#   change_ownership_if_needed .
+#   mkdir -p /cargo
+#   change_ownership_if_needed /cargo
+#   change_ownership_if_needed /checkout
 
     # Ensure that runners are able to execute git commands in the worktree,
     # overriding the typical git protections. In our docker container we're running

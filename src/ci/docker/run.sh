@@ -296,6 +296,7 @@ else
   args="$args --volume $objdir:/checkout/obj"
   args="$args --volume $HOME/.cargo:/cargo"
   args="$args --volume /tmp/toolstate:/tmp/toolstate"
+
   id=$(id -u)
   if [[ "$id" != 0 && "$(docker version)" =~ Podman ]]; then
     # Rootless podman creates a separate user namespace, where an inner
