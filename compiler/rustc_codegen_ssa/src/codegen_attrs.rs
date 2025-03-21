@@ -790,16 +790,10 @@ fn autodiff_attrs(tcx: TyCtxt<'_>, id: DefId) -> Option<AutoDiffAttrs> {
 
     // check for exactly one autodiff attribute on placeholder functions.
     // There should only be one, since we generate a new placeholder per ad macro.
-    // FIXME(ZuseZ4): re-enable this check. Currently we add multiple, which doesn't cause harm but
-    // looks strange e.g. under cargo-expand.
     let attr = match &attrs[..] {
         [] => return None,
         [attr] => attr,
-        // These two attributes are the same and unfortunately duplicated due to a previous bug.
-        [attr, _attr2] => attr,
         _ => {
-            //FIXME(ZuseZ4): Once we fixed our parser, we should also prohibit the two-attribute
-            //branch above.
             span_bug!(attrs[1].span(), "cg_ssa: rustc_autodiff should only exist once per source");
         }
     };
