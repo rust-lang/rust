@@ -15,7 +15,6 @@ type Foo = impl Sized;
 
 #[define_opaque(Foo)]
 fn weird_bound<X>(x: &<X as Trait<'static>>::Out<Foo>) -> X
-//[old]~^ ERROR: item does not constrain
 where
     for<'a> X: Trait<'a>,
     for<'a> <X as Trait<'a>>::Out<()>: Copy,

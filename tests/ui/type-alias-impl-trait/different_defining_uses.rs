@@ -12,6 +12,6 @@ fn foo() -> Foo {
 
 #[define_opaque(Foo)]
 fn bar() -> Foo {
-    42i32
     //~^ ERROR concrete type differs from previous
+    42i32
 }

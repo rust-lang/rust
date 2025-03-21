@@ -1,14 +1,14 @@
 error: concrete type differs from previous defining opaque type use
-  --> $DIR/generic_duplicate_param_use9.rs:21:5
+  --> $DIR/generic_duplicate_param_use9.rs:20:45
    |
-LL |     (t, u, 42)
-   |     ^^^^^^^^^^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
+LL | fn three<T: Debug, U: Debug>(t: T, u: U) -> Two<T, U> {
+   |                                             ^^^^^^^^^ expected `(A, B, <A as Foo>::Bar)`, got `(A, B, i32)`
    |
 note: previous use here
-  --> $DIR/generic_duplicate_param_use9.rs:16:5
+  --> $DIR/generic_duplicate_param_use9.rs:15:49
    |
-LL |     (t, u, T::BAR)
-   |     ^^^^^^^^^^^^^^
+LL | fn two<T: Debug + Foo, U: Debug>(t: T, u: U) -> Two<T, U> {
+   |                                                 ^^^^^^^^^
 
 error: aborting due to 1 previous error
 

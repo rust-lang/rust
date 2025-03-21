@@ -18,7 +18,7 @@ impl std::ops::Deref for CallMe {
             async move { *val * 2 }
         }
 
-        &inner //~ ERROR: expected generic lifetime parameter, found `'_`
+        &inner
     }
 }
 

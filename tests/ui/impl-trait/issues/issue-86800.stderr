@@ -12,7 +12,7 @@ LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResu
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: item does not constrain `TransactionFuture::{opaque#0}`
-  --> $DIR/issue-86800.rs:37:14
+  --> $DIR/issue-86800.rs:36:14
    |
 LL |     async fn do_transaction<O>(
    |              ^^^^^^^^^^^^^^
@@ -24,30 +24,5 @@ note: this opaque type is supposed to be constrained
 LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
    |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-86800.rs:31:5
-   |
-LL | type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
-   |                        --- this generic parameter must be used with a generic lifetime parameter
-...
-LL |     f
-   |     ^
+error: aborting due to 2 previous errors
 
-error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/issue-86800.rs:41:31
-   |
-LL |   type TransactionFuture<'__, O> = impl '__ + Future<Output = TransactionResult<O>>;
-   |                          --- this generic parameter must be used with a generic lifetime parameter
-...
-LL |       ) -> TransactionResult<O> {
-   |  _______________________________^
-LL | |
-LL | |         let mut conn = Connection {};
-LL | |         let mut transaction = TestTransaction { conn: &mut conn };
-LL | |         f(&mut transaction).await
-LL | |     }
-   | |_____^
-
-error: aborting due to 4 previous errors
-
-For more information about this error, try `rustc --explain E0792`.
