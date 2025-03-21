@@ -13,12 +13,5 @@ LL |         [(); loop {}];
    |              ^^^^^^^
    = note: `#[deny(long_running_const_eval)]` on by default
 
-error[E0282]: type annotations needed
-  --> $DIR/do-not-ice-long-constant-evaluation-in-for-loop.rs:3:14
-   |
-LL |     for _ in 0..0 {
-   |              ^^^^ cannot infer type for struct `std::ops::Range<{integer}>`
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0282`.
