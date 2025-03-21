@@ -299,6 +299,8 @@ pub struct FormattingOptions {
     ///      a &str size when stored in (the upper bits of) the same field.
     ///      (fmt::Arguments will make use of this property in the future.)
     /// ```
+    // Note: This could use a special niche type with range 0x8000_0000..=0xfdd0ffff.
+    // It's unclear if that's useful, though.
     flags: u32,
     /// Width if width flag (bit 27) above is set. Otherwise, always 0.
     width: u16,
