@@ -171,6 +171,7 @@ declare_passes! {
     mod remove_zsts : RemoveZsts;
     mod required_consts : RequiredConstsVisitor;
     mod post_analysis_normalize : PostAnalysisNormalize;
+    mod prop_rvalues : PropRvalues;
     mod sanity_check : SanityCheck;
     // This pass is public to allow external drivers to perform MIR cleanup
     pub mod simplify :
@@ -721,6 +722,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &copy_prop::CopyProp,
             &dead_store_elimination::DeadStoreElimination::Final,
             &nrvo::RenameReturnPlace,
+            &prop_rvalues::PropRvalues,
             &simplify::SimplifyLocals::Final,
             &multiple_return_terminators::MultipleReturnTerminators,
             &large_enums::EnumSizeOpt { discrepancy: 128 },
