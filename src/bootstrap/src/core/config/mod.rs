@@ -254,12 +254,14 @@ impl<'de> Deserialize<'de> for CompilerBuiltins {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum OverrideAllocator {
     Jemalloc,
+    Mimalloc,
 }
 
 impl OverrideAllocator {
     pub fn feature_name(self) -> &'static str {
         match self {
             OverrideAllocator::Jemalloc => "jemalloc",
+            OverrideAllocator::Mimalloc => "mimalloc",
         }
     }
 }
@@ -272,7 +274,8 @@ impl<'de> Deserialize<'de> for OverrideAllocator {
         let name = String::deserialize(deserializer)?;
         match name.as_str() {
             "jemalloc" => Ok(Self::Jemalloc),
-            other => Err(serde::de::Error::unknown_variant(other, &["jemalloc"])),
+            "mimalloc" => Ok(Self::Mimalloc),
+            other => Err(serde::de::Error::unknown_variant(other, &["jemalloc", "mimalloc"])),
         }
     }
 }
