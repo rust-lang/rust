@@ -116,6 +116,8 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `hard-float`
 `hard-float-abi`
 `hard-tp`
+`harden-sls-ijmp`
+`harden-sls-ret`
 `hbc`
 `high-registers`
 `high-word`
@@ -192,6 +194,9 @@ LL |     cfg!(target_feature = "_UNEXPECTED_VALUE");
 `relax`
 `relaxed-simd`
 `reserve-x18`
+`retpoline-external-thunk`
+`retpoline-indirect-branches`
+`retpoline-indirect-calls`
 `rtm`
 `sb`
 `scq`
