@@ -189,6 +189,20 @@ where
             debug_assert!(ecx.opaque_type_is_rigid(opaque_ty.def_id));
         }
 
+        if let ty::CoroutineWitness(def_id, _) = goal.predicate.self_ty().kind() {
+            match ecx.typing_mode() {
+                TypingMode::Analysis { stalled_generators, defining_opaque_types: _ } => {
+                    if def_id.as_local().is_some_and(|def_id| stalled_generators.contains(&def_id))
+                    {
+                        return ecx.forced_ambiguity(MaybeCause::Ambiguity);
+                    }
+                }
+                TypingMode::Coherence
+                | TypingMode::PostAnalysis
+                | TypingMode::PostBorrowckAnalysis { defined_opaque_types: _ } => {}
+            }
+        }
+
         ecx.probe_and_evaluate_goal_for_constituent_tys(
             CandidateSource::BuiltinImpl(BuiltinImplSource::Misc),
             goal,
