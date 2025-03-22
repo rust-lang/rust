@@ -33,7 +33,7 @@ where
                 );
                 self.evaluate_added_goals_and_make_canonical_response(Certainty::AMBIGUOUS)
             }
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis { defining_opaque_types, stalled_generators: _ } => {
                 let Some(def_id) = opaque_ty
                     .def_id
                     .as_local()

@@ -163,6 +163,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Resume type defaults to `()` if the coroutine has no argument.
                 let resume_ty = liberated_sig.inputs().get(0).copied().unwrap_or(tcx.types.unit);
 
+                // TODO: In the new solver, we can just instantiate this eagerly
+                // with the witness. This will ensure that goals that don't need
+                // to stall on interior types will get processed eagerly.
                 let interior = self.next_ty_var(expr_span);
                 self.deferred_coroutine_interiors.borrow_mut().push((expr_def_id, interior));
 

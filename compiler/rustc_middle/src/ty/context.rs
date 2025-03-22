@@ -106,7 +106,7 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
     ) -> Self::PredefinedOpaques {
         self.mk_predefined_opaques_in_body(data)
     }
-    type DefiningOpaqueTypes = &'tcx ty::List<LocalDefId>;
+    type LocalDefIds = &'tcx ty::List<LocalDefId>;
     type CanonicalVars = CanonicalVarInfos<'tcx>;
     fn mk_canonical_var_infos(self, infos: &[ty::CanonicalVarInfo<Self>]) -> Self::CanonicalVars {
         self.mk_canonical_var_infos(infos)
@@ -674,8 +674,12 @@ impl<'tcx> Interner for TyCtxt<'tcx> {
         self.anonymize_bound_vars(binder)
     }
 
-    fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::DefiningOpaqueTypes {
+    fn opaque_types_defined_by(self, defining_anchor: LocalDefId) -> Self::LocalDefIds {
         self.opaque_types_defined_by(defining_anchor)
+    }
+
+    fn stalled_generators_within(self, defining_anchor: Self::LocalDefId) -> Self::LocalDefIds {
+        self.stalled_generators_within(defining_anchor)
     }
 }
 
