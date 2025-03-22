@@ -21,6 +21,7 @@ use tracing::{debug, instrument};
 
 use super::TypingEnv;
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use crate::traits::ObligationCause;
 use crate::mir;
 use crate::query::Providers;
 use crate::ty::layout::{FloatExt, IntegerExt};
@@ -216,7 +217,12 @@ impl<'tcx> TyCtxt<'tcx> {
         typing_env: ty::TypingEnv<'tcx>,
     ) -> Ty<'tcx> {
         let tcx = self;
-        tcx.struct_tail_raw(ty, |ty| tcx.normalize_erasing_regions(typing_env, ty), || {})
+        tcx.struct_tail_raw(
+            ty,
+            |ty| tcx.normalize_erasing_regions(typing_env, ty),
+            || {}, // ✅ Closure goes **before** ObligationCause
+            ObligationCause::dummy(), // ✅ ObligationCause is **last**
+        )
     }
 
     /// Returns true if a type has metadata.
@@ -249,23 +255,27 @@ impl<'tcx> TyCtxt<'tcx> {
         self,
         mut ty: Ty<'tcx>,
         mut normalize: impl FnMut(Ty<'tcx>) -> Ty<'tcx>,
-        // This is currently used to allow us to walk a ValTree
-        // in lockstep with the type in order to get the ValTree branch that
-        // corresponds to an unsized field.
         mut f: impl FnMut() -> (),
+        obligation_cause: ObligationCause<'tcx>,
     ) -> Ty<'tcx> {
         let recursion_limit = self.recursion_limit();
+
         for iteration in 0.. {
             if !recursion_limit.value_within_limit(iteration) {
                 let suggested_limit = match recursion_limit {
                     Limit(0) => Limit(2),
                     limit => limit * 2,
                 };
-                let reported = self
-                    .dcx()
-                    .emit_err(crate::error::RecursionLimitReached { ty, suggested_limit });
+
+                let reported = self.dcx().emit_err(crate::error::RecursionLimitReached {
+                    ty,
+                    suggested_limit,
+                    span: obligation_cause.span,
+                });
+
                 return Ty::new_error(self, reported);
             }
+
             match *ty.kind() {
                 ty::Adt(def, args) => {
                     if !def.is_struct() {
@@ -301,13 +311,13 @@ impl<'tcx> TyCtxt<'tcx> {
                     }
                 }
 
-                _ => {
-                    break;
-                }
+                _ => break,
             }
         }
+
         ty
     }
+
 
     /// Same as applying `struct_tail` on `source` and `target`, but only
     /// keeps going as long as the two types are instances of the same
