@@ -37,7 +37,9 @@ use crate::core::builder;
 use crate::core::builder::Kind;
 use crate::core::config::{DryRun, LldMode, LlvmLibunwind, Target, TargetSelection, flags};
 use crate::utils::exec::{BehaviorOnFailure, BootstrapCommand, CommandOutput, OutputMode, command};
-use crate::utils::helpers::{self, dir_is_empty, exe, libdir, output, set_file_times, symlink_dir};
+use crate::utils::helpers::{
+    self, dir_is_empty, exe, libdir, output, set_file_times, split_debuginfo, symlink_dir,
+};
 
 mod core;
 mod utils;
@@ -273,6 +275,35 @@ impl Mode {
 pub enum CLang {
     C,
     Cxx,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileType {
+    /// An executable binary file (like a `.exe`).
+    Executable,
+    /// A native, binary library file (like a `.so`, `.dll`, `.a`, `.lib` or `.o`).
+    NativeLibrary,
+    /// An executable (non-binary) script file (like a `.py` or `.sh`).
+    Script,
+    /// Any other regular file that is non-executable.
+    Regular,
+}
+
+impl FileType {
+    /// Get Unix permissions appropriate for this file type.
+    pub fn perms(self) -> u32 {
+        match self {
+            FileType::Executable | FileType::Script => 0o755,
+            FileType::Regular | FileType::NativeLibrary => 0o644,
+        }
+    }
+
+    pub fn could_have_split_debuginfo(self) -> bool {
+        match self {
+            FileType::Executable | FileType::NativeLibrary => true,
+            FileType::Script | FileType::Regular => false,
+        }
+    }
 }
 
 macro_rules! forward {
@@ -1745,8 +1776,18 @@ Executed at: {executed_at}"#,
     /// Attempts to use hard links if possible, falling back to copying.
     /// You can neither rely on this being a copy nor it being a link,
     /// so do not write to dst.
-    pub fn copy_link(&self, src: &Path, dst: &Path) {
+    pub fn copy_link(&self, src: &Path, dst: &Path, file_type: FileType) {
         self.copy_link_internal(src, dst, false);
+
+        if file_type.could_have_split_debuginfo() {
+            if let Some(dbg_file) = split_debuginfo(src) {
+                self.copy_link_internal(
+                    &dbg_file,
+                    &dst.with_extension(dbg_file.extension().unwrap()),
+                    false,
+                );
+            }
+        }
     }
 
     fn copy_link_internal(&self, src: &Path, dst: &Path, dereference_symlinks: bool) {
@@ -1809,7 +1850,7 @@ Executed at: {executed_at}"#,
                 t!(fs::create_dir_all(&dst));
                 self.cp_link_r(&path, &dst);
             } else {
-                self.copy_link(&path, &dst);
+                self.copy_link(&path, &dst, FileType::Regular);
             }
         }
     }
@@ -1845,7 +1886,7 @@ Executed at: {executed_at}"#,
                     self.cp_link_filtered_recurse(&path, &dst, &relative, filter);
                 } else {
                     let _ = fs::remove_file(&dst);
-                    self.copy_link(&path, &dst);
+                    self.copy_link(&path, &dst, FileType::Regular);
                 }
             }
         }
@@ -1854,10 +1895,10 @@ Executed at: {executed_at}"#,
     fn copy_link_to_folder(&self, src: &Path, dest_folder: &Path) {
         let file_name = src.file_name().unwrap();
         let dest = dest_folder.join(file_name);
-        self.copy_link(src, &dest);
+        self.copy_link(src, &dest, FileType::Regular);
     }
 
-    fn install(&self, src: &Path, dstdir: &Path, perms: u32) {
+    fn install(&self, src: &Path, dstdir: &Path, file_type: FileType) {
         if self.config.dry_run() {
             return;
         }
@@ -1867,8 +1908,16 @@ Executed at: {executed_at}"#,
         if !src.exists() {
             panic!("ERROR: File \"{}\" not found!", src.display());
         }
+
         self.copy_link_internal(src, &dst, true);
-        chmod(&dst, perms);
+        chmod(&dst, file_type.perms());
+
+        // If this file can have debuginfo, look for split debuginfo and install it too.
+        if file_type.could_have_split_debuginfo() {
+            if let Some(dbg_file) = split_debuginfo(src) {
+                self.install(&dbg_file, dstdir, FileType::Regular);
+            }
+        }
     }
 
     fn read(&self, path: &Path) -> String {
