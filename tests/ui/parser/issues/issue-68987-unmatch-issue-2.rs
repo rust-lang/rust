@@ -11,4 +11,4 @@ async fn obstest() -> Result<> {
     } else {
 
     }
-} //~ ERROR unexpected closing delimiter
+}
