@@ -307,6 +307,23 @@ exclude_labels = [
     "T-*",
 ]
 
+trigger_labels = [
+    "D-*",
+    "A-diagnostics",
+]
+
+[autolabel."A-diagnostics"]
+
+trigger_labels = [
+    "D-*",
+]
+
+[autolabel."A-lints"]
+
+trigger_labels = [
+    "L-*",
+]
+
 [autolabel."T-libs"]
 trigger_files = [
     "library/alloc",
