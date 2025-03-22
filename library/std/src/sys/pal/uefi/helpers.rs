@@ -520,7 +520,7 @@ impl<T> OwnedProtocol<T> {
         let protocol: *mut T = Box::into_raw(Box::new(protocol));
         let mut handle: r_efi::efi::Handle = crate::ptr::null_mut();
 
-        // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+        // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
         let func: BootInstallMultipleProtocolInterfaces =
             unsafe { crate::mem::transmute((*bt.as_ptr()).install_multiple_protocol_interfaces) };
 
@@ -554,7 +554,7 @@ impl<T> Drop for OwnedProtocol<T> {
         // Do not deallocate a runtime protocol
         if let Some(bt) = boot_services() {
             let bt: NonNull<r_efi::efi::BootServices> = bt.cast();
-            // FIXME: Move into r-efi once extended_varargs_abi_support is stablized
+            // FIXME: Move into r-efi once extended_varargs_abi_support is stabilized
             let func: BootUninstallMultipleProtocolInterfaces = unsafe {
                 crate::mem::transmute((*bt.as_ptr()).uninstall_multiple_protocol_interfaces)
             };
@@ -678,7 +678,7 @@ pub(crate) fn get_device_path_from_map(map: &Path) -> io::Result<BorrowedDeviceP
 }
 
 /// Helper for UEFI Protocols which are created and destroyed using
-/// [EFI_SERVICE_BINDING_PROTCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
+/// [EFI_SERVICE_BINDING_PROTOCOL](https://uefi.org/specs/UEFI/2.11/11_Protocols_UEFI_Driver_Model.html#efi-service-binding-protocol)
 pub(crate) struct ServiceProtocol {
     service_guid: r_efi::efi::Guid,
     handle: NonNull<crate::ffi::c_void>,
