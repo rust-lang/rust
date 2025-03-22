@@ -142,20 +142,20 @@ LL +     let &[&mut x] = &mut &mut [0];
    |
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/pattern-errors.rs:102:12
+  --> $DIR/pattern-errors.rs:102:11
    |
 LL |     let [&(mut x)] = &[&0];
-   |            ^^^^
+   |           ^^^^^
    |
    = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
    = help: add `#![feature(mut_ref)]` to the crate attributes to enable
    = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
 
 error[E0658]: binding cannot be both mutable and by-reference
-  --> $DIR/pattern-errors.rs:107:12
+  --> $DIR/pattern-errors.rs:107:11
    |
 LL |     let [&(mut x)] = &mut [&0];
-   |            ^^^^
+   |           ^^^^^
    |
    = note: see issue #123076 <https://github.com/rust-lang/rust/issues/123076> for more information
    = help: add `#![feature(mut_ref)]` to the crate attributes to enable

@@ -2,19 +2,17 @@ error: a never pattern is always unreachable
   --> $DIR/ICE-133117-duplicate-never-arm.rs:9:26
    |
 LL |         (!|!) if true => {}
-   |                          ^^
-   |                          |
-   |                          this will never be executed
-   |                          help: remove this expression
+   |                          ^^ this will never be executed
+   |
+   = help: remove the match arm expression
 
 error: a never pattern is always unreachable
   --> $DIR/ICE-133117-duplicate-never-arm.rs:10:26
    |
 LL |         (!|!) if true => {}
-   |                          ^^
-   |                          |
-   |                          this will never be executed
-   |                          help: remove this expression
+   |                          ^^ this will never be executed
+   |
+   = help: remove the match arm expression
 
 error: aborting due to 2 previous errors
 
