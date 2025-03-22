@@ -215,7 +215,7 @@ mir_build_literal_in_range_out_of_bounds =
     .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
 
 mir_build_loop_match_bad_rhs =
-    this expression must be a single `match` wrapped in a labelled block
+    this expression must be a single `match` wrapped in a labeled block
 
 mir_build_loop_match_bad_statements =
     statements are not allowed in this position within a `loop_match`
@@ -223,6 +223,7 @@ mir_build_loop_match_bad_statements =
 mir_build_loop_match_invalid_match =
     invalid match on `loop_match` state
     .note = only matches on local variables are valid
+
 mir_build_loop_match_invalid_update =
     invalid update of the `loop_match` state
     .label = the assignment must update this variable

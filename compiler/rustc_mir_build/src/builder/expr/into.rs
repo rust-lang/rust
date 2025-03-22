@@ -248,7 +248,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 })
             }
-            ExprKind::LoopMatch { state, region_scope, ref arms, .. } => {
+            ExprKind::LoopMatch { state, region_scope, ref arms } => {
                 // FIXME add diagram
 
                 let dropless_arena = rustc_arena::DroplessArena::default();
