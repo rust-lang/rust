@@ -273,8 +273,9 @@ struct ExtractedHirInfo {
     /// Must have the same context and filename as the body span.
     fn_sig_span_extended: Option<Span>,
     body_span: Span,
-    /// "Holes" are regions within the body span that should not be included in
-    /// coverage spans for this function (e.g. closures and nested items).
+    /// "Holes" are regions within the function body (or its expansions) that
+    /// should not be included in coverage spans for this function
+    /// (e.g. closures and nested items).
     hole_spans: Vec<Span>,
 }
 
@@ -323,7 +324,7 @@ fn extract_hir_info<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> ExtractedHir
 
     let function_source_hash = hash_mir_source(tcx, hir_body);
 
-    let hole_spans = extract_hole_spans_from_hir(tcx, body_span, hir_body);
+    let hole_spans = extract_hole_spans_from_hir(tcx, hir_body);
 
     ExtractedHirInfo {
         function_source_hash,
@@ -340,14 +341,9 @@ fn hash_mir_source<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &'tcx hir::Body<'tcx>) -> 
     tcx.hir_owner_nodes(owner).opt_hash_including_bodies.unwrap().to_smaller_hash().as_u64()
 }
 
-fn extract_hole_spans_from_hir<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body_span: Span, // Usually `hir_body.value.span`, but not always
-    hir_body: &hir::Body<'tcx>,
-) -> Vec<Span> {
+fn extract_hole_spans_from_hir<'tcx>(tcx: TyCtxt<'tcx>, hir_body: &hir::Body<'tcx>) -> Vec<Span> {
     struct HolesVisitor<'tcx> {
         tcx: TyCtxt<'tcx>,
-        body_span: Span,
         hole_spans: Vec<Span>,
     }
 
@@ -387,14 +383,11 @@ fn extract_hole_spans_from_hir<'tcx>(
     }
     impl HolesVisitor<'_> {
         fn visit_hole_span(&mut self, hole_span: Span) {
-            // Discard any holes that aren't directly visible within the body span.
-            if self.body_span.contains(hole_span) && self.body_span.eq_ctxt(hole_span) {
-                self.hole_spans.push(hole_span);
-            }
+            self.hole_spans.push(hole_span);
         }
     }
 
-    let mut visitor = HolesVisitor { tcx, body_span, hole_spans: vec![] };
+    let mut visitor = HolesVisitor { tcx, hole_spans: vec![] };
 
     visitor.visit_body(hir_body);
     visitor.hole_spans
