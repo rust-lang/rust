@@ -32,7 +32,7 @@ use rustc_span::{Symbol, sym};
 use rustc_target::spec::{PanicStrategy, RelocModel, SanitizerSet, Target};
 
 use crate::Session;
-use crate::config::{CrateType, FmtDebug};
+use crate::config::{CCharType, CrateType, FmtDebug};
 
 /// The parsed `--cfg` options that define the compilation environment of the
 /// crate, used to drive conditional compilation.
@@ -144,6 +144,7 @@ pub(crate) fn disallow_cfgs(sess: &Session, user_cfgs: &Cfg) {
             | (sym::target_has_atomic_load_store, Some(_))
             | (sym::target_thread_local, None) => disallow(cfg, "--target"),
             (sym::fmt_debug, None | Some(_)) => disallow(cfg, "-Z fmt-debug"),
+            (sym::c_char_type, None | Some(_)) => disallow(cfg, "-Z c-char-type"),
             (sym::emscripten_wasm_eh, None | Some(_)) => disallow(cfg, "-Z emscripten_wasm_eh"),
             _ => {}
         }
@@ -304,6 +305,10 @@ pub(crate) fn default_configuration(sess: &Session) -> Cfg {
 
     if sess.contract_checks() {
         ins_none!(sym::contract_checks);
+    }
+
+    if sess.is_nightly_build() {
+        ins_sym!(sym::c_char_type, sess.opts.unstable_opts.c_char_type.desc_symbol());
     }
 
     ret
@@ -470,5 +475,7 @@ impl CheckCfg {
 
         ins!(sym::unix, no_values);
         ins!(sym::windows, no_values);
+
+        ins!(sym::c_char_type, empty_values).extend(CCharType::all());
     }
 }

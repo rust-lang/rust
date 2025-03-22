@@ -388,6 +388,8 @@ declare_features! (
     (unstable, async_for_loop, "1.77.0", Some(118898)),
     /// Allows `async` trait bound modifier.
     (unstable, async_trait_bounds, "1.85.0", Some(62290)),
+    // Allows customized c_char type (u8/i8)
+    (unstable, c_char_type, "1.86.0", Some(138446)),
     /// Allows using C-variadics.
     (unstable, c_variadic, "1.34.0", Some(44930)),
     /// Allows the use of `#[cfg(<true/false>)]`.
