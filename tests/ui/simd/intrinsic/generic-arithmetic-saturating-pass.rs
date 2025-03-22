@@ -7,12 +7,26 @@
 use std::intrinsics::simd::{simd_saturating_add, simd_saturating_sub};
 
 #[repr(simd)]
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone)]
 struct u32x4(pub [u32; 4]);
+impl u32x4 {
+    fn to_array(self) -> [u32; 4] { unsafe { std::mem::transmute(self) } }
+}
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
 struct I32<const N: usize>([i32; N]);
+impl<const N: usize> I32<N> {
+    fn to_array(self) -> [i32; N] { unsafe { std::intrinsics::transmute_unchecked(self) } }
+}
+
+macro_rules! all_eq {
+    ($a: expr, $b: expr) => {{
+        let a = $a;
+        let b = $b;
+        assert_eq!(a.to_array(), b.to_array());
+    }};
+}
 
 fn main() {
     // unsigned
@@ -26,20 +40,20 @@ fn main() {
         let z = u32x4([0, 0, 0, 0]);
 
         unsafe {
-            assert_eq!(simd_saturating_add(z, z), z);
-            assert_eq!(simd_saturating_add(z, a), a);
-            assert_eq!(simd_saturating_add(b, z), b);
-            assert_eq!(simd_saturating_add(a, a), b);
-            assert_eq!(simd_saturating_add(a, m), m);
-            assert_eq!(simd_saturating_add(m, b), m);
-            assert_eq!(simd_saturating_add(m1, a), m);
+            all_eq!(simd_saturating_add(z, z), z);
+            all_eq!(simd_saturating_add(z, a), a);
+            all_eq!(simd_saturating_add(b, z), b);
+            all_eq!(simd_saturating_add(a, a), b);
+            all_eq!(simd_saturating_add(a, m), m);
+            all_eq!(simd_saturating_add(m, b), m);
+            all_eq!(simd_saturating_add(m1, a), m);
 
-            assert_eq!(simd_saturating_sub(b, z), b);
-            assert_eq!(simd_saturating_sub(b, a), a);
-            assert_eq!(simd_saturating_sub(a, a), z);
-            assert_eq!(simd_saturating_sub(a, b), z);
-            assert_eq!(simd_saturating_sub(a, m1), z);
-            assert_eq!(simd_saturating_sub(b, m1), z);
+            all_eq!(simd_saturating_sub(b, z), b);
+            all_eq!(simd_saturating_sub(b, a), a);
+            all_eq!(simd_saturating_sub(a, a), z);
+            all_eq!(simd_saturating_sub(a, b), z);
+            all_eq!(simd_saturating_sub(a, m1), z);
+            all_eq!(simd_saturating_sub(b, m1), z);
         }
     }
 
@@ -61,28 +75,28 @@ fn main() {
         let z = I32::<4>([0, 0, 0, 0]);
 
         unsafe {
-            assert_eq!(simd_saturating_add(z, z).0, z.0);
-            assert_eq!(simd_saturating_add(z, a).0, a.0);
-            assert_eq!(simd_saturating_add(b, z).0, b.0);
-            assert_eq!(simd_saturating_add(a, a).0, b.0);
-            assert_eq!(simd_saturating_add(a, max).0, max.0);
-            assert_eq!(simd_saturating_add(max, b).0, max.0);
-            assert_eq!(simd_saturating_add(max1, a).0, max.0);
-            assert_eq!(simd_saturating_add(min1, z).0, min1.0);
-            assert_eq!(simd_saturating_add(min, z).0, min.0);
-            assert_eq!(simd_saturating_add(min1, c).0, min.0);
-            assert_eq!(simd_saturating_add(min, c).0, min.0);
-            assert_eq!(simd_saturating_add(min1, d).0, min.0);
-            assert_eq!(simd_saturating_add(min, d).0, min.0);
+            all_eq!(simd_saturating_add(z, z), z);
+            all_eq!(simd_saturating_add(z, a), a);
+            all_eq!(simd_saturating_add(b, z), b);
+            all_eq!(simd_saturating_add(a, a), b);
+            all_eq!(simd_saturating_add(a, max), max);
+            all_eq!(simd_saturating_add(max, b), max);
+            all_eq!(simd_saturating_add(max1, a), max);
+            all_eq!(simd_saturating_add(min1, z), min1);
+            all_eq!(simd_saturating_add(min, z), min);
+            all_eq!(simd_saturating_add(min1, c), min);
+            all_eq!(simd_saturating_add(min, c), min);
+            all_eq!(simd_saturating_add(min1, d), min);
+            all_eq!(simd_saturating_add(min, d), min);
 
-            assert_eq!(simd_saturating_sub(b, z).0, b.0);
-            assert_eq!(simd_saturating_sub(b, a).0, a.0);
-            assert_eq!(simd_saturating_sub(a, a).0, z.0);
-            assert_eq!(simd_saturating_sub(a, b).0, c.0);
-            assert_eq!(simd_saturating_sub(z, max).0, min1.0);
-            assert_eq!(simd_saturating_sub(min1, z).0, min1.0);
-            assert_eq!(simd_saturating_sub(min1, a).0, min.0);
-            assert_eq!(simd_saturating_sub(min1, b).0, min.0);
+            all_eq!(simd_saturating_sub(b, z), b);
+            all_eq!(simd_saturating_sub(b, a), a);
+            all_eq!(simd_saturating_sub(a, a), z);
+            all_eq!(simd_saturating_sub(a, b), c);
+            all_eq!(simd_saturating_sub(z, max), min1);
+            all_eq!(simd_saturating_sub(min1, z), min1);
+            all_eq!(simd_saturating_sub(min1, a), min);
+            all_eq!(simd_saturating_sub(min1, b), min);
         }
     }
 }
