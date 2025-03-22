@@ -52,7 +52,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             assert_matches!(
                 self.tcx().coroutine_kind(self.tcx().coroutine_for_closure(mir_def_id)),
                 Some(hir::CoroutineKind::Desugared(
-                    hir::CoroutineDesugaring::Async,
+                    hir::CoroutineDesugaring::Async | hir::CoroutineDesugaring::Gen,
                     hir::CoroutineSource::Closure
                 )),
                 "this needs to be modified if we're lowering non-async closures"
