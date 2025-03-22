@@ -1181,11 +1181,9 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         } {
             let in_module_is_extern = !in_module.def_id().is_local();
             in_module.for_each_child(self, |this, ident, ns, name_binding| {
-                // avoid non-importable candidates
-                if !name_binding.is_importable()
-                    // FIXME(import_trait_associated_functions): remove this when `import_trait_associated_functions` is stable
-                    || name_binding.is_assoc_const_or_fn()
-                        && !this.tcx.features().import_trait_associated_functions()
+                // Avoid non-importable candidates.
+                if name_binding.is_assoc_item()
+                    && !this.tcx.features().import_trait_associated_functions()
                 {
                     return;
                 }
