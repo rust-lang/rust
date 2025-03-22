@@ -21,7 +21,7 @@ use crate::any::Any;
 use crate::io::try_set_output_capture;
 use crate::mem::{self, ManuallyDrop};
 use crate::panic::{BacktraceStyle, PanicHookInfo};
-use crate::sync::atomic::{AtomicBool, Ordering};
+use crate::sync::atomic::{Atomic, AtomicBool, Ordering};
 use crate::sync::{PoisonError, RwLock};
 use crate::sys::backtrace;
 use crate::sys::stdio::panic_output;
@@ -289,7 +289,7 @@ fn default_hook(info: &PanicHookInfo<'_>) {
             };
         });
 
-        static FIRST_PANIC: AtomicBool = AtomicBool::new(true);
+        static FIRST_PANIC: Atomic<bool> = AtomicBool::new(true);
 
         match backtrace {
             // SAFETY: we took out a lock just a second ago.
@@ -374,7 +374,7 @@ pub mod panic_count {
 #[unstable(feature = "update_panic_count", issue = "none")]
 pub mod panic_count {
     use crate::cell::Cell;
-    use crate::sync::atomic::{AtomicUsize, Ordering};
+    use crate::sync::atomic::{Atomic, AtomicUsize, Ordering};
 
     const ALWAYS_ABORT_FLAG: usize = 1 << (usize::BITS - 1);
 
@@ -416,7 +416,7 @@ pub mod panic_count {
     //
     // Stealing a bit is fine because it just amounts to assuming that each
     // panicking thread consumes at least 2 bytes of address space.
-    static GLOBAL_PANIC_COUNT: AtomicUsize = AtomicUsize::new(0);
+    static GLOBAL_PANIC_COUNT: Atomic<usize> = AtomicUsize::new(0);
 
     // Increases the global and local panic count, and returns whether an
     // immediate abort is required.

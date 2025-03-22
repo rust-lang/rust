@@ -2,15 +2,15 @@
 
 use crate::pin::Pin;
 use crate::ptr;
-use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::Relaxed;
+use crate::sync::atomic::{Atomic, AtomicUsize};
 use crate::sys::pal::sync as pal;
 use crate::sys::sync::{Mutex, OnceBox};
 use crate::time::{Duration, Instant};
 
 pub struct Condvar {
     cvar: OnceBox<pal::Condvar>,
-    mutex: AtomicUsize,
+    mutex: Atomic<usize>,
 }
 
 impl Condvar {
