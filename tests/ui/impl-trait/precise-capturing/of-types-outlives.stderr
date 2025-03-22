@@ -1,0 +1,11 @@
+warning: the feature `precise_capturing_of_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/of-types-outlives.rs:3:12
+   |
+LL | #![feature(precise_capturing_of_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #130043 <https://github.com/rust-lang/rust/issues/130043> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+warning: 1 warning emitted
+

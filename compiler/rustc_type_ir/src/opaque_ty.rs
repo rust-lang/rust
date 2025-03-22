@@ -20,9 +20,11 @@ pub struct OpaqueTypeKey<I: Interner> {
 impl<I: Interner> OpaqueTypeKey<I> {
     pub fn iter_captured_args(self, cx: I) -> impl Iterator<Item = (usize, I::GenericArg)> {
         let variances = cx.variances_of(self.def_id.into());
+        let precise_capturing_of_types = cx.features().precise_capturing_of_types();
         std::iter::zip(self.args.iter(), variances.iter()).enumerate().filter_map(
-            |(i, (arg, v))| match (arg.kind(), v) {
+            move |(i, (arg, v))| match (arg.kind(), v) {
                 (_, ty::Invariant) => Some((i, arg)),
+                (_, ty::Bivariant) if precise_capturing_of_types => None,
                 (ty::GenericArgKind::Lifetime(_), ty::Bivariant) => None,
                 _ => panic!("unexpected opaque type arg variance"),
             },

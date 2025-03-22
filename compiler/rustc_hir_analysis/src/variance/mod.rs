@@ -63,7 +63,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
         }
         DefKind::AssocTy => match tcx.opt_rpitit_info(item_def_id.to_def_id()) {
             Some(ty::ImplTraitInTraitData::Trait { opaque_def_id, .. }) => {
-                return variance_of_opaque(
+                return variances_of_opaque(
                     tcx,
                     opaque_def_id.expect_local(),
                     ForceCaptureTraitArgs::Yes,
@@ -83,7 +83,7 @@ fn variances_of(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Variance] {
                 ForceCaptureTraitArgs::No
             };
 
-            return variance_of_opaque(tcx, item_def_id, force_capture_trait_args);
+            return variances_of_opaque(tcx, item_def_id, force_capture_trait_args);
         }
         _ => {}
     }
@@ -99,7 +99,7 @@ enum ForceCaptureTraitArgs {
 }
 
 #[instrument(level = "trace", skip(tcx), ret)]
-fn variance_of_opaque(
+fn variances_of_opaque(
     tcx: TyCtxt<'_>,
     item_def_id: LocalDefId,
     force_capture_trait_args: ForceCaptureTraitArgs,
@@ -177,7 +177,11 @@ fn variance_of_opaque(
                         variances[param.index as usize] = ty::Bivariant;
                     }
                     ty::GenericParamDefKind::Type { .. }
-                    | ty::GenericParamDefKind::Const { .. } => {}
+                    | ty::GenericParamDefKind::Const { .. } => {
+                        if tcx.features().precise_capturing_of_types() {
+                            variances[param.index as usize] = ty::Bivariant;
+                        }
+                    }
                 }
             }
         }

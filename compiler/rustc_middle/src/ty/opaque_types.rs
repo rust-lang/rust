@@ -1,9 +1,8 @@
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_span::Span;
 use rustc_span::def_id::DefId;
 use tracing::{debug, instrument, trace};
 
-use crate::error::ConstNotUsedTraitAlias;
 use crate::ty::{
     self, GenericArg, GenericArgKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
 };
@@ -15,7 +14,12 @@ pub type OpaqueTypeKey<'tcx> = rustc_type_ir::OpaqueTypeKey<TyCtxt<'tcx>>;
 /// list to the opaque type's own generics.
 pub(super) struct ReverseMapper<'tcx> {
     tcx: TyCtxt<'tcx>,
-    map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+
+    mapping: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+
+    /// List of uncaptured args (which are bivariant)
+    uncaptured_args: FxHashSet<GenericArg<'tcx>>,
+
     /// see call sites to fold_kind_no_missing_regions_error
     /// for an explanation of this field.
     do_not_error: bool,
@@ -33,11 +37,12 @@ pub(super) struct ReverseMapper<'tcx> {
 impl<'tcx> ReverseMapper<'tcx> {
     pub(super) fn new(
         tcx: TyCtxt<'tcx>,
-        map: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+        mapping: FxHashMap<GenericArg<'tcx>, GenericArg<'tcx>>,
+        uncaptured_args: FxHashSet<GenericArg<'tcx>>,
         span: Span,
         ignore_errors: bool,
     ) -> Self {
-        Self { tcx, map, do_not_error: false, ignore_errors, span }
+        Self { tcx, mapping, uncaptured_args, do_not_error: false, ignore_errors, span }
     }
 
     fn fold_kind_no_missing_regions_error(&mut self, kind: GenericArg<'tcx>) -> GenericArg<'tcx> {
@@ -127,25 +132,29 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
             }
         }
 
-        match self.map.get(&r.into()).map(|k| k.unpack()) {
+        match self.mapping.get(&r.into()).map(|k| k.unpack()) {
             Some(GenericArgKind::Lifetime(r1)) => r1,
             Some(u) => panic!("region mapped to unexpected kind: {u:?}"),
-            None if self.do_not_error => self.tcx.lifetimes.re_static,
             None => {
-                let e = self
-                    .tcx
-                    .dcx()
-                    .struct_span_err(self.span, "non-defining opaque type use in defining scope")
-                    .with_span_label(
+                let guar = if self.uncaptured_args.contains(&r.into()) {
+                    // FIXME(precise_capturing_of_types): Mention `use<>` list
+                    // and add an structured suggestion.
+                    self.tcx.dcx().struct_span_err(
+                        self.span,
+                        format!("hidden type mentions uncaptured lifetime parameter `{r}`"),
+                    )
+                } else {
+                    self.tcx.dcx().struct_span_err(
                         self.span,
                         format!(
-                            "lifetime `{r}` is part of concrete type but not used in \
-                             parameter list of the `impl Trait` type alias"
+                            "lifetime `{r}` is mentioned in hidden type of type alias impl \
+                            trait, but is not declared in its generic args"
                         ),
                     )
-                    .emit();
+                }
+                .emit_unless(self.do_not_error);
 
-                ty::Region::new_error(self.cx(), e)
+                ty::Region::new_error(self.cx(), guar)
             }
         }
     }
@@ -169,27 +178,33 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
 
             ty::Param(param) => {
                 // Look it up in the generic parameters list.
-                match self.map.get(&ty.into()).map(|k| k.unpack()) {
+                match self.mapping.get(&ty.into()).map(|k| k.unpack()) {
                     // Found it in the generic parameters list; replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Type(t1)) => t1,
                     Some(u) => panic!("type mapped to unexpected kind: {u:?}"),
                     None => {
-                        debug!(?param, ?self.map);
-                        if !self.ignore_errors {
-                            self.tcx
-                                .dcx()
-                                .struct_span_err(
-                                    self.span,
-                                    format!(
-                                        "type parameter `{ty}` is part of concrete type but not \
-                                          used in parameter list for the `impl Trait` type alias"
-                                    ),
-                                )
-                                .emit();
+                        debug!(?param, ?self.mapping);
+                        let guar = if self.uncaptured_args.contains(&ty.into()) {
+                            // FIXME(precise_capturing_of_types): Mention `use<>` list
+                            // and add an structured suggestion.
+                            self.tcx.dcx().struct_span_err(
+                                self.span,
+                                format!("hidden type mentions uncaptured type parameter `{ty}`"),
+                            )
+                        } else {
+                            self.tcx.dcx().struct_span_err(
+                                self.span,
+                                format!(
+                                    "type parameter `{ty}` is mentioned in hidden type of \
+                                    type alias impl trait, but is not declared in its generic \
+                                    args"
+                                ),
+                            )
                         }
+                        .emit_unless(self.ignore_errors);
 
-                        Ty::new_misc_error(self.tcx)
+                        Ty::new_error(self.tcx, guar)
                     }
                 }
             }
@@ -204,20 +219,30 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReverseMapper<'tcx> {
         match ct.kind() {
             ty::ConstKind::Param(..) => {
                 // Look it up in the generic parameters list.
-                match self.map.get(&ct.into()).map(|k| k.unpack()) {
+                match self.mapping.get(&ct.into()).map(|k| k.unpack()) {
                     // Found it in the generic parameters list, replace with the parameter from the
                     // opaque type.
                     Some(GenericArgKind::Const(c1)) => c1,
                     Some(u) => panic!("const mapped to unexpected kind: {u:?}"),
                     None => {
-                        let guar = self
-                            .tcx
-                            .dcx()
-                            .create_err(ConstNotUsedTraitAlias {
-                                ct: ct.to_string(),
-                                span: self.span,
-                            })
-                            .emit_unless(self.ignore_errors);
+                        let guar = if self.uncaptured_args.contains(&ct.into()) {
+                            // FIXME(precise_capturing_of_types): Mention `use<>` list
+                            // and add an structured suggestion.
+                            self.tcx.dcx().struct_span_err(
+                                self.span,
+                                format!("hidden type mentions uncaptured const parameter `{ct}`"),
+                            )
+                        } else {
+                            self.tcx.dcx().struct_span_err(
+                                self.span,
+                                format!(
+                                    "const parameter `{ct}` is mentioned in hidden type of \
+                                    type alias impl trait, but is not declared in its generic \
+                                    args"
+                                ),
+                            )
+                        }
+                        .emit_unless(self.ignore_errors);
 
                         ty::Const::new_error(self.tcx, guar)
                     }

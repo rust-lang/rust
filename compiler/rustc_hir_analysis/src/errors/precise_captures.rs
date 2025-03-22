@@ -3,9 +3,9 @@ use rustc_macros::Diagnostic;
 use rustc_span::{Span, Symbol};
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_param_not_captured)]
+#[diag(hir_analysis_param_not_captured_forced)]
 #[note]
-pub(crate) struct ParamNotCaptured {
+pub(crate) struct ParamNotCapturedForced {
     #[primary_span]
     pub opaque_span: Span,
     #[label]
@@ -24,23 +24,25 @@ pub(crate) struct SelfTyNotCaptured {
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_lifetime_not_captured)]
-pub(crate) struct LifetimeNotCaptured {
+#[diag(hir_analysis_param_not_captured)]
+pub(crate) struct ParamNotCaptured {
     #[primary_span]
     pub use_span: Span,
     #[label(hir_analysis_param_label)]
     pub param_span: Span,
     #[label]
     pub opaque_span: Span,
+    pub kind: &'static str,
 }
 
 #[derive(Diagnostic)]
-#[diag(hir_analysis_lifetime_implicitly_captured)]
-pub(crate) struct LifetimeImplicitlyCaptured {
+#[diag(hir_analysis_param_implicitly_captured)]
+pub(crate) struct ParamImplicitlyCaptured {
     #[primary_span]
     pub opaque_span: Span,
     #[label(hir_analysis_param_label)]
     pub param_span: Span,
+    pub kind: &'static str,
 }
 
 #[derive(Diagnostic)]

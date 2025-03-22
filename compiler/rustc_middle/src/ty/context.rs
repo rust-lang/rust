@@ -771,6 +771,10 @@ impl<'tcx> rustc_type_ir::inherent::Features<TyCtxt<'tcx>> for &'tcx rustc_featu
     fn associated_const_equality(self) -> bool {
         self.associated_const_equality()
     }
+
+    fn precise_capturing_of_types(self) -> bool {
+        self.precise_capturing_of_types()
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Span<TyCtxt<'tcx>> for Span {

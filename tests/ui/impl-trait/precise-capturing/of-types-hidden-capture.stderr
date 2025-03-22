@@ -1,0 +1,17 @@
+warning: the feature `precise_capturing_of_types` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/of-types-hidden-capture.rs:1:12
+   |
+LL | #![feature(precise_capturing_of_types)]
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #130043 <https://github.com/rust-lang/rust/issues/130043> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: hidden type mentions uncaptured type parameter `T`
+  --> $DIR/of-types-hidden-capture.rs:5:5
+   |
+LL |     x
+   |     ^
+
+error: aborting due to 1 previous error; 1 warning emitted
+
