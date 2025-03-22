@@ -771,6 +771,7 @@ impl Step for StdLink {
             builder.cp_link_r(&stage0_bin_dir, &sysroot_bin_dir);
 
             let stage0_lib_dir = builder.out.join(host).join("stage0/lib");
+            t!(fs::create_dir_all(sysroot.join("lib")));
             builder.cp_link_r(&stage0_lib_dir, &sysroot.join("lib"));
 
             // Copy codegen-backends from stage0
@@ -789,6 +790,12 @@ impl Step for StdLink {
             let sysroot = builder.out.join(compiler.host.triple).join("stage0-sysroot");
             builder.cp_link_r(&builder.initial_sysroot.join("lib"), &sysroot.join("lib"));
         } else {
+            if builder.download_rustc() {
+                // Ensure there are no CI-rustc std artifacts.
+                let _ = fs::remove_dir_all(&libdir);
+                let _ = fs::remove_dir_all(&hostdir);
+            }
+
             add_to_sysroot(
                 builder,
                 &libdir,
