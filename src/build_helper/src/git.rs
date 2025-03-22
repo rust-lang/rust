@@ -140,6 +140,7 @@ pub fn get_closest_merge_commit(
             //    cd \"/checkout\" && \"git\" \"merge-base\" \"origin/master\" \"HEAD\"\nexpected success, got: exit status: 1\n"
             // ```
             // Investigate and resolve this issue instead of skipping it like this.
+            // NOTE (2025-03): this is probably caused by CI using a sparse checkout.
             (channel == "nightly" || !CiEnv::is_rust_lang_managed_ci_job())
         {
             git_upstream_merge_base(config, git_dir).unwrap()
@@ -150,11 +151,18 @@ pub fn get_closest_merge_commit(
         }
     };
 
+    // Now that rust-lang/rust is the only repo using bors, we can search the entire
+    // history for a bors commit, not just "first parents". This is crucial to make
+    // this logic work when the user has currently checked out a subtree sync branch.
+    // At the same time, we use this logic in CI where only a tiny part of the history
+    // is even checked out, making this kind of history search very fragile. It turns
+    // out that by adding `--diff-merges=first-parent`, we get a usable reply
+    // even for sparse checkouts: it will just return the most recent bors commit.
     git.args([
         "rev-list",
         &format!("--author={}", config.git_merge_commit_email),
         "-n1",
-        "--first-parent",
+        "--diff-merges=first-parent",
         &merge_base,
     ]);
 
