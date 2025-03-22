@@ -665,6 +665,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -673,7 +674,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn lock(&self) -> io::Result<()> {
         self.inner.lock()
     }
@@ -717,6 +718,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -725,7 +727,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn lock_shared(&self) -> io::Result<()> {
         self.inner.lock_shared()
     }
@@ -774,6 +776,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -782,7 +785,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn try_lock(&self) -> io::Result<bool> {
         self.inner.try_lock()
     }
@@ -830,6 +833,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -838,7 +842,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn try_lock_shared(&self) -> io::Result<bool> {
         self.inner.try_lock_shared()
     }
@@ -866,6 +870,7 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
+    /// #![feature(file_lock)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
@@ -875,7 +880,7 @@ impl File {
     ///     Ok(())
     /// }
     /// ```
-    #[stable(feature = "file_lock", since = "CURRENT_RUSTC_VERSION")]
+    #[unstable(feature = "file_lock", issue = "130994")]
     pub fn unlock(&self) -> io::Result<()> {
         self.inner.unlock()
     }
