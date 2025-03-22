@@ -1,0 +1,27 @@
+error[E0038]: the trait `Trait` is not dyn compatible
+  --> $DIR/trait-dyn-in-qualified-path-for-object-safe-function-with-one-impl.rs:8:6
+   |
+LL |     <dyn Trait>::function();
+   |      ^^^^^^^^^ `Trait` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#object-safety>
+  --> $DIR/trait-dyn-in-qualified-path-for-object-safe-function-with-one-impl.rs:2:8
+   |
+LL | trait Trait {
+   |       ----- this trait is not dyn compatible...
+LL |     fn function() {}
+   |        ^^^^^^^^ ...because associated function `function` has no `self` parameter
+   = help: only type `()` implements `Trait`; consider using it directly instead.
+help: consider turning `function` into a method by giving it a `&self` argument
+   |
+LL |     fn function(&self) {}
+   |                 +++++
+help: alternatively, consider constraining `function` so it does not apply to trait objects
+   |
+LL |     fn function() where Self: Sized {}
+   |                   +++++++++++++++++
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0038`.

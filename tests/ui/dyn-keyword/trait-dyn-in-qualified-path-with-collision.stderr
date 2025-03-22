@@ -1,0 +1,22 @@
+error[E0034]: multiple applicable items in scope
+  --> $DIR/trait-dyn-in-qualified-path-with-collision.rs:9:18
+   |
+LL |     <dyn Trait>::function(&());
+   |     -------------^^^^^^^^ multiple `function` found
+   |     |
+   |     help: use fully-qualified syntax to disambiguate: `Trait::`
+   |
+note: candidate #1 is defined in the trait `Trait`
+  --> $DIR/trait-dyn-in-qualified-path-with-collision.rs:2:5
+   |
+LL |     fn function(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^
+note: candidate #2 is defined in an impl for the type `(dyn Trait + 'static)`
+  --> $DIR/trait-dyn-in-qualified-path-with-collision.rs:5:5
+   |
+LL |     fn function(&self) {}
+   |     ^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0034`.
