@@ -1,14 +1,22 @@
 //@ edition:2021
 
-#![allow(unreachable_code)]
-#![feature(const_async_blocks)]
-#![feature(inline_const_pat)]
+struct AnyOption<T>(T);
+impl<T> AnyOption<T> {
+    const NONE: Option<T> = None;
+}
 
-fn main() {
-    match loop {} {
-        const { || {} } => {} //~ ERROR cannot be used in patterns
+fn uwu() {}
+fn defines() {
+    match Some(uwu) {
+        AnyOption::<_>::NONE => {}
+        //~^ ERROR constant of non-structural type
+        _ => {}
     }
-    match loop {} {
-        const { async {} } => {} //~ ERROR cannot be used in patterns
+
+    match Some(|| {}) {
+        AnyOption::<_>::NONE => {}
+        //~^ ERROR constant of non-structural type
+        _ => {}
     }
 }
+fn main() {}

@@ -226,17 +226,18 @@ impl TaitConstraintLocator<'_> {
         };
 
         // Use borrowck to get the type with unerased regions.
-        let borrowck_results = &self.tcx.mir_borrowck(item_def_id);
-
-        // If the body was tainted, then assume the opaque may have been constrained and just set it to error.
-        if let Some(guar) = borrowck_results.tainted_by_errors {
-            self.found =
-                Some(ty::OpaqueHiddenType { span: DUMMY_SP, ty: Ty::new_error(self.tcx, guar) });
-            return;
-        }
-
-        debug!(?borrowck_results.concrete_opaque_types);
-        if let Some(&concrete_type) = borrowck_results.concrete_opaque_types.get(&self.def_id) {
+        let concrete_opaque_types = match self.tcx.mir_borrowck(item_def_id) {
+            Ok(concrete_opaque_types) => concrete_opaque_types,
+            Err(guar) => {
+                self.found = Some(ty::OpaqueHiddenType {
+                    span: DUMMY_SP,
+                    ty: Ty::new_error(self.tcx, guar),
+                });
+                return;
+            }
+        };
+        debug!(?concrete_opaque_types);
+        if let Some(&concrete_type) = concrete_opaque_types.0.get(&self.def_id) {
             debug!(?concrete_type, "found constraint");
             if let Some(prev) = &mut self.found {
                 if concrete_type.ty != prev.ty {
@@ -258,9 +259,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for TaitConstraintLocator<'tcx> {
         self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id);
-        }
         intravisit::walk_expr(self, ex);
     }
     fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
@@ -319,7 +317,11 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
         }
     }
 
-    let mir_opaque_ty = tcx.mir_borrowck(owner_def_id).concrete_opaque_types.get(&def_id).copied();
+    let concrete_opaque_types = match tcx.mir_borrowck(owner_def_id) {
+        Ok(concrete_opaque_types) => concrete_opaque_types,
+        Err(guar) => return Ty::new_error(tcx, guar),
+    };
+    let mir_opaque_ty = concrete_opaque_types.0.get(&def_id).copied();
     if let Some(mir_opaque_ty) = mir_opaque_ty {
         if mir_opaque_ty.references_error() {
             return mir_opaque_ty.ty;
@@ -337,8 +339,6 @@ pub(super) fn find_opaque_ty_constraints_for_rpit<'tcx>(
 
         mir_opaque_ty.ty
     } else if let Some(guar) = tables.tainted_by_errors {
-        // Some error in the owner fn prevented us from populating
-        // the `concrete_opaque_types` table.
         Ty::new_error(tcx, guar)
     } else {
         // Fall back to the RPIT we inferred during HIR typeck
@@ -369,9 +369,12 @@ impl RpitConstraintChecker<'_> {
     #[instrument(skip(self), level = "debug")]
     fn check(&self, def_id: LocalDefId) {
         // Use borrowck to get the type with unerased regions.
-        let concrete_opaque_types = &self.tcx.mir_borrowck(def_id).concrete_opaque_types;
+        let concrete_opaque_types = match self.tcx.mir_borrowck(def_id) {
+            Ok(concrete_opaque_types) => concrete_opaque_types,
+            Err(_guar) => return,
+        };
         debug!(?concrete_opaque_types);
-        for (&def_id, &concrete_type) in concrete_opaque_types {
+        for (&def_id, &concrete_type) in &concrete_opaque_types.0 {
             if def_id != self.def_id {
                 // Ignore constraints for other opaque types.
                 continue;
@@ -395,9 +398,6 @@ impl<'tcx> intravisit::Visitor<'tcx> for RpitConstraintChecker<'tcx> {
         self.tcx
     }
     fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-        if let hir::ExprKind::Closure(closure) = ex.kind {
-            self.check(closure.def_id);
-        }
         intravisit::walk_expr(self, ex);
     }
     fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
