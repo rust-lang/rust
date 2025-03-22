@@ -4,7 +4,6 @@ use rustc_data_structures::fx::FxIndexMap;
 use rustc_errors::MultiSpan;
 use rustc_hir::{BindingMode, ByRef, HirId, Mutability};
 use rustc_lint as lint;
-use rustc_middle::span_bug;
 use rustc_middle::ty::{self, Rust2024IncompatiblePatInfo, Ty, TyCtxt};
 use rustc_span::{Ident, Span};
 
@@ -95,11 +94,8 @@ impl<'a> PatMigration<'a> {
         pat_span: Span,
         adjustments: &[Ty<'tcx>],
     ) -> Option<(Span, Mutability)> {
-        let implicit_deref_mutbls = adjustments.iter().map(|ref_ty| {
-            let &ty::Ref(_, _, mutbl) = ref_ty.kind() else {
-                span_bug!(pat_span, "pattern implicitly dereferences a non-ref type");
-            };
-            mutbl
+        let implicit_deref_mutbls = adjustments.iter().filter_map(|ref_ty| {
+            if let &ty::Ref(_, _, mutbl) = ref_ty.kind() { Some(mutbl) } else { None }
         });
 
         if !self.info.suggest_eliding_modes {
