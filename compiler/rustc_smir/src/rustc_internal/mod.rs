@@ -147,6 +147,14 @@ impl<'tcx> Tables<'tcx> {
         stable_mir::ty::CoroutineWitnessDef(self.create_def_id(did))
     }
 
+    pub fn assoc_def(&mut self, did: DefId) -> stable_mir::ty::AssocDef {
+        stable_mir::ty::AssocDef(self.create_def_id(did))
+    }
+
+    pub fn opaque_def(&mut self, did: DefId) -> stable_mir::ty::OpaqueDef {
+        stable_mir::ty::OpaqueDef(self.create_def_id(did))
+    }
+
     pub fn prov(&mut self, aid: AllocId) -> stable_mir::ty::Prov {
         stable_mir::ty::Prov(self.create_alloc_id(aid))
     }

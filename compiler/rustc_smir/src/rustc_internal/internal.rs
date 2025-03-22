@@ -12,10 +12,11 @@ use stable_mir::mir::alloc::AllocId;
 use stable_mir::mir::mono::{Instance, MonoItem, StaticDef};
 use stable_mir::mir::{BinOp, Mutability, Place, ProjectionElem, RawPtrKind, Safety, UnOp};
 use stable_mir::ty::{
-    Abi, AdtDef, Binder, BoundRegionKind, BoundTyKind, BoundVariableKind, ClosureKind, DynKind,
-    ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FloatTy, FnSig,
-    GenericArgKind, GenericArgs, IndexedVal, IntTy, MirConst, Movability, Pattern, Region, RigidTy,
-    Span, TermKind, TraitRef, Ty, TyConst, UintTy, VariantDef, VariantIdx,
+    Abi, AdtDef, AssocItem, AssocItemContainer, AssocKind, Binder, BoundRegionKind, BoundTyKind,
+    BoundVariableKind, ClosureKind, DynKind, ExistentialPredicate, ExistentialProjection,
+    ExistentialTraitRef, FloatTy, FnSig, GenericArgKind, GenericArgs, ImplTraitInTraitData,
+    IndexedVal, IntTy, MirConst, Movability, Pattern, Region, RigidTy, Span, TermKind, TraitRef,
+    Ty, TyConst, UintTy, VariantDef, VariantIdx,
 };
 use stable_mir::{CrateItem, CrateNum, DefId};
 
@@ -565,6 +566,65 @@ impl RustcInternal for ProjectionElem {
             }
             ProjectionElem::Subtype(ty) => {
                 rustc_middle::mir::PlaceElem::Subtype(ty.internal(tables, tcx))
+            }
+        }
+    }
+}
+
+impl RustcInternal for AssocItem {
+    type T<'tcx> = rustc_middle::ty::AssocItem;
+
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        rustc_middle::ty::AssocItem {
+            def_id: self.def_id.0.internal(tables, tcx),
+            name: Symbol::intern(&self.name),
+            kind: self.kind.internal(tables, tcx),
+            container: self.container.internal(tables, tcx),
+            trait_item_def_id: self.trait_item_def_id.map(|did| did.0.internal(tables, tcx)),
+            fn_has_self_parameter: self.fn_has_self_parameter,
+            opt_rpitit_info: self.opt_rpitit_info.map(|did| did.internal(tables, tcx)),
+        }
+    }
+}
+
+impl RustcInternal for AssocItemContainer {
+    type T<'tcx> = rustc_middle::ty::AssocItemContainer;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            AssocItemContainer::Trait => rustc_middle::ty::AssocItemContainer::Trait,
+            AssocItemContainer::Impl => rustc_middle::ty::AssocItemContainer::Impl,
+        }
+    }
+}
+
+impl RustcInternal for AssocKind {
+    type T<'tcx> = rustc_middle::ty::AssocKind;
+
+    fn internal<'tcx>(&self, _tables: &mut Tables<'_>, _tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            AssocKind::Const => rustc_middle::ty::AssocKind::Const,
+            AssocKind::Fn => rustc_middle::ty::AssocKind::Fn,
+            AssocKind::Type => rustc_middle::ty::AssocKind::Type,
+        }
+    }
+}
+
+impl RustcInternal for ImplTraitInTraitData {
+    type T<'tcx> = rustc_middle::ty::ImplTraitInTraitData;
+
+    fn internal<'tcx>(&self, tables: &mut Tables<'_>, tcx: TyCtxt<'tcx>) -> Self::T<'tcx> {
+        match self {
+            ImplTraitInTraitData::Trait { fn_def_id, opaque_def_id } => {
+                rustc_middle::ty::ImplTraitInTraitData::Trait {
+                    fn_def_id: fn_def_id.0.internal(tables, tcx),
+                    opaque_def_id: opaque_def_id.0.internal(tables, tcx),
+                }
+            }
+            ImplTraitInTraitData::Impl { fn_def_id } => {
+                rustc_middle::ty::ImplTraitInTraitData::Impl {
+                    fn_def_id: fn_def_id.0.internal(tables, tcx),
+                }
             }
         }
     }
