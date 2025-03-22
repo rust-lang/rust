@@ -233,7 +233,12 @@ impl Attrs {
     }
 
     pub fn repr(&self) -> Option<ReprOptions> {
-        self.by_key(&sym::repr).tt_values().find_map(parse_repr_tt)
+        self.by_key(&sym::repr).tt_values().filter_map(parse_repr_tt).fold(None, |acc, repr| {
+            acc.map_or(Some(repr), |mut acc| {
+                merge_repr(&mut acc, repr);
+                Some(acc)
+            })
+        })
     }
 }
 
@@ -260,6 +265,19 @@ fn parse_rustc_legacy_const_generics(tt: &crate::tt::TopSubtree) -> Box<[u32]> {
     indices.into_boxed_slice()
 }
 
+fn merge_repr(this: &mut ReprOptions, other: ReprOptions) {
+    let ReprOptions { int, align, pack, flags, field_shuffle_seed: _ } = this;
+    flags.insert(other.flags);
+    *align = (*align).max(other.align);
+    *pack = match (*pack, other.pack) {
+        (Some(pack), None) | (None, Some(pack)) => Some(pack),
+        _ => (*pack).min(other.pack),
+    };
+    if other.int.is_some() {
+        *int = other.int;
+    }
+}
+
 fn parse_repr_tt(tt: &crate::tt::TopSubtree) -> Option<ReprOptions> {
     use crate::builtin_type::{BuiltinInt, BuiltinUint};
     use rustc_abi::{Align, Integer, IntegerType, ReprFlags, ReprOptions};
@@ -269,83 +287,76 @@ fn parse_repr_tt(tt: &crate::tt::TopSubtree) -> Option<ReprOptions> {
         _ => return None,
     }
 
-    let mut flags = ReprFlags::empty();
-    let mut int = None;
-    let mut max_align: Option<Align> = None;
-    let mut min_pack: Option<Align> = None;
-
+    let mut acc = ReprOptions::default();
     let mut tts = tt.iter();
     while let Some(tt) = tts.next() {
-        if let TtElement::Leaf(tt::Leaf::Ident(ident)) = tt {
-            flags.insert(match &ident.sym {
-                s if *s == sym::packed => {
-                    let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
-                        tts.next();
-                        if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
-                            lit.symbol.as_str().parse().unwrap_or_default()
-                        } else {
-                            0
-                        }
+        let TtElement::Leaf(tt::Leaf::Ident(ident)) = tt else {
+            continue;
+        };
+        let repr = match &ident.sym {
+            s if *s == sym::packed => {
+                let pack = if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
+                    tts.next();
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
+                        lit.symbol.as_str().parse().unwrap_or_default()
                     } else {
                         0
-                    };
-                    let pack = Align::from_bytes(pack).unwrap_or(Align::ONE);
-                    min_pack =
-                        Some(if let Some(min_pack) = min_pack { min_pack.min(pack) } else { pack });
-                    ReprFlags::empty()
-                }
-                s if *s == sym::align => {
-                    if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
-                        tts.next();
-                        if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
-                            if let Ok(align) = lit.symbol.as_str().parse() {
-                                let align = Align::from_bytes(align).ok();
-                                max_align = max_align.max(align);
-                            }
+                    }
+                } else {
+                    0
+                };
+                let pack = Some(Align::from_bytes(pack).unwrap_or(Align::ONE));
+                ReprOptions { pack, ..Default::default() }
+            }
+            s if *s == sym::align => {
+                let mut align = None;
+                if let Some(TtElement::Subtree(_, mut tt_iter)) = tts.peek() {
+                    tts.next();
+                    if let Some(TtElement::Leaf(tt::Leaf::Literal(lit))) = tt_iter.next() {
+                        if let Ok(a) = lit.symbol.as_str().parse() {
+                            align = Align::from_bytes(a).ok();
                         }
                     }
-                    ReprFlags::empty()
                 }
-                s if *s == sym::C => ReprFlags::IS_C,
-                s if *s == sym::transparent => ReprFlags::IS_TRANSPARENT,
-                s if *s == sym::simd => ReprFlags::IS_SIMD,
-                repr => {
-                    if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
-                        .map(Either::Left)
-                        .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
-                    {
-                        int = Some(match builtin {
-                            Either::Left(bi) => match bi {
-                                BuiltinInt::Isize => IntegerType::Pointer(true),
-                                BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
-                                BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
-                                BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
-                                BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
-                                BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
-                            },
-                            Either::Right(bu) => match bu {
-                                BuiltinUint::Usize => IntegerType::Pointer(false),
-                                BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
-                                BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
-                                BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
-                                BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
-                                BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
-                            },
-                        });
-                    }
-                    ReprFlags::empty()
+                ReprOptions { align, ..Default::default() }
+            }
+            s if *s == sym::C => ReprOptions { flags: ReprFlags::IS_C, ..Default::default() },
+            s if *s == sym::transparent => {
+                ReprOptions { flags: ReprFlags::IS_TRANSPARENT, ..Default::default() }
+            }
+            s if *s == sym::simd => ReprOptions { flags: ReprFlags::IS_SIMD, ..Default::default() },
+            repr => {
+                let mut int = None;
+                if let Some(builtin) = BuiltinInt::from_suffix_sym(repr)
+                    .map(Either::Left)
+                    .or_else(|| BuiltinUint::from_suffix_sym(repr).map(Either::Right))
+                {
+                    int = Some(match builtin {
+                        Either::Left(bi) => match bi {
+                            BuiltinInt::Isize => IntegerType::Pointer(true),
+                            BuiltinInt::I8 => IntegerType::Fixed(Integer::I8, true),
+                            BuiltinInt::I16 => IntegerType::Fixed(Integer::I16, true),
+                            BuiltinInt::I32 => IntegerType::Fixed(Integer::I32, true),
+                            BuiltinInt::I64 => IntegerType::Fixed(Integer::I64, true),
+                            BuiltinInt::I128 => IntegerType::Fixed(Integer::I128, true),
+                        },
+                        Either::Right(bu) => match bu {
+                            BuiltinUint::Usize => IntegerType::Pointer(false),
+                            BuiltinUint::U8 => IntegerType::Fixed(Integer::I8, false),
+                            BuiltinUint::U16 => IntegerType::Fixed(Integer::I16, false),
+                            BuiltinUint::U32 => IntegerType::Fixed(Integer::I32, false),
+                            BuiltinUint::U64 => IntegerType::Fixed(Integer::I64, false),
+                            BuiltinUint::U128 => IntegerType::Fixed(Integer::I128, false),
+                        },
+                    });
                 }
-            })
-        }
+                ReprOptions { int, ..Default::default() }
+            }
+        };
+        merge_repr(&mut acc, repr);
     }
 
-    Some(ReprOptions {
-        int,
-        align: max_align,
-        pack: min_pack,
-        flags,
-        field_shuffle_seed: rustc_hashes::Hash64::ZERO,
-    })
+    Some(acc)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
