@@ -803,7 +803,6 @@ pub enum BuiltinLintDiag {
     UnnameableTestItems,
     DuplicateMacroAttribute,
     CfgAttrNoAttributes,
-    MissingFragmentSpecifier,
     MetaVariableStillRepeating(MacroRulesNormalizedIdent),
     MetaVariableWrongOperator,
     DuplicateMatcherBinding,
