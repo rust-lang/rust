@@ -3342,7 +3342,10 @@ impl Target {
                 );
             }
             "arm" => {
-                check!(self.llvm_floatabi.is_some(), "ARM targets must specify their float ABI",)
+                check!(
+                    self.llvm_floatabi.is_some(),
+                    "ARM targets must set `llvm-floatabi` to `hard` or `soft`",
+                )
             }
             _ => {}
         }
