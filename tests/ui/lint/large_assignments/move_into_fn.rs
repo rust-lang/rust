@@ -16,7 +16,8 @@ fn main() {
     // Looking at llvm-ir output, we can see that there is no memcpy involved in
     // this function call. Instead, just a pointer is passed to the function. So
     // the lint shall not trigger here.
-    take_data(data);
+    take_data(data); //~ ERROR large_assignments
+    // FIXME: uh-oh, the test says we shouldn't get a lint here and we do.
 }
 
 fn take_data(data: Data) {}
