@@ -113,12 +113,32 @@ impl<'tcx> rustc_type_ir::InferCtxtLike for InferCtxt<'tcx> {
         )
     }
 
+    fn instantiate_binder_with_infer_and_goals<T: TypeFoldable<TyCtxt<'tcx>> + Copy>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+    ) -> (T, ty::Clauses<'tcx>) {
+        self.instantiate_binder_with_fresh_vars_and_goals(
+            DUMMY_SP,
+            BoundRegionConversionTime::HigherRankedType,
+            value,
+        )
+    }
+
     fn enter_forall<T: TypeFoldable<TyCtxt<'tcx>>, U>(
         &self,
         value: ty::Binder<'tcx, T>,
         f: impl FnOnce(T) -> U,
     ) -> U {
         self.enter_forall(value, f)
+    }
+
+    fn enter_forall_with_assumptions<T: TypeFoldable<TyCtxt<'tcx>>, U>(
+        &self,
+        value: ty::Binder<'tcx, T>,
+        param_env: ty::ParamEnv<'tcx>,
+        f: impl FnOnce(T, ty::ParamEnv<'tcx>) -> U,
+    ) -> U {
+        self.enter_forall_with_assumptions(value, param_env, f)
     }
 
     fn equate_ty_vids_raw(&self, a: rustc_type_ir::TyVid, b: rustc_type_ir::TyVid) {

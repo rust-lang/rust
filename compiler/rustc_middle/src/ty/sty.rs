@@ -2090,6 +2090,6 @@ mod size_asserts {
     use super::*;
     // tidy-alphabetical-start
     static_assert_size!(ty::RegionKind<'_>, 24);
-    static_assert_size!(ty::TyKind<'_>, 24);
+    static_assert_size!(ty::TyKind<'_>, 32);
     // tidy-alphabetical-end
 }
