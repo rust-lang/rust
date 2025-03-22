@@ -1491,7 +1491,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             // However, if we disqualify *all* goals from being cached, perf suffers.
             // This is likely fixed by better caching in general in the new solver.
             // See: <https://github.com/rust-lang/rust/issues/132064>.
-            TypingMode::Analysis { defining_opaque_types } => {
+            TypingMode::Analysis { defining_opaque_types, stalled_generators } => {
+                debug_assert!(stalled_generators.is_empty());
                 defining_opaque_types.is_empty() || !pred.has_opaque_types()
             }
             // The hidden types of `defined_opaque_types` is not local to the current
