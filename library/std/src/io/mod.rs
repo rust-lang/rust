@@ -2028,7 +2028,7 @@ pub trait Seek {
 
     /// Returns the length of this stream (in bytes).
     ///
-    /// This method is implemented using up to three seek operations. If this
+    /// The default implementation uses up to three seek operations. If this
     /// method returns successfully, the seek position is unchanged (i.e. the
     /// position before calling this method is the same as afterwards).
     /// However, if this method returns an error, the seek position is
@@ -2062,16 +2062,7 @@ pub trait Seek {
     /// ```
     #[unstable(feature = "seek_stream_len", issue = "59359")]
     fn stream_len(&mut self) -> Result<u64> {
-        let old_pos = self.stream_position()?;
-        let len = self.seek(SeekFrom::End(0))?;
-
-        // Avoid seeking a third time when we were already at the end of the
-        // stream. The branch is usually way cheaper than a seek operation.
-        if old_pos != len {
-            self.seek(SeekFrom::Start(old_pos))?;
-        }
-
-        Ok(len)
+        stream_len_default(self)
     }
 
     /// Returns the current seek position from the start of the stream.
@@ -2130,6 +2121,19 @@ pub trait Seek {
         self.seek(SeekFrom::Current(offset))?;
         Ok(())
     }
+}
+
+pub(crate) fn stream_len_default<T: Seek + ?Sized>(self_: &mut T) -> Result<u64> {
+    let old_pos = self_.stream_position()?;
+    let len = self_.seek(SeekFrom::End(0))?;
+
+    // Avoid seeking a third time when we were already at the end of the
+    // stream. The branch is usually way cheaper than a seek operation.
+    if old_pos != len {
+        self_.seek(SeekFrom::Start(old_pos))?;
+    }
+
+    Ok(len)
 }
 
 /// Enumeration of possible methods to seek within an I/O object.
