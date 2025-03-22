@@ -2200,7 +2200,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_array_like_block(&mut self) -> bool {
-        self.look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
+        matches!(self.token.kind, TokenKind::OpenDelim(Delimiter::Brace))
+            && self
+                .look_ahead(1, |t| matches!(t.kind, TokenKind::Ident(..) | TokenKind::Literal(_)))
             && self.look_ahead(2, |t| t == &token::Comma)
             && self.look_ahead(3, |t| t.can_begin_expr())
     }
@@ -2212,9 +2214,9 @@ impl<'a> Parser<'a> {
         let mut snapshot = self.create_snapshot_for_diagnostic();
         match snapshot.parse_expr_array_or_repeat(exp!(CloseBrace)) {
             Ok(arr) => {
-                let guar = self.dcx().emit_err(errors::ArrayBracketsInsteadOfSpaces {
+                let guar = self.dcx().emit_err(errors::ArrayBracketsInsteadOfBraces {
                     span: arr.span,
-                    sub: errors::ArrayBracketsInsteadOfSpacesSugg {
+                    sub: errors::ArrayBracketsInsteadOfBracesSugg {
                         left: lo,
                         right: snapshot.prev_token.span,
                     },
@@ -2337,7 +2339,8 @@ impl<'a> Parser<'a> {
         let capture_clause = self.parse_capture_clause()?;
         let (fn_decl, fn_arg_span) = self.parse_fn_block_decl()?;
         let decl_hi = self.prev_token.span;
-        let mut body = match fn_decl.output {
+        let mut body = match &fn_decl.output {
+            // No return type.
             FnRetTy::Default(_) => {
                 let restrictions =
                     self.restrictions - Restrictions::STMT_EXPR - Restrictions::ALLOW_LET;
@@ -2349,11 +2352,8 @@ impl<'a> Parser<'a> {
                     Err(err) => self.recover_closure_body(err, before, prev, token, lo, decl_hi)?,
                 }
             }
-            _ => {
-                // If an explicit return type is given, require a block to appear (RFC 968).
-                let body_lo = self.token.span;
-                self.parse_expr_block(None, body_lo, BlockCheckMode::Default)?
-            }
+            // Explicit return type (`->`) needs block `-> T { }`.
+            FnRetTy::Ty(ty) => self.parse_closure_block_body(ty.span)?,
         };
 
         match coroutine_kind {
@@ -2403,6 +2403,49 @@ impl<'a> Parser<'a> {
         self.current_closure = Some(spans);
 
         Ok(closure)
+    }
+
+    /// If an explicit return type is given, require a block to appear (RFC 968).
+    fn parse_closure_block_body(&mut self, ret_span: Span) -> PResult<'a, P<Expr>> {
+        if self.may_recover()
+            && self.token.can_begin_expr()
+            && !matches!(self.token.kind, TokenKind::OpenDelim(Delimiter::Brace))
+            && !self.token.is_whole_block()
+        {
+            let snapshot = self.create_snapshot_for_diagnostic();
+            let restrictions =
+                self.restrictions - Restrictions::STMT_EXPR - Restrictions::ALLOW_LET;
+            let tok = self.token.clone();
+            match self.parse_expr_res(restrictions, AttrWrapper::empty()) {
+                Ok((expr, _)) => {
+                    let descr = super::token_descr(&tok);
+                    let mut diag = self
+                        .dcx()
+                        .struct_span_err(tok.span, format!("expected `{{`, found {descr}"));
+                    diag.span_label(
+                        ret_span,
+                        "explicit return type requires closure body to be enclosed in braces",
+                    );
+                    diag.multipart_suggestion_verbose(
+                        "wrap the expression in curly braces",
+                        vec![
+                            (expr.span.shrink_to_lo(), "{ ".to_string()),
+                            (expr.span.shrink_to_hi(), " }".to_string()),
+                        ],
+                        Applicability::MachineApplicable,
+                    );
+                    diag.emit();
+                    return Ok(expr);
+                }
+                Err(diag) => {
+                    diag.cancel();
+                    self.restore_snapshot(snapshot);
+                }
+            }
+        }
+
+        let body_lo = self.token.span;
+        self.parse_expr_block(None, body_lo, BlockCheckMode::Default)
     }
 
     /// Parses an optional `move` or `use` prefix to a closure-like construct.
