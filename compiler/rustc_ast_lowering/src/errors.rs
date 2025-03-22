@@ -445,14 +445,6 @@ pub(crate) struct NoPreciseCapturesOnApit {
 }
 
 #[derive(Diagnostic)]
-#[diag(ast_lowering_no_precise_captures_on_rpitit)]
-#[note]
-pub(crate) struct NoPreciseCapturesOnRpitit {
-    #[primary_span]
-    pub span: Span,
-}
-
-#[derive(Diagnostic)]
 #[diag(ast_lowering_yield_in_closure)]
 pub(crate) struct YieldInClosure {
     #[primary_span]

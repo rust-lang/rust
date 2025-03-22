@@ -1,5 +1,3 @@
-#![feature(precise_capturing_in_traits)]
-
 fn type_param<T>() -> impl Sized + use<> {}
 //~^ ERROR `impl Trait` must mention all type parameters in scope
 
