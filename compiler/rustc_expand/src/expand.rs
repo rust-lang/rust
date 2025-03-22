@@ -1941,7 +1941,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                 let attr_name = attr.ident().unwrap().name;
                 // `#[cfg]` and `#[cfg_attr]` are special - they are
                 // eagerly evaluated.
-                if attr_name != sym::cfg && attr_name != sym::cfg_attr {
+                if attr_name != sym::cfg && attr_name != sym::cfg_attr_trace {
                     self.cx.sess.psess.buffer_lint(
                         UNUSED_ATTRIBUTES,
                         attr.span,
