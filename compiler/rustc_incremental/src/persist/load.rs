@@ -171,7 +171,7 @@ fn load_dep_graph(sess: &Session) -> LoadResult<(Arc<SerializedDepGraph>, WorkPr
                 return LoadResult::DataOutOfDate;
             }
 
-            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder);
+            let dep_graph = SerializedDepGraph::decode::<DepsType>(&mut decoder, sess);
 
             LoadResult::Ok { data: (dep_graph, prev_work_products) }
         }
