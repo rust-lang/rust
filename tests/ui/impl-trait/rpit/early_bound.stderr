@@ -1,24 +1,14 @@
 error: concrete type differs from previous defining opaque type use
+  --> $DIR/early_bound.rs:6:36
+   |
+LL |         let _ = identity::<&'a ()>(test(false));
+   |                                    ^^^^^^^^^^^ expected `()`, got `&()`
+   |
+note: previous use here
   --> $DIR/early_bound.rs:3:29
    |
 LL | fn test<'a: 'a>(n: bool) -> impl Sized + 'a {
-   |                             ^^^^^^^^^^^^^^^ expected `&()`, got `()`
-   |
-note: previous use here
-  --> $DIR/early_bound.rs:7:36
-   |
-LL |         let _ = identity::<&'a ()>(test(false));
-   |                                    ^^^^^^^^^^^
+   |                             ^^^^^^^^^^^^^^^
 
-error[E0792]: expected generic lifetime parameter, found `'_`
-  --> $DIR/early_bound.rs:7:17
-   |
-LL | fn test<'a: 'a>(n: bool) -> impl Sized + 'a {
-   |                                          -- this generic parameter must be used with a generic lifetime parameter
-...
-LL |         let _ = identity::<&'a ()>(test(false));
-   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+error: aborting due to 1 previous error
 
-error: aborting due to 2 previous errors
-
-For more information about this error, try `rustc --explain E0792`.

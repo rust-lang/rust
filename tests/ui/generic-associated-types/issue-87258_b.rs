@@ -14,12 +14,12 @@ pub trait Trait2 {
 }
 
 type Helper<'xenon, 'yttrium, KABOOM: Trait2> = impl Trait1;
-//~^ ERROR unconstrained opaque type
 
 impl<'c, S: Trait2> Trait2 for &'c mut S {
     type FooFuture<'a> = Helper<'c, 'a, S>;
     #[define_opaque(Helper)]
     fn foo<'a>() -> Self::FooFuture<'a> {
+        //~^ ERROR item does not constrain `Helper::{opaque#0}`
         Struct(unimplemented!())
     }
 }

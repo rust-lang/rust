@@ -1,0 +1,12 @@
+error[E0792]: expected generic lifetime parameter, found `'_`
+  --> $DIR/nested-hkl-lifetime.rs:26:13
+   |
+LL | fn rule_to_parser<'c>() -> impl Parser<&'c str> {
+   |                                         -- this generic parameter must be used with a generic lifetime parameter
+...
+LL |         alt(v.iter().map(|()| owned_context(rule_to_parser())).collect::<DynamicAlt<_>>())(input)
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0792`.

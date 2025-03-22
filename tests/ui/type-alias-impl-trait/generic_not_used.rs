@@ -7,6 +7,6 @@ type WrongGeneric<T: 'static> = impl 'static;
 
 #[define_opaque(WrongGeneric)]
 fn wrong_generic<U: 'static, V: 'static>(_: U, v: V) -> WrongGeneric<U> {
-    v
     //~^ ERROR type parameter `V` is part of concrete type but not used in parameter list
+    v
 }

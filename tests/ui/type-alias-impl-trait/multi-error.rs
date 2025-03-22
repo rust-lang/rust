@@ -16,8 +16,8 @@ impl Foo for () {
     type Baz = impl Sized;
     fn foo() -> (Self::Bar<u32>, Self::Baz) {
         //~^ ERROR non-defining opaque type use
+        //~| ERROR expected generic type parameter
         ((), ())
-        //~^ ERROR expected generic type parameter
     }
 }
 

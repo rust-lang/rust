@@ -31,7 +31,6 @@ impl<F: for<'a> Fn(&'a ()) -> StateWidget<'a>> Widget<()> for StatefulWidget<F> 
 fn new_stateful_widget<F: for<'a> Fn(&'a ()) -> StateWidget<'a>>(build: F) -> impl Widget<()> {
     //~^ ERROR item does not constrain
     StatefulWidget(build)
-    //~^ ERROR expected generic lifetime parameter, found `'a`
 }
 
 fn main() {

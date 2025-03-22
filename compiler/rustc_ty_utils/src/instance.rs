@@ -149,6 +149,7 @@ fn resolve_associated_item<'tcx>(
                 match typing_env.typing_mode {
                     ty::TypingMode::Coherence
                     | ty::TypingMode::Analysis { .. }
+                    | ty::TypingMode::Borrowck { .. }
                     | ty::TypingMode::PostBorrowckAnalysis { .. } => false,
                     ty::TypingMode::PostAnalysis => !trait_ref.still_further_specializable(),
                 }

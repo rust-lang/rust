@@ -25,18 +25,34 @@ LL |         match foo() {
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:18:13
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:15:15
+   |
+LL |         match foo() {
+   |               ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:15:15
+   |
+LL |         match foo() {
+   |               ^^^^^
+   |
+   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
+
+error: higher-ranked subtype error
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:20:13
    |
 LL |             Subtype::Bar => (),
    |             ^^^^^^^^^^^^
 
 error: higher-ranked subtype error
-  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:18:13
+  --> $DIR/opaque-types-patterns-subtyping-ice-104779.rs:20:13
    |
 LL |             Subtype::Bar => (),
    |             ^^^^^^^^^^^^
    |
    = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: aborting due to 6 previous errors; 1 warning emitted
 

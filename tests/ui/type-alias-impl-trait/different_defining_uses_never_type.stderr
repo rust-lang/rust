@@ -2,13 +2,13 @@ error: concrete type differs from previous defining opaque type use
   --> $DIR/different_defining_uses_never_type.rs:14:13
    |
 LL | fn bar() -> Foo {
-   |             ^^^ expected `&'static str`, got `()`
+   |             ^^^ expected `&str`, got `()`
    |
 note: previous use here
-  --> $DIR/different_defining_uses_never_type.rs:10:5
+  --> $DIR/different_defining_uses_never_type.rs:9:13
    |
-LL |     ""
-   |     ^^
+LL | fn foo() -> Foo {
+   |             ^^^
 
 error: aborting due to 1 previous error
 
