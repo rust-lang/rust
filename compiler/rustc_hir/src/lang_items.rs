@@ -433,6 +433,12 @@ language_item_table! {
     // Experimental lang items for implementing contract pre- and post-condition checking.
     ContractBuildCheckEnsures, sym::contract_build_check_ensures, contract_build_check_ensures_fn, Target::Fn, GenericRequirement::None;
     ContractCheckRequires,     sym::contract_check_requires,      contract_check_requires_fn,      Target::Fn, GenericRequirement::None;
+
+    // Experimental lang items for `MCP: Low level components for async drop`(https://github.com/rust-lang/compiler-team/issues/727)
+    DefaultTrait4,           sym::default_trait4,      default_trait4_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait3,           sym::default_trait3,      default_trait3_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait2,           sym::default_trait2,      default_trait2_trait,       Target::Trait,          GenericRequirement::None;
+    DefaultTrait1,           sym::default_trait1,      default_trait1_trait,       Target::Trait,          GenericRequirement::None;
 }
 
 /// The requirement imposed on the generics of a lang item
