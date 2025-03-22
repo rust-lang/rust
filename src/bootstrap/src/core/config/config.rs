@@ -44,6 +44,7 @@ use crate::utils::helpers::{self, exe, output, t};
 /// final output/compiler, which can be significantly affected by changes made to the bootstrap sources.
 #[rustfmt::skip] // We don't want rustfmt to oneline this list
 pub(crate) const RUSTC_IF_UNCHANGED_ALLOWED_PATHS: &[&str] = &[
+    ":!library",
     ":!src/tools",
     ":!src/librustdoc",
     ":!src/rustdoc-json-types",
@@ -2404,10 +2405,12 @@ impl Config {
             || bench_stage.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
         config.stage = match config.cmd {
-            Subcommand::Check { .. } => flags.stage.or(check_stage).unwrap_or(0),
+            Subcommand::Check { .. } | Subcommand::Clippy { .. } | Subcommand::Fix => {
+                flags.stage.or(check_stage).unwrap_or(1)
+            }
             // `download-rustc` only has a speed-up for stage2 builds. Default to stage2 unless explicitly overridden.
             Subcommand::Doc { .. } => {
-                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 0 })
+                flags.stage.or(doc_stage).unwrap_or(if download_rustc { 2 } else { 1 })
             }
             Subcommand::Build => {
                 flags.stage.or(build_stage).unwrap_or(if download_rustc { 2 } else { 1 })
@@ -2422,8 +2425,6 @@ impl Config {
             // These are all bootstrap tools, which don't depend on the compiler.
             // The stage we pass shouldn't matter, but use 0 just in case.
             Subcommand::Clean { .. }
-            | Subcommand::Clippy { .. }
-            | Subcommand::Fix
             | Subcommand::Run { .. }
             | Subcommand::Setup { .. }
             | Subcommand::Format { .. }
@@ -3034,24 +3035,14 @@ impl Config {
             }
         };
 
-        // RUSTC_IF_UNCHANGED_ALLOWED_PATHS
-        let mut allowed_paths = RUSTC_IF_UNCHANGED_ALLOWED_PATHS.to_vec();
-
-        // In CI, disable ci-rustc if there are changes in the library tree. But for non-CI, allow
-        // these changes to speed up the build process for library developers. This provides consistent
-        // functionality for library developers between `download-rustc=true` and `download-rustc="if-unchanged"`
-        // options.
-        //
-        // If you update "library" logic here, update `builder::tests::ci_rustc_if_unchanged_logic` test
-        // logic accordingly.
-        if !self.is_running_on_ci {
-            allowed_paths.push(":!library");
-        }
-
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
+            match self.last_modified_commit(
+                RUSTC_IF_UNCHANGED_ALLOWED_PATHS,
+                "download-rustc",
+                if_unchanged,
+            ) {
                 Some(commit) => commit,
                 None => {
                     if if_unchanged {
