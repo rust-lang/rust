@@ -42,7 +42,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         // Start with anything like `T: 'a` we can scrape from the
         // environment. If the environment contains something like
         // `for<'a> T: 'a`, then we know that `T` outlives everything.
-        let declared_bounds_from_env = self.declared_generic_bounds_from_env(ty);
+        let declared_bounds_from_env = self.declared_generic_bounds_for_param(ty);
         debug!(?declared_bounds_from_env);
         let mut param_bounds = vec![];
         for declared_bound in declared_bounds_from_env {
@@ -96,8 +96,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         &self,
         alias_ty: ty::AliasTy<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
-        let erased_alias_ty = self.tcx.erase_regions(alias_ty.to_ty(self.tcx));
-        self.declared_generic_bounds_from_env_for_erased_ty(erased_alias_ty)
+        self.declared_generic_bounds_from_env_for_ty(alias_ty.to_ty(self.tcx))
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -180,16 +179,19 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///
     /// This is a conservative check -- it may not find all applicable
     /// bounds, but all the bounds it returns can be relied upon.
-    fn declared_generic_bounds_from_env(
+    fn declared_generic_bounds_for_param(
         &self,
         generic_ty: Ty<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         assert_matches!(generic_ty.kind(), ty::Param(_) | ty::Placeholder(_));
-        self.declared_generic_bounds_from_env_for_erased_ty(generic_ty)
+        self.declared_generic_bounds_from_env_for_ty(generic_ty)
     }
 
-    /// Searches the environment to find all bounds that apply to `erased_ty`.
-    /// Obviously these must be approximate -- they are in fact both *over* and
+    /// Searches the environment to find all bounds that apply to `ty`. When `ty`
+    /// is a rigid projection whose self type is another alias, then look at that
+    /// alias's item bounds too.
+    ///
+    /// Obviously these bounds must be approximate -- they are in fact both *over* and
     /// and *under* approximated:
     ///
     /// * Over-approximated because we don't consider equality of regions.
@@ -197,14 +199,16 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
     ///   like `<T as Foo<fn(&u32, &u32)>>::Item` or whatever we may fail to figure out
     ///   all the subtleties.
     ///
-    /// In some cases, such as when `erased_ty` represents a `ty::Param`, however,
-    /// the result is precise.
+    /// In some cases, such as when `ty` represents a `ty::Param`, however,
+    /// the result is precise, since there's no regions or normalization to consider.
     #[instrument(level = "debug", skip(self))]
-    fn declared_generic_bounds_from_env_for_erased_ty(
+    fn declared_generic_bounds_from_env_for_ty(
         &self,
-        erased_ty: Ty<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Vec<ty::PolyTypeOutlivesPredicate<'tcx>> {
         let tcx = self.tcx;
+        // We use the erased type for structural equality modulo regions.
+        let erased_ty = tcx.erase_regions(ty);
         let mut bounds = vec![];
 
         // To start, collect bounds from user environment. Note that
@@ -213,6 +217,37 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         bounds.extend(self.caller_bounds.iter().copied().filter(move |outlives_predicate| {
             super::test_type_match::can_match_erased_ty(tcx, *outlives_predicate, erased_ty)
         }));
+
+        // Secondly, consider the associated type bounds that come from
+        // *parent* projections when this is a nested projection. For example,
+        // consider the opaque `type Tait = impl Foo<Out: 'static>`. If our
+        // type is `<Tait as Foo>::Out`, then we want to look at the item bounds
+        // of `Tait` to potentially match.
+        let mut next_ty = ty;
+        let mut in_nested_alias = false;
+        while let ty::Alias(kind @ (ty::Projection | ty::Opaque), alias_ty) = *next_ty.kind() {
+            if in_nested_alias {
+                bounds.extend(
+                    self.tcx
+                        .item_non_self_assumptions(alias_ty.def_id)
+                        .iter_instantiated(tcx, alias_ty.args)
+                        .filter_map(|clause| clause.as_type_outlives_clause())
+                        .filter(move |outlives_predicate| {
+                            super::test_type_match::can_match_erased_ty(
+                                tcx,
+                                *outlives_predicate,
+                                erased_ty,
+                            )
+                        }),
+                );
+            }
+            if kind == ty::Projection {
+                in_nested_alias = true;
+                next_ty = alias_ty.self_ty();
+            } else {
+                break;
+            }
+        }
 
         // Next, collect regions we scraped from the well-formedness
         // constraints in the fn signature. To do that, we walk the list
