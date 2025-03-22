@@ -330,6 +330,11 @@ pub(crate) fn get_tool_rustc_compiler(
         return target_compiler;
     }
 
+    if builder.download_rustc() && target_compiler.stage == 1 {
+        // We shouldn't drop to stage0 compiler when using CI rustc.
+        return builder.compiler(1, builder.config.build);
+    }
+
     // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
     // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
     // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
@@ -809,7 +814,6 @@ impl Step for LldWrapper {
             fields(build_compiler = ?self.build_compiler, target_compiler = ?self.target_compiler),
         ),
     )]
-
     fn run(self, builder: &Builder<'_>) -> ToolBuildResult {
         if builder.config.dry_run() {
             return ToolBuildResult {
