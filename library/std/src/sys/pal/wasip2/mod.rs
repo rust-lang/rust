@@ -20,8 +20,6 @@ pub mod futex;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
 pub mod pipe;
-#[path = "../unsupported/process.rs"]
-pub mod process;
 #[path = "../wasi/thread.rs"]
 pub mod thread;
 #[path = "../wasi/time.rs"]

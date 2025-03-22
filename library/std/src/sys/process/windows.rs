@@ -5,11 +5,10 @@ mod tests;
 
 use core::ffi::c_void;
 
-use super::api::{self, WinError};
 use crate::collections::BTreeMap;
 use crate::env::consts::{EXE_EXTENSION, EXE_SUFFIX};
 use crate::ffi::{OsStr, OsString};
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, Error};
 use crate::num::NonZero;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::os::windows::io::{AsHandle, AsRawHandle, BorrowedHandle, FromRawHandle, IntoRawHandle};
@@ -20,6 +19,8 @@ use crate::sys::args::{self, Arg};
 use crate::sys::c::{self, EXIT_FAILURE, EXIT_SUCCESS};
 use crate::sys::fs::{File, OpenOptions};
 use crate::sys::handle::Handle;
+use crate::sys::pal::api::{self, WinError};
+use crate::sys::pal::{ensure_no_nuls, fill_utf16_buf};
 use crate::sys::pipe::{self, AnonPipe};
 use crate::sys::{cvt, path, stdio};
 use crate::sys_common::IntoInner;
@@ -139,14 +140,6 @@ impl From<&OsStr> for EnvKey {
 impl AsRef<OsStr> for EnvKey {
     fn as_ref(&self) -> &OsStr {
         &self.os_string
-    }
-}
-
-pub(crate) fn ensure_no_nuls<T: AsRef<OsStr>>(s: T) -> io::Result<T> {
-    if s.as_ref().encode_wide().any(|b| b == 0) {
-        Err(io::const_error!(ErrorKind::InvalidInput, "nul byte found in provided data"))
-    } else {
-        Ok(s)
     }
 }
 
@@ -279,7 +272,7 @@ impl Command {
         let is_batch_file = if path::is_verbatim(&program) {
             has_bat_extension(&program[..program.len() - 1])
         } else {
-            super::fill_utf16_buf(
+            fill_utf16_buf(
                 |buffer, size| unsafe {
                     // resolve the path so we can test the final file name.
                     c::GetFullPathNameW(program.as_ptr(), size, buffer, ptr::null_mut())
@@ -521,7 +514,7 @@ where
     // 3 & 4. System paths
     // SAFETY: This uses `fill_utf16_buf` to safely call the OS functions.
     unsafe {
-        if let Ok(Some(path)) = super::fill_utf16_buf(
+        if let Ok(Some(path)) = fill_utf16_buf(
             |buf, size| c::GetSystemDirectoryW(buf, size),
             |buf| exists(PathBuf::from(OsString::from_wide(buf))),
         ) {
@@ -529,7 +522,7 @@ where
         }
         #[cfg(not(target_vendor = "uwp"))]
         {
-            if let Ok(Some(path)) = super::fill_utf16_buf(
+            if let Ok(Some(path)) = fill_utf16_buf(
                 |buf, size| c::GetWindowsDirectoryW(buf, size),
                 |buf| exists(PathBuf::from(OsString::from_wide(buf))),
             ) {
@@ -851,10 +844,8 @@ fn make_command_line(argv0: &OsStr, args: &[Arg], force_quotes: bool) -> io::Res
 
 // Get `cmd.exe` for use with bat scripts, encoded as a UTF-16 string.
 fn command_prompt() -> io::Result<Vec<u16>> {
-    let mut system: Vec<u16> = super::fill_utf16_buf(
-        |buf, size| unsafe { c::GetSystemDirectoryW(buf, size) },
-        |buf| buf.into(),
-    )?;
+    let mut system: Vec<u16> =
+        fill_utf16_buf(|buf, size| unsafe { c::GetSystemDirectoryW(buf, size) }, |buf| buf.into())?;
     system.extend("\\cmd.exe".encode_utf16().chain([0]));
     Ok(system)
 }

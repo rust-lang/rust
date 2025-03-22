@@ -17,6 +17,7 @@ pub mod io;
 pub mod net;
 pub mod os_str;
 pub mod path;
+pub mod process;
 pub mod random;
 pub mod stdio;
 pub mod sync;
