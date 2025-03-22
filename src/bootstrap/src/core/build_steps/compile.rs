@@ -147,14 +147,22 @@ impl Step for Std {
     )]
     fn run(self, builder: &Builder<'_>) {
         let target = self.target;
-        let compiler = self.compiler;
 
         // We already have std ready to be used for stage 0.
-        if compiler.stage == 0 {
+        if self.compiler.stage == 0 {
+            let compiler = self.compiler;
             builder.ensure(StdLink::from_std(self, compiler));
 
             return;
         }
+
+        let compiler = if builder.download_rustc() && self.force_recompile {
+            // When there are changes in the library tree with CI-rustc, we want to build
+            // the stageN library and that requires using stageN-1 compiler.
+            builder.compiler(self.compiler.stage.saturating_sub(1), builder.config.build)
+        } else {
+            self.compiler
+        };
 
         // When using `download-rustc`, we already have artifacts for the host available. Don't
         // recompile them.
@@ -191,17 +199,16 @@ impl Step for Std {
 
         let mut target_deps = builder.ensure(StartupObjects { compiler, target });
 
-        let mut compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
+        let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         trace!(?compiler_to_use);
 
         if compiler_to_use != compiler
-            // Never uplift std unless we have compiled stage 2; if stage 2 is compiled,
+            // Never uplift std unless we have compiled stage 1; if stage 1 is compiled,
             // uplift it from there.
             //
             // FIXME: improve `fn compiler_for` to avoid adding stage condition here.
-            && compiler.stage > 2
+            && compiler.stage > 1
         {
-            compiler_to_use.stage = 2;
             trace!(?compiler_to_use, ?compiler, "compiler != compiler_to_use, uplifting library");
 
             builder.ensure(Std::new(compiler_to_use, target));
@@ -233,27 +240,6 @@ impl Step for Std {
         );
 
         target_deps.extend(self.copy_extra_objects(builder, &compiler, target));
-
-        // The LLD wrappers and `rust-lld` are self-contained linking components that can be
-        // necessary to link the stdlib on some targets. We'll also need to copy these binaries to
-        // the `stage0-sysroot` to ensure the linker is found when bootstrapping on such a target.
-        if compiler.stage == 0 && builder.config.is_host_target(compiler.host) {
-            trace!(
-                "(build == host) copying linking components to `stage0-sysroot` for bootstrapping"
-            );
-            // We want to copy the host `bin` folder within the `rustlib` folder in the sysroot.
-            let src_sysroot_bin = builder
-                .rustc_snapshot_sysroot()
-                .join("lib")
-                .join("rustlib")
-                .join(compiler.host)
-                .join("bin");
-            if src_sysroot_bin.exists() {
-                let target_sysroot_bin = builder.sysroot_target_bindir(compiler, target);
-                t!(fs::create_dir_all(&target_sysroot_bin));
-                builder.cp_link_r(&src_sysroot_bin, &target_sysroot_bin);
-            }
-        }
 
         // We build a sysroot for mir-opt tests using the same trick that Miri does: A check build
         // with -Zalways-encode-mir. This frees us from the need to have a target linker, and the
@@ -749,7 +735,7 @@ impl Step for StdLink {
         let target = self.target;
 
         // NOTE: intentionally does *not* check `target == builder.build` to avoid having to add the same check in `test::Crate`.
-        let (libdir, hostdir) = if self.force_recompile && builder.download_rustc() {
+        let (libdir, hostdir) = if !self.force_recompile && builder.download_rustc() {
             // NOTE: copies part of `sysroot_libdir` to avoid having to add a new `force_recompile` argument there too
             let lib = builder.sysroot_libdir_relative(self.compiler);
             let sysroot = builder.ensure(crate::core::build_steps::compile::Sysroot {

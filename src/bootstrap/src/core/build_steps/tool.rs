@@ -329,11 +329,6 @@ pub(crate) fn get_tool_rustc_compiler(
         return target_compiler;
     }
 
-    if builder.download_rustc() && target_compiler.stage > 0 {
-        // We already have the stage N compiler, we don't need to cut the stage.
-        return builder.compiler(target_compiler.stage, builder.config.build);
-    }
-
     // Similar to `compile::Assemble`, build with the previous stage's compiler. Otherwise
     // we'd have stageN/bin/rustc and stageN/bin/$rustc_tool be effectively different stage
     // compilers, which isn't what we want. Rustc tools should be linked in the same way as the
