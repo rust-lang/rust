@@ -928,11 +928,6 @@ impl Token {
         self.is_non_raw_ident_where(Ident::is_path_segment_keyword)
     }
 
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(&self) -> bool {
-        self.is_non_raw_ident_where(Ident::is_any_keyword)
-    }
-
     /// Returns true for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special_ident(&self) -> bool {
