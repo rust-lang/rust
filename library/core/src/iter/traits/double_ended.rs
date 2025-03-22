@@ -1,5 +1,5 @@
 use crate::num::NonZero;
-use crate::ops::{ControlFlow, Try};
+use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
 /// An iterator able to yield elements from both ends.
 ///
@@ -298,16 +298,12 @@ pub trait DoubleEndedIterator: Iterator {
     #[doc(alias = "foldr")]
     #[inline]
     #[stable(feature = "iter_rfold", since = "1.27.0")]
-    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    fn rfold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next_back() {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_rfold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 
     /// Searches for an element of an iterator from the back that satisfies a predicate.
