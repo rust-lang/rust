@@ -32,10 +32,8 @@ test = false
 # Most of the time updating these dependencies requires modifications to the
 # bootstrap codebase(e.g., https://github.com/rust-lang/rust/issues/124565);
 # otherwise, some targets will fail. That's why these dependencies are explicitly pinned.
-#
-# Do not upgrade this crate unless https://github.com/rust-lang/cc-rs/issues/1317 is fixed.
-cc = "=1.1.22"
-cmake = "=0.1.48"
+cc = "=1.2.17"
+cmake = "=0.1.54"
 
 build_helper = { path = "../build_helper" }
 clap = { version = "4.4", default-features = false, features = ["std", "usage", "help", "derive", "error-context"] }
