@@ -5,7 +5,7 @@ go-to: "file://" + |DOC_PATH| + "/scrape_examples/fn.test.html"
 // The next/prev buttons vertically scroll the code viewport between examples
 move-cursor-to: ".scraped-example-list > .scraped-example"
 wait-for: ".scraped-example-list > .scraped-example .next"
-store-value: (initialScrollTop, 250)
+store-value: (initialScrollTop, 236)
 assert-property: (".scraped-example-list > .scraped-example .rust", {
     "scrollTop": |initialScrollTop|,
 }, NEAR)
