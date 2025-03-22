@@ -2,7 +2,8 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::sync::OnceLock;
 
-use rustc_data_structures::sharded::ShardedHashMap;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::sharded::{self, Sharded};
 pub use rustc_data_structures::vec_cache::VecCache;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_index::Idx;
@@ -35,7 +36,7 @@ pub trait QueryCache: Sized {
 /// In-memory cache for queries whose keys aren't suitable for any of the
 /// more specialized kinds of cache. Backed by a sharded hashmap.
 pub struct DefaultCache<K, V> {
-    cache: ShardedHashMap<K, (V, DepNodeIndex)>,
+    cache: Sharded<FxHashMap<K, (V, DepNodeIndex)>>,
 }
 
 impl<K, V> Default for DefaultCache<K, V> {
@@ -54,14 +55,19 @@ where
 
     #[inline(always)]
     fn lookup(&self, key: &K) -> Option<(V, DepNodeIndex)> {
-        self.cache.get(key)
+        let key_hash = sharded::make_hash(key);
+        let lock = self.cache.lock_shard_by_hash(key_hash);
+        let result = lock.raw_entry().from_key_hashed_nocheck(key_hash, key);
+
+        if let Some((_, value)) = result { Some(*value) } else { None }
     }
 
     #[inline]
     fn complete(&self, key: K, value: V, index: DepNodeIndex) {
+        let mut lock = self.cache.lock_shard_by_value(&key);
         // We may be overwriting another value. This is all right, since the dep-graph
         // will check that the fingerprint matches.
-        self.cache.insert(key, (value, index));
+        lock.insert(key, (value, index));
     }
 
     fn iter(&self, f: &mut dyn FnMut(&Self::Key, &Self::Value, DepNodeIndex)) {
