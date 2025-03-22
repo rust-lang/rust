@@ -1,5 +1,8 @@
+// Test that a break without #[const_continue] still works as expected.
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 
 fn main() {

@@ -1,5 +1,9 @@
+// Test that a nested #[loop_match] works as expected, and e.g. a #[const_continue] of the inner
+// #[loop_match] does not interact with the outer #[loop_match].
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 
 enum State1 {

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/invalid.rs:119:21
+  --> $DIR/invalid.rs:121:21
    |
 LL |                     break 'blk;
    |                     ^^^^^^^^^^ expected `State`, found `()`
@@ -10,7 +10,7 @@ LL |                     break 'blk /* value */;
    |                                +++++++++++
 
 error: invalid update of the `loop_match` state
-  --> $DIR/invalid.rs:15:9
+  --> $DIR/invalid.rs:17:9
    |
 LL |         fake = 'blk: {
    |         ^^^^
@@ -19,7 +19,7 @@ LL |             match state {
    |                   ----- the assignment must update this variable
 
 error: invalid match on `loop_match` state
-  --> $DIR/invalid.rs:29:19
+  --> $DIR/invalid.rs:31:19
    |
 LL |             match State::A {
    |                   ^^^^^^^^
@@ -27,31 +27,31 @@ LL |             match State::A {
    = note: only matches on local variables are valid
 
 error: statements are not allowed in this position within a `loop_match`
-  --> $DIR/invalid.rs:41:9
+  --> $DIR/invalid.rs:43:9
    |
 LL |         1;
    |         ^^
 
 error: statements are not allowed in this position within a `loop_match`
-  --> $DIR/invalid.rs:56:13
+  --> $DIR/invalid.rs:58:13
    |
 LL |             1;
    |             ^^
 
-error: this expression must be a single `match` wrapped in a labelled block
-  --> $DIR/invalid.rs:69:17
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:71:17
    |
 LL |         state = State::B
    |                 ^^^^^^^^
 
-error: this expression must be a single `match` wrapped in a labelled block
-  --> $DIR/invalid.rs:79:13
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:81:13
    |
 LL |             State::B
    |             ^^^^^^^^
 
-error: this expression must be a single `match` wrapped in a labelled block
-  --> $DIR/invalid.rs:89:17
+error: this expression must be a single `match` wrapped in a labeled block
+  --> $DIR/invalid.rs:91:17
    |
 LL |           state = 'blk: {
    |  _________________^
@@ -60,13 +60,13 @@ LL | |         }
    | |_________^
 
 error: expected a single assignment expression
-  --> $DIR/invalid.rs:99:9
+  --> $DIR/invalid.rs:101:9
    |
 LL |         ()
    |         ^^
 
 error: expected a single assignment expression
-  --> $DIR/invalid.rs:106:10
+  --> $DIR/invalid.rs:108:10
    |
 LL |       loop {
    |  __________^
@@ -75,7 +75,7 @@ LL | |     }
    | |_____^
 
 error: a `const_continue` must break to a label with a value
-  --> $DIR/invalid.rs:136:21
+  --> $DIR/invalid.rs:138:21
    |
 LL |                     break 'blk;
    |                     ^^^^^^^^^^

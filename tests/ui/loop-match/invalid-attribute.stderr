@@ -1,5 +1,5 @@
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:14:1
+  --> $DIR/invalid-attribute.rs:15:1
    |
 LL | #[loop_match]
    | ^^^^^^^^^^^^^
@@ -8,7 +8,7 @@ LL | struct S {
    | -------- not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:15:1
+  --> $DIR/invalid-attribute.rs:16:1
    |
 LL | #[const_continue]
    | ^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL | struct S {
    | -------- not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:28:1
+  --> $DIR/invalid-attribute.rs:29:1
    |
 LL | #[loop_match]
    | ^^^^^^^^^^^^^
@@ -26,7 +26,7 @@ LL | extern "C" fn ok() {}
    | ------------------ not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:29:1
+  --> $DIR/invalid-attribute.rs:30:1
    |
 LL | #[const_continue]
    | ^^^^^^^^^^^^^^^^^
@@ -34,7 +34,7 @@ LL | extern "C" fn ok() {}
    | ------------------ not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:33:5
+  --> $DIR/invalid-attribute.rs:34:5
    |
 LL |     #[loop_match]
    |     ^^^^^^^^^^^^^
@@ -43,7 +43,7 @@ LL |     || {};
    |     -- not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:34:5
+  --> $DIR/invalid-attribute.rs:35:5
    |
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
@@ -51,7 +51,7 @@ LL |     || {};
    |     -- not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:38:9
+  --> $DIR/invalid-attribute.rs:39:9
    |
 LL |         #[loop_match]
    |         ^^^^^^^^^^^^^
@@ -60,7 +60,7 @@ LL |         5
    |         - not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:39:9
+  --> $DIR/invalid-attribute.rs:40:9
    |
 LL |         #[const_continue]
    |         ^^^^^^^^^^^^^^^^^
@@ -68,7 +68,7 @@ LL |         5
    |         - not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:23:5
+  --> $DIR/invalid-attribute.rs:24:5
    |
 LL |     #[loop_match]
    |     ^^^^^^^^^^^^^
@@ -77,7 +77,7 @@ LL |     extern "C" fn invoke(&self);
    |     ---------------------------- not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:24:5
+  --> $DIR/invalid-attribute.rs:25:5
    |
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
@@ -85,7 +85,7 @@ LL |     extern "C" fn invoke(&self);
    |     ---------------------------- not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:9:5
+  --> $DIR/invalid-attribute.rs:10:5
    |
 LL |     #[loop_match]
    |     ^^^^^^^^^^^^^
@@ -94,7 +94,7 @@ LL |     fn f();
    |     ------- not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:10:5
+  --> $DIR/invalid-attribute.rs:11:5
    |
 LL |     #[const_continue]
    |     ^^^^^^^^^^^^^^^^^
@@ -102,9 +102,10 @@ LL |     fn f();
    |     ------- not a break expression
 
 error: `#[loop_match]` should be applied to a loop
-  --> $DIR/invalid-attribute.rs:5:1
+  --> $DIR/invalid-attribute.rs:6:1
    |
-LL | / #![feature(loop_match)]
+LL | / #![allow(incomplete_features)]
+LL | | #![feature(loop_match)]
 LL | | #![loop_match]
    | | ^^^^^^^^^^^^^^
 LL | | #![const_continue]
@@ -114,9 +115,10 @@ LL | | }
    | |_- not a loop
 
 error: `#[const_continue]` should be applied to a break expression
-  --> $DIR/invalid-attribute.rs:6:1
+  --> $DIR/invalid-attribute.rs:7:1
    |
-LL | / #![feature(loop_match)]
+LL | / #![allow(incomplete_features)]
+LL | | #![feature(loop_match)]
 LL | | #![loop_match]
 LL | | #![const_continue]
    | | ^^^^^^^^^^^^^^^^^^

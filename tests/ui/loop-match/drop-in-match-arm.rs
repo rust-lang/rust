@@ -1,8 +1,10 @@
+// Test that dropping values works in match arms, which is nontrivial
+// because each match arm needs its own scope.
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
-
-// test that drops work in match arms (match arms need their own scope)
 
 fn main() {
     assert_eq!(helper(), 1);

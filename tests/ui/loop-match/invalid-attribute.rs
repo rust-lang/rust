@@ -1,6 +1,7 @@
 // Checks that #[loop_match] and #[const_continue] attributes can be
 // placed on expressions only.
 //
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 #![loop_match] //~ ERROR should be applied to a loop
 #![const_continue] //~ ERROR should be applied to a break expression

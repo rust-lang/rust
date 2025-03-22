@@ -1,5 +1,8 @@
+// Test a basic correct example of #[loop_match] with #[const_continue].
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 
 enum State {
@@ -19,7 +22,11 @@ fn main() {
                     break 'blk State::B;
                 }
                 State::B => {
+                    // without special logic, the compiler believes this is a re-assignment to
+                    // an immutable variable because of the `loop`. So, this tests that local
+                    // variables work.
                     let _a = 0;
+
                     if true {
                         #[const_continue]
                         break 'blk State::C;
@@ -32,4 +39,6 @@ fn main() {
             }
         };
     }
+
+    assert!(matches!(state, State::C))
 }

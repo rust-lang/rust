@@ -1,7 +1,11 @@
+// Test that #[loop_match] supportes or patterns.
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum State {
     A,
     B,
@@ -10,13 +14,16 @@ enum State {
 }
 
 fn main() {
+    let mut states = vec![];
+    let mut first = true;
     let mut state = State::A;
     #[loop_match]
     'a: loop {
         state = 'blk: {
             match state {
                 State::A => {
-                    if true {
+                    states.push(state);
+                    if first {
                         #[const_continue]
                         break 'blk State::B;
                     } else {
@@ -25,17 +32,23 @@ fn main() {
                     }
                 }
                 State::B | State::D => {
-                    if true {
-                        #[const_continue]
-                        break 'blk State::C;
-                    } else {
-                        // No drops allowed at this point
+                    states.push(state);
+                    if first {
+                        first = false;
                         #[const_continue]
                         break 'blk State::A;
+                    } else {
+                        #[const_continue]
+                        break 'blk State::C;
                     }
                 }
-                State::C => break 'a,
+                State::C => {
+                    states.push(state);
+                    break 'a;
+                }
             }
         }
     }
+
+    assert_eq!(states, [State::A, State::B, State::A, State::D, State::C]);
 }
