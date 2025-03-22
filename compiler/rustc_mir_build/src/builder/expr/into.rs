@@ -278,9 +278,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Start the loop.
                 this.cfg.goto(block, source_info, loop_block);
 
-                // FIXME do we need the breakable scope?
                 this.in_breakable_scope(Some(loop_block), destination, expr_span, |this| {
-                    // conduct the test, if necessary
                     let mut body_block = this.cfg.start_new_block();
                     this.cfg.terminate(
                         loop_block,
