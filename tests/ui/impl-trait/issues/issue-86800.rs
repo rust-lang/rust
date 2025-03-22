@@ -40,7 +40,6 @@ impl Context {
         f: impl FnOnce(&mut dyn Transaction) -> TransactionFuture<'_, O>,
     ) -> TransactionResult<O> {
         //~^ ERROR expected generic lifetime parameter, found `'_`
-        //~| ERROR: item does not constrain
         let mut conn = Connection {};
         let mut transaction = TestTransaction { conn: &mut conn };
         f(&mut transaction).await

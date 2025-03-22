@@ -45,6 +45,7 @@ use crate::borrow_set::BorrowSet;
 use crate::constraints::{OutlivesConstraint, OutlivesConstraintSet};
 use crate::diagnostics::UniverseInfo;
 use crate::member_constraints::MemberConstraintSet;
+use crate::opaque_types::ConcreteOpaqueTypes;
 use crate::polonius::legacy::{PoloniusFacts, PoloniusLocationTable};
 use crate::polonius::{PoloniusContext, PoloniusLivenessContext};
 use crate::region_infer::TypeTest;
@@ -111,6 +112,7 @@ pub(crate) fn type_check<'a, 'tcx>(
     flow_inits: ResultsCursor<'a, 'tcx, MaybeInitializedPlaces<'a, 'tcx>>,
     move_data: &MoveData<'tcx>,
     location_map: Rc<DenseLocationMap>,
+    concrete_opaque_types: &mut ConcreteOpaqueTypes<'tcx>,
 ) -> MirTypeckResults<'tcx> {
     let implicit_region_bound = ty::Region::new_var(infcx.tcx, universal_regions.fr_fn_body);
     let mut constraints = MirTypeckRegionConstraints {
@@ -165,6 +167,7 @@ pub(crate) fn type_check<'a, 'tcx>(
         polonius_facts,
         borrow_set,
         constraints: &mut constraints,
+        concrete_opaque_types,
         polonius_liveness,
     };
 
@@ -230,6 +233,7 @@ struct TypeChecker<'a, 'tcx> {
     polonius_facts: &'a mut Option<PoloniusFacts>,
     borrow_set: &'a BorrowSet<'tcx>,
     constraints: &'a mut MirTypeckRegionConstraints<'tcx>,
+    concrete_opaque_types: &'a mut ConcreteOpaqueTypes<'tcx>,
     /// When using `-Zpolonius=next`, the liveness helper data used to create polonius constraints.
     polonius_liveness: Option<PoloniusLivenessContext>,
 }
@@ -2499,7 +2503,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         args: GenericArgsRef<'tcx>,
         locations: Locations,
     ) -> ty::InstantiatedPredicates<'tcx> {
-        if let Some(closure_requirements) = &tcx.mir_borrowck(def_id).closure_requirements {
+        let closure_borrowck_results = tcx.mir_borrowck(def_id);
+        self.concrete_opaque_types
+            .extend_from_nested_body(tcx, &closure_borrowck_results.concrete_opaque_types);
+
+        if let Some(closure_requirements) = &closure_borrowck_results.closure_requirements {
             constraint_conversion::ConstraintConversion::new(
                 self.infcx,
                 self.universal_regions,

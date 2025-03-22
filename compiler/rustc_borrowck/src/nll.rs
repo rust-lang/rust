@@ -6,8 +6,6 @@ use std::str::FromStr;
 use std::{env, io};
 
 use polonius_engine::{Algorithm, Output};
-use rustc_data_structures::fx::FxIndexMap;
-use rustc_hir::def_id::LocalDefId;
 use rustc_index::IndexSlice;
 use rustc_middle::mir::pretty::{PrettyPrintMirOptions, dump_mir_with_options};
 use rustc_middle::mir::{
@@ -15,7 +13,7 @@ use rustc_middle::mir::{
     dump_enabled, dump_mir,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, OpaqueHiddenType, TyCtxt};
+use rustc_middle::ty::{self, TyCtxt};
 use rustc_mir_dataflow::ResultsCursor;
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::MoveData;
@@ -27,6 +25,7 @@ use tracing::{debug, instrument};
 use crate::borrow_set::BorrowSet;
 use crate::consumers::ConsumerOptions;
 use crate::diagnostics::{BorrowckDiagnosticsBuffer, RegionErrors};
+use crate::opaque_types::ConcreteOpaqueTypes;
 use crate::polonius::PoloniusDiagnosticsContext;
 use crate::polonius::legacy::{
     PoloniusFacts, PoloniusFactsExt, PoloniusLocationTable, PoloniusOutput,
@@ -40,7 +39,7 @@ use crate::{BorrowckInferCtxt, polonius, renumber};
 /// closure requirements to propagate, and any generated errors.
 pub(crate) struct NllOutput<'tcx> {
     pub regioncx: RegionInferenceContext<'tcx>,
-    pub opaque_type_values: FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    pub concrete_opaque_types: ConcreteOpaqueTypes<'tcx>,
     pub polonius_input: Option<Box<PoloniusFacts>>,
     pub polonius_output: Option<Box<PoloniusOutput>>,
     pub opt_closure_req: Option<ClosureRegionRequirements<'tcx>>,
@@ -99,6 +98,8 @@ pub(crate) fn compute_regions<'a, 'tcx>(
 
     let location_map = Rc::new(DenseLocationMap::new(body));
 
+    let mut concrete_opaque_types = ConcreteOpaqueTypes::default();
+
     // Run the MIR type-checker.
     let MirTypeckResults {
         constraints,
@@ -116,6 +117,7 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         flow_inits,
         move_data,
         Rc::clone(&location_map),
+        &mut concrete_opaque_types,
     );
 
     // Create the region inference context, taking ownership of the
@@ -180,11 +182,11 @@ pub(crate) fn compute_regions<'a, 'tcx>(
         infcx.set_tainted_by_errors(guar);
     }
 
-    let remapped_opaque_tys = regioncx.infer_opaque_types(infcx, opaque_type_values);
+    regioncx.infer_opaque_types(infcx, opaque_type_values, &mut concrete_opaque_types);
 
     NllOutput {
         regioncx,
-        opaque_type_values: remapped_opaque_tys,
+        concrete_opaque_types,
         polonius_input: polonius_facts.map(Box::new),
         polonius_output,
         opt_closure_req: closure_region_requirements,
@@ -300,7 +302,7 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
     body: &Body<'tcx>,
     regioncx: &RegionInferenceContext<'tcx>,
     closure_region_requirements: &Option<ClosureRegionRequirements<'tcx>>,
-    opaque_type_values: &FxIndexMap<LocalDefId, OpaqueHiddenType<'tcx>>,
+    concrete_opaque_types: &ConcreteOpaqueTypes<'tcx>,
     diagnostics_buffer: &mut BorrowckDiagnosticsBuffer<'infcx, 'tcx>,
 ) {
     let tcx = infcx.tcx;
@@ -343,8 +345,8 @@ pub(super) fn dump_annotation<'tcx, 'infcx>(
         err
     };
 
-    if !opaque_type_values.is_empty() {
-        err.note(format!("Inferred opaque type values:\n{opaque_type_values:#?}"));
+    if !concrete_opaque_types.is_empty() {
+        err.note(format!("Inferred opaque type values:\n{concrete_opaque_types:#?}"));
     }
 
     diagnostics_buffer.buffer_non_error(err);
