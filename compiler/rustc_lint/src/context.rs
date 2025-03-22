@@ -17,13 +17,12 @@ use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 use rustc_hir::{Pat, PatKind};
 use rustc_middle::bug;
+use rustc_middle::lint::LevelAndSource;
 use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::{PrintError, PrintTraitRefExt as _, Printer, with_no_trimmed_paths};
 use rustc_middle::ty::{self, GenericArg, RegisteredTools, Ty, TyCtxt, TypingEnv, TypingMode};
-use rustc_session::lint::{
-    FutureIncompatibleInfo, Level, Lint, LintBuffer, LintExpectationId, LintId,
-};
+use rustc_session::lint::{FutureIncompatibleInfo, Lint, LintBuffer, LintExpectationId, LintId};
 use rustc_session::{LintStoreMarker, Session};
 use rustc_span::edit_distance::find_best_match_for_names;
 use rustc_span::{Ident, Span, Symbol, sym};
@@ -573,7 +572,7 @@ pub trait LintContext {
     }
 
     /// This returns the lint level for the given lint at the current location.
-    fn get_lint_level(&self, lint: &'static Lint) -> Level;
+    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource;
 
     /// This function can be used to manually fulfill an expectation. This can
     /// be used for lints which contain several spans, and should be suppressed,
@@ -642,8 +641,8 @@ impl<'tcx> LintContext for LateContext<'tcx> {
         }
     }
 
-    fn get_lint_level(&self, lint: &'static Lint) -> Level {
-        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs).0
+    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
+        self.tcx.lint_level_at_node(lint, self.last_node_with_lint_attrs)
     }
 }
 
@@ -663,8 +662,8 @@ impl LintContext for EarlyContext<'_> {
         self.builder.opt_span_lint(lint, span.map(|s| s.into()), decorate)
     }
 
-    fn get_lint_level(&self, lint: &'static Lint) -> Level {
-        self.builder.lint_level(lint).0
+    fn get_lint_level(&self, lint: &'static Lint) -> LevelAndSource {
+        self.builder.lint_level(lint)
     }
 }
 
