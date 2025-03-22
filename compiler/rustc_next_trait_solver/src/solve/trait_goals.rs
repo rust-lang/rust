@@ -1288,13 +1288,20 @@ where
             }
             _ => false,
         });
-        if has_non_global_where_bounds {
+
+        // As mentioned above, if there are non-global where bounds, then prefer all where bounds
+        // (including global ones) over anything else. If there are *only* where bounds, then
+        // make sure to return that this is proven-via the param-env so that rigid projections
+        // operate correctly.
+        if has_non_global_where_bounds
+            || (candidates.len() > 0
+                && candidates.iter().all(|c| matches!(c.source, CandidateSource::ParamEnv(_))))
+        {
             let where_bounds: Vec<_> = candidates
                 .iter()
                 .filter(|c| matches!(c.source, CandidateSource::ParamEnv(_)))
                 .map(|c| c.result)
                 .collect();
-
             return if let Some(response) = self.try_merge_responses(&where_bounds) {
                 Ok((response, Some(TraitGoalProvenVia::ParamEnv)))
             } else {
