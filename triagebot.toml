@@ -174,8 +174,8 @@ label = "O-emscripten"
 
 [ping.relnotes-interest-group]
 message = """\
-Hi relnotes-interest-group, this PR adds release notes. Could you review this PR
-if you have time? Thanks <3
+Hi relnotes-interest-group, this issue/PR could use some help in reviewing /
+adjusting release notes. Could you take a look if available? Thanks <3
 """
 
 [prioritize]
