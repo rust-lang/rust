@@ -89,7 +89,7 @@ pub(crate) fn ensure_trailing_slash(v: &str) -> impl fmt::Display {
 
 /// Specifies whether rendering directly implemented trait items or ones from a certain Deref
 /// impl.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub(crate) enum AssocItemRender<'a> {
     All,
     DerefFor { trait_: &'a clean::Path, type_: &'a clean::Type, deref_mut_: bool },
@@ -1296,7 +1296,8 @@ fn render_assoc_items_inner(
     info!("Documenting associated items of {:?}", containing_item.name);
     let cache = &cx.shared.cache;
     let Some(v) = cache.impls.get(&it) else { return };
-    let (non_trait, traits): (Vec<_>, _) = v.iter().partition(|i| i.inner_impl().trait_.is_none());
+    let (mut non_trait, traits): (Vec<_>, _) =
+        v.iter().partition(|i| i.inner_impl().trait_.is_none());
     if !non_trait.is_empty() {
         let mut close_tags = <Vec<&str>>::with_capacity(1);
         let mut tmp_buf = String::new();
@@ -1314,6 +1315,16 @@ fn render_assoc_items_inner(
             AssocItemRender::DerefFor { trait_, type_, deref_mut_ } => {
                 let id =
                     cx.derive_id(small_url_encode(format!("deref-methods-{:#}", type_.print(cx))));
+                // the `impls.get` above only looks at the outermost type,
+                // and the Deref impl may only be implemented for certain
+                // values of generic parameters.
+                // for example, if an item impls `Deref<[u8]>`,
+                // we should not show methods from `[MaybeUninit<u8>]`.
+                // this `retain` filters out any instances where
+                // the types do not line up perfectly.
+                non_trait.retain(|impl_| {
+                    type_.is_doc_subtype_of(&impl_.inner_impl().for_, &cx.shared.cache)
+                });
                 let derived_id = cx.derive_id(&id);
                 close_tags.push("</details>");
                 write_str(
@@ -1392,6 +1403,7 @@ fn render_assoc_items_inner(
     }
 }
 
+/// `derefs` is the set of all deref targets that have already been handled.
 fn render_deref_methods(
     mut w: impl Write,
     cx: &Context<'_>,
