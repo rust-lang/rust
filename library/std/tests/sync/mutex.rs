@@ -118,6 +118,7 @@ fn test_into_inner_drop() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_into_inner_poison() {
     let m = new_poisoned_mutex(NonCopy(10));
 
@@ -135,6 +136,7 @@ fn test_get_cloned() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_get_cloned_poison() {
     let m = new_poisoned_mutex(Cloneable(10));
 
@@ -152,6 +154,7 @@ fn test_get_mut() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_get_mut_poison() {
     let mut m = new_poisoned_mutex(NonCopy(10));
 
@@ -179,6 +182,7 @@ fn test_set() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_set_poison() {
     fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
     where
@@ -217,6 +221,7 @@ fn test_replace() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_replace_poison() {
     fn inner<T>(mut init: impl FnMut() -> T, mut value: impl FnMut() -> T)
     where
@@ -261,6 +266,7 @@ fn test_mutex_arc_condvar() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_arc_condvar_poison() {
     let packet = Packet(Arc::new((Mutex::new(1), Condvar::new())));
     let packet2 = Packet(packet.0.clone());
@@ -290,6 +296,7 @@ fn test_arc_condvar_poison() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_mutex_arc_poison() {
     let arc = Arc::new(Mutex::new(1));
     assert!(!arc.is_poisoned());
@@ -304,6 +311,7 @@ fn test_mutex_arc_poison() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_mutex_arc_poison_mapped() {
     let arc = Arc::new(Mutex::new(1));
     assert!(!arc.is_poisoned());
@@ -335,6 +343,7 @@ fn test_mutex_arc_nested() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_mutex_arc_access_in_unwind() {
     let arc = Arc::new(Mutex::new(1));
     let arc2 = arc.clone();
@@ -381,6 +390,7 @@ fn test_mapping_mapped_guard() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn panic_while_mapping_unlocked_poison() {
     let lock = Mutex::new(());
 

@@ -108,6 +108,7 @@ fn test_is_finished() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_join_panic() {
     match thread::spawn(move || panic!()).join() {
         result::Result::Err(_) => (),
@@ -210,6 +211,7 @@ fn test_simple_newsched_spawn() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_try_panic_message_string_literal() {
     match thread::spawn(move || {
         panic!("static string");
@@ -226,6 +228,7 @@ fn test_try_panic_message_string_literal() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_try_panic_any_message_owned_str() {
     match thread::spawn(move || {
         panic_any("owned string".to_string());
@@ -242,6 +245,7 @@ fn test_try_panic_any_message_owned_str() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_try_panic_any_message_any() {
     match thread::spawn(move || {
         panic_any(Box::new(413u16) as Box<dyn Any + Send>);
@@ -260,6 +264,7 @@ fn test_try_panic_any_message_any() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn test_try_panic_any_message_unit_struct() {
     struct Juju;
 
