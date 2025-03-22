@@ -1364,6 +1364,7 @@ symbols! {
         movbe_target_feature,
         move_ref_pattern,
         move_size_limit,
+        movrs_target_feature,
         mul,
         mul_assign,
         mul_with_overflow,
