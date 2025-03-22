@@ -197,6 +197,7 @@ fn make_test_crate_attrs() {
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
 #![feature(sick_rad)]
+
 fn main() {
 assert_eq!(2+2, 4);
 }"
@@ -228,8 +229,8 @@ fn make_test_fake_main() {
     let input = "//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);";
     let expected = "#![allow(unused)]
-//Ceci n'est pas une `fn main`
 fn main() {
+//Ceci n'est pas une `fn main`
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -259,8 +260,8 @@ fn make_test_issues_21299() {
 assert_eq!(2+2, 4);";
 
     let expected = "#![allow(unused)]
-// fn main
 fn main() {
+// fn main
 assert_eq!(2+2, 4);
 }"
     .to_string();
@@ -400,4 +401,27 @@ fn check_split_args() {
     compare("a          b", &["a", "b"]);
     compare("a\n\t \rb", &["a", "b"]);
     compare("a\n\t1 \rb", &["a", "1", "b"]);
+}
+
+#[test]
+fn comment_in_attrs() {
+    // if input already has a fn main, it should insert a space before it
+    let opts = default_global_opts("");
+    let input = "\
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.";
+    let expected = "\
+#![allow(unused)]
+#![feature(rustdoc_internals)]
+#![allow(internal_features)]
+#![doc(rust_logo)]
+//! This crate has the Rust(tm) branding on it.
+fn main() {
+
+}"
+    .to_string();
+    let (output, len) = make_test(input, None, false, &opts, None);
+    assert_eq!((output, len), (expected, 2));
 }
