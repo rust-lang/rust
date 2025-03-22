@@ -7,7 +7,6 @@ use rustc_session::config::ExpectedValues;
 use rustc_session::lint::BuiltinLintDiag;
 use rustc_session::lint::builtin::UNEXPECTED_CFGS;
 use rustc_session::parse::feature_err;
-use rustc_span::symbol::kw;
 use rustc_span::{Span, Symbol, sym};
 
 use crate::session_diagnostics::{self, UnsupportedLiteralReason};
@@ -89,20 +88,6 @@ pub fn eval_condition(
     let cfg = match cfg {
         MetaItemInner::MetaItem(meta_item) => meta_item,
         MetaItemInner::Lit(MetaItemLit { kind: LitKind::Bool(b), .. }) => {
-            if let Some(features) = features {
-                // we can't use `try_gate_cfg` as symbols don't differentiate between `r#true`
-                // and `true`, and we want to keep the former working without feature gate
-                gate_cfg(
-                    &(
-                        if *b { kw::True } else { kw::False },
-                        sym::cfg_boolean_literals,
-                        |features: &Features| features.cfg_boolean_literals(),
-                    ),
-                    cfg.span(),
-                    sess,
-                    features,
-                );
-            }
             return *b;
         }
         _ => {
