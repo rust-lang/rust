@@ -146,7 +146,7 @@ mod llvm_enzyme {
         }
         let dcx = ecx.sess.dcx();
         // first get the annotable item:
-        let (sig, is_impl): (FnSig, bool) = match &item {
+        let sig: FnSig = match &item {
             Annotatable::Item(iitem) => {
                 let sig = match &iitem.kind {
                     ItemKind::Fn(box ast::Fn { sig, .. }) => sig,
@@ -155,7 +155,7 @@ mod llvm_enzyme {
                         return vec![item];
                     }
                 };
-                (sig.clone(), false)
+                sig.clone()
             }
             Annotatable::AssocItem(assoc_item, _) => {
                 let sig = match &assoc_item.kind {
@@ -165,7 +165,24 @@ mod llvm_enzyme {
                         return vec![item];
                     }
                 };
-                (sig.clone(), true)
+                sig.clone()
+            }
+            Annotatable::Stmt(stmt) => {
+                let sig = match &stmt.kind {
+                    ast::StmtKind::Item(iitem) => match &iitem.kind {
+                        ast::ItemKind::Fn(box ast::Fn { sig, .. }) => sig,
+                        _ => {
+                            dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+                            return vec![item];
+                        }
+                    },
+                    _ => {
+                        dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
+                        return vec![item];
+                    }
+                };
+
+                sig.clone()
             }
             _ => {
                 dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
@@ -189,6 +206,10 @@ mod llvm_enzyme {
             Annotatable::AssocItem(assoc_item, _) => {
                 (assoc_item.vis.clone(), assoc_item.ident.clone())
             }
+            Annotatable::Stmt(stmt) => match &stmt.kind {
+                ast::StmtKind::Item(iitem) => (iitem.vis.clone(), iitem.ident.clone()),
+                _ => unreachable!("stmt kind checked previously"),
+            },
             _ => {
                 dcx.emit_err(errors::AutoDiffInvalidApplication { span: item.span() });
                 return vec![item];
@@ -305,6 +326,22 @@ mod llvm_enzyme {
                 }
                 Annotatable::AssocItem(assoc_item.clone(), i)
             }
+            Annotatable::Stmt(ref mut stmt) => {
+                match stmt.kind {
+                    ast::StmtKind::Item(ref mut iitem) => {
+                        if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
+                            iitem.attrs.push(attr);
+                        }
+                        if !iitem.attrs.iter().any(|a| same_attribute(&a.kind, &inline_never.kind))
+                        {
+                            iitem.attrs.push(inline_never.clone());
+                        }
+                    }
+                    _ => unreachable!("stmt kind checked previously"),
+                };
+
+                Annotatable::Stmt(stmt.clone())
+            }
             _ => {
                 unreachable!("annotatable kind checked previously")
             }
@@ -315,24 +352,43 @@ mod llvm_enzyme {
             delim: rustc_ast::token::Delimiter::Parenthesis,
             tokens: ts,
         });
+
         let d_attr = outer_normal_attr(&rustc_ad_attr, new_id, span);
-        let d_annotatable = if is_impl {
-            let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
-            let d_fn = P(ast::AssocItem {
-                attrs: thin_vec![d_attr, inline_never],
-                id: ast::DUMMY_NODE_ID,
-                span,
-                vis,
-                ident: d_ident,
-                kind: assoc_item,
-                tokens: None,
-            });
-            Annotatable::AssocItem(d_fn, Impl)
-        } else {
-            let mut d_fn =
-                ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
-            d_fn.vis = vis;
-            Annotatable::Item(d_fn)
+        let d_annotatable = match &item {
+            Annotatable::AssocItem(_, _) => {
+                let assoc_item: AssocItemKind = ast::AssocItemKind::Fn(asdf);
+                let d_fn = P(ast::AssocItem {
+                    attrs: thin_vec![d_attr, inline_never],
+                    id: ast::DUMMY_NODE_ID,
+                    span,
+                    vis,
+                    ident: d_ident,
+                    kind: assoc_item,
+                    tokens: None,
+                });
+                Annotatable::AssocItem(d_fn, Impl)
+            }
+            Annotatable::Item(_) => {
+                let mut d_fn =
+                    ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
+                d_fn.vis = vis;
+
+                Annotatable::Item(d_fn)
+            }
+            Annotatable::Stmt(_) => {
+                let mut d_fn =
+                    ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));
+                d_fn.vis = vis;
+
+                Annotatable::Stmt(P(ast::Stmt {
+                    id: ast::DUMMY_NODE_ID,
+                    kind: ast::StmtKind::Item(d_fn),
+                    span,
+                }))
+            }
+            _ => {
+                unreachable!("item kind checked previously")
+            }
         };
 
         return vec![orig_annotatable, d_annotatable];
