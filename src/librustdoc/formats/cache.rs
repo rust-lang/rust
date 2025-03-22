@@ -92,6 +92,11 @@ pub(crate) struct Cache {
     /// Whether to document hidden items.
     /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
     pub(crate) document_hidden: bool,
+    /// Whether to document tests.
+    /// This is stored in `Cache` so it doesn't need to be passed through all rustdoc functions.
+    pub(crate) document_tests: bool,
+    /// DefIds of all functions which are tests.
+    pub(crate) tests: FxHashSet<DefId>,
 
     /// Crates marked with [`#[doc(masked)]`][doc_masked].
     ///
@@ -144,8 +149,8 @@ struct CacheBuilder<'a, 'tcx> {
 }
 
 impl Cache {
-    pub(crate) fn new(document_private: bool, document_hidden: bool) -> Self {
-        Cache { document_private, document_hidden, ..Cache::default() }
+    pub(crate) fn new(document_private: bool, document_hidden: bool, document_tests: bool) -> Self {
+        Cache { document_private, document_hidden, document_tests, ..Cache::default() }
     }
 
     /// Populates the `Cache` with more data. The returned `Crate` will be missing some data that was
@@ -302,6 +307,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
             | clean::TraitItem(..)
             | clean::TraitAliasItem(..)
             | clean::FunctionItem(..)
+            | clean::TestItem(..)
             | clean::ModuleItem(..)
             | clean::ForeignFunctionItem(..)
             | clean::ForeignStaticItem(..)
