@@ -574,20 +574,20 @@ fn add_item_to_search_index(tcx: TyCtxt<'_>, cache: &mut Cache, item: &clean::It
     );
     let aliases = item.attrs.get_doc_aliases();
     let deprecation = item.deprecation(tcx);
-    let index_item = IndexItem {
-        ty: item.type_(),
-        defid: Some(defid),
+    let index_item = IndexItem::new(
+        item.type_(),
+        Some(defid),
         name,
         path,
         desc,
-        parent: parent_did,
-        parent_idx: None,
-        exact_path: None,
+        parent_did,
+        None,
+        None,
         impl_id,
         search_type,
         aliases,
         deprecation,
-    };
+    );
     cache.search_index.push(index_item);
 }
 
