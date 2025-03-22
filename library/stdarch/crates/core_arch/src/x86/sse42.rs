@@ -126,14 +126,14 @@ pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// multiple lines";
 /// let needle = b"\r\n\t\0\0\0\0\0\0\0\0\0\0\0\0\0";
 ///
-/// let a = _mm_loadu_si128(needle.as_ptr() as *const _);
+/// let a = unsafe { _mm_loadu_si128(needle.as_ptr() as *const _) };
 /// let hop = 16;
 /// let mut indexes = Vec::new();
 ///
 /// // Chunk the haystack into 16 byte chunks and find
 /// // the first "\r\n\t" in the chunk.
 /// for (i, chunk) in haystack.chunks(hop).enumerate() {
-///     let b = _mm_loadu_si128(chunk.as_ptr() as *const _);
+///     let b = unsafe { _mm_loadu_si128(chunk.as_ptr() as *const _) };
 ///     let idx = _mm_cmpistri(a, b, _SIDD_CMP_EQUAL_ORDERED);
 ///     if idx != 16 {
 ///         indexes.push((idx as usize) + (i * hop));
@@ -164,8 +164,8 @@ pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// let special_chars = b"!@#$%^&*()[]:;<>";
 ///
 /// // Load the input
-/// let a = _mm_loadu_si128(special_chars.as_ptr() as *const _);
-/// let b = _mm_loadu_si128(password.as_ptr() as *const _);
+/// let a = unsafe { _mm_loadu_si128(special_chars.as_ptr() as *const _) };
+/// let b = unsafe { _mm_loadu_si128(password.as_ptr() as *const _) };
 ///
 /// // Use _SIDD_CMP_EQUAL_ANY to find the index of any bytes in b
 /// let idx = _mm_cmpistri(a.into(), b.into(), _SIDD_CMP_EQUAL_ANY);
@@ -196,11 +196,11 @@ pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// #         #[target_feature(enable = "sse4.2")]
 /// #         unsafe fn worker() {
 /// # let b = b":;<=>?@[\\]^_`abc";
-/// # let b = _mm_loadu_si128(b.as_ptr() as *const _);
+/// # let b = unsafe { _mm_loadu_si128(b.as_ptr() as *const _) };
 ///
 /// // Specify the ranges of values to be searched for [A-Za-z0-9].
 /// let a = b"AZaz09\0\0\0\0\0\0\0\0\0\0";
-/// let a = _mm_loadu_si128(a.as_ptr() as *const _);
+/// let a = unsafe { _mm_loadu_si128(a.as_ptr() as *const _) };
 ///
 /// // Use _SIDD_CMP_RANGES to find the index of first byte in ranges.
 /// // Which in this case will be the first alpha numeric byte found
@@ -236,8 +236,8 @@ pub fn _mm_cmpistrm<const IMM8: i32>(a: __m128i, b: __m128i) -> __m128i {
 /// # '❤'.encode_utf16(&mut some_utf16_words);
 /// # '𝕊'.encode_utf16(&mut more_utf16_words);
 /// // Load the input
-/// let a = _mm_loadu_si128(some_utf16_words.as_ptr() as *const _);
-/// let b = _mm_loadu_si128(more_utf16_words.as_ptr() as *const _);
+/// let a = unsafe { _mm_loadu_si128(some_utf16_words.as_ptr() as *const _) };
+/// let b = unsafe { _mm_loadu_si128(more_utf16_words.as_ptr() as *const _) };
 ///
 /// // Specify _SIDD_UWORD_OPS to compare words instead of bytes, and
 /// // use _SIDD_CMP_EQUAL_EACH to compare the two strings.
@@ -404,8 +404,8 @@ pub fn _mm_cmpestrm<const IMM8: i32>(a: __m128i, la: i32, b: __m128i, lb: i32) -
 /// // extra bytes we do not want to search for.
 /// let needle = b"\r\n\t ignore this ";
 ///
-/// let a = _mm_loadu_si128(needle.as_ptr() as *const _);
-/// let b = _mm_loadu_si128(haystack.as_ptr() as *const _);
+/// let a = unsafe { _mm_loadu_si128(needle.as_ptr() as *const _) };
+/// let b = unsafe { _mm_loadu_si128(haystack.as_ptr() as *const _) };
 ///
 /// // Note: We explicitly specify we only want to search `b` for the
 /// // first 3 characters of a.
