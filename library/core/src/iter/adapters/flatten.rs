@@ -172,61 +172,6 @@ where
     }
 }
 
-/// Marker trait for iterators/iterables which have a statically known upper
-/// bound of the number of items they can produce.
-///
-/// # Safety
-///
-/// Implementations must not yield more elements than indicated by UPPER_BOUND if it is `Some`.
-/// Used in specializations.  Implementations must not be conditional on lifetimes or
-/// user-implementable traits.
-#[rustc_specialization_trait]
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe trait BoundedSize {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(1);
-}
-
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> BoundedSize for Option<T> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> BoundedSize for option::IntoIter<T> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T, U> BoundedSize for Result<T, U> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> BoundedSize for result::IntoIter<T> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> BoundedSize for Once<T> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T> BoundedSize for OnceWith<T> {}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T, const N: usize> BoundedSize for [T; N] {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<T, const N: usize> BoundedSize for array::IntoIter<T, N> {
-    const UPPER_BOUND: Option<NonZero<usize>> = NonZero::new(N);
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: BoundedSize, P> BoundedSize for Filter<I, P> {
-    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: BoundedSize, P> BoundedSize for FilterMap<I, P> {
-    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: BoundedSize, F> BoundedSize for Map<I, F> {
-    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: BoundedSize> BoundedSize for Copied<I> {
-    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
-}
-#[unstable(issue = "none", feature = "inplace_iteration")]
-unsafe impl<I: BoundedSize> BoundedSize for Cloned<I> {
-    const UPPER_BOUND: Option<NonZero<usize>> = I::UPPER_BOUND;
-}
-
 /// An iterator that flattens one level of nesting in an iterator of things
 /// that can be turned into iterators.
 ///
