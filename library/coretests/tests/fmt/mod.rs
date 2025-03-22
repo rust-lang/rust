@@ -81,6 +81,7 @@ fn formatting_options_ctor() {
 }
 
 #[test]
+#[allow(deprecated)]
 fn formatting_options_flags() {
     use core::fmt::*;
     for sign in [None, Some(Sign::Plus), Some(Sign::Minus)] {
@@ -98,6 +99,25 @@ fn formatting_options_flags() {
                     assert_eq!(formatting_options.get_alternate(), alternate);
                     assert_eq!(formatting_options.get_sign_aware_zero_pad(), sign_aware_zero_pad);
                     assert_eq!(formatting_options.get_debug_as_hex(), debug_as_hex);
+
+                    let mut output = String::new();
+                    let fmt = Formatter::new(&mut output, formatting_options);
+                    assert_eq!(fmt.options(), formatting_options);
+
+                    assert_eq!(fmt.sign_minus(), sign == Some(Sign::Minus));
+                    assert_eq!(fmt.sign_plus(), sign == Some(Sign::Plus));
+                    assert_eq!(fmt.alternate(), alternate);
+                    assert_eq!(fmt.sign_aware_zero_pad(), sign_aware_zero_pad);
+
+                    // The flags method is deprecated.
+                    // This checks compatibility with older versions of Rust.
+                    assert_eq!(fmt.flags() & 1 != 0, sign == Some(Sign::Plus));
+                    assert_eq!(fmt.flags() & 2 != 0, sign == Some(Sign::Minus));
+                    assert_eq!(fmt.flags() & 4 != 0, alternate);
+                    assert_eq!(fmt.flags() & 8 != 0, sign_aware_zero_pad);
+                    assert_eq!(fmt.flags() & 16 != 0, debug_as_hex == Some(DebugAsHex::Lower));
+                    assert_eq!(fmt.flags() & 32 != 0, debug_as_hex == Some(DebugAsHex::Upper));
+                    assert_eq!(fmt.flags() & 0xFFFF_FFC0, 0);
                 }
             }
         }
