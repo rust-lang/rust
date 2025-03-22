@@ -19,7 +19,7 @@
 // gdb-check:$4 = ("Hello", "World")
 
 // gdb-command:print str_in_rc
-// gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<alloc::rc::RcInner<&str>> {pointer: 0x[...]}, phantom: core::marker::PhantomData<alloc::rc::RcInner<&str>>, alloc: alloc::alloc::Global}
+// gdb-check:$5 = alloc::rc::Rc<&str, alloc::alloc::Global> {raw_rc: alloc::raw_rc::RawRc<&str, alloc::alloc::Global> {weak: alloc::raw_rc::RawWeak<&str, alloc::alloc::Global> {ptr: core::ptr::non_null::NonNull<&str> {pointer: 0x[...]}, alloc: alloc::alloc::Global}, _phantom_data: core::marker::PhantomData<&str>}}
 
 // === LLDB TESTS ==================================================================================
 // lldb-command:run
@@ -37,7 +37,6 @@
 
 // lldb-command:v str_in_rc
 // lldb-check:(alloc::rc::Rc<&str, alloc::alloc::Global>) str_in_rc = strong=1, weak=0 { value = "Hello" { [0] = 'H' [1] = 'e' [2] = 'l' [3] = 'l' [4] = 'o' } }
-
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
