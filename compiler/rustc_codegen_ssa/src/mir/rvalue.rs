@@ -86,12 +86,29 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             mir::Rvalue::Repeat(ref elem, count) => {
-                let cg_elem = self.codegen_operand(bx, elem);
-
                 // Do not generate the loop for zero-sized elements or empty arrays.
                 if dest.layout.is_zst() {
                     return;
                 }
+
+                // When the element is a const with all bytes uninit, emit a single memset that
+                // writes undef to the entire destination.
+                if let mir::Operand::Constant(const_op) = elem {
+                    let val = self.eval_mir_constant(const_op);
+                    if val.all_bytes_uninit(self.cx.tcx()) {
+                        let size = bx.const_usize(dest.layout.size.bytes());
+                        bx.memset(
+                            dest.val.llval,
+                            bx.const_undef(bx.type_i8()),
+                            size,
+                            dest.val.align,
+                            MemFlags::empty(),
+                        );
+                        return;
+                    }
+                }
+
+                let cg_elem = self.codegen_operand(bx, elem);
 
                 let try_init_all_same = |bx: &mut Bx, v| {
                     let start = dest.val.llval;
