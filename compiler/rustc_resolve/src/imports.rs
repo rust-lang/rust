@@ -4,7 +4,7 @@ use std::cell::Cell;
 use std::mem;
 
 use rustc_ast::NodeId;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_data_structures::intern::Interned;
 use rustc_errors::codes::*;
 use rustc_errors::{Applicability, MultiSpan, pluralize, struct_span_code_err};
@@ -233,7 +233,7 @@ impl<'ra> ImportData<'ra> {
 pub(crate) struct NameResolution<'ra> {
     /// Single imports that may define the name in the namespace.
     /// Imports are arena-allocated, so it's ok to use pointers as keys.
-    pub single_imports: FxHashSet<Import<'ra>>,
+    pub single_imports: FxIndexSet<Import<'ra>>,
     /// The least shadowable known binding for this name, or None if there are no known bindings.
     pub binding: Option<NameBinding<'ra>>,
     pub shadowed_glob: Option<NameBinding<'ra>>,
@@ -494,7 +494,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let key = BindingKey::new(target, ns);
                 let _ = this.try_define(import.parent_scope.module, key, dummy_binding, false);
                 this.update_resolution(import.parent_scope.module, key, false, |_, resolution| {
-                    resolution.single_imports.remove(&import);
+                    resolution.single_imports.swap_remove(&import);
                 })
             });
             self.record_use(target, dummy_binding, Used::Other);
@@ -862,7 +862,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                         }
                         let key = BindingKey::new(target, ns);
                         this.update_resolution(parent, key, false, |_, resolution| {
-                            resolution.single_imports.remove(&import);
+                            resolution.single_imports.swap_remove(&import);
                         });
                     }
                 }

@@ -946,7 +946,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
 
         // Check if one of single imports can still define the name,
         // if it can then our result is not determined and can be invalidated.
-        #[allow(rustc::potential_query_instability)] // FIXME
         for single_import in &resolution.single_imports {
             if ignore_import == Some(*single_import) {
                 // This branch handles a cycle in single imports.
