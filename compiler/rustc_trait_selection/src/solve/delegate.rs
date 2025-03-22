@@ -96,7 +96,7 @@ impl<'tcx> rustc_next_trait_solver::delegate::SolverDelegate for SolverDelegate<
     ) -> Option<Vec<Goal<'tcx, ty::Predicate<'tcx>>>> {
         crate::traits::wf::unnormalized_obligations(&self.0, param_env, arg, DUMMY_SP, CRATE_DEF_ID)
             .map(|obligations| {
-                obligations.into_iter().map(|obligation| obligation.into()).collect()
+                obligations.into_iter().map(|obligation| obligation.as_goal()).collect()
             })
     }
 
