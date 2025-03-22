@@ -12,7 +12,20 @@ fn run_common(name: &str, args: Option<&[&str]>) -> Command {
     bin_path.push(cwd());
     bin_path.push(name);
     let ld_lib_path_envvar = env_var("LD_LIB_PATH_ENVVAR");
-    let mut cmd = Command::new(bin_path);
+
+    let mut cmd = if let Some(rtc) = env::var_os("REMOTE_TEST_CLIENT") {
+        let mut cmd = Command::new(rtc);
+        cmd.arg("run");
+        // FIXME: the "0" indicates how many support files should be uploaded along with the binary
+        // to execute. If a test requires additional files to be pushed to the remote machine, this
+        // will have to be changed (and the support files will have to be uploaded).
+        cmd.arg("0");
+        cmd.arg(bin_path);
+        cmd
+    } else {
+        Command::new(bin_path)
+    };
+
     if let Some(args) = args {
         for arg in args {
             cmd.arg(arg);

@@ -3,10 +3,11 @@
 // warnings when used, and that binaries produced by it can also be successfully executed.
 // See https://github.com/rust-lang/rust/pull/23238
 
-use run_make_support::{run, rustc};
+use run_make_support::{run, rustc, target};
 
 fn main() {
-    let out = rustc().input("foo.rs").arg("-Ctarget-cpu=native").run().stderr_utf8();
+    let out =
+        rustc().target(target()).input("foo.rs").arg("-Ctarget-cpu=native").run().stderr_utf8();
     run("foo");
     // There should be zero warnings emitted - the bug would cause "unknown CPU `native`"
     // to be printed out.
