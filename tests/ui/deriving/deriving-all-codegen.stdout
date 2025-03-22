@@ -25,6 +25,8 @@ extern crate std;
 // Empty struct.
 struct Empty;
 #[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Empty { }
+#[automatically_derived]
 impl ::core::clone::Clone for Empty {
     #[inline]
     fn clone(&self) -> Empty { *self }
@@ -84,6 +86,8 @@ struct Point {
     x: u32,
     y: u32,
 }
+#[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Point { }
 #[automatically_derived]
 impl ::core::clone::Clone for Point {
     #[inline]
@@ -169,6 +173,8 @@ struct PackedPoint {
     x: u32,
     y: u32,
 }
+#[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for PackedPoint { }
 #[automatically_derived]
 impl ::core::clone::Clone for PackedPoint {
     #[inline]
@@ -261,6 +267,8 @@ struct Big {
     b7: u32,
     b8: u32,
 }
+#[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Big { }
 #[automatically_derived]
 impl ::core::clone::Clone for Big {
     #[inline]
@@ -763,6 +771,8 @@ impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
 // An empty enum.
 enum Enum0 {}
 #[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Enum0 { }
+#[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
     #[inline]
     fn clone(&self) -> Enum0 { *self }
@@ -958,6 +968,8 @@ enum Fieldless {
     C,
 }
 #[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Fieldless { }
+#[automatically_derived]
 impl ::core::clone::Clone for Fieldless {
     #[inline]
     fn clone(&self) -> Fieldless { *self }
@@ -1039,6 +1051,8 @@ enum Mixed {
         d2: Option<i32>,
     },
 }
+#[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Mixed { }
 #[automatically_derived]
 impl ::core::clone::Clone for Mixed {
     #[inline]
@@ -1436,6 +1450,8 @@ pub union Union {
     pub u: u32,
     pub i: i32,
 }
+#[automatically_derived]
+unsafe impl ::core::clone::TrivialClone for Union { }
 #[automatically_derived]
 impl ::core::clone::Clone for Union {
     #[inline]

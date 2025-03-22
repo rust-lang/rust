@@ -1,4 +1,4 @@
-use rustc_ast::{MetaItem, Mutability};
+use rustc_ast::{MetaItem, Mutability, Safety};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::{Span, sym};
 use thin_vec::thin_vec;
@@ -41,6 +41,7 @@ pub(crate) fn expand_deriving_hash(
         }],
         associated_types: Vec::new(),
         is_const,
+        safety: Safety::Default,
     };
 
     hash_trait_def.expand(cx, mitem, item, push);
