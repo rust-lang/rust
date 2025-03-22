@@ -97,15 +97,15 @@ const fn stderr_raw() -> StderrRaw {
 
 impl Read for StdinRaw {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.read(buf), 0)
+        handle_ebadf(self.0.read(buf), || Ok(0))
     }
 
     fn read_buf(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.read_buf(buf), ())
+        handle_ebadf(self.0.read_buf(buf), || Ok(()))
     }
 
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
-        handle_ebadf(self.0.read_vectored(bufs), 0)
+        handle_ebadf(self.0.read_vectored(bufs), || Ok(0))
     }
 
     #[inline]
@@ -113,23 +113,37 @@ impl Read for StdinRaw {
         self.0.is_read_vectored()
     }
 
+    fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
+        if buf.is_empty() {
+            return Ok(());
+        }
+        handle_ebadf(self.0.read_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+    }
+
+    fn read_buf_exact(&mut self, buf: BorrowedCursor<'_>) -> io::Result<()> {
+        if buf.capacity() == 0 {
+            return Ok(());
+        }
+        handle_ebadf(self.0.read_buf_exact(buf), || Err(io::Error::READ_EXACT_EOF))
+    }
+
     fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_end(buf), 0)
+        handle_ebadf(self.0.read_to_end(buf), || Ok(0))
     }
 
     fn read_to_string(&mut self, buf: &mut String) -> io::Result<usize> {
-        handle_ebadf(self.0.read_to_string(buf), 0)
+        handle_ebadf(self.0.read_to_string(buf), || Ok(0))
     }
 }
 
 impl Write for StdoutRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), buf.len())
+        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
+        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
+        handle_ebadf(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -138,30 +152,30 @@ impl Write for StdoutRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), ())
+        handle_ebadf(self.0.flush(), || Ok(()))
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), ())
+        handle_ebadf(self.0.write_all(buf), || Ok(()))
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), ())
+        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), ())
+        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
     }
 }
 
 impl Write for StderrRaw {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
-        handle_ebadf(self.0.write(buf), buf.len())
+        handle_ebadf(self.0.write(buf), || Ok(buf.len()))
     }
 
     fn write_vectored(&mut self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
-        let total = || bufs.iter().map(|b| b.len()).sum();
-        handle_ebadf_lazy(self.0.write_vectored(bufs), total)
+        let total = || Ok(bufs.iter().map(|b| b.len()).sum());
+        handle_ebadf(self.0.write_vectored(bufs), total)
     }
 
     #[inline]
@@ -170,32 +184,25 @@ impl Write for StderrRaw {
     }
 
     fn flush(&mut self) -> io::Result<()> {
-        handle_ebadf(self.0.flush(), ())
+        handle_ebadf(self.0.flush(), || Ok(()))
     }
 
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all(buf), ())
+        handle_ebadf(self.0.write_all(buf), || Ok(()))
     }
 
     fn write_all_vectored(&mut self, bufs: &mut [IoSlice<'_>]) -> io::Result<()> {
-        handle_ebadf(self.0.write_all_vectored(bufs), ())
+        handle_ebadf(self.0.write_all_vectored(bufs), || Ok(()))
     }
 
     fn write_fmt(&mut self, fmt: fmt::Arguments<'_>) -> io::Result<()> {
-        handle_ebadf(self.0.write_fmt(fmt), ())
+        handle_ebadf(self.0.write_fmt(fmt), || Ok(()))
     }
 }
 
-fn handle_ebadf<T>(r: io::Result<T>, default: T) -> io::Result<T> {
+fn handle_ebadf<T>(r: io::Result<T>, default: impl FnOnce() -> io::Result<T>) -> io::Result<T> {
     match r {
-        Err(ref e) if stdio::is_ebadf(e) => Ok(default),
-        r => r,
-    }
-}
-
-fn handle_ebadf_lazy<T>(r: io::Result<T>, default: impl FnOnce() -> T) -> io::Result<T> {
-    match r {
-        Err(ref e) if stdio::is_ebadf(e) => Ok(default()),
+        Err(ref e) if stdio::is_ebadf(e) => default(),
         r => r,
     }
 }
