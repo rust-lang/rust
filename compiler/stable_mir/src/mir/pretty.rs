@@ -9,12 +9,22 @@ use super::{AggregateKind, AssertMessage, BinOp, BorrowKind, FakeBorrowKind, Ter
 use crate::mir::{
     Operand, Place, RawPtrKind, Rvalue, StatementKind, UnwindAction, VarDebugInfoContents,
 };
-use crate::ty::{AdtKind, IndexedVal, MirConst, Ty, TyConst};
+use crate::ty::{AdtKind, AssocKind, IndexedVal, MirConst, Ty, TyConst};
 use crate::{Body, CrateDef, Mutability, with};
 
 impl Display for Ty {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         with(|ctx| write!(f, "{}", ctx.ty_pretty(*self)))
+    }
+}
+
+impl Display for AssocKind {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            AssocKind::Fn => write!(f, "method"),
+            AssocKind::Const => write!(f, "associated const"),
+            AssocKind::Type => write!(f, "associated type"),
+        }
     }
 }
 
