@@ -3,7 +3,7 @@
 fn ezmap(_1: Option<i32>) -> Option<i32> {
     debug x => _1;
     let mut _0: std::option::Option<i32>;
-    scope 1 (inlined map::<i32, i32, {closure@$DIR/simple_option_map.rs:17:12: 17:15}>) {
+    scope 1 (inlined map::<i32, i32, {closure@$DIR/simple_option_map.rs:23:12: 23:15}>) {
         let mut _2: isize;
         let _3: i32;
         let mut _4: i32;
