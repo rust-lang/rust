@@ -5,20 +5,20 @@ use std::num::NonZero;
 use rustc_abi::ExternAbi;
 use rustc_errors::codes::*;
 use rustc_errors::{
-    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, ElidedLifetimeInPathSubdiag,
-    EmissionGuarantee, LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
+    Applicability, Diag, DiagArgValue, DiagMessage, DiagStyledString, EmissionGuarantee,
+    LintDiagnostic, MultiSpan, SubdiagMessageOp, Subdiagnostic, SuggestionStyle,
 };
+use rustc_hir as hir;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::VisitorExt;
-use rustc_hir::{self as hir, MissingLifetimeKind};
 use rustc_macros::{LintDiagnostic, Subdiagnostic};
 use rustc_middle::ty::inhabitedness::InhabitedPredicate;
 use rustc_middle::ty::{Clause, PolyExistentialTraitRef, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_session::lint::AmbiguityErrorDiag;
 use rustc_span::edition::Edition;
-use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, kw, sym};
+use rustc_span::{Ident, MacroRulesNormalizedIdent, Span, Symbol, sym};
 
 use crate::builtin::{InitError, ShorthandAssocTyCollector, TypeAliasBounds};
 use crate::errors::{OverruledAttributeSub, RequestedLevel};
@@ -2670,65 +2670,6 @@ pub(crate) struct MacroExpandedMacroExportsAccessedByAbsolutePaths {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(lint_hidden_lifetime_parameters)]
-pub(crate) struct ElidedLifetimesInPaths {
-    #[subdiagnostic]
-    pub subdiag: ElidedLifetimeInPathSubdiag,
-}
-
-pub(crate) struct ElidedNamedLifetime {
-    pub span: Span,
-    pub kind: MissingLifetimeKind,
-    pub name: Symbol,
-    pub declaration: Option<Span>,
-}
-
-impl<G: EmissionGuarantee> LintDiagnostic<'_, G> for ElidedNamedLifetime {
-    fn decorate_lint(self, diag: &mut rustc_errors::Diag<'_, G>) {
-        let Self { span, kind, name, declaration } = self;
-        diag.primary_message(fluent::lint_elided_named_lifetime);
-        diag.arg("name", name);
-        diag.span_label(span, fluent::lint_label_elided);
-        if let Some(declaration) = declaration {
-            diag.span_label(declaration, fluent::lint_label_named);
-        }
-        // FIXME(GrigorenkoPV): this `if` and `return` should be removed,
-        //  but currently this lint's suggestions can conflict with those of `clippy::needless_lifetimes`:
-        //  https://github.com/rust-lang/rust/pull/129840#issuecomment-2323349119
-        // HACK: `'static` suggestions will never sonflict, emit only those for now.
-        if name != kw::StaticLifetime {
-            return;
-        }
-        match kind {
-            MissingLifetimeKind::Underscore => diag.span_suggestion_verbose(
-                span,
-                fluent::lint_suggestion,
-                format!("{name}"),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Ampersand => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name} "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Comma => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("{name}, "),
-                Applicability::MachineApplicable,
-            ),
-            MissingLifetimeKind::Brackets => diag.span_suggestion_verbose(
-                span.shrink_to_hi(),
-                fluent::lint_suggestion,
-                format!("<{name}>"),
-                Applicability::MachineApplicable,
-            ),
-        };
-    }
-}
-
-#[derive(LintDiagnostic)]
 #[diag(lint_invalid_crate_type_value)]
 pub(crate) struct UnknownCrateTypes {
     #[subdiagnostic]
@@ -3162,4 +3103,124 @@ pub(crate) struct ReservedString {
 pub(crate) struct ReservedMultihash {
     #[suggestion(code = " ", applicability = "machine-applicable")]
     pub suggestion: Span,
+}
+
+pub(crate) struct MismatchedLifetimeSyntaxes {
+    pub lifetime_name: String,
+    pub inputs: Vec<Span>,
+    pub outputs: Vec<Span>,
+
+    pub suggestions: Vec<MismatchedLifetimeSyntaxesSuggestion>,
+}
+
+impl<'a, G: EmissionGuarantee> LintDiagnostic<'a, G> for MismatchedLifetimeSyntaxes {
+    fn decorate_lint<'b>(self, diag: &'b mut Diag<'a, G>) {
+        diag.primary_message(fluent::lint_mismatched_lifetime_syntaxes);
+
+        // TODO: how avoid calling it lifetime_name2?
+        diag.arg("lifetime_name2", self.lifetime_name);
+
+        diag.arg("n_inputs", self.inputs.len());
+        for input in self.inputs {
+            diag.span_label(input, fluent::lint_label_mismatched_lifetime_syntaxes_inputs);
+        }
+
+        diag.arg("n_outputs", self.outputs.len());
+        for output in self.outputs {
+            diag.span_label(output, fluent::lint_label_mismatched_lifetime_syntaxes_outputs);
+        }
+
+        let mut suggestions = self.suggestions.into_iter();
+        if let Some(s) = suggestions.next() {
+            diag.subdiagnostic(s);
+
+            for mut s in suggestions {
+                s.make_tool_only();
+                diag.subdiagnostic(s);
+            }
+        }
+    }
+}
+
+pub(crate) enum MismatchedLifetimeSyntaxesSuggestion {
+    Hidden { suggestions: Vec<Span>, tool_only: bool },
+
+    Named { lifetime_name: String, suggestions: Vec<(Span, String)>, tool_only: bool },
+}
+
+impl MismatchedLifetimeSyntaxesSuggestion {
+    fn make_tool_only(&mut self) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let tool_only = match self {
+            Hidden { tool_only, .. } | Named { tool_only, .. } => tool_only,
+        };
+
+        *tool_only = true;
+    }
+}
+
+impl Subdiagnostic for MismatchedLifetimeSyntaxesSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        f: &F,
+    ) {
+        use MismatchedLifetimeSyntaxesSuggestion::*;
+
+        let style = |tool_only| {
+            if tool_only { SuggestionStyle::CompletelyHidden } else { SuggestionStyle::ShowAlways }
+        };
+
+        match self {
+            Hidden { suggestions, tool_only } => {
+                let suggestions = suggestions.into_iter().map(|s| (s, String::new())).collect();
+                diag.multipart_suggestion_with_style(
+                    fluent::lint_mismatched_lifetime_syntaxes_suggestion_hidden,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+
+            Named { lifetime_name, suggestions, tool_only } => {
+                diag.arg("lifetime_name", lifetime_name);
+
+                let msg =
+                    f(diag, fluent::lint_mismatched_lifetime_syntaxes_suggestion_named.into());
+
+                diag.multipart_suggestion_with_style(
+                    msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                    style(tool_only),
+                );
+            }
+        }
+    }
+}
+
+#[derive(LintDiagnostic)]
+#[diag(lint_hidden_lifetime_in_path)]
+pub(crate) struct HiddenLifetimeInPath {
+    #[subdiagnostic]
+    pub suggestions: HiddenLifetimeInPathSuggestion,
+}
+
+pub(crate) struct HiddenLifetimeInPathSuggestion {
+    pub suggestions: Vec<(Span, String)>,
+}
+
+impl Subdiagnostic for HiddenLifetimeInPathSuggestion {
+    fn add_to_diag_with<G: EmissionGuarantee, F: SubdiagMessageOp<G>>(
+        self,
+        diag: &mut Diag<'_, G>,
+        _f: &F,
+    ) {
+        diag.multipart_suggestion_verbose(
+            fluent::lint_hidden_lifetime_in_path_suggestion,
+            self.suggestions,
+            Applicability::MachineApplicable,
+        );
+    }
 }

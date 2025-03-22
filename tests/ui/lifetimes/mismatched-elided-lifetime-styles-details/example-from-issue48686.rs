@@ -1,10 +1,10 @@
-#![deny(elided_named_lifetimes)]
+#![deny(mismatched_lifetime_syntaxes)]
 
 struct Foo;
 
 impl Foo {
     pub fn get_mut(&'static self, x: &mut u8) -> &mut u8 {
-        //~^ ERROR elided lifetime has a name
+        //~^ ERROR lifetime flowing from input to output with different syntax
         unsafe { &mut *(x as *mut _) }
     }
 }
