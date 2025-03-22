@@ -15,7 +15,9 @@ use std::{cmp, env, fs};
 
 use build_helper::ci::CiEnv;
 use build_helper::exit;
-use build_helper::git::{GitConfig, get_closest_merge_commit, output_result};
+use build_helper::git::{
+    GitConfig, PathFreshness, check_path_modifications, get_closest_merge_commit, output_result,
+};
 use serde::{Deserialize, Deserializer};
 use serde_derive::Deserialize;
 #[cfg(feature = "tracing")]
@@ -171,6 +173,17 @@ impl LldMode {
     }
 }
 
+/// Determines how will GCC be provided.
+#[derive(Default, Clone)]
+pub enum GccCiMode {
+    /// Build GCC from the local `src/gcc` submodule.
+    #[default]
+    BuildLocally,
+    /// Try to download GCC from CI.
+    /// If it is not available on CI, it will be built locally instead.
+    DownloadFromCi,
+}
+
 /// Global configuration for the entire build and/or bootstrap.
 ///
 /// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
@@ -280,6 +293,9 @@ pub struct Config {
     pub llvm_cxxflags: Option<String>,
     pub llvm_ldflags: Option<String>,
     pub llvm_use_libcxx: bool,
+
+    // gcc codegen options
+    pub gcc_ci_mode: GccCiMode,
 
     // rust codegen options
     pub rust_optimize: RustOptimize,
@@ -670,6 +686,7 @@ pub(crate) struct TomlConfig {
     build: Option<Build>,
     install: Option<Install>,
     llvm: Option<Llvm>,
+    gcc: Option<Gcc>,
     rust: Option<Rust>,
     target: Option<HashMap<String, TomlTarget>>,
     dist: Option<Dist>,
@@ -704,7 +721,7 @@ trait Merge {
 impl Merge for TomlConfig {
     fn merge(
         &mut self,
-        TomlConfig { build, install, llvm, rust, dist, target, profile, change_id }: Self,
+        TomlConfig { build, install, llvm, gcc, rust, dist, target, profile, change_id }: Self,
         replace: ReplaceOpt,
     ) {
         fn do_merge<T: Merge>(x: &mut Option<T>, y: Option<T>, replace: ReplaceOpt) {
@@ -723,6 +740,7 @@ impl Merge for TomlConfig {
         do_merge(&mut self.build, build, replace);
         do_merge(&mut self.install, install, replace);
         do_merge(&mut self.llvm, llvm, replace);
+        do_merge(&mut self.gcc, gcc, replace);
         do_merge(&mut self.rust, rust, replace);
         do_merge(&mut self.dist, dist, replace);
 
@@ -985,6 +1003,13 @@ define_config! {
         enable_warnings: Option<bool> = "enable-warnings",
         download_ci_llvm: Option<StringOrBool> = "download-ci-llvm",
         build_config: Option<HashMap<String, String>> = "build-config",
+    }
+}
+
+define_config! {
+    /// TOML representation of how the GCC build is configured.
+    struct Gcc {
+        download_ci_gcc: Option<bool> = "download-ci-gcc",
     }
 }
 
@@ -1887,6 +1912,7 @@ impl Config {
                 debug_assertions_requested,
                 config.llvm_assertions,
             );
+            panic!("DOWNLOAD_CI_RUSTC: {:?}", config.download_rustc_commit);
 
             debug = debug_toml;
             rustc_debug_assertions = rustc_debug_assertions_toml;
@@ -2114,6 +2140,16 @@ impl Config {
             }
         } else {
             config.llvm_from_ci = config.parse_download_ci_llvm(None, false);
+        }
+
+        if let Some(gcc) = toml.gcc {
+            config.gcc_ci_mode = match gcc.download_ci_gcc {
+                Some(value) => match value {
+                    true => GccCiMode::DownloadFromCi,
+                    false => GccCiMode::BuildLocally,
+                },
+                None => GccCiMode::default(),
+            };
         }
 
         if let Some(t) = toml.target {
@@ -2941,22 +2977,37 @@ impl Config {
         // options.
         if !CiEnv::is_ci() {
             allowed_paths.push(":!library");
+        } else {
+            allowed_paths.push(":!src/bootstrap");
+            allowed_paths.push(":!.github");
+            allowed_paths.push(":!Cargo.lock");
+            allowed_paths.push(":!config.example.toml");
+            allowed_paths.push(":!license-metadata.json");
+            allowed_paths.push(":!triagebot.toml");
+            allowed_paths.push(":!src");
         }
 
         let commit = if self.rust_info.is_managed_git_subrepository() {
             // Look for a version to compare to based on the current commit.
             // Only commits merged by bors will have CI artifacts.
-            match self.last_modified_commit(&allowed_paths, "download-rustc", if_unchanged) {
-                Some(commit) => commit,
-                None => {
+            let modifications = self.check_modifications(&allowed_paths);
+            eprintln!("DOWNLOAD_CI_RUSTC freshness: {modifications:?}");
+            match modifications {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => {
                     if if_unchanged {
                         return None;
                     }
-                    println!("ERROR: could not find commit hash for downloading rustc");
-                    println!("HELP: maybe your repository history is too shallow?");
-                    println!("HELP: consider setting `rust.download-rustc=false` in config.toml");
-                    println!("HELP: or fetch enough history to include one upstream commit");
-                    crate::exit!(1);
+
+                    if CiEnv::is_ci() {
+                        eprintln!("CI rustc commit matches with HEAD and we are in CI.");
+                        eprintln!(
+                            "`rustc.download-ci` functionality will be skipped as artifacts are not available."
+                        );
+                        return None;
+                    }
+
+                    upstream
                 }
             }
         } else {
@@ -2964,19 +3015,6 @@ impl Config {
                 .map(|info| info.sha.trim().to_owned())
                 .expect("git-commit-info is missing in the project root")
         };
-
-        if CiEnv::is_ci() && {
-            let head_sha =
-                output(helpers::git(Some(&self.src)).arg("rev-parse").arg("HEAD").as_command_mut());
-            let head_sha = head_sha.trim();
-            commit == head_sha
-        } {
-            eprintln!("CI rustc commit matches with HEAD and we are in CI.");
-            eprintln!(
-                "`rustc.download-ci` functionality will be skipped as artifacts are not available."
-            );
-            return None;
-        }
 
         if debug_assertions_requested {
             eprintln!(
@@ -2995,6 +3033,35 @@ impl Config {
         asserts: bool,
     ) -> bool {
         let download_ci_llvm = download_ci_llvm.unwrap_or(StringOrBool::Bool(true));
+        let freshness = self.check_modifications(&[
+            "src/llvm-project",
+            "src/bootstrap/download-ci-llvm-stamp",
+            "src/version",
+        ]);
+        let sha = get_closest_merge_commit(
+            Some(&self.src),
+            &self.git_config(),
+            &[
+                self.src.join("src/llvm-project"),
+                self.src.join("src/bootstrap/download-ci-llvm-stamp"),
+                // the LLVM shared object file is named `LLVM-12-rust-{version}-nightly`
+                self.src.join("src/version"),
+            ],
+        )
+        .unwrap();
+        let head = String::from_utf8(
+            Command::new("git")
+                .current_dir(&self.src)
+                .arg("rev-parse")
+                .arg("HEAD")
+                .output()
+                .unwrap()
+                .stdout,
+        )
+        .unwrap()
+        .trim()
+        .to_string();
+        eprintln!("LLVM FRESHNESS: {freshness:?}\nOld git SHA: {sha}\nHEAD: {head}");
 
         let if_unchanged = || {
             if self.rust_info.is_from_tarball() {
@@ -3008,9 +3075,7 @@ impl Config {
             self.update_submodule("src/llvm-project");
 
             // Check for untracked changes in `src/llvm-project`.
-            let has_changes = self
-                .last_modified_commit(&["src/llvm-project"], "download-ci-llvm", true)
-                .is_none();
+            let has_changes = self.has_changes_from_upstream(&["src/llvm-project"]);
 
             // Return false if there are untracked changes, otherwise check if CI LLVM is available.
             if has_changes { false } else { llvm::is_ci_llvm_available(self, asserts) }
@@ -3034,51 +3099,17 @@ impl Config {
         }
     }
 
-    /// Returns the last commit in which any of `modified_paths` were changed,
-    /// or `None` if there are untracked changes in the working directory and `if_unchanged` is true.
-    pub fn last_modified_commit(
-        &self,
-        modified_paths: &[&str],
-        option_name: &str,
-        if_unchanged: bool,
-    ) -> Option<String> {
-        assert!(
-            self.rust_info.is_managed_git_subrepository(),
-            "Can't run `Config::last_modified_commit` on a non-git source."
-        );
-
-        // Look for a version to compare to based on the current commit.
-        // Only commits merged by bors will have CI artifacts.
-        let commit = get_closest_merge_commit(Some(&self.src), &self.git_config(), &[]).unwrap();
-        if commit.is_empty() {
-            println!("error: could not find commit hash for downloading components from CI");
-            println!("help: maybe your repository history is too shallow?");
-            println!("help: consider disabling `{option_name}`");
-            println!("help: or fetch enough history to include one upstream commit");
-            crate::exit!(1);
+    /// Returns true if any of the `paths` have been modified locally.
+    pub fn has_changes_from_upstream(&self, paths: &[&str]) -> bool {
+        match self.check_modifications(paths) {
+            PathFreshness::LastModifiedUpstream { .. } => false,
+            PathFreshness::HasLocalModifications { .. } => true,
         }
+    }
 
-        // Warn if there were changes to the compiler or standard library since the ancestor commit.
-        let mut git = helpers::git(Some(&self.src));
-        git.args(["diff-index", "--quiet", &commit, "--"]).args(modified_paths);
-
-        let has_changes = !t!(git.as_command_mut().status()).success();
-        if has_changes {
-            if if_unchanged {
-                if self.is_verbose() {
-                    println!(
-                        "warning: saw changes to one of {modified_paths:?} since {commit}; \
-                            ignoring `{option_name}`"
-                    );
-                }
-                return None;
-            }
-            println!(
-                "warning: `{option_name}` is enabled, but there are changes to one of {modified_paths:?}"
-            );
-        }
-
-        Some(commit.to_string())
+    fn check_modifications(&self, paths: &[&str]) -> PathFreshness {
+        check_path_modifications(Some(&self.src), &self.git_config(), paths, CiEnv::current())
+            .unwrap()
     }
 }
 

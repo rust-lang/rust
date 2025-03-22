@@ -1,0 +1,4 @@
+Change this file to make users of the `download-ci-gcc` configuration download
+a new version of GCC from CI, even if the GCC submodule hasn’t changed.
+
+Last change is for: https://github.com/rust-lang/rust/pull/138051

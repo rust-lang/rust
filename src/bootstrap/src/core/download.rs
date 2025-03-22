@@ -721,8 +721,9 @@ download-rustc = false
     #[cfg(not(test))]
     pub(crate) fn maybe_download_ci_llvm(&self) {
         use build_helper::exit;
+        use build_helper::git::PathFreshness;
 
-        use crate::core::build_steps::llvm::detect_llvm_sha;
+        use crate::core::build_steps::llvm::detect_llvm_freshness;
         use crate::core::config::check_incompatible_options_for_ci_llvm;
 
         if !self.llvm_from_ci {
@@ -730,7 +731,11 @@ download-rustc = false
         }
 
         let llvm_root = self.ci_llvm_root();
-        let llvm_sha = detect_llvm_sha(self, self.rust_info.is_managed_git_subrepository());
+        let llvm_sha =
+            match detect_llvm_freshness(self, self.rust_info.is_managed_git_subrepository()) {
+                PathFreshness::LastModifiedUpstream { upstream } => upstream,
+                PathFreshness::HasLocalModifications { upstream } => upstream,
+            };
         let stamp_key = format!("{}{}", llvm_sha, self.llvm_assertions);
         let llvm_stamp = BuildStamp::new(&llvm_root).with_prefix("llvm").add_stamp(stamp_key);
         if !llvm_stamp.is_up_to_date() && !self.dry_run() {
@@ -825,6 +830,34 @@ download-rustc = false
         }
         let llvm_root = self.ci_llvm_root();
         self.unpack(&tarball, &llvm_root, "rust-dev");
+    }
+
+    pub fn download_ci_gcc(&self, gcc_sha: &str, root_dir: &Path) {
+        let cache_prefix = format!("gcc-{gcc_sha}");
+        let cache_dst =
+            self.bootstrap_cache_path.as_ref().cloned().unwrap_or_else(|| self.out.join("cache"));
+
+        let gcc_cache = cache_dst.join(cache_prefix);
+        if !gcc_cache.exists() {
+            t!(fs::create_dir_all(&gcc_cache));
+        }
+        let base = &self.stage0_metadata.config.artifacts_server;
+        let filename = format!("gcc-nightly-{}.tar.xz", self.build.triple);
+        let tarball = gcc_cache.join(&filename);
+        if !tarball.exists() {
+            let help_on_error = "ERROR: failed to download gcc from ci
+
+    HELP: There could be two reasons behind this:
+        1) The host triple is not supported for `download-ci-gcc`.
+        2) Old builds get deleted after a certain time.
+    HELP: In either case, disable `download-ci-gcc` in your config.toml:
+
+    [gcc]
+    download-ci-gcc = false
+    ";
+            self.download_file(&format!("{base}/{gcc_sha}/{filename}"), &tarball, help_on_error);
+        }
+        self.unpack(&tarball, root_dir, "gcc");
     }
 }
 

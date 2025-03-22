@@ -13,7 +13,8 @@
                         "directories": [],
                         "files": [
                           "analyzer-decls.h",
-                          "malloc-macro.h"
+                          "malloc-macro.h",
+                          "sarif-path-role.h"
                         ],
                         "license": {
                           "copyright": [
