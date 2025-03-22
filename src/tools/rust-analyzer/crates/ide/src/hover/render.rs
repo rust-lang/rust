@@ -477,7 +477,7 @@ pub(super) fn definition(
     famous_defs: Option<&FamousDefs<'_, '_>>,
     notable_traits: &[(Trait, Vec<(Option<Type>, Name)>)],
     macro_arm: Option<u32>,
-    hovered_definition: bool,
+    render_extras: bool,
     subst_types: Option<&Vec<(Symbol, Type)>>,
     config: &HoverConfig,
     edition: Edition,
@@ -640,6 +640,12 @@ pub(super) fn definition(
         Definition::Local(it) => {
             render_memory_layout(config.memory_layout, || it.ty(db).layout(db), |_| None, |_| None)
         }
+        Definition::SelfType(it) => render_memory_layout(
+            config.memory_layout,
+            || it.self_ty(db).layout(db),
+            |_| None,
+            |_| None,
+        ),
         _ => None,
     };
 
@@ -741,7 +747,7 @@ pub(super) fn definition(
     };
 
     let mut extra = String::new();
-    if hovered_definition {
+    if render_extras {
         if let Some(notable_traits) =
             render_notable_trait(db, notable_traits, edition, display_target)
         {
