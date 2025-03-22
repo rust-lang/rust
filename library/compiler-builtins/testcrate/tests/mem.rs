@@ -128,11 +128,13 @@ fn memcmp_eq() {
 #[test]
 fn memcmp_ne() {
     let arr1 @ arr2 = gen_arr::<256>();
-    for i in 0..256 {
+    // Reduce iteration count in Miri as it is too slow otherwise.
+    let limit = if cfg!(miri) { 64 } else { 256 };
+    for i in 0..limit {
         let mut diff_arr = arr1;
         diff_arr.0[i] = 127;
         let expect = diff_arr.0[i].cmp(&arr2.0[i]);
-        for k in i + 1..256 {
+        for k in i + 1..limit {
             let result = unsafe { memcmp(diff_arr.0.as_ptr(), arr2.0.as_ptr(), k) };
             assert_eq!(expect, result.cmp(&0));
         }
@@ -227,6 +229,23 @@ fn memmove_backward_aligned() {
         assert_eq!(memmove(dst, src, 17), dst);
         reference.0.copy_within(3..3 + 17, 3 + WORD_SIZE);
         assert_eq!(arr.0, reference.0);
+    }
+}
+
+#[test]
+fn memmove_misaligned_bounds() {
+    // The above test have the downside that the addresses surrounding the range-to-copy are all
+    // still in-bounds, so Miri would not actually complain about OOB accesses. So we also test with
+    // an array that has just the right size. We test a few times to avoid it being accidentally
+    // aligned.
+    for _ in 0..8 {
+        let mut arr1 = [0u8; 17];
+        let mut arr2 = [0u8; 17];
+        unsafe {
+            // Copy both ways so we hit both the forward and backward cases.
+            memmove(arr1.as_mut_ptr(), arr2.as_mut_ptr(), 17);
+            memmove(arr2.as_mut_ptr(), arr1.as_mut_ptr(), 17);
+        }
     }
 }
 

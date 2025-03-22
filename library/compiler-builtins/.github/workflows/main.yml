@@ -160,6 +160,21 @@ jobs:
         rm -rf /tmp/.buildx-cache
         mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
+  miri:
+    name: Miri
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Install Rust (rustup)
+      run: rustup update nightly --no-self-update && rustup default nightly
+      shell: bash
+    - run: rustup component add miri
+    - run: cargo miri setup
+    - uses: Swatinem/rust-cache@v2
+    - run: ./ci/miri.sh
+
   rustfmt:
     name: Rustfmt
     runs-on: ubuntu-latest
@@ -190,6 +205,7 @@ jobs:
       - test
       - rustfmt
       - clippy
+      - miri
     runs-on: ubuntu-latest
     # GitHub branch protection is exceedingly silly and treats "jobs skipped because a dependency
     # failed" as success. So we have to do some contortions to ensure the job fails if any of its
