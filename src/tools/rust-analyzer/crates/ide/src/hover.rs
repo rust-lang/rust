@@ -18,7 +18,11 @@ use ide_db::{
 };
 use itertools::{Itertools, multizip};
 use span::Edition;
-use syntax::{AstNode, SyntaxKind::*, SyntaxNode, T, ast};
+use syntax::{
+    AstNode,
+    SyntaxKind::{self, *},
+    SyntaxNode, T, ast,
+};
 
 use crate::{
     FileId, FilePosition, NavigationTarget, RangeInfo, Runnable, TryToNav,
@@ -274,11 +278,13 @@ fn hover_offset(
                         }
 
                         class => {
-                            let is_def = matches!(class, IdentClass::NameClass(_));
+                            let render_extras = matches!(class, IdentClass::NameClass(_))
+                                // Render extra information for `Self` keyword as well
+                                || ast::NameRef::cast(node.clone()).is_some_and(|name_ref| name_ref.token_kind() == SyntaxKind::SELF_TYPE_KW);
                             multizip((
                                 class.definitions(),
                                 iter::repeat(None),
-                                iter::repeat(is_def),
+                                iter::repeat(render_extras),
                                 iter::repeat(node),
                             ))
                             .collect::<Vec<_>>()
@@ -422,7 +428,7 @@ pub(crate) fn hover_for_definition(
     subst: Option<GenericSubstitution>,
     scope_node: &SyntaxNode,
     macro_arm: Option<u32>,
-    hovered_definition: bool,
+    render_extras: bool,
     config: &HoverConfig,
     edition: Edition,
     display_target: DisplayTarget,
@@ -456,7 +462,7 @@ pub(crate) fn hover_for_definition(
         famous_defs.as_ref(),
         &notable_traits,
         macro_arm,
-        hovered_definition,
+        render_extras,
         subst_types.as_ref(),
         config,
         edition,
