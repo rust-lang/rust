@@ -207,16 +207,18 @@ impl Step for Rustc {
         let compiler = builder.compiler(builder.top_stage, builder.config.build);
         let target = self.target;
 
-        if compiler.stage != 0 {
-            // If we're not in stage 0, then we won't have a std from the beta
-            // compiler around. That means we need to make sure there's one in
-            // the sysroot for the compiler to find. Otherwise, we're going to
-            // fail when building crates that need to generate code (e.g., build
-            // scripts and their dependencies).
-            builder.ensure(compile::Std::new(compiler, compiler.host));
-            builder.ensure(compile::Std::new(compiler, target));
-        } else {
-            builder.ensure(check::Std::new(target).build_kind(Some(Kind::Check)));
+        if !builder.download_rustc() {
+            if compiler.stage != 0 {
+                // If we're not in stage 0, then we won't have a std from the beta
+                // compiler around. That means we need to make sure there's one in
+                // the sysroot for the compiler to find. Otherwise, we're going to
+                // fail when building crates that need to generate code (e.g., build
+                // scripts and their dependencies).
+                builder.ensure(compile::Std::new(compiler, compiler.host));
+                builder.ensure(compile::Std::new(compiler, target));
+            } else {
+                builder.ensure(check::Std::new(target).build_kind(Some(Kind::Check)));
+            }
         }
 
         let mut cargo = builder::Cargo::new(
@@ -286,7 +288,9 @@ macro_rules! lint_any {
                 let compiler = builder.compiler(builder.top_stage, builder.config.build);
                 let target = self.target;
 
-                builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
+                if !builder.download_rustc() {
+                    builder.ensure(check::Rustc::new(target, builder).build_kind(Some(Kind::Check)));
+                };
 
                 let cargo = prepare_tool_cargo(
                     builder,
