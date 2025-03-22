@@ -143,14 +143,26 @@ where
     ) -> QueryResult<I> {
         match ct.kind() {
             ty::ConstKind::Unevaluated(uv) => {
+                // `ConstEvaluatable` goals don't really need to exist under `mgca` as we can assume all
+                // generic const args can be sucessfully evaluated as they have been checked at def site.
+                //
+                // The only reason we keep this around is so that wf checking of signatures is guaranteed
+                // to wind up normalizing constants emitting errors if they are ill formed. The equivalent
+                // check does not exist for types and results in diverging aliases not being normalized during
+                // wfck sometimes.
+                //
+                // Regardless, the point being that the behaviour of this goal doesn't really matter so we just
+                // always return `Ok` and evaluate for the CTFE side effect of emitting an error.
+                if self.cx().features().min_generic_const_args() {
+                    let _ = self.evaluate_const(param_env, uv);
+                    return self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes);
+                }
+
                 // We never return `NoSolution` here as `evaluate_const` emits an
                 // error itself when failing to evaluate, so emitting an additional fulfillment
                 // error in that case is unnecessary noise. This may change in the future once
                 // evaluation failures are allowed to impact selection, e.g. generic const
                 // expressions in impl headers or `where`-clauses.
-
-                // FIXME(generic_const_exprs): Implement handling for generic
-                // const expressions here.
                 if let Some(_normalized) = self.evaluate_const(param_env, uv) {
                     self.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
                 } else {
