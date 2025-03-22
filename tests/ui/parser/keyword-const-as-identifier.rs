@@ -1,5 +1,5 @@
-// This file was auto-generated using 'src/etc/generate-keyword-tests.py const'
-
 fn main() {
-    let const = "foo"; //~ error: expected identifier, found keyword `const`
+    let const = "foo";
+    //~^ ERROR expected `{`, found `=`
+    //~| ERROR inline-const in pattern position is experimental [E0658]
 }
