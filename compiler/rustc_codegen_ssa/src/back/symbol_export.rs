@@ -95,16 +95,11 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, _: LocalCrate) -> DefIdMap<S
                 return None;
             }
 
-            // Functions marked with #[inline] are codegened with "internal"
-            // linkage and are not exported unless marked with an extern
-            // indicator
-            if !Instance::mono(tcx, def_id.to_def_id()).def.generates_cgu_internal_copy(tcx)
-                || tcx.codegen_fn_attrs(def_id.to_def_id()).contains_extern_indicator()
-            {
-                Some(def_id)
-            } else {
-                None
+            if Instance::mono(tcx, def_id.into()).def.requires_inline(tcx) {
+                return None;
             }
+
+            if tcx.cross_crate_inlinable(def_id) { None } else { Some(def_id) }
         })
         .map(|def_id| {
             // We won't link right if this symbol is stripped during LTO.
