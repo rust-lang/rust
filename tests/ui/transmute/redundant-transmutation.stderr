@@ -8,8 +8,8 @@ LL |     unsafe { transmute(x) }
 note: the lint level is defined here
   --> $DIR/redundant-transmutation.rs:2:9
    |
-LL | #![deny(unnecessary_transmutate)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^
+LL | #![deny(unnecessary_transmutes)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^
 
 error: unnecessary transmute
   --> $DIR/redundant-transmutation.rs:13:22

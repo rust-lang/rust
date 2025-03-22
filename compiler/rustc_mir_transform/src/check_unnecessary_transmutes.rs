@@ -1,7 +1,7 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Body, Location, Operand, Terminator, TerminatorKind};
 use rustc_middle::ty::*;
-use rustc_session::lint::builtin::UNNECESSARY_TRANSMUTATE;
+use rustc_session::lint::builtin::UNNECESSARY_TRANSMUTES;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
 
@@ -94,7 +94,7 @@ impl<'tcx> Visitor<'tcx> for UnnecessaryTransmuteChecker<'_, 'tcx> {
             )
             && let Some(hir_id) = terminator.source_info.scope.lint_root(&self.body.source_scopes)
         {
-            self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTATE, hir_id, span, lint);
+            self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTES, hir_id, span, lint);
         }
     }
 }

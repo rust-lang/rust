@@ -119,7 +119,7 @@ declare_lint_pass! {
         UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
         UNNAMEABLE_TEST_ITEMS,
         UNNAMEABLE_TYPES,
-        UNNECESSARY_TRANSMUTATE,
+        UNNECESSARY_TRANSMUTES,
         UNREACHABLE_CODE,
         UNREACHABLE_PATTERNS,
         UNSAFE_ATTR_OUTSIDE_UNSAFE,
@@ -4945,7 +4945,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unnecessary_transmutate` lint detects transmutations that have safer alternatives.
+    /// The `unnecessary_transmutes` lint detects transmutations that have safer alternatives.
     ///
     /// ### Example
     ///
@@ -4963,7 +4963,7 @@ declare_lint! {
     /// [`transmute`](https://doc.rust-lang.org/std/mem/fn.transmute.html) as
     /// they more clearly communicate the intent, are easier to review, and
     /// are less likely to accidentally result in unsoundness.
-    pub UNNECESSARY_TRANSMUTATE,
+    pub UNNECESSARY_TRANSMUTES,
     Warn,
     "detects transmutes that are shadowed by std methods"
 }

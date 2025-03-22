@@ -1,4 +1,4 @@
-#![allow(unnecessary_transmutate)]
+#![allow(unnecessary_transmutes)]
 use std::mem;
 
 fn main() {
