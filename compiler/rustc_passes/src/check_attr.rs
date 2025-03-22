@@ -263,6 +263,8 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                         }
                         [sym::linkage, ..] => self.check_linkage(attr, span, target),
                         [sym::rustc_pub_transparent, ..] => self.check_rustc_pub_transparent(attr.span(), span, attrs),
+                        [sym::loop_match, ..] => self.check_loop_match(hir_id, attr.span(), target),
+                        [sym::const_continue, ..] => self.check_const_continue(hir_id, attr.span(), target),
                         [
                             // ok
                             sym::allow
@@ -2625,6 +2627,32 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                 self.abort.set(true);
             }
         }
+    }
+
+    fn check_loop_match(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        let node_span = self.tcx.hir().span(hir_id);
+
+        if !matches!(target, Target::Expression) {
+            self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
+            return;
+        }
+
+        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Loop(..)) {
+            self.dcx().emit_err(errors::LoopMatchAttr { attr_span, node_span });
+        };
+    }
+
+    fn check_const_continue(&self, hir_id: HirId, attr_span: Span, target: Target) {
+        let node_span = self.tcx.hir().span(hir_id);
+
+        if !matches!(target, Target::Expression) {
+            self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
+            return;
+        }
+
+        if !matches!(self.tcx.hir_expect_expr(hir_id).kind, hir::ExprKind::Break(..)) {
+            self.dcx().emit_err(errors::ConstContinueAttr { attr_span, node_span });
+        };
     }
 }
 
