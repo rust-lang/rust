@@ -161,7 +161,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[unstable(feature = "c_str_module", issue = "112134")]
+#[stable(feature = "c_str_module", since = "CURRENT_RUSTC_VERSION")]
 pub mod c_str;
 
 #[stable(feature = "core_c_void", since = "1.30.0")]
