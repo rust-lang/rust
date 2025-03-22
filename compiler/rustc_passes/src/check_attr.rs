@@ -2402,7 +2402,7 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
                     .iter()
                     .all(|kind| matches!(kind, CrateType::Rlib | CrateType::Staticlib));
                 if never_needs_link {
-                    errors::UnusedNote::LinkerWarningsBinaryCrateOnly
+                    errors::UnusedNote::LinkerMessagesBinaryCrateOnly
                 } else {
                     return;
                 }

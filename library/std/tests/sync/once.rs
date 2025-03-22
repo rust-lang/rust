@@ -52,6 +52,7 @@ fn stampede_once() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn poison_bad() {
     static O: Once = Once::new();
 
@@ -80,6 +81,7 @@ fn poison_bad() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn wait_for_force_to_finish() {
     static O: Once = Once::new();
 
@@ -137,6 +139,7 @@ fn wait() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn wait_on_poisoned() {
     let once = Once::new();
 
@@ -145,6 +148,7 @@ fn wait_on_poisoned() {
 }
 
 #[test]
+#[cfg_attr(not(panic = "unwind"), ignore = "test requires unwinding support")]
 fn wait_force_on_poisoned() {
     let once = Once::new();
 

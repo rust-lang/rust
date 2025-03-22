@@ -4,6 +4,10 @@
 
 /* eslint-disable */
 declare global {
+    /** Map from crate name to directory structure, for source view */
+    declare var srcIndex: Map<string, rustdoc.Dir>;
+    /** Defined and documented in `main.js` */
+    declare function nonnull(x: T|null, msg: string|undefined);
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;
@@ -40,6 +44,23 @@ declare global {
          * or if this is a docs page, this function does nothing.
          */
         rustdocShowSourceSidebar: function(),
+        /**
+         * Close the sidebar in source code view
+         */
+        rustdocCloseSourceSidebar?: function(),
+        /**
+         * Shows the sidebar in source code view
+         */
+        rustdocShowSourceSidebar?: function(),
+        /**
+         * Toggles the sidebar in source code view
+         */
+        rustdocToggleSrcSidebar?: function(),
+        /**
+         * create's the sidebar in source code view.
+         * called in generated `src-files.js`.
+         */
+        createSrcSidebar?: function(),
         /**
          * Set up event listeners for a scraped source example.
          */
@@ -438,4 +459,12 @@ declare namespace rustdoc {
     type TypeImpls = {
         [cratename: string]: Array<Array<string|0>>
     }
+
+    /**
+     * Directory structure for source code view,
+     * defined in generated `src-files.js`.
+     *
+     * is a tuple of (filename, subdirs, filenames).
+     */
+    type Dir = [string, rustdoc.Dir[], string[]]
 }

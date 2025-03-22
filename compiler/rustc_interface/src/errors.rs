@@ -74,12 +74,6 @@ pub struct TempsDirError;
 pub struct OutDirError;
 
 #[derive(Diagnostic)]
-#[diag(interface_cant_emit_mir)]
-pub struct CantEmitMIR {
-    pub error: io::Error,
-}
-
-#[derive(Diagnostic)]
 #[diag(interface_rustc_error_fatal)]
 pub struct RustcErrorFatal {
     #[primary_span]
