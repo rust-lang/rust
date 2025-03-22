@@ -1149,9 +1149,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     ///
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
+    pub unsafe fn from_raw_in(raw: *mut T, alloc: A) -> Self {
         Box(unsafe { Unique::new_unchecked(raw) }, alloc)
     }
 
@@ -1203,9 +1202,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// [memory layout]: self#memory-layout
     #[unstable(feature = "allocator_api", issue = "32838")]
     // #[unstable(feature = "box_vec_non_null", reason = "new API", issue = "130364")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
+    pub unsafe fn from_non_null_in(raw: NonNull<T>, alloc: A) -> Self {
         // SAFETY: guaranteed by the caller.
         unsafe { Box::from_raw_in(raw.as_ptr(), alloc) }
     }
@@ -1550,9 +1548,8 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// to call it as `Box::allocator(&b)` instead of `b.allocator()`. This
     /// is so that there is no conflict with a method on the inner type.
     #[unstable(feature = "allocator_api", issue = "32838")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
     #[inline]
-    pub const fn allocator(b: &Self) -> &A {
+    pub fn allocator(b: &Self) -> &A {
         &b.1
     }
 
@@ -1639,8 +1636,7 @@ impl<T: ?Sized, A: Allocator> Box<T, A> {
     /// let bar = Pin::from(foo);
     /// ```
     #[stable(feature = "box_into_pin", since = "1.63.0")]
-    #[rustc_const_unstable(feature = "const_box", issue = "92521")]
-    pub const fn into_pin(boxed: Self) -> Pin<Self>
+    pub fn into_pin(boxed: Self) -> Pin<Self>
     where
         A: 'static,
     {
