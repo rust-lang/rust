@@ -32,6 +32,12 @@ if isWindows && isKnownToBeMingwBuild; then
             ;;
     esac
 
+    # Stop /msys64/bin from being prepended to PATH by adding the bin directory manually.
+    # Note that this intentionally uses a Windows style path instead of the msys2 path to
+    # avoid being auto-translated into `/usr/bin`, which will not have the desired effect.
+    msys2Path="c:/msys64"
+    ciCommandAddPath "${msys2Path}/usr/bin"
+
     mingw_dir="mingw${bits}"
 
     curl -o mingw.7z "${MIRRORS_BASE}/${mingw_archive}"
