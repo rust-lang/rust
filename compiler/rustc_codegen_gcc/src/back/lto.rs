@@ -17,7 +17,7 @@
 // /usr/bin/ld: warning: type of symbol `_RNvNvNvNvNtNtNtCsAj5i4SGTR7_3std4sync4mpmc5waker17current_thread_id5DUMMY7___getit5___KEY' changed from 1 to 6 in /tmp/ccKeUSiR.ltrans0.ltrans.o
 // /usr/bin/ld: warning: incremental linking of LTO and non-LTO objects; using -flinker-output=nolto-rel which will bypass whole program optimization
 use std::ffi::{CStr, CString};
-use std::fs::{self, File};
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
@@ -126,9 +126,7 @@ fn prepare_lto(
                     .extend(exported_symbols[&cnum].iter().filter_map(symbol_filter));
             }
 
-            let archive_data = unsafe {
-                Mmap::map(File::open(path).expect("couldn't open rlib")).expect("couldn't map rlib")
-            };
+            let archive_data = unsafe { Mmap::map(path).expect("couldn't map rlib") };
             let archive = ArchiveFile::parse(&*archive_data).expect("wanted an rlib");
             let obj_files = archive
                 .members()

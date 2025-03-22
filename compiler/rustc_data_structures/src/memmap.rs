@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io;
 use std::ops::{Deref, DerefMut};
+use std::path::Path;
 
 /// A trivial wrapper for [`memmap2::Mmap`] (or `Vec<u8>` on WASM).
 #[cfg(not(any(miri, target_arch = "wasm32")))]
@@ -11,13 +12,32 @@ pub struct Mmap(Vec<u8>);
 
 #[cfg(not(any(miri, target_arch = "wasm32")))]
 impl Mmap {
-    /// # Safety
-    ///
     /// The given file must not be mutated (i.e., not written, not truncated, ...) until the mapping is closed.
     ///
-    /// However in practice most callers do not ensure this, so uses of this function are likely unsound.
+    /// This process must not modify nor remove the backing file while the memory map lives.
+    /// For the dep-graph and the work product index, it is as soon as the decoding is done.
+    /// For the query result cache, the memory map is dropped in save_dep_graph before calling
+    /// save_in and trying to remove the backing file.
+    ///
+    /// There is no way to prevent another process from modifying this file.
+    ///
+    /// This means in practice all uses of this function are theoretically unsound, but also
+    /// the way rustc uses `Mmap` (reading bytes, validating them afterwards *anyway* to detect
+    /// corrupted files) avoids the actual issues this could cause.
+    ///
+    /// Someone may truncate our file, but then we'll SIGBUS, which is not great, but at least
+    /// we won't succeed with corrupted data.
+    ///
+    /// To get a bit more hardening out of this we will set the file as readonly before opening it.
     #[inline]
-    pub unsafe fn map(file: File) -> io::Result<Self> {
+    pub fn map(path: impl AsRef<Path>) -> io::Result<Self> {
+        let path = path.as_ref();
+        let mut perms = std::fs::metadata(path)?.permissions();
+        perms.set_readonly(true);
+        std::fs::set_permissions(path, perms)?;
+
+        let file = File::open(path)?;
+
         // By default, memmap2 creates shared mappings, implying that we could see updates to the
         // file through the mapping. That would violate our precondition; so by requesting a
         // map_copy_read_only we do not lose anything.
@@ -25,19 +45,15 @@ impl Mmap {
         // For more details see https://github.com/rust-lang/rust/issues/122262
         //
         // SAFETY: The caller must ensure that this is safe.
-        unsafe { memmap2::MmapOptions::new().map_copy_read_only(&file).map(Mmap) }
+        unsafe { Ok(Self(memmap2::MmapOptions::new().map_copy_read_only(&file)?)) }
     }
 }
 
 #[cfg(any(miri, target_arch = "wasm32"))]
 impl Mmap {
     #[inline]
-    pub unsafe fn map(mut file: File) -> io::Result<Self> {
-        use std::io::Read;
-
-        let mut data = Vec::new();
-        file.read_to_end(&mut data)?;
-        Ok(Mmap(data))
+    pub fn map(path: impl AsRef<Path>) -> io::Result<Self> {
+        Ok(Mmap(std::fs::read(path)?))
     }
 }
 
