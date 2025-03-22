@@ -5,7 +5,7 @@
 extern crate color;
 use color::Color::Red;
 
-//@ set red = "$.index[*][?(@.inner.module.is_crate)].links.Red"
+//@ set red = "$.index[?(@.inner.module.is_crate)].links.Red"
 
-//@ !has "$.index[*][?(@.name == 'Red')]"
-//@ !has "$.index[*][?(@.name == 'Color')]"
+//@ !has "$.index[?(@.name == 'Red')]"
+//@ !has "$.index[?(@.name == 'Color')]"

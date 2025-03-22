@@ -1,8 +1,8 @@
-//@ has "$.index[*][?(@.docs=='Here')]"
-//@ !has "$.index[*][?(@.docs=='Not Here')]"
-//@ !has "$.index[*][?(@.name == 'HiddenPubStruct')]"
-//@ has "$.index[*][?(@.name == 'NotHiddenPubStruct')]"
-//@ has "$.index[*][?(@.name=='PubTrait')]"
+//@ has "$.index[?(@.docs=='Here')]"
+//@ !has "$.index[?(@.docs=='Not Here')]"
+//@ !has "$.index[?(@.name == 'HiddenPubStruct')]"
+//@ has "$.index[?(@.name == 'NotHiddenPubStruct')]"
+//@ has "$.index[?(@.name=='PubTrait')]"
 pub trait PubTrait {}
 
 #[doc(hidden)]
