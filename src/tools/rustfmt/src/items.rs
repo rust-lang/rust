@@ -6,7 +6,7 @@ use std::cmp::{Ordering, max, min};
 use regex::Regex;
 use rustc_ast::visit;
 use rustc_ast::{ast, ptr};
-use rustc_span::{BytePos, DUMMY_SP, Span, symbol};
+use rustc_span::{BytePos, DUMMY_SP, Ident, Span, symbol};
 use tracing::debug;
 
 use crate::attr::filter_inline_attrs;
@@ -333,12 +333,12 @@ impl<'a> FnSig<'a> {
         defaultness: ast::Defaultness,
     ) -> FnSig<'a> {
         match *fn_kind {
-            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), _, vis, ast::Fn { sig, generics, .. }) => {
+            visit::FnKind::Fn(visit::FnCtxt::Assoc(..), vis, ast::Fn { sig, generics, .. }) => {
                 let mut fn_sig = FnSig::from_method_sig(sig, generics, vis);
                 fn_sig.defaultness = defaultness;
                 fn_sig
             }
-            visit::FnKind::Fn(_, _, vis, ast::Fn { sig, generics, .. }) => FnSig {
+            visit::FnKind::Fn(_, vis, ast::Fn { sig, generics, .. }) => FnSig {
                 decl,
                 generics,
                 ext: sig.header.ext,
@@ -750,11 +750,10 @@ impl<'a> FmtVisitor<'a> {
                 (Type(lty), Type(rty))
                     if both_type(&lty.ty, &rty.ty) || both_opaque(&lty.ty, &rty.ty) =>
                 {
-                    a.ident.as_str().cmp(b.ident.as_str())
+                    lty.ident.as_str().cmp(rty.ident.as_str())
                 }
-                (Const(..), Const(..)) | (MacCall(..), MacCall(..)) => {
-                    a.ident.as_str().cmp(b.ident.as_str())
-                }
+                (Const(ca), Const(cb)) => ca.ident.as_str().cmp(cb.ident.as_str()),
+                (MacCall(..), MacCall(..)) => Ordering::Equal,
                 (Fn(..), Fn(..)) | (Delegation(..), Delegation(..)) => {
                     a.span.lo().cmp(&b.span.lo())
                 }
@@ -1105,14 +1104,16 @@ impl<'a> StructParts<'a> {
     }
 
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (prefix, def, generics) = match item.kind {
-            ast::ItemKind::Struct(ref def, ref generics) => ("struct ", def, generics),
-            ast::ItemKind::Union(ref def, ref generics) => ("union ", def, generics),
+        let (prefix, def, ident, generics) = match item.kind {
+            ast::ItemKind::Struct(ident, ref def, ref generics) => {
+                ("struct ", def, ident, generics)
+            }
+            ast::ItemKind::Union(ident, ref def, ref generics) => ("union ", def, ident, generics),
             _ => unreachable!(),
         };
         StructParts {
             prefix,
-            ident: item.ident,
+            ident,
             vis: &item.vis,
             def,
             generics: Some(generics),
@@ -1168,6 +1169,7 @@ pub(crate) fn format_trait(
     let ast::Trait {
         is_auto,
         safety,
+        ident,
         ref generics,
         ref bounds,
         ref items,
@@ -1186,13 +1188,13 @@ pub(crate) fn format_trait(
 
     let shape = Shape::indented(offset, context.config).offset_left(result.len())?;
     let generics_str =
-        rewrite_generics(context, rewrite_ident(context, item.ident), generics, shape).ok()?;
+        rewrite_generics(context, rewrite_ident(context, ident), generics, shape).ok()?;
     result.push_str(&generics_str);
 
     // FIXME(#2055): rustfmt fails to format when there are comments between trait bounds.
     if !bounds.is_empty() {
         // Retrieve *unnormalized* ident (See #6069)
-        let source_ident = context.snippet(item.ident.span);
+        let source_ident = context.snippet(ident.span);
         let ident_hi = context.snippet_provider.span_after(item.span, source_ident);
         let bound_hi = bounds.last().unwrap().span().hi();
         let snippet = context.snippet(mk_sp(ident_hi, bound_hi));
@@ -1679,11 +1681,12 @@ fn format_tuple_struct(
     Some(result)
 }
 
-pub(crate) enum ItemVisitorKind<'a> {
-    Item(&'a ast::Item),
-    AssocTraitItem(&'a ast::AssocItem),
-    AssocImplItem(&'a ast::AssocItem),
-    ForeignItem(&'a ast::ForeignItem),
+#[derive(Clone, Copy)]
+pub(crate) enum ItemVisitorKind {
+    Item,
+    AssocTraitItem,
+    AssocImplItem,
+    ForeignItem,
 }
 
 struct TyAliasRewriteInfo<'c, 'g>(
@@ -1695,17 +1698,19 @@ struct TyAliasRewriteInfo<'c, 'g>(
     Span,
 );
 
-pub(crate) fn rewrite_type_alias<'a, 'b>(
+pub(crate) fn rewrite_type_alias<'a>(
     ty_alias_kind: &ast::TyAlias,
+    vis: &ast::Visibility,
     context: &RewriteContext<'a>,
     indent: Indent,
-    visitor_kind: &ItemVisitorKind<'b>,
+    visitor_kind: ItemVisitorKind,
     span: Span,
 ) -> RewriteResult {
     use ItemVisitorKind::*;
 
     let ast::TyAlias {
         defaultness,
+        ident,
         ref generics,
         ref bounds,
         ref ty,
@@ -1715,11 +1720,6 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
     let rhs_hi = ty
         .as_ref()
         .map_or(where_clauses.before.span.hi(), |ty| ty.span.hi());
-    let (ident, vis) = match visitor_kind {
-        Item(i) => (i.ident, &i.vis),
-        AssocTraitItem(i) | AssocImplItem(i) => (i.ident, &i.vis),
-        ForeignItem(i) => (i.ident, &i.vis),
-    };
     let rw_info = &TyAliasRewriteInfo(context, indent, generics, where_clauses, ident, span);
     let op_ty = opaque_ty(ty);
     // Type Aliases are formatted slightly differently depending on the context
@@ -1727,14 +1727,14 @@ pub(crate) fn rewrite_type_alias<'a, 'b>(
     // https://rustc-dev-guide.rust-lang.org/opaque-types-type-alias-impl-trait.html
     // https://github.com/rust-dev-tools/fmt-rfcs/blob/master/guide/items.md#type-aliases
     match (visitor_kind, &op_ty) {
-        (Item(_) | AssocTraitItem(_) | ForeignItem(_), Some(op_bounds)) => {
+        (Item | AssocTraitItem | ForeignItem, Some(op_bounds)) => {
             let op = OpaqueType { bounds: op_bounds };
             rewrite_ty(rw_info, Some(bounds), Some(&op), rhs_hi, vis)
         }
-        (Item(_) | AssocTraitItem(_) | ForeignItem(_), None) => {
+        (Item | AssocTraitItem | ForeignItem, None) => {
             rewrite_ty(rw_info, Some(bounds), ty_opt, rhs_hi, vis)
         }
-        (AssocImplItem(_), _) => {
+        (AssocImplItem, _) => {
             let result = if let Some(op_bounds) = op_ty {
                 let op = OpaqueType { bounds: op_bounds };
                 rewrite_ty(
@@ -2024,14 +2024,23 @@ pub(crate) struct StaticParts<'a> {
 
 impl<'a> StaticParts<'a> {
     pub(crate) fn from_item(item: &'a ast::Item) -> Self {
-        let (defaultness, prefix, safety, ty, mutability, expr, generics) = match &item.kind {
-            ast::ItemKind::Static(s) => {
-                (None, "static", s.safety, &s.ty, s.mutability, &s.expr, None)
-            }
+        let (defaultness, prefix, safety, ident, ty, mutability, expr, generics) = match &item.kind
+        {
+            ast::ItemKind::Static(s) => (
+                None,
+                "static",
+                s.safety,
+                s.ident,
+                &s.ty,
+                s.mutability,
+                &s.expr,
+                None,
+            ),
             ast::ItemKind::Const(c) => (
                 Some(c.defaultness),
                 "const",
                 ast::Safety::Default,
+                c.ident,
                 &c.ty,
                 ast::Mutability::Not,
                 &c.expr,
@@ -2043,7 +2052,7 @@ impl<'a> StaticParts<'a> {
             prefix,
             safety,
             vis: &item.vis,
-            ident: item.ident,
+            ident,
             generics,
             ty,
             mutability,
@@ -2053,7 +2062,7 @@ impl<'a> StaticParts<'a> {
         }
     }
 
-    pub(crate) fn from_trait_item(ti: &'a ast::AssocItem) -> Self {
+    pub(crate) fn from_trait_item(ti: &'a ast::AssocItem, ident: Ident) -> Self {
         let (defaultness, ty, expr_opt, generics) = match &ti.kind {
             ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr, Some(&c.generics)),
             _ => unreachable!(),
@@ -2062,7 +2071,7 @@ impl<'a> StaticParts<'a> {
             prefix: "const",
             safety: ast::Safety::Default,
             vis: &ti.vis,
-            ident: ti.ident,
+            ident,
             generics,
             ty,
             mutability: ast::Mutability::Not,
@@ -2072,7 +2081,7 @@ impl<'a> StaticParts<'a> {
         }
     }
 
-    pub(crate) fn from_impl_item(ii: &'a ast::AssocItem) -> Self {
+    pub(crate) fn from_impl_item(ii: &'a ast::AssocItem, ident: Ident) -> Self {
         let (defaultness, ty, expr, generics) = match &ii.kind {
             ast::AssocItemKind::Const(c) => (c.defaultness, &c.ty, &c.expr, Some(&c.generics)),
             _ => unreachable!(),
@@ -2081,7 +2090,7 @@ impl<'a> StaticParts<'a> {
             prefix: "const",
             safety: ast::Safety::Default,
             vis: &ii.vis,
-            ident: ii.ident,
+            ident,
             generics,
             ty,
             mutability: ast::Mutability::Not,
@@ -3442,6 +3451,7 @@ impl Rewrite for ast::ForeignItem {
                 let ast::Fn {
                     defaultness,
                     ref sig,
+                    ident,
                     ref generics,
                     ref body,
                     ..
@@ -3453,7 +3463,8 @@ impl Rewrite for ast::ForeignItem {
                     let inner_attrs = inner_attributes(&self.attrs);
                     let fn_ctxt = visit::FnCtxt::Foreign;
                     visitor.visit_fn(
-                        visit::FnKind::Fn(fn_ctxt, &self.ident, &self.vis, fn_kind),
+                        ident,
+                        visit::FnKind::Fn(fn_ctxt, &self.vis, fn_kind),
                         &sig.decl,
                         self.span,
                         defaultness,
@@ -3464,7 +3475,7 @@ impl Rewrite for ast::ForeignItem {
                     rewrite_fn_base(
                         context,
                         shape.indent,
-                        self.ident,
+                        ident,
                         &FnSig::from_method_sig(sig, generics, &self.vis),
                         span,
                         FnBraceStyle::None,
@@ -3483,7 +3494,7 @@ impl Rewrite for ast::ForeignItem {
                     vis,
                     safety,
                     mut_str,
-                    rewrite_ident(context, self.ident)
+                    rewrite_ident(context, static_foreign_item.ident)
                 );
                 // 1 = ;
                 rewrite_assign_rhs(
@@ -3498,11 +3509,11 @@ impl Rewrite for ast::ForeignItem {
                 .map(|s| s + ";")
             }
             ast::ForeignItemKind::TyAlias(ref ty_alias) => {
-                let (kind, span) = (&ItemVisitorKind::ForeignItem(self), self.span);
-                rewrite_type_alias(ty_alias, context, shape.indent, kind, span)
+                let kind = ItemVisitorKind::ForeignItem;
+                rewrite_type_alias(ty_alias, &self.vis, context, shape.indent, kind, self.span)
             }
             ast::ForeignItemKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Item)
+                rewrite_macro(mac, context, shape, MacroPosition::Item)
             }
         }?;
 
@@ -3562,12 +3573,13 @@ fn rewrite_attrs(
 pub(crate) fn rewrite_mod(
     context: &RewriteContext<'_>,
     item: &ast::Item,
+    ident: Ident,
     attrs_shape: Shape,
 ) -> Option<String> {
     let mut result = String::with_capacity(32);
     result.push_str(&*format_visibility(context, &item.vis));
     result.push_str("mod ");
-    result.push_str(rewrite_ident(context, item.ident));
+    result.push_str(rewrite_ident(context, ident));
     result.push(';');
     rewrite_attrs(context, item, &result, attrs_shape)
 }
@@ -3594,7 +3606,7 @@ pub(crate) fn rewrite_extern_crate(
 pub(crate) fn is_mod_decl(item: &ast::Item) -> bool {
     !matches!(
         item.kind,
-        ast::ItemKind::Mod(_, ast::ModKind::Loaded(_, ast::Inline::Yes, _, _))
+        ast::ItemKind::Mod(_, _, ast::ModKind::Loaded(_, ast::Inline::Yes, _, _))
     )
 }
 

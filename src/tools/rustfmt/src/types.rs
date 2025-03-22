@@ -1018,7 +1018,7 @@ impl Rewrite for ast::Ty {
             ast::TyKind::BareFn(ref bare_fn) => rewrite_bare_fn(bare_fn, self.span, context, shape),
             ast::TyKind::Never => Ok(String::from("!")),
             ast::TyKind::MacCall(ref mac) => {
-                rewrite_macro(mac, None, context, shape, MacroPosition::Expression)
+                rewrite_macro(mac, context, shape, MacroPosition::Expression)
             }
             ast::TyKind::ImplicitSelf => Ok(String::from("")),
             ast::TyKind::ImplTrait(_, ref it) => {

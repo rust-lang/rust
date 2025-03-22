@@ -325,7 +325,7 @@ fn parse_source(
         }
         match item.kind {
             ast::ItemKind::Fn(ref fn_item) if !info.has_main_fn => {
-                if item.ident.name == sym::main && is_top_level {
+                if fn_item.ident.name == sym::main && is_top_level {
                     info.has_main_fn = true;
                 }
                 if let Some(ref body) = fn_item.body {
@@ -340,13 +340,13 @@ fn parse_source(
                     }
                 }
             }
-            ast::ItemKind::ExternCrate(original) => {
+            ast::ItemKind::ExternCrate(original, ident) => {
                 if !info.found_extern_crate
                     && let Some(crate_name) = crate_name
                 {
                     info.found_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
-                        None => item.ident.as_str() == *crate_name,
+                        None => ident.as_str() == *crate_name,
                     };
                 }
             }
