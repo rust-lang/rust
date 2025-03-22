@@ -7,6 +7,10 @@
 //! Rust ABIs (e.g., stage0/bin/rustc vs stage1/bin/rustc during bootstrap).
 
 #![deny(unsafe_code)]
+// We rely on both sides of the bridge to be built with the same rustc,
+// so that the wasm ABI transition will not affect us.
+#![cfg_attr(bootstrap, allow(unknown_lints))]
+#![allow(wasm_c_abi)]
 
 use std::hash::Hash;
 use std::ops::{Bound, Range};
