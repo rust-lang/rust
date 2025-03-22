@@ -1,6 +1,7 @@
 use std::mem;
 use std::ops::Range;
 
+use itertools::Itertools;
 use pulldown_cmark::{
     BrokenLink, BrokenLinkCallback, CowStr, Event, LinkType, Options, Parser, Tag,
 };
@@ -454,7 +455,7 @@ fn parse_links<'md>(doc: &'md str) -> Vec<Box<str>> {
         }
     }
 
-    for (label, refdef) in event_iter.reference_definitions().iter() {
+    for (label, refdef) in event_iter.reference_definitions().iter().sorted_by_key(|x| x.0) {
         if !refids.contains(label) {
             links.push(preprocess_link(&refdef.dest));
         }
