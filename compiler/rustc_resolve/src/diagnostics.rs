@@ -2005,7 +2005,18 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             Some(ModuleOrUniformRoot::Module(module)) => module.res(),
             _ => None,
         };
-        if module_res == self.graph_root.res() {
+        if ident.name == self.tcx().crate_name(0_usize.into()) {
+            (
+                format!("use of unresolved module or unlinked crate `{ident}`"),
+                Some((
+                    vec![(ident.span, String::from("crate"))],
+                    format!(
+                        "the current crate name can not be used in a path, use the keyword `crate` instead"
+                    ),
+                    Applicability::MaybeIncorrect,
+                )),
+            )
+        } else if module_res == self.graph_root.res() {
             let is_mod = |res| matches!(res, Res::Def(DefKind::Mod, _));
             let mut candidates = self.lookup_import_candidates(ident, TypeNS, parent_scope, is_mod);
             candidates
