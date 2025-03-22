@@ -204,6 +204,13 @@ declare_rustdoc_lint! {
     "detects markdown that is interpreted differently in different parser"
 }
 
+declare_rustdoc_lint! {
+    /// This lint checks for uses of footnote references without definition.
+    BROKEN_FOOTNOTE,
+    Warn,
+    "footnote reference with no associated definition"
+}
+
 pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
     vec![
         BROKEN_INTRA_DOC_LINKS,
@@ -218,6 +225,7 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         UNESCAPED_BACKTICKS,
         REDUNDANT_EXPLICIT_LINKS,
         UNPORTABLE_MARKDOWN,
+        BROKEN_FOOTNOTE,
     ]
 });
 
