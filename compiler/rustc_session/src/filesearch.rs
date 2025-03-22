@@ -168,6 +168,11 @@ fn current_dll_path() -> Result<PathBuf, String> {
     Ok(OsString::from_wide(&filename).into())
 }
 
+#[cfg(all(target_os = "wasi", target_env = "p2"))]
+fn current_dll_path() -> Result<PathBuf, String> {
+    Err("current_dll_path is not supported on WASI".to_string())
+}
+
 pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_tuple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> = smallvec![get_or_default_sysroot()];
