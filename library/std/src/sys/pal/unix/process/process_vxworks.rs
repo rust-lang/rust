@@ -27,6 +27,12 @@ impl Command {
                 "nul byte found in provided data",
             ));
         }
+        if self.get_chroot().is_some() {
+            return Err(io::const_error!(
+                ErrorKind::Unsupported,
+                "chroot not supported by vxworks",
+            ));
+        }
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
         let mut p = Process { pid: 0, status: None };
 
