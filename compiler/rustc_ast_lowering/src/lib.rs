@@ -47,9 +47,7 @@ use std::sync::Arc;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::{self as ast, *};
 use rustc_attr_parsing::{AttributeParser, OmitDoc};
-use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::sorted_map::SortedMap;
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::tagged_ptr::TaggedRef;
 use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
@@ -57,7 +55,7 @@ use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
     self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, TraitCandidate,
 };
-use rustc_index::{Idx, IndexSlice, IndexVec};
+use rustc_index::{Idx, IndexVec};
 use rustc_macros::extension;
 use rustc_middle::span_bug;
 use rustc_middle::ty::{ResolverAstLowering, TyCtxt};
@@ -408,29 +406,6 @@ fn index_crate<'a>(
     }
 }
 
-/// Compute the hash for the HIR of the full crate.
-/// This hash will then be part of the crate_hash which is stored in the metadata.
-fn compute_hir_hash(
-    tcx: TyCtxt<'_>,
-    owners: &IndexSlice<LocalDefId, hir::MaybeOwner<'_>>,
-) -> Fingerprint {
-    let mut hir_body_nodes: Vec<_> = owners
-        .iter_enumerated()
-        .filter_map(|(def_id, info)| {
-            let info = info.as_owner()?;
-            let def_path_hash = tcx.hir_def_path_hash(def_id);
-            Some((def_path_hash, info))
-        })
-        .collect();
-    hir_body_nodes.sort_unstable_by_key(|bn| bn.0);
-
-    tcx.with_stable_hashing_context(|mut hcx| {
-        let mut stable_hasher = StableHasher::new();
-        hir_body_nodes.hash_stable(&mut hcx, &mut stable_hasher);
-        stable_hasher.finish()
-    })
-}
-
 pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
     // Queries that borrow `resolver_for_lowering`.
@@ -460,10 +435,7 @@ pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     drop(ast_index);
     sess.time("drop_ast", || drop(krate));
 
-    // Don't hash unless necessary, because it's expensive.
-    let opt_hir_hash =
-        if tcx.needs_crate_hash() { Some(compute_hir_hash(tcx, &owners)) } else { None };
-    hir::Crate { owners, opt_hir_hash }
+    hir::Crate { owners }
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]
