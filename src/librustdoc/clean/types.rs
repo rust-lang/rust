@@ -768,12 +768,22 @@ impl Item {
             .iter()
             .filter_map(|attr| {
                 if is_json {
-                    if matches!(attr, hir::Attribute::Parsed(AttributeKind::Deprecation { .. })) {
-                        // rustdoc-json stores this in `Item::deprecation`, so we
-                        // don't want it it `Item::attrs`.
-                        None
-                    } else {
-                        Some(rustc_hir_pretty::attribute_to_string(&tcx, attr))
+                    match attr {
+                        hir::Attribute::Parsed(AttributeKind::Deprecation { .. }) => {
+                            // rustdoc-json stores this in `Item::deprecation`, so we
+                            // don't want it it `Item::attrs`.
+                            None
+                        }
+                        rustc_hir::Attribute::Parsed(rustc_attr_parsing::AttributeKind::Repr(
+                            ..,
+                        )) => {
+                            // We have separate pretty-printing logic for `#[repr(..)]` attributes.
+                            // For example, there are circumstances where `#[repr(transparent)]`
+                            // is applied but should not be publicly shown in rustdoc
+                            // because it isn't public API.
+                            None
+                        }
+                        _ => Some(rustc_hir_pretty::attribute_to_string(&tcx, attr)),
                     }
                 } else if ALLOWED_ATTRIBUTES.contains(&attr.name_or_empty()) {
                     Some(
@@ -789,8 +799,7 @@ impl Item {
             .collect();
 
         // Add #[repr(...)]
-        if !is_json
-            && let Some(def_id) = self.def_id()
+        if let Some(def_id) = self.def_id()
             && let ItemType::Struct | ItemType::Enum | ItemType::Union = self.type_()
         {
             let adt = tcx.adt_def(def_id);
