@@ -77,8 +77,10 @@ fn get_or_try_init() {
     let cell: OnceLock<String> = OnceLock::new();
     assert!(cell.get().is_none());
 
-    let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
-    assert!(res.is_err());
+    if cfg!(panic = "unwind") {
+        let res = panic::catch_unwind(|| cell.get_or_try_init(|| -> Result<_, ()> { panic!() }));
+        assert!(res.is_err());
+    }
     assert!(cell.get().is_none());
 
     assert_eq!(cell.get_or_try_init(|| Err(())), Err(()));
