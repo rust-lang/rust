@@ -358,30 +358,58 @@ impl CStore {
     ) {
         let span = krate.spans.inner_span.shrink_to_lo();
         let allowed_flag_mismatches = &tcx.sess.opts.cg.unsafe_allow_abi_mismatch;
-        let name = tcx.crate_name(LOCAL_CRATE);
+        let local_crate = tcx.crate_name(LOCAL_CRATE);
         let tmod_extender = |tmod: &TargetModifier| (tmod.extend(), tmod.clone());
         let report_diff = |prefix: &String,
                            opt_name: &String,
-                           flag_local_value: &String,
-                           flag_extern_value: &String| {
+                           flag_local_value: Option<&String>,
+                           flag_extern_value: Option<&String>| {
             if allowed_flag_mismatches.contains(&opt_name) {
                 return;
             }
-            tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
-                span,
-                extern_crate: data.name(),
-                local_crate: name,
-                flag_name: opt_name.clone(),
-                flag_name_prefixed: format!("-{}{}", prefix, opt_name),
-                flag_local_value: flag_local_value.to_string(),
-                flag_extern_value: flag_extern_value.to_string(),
-            });
+            let extern_crate = data.name();
+            let flag_name = opt_name.clone();
+            let flag_name_prefixed = format!("-{}{}", prefix, opt_name);
+
+            match (flag_local_value, flag_extern_value) {
+                (Some(local_value), Some(extern_value)) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiers {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        local_value: local_value.to_string(),
+                        extern_value: extern_value.to_string(),
+                    })
+                }
+                (None, Some(extern_value)) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersLMissed {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        extern_value: extern_value.to_string(),
+                    })
+                }
+                (Some(local_value), None) => {
+                    tcx.dcx().emit_err(errors::IncompatibleTargetModifiersRMissed {
+                        span,
+                        extern_crate,
+                        local_crate,
+                        flag_name,
+                        flag_name_prefixed,
+                        local_value: local_value.to_string(),
+                    })
+                }
+                (None, None) => panic!("Incorrect target modifiers report_diff(None, None)"),
+            };
         };
         let mut it1 = mods.iter().map(tmod_extender);
         let mut it2 = dep_mods.iter().map(tmod_extender);
         let mut left_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
         let mut right_name_val: Option<(ExtendedTargetModifierInfo, TargetModifier)> = None;
-        let no_val = "*".to_string();
         loop {
             left_name_val = left_name_val.or_else(|| it1.next());
             right_name_val = right_name_val.or_else(|| it2.next());
@@ -389,26 +417,31 @@ impl CStore {
                 (Some(l), Some(r)) => match l.1.opt.cmp(&r.1.opt) {
                     cmp::Ordering::Equal => {
                         if l.0.tech_value != r.0.tech_value {
-                            report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &r.1.value_name);
+                            report_diff(
+                                &l.0.prefix,
+                                &l.0.name,
+                                Some(&l.1.value_name),
+                                Some(&r.1.value_name),
+                            );
                         }
                         left_name_val = None;
                         right_name_val = None;
                     }
                     cmp::Ordering::Greater => {
-                        report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                        report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                         right_name_val = None;
                     }
                     cmp::Ordering::Less => {
-                        report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                        report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                         left_name_val = None;
                     }
                 },
                 (Some(l), None) => {
-                    report_diff(&l.0.prefix, &l.0.name, &l.1.value_name, &no_val);
+                    report_diff(&l.0.prefix, &l.0.name, Some(&l.1.value_name), None);
                     left_name_val = None;
                 }
                 (None, Some(r)) => {
-                    report_diff(&r.0.prefix, &r.0.name, &no_val, &r.1.value_name);
+                    report_diff(&r.0.prefix, &r.0.name, None, Some(&r.1.value_name));
                     right_name_val = None;
                 }
                 (None, None) => break,
