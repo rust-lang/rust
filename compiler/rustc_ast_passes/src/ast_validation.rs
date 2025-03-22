@@ -334,8 +334,7 @@ impl<'a> AstValidator<'a> {
             .filter(|attr| {
                 let arr = [
                     sym::allow,
-                    sym::cfg,
-                    sym::cfg_attr,
+                    sym::cfg_trace,
                     sym::cfg_attr_trace,
                     sym::deny,
                     sym::expect,

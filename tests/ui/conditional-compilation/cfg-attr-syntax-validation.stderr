@@ -65,19 +65,7 @@ LL | generate_s10!(concat!("nonexistent"));
    |
    = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: expected unsuffixed literal, found expression `concat!("nonexistent")`
-  --> $DIR/cfg-attr-syntax-validation.rs:30:25
-   |
-LL |         #[cfg(feature = $expr)]
-   |                         ^^^^^
-...
-LL | generate_s10!(concat!("nonexistent"));
-   | ------------------------------------- in this macro invocation
-   |
-   = note: duplicate diagnostic emitted due to `-Z deduplicate-diagnostics=no`
-   = note: this error originates in the macro `generate_s10` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: aborting due to 11 previous errors
+error: aborting due to 10 previous errors
 
 Some errors have detailed explanations: E0537, E0565.
 For more information about an error, try `rustc --explain E0537`.

@@ -16,7 +16,8 @@ use rustc_span::{Span, Symbol, sym};
 use crate::{errors, parse_in};
 
 pub fn check_attr(psess: &ParseSess, attr: &Attribute) {
-    if attr.is_doc_comment() || attr.has_name(sym::cfg_attr_trace) {
+    if attr.is_doc_comment() || attr.has_name(sym::cfg_trace) || attr.has_name(sym::cfg_attr_trace)
+    {
         return;
     }
 
@@ -215,11 +216,7 @@ pub fn check_builtin_meta_item(
     template: AttributeTemplate,
     deny_unsafety: bool,
 ) {
-    // Some special attributes like `cfg` must be checked
-    // before the generic check, so we skip them here.
-    let should_skip = |name| name == sym::cfg;
-
-    if !should_skip(name) && !is_attr_template_compatible(&template, &meta.kind) {
+    if !is_attr_template_compatible(&template, &meta.kind) {
         emit_malformed_attribute(psess, style, meta.span, name, template);
     }
 
