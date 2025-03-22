@@ -5,5 +5,5 @@ extern "C" {
     pub type Foo;
 }
 
-//@ is "$.index[*][?(@.docs=='No inner information')].name" '"Foo"'
-//@ is "$.index[*][?(@.docs=='No inner information')].inner" \"extern_type\"
+//@ is "$.index[?(@.docs=='No inner information')].name" '"Foo"'
+//@ is "$.index[?(@.docs=='No inner information')].inner" \"extern_type\"

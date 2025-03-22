@@ -1,4 +1,4 @@
-extern "C" {
+unsafe extern "C" {
     fn trusty_rng_secure_rand(randomBuffer: *mut core::ffi::c_void, randomBufferLen: libc::size_t);
 }
 
