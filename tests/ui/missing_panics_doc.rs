@@ -181,6 +181,15 @@ pub fn expect_allow_with_error(i: Option<isize>) {
     i.unwrap();
 }
 
+pub fn expect_after_error(x: Option<u32>, y: Option<u32>) {
+    //~^ missing_panics_doc
+
+    let x = x.unwrap();
+
+    #[expect(clippy::missing_panics_doc)]
+    let y = y.unwrap();
+}
+
 // all function must be triggered the lint.
 // `pub` is required, because the lint does not consider unreachable items
 pub mod issue10240 {
