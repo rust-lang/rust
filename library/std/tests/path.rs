@@ -1,10 +1,4 @@
-#![feature(
-    clone_to_uninit,
-    path_add_extension,
-    path_file_prefix,
-    maybe_uninit_slice,
-    os_string_pathbuf_leak
-)]
+#![feature(clone_to_uninit, path_add_extension, path_file_prefix, maybe_uninit_slice)]
 
 use std::clone::CloneToUninit;
 use std::ffi::OsStr;
