@@ -18,7 +18,7 @@ export type Env = {
 };
 
 class Log {
-    private readonly output = vscode.window.createOutputChannel("Rust Analyzer Client", {
+    private readonly output = vscode.window.createOutputChannel("rust-analyzer Extension", {
         log: true,
     });
 

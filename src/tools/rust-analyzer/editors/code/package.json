@@ -606,11 +606,6 @@
                             "/rustc/<id>": "${env:USERPROFILE}/.rustup/toolchains/<toolchain-id>/lib/rustlib/src/rust"
                         }
                     },
-                    "rust-analyzer.debug.openDebugPane": {
-                        "markdownDescription": "Whether to open up the `Debug Panel` on debugging start.",
-                        "type": "boolean",
-                        "default": false
-                    },
                     "rust-analyzer.debug.buildBeforeRestart": {
                         "markdownDescription": "Whether to rebuild the project modules before debugging the same test again",
                         "type": "boolean",
