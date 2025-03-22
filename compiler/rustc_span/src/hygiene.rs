@@ -57,7 +57,20 @@ pub struct SyntaxContext(u32);
 impl !Ord for SyntaxContext {}
 impl !PartialOrd for SyntaxContext {}
 
-#[derive(Debug, Encodable, Decodable, Clone)]
+#[derive(Debug, Encodable, Decodable, Clone, Copy, Hash, PartialEq, Eq)]
+pub struct SyntaxContextKey {
+    outer_expn: ExpnId,
+    outer_transparency: Transparency,
+    parent: SyntaxContext,
+}
+
+impl SyntaxContextKey {
+    fn new(outer_expn: ExpnId, outer_transparency: Transparency, parent: SyntaxContext) -> Self {
+        SyntaxContextKey { outer_expn, outer_transparency, parent }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
@@ -68,6 +81,32 @@ pub struct SyntaxContextData {
     opaque_and_semitransparent: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
+}
+
+impl SyntaxContextData {
+    fn new(
+        key: SyntaxContextKey,
+        opaque: SyntaxContext,
+        opaque_and_semitransparent: SyntaxContext,
+        dollar_crate_name: Symbol,
+    ) -> Self {
+        Self {
+            outer_expn: key.outer_expn,
+            outer_transparency: key.outer_transparency,
+            parent: key.parent,
+            opaque,
+            opaque_and_semitransparent,
+            dollar_crate_name,
+        }
+    }
+
+    fn as_key(&self) -> SyntaxContextKey {
+        SyntaxContextKey {
+            outer_expn: self.outer_expn,
+            outer_transparency: self.outer_transparency,
+            parent: self.parent,
+        }
+    }
 }
 
 rustc_index::newtype_index! {
@@ -342,7 +381,7 @@ pub(crate) struct HygieneData {
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
     syntax_context_data: Vec<SyntaxContextData>,
-    syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
+    syntax_context_map: FxHashMap<SyntaxContextKey, SyntaxContext>,
     /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
     /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
     /// would have collisions without a disambiguator.
@@ -371,9 +410,9 @@ impl HygieneData {
             syntax_context_data: vec![SyntaxContextData {
                 outer_expn: ExpnId::root(),
                 outer_transparency: Transparency::Opaque,
-                parent: SyntaxContext(0),
-                opaque: SyntaxContext(0),
-                opaque_and_semitransparent: SyntaxContext(0),
+                parent: SyntaxContext::root(),
+                opaque: SyntaxContext::root(),
+                opaque_and_semitransparent: SyntaxContext::root(),
                 dollar_crate_name: kw::DollarCrate,
             }],
             syntax_context_map: FxHashMap::default(),
@@ -557,55 +596,46 @@ impl HygieneData {
 
         if transparency >= Transparency::Opaque {
             let parent = opaque;
-            opaque = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque = SyntaxContext(syntax_context_data.len() as u32);
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque: new_opaque,
-                        opaque_and_semitransparent: new_opaque,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque
-                });
+            let key = SyntaxContextKey::new(expn_id, transparency, parent);
+            opaque = *self.syntax_context_map.entry(key).or_insert_with(|| {
+                let new_opaque = SyntaxContext(syntax_context_data.len() as u32);
+                syntax_context_data.push(SyntaxContextData::new(
+                    key,
+                    new_opaque,
+                    new_opaque,
+                    kw::DollarCrate,
+                ));
+                new_opaque
+            });
         }
 
         if transparency >= Transparency::SemiTransparent {
             let parent = opaque_and_semitransparent;
-            opaque_and_semitransparent = *self
-                .syntax_context_map
-                .entry((parent, expn_id, transparency))
-                .or_insert_with(|| {
-                    let new_opaque_and_semitransparent =
-                        SyntaxContext(syntax_context_data.len() as u32);
-                    syntax_context_data.push(SyntaxContextData {
-                        outer_expn: expn_id,
-                        outer_transparency: transparency,
-                        parent,
-                        opaque,
-                        opaque_and_semitransparent: new_opaque_and_semitransparent,
-                        dollar_crate_name: kw::DollarCrate,
-                    });
-                    new_opaque_and_semitransparent
-                });
+            let key = SyntaxContextKey::new(expn_id, transparency, parent);
+            opaque_and_semitransparent = *self.syntax_context_map.entry(key).or_insert_with(|| {
+                let new_opaque_and_semitransparent =
+                    SyntaxContext(syntax_context_data.len() as u32);
+                syntax_context_data.push(SyntaxContextData::new(
+                    key,
+                    opaque,
+                    new_opaque_and_semitransparent,
+                    kw::DollarCrate,
+                ));
+                new_opaque_and_semitransparent
+            });
         }
 
         let parent = ctxt;
-        *self.syntax_context_map.entry((parent, expn_id, transparency)).or_insert_with(|| {
+        let key = SyntaxContextKey::new(expn_id, transparency, parent);
+        *self.syntax_context_map.entry(key).or_insert_with(|| {
             let new_opaque_and_semitransparent_and_transparent =
                 SyntaxContext(syntax_context_data.len() as u32);
-            syntax_context_data.push(SyntaxContextData {
-                outer_expn: expn_id,
-                outer_transparency: transparency,
-                parent,
+            syntax_context_data.push(SyntaxContextData::new(
+                key,
                 opaque,
                 opaque_and_semitransparent,
-                dollar_crate_name: kw::DollarCrate,
-            });
+                kw::DollarCrate,
+            ));
             new_opaque_and_semitransparent_and_transparent
         })
     }
@@ -1230,7 +1260,7 @@ impl HygieneEncodeContext {
     pub fn encode<T>(
         &self,
         encoder: &mut T,
-        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextData),
+        mut encode_ctxt: impl FnMut(&mut T, u32, &SyntaxContextKey),
         mut encode_expn: impl FnMut(&mut T, ExpnId, &ExpnData, ExpnHash),
     ) {
         // When we serialize a `SyntaxContextData`, we may end up serializing
@@ -1361,10 +1391,10 @@ pub fn decode_expn_id(
 // to track which `SyntaxContext`s we have already decoded.
 // The provided closure will be invoked to deserialize a `SyntaxContextData`
 // if we haven't already seen the id of the `SyntaxContext` we are deserializing.
-pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextData>(
+pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContextKey>(
     d: &mut D,
     context: &HygieneDecodeContext,
-    decode_data: F,
+    decode_ctxt_key: F,
 ) -> SyntaxContext {
     let raw_id: u32 = Decodable::decode(d);
     if raw_id == 0 {
@@ -1380,6 +1410,8 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
             // This has already been decoded.
             return ctxt;
         }
+
+        context.local_in_progress.borrow_mut().insert(raw_id);
 
         match inner.decoding.entry(raw_id) {
             Entry::Occupied(ctxt_entry) => {
@@ -1406,8 +1438,8 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
                 // as the SyntaxContextData may reference itself.
                 let new_ctxt = HygieneData::with(|hygiene_data| {
                     let new_ctxt = SyntaxContext(hygiene_data.syntax_context_data.len() as u32);
-                    // Push a dummy SyntaxContextData to ensure that nobody else can get the
-                    // same ID as us. This will be overwritten after call `decode_Data`
+                    // Push a dummy data to ensure that nobody else can get the
+                    // same ID as us. `SyntaxContextKey` will be overwritten after call `decode_Data`
                     hygiene_data.syntax_context_data.push(SyntaxContextData {
                         outer_expn: ExpnId::root(),
                         outer_transparency: Transparency::Transparent,
@@ -1424,31 +1456,45 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         }
     };
 
-    // Don't try to decode data while holding the lock, since we need to
-    // be able to recursively decode a SyntaxContext
-    let mut ctxt_data = decode_data(d, raw_id);
-    // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`
-    // We don't care what the encoding crate set this to - we want to resolve it
-    // from the perspective of the current compilation session
-    ctxt_data.dollar_crate_name = kw::DollarCrate;
+    let ctxt_key = decode_ctxt_key(d, raw_id);
 
-    // Overwrite the dummy data with our decoded SyntaxContextData
-    HygieneData::with(|hygiene_data| {
-        if let Some(old) = hygiene_data.syntax_context_data.get(raw_id as usize)
-            && old.outer_expn == ctxt_data.outer_expn
-            && old.outer_transparency == ctxt_data.outer_transparency
-            && old.parent == ctxt_data.parent
+    let ctxt = HygieneData::with(|hygiene_data| {
+        let (ctxt, ctxt_data) = if let Some(cache) =
+            hygiene_data.syntax_context_map.get(&ctxt_key).copied()
         {
-            ctxt_data = old.clone();
-        }
+            (cache, hygiene_data.syntax_context_data[cache.0 as usize].clone())
+        } else {
+            let dollar_crate_name = kw::DollarCrate;
+            let (opaque, opaque_and_semitransparent) = if ctxt_key.outer_transparency
+                >= Transparency::Opaque
+            {
+                (ctxt, ctxt)
+            } else if ctxt_key.outer_transparency >= Transparency::SemiTransparent {
+                let opaque = hygiene_data.syntax_context_data[ctxt_key.parent.0 as usize].opaque;
+                (opaque, ctxt)
+            } else {
+                let opaque = hygiene_data.syntax_context_data[ctxt_key.parent.0 as usize].opaque;
+                let opaque_and_semitransparent = hygiene_data.syntax_context_data
+                    [ctxt_key.parent.0 as usize]
+                    .opaque_and_semitransparent;
+                (opaque, opaque_and_semitransparent)
+            };
+            let ctxt_data = SyntaxContextData::new(
+                ctxt_key,
+                opaque,
+                opaque_and_semitransparent,
+                dollar_crate_name,
+            );
+            (ctxt, ctxt_data)
+        };
 
         hygiene_data.syntax_context_data[ctxt.as_u32() as usize] = ctxt_data;
+
+        ctxt
     });
 
     // Mark the context as completed
-
     context.local_in_progress.borrow_mut().remove(&raw_id);
-
     let mut inner = context.inner.lock();
     let new_len = raw_id as usize + 1;
     if inner.remapped_ctxts.len() < new_len {
@@ -1456,11 +1502,10 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
     }
     inner.remapped_ctxts[raw_id as usize] = Some(ctxt);
     inner.decoding.remove(&raw_id);
-
     ctxt
 }
 
-fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
+fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextKey)>(
     ctxts: impl Iterator<Item = SyntaxContext>,
     mut f: F,
 ) {
@@ -1468,7 +1513,7 @@ fn for_all_ctxts_in<F: FnMut(u32, SyntaxContext, &SyntaxContextData)>(
         ctxts.map(|ctxt| (ctxt, data.syntax_context_data[ctxt.0 as usize].clone())).collect()
     });
     for (ctxt, data) in all_data.into_iter() {
-        f(ctxt.0, ctxt, &data);
+        f(ctxt.0, ctxt, &data.as_key());
     }
 }
 
