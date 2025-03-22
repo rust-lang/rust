@@ -179,8 +179,8 @@ fn mask(bits: usize) -> usize {
 }
 
 impl SerializedDepGraph {
-    #[instrument(level = "debug", skip(d))]
-    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>) -> Arc<SerializedDepGraph> {
+    #[instrument(level = "debug", skip(d, deps))]
+    pub fn decode<D: Deps>(d: &mut MemDecoder<'_>, deps: &D) -> Arc<SerializedDepGraph> {
         // The last 16 bytes are the node count and edge count.
         debug!("position: {:?}", d.position());
         let (node_count, edge_count) =
@@ -252,7 +252,18 @@ impl SerializedDepGraph {
             .collect();
 
         for (idx, node) in nodes.iter_enumerated() {
-            index[node.kind.as_usize()].insert(node.hash, idx);
+            if index[node.kind.as_usize()].insert(node.hash, idx).is_some() {
+                // Side effect nodes can have duplicates
+                if node.kind != D::DEP_KIND_SIDE_EFFECT {
+                    let name = deps.name(node.kind);
+                    panic!(
+                    "Error: A dep graph node ({name}) does not have an unique index. \
+                     Running a clean build on a nightly compiler with `-Z incremental-verify-ich` \
+                     can help narrow down the issue for reporting. A clean build may also work around the issue.\n
+                     DepNode: {node:?}"
+                )
+                }
+            }
         }
 
         Arc::new(SerializedDepGraph {
