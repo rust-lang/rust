@@ -62,7 +62,6 @@
 //@[nvptx64] needs-llvm-components: nvptx
 #![feature(no_core, rustc_attrs, lang_items)]
 #![feature(unsized_fn_params, transparent_unions)]
-#![no_std]
 #![no_core]
 #![allow(unused, improper_ctypes_definitions, internal_features)]
 

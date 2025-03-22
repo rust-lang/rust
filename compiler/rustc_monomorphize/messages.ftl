@@ -63,4 +63,11 @@ monomorphize_symbol_already_defined = symbol `{$symbol}` is already defined
 monomorphize_unknown_cgu_collection_mode =
     unknown codegen-item collection mode '{$mode}', falling back to 'lazy' mode
 
+monomorphize_wasm_c_abi_transition =
+    this function {$is_call ->
+      [true] call
+      *[false] definition
+    } involves an argument of type `{$ty}` which is affected by the wasm ABI transition
+    .help = the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+
 monomorphize_written_to_path = the full type name has been written to '{$path}'
