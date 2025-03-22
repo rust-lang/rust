@@ -1,5 +1,8 @@
+// Test that signed and unsigned integer patterns work with #[loop_match].
+
 //@ run-pass
 
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 
 fn main() {
@@ -13,7 +16,6 @@ fn main() {
                         #[const_continue]
                         break 'blk 2;
                     } else {
-                        // No drops allowed at this point
                         #[const_continue]
                         break 'blk 0;
                     }
@@ -27,4 +29,5 @@ fn main() {
             }
         }
     }
+    assert_eq!(state, 2);
 }

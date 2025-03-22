@@ -1,3 +1,5 @@
+// Test that a good error is emitted when #[loop_match] is applied to syntax it does not support.
+#![allow(incomplete_features)]
 #![feature(loop_match)]
 #![crate_type = "lib"]
 
@@ -13,7 +15,7 @@ fn invalid_update() {
     #[loop_match]
     loop {
         fake = 'blk: {
-            //~^ ERROR: invalid update of the `loop_match` state
+            //~^ ERROR invalid update of the `loop_match` state
             match state {
                 _ => State::B,
             }
@@ -27,7 +29,7 @@ fn invalid_scrutinee() {
     loop {
         state = 'blk: {
             match State::A {
-                //~^ ERROR: invalid match on `loop_match` state
+                //~^ ERROR invalid match on `loop_match` state
                 _ => State::B,
             }
         }
@@ -39,7 +41,7 @@ fn bad_statements_1() {
     #[loop_match]
     loop {
         1;
-        //~^ ERROR: statements are not allowed in this position within a `loop_match`
+        //~^ ERROR statements are not allowed in this position within a `loop_match`
         state = 'blk: {
             match State::A {
                 _ => State::B,
@@ -54,7 +56,7 @@ fn bad_statements_2() {
     loop {
         state = 'blk: {
             1;
-            //~^ ERROR: statements are not allowed in this position within a `loop_match`
+            //~^ ERROR statements are not allowed in this position within a `loop_match`
             match State::A {
                 _ => State::B,
             }
@@ -67,7 +69,7 @@ fn bad_rhs_1() {
     #[loop_match]
     loop {
         state = State::B
-        //~^ ERROR: this expression must be a single `match` wrapped in a labelled block
+        //~^ ERROR this expression must be a single `match` wrapped in a labeled block
     }
 }
 
@@ -77,7 +79,7 @@ fn bad_rhs_2() {
     loop {
         state = 'blk: {
             State::B
-            //~^ ERROR: this expression must be a single `match` wrapped in a labelled block
+            //~^ ERROR this expression must be a single `match` wrapped in a labeled block
         }
     }
 }
@@ -87,7 +89,7 @@ fn bad_rhs_3() {
     #[loop_match]
     loop {
         state = 'blk: {
-            //~^ ERROR: this expression must be a single `match` wrapped in a labelled block
+            //~^ ERROR this expression must be a single `match` wrapped in a labeled block
         }
     }
 }
@@ -96,7 +98,7 @@ fn missing_assignment() {
     let state = State::A;
     #[loop_match]
     loop {
-        () //~ ERROR:  expected a single assignment expression
+        () //~ ERROR  expected a single assignment expression
     }
 }
 
@@ -104,7 +106,7 @@ fn empty_loop_body() {
     let state = State::A;
     #[loop_match]
     loop {
-        //~^ ERROR:  expected a single assignment expression
+        //~^ ERROR  expected a single assignment expression
     }
 }
 
@@ -117,7 +119,7 @@ fn break_without_value() {
                 State::A => {
                     #[const_continue]
                     break 'blk;
-                    //~^ ERROR: mismatched types
+                    //~^ ERROR mismatched types
                 }
                 _ => break 'a,
             }
@@ -134,7 +136,7 @@ fn break_without_value_unit() {
                 () => {
                     #[const_continue]
                     break 'blk;
-                    //~^ ERROR: a `const_continue` must break to a label with a value
+                    //~^ ERROR a `const_continue` must break to a label with a value
                 }
             }
         }
