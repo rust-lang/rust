@@ -3,7 +3,7 @@ use crate::create_default_session_globals_then;
 
 #[test]
 fn interner_tests() {
-    let i = Interner::prefill(&[]);
+    let i = Interner::prefill(&[], &[]);
     // first one is zero:
     assert_eq!(i.intern("dog"), Symbol::new(0));
     // re-use gets the same entry:

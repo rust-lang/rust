@@ -298,7 +298,7 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
     let preinterned_symbols_count = entries.len();
     let output = quote! {
         const SYMBOL_DIGITS_BASE: u32 = #symbol_digits_base;
-        const PREINTERNED_SYMBOLS_COUNT: u32 = #preinterned_symbols_count;
+        pub const PREINTERNED_SYMBOLS_COUNT: u32 = #preinterned_symbols_count;
 
         #[doc(hidden)]
         #[allow(non_upper_case_globals)]
@@ -315,10 +315,11 @@ fn symbols_with_errors(input: TokenStream) -> (TokenStream, Vec<syn::Error>) {
         }
 
         impl Interner {
-            pub(crate) fn fresh() -> Self {
-                Interner::prefill(&[
-                    #prefill_stream
-                ])
+            pub(crate) fn fresh(extra: &[&'static str]) -> Self {
+                Interner::prefill(
+                    &[#prefill_stream],
+                    extra,
+                )
             }
         }
     };

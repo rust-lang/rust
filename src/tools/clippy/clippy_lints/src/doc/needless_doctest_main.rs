@@ -38,7 +38,7 @@ pub fn check(
     // of all `#[test]` attributes in not ignored code examples
     fn check_code_sample(code: String, edition: Edition, ignore: bool) -> (bool, Vec<Range<usize>>) {
         rustc_driver::catch_fatal_errors(|| {
-            rustc_span::create_session_globals_then(edition, None, || {
+            rustc_span::create_session_globals_then(edition, &[], None, || {
                 let mut test_attr_spans = vec![];
                 let filename = FileName::anon_source_code(&code);
 
