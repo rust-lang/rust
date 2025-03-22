@@ -2,7 +2,7 @@ use hir::Name;
 use ide_db::text_edit::TextEdit;
 use ide_db::{
     FileRange, RootDatabase,
-    assists::{Assist, AssistId, AssistKind},
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChange,
 };
@@ -68,7 +68,7 @@ fn fixes(
     }
 
     Some(vec![Assist {
-        id: AssistId("unscore_unused_variable_name", AssistKind::QuickFix),
+        id: AssistId::quick_fix("unscore_unused_variable_name"),
         label: Label::new(format!(
             "Rename unused {} to _{}",
             var_name.display(db, edition),

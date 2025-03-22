@@ -1,9 +1,7 @@
 use ide_db::{RootDatabase, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode, HasName};
 
-use crate::{
-    AssistContext, AssistId, AssistKind, Assists, utils::generate_trait_impl_text_intransitive,
-};
+use crate::{AssistContext, AssistId, Assists, utils::generate_trait_impl_text_intransitive};
 
 // Assist: generate_from_impl_for_enum
 //
@@ -53,7 +51,7 @@ pub(crate) fn generate_from_impl_for_enum(
 
     let target = variant.syntax().text_range();
     acc.add(
-        AssistId("generate_from_impl_for_enum", AssistKind::Generate),
+        AssistId::generate("generate_from_impl_for_enum"),
         "Generate `From` impl for this enum variant",
         target,
         |edit| {

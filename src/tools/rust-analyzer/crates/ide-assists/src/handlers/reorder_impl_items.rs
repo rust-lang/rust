@@ -6,7 +6,7 @@ use syntax::{
     ast::{self, HasName},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: reorder_impl_items
 //
@@ -95,7 +95,7 @@ pub(crate) fn reorder_impl_items(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
 
     let target = items.syntax().text_range();
     acc.add(
-        AssistId("reorder_impl_items", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("reorder_impl_items"),
         "Sort items by trait definition",
         target,
         |builder| {

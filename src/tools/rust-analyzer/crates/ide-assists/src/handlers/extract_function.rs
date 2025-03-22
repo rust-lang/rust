@@ -108,7 +108,7 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
     acc.add_group(
         &GroupLabel("Extract into...".to_owned()),
-        AssistId("extract_function", crate::AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_function"),
         "Extract into function",
         target_range,
         move |builder| {

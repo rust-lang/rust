@@ -504,6 +504,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_variable",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into variable",
                 group: Some(
@@ -524,6 +525,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_constant",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into constant",
                 group: Some(
@@ -544,6 +546,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_static",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into static",
                 group: Some(
@@ -564,6 +567,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_function",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into function",
                 group: Some(
@@ -586,6 +590,7 @@ pub fn test_some_range(a: int) -> bool {
             AssistResolveStrategy::Single(SingleResolve {
                 assist_id: "SOMETHING_MISMATCHING".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
+                assist_subtype: None,
             }),
             frange.into(),
         );
@@ -598,6 +603,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_variable",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into variable",
                 group: Some(
@@ -618,6 +624,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_constant",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into constant",
                 group: Some(
@@ -638,6 +645,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_static",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into static",
                 group: Some(
@@ -658,6 +666,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_function",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into function",
                 group: Some(
@@ -680,6 +689,7 @@ pub fn test_some_range(a: int) -> bool {
             AssistResolveStrategy::Single(SingleResolve {
                 assist_id: "extract_variable".to_owned(),
                 assist_kind: AssistKind::RefactorExtract,
+                assist_subtype: None,
             }),
             frange.into(),
         );
@@ -692,6 +702,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_variable",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into variable",
                 group: Some(
@@ -758,6 +769,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_constant",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into constant",
                 group: Some(
@@ -778,6 +790,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_static",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into static",
                 group: Some(
@@ -798,6 +811,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_function",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into function",
                 group: Some(
@@ -824,6 +838,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_variable",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into variable",
                 group: Some(
@@ -890,6 +905,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_constant",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into constant",
                 group: Some(
@@ -960,6 +976,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_static",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into static",
                 group: Some(
@@ -1030,6 +1047,7 @@ pub fn test_some_range(a: int) -> bool {
                 id: AssistId(
                     "extract_function",
                     RefactorExtract,
+                    None,
                 ),
                 label: "Extract into function",
                 group: Some(

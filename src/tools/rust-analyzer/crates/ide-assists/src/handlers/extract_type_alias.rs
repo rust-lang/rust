@@ -5,7 +5,7 @@ use syntax::{
     syntax_editor,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: extract_type_alias
 //
@@ -40,7 +40,7 @@ pub(crate) fn extract_type_alias(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     let target = ty.syntax().text_range();
 
     acc.add(
-        AssistId("extract_type_alias", AssistKind::RefactorExtract),
+        AssistId::refactor_extract("extract_type_alias"),
         "Extract type as type alias",
         target,
         |builder| {

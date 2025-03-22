@@ -3,7 +3,7 @@ use syntax::{
     ast::{self, AstNode, BinExpr, syntax_factory::SyntaxFactory},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: flip_binexpr
 //
@@ -43,7 +43,7 @@ pub(crate) fn flip_binexpr(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     }
 
     acc.add(
-        AssistId("flip_binexpr", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("flip_binexpr"),
         "Flip binary expression",
         op_token.text_range(),
         |builder| {

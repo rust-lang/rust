@@ -2,7 +2,7 @@ use hir::{HasVisibility, sym};
 use ide_db::text_edit::TextRange;
 use ide_db::{
     FxHashMap, FxHashSet,
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     defs::Definition,
     helpers::mod_path_to_ast,
     search::{FileReference, SearchScope},
@@ -47,7 +47,7 @@ pub(crate) fn destructure_struct_binding(acc: &mut Assists, ctx: &AssistContext<
     let data = collect_data(ident_pat, ctx)?;
 
     acc.add(
-        AssistId("destructure_struct_binding", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("destructure_struct_binding"),
         "Destructure struct binding",
         data.ident_pat.syntax().text_range(),
         |edit| destructure_struct_binding_impl(ctx, edit, &data),

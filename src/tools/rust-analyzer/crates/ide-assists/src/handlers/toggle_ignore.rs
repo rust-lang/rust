@@ -3,7 +3,7 @@ use syntax::{
     ast::{self, HasAttrs},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::test_related_attribute_syn};
+use crate::{AssistContext, AssistId, Assists, utils::test_related_attribute_syn};
 
 // Assist: toggle_ignore
 //
@@ -30,13 +30,13 @@ pub(crate) fn toggle_ignore(acc: &mut Assists, ctx: &AssistContext<'_>) -> Optio
 
     match has_ignore_attribute(&func) {
         None => acc.add(
-            AssistId("toggle_ignore", AssistKind::None),
+            AssistId::none("toggle_ignore"),
             "Ignore this test",
             attr.syntax().text_range(),
             |builder| builder.insert(attr.syntax().text_range().end(), "\n#[ignore]"),
         ),
         Some(ignore_attr) => acc.add(
-            AssistId("toggle_ignore", AssistKind::None),
+            AssistId::none("toggle_ignore"),
             "Re-enable this test",
             ignore_attr.syntax().text_range(),
             |builder| {

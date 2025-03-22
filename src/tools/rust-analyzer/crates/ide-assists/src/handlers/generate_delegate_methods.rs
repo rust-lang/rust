@@ -92,19 +92,18 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         });
     }
     methods.sort_by(|(a, _), (b, _)| a.cmp(b));
-    for (name, method) in methods {
+    for (index, (name, method)) in methods.into_iter().enumerate() {
         let adt = ast::Adt::Struct(strukt.clone());
         let name = name.display(ctx.db(), current_edition).to_string();
         // if `find_struct_impl` returns None, that means that a function named `name` already exists.
         let Some(impl_def) = find_struct_impl(ctx, &adt, std::slice::from_ref(&name)) else {
             continue;
         };
-
         let field = make::ext::field_from_idents(["self", &field_name])?;
 
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
-            AssistId("generate_delegate_methods", AssistKind::Generate),
+            AssistId("generate_delegate_methods", AssistKind::Generate, Some(index)),
             format!("Generate delegate for `{field_name}.{name}()`",),
             target,
             |edit| {

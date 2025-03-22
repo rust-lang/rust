@@ -1,9 +1,6 @@
 use std::iter;
 
-use ide_db::{
-    assists::{AssistId, AssistKind},
-    ty_filter::TryEnum,
-};
+use ide_db::{assists::AssistId, ty_filter::TryEnum};
 use syntax::{
     AstNode, T,
     ast::{
@@ -48,7 +45,7 @@ pub(crate) fn replace_try_expr_with_match(
 
     let target = qm_kw_parent.syntax().text_range();
     acc.add(
-        AssistId("replace_try_expr_with_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_try_expr_with_match"),
         "Replace try expression with match",
         target,
         |edit| {

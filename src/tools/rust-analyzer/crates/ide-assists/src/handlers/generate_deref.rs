@@ -8,7 +8,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists, SourceChangeBuilder},
     utils::generate_trait_impl_text,
 };
@@ -65,7 +65,7 @@ fn generate_record_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<(
     let field_name = field.name()?;
     let target = field.syntax().text_range();
     acc.add(
-        AssistId("generate_deref", AssistKind::Generate),
+        AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field_name}`"),
         target,
         |edit| {
@@ -106,7 +106,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     let field_type = field.ty()?;
     let target = field.syntax().text_range();
     acc.add(
-        AssistId("generate_deref", AssistKind::Generate),
+        AssistId::generate("generate_deref"),
         format!("Generate `{deref_type_to_generate:?}` impl using `{field}`"),
         target,
         |edit| {

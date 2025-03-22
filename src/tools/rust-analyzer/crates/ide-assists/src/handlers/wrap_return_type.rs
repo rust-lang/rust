@@ -12,7 +12,7 @@ use syntax::{
     match_ast,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: wrap_return_type_in_option
 //
@@ -155,7 +155,7 @@ impl WrapperKind {
             WrapperKind::Result => "wrap_return_type_in_result",
         };
 
-        AssistId(s, AssistKind::RefactorRewrite)
+        AssistId::refactor_rewrite(s)
     }
 
     fn label(&self) -> &'static str {

@@ -7,7 +7,7 @@ use syntax::{
     match_ast, ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder};
+use crate::{AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder};
 
 // Assist: convert_named_struct_to_tuple_struct
 //
@@ -69,7 +69,7 @@ pub(crate) fn convert_named_struct_to_tuple_struct(
     };
 
     acc.add(
-        AssistId("convert_named_struct_to_tuple_struct", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_named_struct_to_tuple_struct"),
         "Convert to tuple struct",
         strukt.syntax().text_range(),
         |edit| {

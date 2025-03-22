@@ -3,7 +3,7 @@ use ide_db::FxHashMap;
 use itertools::Itertools;
 use syntax::{AstNode, SmolStr, SyntaxElement, ToSmolStr, ast, syntax_editor::SyntaxEditor};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: reorder_fields
 //
@@ -67,7 +67,7 @@ pub(crate) fn reorder_fields(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
     }
     let target = record.as_ref().either(AstNode::syntax, AstNode::syntax).text_range();
     acc.add(
-        AssistId("reorder_fields", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("reorder_fields"),
         "Reorder record fields",
         target,
         |builder| {

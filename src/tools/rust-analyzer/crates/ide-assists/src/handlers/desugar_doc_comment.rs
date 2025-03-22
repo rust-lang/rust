@@ -6,7 +6,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistContext, AssistId, AssistKind, Assists,
+    AssistContext, AssistId, Assists,
     handlers::convert_comment_block::{line_comment_text, relevant_line_comments},
     utils::required_hashes,
 };
@@ -54,7 +54,7 @@ pub(crate) fn desugar_doc_comment(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     };
 
     acc.add(
-        AssistId("desugar_doc_comment", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("desugar_doc_comment"),
         "Desugar doc-comment to attribute macro",
         target,
         |edit| {

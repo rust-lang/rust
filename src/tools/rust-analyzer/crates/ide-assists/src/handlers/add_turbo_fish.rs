@@ -7,7 +7,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
 };
 
@@ -89,7 +89,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
             let_stmt.pat()?;
 
             acc.add(
-                AssistId("add_type_ascription", AssistKind::RefactorRewrite),
+                AssistId::refactor_rewrite("add_type_ascription"),
                 "Add `: _` before assignment operator",
                 ident.text_range(),
                 |builder| {
@@ -135,7 +135,7 @@ pub(crate) fn add_turbo_fish(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
         .count();
 
     acc.add(
-        AssistId("add_turbo_fish", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("add_turbo_fish"),
         "Add `::<>`",
         ident.text_range(),
         |builder| {

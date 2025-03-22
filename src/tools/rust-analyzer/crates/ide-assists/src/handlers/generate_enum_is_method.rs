@@ -4,7 +4,7 @@ use syntax::ast::HasVisibility;
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
-    AssistContext, AssistId, AssistKind, Assists,
+    AssistContext, AssistId, Assists,
     utils::{add_method_to_adt, find_struct_impl},
 };
 
@@ -57,7 +57,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>
     let target = variant.syntax().text_range();
     acc.add_group(
         &GroupLabel("Generate an `is_`,`as_`, or `try_into_` for this enum variant".to_owned()),
-        AssistId("generate_enum_is_method", AssistKind::Generate),
+        AssistId::generate("generate_enum_is_method"),
         "Generate an `is_` method for this enum variant",
         target,
         |builder| {

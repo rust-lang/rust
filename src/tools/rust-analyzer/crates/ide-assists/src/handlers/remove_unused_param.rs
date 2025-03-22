@@ -11,8 +11,7 @@ use syntax::{
 use SyntaxKind::WHITESPACE;
 
 use crate::{
-    AssistContext, AssistId, AssistKind, Assists, assist_context::SourceChangeBuilder,
-    utils::next_prev,
+    AssistContext, AssistId, Assists, assist_context::SourceChangeBuilder, utils::next_prev,
 };
 
 // Assist: remove_unused_param
@@ -79,7 +78,7 @@ pub(crate) fn remove_unused_param(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     }
     let parent = param.syntax().parent()?;
     acc.add(
-        AssistId("remove_unused_param", AssistKind::Refactor),
+        AssistId::refactor("remove_unused_param"),
         "Remove unused parameter",
         param.syntax().text_range(),
         |builder| {

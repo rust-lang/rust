@@ -1,5 +1,5 @@
 use hir::{AsAssocItem, AssocItem, AssocItemContainer, ItemInNs, ModuleDef, db::HirDatabase};
-use ide_db::assists::{AssistId, AssistKind};
+use ide_db::assists::AssistId;
 use syntax::{AstNode, ast};
 
 use crate::{
@@ -54,7 +54,7 @@ pub(crate) fn qualify_method_call(acc: &mut Assists, ctx: &AssistContext<'_>) ->
     let qualify_candidate = QualifyCandidate::ImplMethod(ctx.sema.db, call, resolved_call);
 
     acc.add(
-        AssistId("qualify_method_call", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("qualify_method_call"),
         format!("Qualify `{ident}` method call"),
         range,
         |builder| {

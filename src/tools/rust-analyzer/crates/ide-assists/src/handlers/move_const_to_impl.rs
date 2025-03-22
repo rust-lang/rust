@@ -83,7 +83,7 @@ pub(crate) fn move_const_to_impl(acc: &mut Assists, ctx: &AssistContext<'_>) -> 
     }
 
     acc.add(
-        AssistId("move_const_to_impl", crate::AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("move_const_to_impl"),
         "Move const to impl block",
         const_.syntax().text_range(),
         |builder| {

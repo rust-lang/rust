@@ -17,7 +17,7 @@ use syntax::{
     syntax_editor::{Position, SyntaxEditor},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, utils::invert_boolean_expression};
+use crate::{AssistContext, AssistId, Assists, utils::invert_boolean_expression};
 
 // Assist: apply_demorgan
 //
@@ -107,7 +107,7 @@ pub(crate) fn apply_demorgan(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
     acc.add_group(
         &GroupLabel("Apply De Morgan's law".to_owned()),
-        AssistId("apply_demorgan", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("apply_demorgan"),
         "Apply De Morgan's law",
         op_range,
         |builder| {
@@ -190,7 +190,7 @@ pub(crate) fn apply_demorgan_iterator(acc: &mut Assists, ctx: &AssistContext<'_>
     let label = format!("Apply De Morgan's law to `Iterator::{}`", name.text().as_str());
     acc.add_group(
         &GroupLabel("Apply De Morgan's law".to_owned()),
-        AssistId("apply_demorgan_iterator", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("apply_demorgan_iterator"),
         label,
         op_range,
         |builder| {

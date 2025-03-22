@@ -1568,13 +1568,21 @@ pub(crate) fn handle_code_action_resolve(
 fn parse_action_id(action_id: &str) -> anyhow::Result<(usize, SingleResolve), String> {
     let id_parts = action_id.split(':').collect::<Vec<_>>();
     match id_parts.as_slice() {
-        [assist_id_string, assist_kind_string, index_string] => {
+        [assist_id_string, assist_kind_string, index_string, subtype_str] => {
             let assist_kind: AssistKind = assist_kind_string.parse()?;
             let index: usize = match index_string.parse() {
                 Ok(index) => index,
                 Err(e) => return Err(format!("Incorrect index string: {e}")),
             };
-            Ok((index, SingleResolve { assist_id: assist_id_string.to_string(), assist_kind }))
+            let assist_subtype = subtype_str.parse::<usize>().ok();
+            Ok((
+                index,
+                SingleResolve {
+                    assist_id: assist_id_string.to_string(),
+                    assist_kind,
+                    assist_subtype,
+                },
+            ))
         }
         _ => Err("Action id contains incorrect number of segments".to_owned()),
     }

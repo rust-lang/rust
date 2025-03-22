@@ -2,7 +2,7 @@ use crate::assist_context::{AssistContext, Assists};
 use hir::{HasVisibility, HirDisplay, HirFileIdExt, Module};
 use ide_db::{
     FileId,
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     base_db::Upcast,
     defs::{Definition, NameRefClass},
 };
@@ -88,17 +88,12 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         );
 
     let text = get_text_for_generate_constant(not_exist_name_ref, indent, outer_exists, type_name)?;
-    acc.add(
-        AssistId("generate_constant", AssistKind::QuickFix),
-        "Generate constant",
-        target,
-        |builder| {
-            if let Some(file_id) = file_id {
-                builder.edit_file(file_id);
-            }
-            builder.insert(offset, format!("{text}{post_string}"));
-        },
-    )
+    acc.add(AssistId::quick_fix("generate_constant"), "Generate constant", target, |builder| {
+        if let Some(file_id) = file_id {
+            builder.edit_file(file_id);
+        }
+        builder.insert(offset, format!("{text}{post_string}"));
+    })
 }
 
 fn get_text_for_generate_constant(

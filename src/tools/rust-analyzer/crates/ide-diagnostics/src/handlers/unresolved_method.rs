@@ -1,7 +1,7 @@
 use hir::{FileRange, HirDisplay, InFile, db::ExpandDatabase};
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind},
+    assists::{Assist, AssistId},
     label::Label,
     source_change::SourceChange,
 };
@@ -96,7 +96,7 @@ fn field_fix(
         _ => return None,
     };
     Some(Assist {
-        id: AssistId("expected-method-found-field-fix", AssistKind::QuickFix),
+        id: AssistId::quick_fix("expected-method-found-field-fix"),
         label: Label::new("Use parentheses to call the value of the field".to_owned()),
         group: None,
         target: range,
@@ -175,7 +175,7 @@ fn assoc_func_fix(ctx: &DiagnosticsContext<'_>, d: &hir::UnresolvedMethodCall) -
         let file_id = ctx.sema.original_range_opt(call.receiver()?.syntax())?.file_id;
 
         Some(Assist {
-            id: AssistId("method_call_to_assoc_func_call_fix", AssistKind::QuickFix),
+            id: AssistId::quick_fix("method_call_to_assoc_func_call_fix"),
             label: Label::new(format!(
                 "Use associated func call instead: `{assoc_func_call_expr_string}`"
             )),

@@ -5,7 +5,7 @@ use syntax::{
     ted::{self, Position},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: unmerge_match_arm
 //
@@ -47,7 +47,7 @@ pub(crate) fn unmerge_match_arm(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
     let old_parent_range = new_parent.text_range();
 
     acc.add(
-        AssistId("unmerge_match_arm", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("unmerge_match_arm"),
         "Unmerge match arm",
         pipe_token.text_range(),
         |edit| {

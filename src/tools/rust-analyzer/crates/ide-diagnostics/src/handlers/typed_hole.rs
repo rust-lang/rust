@@ -5,7 +5,7 @@ use hir::{
 };
 use ide_db::text_edit::TextEdit;
 use ide_db::{
-    assists::{Assist, AssistId, AssistKind, GroupLabel},
+    assists::{Assist, AssistId, GroupLabel},
     label::Label,
     source_change::SourceChange,
 };
@@ -78,7 +78,7 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::TypedHole) -> Option<Vec<Assist>
         })
         .unique()
         .map(|code| Assist {
-            id: AssistId("typed-hole", AssistKind::QuickFix),
+            id: AssistId::quick_fix("typed-hole"),
             label: Label::new(format!("Replace `_` with `{code}`")),
             group: Some(GroupLabel("Replace `_` with a term".to_owned())),
             target: original_range.range,

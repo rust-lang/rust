@@ -3,7 +3,7 @@ use ide_db::RootDatabase;
 use stdx::format_to;
 use syntax::ast::{self, AstNode};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_two_arm_bool_match_to_matches_macro
 //
@@ -56,7 +56,7 @@ pub(crate) fn convert_two_arm_bool_match_to_matches_macro(
     let expr = match_expr.expr()?;
 
     acc.add(
-        AssistId("convert_two_arm_bool_match_to_matches_macro", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_two_arm_bool_match_to_matches_macro"),
         "Convert to matches!",
         target_range,
         |builder| {

@@ -89,7 +89,7 @@ use hir::{
 use ide_db::base_db::salsa::AsDynDatabase;
 use ide_db::{
     EditionedFileId, FileId, FileRange, FxHashMap, FxHashSet, RootDatabase, Severity, SnippetCap,
-    assists::{Assist, AssistId, AssistKind, AssistResolveStrategy},
+    assists::{Assist, AssistId, AssistResolveStrategy},
     base_db::{ReleaseChannel, RootQueryDb as _},
     generated::lints::{CLIPPY_LINT_GROUPS, DEFAULT_LINT_GROUPS, DEFAULT_LINTS, Lint, LintGroup},
     imports::insert_use::InsertUseConfig,
@@ -992,7 +992,7 @@ fn fix(id: &'static str, label: &str, source_change: SourceChange, target: TextR
 fn unresolved_fix(id: &'static str, label: &str, target: TextRange) -> Assist {
     assert!(!id.contains(' '));
     Assist {
-        id: AssistId(id, AssistKind::QuickFix),
+        id: AssistId::quick_fix(id),
         label: Label::new(label.to_owned()),
         group: None,
         target,

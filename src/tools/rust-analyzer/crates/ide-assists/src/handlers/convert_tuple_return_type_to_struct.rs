@@ -2,7 +2,7 @@ use either::Either;
 use hir::ModuleDef;
 use ide_db::{
     FxHashSet,
-    assists::{AssistId, AssistKind},
+    assists::AssistId,
     defs::Definition,
     helpers::mod_path_to_ast,
     imports::insert_use::{ImportScope, insert_use},
@@ -63,7 +63,7 @@ pub(crate) fn convert_tuple_return_type_to_struct(
 
     let target = type_ref.syntax().text_range();
     acc.add(
-        AssistId("convert_tuple_return_type_to_struct", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_tuple_return_type_to_struct"),
         "Convert tuple return type to tuple struct",
         target,
         move |edit| {

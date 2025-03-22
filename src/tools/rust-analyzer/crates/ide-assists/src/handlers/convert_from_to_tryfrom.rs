@@ -5,7 +5,7 @@ use syntax::{
     ted,
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_from_to_tryfrom
 //
@@ -71,7 +71,7 @@ pub(crate) fn convert_from_to_tryfrom(acc: &mut Assists, ctx: &AssistContext<'_>
     }
 
     acc.add(
-        AssistId("convert_from_to_tryfrom", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_from_to_tryfrom"),
         "Convert From to TryFrom",
         impl_.syntax().text_range(),
         |builder| {

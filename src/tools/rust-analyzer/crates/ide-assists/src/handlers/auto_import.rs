@@ -10,7 +10,7 @@ use ide_db::{
 };
 use syntax::{AstNode, Edition, NodeOrToken, SyntaxElement, ast};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists, GroupLabel};
+use crate::{AssistContext, AssistId, Assists, GroupLabel};
 
 // Feature: Auto Import
 //
@@ -127,7 +127,7 @@ pub(crate) fn auto_import(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
         let import_path = import.import_path;
 
         let (assist_id, import_name) =
-            (AssistId("auto_import", AssistKind::QuickFix), import_path.display(ctx.db(), edition));
+            (AssistId::quick_fix("auto_import"), import_path.display(ctx.db(), edition));
         acc.add_group(
             &group_label,
             assist_id,

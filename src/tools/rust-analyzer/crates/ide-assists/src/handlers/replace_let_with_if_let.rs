@@ -4,7 +4,7 @@ use syntax::{
     ast::{self, edit::IndentLevel, edit_in_place::Indent, syntax_factory::SyntaxFactory},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: replace_let_with_if_let
 //
@@ -38,7 +38,7 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
 
     let target = let_kw.text_range();
     acc.add(
-        AssistId("replace_let_with_if_let", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("replace_let_with_if_let"),
         "Replace let with if let",
         target,
         |builder| {

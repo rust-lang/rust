@@ -7,7 +7,7 @@ use syntax::{
     ast::{self, HasVisibility as _, edit_in_place::HasVisibilityEdit, make},
 };
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // FIXME: this really should be a fix for diagnostic, rather than an assist.
 
@@ -78,7 +78,7 @@ fn add_vis_to_referenced_module_def(acc: &mut Assists, ctx: &AssistContext<'_>) 
         }
     };
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
+    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
         edit.edit_file(target_file);
 
         let vis_owner = edit.make_mut(vis_owner);
@@ -131,7 +131,7 @@ fn add_vis_to_referenced_record_field(acc: &mut Assists, ctx: &AssistContext<'_>
         target_name.display(ctx.db(), current_edition)
     );
 
-    acc.add(AssistId("fix_visibility", AssistKind::QuickFix), assist_label, target, |edit| {
+    acc.add(AssistId::quick_fix("fix_visibility"), assist_label, target, |edit| {
         edit.edit_file(target_file.file_id());
 
         let vis_owner = edit.make_mut(vis_owner);

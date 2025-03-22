@@ -4,7 +4,7 @@ use syntax::T;
 use syntax::ast::RangeItem;
 use syntax::ast::{AstNode, HasName, LetStmt, Name, Pat, edit::AstNodeEdit};
 
-use crate::{AssistContext, AssistId, AssistKind, Assists};
+use crate::{AssistContext, AssistId, Assists};
 
 // Assist: convert_let_else_to_match
 //
@@ -43,7 +43,7 @@ pub(crate) fn convert_let_else_to_match(acc: &mut Assists, ctx: &AssistContext<'
 
     let target = let_stmt.syntax().text_range();
     acc.add(
-        AssistId("convert_let_else_to_match", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_let_else_to_match"),
         "Convert let-else to let and match",
         target,
         |edit| {

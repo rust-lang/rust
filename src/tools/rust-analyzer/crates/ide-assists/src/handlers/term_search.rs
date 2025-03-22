@@ -1,7 +1,7 @@
 //! Term search assist
 use hir::term_search::{TermSearchConfig, TermSearchCtx};
 use ide_db::{
-    assists::{AssistId, AssistKind, GroupLabel},
+    assists::{AssistId, GroupLabel},
     famous_defs::FamousDefs,
 };
 
@@ -68,7 +68,7 @@ pub(crate) fn term_search(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<
     for code in paths {
         acc.add_group(
             &GroupLabel(String::from("Term search")),
-            AssistId("term_search", AssistKind::Generate),
+            AssistId::generate("term_search"),
             format!("Replace {macro_name}!() with {code}"),
             goal_range,
             |builder| {

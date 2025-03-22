@@ -17,7 +17,7 @@ use syntax::{
 };
 
 use crate::{
-    AssistId, AssistKind,
+    AssistId,
     assist_context::{AssistContext, Assists},
     utils::invert_boolean_expression_legacy,
 };
@@ -128,7 +128,7 @@ fn if_expr_to_guarded_return(
 
     let target = if_expr.syntax().text_range();
     acc.add(
-        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_to_guarded_return"),
         "Convert to guarded return",
         target,
         |edit| {
@@ -210,7 +210,7 @@ fn let_stmt_to_guarded_return(
     };
 
     acc.add(
-        AssistId("convert_to_guarded_return", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_to_guarded_return"),
         "Convert to guarded return",
         target,
         |edit| {

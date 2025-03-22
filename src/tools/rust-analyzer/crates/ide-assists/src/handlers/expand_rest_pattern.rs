@@ -74,7 +74,7 @@ fn expand_record_rest_pattern(
 
     let target_range = rest_pat.syntax().text_range();
     acc.add(
-        AssistId("expand_record_rest_pattern", crate::AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("expand_record_rest_pattern"),
         "Fill struct fields",
         target_range,
         move |builder| builder.replace_ast(old_field_list, new_field_list),
@@ -155,7 +155,7 @@ fn expand_tuple_struct_rest_pattern(
 
     let target_range = rest_pat.syntax().text_range();
     acc.add(
-        AssistId("expand_tuple_struct_rest_pattern", crate::AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("expand_tuple_struct_rest_pattern"),
         "Fill tuple struct fields",
         target_range,
         move |builder| builder.replace_ast(pat, new_pat),

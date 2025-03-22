@@ -1,12 +1,8 @@
 use either::Either;
 use hir::{CaptureKind, ClosureCapture, FileRangeWrapper, HirDisplay};
 use ide_db::{
-    FxHashSet,
-    assists::{AssistId, AssistKind},
-    base_db::SourceDatabase,
-    defs::Definition,
-    search::FileReferenceNode,
-    source_change::SourceChangeBuilder,
+    FxHashSet, assists::AssistId, base_db::SourceDatabase, defs::Definition,
+    search::FileReferenceNode, source_change::SourceChangeBuilder,
 };
 use stdx::format_to;
 use syntax::{
@@ -147,7 +143,7 @@ pub(crate) fn convert_closure_to_fn(acc: &mut Assists, ctx: &AssistContext<'_>) 
     };
 
     acc.add(
-        AssistId("convert_closure_to_fn", AssistKind::RefactorRewrite),
+        AssistId::refactor_rewrite("convert_closure_to_fn"),
         "Convert closure to fn",
         closure.param_list()?.syntax().text_range(),
         |builder| {
