@@ -1,7 +1,7 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{Body, Location, Operand, Terminator, TerminatorKind};
 use rustc_middle::ty::*;
-use rustc_session::lint::builtin::UNNECESSARY_TRANSMUTATE;
+use rustc_session::lint::builtin::UNNECESSARY_TRANSMUTES;
 use rustc_span::source_map::Spanned;
 use rustc_span::{Span, sym};
 
@@ -24,7 +24,7 @@ struct UnnecessaryTransmuteChecker<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> UnnecessaryTransmuteChecker<'a, 'tcx> {
-    fn is_redundant_transmute(
+    fn is_unnecessary_transmute(
         &self,
         function: &Operand<'tcx>,
         arg: String,
@@ -87,14 +87,14 @@ impl<'tcx> Visitor<'tcx> for UnnecessaryTransmuteChecker<'_, 'tcx> {
             && let Some((func_def_id, _)) = func.const_fn_def()
             && self.tcx.is_intrinsic(func_def_id, sym::transmute)
             && let span = self.body.source_info(location).span
-            && let Some(lint) = self.is_redundant_transmute(
+            && let Some(lint) = self.is_unnecessary_transmute(
                 func,
                 self.tcx.sess.source_map().span_to_snippet(arg).expect("ok"),
                 span,
             )
             && let Some(hir_id) = terminator.source_info.scope.lint_root(&self.body.source_scopes)
         {
-            self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTATE, hir_id, span, lint);
+            self.tcx.emit_node_span_lint(UNNECESSARY_TRANSMUTES, hir_id, span, lint);
         }
     }
 }

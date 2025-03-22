@@ -1,5 +1,5 @@
 //@ run-rustfix
-#![deny(unnecessary_transmutate)]
+#![deny(unnecessary_transmutes)]
 #![allow(unused_unsafe, unused_imports, unused_variables, unused_parens)]
 use std::mem::transmute;
 

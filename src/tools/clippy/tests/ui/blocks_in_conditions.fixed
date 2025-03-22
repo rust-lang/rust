@@ -3,7 +3,7 @@
 #![warn(clippy::blocks_in_conditions)]
 #![allow(
     unused,
-    unnecessary_transmutate,
+    unnecessary_transmutes,
     clippy::let_and_return,
     clippy::needless_if,
     clippy::missing_transmute_annotations
