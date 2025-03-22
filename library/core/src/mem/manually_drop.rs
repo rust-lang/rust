@@ -217,6 +217,7 @@ impl<T> ManuallyDrop<T> {
     #[must_use = "if you don't need the value, you can use `ManuallyDrop::drop` instead"]
     #[stable(feature = "manually_drop_take", since = "1.42.0")]
     #[inline]
+    #[cfg_attr(not(bootstrap), rustc_no_ubchecks)]
     pub unsafe fn take(slot: &mut ManuallyDrop<T>) -> T {
         // SAFETY: we are reading from a reference, which is guaranteed
         // to be valid for reads.
