@@ -3,7 +3,7 @@
 // FIXME(#122848): Remove only-linux when fixed.
 //@ only-linux
 //@ needs-sanitizer-cfi
-//@ compile-flags: -Clto -Copt-level=0 -Cprefer-dynamic=off -Ctarget-feature=-crt-static -Zsanitizer=cfi
+//@ compile-flags: -Clto -Copt-level=0 -Cprefer-dynamic=off -Ctarget-feature=-crt-static -Zunstable-options -Csanitize=cfi
 //@ run-pass
 
 struct EmptyDrop;

@@ -1,5 +1,5 @@
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:7:19
+  --> $DIR/no-sanitize.rs:6:19
    |
 LL |       #[no_sanitize(memory)]
    |                     ^^^^^^
@@ -9,7 +9,7 @@ LL | |     };
    | |_____- not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:13:15
+  --> $DIR/no-sanitize.rs:12:15
    |
 LL | #[no_sanitize(memory)]
    |               ^^^^^^
@@ -17,7 +17,7 @@ LL | type InvalidTy = ();
    | -------------------- not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:16:15
+  --> $DIR/no-sanitize.rs:15:15
    |
 LL | #[no_sanitize(memory)]
    |               ^^^^^^
@@ -25,7 +25,7 @@ LL | mod invalid_module {}
    | --------------------- not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:20:27
+  --> $DIR/no-sanitize.rs:19:27
    |
 LL |     let _ = #[no_sanitize(memory)]
    |                           ^^^^^^
@@ -33,7 +33,7 @@ LL |     (|| 1);
    |     ------ not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:24:15
+  --> $DIR/no-sanitize.rs:23:15
    |
 LL | #[no_sanitize(memory)]
    |               ^^^^^^
@@ -41,7 +41,7 @@ LL | struct F;
    | --------- not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:27:15
+  --> $DIR/no-sanitize.rs:26:15
    |
 LL |   #[no_sanitize(memory)]
    |                 ^^^^^^
@@ -52,7 +52,7 @@ LL | | }
    | |_- not a function
 
 error: `#[no_sanitize(memory)]` should be applied to a function
-  --> $DIR/no-sanitize.rs:33:24
+  --> $DIR/no-sanitize.rs:32:24
    |
 LL | #[no_sanitize(address, memory)]
    |                        ^^^^^^
