@@ -974,7 +974,9 @@ where
         if cfg!(debug_assertions) {
             for g in goals.iter() {
                 match g.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {}
+                    ty::PredicateKind::Subtype { .. }
+                    | ty::PredicateKind::AliasRelate(..)
+                    | ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => {}
                     p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
                 }
             }
