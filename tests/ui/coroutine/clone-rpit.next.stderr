@@ -14,11 +14,6 @@ note: ...which requires promoting constants in MIR for `foo::{closure#0}`...
    |
 LL |     move |_: ()| {
    |     ^^^^^^^^^^^^
-note: ...which requires checking if `foo::{closure#0}` contains FFI-unwind calls...
-  --> $DIR/clone-rpit.rs:15:5
-   |
-LL |     move |_: ()| {
-   |     ^^^^^^^^^^^^
 note: ...which requires building MIR for `foo::{closure#0}`...
   --> $DIR/clone-rpit.rs:15:5
    |

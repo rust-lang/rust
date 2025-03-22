@@ -10,7 +10,7 @@
   
       bb0: {
           StorageLive(_1);
-          _1 = bar::<T>() -> [return: bb1, unwind continue];
+          _1 = bar::<T>() -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
