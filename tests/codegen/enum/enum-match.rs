@@ -11,11 +11,11 @@ pub enum Enum0 {
     B,
 }
 
-// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0{{.*}}
+// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match0(i8{{.*}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %1 = icmp eq i8 %0, 2
-// CHECK-NEXT: %2 = and i8 %0, 1
-// CHECK-NEXT: %{{.+}} = select i1 %1, i8 13, i8 %2
+// CHECK-NEXT: %[[IS_B:.+]] = icmp eq i8 %e, 2
+// CHECK-NEXT: %[[RET:.+]] = select i1 %[[IS_B]], i8 13, i8 %e
+// CHECK-NEXT: ret i8 %[[RET]]
 #[no_mangle]
 pub fn match0(e: Enum0) -> u8 {
     use Enum0::*;
@@ -32,13 +32,14 @@ pub enum Enum1 {
     C,
 }
 
-// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}
+// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match1{{.*}}(i8{{.*}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %1 = add{{( nsw)?}} i8 %0, -2
-// CHECK-NEXT: %2 = zext i8 %1 to i64
-// CHECK-NEXT: %3 = icmp ult i8 %1, 2
-// CHECK-NEXT: %4 = add nuw nsw i64 %2, 1
-// CHECK-NEXT: %_2 = select i1 %3, i64 %4, i64 0
+// CHECK-NEXT: %0 = add{{( nsw)?}} i8 %e, -2
+// CHECK-NEXT: %1 = zext i8 %0 to i64
+// CHECK-NEXT: %2 = icmp ult i8 %0, 2
+// CHECK-NEXT: %3 = add nuw nsw i64 %1, 1
+// CHECK-NEXT: %[[DISCR:.+]] = select i1 %2, i64 %3, i64 0
+// CHECK-NEXT: switch i64 %[[DISCR]]
 #[no_mangle]
 pub fn match1(e: Enum1) -> u8 {
     use Enum1::*;
@@ -92,14 +93,14 @@ pub enum Enum2 {
     E,
 }
 
-// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match2{{.*}}
+// CHECK: define noundef{{( range\(i8 [0-9]+, [0-9]+\))?}} i8 @match2(i8{{.*}}%e)
 // CHECK-NEXT: start:
-// CHECK-NEXT: %1 = add i8 %0, 2
-// CHECK-NEXT: %2 = zext i8 %1 to i64
-// CHECK-NEXT: %3 = icmp ult i8 %1, 4
-// CHECK-NEXT: %4 = add nuw nsw i64 %2, 1
-// CHECK-NEXT: %_2 = select i1 %3, i64 %4, i64 0
-// CHECK-NEXT: switch i64 %_2, label {{.*}} [
+// CHECK-NEXT: %0 = add i8 %e, 2
+// CHECK-NEXT: %1 = zext i8 %0 to i64
+// CHECK-NEXT: %2 = icmp ult i8 %0, 4
+// CHECK-NEXT: %3 = add nuw nsw i64 %1, 1
+// CHECK-NEXT: %[[DISCR:.+]] = select i1 %2, i64 %3, i64 0
+// CHECK-NEXT: switch i64 %[[DISCR]], label {{.*}} [
 #[no_mangle]
 pub fn match2(e: Enum2) -> u8 {
     use Enum2::*;

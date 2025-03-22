@@ -135,6 +135,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     }
 }
 
+#[derive(Debug)]
 enum LocalRef<'tcx, V> {
     Place(PlaceRef<'tcx, V>),
     /// `UnsizedPlace(p)`: `p` itself is a thin pointer (indirect place).
