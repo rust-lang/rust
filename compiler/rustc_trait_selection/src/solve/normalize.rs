@@ -5,6 +5,7 @@ use std::marker::PhantomData;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_infer::infer::InferCtxt;
 use rustc_infer::infer::at::At;
+use rustc_infer::traits::solve::Goal;
 use rustc_infer::traits::{FromSolverError, Obligation, TraitEngine};
 use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::{
@@ -45,11 +46,42 @@ where
     T: TypeFoldable<TyCtxt<'tcx>>,
     E: FromSolverError<'tcx, NextSolverError<'tcx>>,
 {
+    let (value, goals) =
+        deeply_normalize_with_skipped_universes_and_ambiguous_goals(at, value, universes)?;
+    assert_eq!(goals, vec![]);
+
+    Ok(value)
+}
+
+/// Deeply normalize all aliases in `value`. This does not handle inference and expects
+/// its input to be already fully resolved.
+///
+/// Additionally takes a list of universes which represents the binders which have been
+/// entered before passing `value` to the function. This is currently needed for
+/// `normalize_erasing_regions`, which skips binders as it walks through a type.
+///
+/// TODO: doc
+pub fn deeply_normalize_with_skipped_universes_and_ambiguous_goals<'tcx, T, E>(
+    at: At<'_, 'tcx>,
+    value: T,
+    universes: Vec<Option<UniverseIndex>>,
+) -> Result<(T, Vec<Goal<'tcx, ty::Predicate<'tcx>>>), Vec<E>>
+where
+    T: TypeFoldable<TyCtxt<'tcx>>,
+    E: FromSolverError<'tcx, NextSolverError<'tcx>>,
+{
     let fulfill_cx = FulfillmentCtxt::new(at.infcx);
     let mut folder =
         NormalizationFolder { at, fulfill_cx, depth: 0, universes, _errors: PhantomData };
-
-    value.try_fold_with(&mut folder)
+    let value = value.try_fold_with(&mut folder)?;
+    let goals = folder
+        .fulfill_cx
+        .drain_unstalled_obligations(at.infcx)
+        .into_iter()
+        .map(|obl| obl.as_goal())
+        .collect();
+    let errors = folder.fulfill_cx.select_all_or_error(at.infcx);
+    if errors.is_empty() { Ok((value, goals)) } else { Err(errors) }
 }
 
 struct NormalizationFolder<'me, 'tcx, E> {
