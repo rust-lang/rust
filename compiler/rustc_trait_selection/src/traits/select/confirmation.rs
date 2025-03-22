@@ -189,6 +189,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             &mut obligations,
         );
 
+        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+        // are syntactic sugar for a lack of bounds so don't need this.
+        if tcx.is_lang_item(obligation.predicate.def_id(), LangItem::MetaSized)
+            && tcx.is_lang_item(candidate.def_id, LangItem::Sized)
+        {
+            return Ok(obligations);
+        }
+
         obligations.extend(
             self.infcx
                 .at(&obligation.cause, obligation.param_env)
@@ -257,6 +266,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let trait_def = obligation.predicate.def_id();
             let conditions = if tcx.is_lang_item(trait_def, LangItem::Sized) {
                 self.sized_conditions(obligation)
+            } else if tcx.is_lang_item(trait_def, LangItem::MetaSized) {
+                self.meta_sized_conditions(obligation)
+            } else if tcx.is_lang_item(trait_def, LangItem::PointeeSized) {
+                self.pointee_sized_conditions(obligation)
             } else if tcx.is_lang_item(trait_def, LangItem::Copy) {
                 self.copy_clone_conditions(obligation)
             } else if tcx.is_lang_item(trait_def, LangItem::Clone) {

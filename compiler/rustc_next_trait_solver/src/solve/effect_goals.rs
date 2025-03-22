@@ -4,6 +4,7 @@
 use rustc_type_ir::fast_reject::DeepRejectCtxt;
 use rustc_type_ir::inherent::*;
 use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::solve::SizedTraitKind;
 use rustc_type_ir::solve::inspect::ProbeKind;
 use rustc_type_ir::{self as ty, Interner, elaborate};
 use tracing::instrument;
@@ -44,7 +45,9 @@ where
         then: impl FnOnce(&mut EvalCtxt<'_, D>) -> QueryResult<I>,
     ) -> Result<Candidate<I>, NoSolution> {
         if let Some(host_clause) = assumption.as_host_effect_clause() {
-            if host_clause.def_id() == goal.predicate.def_id()
+            let goal_did = goal.predicate.def_id();
+            let host_clause_did = host_clause.def_id();
+            if host_clause_did == goal_did
                 && host_clause.constness().satisfies(goal.predicate.constness)
             {
                 if !DeepRejectCtxt::relate_rigid_rigid(ecx.cx()).args_may_unify(
@@ -54,7 +57,7 @@ where
                     return Err(NoSolution);
                 }
 
-                ecx.probe_trait_candidate(source).enter(|ecx| {
+                return ecx.probe_trait_candidate(source).enter(|ecx| {
                     let assumption_trait_pred = ecx.instantiate_binder_with_infer(host_clause);
                     ecx.eq(
                         goal.param_env,
@@ -62,13 +65,20 @@ where
                         assumption_trait_pred.trait_ref,
                     )?;
                     then(ecx)
-                })
-            } else {
-                Err(NoSolution)
+                });
             }
-        } else {
-            Err(NoSolution)
+
+            // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+            // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+            // are syntactic sugar for a lack of bounds so don't need this.
+            if ecx.cx().is_lang_item(goal_did, TraitSolverLangItem::MetaSized)
+                && ecx.cx().is_lang_item(host_clause_did, TraitSolverLangItem::Sized)
+            {
+                return ecx.probe_trait_candidate(source).enter(then);
+            }
         }
+
+        Err(NoSolution)
     }
 
     /// Register additional assumptions for aliases corresponding to `~const` item bounds.
@@ -198,11 +208,30 @@ where
         unreachable!("trait aliases are never const")
     }
 
-    fn consider_builtin_sized_candidate(
-        _ecx: &mut EvalCtxt<'_, D>,
-        _goal: Goal<I, Self>,
+    fn consider_builtin_sizedness_candidates(
+        ecx: &mut EvalCtxt<'_, D>,
+        goal: Goal<I, Self>,
+        sizedness: SizedTraitKind,
     ) -> Result<Candidate<I>, NoSolution> {
-        unreachable!("Sized is never const")
+        let cx = ecx.cx();
+
+        let self_ty = goal.predicate.self_ty();
+        let const_conditions =
+            structural_traits::const_conditions_for_sizedness(cx, self_ty, sizedness)?;
+
+        ecx.probe_builtin_trait_candidate(BuiltinImplSource::Trivial).enter(|ecx| {
+            ecx.add_goals(
+                GoalSource::AliasBoundConstCondition,
+                const_conditions.into_iter().map(|trait_ref| {
+                    goal.with(
+                        cx,
+                        ty::Binder::dummy(trait_ref)
+                            .to_host_effect_clause(cx, goal.predicate.constness),
+                    )
+                }),
+            );
+            ecx.evaluate_added_goals_and_make_canonical_response(Certainty::Yes)
+        })
     }
 
     fn consider_builtin_copy_clone_candidate(

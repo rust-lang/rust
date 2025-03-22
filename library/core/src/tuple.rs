@@ -1,7 +1,7 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
+use crate::marker::{ConstParamTy_, PointeeSized, StructuralPartialEq, UnsizedConstParamTy};
 
 // Recursive macro for implementing n-ary tuple functions and operations
 //
@@ -24,7 +24,7 @@ macro_rules! tuple_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: PartialEq),+> PartialEq for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized + PointeeSized
             {
                 #[inline]
                 fn eq(&self, other: &($($T,)+)) -> bool {
@@ -42,7 +42,7 @@ macro_rules! tuple_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Eq),+> Eq for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized + PointeeSized
             {}
         }
 
@@ -72,7 +72,7 @@ macro_rules! tuple_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: PartialOrd),+> PartialOrd for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized + PointeeSized
             {
                 #[inline]
                 fn partial_cmp(&self, other: &($($T,)+)) -> Option<Ordering> {
@@ -102,7 +102,7 @@ macro_rules! tuple_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<$($T: Ord),+> Ord for ($($T,)+)
             where
-                last_type!($($T,)+): ?Sized
+                last_type!($($T,)+): ?Sized + PointeeSized
             {
                 #[inline]
                 fn cmp(&self, other: &($($T,)+)) -> Ordering {

@@ -88,8 +88,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             } else if tcx.is_lang_item(def_id, LangItem::Sized) {
                 // Sized is never implementable by end-users, it is
                 // always automatically computed.
-                let sized_conditions = self.sized_conditions(obligation);
-                self.assemble_builtin_bound_candidates(sized_conditions, &mut candidates);
+                let conditions = self.sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(conditions, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::MetaSized) {
+                // MetaSized is never implementable by end-users, it is
+                // always automatically computed.
+                let conditions = self.meta_sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(conditions, &mut candidates);
+            } else if tcx.is_lang_item(def_id, LangItem::PointeeSized) {
+                // PointeeSized is never implementable by end-users, it is
+                // always automatically computed.
+                let conditions = self.pointee_sized_conditions(obligation);
+                self.assemble_builtin_bound_candidates(conditions, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Unsize) {
                 self.assemble_candidates_for_unsizing(obligation, &mut candidates);
             } else if tcx.is_lang_item(def_id, LangItem::Destruct) {
@@ -187,6 +197,22 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
 
                     selcx.infcx.probe(|_| {
+                        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve
+                        // perf, so check for a `Sized` subtrait when looking for `MetaSized`.
+                        // `PointeeSized` bounds are syntactic sugar for a lack of bounds so don't
+                        // need this.
+                        if selcx
+                            .tcx()
+                            .is_lang_item(placeholder_trait_predicate.def_id(), LangItem::MetaSized)
+                            && selcx.tcx().is_lang_item(
+                                bound.map_bound(|pred| pred.trait_ref).def_id(),
+                                LangItem::Sized,
+                            )
+                        {
+                            candidates.vec.push(ProjectionCandidate(idx));
+                            return;
+                        }
+
                         // We checked the polarity already
                         match selcx.match_normalize_trait_ref(
                             obligation,
@@ -224,6 +250,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         candidates: &mut SelectionCandidateSet<'tcx>,
     ) -> Result<(), SelectionError<'tcx>> {
         debug!(?stack.obligation);
+
+        // PERF(sized-hierarchy): Sizedness supertraits aren't elaborated to improve perf, so
+        // check for a `Sized` subtrait when looking for `MetaSized`. `PointeeSized` bounds
+        // are syntactic sugar for a lack of bounds so don't need this.
+        if self.tcx().is_lang_item(stack.obligation.predicate.def_id(), LangItem::MetaSized)
+            && let Some(bound) = stack
+                .obligation
+                .param_env
+                .caller_bounds()
+                .iter()
+                .rev() // sizedness predicates are normally at the end for diagnostics reasons
+                .filter_map(|p| p.as_trait_clause())
+                .find(|c| {
+                    stack.obligation.predicate.skip_binder().self_ty() == c.skip_binder().self_ty()
+                        && self.tcx().is_lang_item(c.def_id(), LangItem::Sized)
+                })
+        {
+            candidates.vec.push(ParamCandidate(bound));
+            return Ok(());
+        }
 
         let bounds = stack
             .obligation
