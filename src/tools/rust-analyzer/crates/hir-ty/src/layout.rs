@@ -388,6 +388,15 @@ fn struct_tail_erasing_lifetimes(db: &dyn HirDatabase, pointee: Ty) -> Ty {
                 None => pointee,
             }
         }
+        TyKind::Tuple(_, subst) => {
+            if let Some(last_field_ty) =
+                subst.iter(Interner).last().and_then(|arg| arg.ty(Interner))
+            {
+                struct_tail_erasing_lifetimes(db, last_field_ty.clone())
+            } else {
+                pointee
+            }
+        }
         _ => pointee,
     }
 }
