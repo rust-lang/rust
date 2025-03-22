@@ -4,6 +4,9 @@ hir_analysis_ambiguous_assoc_item = ambiguous associated {$assoc_kind} `{$assoc_
 hir_analysis_ambiguous_lifetime_bound =
     ambiguous lifetime bound, explicit lifetime bound required
 
+hir_analysis_asm_const_ptr_unstable =
+    using pointers in asm `const` operand is experimental
+
 hir_analysis_assoc_item_constraints_not_allowed_here =
     associated item constraints are not allowed here
     .label = associated item constraint not allowed here
