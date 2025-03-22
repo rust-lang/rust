@@ -94,10 +94,11 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
         match &self {
             LtoModuleCodegen::Fat(module) => {
                 B::autodiff(cgcx, &module, diff_fncs, config)?;
+            },
+            LtoModuleCodegen::Thin(module) => {
+                B::autodiff_thin(cgcx, module, diff_fncs, config)?;
             }
-            _ => panic!("autodiff called with non-fat LTO module"),
         }
-
         Ok(self)
     }
 }

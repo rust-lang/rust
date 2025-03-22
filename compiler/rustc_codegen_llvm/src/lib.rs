@@ -27,8 +27,7 @@ use std::mem::ManuallyDrop;
 
 use back::owned_target_machine::OwnedTargetMachine;
 use back::write::{create_informational_target_machine, create_target_machine};
-use context::SimpleCx;
-use errors::{AutoDiffWithoutLTO, ParseTargetMachineConfig};
+use errors::ParseTargetMachineConfig;
 pub(crate) use llvm_util::target_features_cfg;
 use rustc_ast::expand::allocator::AllocatorKind;
 use rustc_ast::expand::autodiff_attrs::AutoDiffItem;
@@ -45,7 +44,7 @@ use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
 use rustc_middle::util::Providers;
 use rustc_session::Session;
-use rustc_session::config::{Lto, OptLevel, OutputFilenames, PrintKind, PrintRequest};
+use rustc_session::config::{OptLevel, OutputFilenames, PrintKind, PrintRequest};
 use rustc_span::Symbol;
 
 mod back {
@@ -238,11 +237,32 @@ impl WriteBackendMethods for LlvmCodegenBackend {
         diff_fncs: Vec<AutoDiffItem>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError> {
-        if cgcx.lto != Lto::Fat {
-            let dcx = cgcx.create_dcx();
-            return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
-        }
-        builder::autodiff::differentiate(module, cgcx, diff_fncs, config)
+        //if cgcx.lto != Lto::Fat {
+        //    let dcx = cgcx.create_dcx();
+        //    return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutLTO));
+        //}
+        let module_llvm = &module.module_llvm;
+        builder::autodiff::differentiate(module_llvm, cgcx, diff_fncs, config)
+    }
+    fn autodiff_thin(
+        cgcx: &CodegenContext<Self>,
+        thin_module: &ThinModule<Self>,
+        diff_fncs: Vec<AutoDiffItem>,
+        config: &ModuleConfig,
+    ) -> Result<(), FatalError> {
+        let dcx = cgcx.create_dcx();
+        let dcx = dcx.handle();
+
+        let module_name = &thin_module.shared.module_names[thin_module.idx];
+
+        // Right now the implementation we've got only works over serialized
+        // modules, so we create a fresh new LLVM context and parse the module
+        // into that context. One day, however, we may do this for upstream
+        // crates but for locally codegened modules we may be able to reuse
+        // that LLVM Context and Module.
+        let module_llvm = ModuleLlvm::parse(cgcx, module_name, thin_module.data(), dcx)?;
+
+        builder::autodiff::differentiate(&module_llvm, cgcx, diff_fncs, config)
     }
 }
 
