@@ -63,6 +63,7 @@ thread_local! {
     static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static REDUCED_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
+    static NO_VISIBLE_PATH_IF_DOC_HIDDEN: Cell<bool> = const { Cell::new(false) };
     static RTN_MODE: Cell<RtnMode> = const { Cell::new(RtnMode::ForDiagnostic) };
 }
 
@@ -134,6 +135,8 @@ define_helper!(
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
+    /// Prevent selection of visible paths if the paths are through a doc hidden path.
+    fn with_no_visible_paths_if_doc_hidden(NoVisibleIfDocHiddenGuard, NO_VISIBLE_PATH_IF_DOC_HIDDEN);
 );
 
 #[must_use]
@@ -568,6 +571,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let Some(visible_parent) = visible_parent_map.get(&def_id).cloned() else {
             return Ok(false);
         };
+
+        if self.tcx().is_doc_hidden(visible_parent) && with_no_visible_paths_if_doc_hidden() {
+            return Ok(false);
+        }
 
         let actual_parent = self.tcx().opt_parent(def_id);
         debug!(
