@@ -285,6 +285,18 @@ fn repr_packed() {
 }
 
 #[test]
+fn multiple_repr_attrs() {
+    size_and_align!(
+        #[repr(C)]
+        #[repr(packed)]
+        struct Goal {
+            id: i32,
+            u: u8,
+        }
+    )
+}
+
+#[test]
 fn generic() {
     size_and_align! {
         struct Pair<A, B>(A, B);
