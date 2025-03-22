@@ -16,8 +16,8 @@ index 7165c3e48af..968552ad435 100644
  
  [dependencies]
  core = { path = "../core", public = true }
--compiler_builtins = { version = "=0.1.151", features = ['rustc-dep-of-std'] }
-+compiler_builtins = { version = "=0.1.151", features = ['rustc-dep-of-std', 'no-f16-f128'] }
+-compiler_builtins = { version = "=0.1.152", features = ['rustc-dep-of-std'] }
++compiler_builtins = { version = "=0.1.152", features = ['rustc-dep-of-std', 'no-f16-f128'] }
  
  [features]
  compiler-builtins-mem = ['compiler_builtins/mem']
