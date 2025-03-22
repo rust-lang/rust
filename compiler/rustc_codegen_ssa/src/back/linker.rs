@@ -1782,7 +1782,10 @@ fn exported_symbols_for_non_proc_macro(tcx: TyCtxt<'_>, crate_type: CrateType) -
     let mut symbols = Vec::new();
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) {
+        // Do not export mangled symbols from cdylibs and don't attempt to export compiler-builtins
+        // from any cdylib. The latter doesn't work anyway as we use hidden visibility for
+        // compiler-builtins. Most linkers silently ignore it, but ld64 gives a warning.
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum) {
             symbols.push(symbol_export::exporting_symbol_name_for_instance_in_crate(
                 tcx, symbol, cnum,
             ));
@@ -1821,7 +1824,9 @@ pub(crate) fn linked_symbols(
 
     let export_threshold = symbol_export::crates_export_threshold(&[crate_type]);
     for_each_exported_symbols_include_dep(tcx, crate_type, |symbol, info, cnum| {
-        if info.level.is_below_threshold(export_threshold) || info.used {
+        if info.level.is_below_threshold(export_threshold) && !tcx.is_compiler_builtins(cnum)
+            || info.used
+        {
             symbols.push((
                 symbol_export::linking_symbol_name_for_instance_in_crate(tcx, symbol, cnum),
                 info.kind,
