@@ -143,6 +143,7 @@ declare_lint_pass! {
         UNUSED_VARIABLES,
         USELESS_DEPRECATED,
         WARNINGS,
+        WASM_C_ABI,
         // tidy-alphabetical-end
     ]
 }
@@ -5082,6 +5083,8 @@ declare_lint! {
     /// }
     /// ```
     ///
+    /// This will produce:
+    ///
     /// ```text
     /// warning: ABI error: this function call uses a avx vector type, which is not enabled in the caller
     ///  --> lint_example.rs:18:12
@@ -5123,5 +5126,48 @@ declare_lint! {
     @future_incompatible = FutureIncompatibleInfo {
         reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
         reference: "issue #116558 <https://github.com/rust-lang/rust/issues/116558>",
+    };
+}
+
+declare_lint! {
+    /// The `wasm_c_abi` lint detects usage of the `extern "C"` ABI of wasm that is affected
+    /// by a planned ABI change that has the goal of aligning Rust with the standard C ABI
+    /// of this target.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs wasm32-unknown-unknown)
+    /// #[repr(C)]
+    /// struct MyType(i32, i32);
+    ///
+    /// extern "C" my_fun(x: MyType) {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: this function function definition is affected by the wasm ABI transition: it passes an argument of non-scalar type `MyType`
+    /// --> $DIR/wasm_c_abi_transition.rs:17:1
+    ///  |
+    ///  | pub extern "C" fn my_fun(_x: MyType) {}
+    ///  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///  |
+    ///  = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///  = note: for more information, see issue #138762 <https://github.com/rust-lang/rust/issues/138762>
+    ///  = help: the "C" ABI Rust uses on wasm32-unknown-unknown will change to align with the standard "C" ABI for this target
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Rust has historically implemented a non-spec-compliant C ABI on wasm32-unknown-unknown. This
+    /// has caused incompatibilities with other compilers and Wasm targets. In a future version
+    /// of Rust, this will be fixed, and therefore code relying on the non-spec-compliant C ABI will
+    /// stop functioning.
+    pub WASM_C_ABI,
+    Warn,
+    "detects code relying on rustc's non-spec-compliant wasm C ABI",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportInDeps,
+        reference: "issue #138762 <https://github.com/rust-lang/rust/issues/138762>",
     };
 }
