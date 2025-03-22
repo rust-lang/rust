@@ -76,7 +76,7 @@ where
     let value = value.try_fold_with(&mut folder)?;
     let goals = folder
         .fulfill_cx
-        .drain_unstalled_obligations(at.infcx)
+        .drain_stalled_obligations_for_coroutines(at.infcx)
         .into_iter()
         .map(|obl| obl.as_goal())
         .collect();
@@ -130,7 +130,7 @@ where
         );
 
         self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-        let errors = self.fulfill_cx.select_all_or_error(infcx);
+        let errors = self.fulfill_cx.select_where_possible(infcx);
         if !errors.is_empty() {
             return Err(errors);
         }
@@ -171,7 +171,7 @@ where
 
         let result = if infcx.predicate_may_hold(&obligation) {
             self.fulfill_cx.register_predicate_obligation(infcx, obligation);
-            let errors = self.fulfill_cx.select_all_or_error(infcx);
+            let errors = self.fulfill_cx.select_where_possible(infcx);
             if !errors.is_empty() {
                 return Err(errors);
             }
@@ -286,27 +286,31 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for DeeplyNormalizeForDiagnosticsFolder<'_, 
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
         let infcx = self.at.infcx;
-        infcx
-            .commit_if_ok(|_| {
-                deeply_normalize_with_skipped_universes(
-                    self.at,
-                    ty,
-                    vec![None; ty.outer_exclusive_binder().as_usize()],
-                )
-            })
-            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ty.super_fold_with(self))
+        let result =
+            infcx.commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes_and_ambiguous_goals::<
+                    _,
+                    ScrubbedTraitError<'tcx>,
+                >(self.at, ty, vec![None; ty.outer_exclusive_binder().as_usize()])
+            });
+        match result {
+            Ok((ty, _)) => ty,
+            Err(_) => ty.super_fold_with(self),
+        }
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
         let infcx = self.at.infcx;
-        infcx
-            .commit_if_ok(|_| {
-                deeply_normalize_with_skipped_universes(
-                    self.at,
-                    ct,
-                    vec![None; ct.outer_exclusive_binder().as_usize()],
-                )
-            })
-            .unwrap_or_else(|_: Vec<ScrubbedTraitError<'tcx>>| ct.super_fold_with(self))
+        let result =
+            infcx.commit_if_ok(|_| {
+                deeply_normalize_with_skipped_universes_and_ambiguous_goals::<
+                    _,
+                    ScrubbedTraitError<'tcx>,
+                >(self.at, ct, vec![None; ct.outer_exclusive_binder().as_usize()])
+            });
+        match result {
+            Ok((ct, _)) => ct,
+            Err(_) => ct.super_fold_with(self),
+        }
     }
 }

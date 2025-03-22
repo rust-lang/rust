@@ -659,10 +659,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             obligations.extend(ok.obligations);
         }
 
-        // FIXME: Use a real visitor for unstalled obligations in the new solver.
         if !coroutines.is_empty() {
-            obligations
-                .extend(self.fulfillment_cx.borrow_mut().drain_unstalled_obligations(&self.infcx));
+            obligations.extend(
+                self.fulfillment_cx
+                    .borrow_mut()
+                    .drain_stalled_obligations_for_coroutines(&self.infcx),
+            );
         }
 
         self.typeck_results
