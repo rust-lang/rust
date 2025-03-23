@@ -36,7 +36,7 @@ pub struct FilePermissions(bool);
 pub struct FileType(bool);
 
 #[derive(Debug)]
-pub struct DirBuilder {}
+pub struct DirBuilder;
 
 impl FileAttr {
     pub fn size(&self) -> u64 {
@@ -248,11 +248,11 @@ impl File {
 
 impl DirBuilder {
     pub fn new() -> DirBuilder {
-        DirBuilder {}
+        DirBuilder
     }
 
-    pub fn mkdir(&self, _p: &Path) -> io::Result<()> {
-        unsupported()
+    pub fn mkdir(&self, p: &Path) -> io::Result<()> {
+        uefi_fs::mkdir(p)
     }
 }
 
@@ -451,5 +451,31 @@ mod uefi_fs {
                 _ => return None,
             }
         }
+    }
+
+    /// An implementation of mkdir to allow creating new directory without having to open the
+    /// volume twice (once for checking and once for creating)
+    pub(crate) fn mkdir(path: &Path) -> io::Result<()> {
+        let absolute = crate::path::absolute(path)?;
+
+        let p = helpers::OwnedDevicePath::from_text(absolute.as_os_str())?;
+        let (vol, mut path_remaining) = File::open_volume_from_device_path(p.borrow())?;
+
+        // Check if file exists
+        match vol.open(&mut path_remaining, file::MODE_READ, 0) {
+            Ok(_) => {
+                return Err(io::Error::new(io::ErrorKind::AlreadyExists, "Path already exists"));
+            }
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+            Err(e) => return Err(e),
+        }
+
+        let _ = vol.open(
+            &mut path_remaining,
+            file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE,
+            file::DIRECTORY,
+        )?;
+
+        Ok(())
     }
 }
