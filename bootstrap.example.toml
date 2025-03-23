@@ -1,7 +1,7 @@
 # Sample TOML configuration file for building Rust.
 #
 # To configure bootstrap, run `./configure` or `./x.py setup`.
-# See https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#create-a-configtoml for more information.
+# See https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html#create-a-bootstraptoml for more information.
 #
 # All options are commented out by default in this file, and they're commented
 # out with their default values. The build system by default looks for
@@ -446,7 +446,7 @@
 # a specific version.
 #ccache = false
 
-# List of paths to exclude from the build and test processes. 
+# List of paths to exclude from the build and test processes.
 # For example, exclude = ["tests/ui", "src/tools/tidy"].
 #exclude = []
 
