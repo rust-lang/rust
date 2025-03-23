@@ -364,6 +364,64 @@ impl<'a> InferenceTable<'a> {
         )
     }
 
+    /// Works almost same as [`Self::normalize_associated_types_in`], but this also resolves shallow
+    /// the inference variables
+    pub(crate) fn eagerly_normalize_and_resolve_shallow_in<T>(&mut self, ty: T) -> T
+    where
+        T: HasInterner<Interner = Interner> + TypeFoldable<Interner>,
+    {
+        fn eagerly_resolve_ty<const N: usize>(
+            table: &mut InferenceTable<'_>,
+            ty: Ty,
+            mut tys: SmallVec<[Ty; N]>,
+        ) -> Ty {
+            if tys.contains(&ty) {
+                return ty;
+            }
+            tys.push(ty.clone());
+
+            match ty.kind(Interner) {
+                TyKind::Alias(AliasTy::Projection(proj_ty)) => {
+                    let ty = table.normalize_projection_ty(proj_ty.clone());
+                    eagerly_resolve_ty(table, ty, tys)
+                }
+                TyKind::InferenceVar(..) => {
+                    let ty = table.resolve_ty_shallow(&ty);
+                    eagerly_resolve_ty(table, ty, tys)
+                }
+                _ => ty,
+            }
+        }
+
+        fold_tys_and_consts(
+            ty,
+            |e, _| match e {
+                Either::Left(ty) => {
+                    Either::Left(eagerly_resolve_ty::<8>(self, ty, SmallVec::new()))
+                }
+                Either::Right(c) => Either::Right(match &c.data(Interner).value {
+                    chalk_ir::ConstValue::Concrete(cc) => match &cc.interned {
+                        crate::ConstScalar::UnevaluatedConst(c_id, subst) => {
+                            // FIXME: same as `normalize_associated_types_in`
+                            if subst.len(Interner) == 0 {
+                                if let Ok(eval) = self.db.const_eval(*c_id, subst.clone(), None) {
+                                    eval
+                                } else {
+                                    unknown_const(c.data(Interner).ty.clone())
+                                }
+                            } else {
+                                unknown_const(c.data(Interner).ty.clone())
+                            }
+                        }
+                        _ => c,
+                    },
+                    _ => c,
+                }),
+            },
+            DebruijnIndex::INNERMOST,
+        )
+    }
+
     pub(crate) fn normalize_projection_ty(&mut self, proj_ty: ProjectionTy) -> Ty {
         let var = self.new_type_var();
         let alias_eq = AliasEq { alias: AliasTy::Projection(proj_ty), ty: var.clone() };
@@ -918,7 +976,26 @@ impl<'a> InferenceTable<'a> {
 
     /// Check if given type is `Sized` or not
     pub(crate) fn is_sized(&mut self, ty: &Ty) -> bool {
+        fn short_circuit_trivial_tys(ty: &Ty) -> Option<bool> {
+            match ty.kind(Interner) {
+                TyKind::Scalar(..)
+                | TyKind::Ref(..)
+                | TyKind::Raw(..)
+                | TyKind::Never
+                | TyKind::FnDef(..)
+                | TyKind::Array(..)
+                | TyKind::Function(..) => Some(true),
+                TyKind::Slice(..) | TyKind::Str | TyKind::Dyn(..) => Some(false),
+                _ => None,
+            }
+        }
+
         let mut ty = ty.clone();
+        ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+        if let Some(sized) = short_circuit_trivial_tys(&ty) {
+            return sized;
+        }
+
         {
             let mut structs = SmallVec::<[_; 8]>::new();
             // Must use a loop here and not recursion because otherwise users will conduct completely
@@ -937,24 +1014,14 @@ impl<'a> InferenceTable<'a> {
                     // Structs can have DST as its last field and such cases are not handled
                     // as unsized by the chalk, so we do this manually.
                     ty = last_field_ty;
+                    ty = self.eagerly_normalize_and_resolve_shallow_in(ty);
+                    if let Some(sized) = short_circuit_trivial_tys(&ty) {
+                        return sized;
+                    }
                 } else {
                     break;
                 };
             }
-        }
-
-        // Early return for some obvious types
-        if matches!(
-            ty.kind(Interner),
-            TyKind::Scalar(..)
-                | TyKind::Ref(..)
-                | TyKind::Raw(..)
-                | TyKind::Never
-                | TyKind::FnDef(..)
-                | TyKind::Array(..)
-                | TyKind::Function(_)
-        ) {
-            return true;
         }
 
         let Some(sized) = self
