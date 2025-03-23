@@ -258,7 +258,7 @@ pub(crate) fn fetch_native_diagnostics(
     for (file_id, group) in odd_ones
         .into_iter()
         .sorted_by_key(|it| it.range.file_id)
-        .group_by(|it| it.range.file_id)
+        .chunk_by(|it| it.range.file_id)
         .into_iter()
     {
         if !subscriptions.contains(&file_id) {

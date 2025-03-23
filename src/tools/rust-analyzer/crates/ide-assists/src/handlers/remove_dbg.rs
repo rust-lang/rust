@@ -74,7 +74,7 @@ fn compute_dbg_replacement(macro_expr: ast::MacroExpr) -> Option<(TextRange, Opt
     }
 
     let mac_input = tt.syntax().children_with_tokens().skip(1).take_while(|it| *it != r_delim);
-    let input_expressions = mac_input.group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = mac_input.chunk_by(|tok| tok.kind() == T![,]);
     let input_expressions = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))

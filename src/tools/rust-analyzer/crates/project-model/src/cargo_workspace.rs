@@ -232,16 +232,20 @@ pub enum TargetKind {
 }
 
 impl TargetKind {
-    fn new(kinds: &[String]) -> TargetKind {
+    fn new(kinds: &[cargo_metadata::TargetKind]) -> TargetKind {
         for kind in kinds {
-            return match kind.as_str() {
-                "bin" => TargetKind::Bin,
-                "test" => TargetKind::Test,
-                "bench" => TargetKind::Bench,
-                "example" => TargetKind::Example,
-                "custom-build" => TargetKind::BuildScript,
-                "proc-macro" => TargetKind::Lib { is_proc_macro: true },
-                _ if kind.contains("lib") => TargetKind::Lib { is_proc_macro: false },
+            return match kind {
+                cargo_metadata::TargetKind::Bin => TargetKind::Bin,
+                cargo_metadata::TargetKind::Test => TargetKind::Test,
+                cargo_metadata::TargetKind::Bench => TargetKind::Bench,
+                cargo_metadata::TargetKind::Example => TargetKind::Example,
+                cargo_metadata::TargetKind::CustomBuild => TargetKind::BuildScript,
+                cargo_metadata::TargetKind::ProcMacro => TargetKind::Lib { is_proc_macro: true },
+                cargo_metadata::TargetKind::Lib
+                | cargo_metadata::TargetKind::DyLib
+                | cargo_metadata::TargetKind::CDyLib
+                | cargo_metadata::TargetKind::StaticLib
+                | cargo_metadata::TargetKind::RLib => TargetKind::Lib { is_proc_macro: false },
                 _ => continue,
             };
         }
@@ -476,7 +480,7 @@ impl CargoWorkspace {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
                 cargo_metadata::Edition::E2021 => Edition::Edition2021,
-                cargo_metadata::Edition::_E2024 => Edition::Edition2024,
+                cargo_metadata::Edition::E2024 => Edition::Edition2024,
                 _ => {
                     tracing::error!("Unsupported edition `{:?}`", edition);
                     Edition::CURRENT

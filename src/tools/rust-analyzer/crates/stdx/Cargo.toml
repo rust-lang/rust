@@ -12,7 +12,7 @@ rust-version.workspace = true
 [lib]
 
 [dependencies]
-backtrace = { version = "0.3.67", optional = true }
+backtrace = { version = "0.3.74", optional = true }
 jod-thread = "0.1.2"
 crossbeam-channel.workspace = true
 itertools.workspace = true

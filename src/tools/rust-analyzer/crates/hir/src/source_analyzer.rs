@@ -929,7 +929,7 @@ impl SourceAnalyzer {
                             // FIXME: Multiple derives can have the same helper
                             let name_ref = name_ref.as_name();
                             for (macro_id, mut helpers) in
-                                helpers.iter().group_by(|(_, macro_id, ..)| macro_id).into_iter()
+                                helpers.iter().chunk_by(|(_, macro_id, ..)| macro_id).into_iter()
                             {
                                 if let Some(idx) = helpers.position(|(name, ..)| *name == name_ref)
                                 {

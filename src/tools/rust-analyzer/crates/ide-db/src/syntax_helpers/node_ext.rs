@@ -484,7 +484,7 @@ pub fn parse_tt_as_comma_sep_paths(
             None => None,
             Some(tok) => Some(tok),
         });
-    let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = tokens.chunk_by(|tok| tok.kind() == T![,]);
     let paths = input_expressions
         .into_iter()
         .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
