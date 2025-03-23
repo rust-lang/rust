@@ -10,7 +10,7 @@ fn demo_le_total(_1: &(u16, i16), _2: &(u16, i16)) -> bool {
             let _8: bool;
             scope 3 {
             }
-            scope 4 (inlined std::cmp::impls::<impl std::cmp::SpecChainingPartialOrd<u16> for u16>::spec_chain_le) {
+            scope 4 (inlined std::cmp::impls::<impl PartialOrd for u16>::__chaining_le) {
                 let mut _3: u16;
                 let mut _4: u16;
                 let mut _5: bool;

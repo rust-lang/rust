@@ -10,7 +10,7 @@ fn demo_ge_partial(_1: &(f32, f32), _2: &(f32, f32)) -> bool {
             let _8: bool;
             scope 3 {
             }
-            scope 4 (inlined std::cmp::impls::<impl std::cmp::SpecChainingPartialOrd<f32> for f32>::spec_chain_ge) {
+            scope 4 (inlined std::cmp::impls::<impl PartialOrd for f32>::__chaining_ge) {
                 let mut _3: f32;
                 let mut _4: f32;
                 let mut _5: bool;

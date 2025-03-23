@@ -29,7 +29,7 @@ mod bytewise;
 pub(crate) use bytewise::BytewiseEq;
 
 use self::Ordering::*;
-use crate::ops::ControlFlow::{self, Break, Continue};
+use crate::ops::ControlFlow;
 
 /// Trait for comparisons using the equality operator.
 ///
@@ -1436,6 +1436,67 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     fn ge(&self, other: &Rhs) -> bool {
         self.partial_cmp(other).is_some_and(Ordering::is_ge)
     }
+
+    /// If `self == other`, returns `ControlFlow::Continue(())`.
+    /// Otherwise, returns `ControlFlow::Break(self < other)`.
+    ///
+    /// This is useful for chaining together calls when implementing a lexical
+    /// `PartialOrd::lt`, as it allows types (like primitives) which can cheaply
+    /// check `==` and `<` separately to do rather than needing to calculate
+    /// (then optimize out) the three-way `Ordering` result.
+    #[inline]
+    #[must_use]
+    // Added to improve the behaviour of tuples; not necessarily stabilization-track.
+    #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
+    #[doc(hidden)]
+    fn __chaining_lt(&self, other: &Rhs) -> ControlFlow<bool> {
+        default_chaining_impl(self, other, Ordering::is_lt)
+    }
+
+    /// Same as `__chaining_lt`, but for `<=` instead of `<`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
+    #[doc(hidden)]
+    fn __chaining_le(&self, other: &Rhs) -> ControlFlow<bool> {
+        default_chaining_impl(self, other, Ordering::is_le)
+    }
+
+    /// Same as `__chaining_lt`, but for `>` instead of `<`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
+    #[doc(hidden)]
+    fn __chaining_gt(&self, other: &Rhs) -> ControlFlow<bool> {
+        default_chaining_impl(self, other, Ordering::is_gt)
+    }
+
+    /// Same as `__chaining_lt`, but for `>=` instead of `<`.
+    #[inline]
+    #[must_use]
+    #[unstable(feature = "partial_ord_chaining_methods", issue = "none")]
+    #[doc(hidden)]
+    fn __chaining_ge(&self, other: &Rhs) -> ControlFlow<bool> {
+        default_chaining_impl(self, other, Ordering::is_ge)
+    }
+}
+
+fn default_chaining_impl<T: ?Sized, U: ?Sized>(
+    lhs: &T,
+    rhs: &U,
+    p: impl FnOnce(Ordering) -> bool,
+) -> ControlFlow<bool>
+where
+    T: PartialOrd<U>,
+{
+    // It's important that this only call `partial_cmp` once, not call `eq` then
+    // one of the relational operators.  We don't want to `bcmp`-then-`memcp` a
+    // `String`, for example, or similarly for other data structures (#108157).
+    match <T as PartialOrd<U>>::partial_cmp(lhs, rhs) {
+        Some(Equal) => ControlFlow::Continue(()),
+        Some(c) => ControlFlow::Break(p(c)),
+        None => ControlFlow::Break(false),
+    }
 }
 
 /// Derive macro generating an impl of the trait [`PartialOrd`].
@@ -1445,54 +1506,6 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 #[allow_internal_unstable(core_intrinsics)]
 pub macro PartialOrd($item:item) {
     /* compiler built-in */
-}
-
-/// Helpers for chaining together field PartialOrds into the full type's ordering.
-///
-/// If the two values are equal, returns `ControlFlow::Continue`.
-/// If the two values are not equal, returns `ControlFlow::Break(self OP other)`.
-///
-/// This allows simple types like `i32` and `f64` to just emit two comparisons
-/// directly, instead of needing to optimize the 3-way comparison.
-///
-/// Currently this is done using specialization, but it doesn't need that:
-/// it could be provided methods on `PartialOrd` instead and work fine.
-pub(crate) trait SpecChainingPartialOrd<Rhs>: PartialOrd<Rhs> {
-    fn spec_chain_lt(&self, other: &Rhs) -> ControlFlow<bool>;
-    fn spec_chain_le(&self, other: &Rhs) -> ControlFlow<bool>;
-    fn spec_chain_gt(&self, other: &Rhs) -> ControlFlow<bool>;
-    fn spec_chain_ge(&self, other: &Rhs) -> ControlFlow<bool>;
-}
-
-impl<T: PartialOrd<U>, U> SpecChainingPartialOrd<U> for T {
-    #[inline]
-    default fn spec_chain_lt(&self, other: &U) -> ControlFlow<bool> {
-        match PartialOrd::partial_cmp(self, other) {
-            Some(Equal) => Continue(()),
-            c => Break(c.is_some_and(Ordering::is_lt)),
-        }
-    }
-    #[inline]
-    default fn spec_chain_le(&self, other: &U) -> ControlFlow<bool> {
-        match PartialOrd::partial_cmp(self, other) {
-            Some(Equal) => Continue(()),
-            c => Break(c.is_some_and(Ordering::is_le)),
-        }
-    }
-    #[inline]
-    default fn spec_chain_gt(&self, other: &U) -> ControlFlow<bool> {
-        match PartialOrd::partial_cmp(self, other) {
-            Some(Equal) => Continue(()),
-            c => Break(c.is_some_and(Ordering::is_gt)),
-        }
-    }
-    #[inline]
-    default fn spec_chain_ge(&self, other: &U) -> ControlFlow<bool> {
-        match PartialOrd::partial_cmp(self, other) {
-            Some(Equal) => Continue(()),
-            c => Break(c.is_some_and(Ordering::is_ge)),
-        }
-    }
 }
 
 /// Compares and returns the minimum of two values.
@@ -1829,32 +1842,31 @@ mod impls {
 
     eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    macro_rules! chaining_impl {
+    macro_rules! chaining_methods_impl {
         ($t:ty) => {
             // These implementations are the same for `Ord` or `PartialOrd` types
             // because if either is NAN the `==` test will fail so we end up in
             // the `Break` case and the comparison will correctly return `false`.
-            impl super::SpecChainingPartialOrd<$t> for $t {
-                #[inline]
-                fn spec_chain_lt(&self, other: &Self) -> ControlFlow<bool> {
-                    let (lhs, rhs) = (*self, *other);
-                    if lhs == rhs { Continue(()) } else { Break(lhs < rhs) }
-                }
-                #[inline]
-                fn spec_chain_le(&self, other: &Self) -> ControlFlow<bool> {
-                    let (lhs, rhs) = (*self, *other);
-                    if lhs == rhs { Continue(()) } else { Break(lhs <= rhs) }
-                }
-                #[inline]
-                fn spec_chain_gt(&self, other: &Self) -> ControlFlow<bool> {
-                    let (lhs, rhs) = (*self, *other);
-                    if lhs == rhs { Continue(()) } else { Break(lhs > rhs) }
-                }
-                #[inline]
-                fn spec_chain_ge(&self, other: &Self) -> ControlFlow<bool> {
-                    let (lhs, rhs) = (*self, *other);
-                    if lhs == rhs { Continue(()) } else { Break(lhs >= rhs) }
-                }
+
+            #[inline]
+            fn __chaining_lt(&self, other: &Self) -> ControlFlow<bool> {
+                let (lhs, rhs) = (*self, *other);
+                if lhs == rhs { Continue(()) } else { Break(lhs < rhs) }
+            }
+            #[inline]
+            fn __chaining_le(&self, other: &Self) -> ControlFlow<bool> {
+                let (lhs, rhs) = (*self, *other);
+                if lhs == rhs { Continue(()) } else { Break(lhs <= rhs) }
+            }
+            #[inline]
+            fn __chaining_gt(&self, other: &Self) -> ControlFlow<bool> {
+                let (lhs, rhs) = (*self, *other);
+                if lhs == rhs { Continue(()) } else { Break(lhs > rhs) }
+            }
+            #[inline]
+            fn __chaining_ge(&self, other: &Self) -> ControlFlow<bool> {
+                let (lhs, rhs) = (*self, *other);
+                if lhs == rhs { Continue(()) } else { Break(lhs >= rhs) }
             }
         };
     }
@@ -1880,9 +1892,9 @@ mod impls {
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
                 #[inline(always)]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
-            }
 
-            chaining_impl!($t);
+                chaining_methods_impl!($t);
+            }
         )*)
     }
 
@@ -1920,9 +1932,9 @@ mod impls {
                 fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
                 #[inline(always)]
                 fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
-            }
 
-            chaining_impl!($t);
+                chaining_methods_impl!($t);
+            }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Ord for $t {

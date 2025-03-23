@@ -1,7 +1,6 @@
 // See core/src/primitive_docs.rs for documentation.
 
 use crate::cmp::Ordering::{self, *};
-use crate::cmp::SpecChainingPartialOrd;
 use crate::marker::{ConstParamTy_, StructuralPartialEq, UnsizedConstParamTy};
 use crate::ops::ControlFlow::{Break, Continue};
 
@@ -82,19 +81,19 @@ macro_rules! tuple_impls {
                 }
                 #[inline]
                 fn lt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(lt, spec_chain_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(lt, __chaining_lt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn le(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(le, spec_chain_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(le, __chaining_le, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn ge(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(ge, spec_chain_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(ge, __chaining_ge, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
                 #[inline]
                 fn gt(&self, other: &($($T,)+)) -> bool {
-                    lexical_ord!(gt, spec_chain_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
+                    lexical_ord!(gt, __chaining_gt, $( ${ignore($T)} self.${index()}, other.${index()} ),+)
                 }
             }
         }
@@ -173,11 +172,11 @@ macro_rules! maybe_tuple_doc {
 // `(a1, a2, a3) < (b1, b2, b3)` would be `lexical_ord!(lt, opt_is_lt, a1, b1,
 // a2, b2, a3, b3)` (and similarly for `lexical_cmp`)
 //
-// `$chain_rel` is the method from `SpecChainingPartialOrd` to use for all but the
+// `$chain_rel` is the chaining method from `PartialOrd` to use for all but the
 // final value, to produce better results for simple primitives.
 macro_rules! lexical_ord {
     ($rel: ident, $chain_rel: ident, $a:expr, $b:expr, $($rest_a:expr, $rest_b:expr),+) => {{
-        match SpecChainingPartialOrd::$chain_rel(&$a, &$b) {
+        match PartialOrd::$chain_rel(&$a, &$b) {
             Break(val) => val,
             Continue(()) => lexical_ord!($rel, $chain_rel, $($rest_a, $rest_b),+),
         }
