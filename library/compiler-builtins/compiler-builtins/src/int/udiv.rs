@@ -17,8 +17,10 @@ intrinsics! {
     pub extern "C" fn __umodsi3(n: u32, d: u32) -> u32 {
         u32_div_rem(n, d).1
     }
+}
 
-    #[avr_skip]
+#[cfg(not(target_arch = "avr"))]
+intrinsics! {
     #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodsi4(n: u32, d: u32, rem: Option<&mut u32>) -> u32 {
@@ -28,22 +30,34 @@ intrinsics! {
         }
         quo_rem.0
     }
+}
 
-    #[avr_skip]
+#[cfg(target_arch = "avr")]
+intrinsics! {
+    /// Returns `n / d` and `n % d` packed together.
+    ///
+    /// Ideally we'd use `-> (u32, u32)` or some kind of a packed struct, but
+    /// both force a stack allocation, while our result has to be in R18:R26.
+    pub extern "C" fn __udivmodsi4(n: u32, d: u32) -> u64 {
+        let (div, rem) = u32_div_rem(n, d);
+
+        ((rem as u64) << 32) | (div as u64)
+    }
+}
+
+intrinsics! {
     #[maybe_use_optimized_c_shim]
     /// Returns `n / d`
     pub extern "C" fn __udivdi3(n: u64, d: u64) -> u64 {
         u64_div_rem(n, d).0
     }
 
-    #[avr_skip]
     #[maybe_use_optimized_c_shim]
     /// Returns `n % d`
     pub extern "C" fn __umoddi3(n: u64, d: u64) -> u64 {
         u64_div_rem(n, d).1
     }
 
-    #[avr_skip]
     #[maybe_use_optimized_c_shim]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmoddi4(n: u64, d: u64, rem: Option<&mut u64>) -> u64 {
@@ -57,7 +71,6 @@ intrinsics! {
     // Note: we use block configuration and not `if cfg!(...)`, because we need to entirely disable
     // the existence of `u128_div_rem` to get 32-bit SPARC to compile, see `u128_divide_sparc` docs.
 
-    #[avr_skip]
     /// Returns `n / d`
     pub extern "C" fn __udivti3(n: u128, d: u128) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {
@@ -68,7 +81,6 @@ intrinsics! {
         }
     }
 
-    #[avr_skip]
     /// Returns `n % d`
     pub extern "C" fn __umodti3(n: u128, d: u128) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {
@@ -81,7 +93,6 @@ intrinsics! {
         }
     }
 
-    #[avr_skip]
     /// Returns `n / d` and sets `*rem = n % d`
     pub extern "C" fn __udivmodti4(n: u128, d: u128, rem: Option<&mut u128>) -> u128 {
         #[cfg(not(any(target_arch = "sparc", target_arch = "sparc64")))] {

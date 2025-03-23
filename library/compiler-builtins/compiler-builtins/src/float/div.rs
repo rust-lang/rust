@@ -606,19 +606,16 @@ where
 }
 
 intrinsics! {
-    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_fdiv]
     pub extern "C" fn __divsf3(a: f32, b: f32) -> f32 {
         div(a, b)
     }
 
-    #[avr_skip]
     #[arm_aeabi_alias = __aeabi_ddiv]
     pub extern "C" fn __divdf3(a: f64, b: f64) -> f64 {
         div(a, b)
     }
 
-    #[avr_skip]
     #[ppc_alias = __divkf3]
     #[cfg(f128_enabled)]
     pub extern "C" fn __divtf3(a: f128, b: f128) -> f128 {

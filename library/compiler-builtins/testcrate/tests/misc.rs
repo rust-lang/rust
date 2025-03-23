@@ -175,7 +175,6 @@ fn trailing_zeros() {
 }
 
 #[test]
-#[cfg(not(target_arch = "avr"))]
 fn bswap() {
     use compiler_builtins::int::bswap::{__bswapdi2, __bswapsi2};
     fuzz(N, |x: u32| {

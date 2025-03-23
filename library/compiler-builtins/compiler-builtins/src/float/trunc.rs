@@ -115,7 +115,6 @@ where
 }
 
 intrinsics! {
-    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_d2f]
     pub extern "C" fn __truncdfsf2(a: f64) -> f32 {
@@ -124,7 +123,6 @@ intrinsics! {
 }
 
 intrinsics! {
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_ret_abi]
     #[arm_aeabi_alias = __aeabi_f2h]
@@ -133,7 +131,6 @@ intrinsics! {
         trunc(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_ret_abi]
     #[cfg(f16_enabled)]
@@ -141,7 +138,6 @@ intrinsics! {
         trunc(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_ret_abi]
     #[arm_aeabi_alias = __aeabi_d2h]
@@ -150,7 +146,6 @@ intrinsics! {
         trunc(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfhf2]
     #[cfg(all(f16_enabled, f128_enabled))]
@@ -158,7 +153,6 @@ intrinsics! {
         trunc(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfsf2]
     #[cfg(f128_enabled)]
@@ -166,7 +160,6 @@ intrinsics! {
         trunc(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __trunckfdf2]
     #[cfg(f128_enabled)]

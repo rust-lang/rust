@@ -70,7 +70,6 @@ where
 }
 
 intrinsics! {
-    #[avr_skip]
     #[aapcs_on_arm]
     #[arm_aeabi_alias = __aeabi_f2d]
     pub extern "C" fn  __extendsfdf2(a: f32) -> f64 {
@@ -79,7 +78,6 @@ intrinsics! {
 }
 
 intrinsics! {
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_arg_abi]
     #[arm_aeabi_alias = __aeabi_h2f]
@@ -88,7 +86,6 @@ intrinsics! {
         extend(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_arg_abi]
     #[cfg(f16_enabled)]
@@ -96,7 +93,6 @@ intrinsics! {
         extend(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[apple_f16_arg_abi]
     #[cfg(f16_enabled)]
@@ -104,7 +100,6 @@ intrinsics! {
         extend(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __extendhfkf2]
     #[cfg(all(f16_enabled, f128_enabled))]
@@ -112,7 +107,6 @@ intrinsics! {
         extend(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __extendsfkf2]
     #[cfg(f128_enabled)]
@@ -120,7 +114,6 @@ intrinsics! {
         extend(a)
     }
 
-    #[avr_skip]
     #[aapcs_on_arm]
     #[ppc_alias = __extenddfkf2]
     #[cfg(f128_enabled)]

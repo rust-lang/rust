@@ -26,17 +26,14 @@ fn pow<F: Float>(a: F, b: i32) -> F {
 }
 
 intrinsics! {
-    #[avr_skip]
     pub extern "C" fn __powisf2(a: f32, b: i32) -> f32 {
         pow(a, b)
     }
 
-    #[avr_skip]
     pub extern "C" fn __powidf2(a: f64, b: i32) -> f64 {
         pow(a, b)
     }
 
-    #[avr_skip]
     #[ppc_alias = __powikf2]
     #[cfg(f128_enabled)]
     // FIXME(f16_f128): MSVC cannot build these until `__divtf3` is available in nightly.
