@@ -668,7 +668,7 @@ impl<'a> Parser<'a> {
         &mut self,
         loop_header: Option<Span>,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
-        self.parse_block_common(self.token.span, BlockCheckMode::Default, true, loop_header)
+        self.parse_block_common(self.token.span, BlockCheckMode::Default, loop_header)
     }
 
     /// Parses a block. Inner attributes are allowed, block labels are not.
@@ -679,7 +679,6 @@ impl<'a> Parser<'a> {
         &mut self,
         lo: Span,
         blk_mode: BlockCheckMode,
-        can_be_struct_literal: bool,
         loop_header: Option<Span>,
     ) -> PResult<'a, (AttrVec, P<Block>)> {
         maybe_whole!(self, NtBlock, |block| (AttrVec::new(), block));
@@ -691,12 +690,7 @@ impl<'a> Parser<'a> {
         }
 
         let attrs = self.parse_inner_attributes()?;
-        let tail = match self.maybe_suggest_struct_literal(
-            lo,
-            blk_mode,
-            maybe_ident,
-            can_be_struct_literal,
-        ) {
+        let tail = match self.maybe_suggest_struct_literal(lo, blk_mode, maybe_ident) {
             Some(tail) => tail?,
             None => self.parse_block_tail(lo, blk_mode, AttemptLocalParseRecovery::Yes)?,
         };
