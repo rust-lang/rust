@@ -63,7 +63,7 @@ pub(super) fn token(
 
 pub(super) fn name_like(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
     syntactic_name_ref_highlighting: bool,
@@ -272,7 +272,7 @@ fn keyword(token: SyntaxToken, kind: SyntaxKind) -> Highlight {
 
 fn highlight_name_ref(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
@@ -401,9 +401,10 @@ fn highlight_name_ref(
         NameRefClass::ExternCrateShorthand { decl, krate: resolved_krate } => {
             let mut h = HlTag::Symbol(SymbolKind::Module).into();
 
-            if resolved_krate != krate {
-                h |= HlMod::Library
+            if krate.as_ref().is_some_and(|krate| resolved_krate != *krate) {
+                h |= HlMod::Library;
             }
+
             let is_public = decl.visibility(db) == hir::Visibility::Public;
             if is_public {
                 h |= HlMod::Public
@@ -431,7 +432,7 @@ fn highlight_name(
     bindings_shadow_count: Option<&mut FxHashMap<hir::Name, u32>>,
     binding_hash: &mut Option<u64>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     name: ast::Name,
     edition: Edition,
 ) -> Highlight {
@@ -476,7 +477,7 @@ fn calc_binding_hash(name: &hir::Name, shadow_count: u32) -> u64 {
 
 pub(super) fn highlight_def(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     def: Definition,
     edition: Edition,
     is_ref: bool,
@@ -660,7 +661,7 @@ pub(super) fn highlight_def(
     };
 
     let def_crate = def.krate(db);
-    let is_from_other_crate = def_crate != Some(krate);
+    let is_from_other_crate = def_crate != krate;
     let is_from_builtin_crate = def_crate.is_some_and(|def_crate| def_crate.is_builtin(db));
     let is_builtin = matches!(
         def,
@@ -681,7 +682,7 @@ pub(super) fn highlight_def(
 
 fn highlight_method_call_by_name_ref(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     name_ref: &ast::NameRef,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Option<Highlight> {
@@ -691,7 +692,7 @@ fn highlight_method_call_by_name_ref(
 
 fn highlight_method_call(
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     method_call: &ast::MethodCallExpr,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Option<Highlight> {
@@ -718,7 +719,7 @@ fn highlight_method_call(
     }
 
     let def_crate = func.module(sema.db).krate();
-    let is_from_other_crate = def_crate != krate;
+    let is_from_other_crate = krate.as_ref().map_or(false, |krate| def_crate != *krate);
     let is_from_builtin_crate = def_crate.is_builtin(sema.db);
     let is_public = func.visibility(sema.db) == hir::Visibility::Public;
 
@@ -791,7 +792,7 @@ fn highlight_name_by_syntax(name: ast::Name) -> Highlight {
 fn highlight_name_ref_by_syntax(
     name: ast::NameRef,
     sema: &Semantics<'_, RootDatabase>,
-    krate: hir::Crate,
+    krate: Option<hir::Crate>,
     is_unsafe_node: &impl Fn(AstPtr<Either<ast::Expr, ast::Pat>>) -> bool,
 ) -> Highlight {
     let default = HlTag::UnresolvedReference;

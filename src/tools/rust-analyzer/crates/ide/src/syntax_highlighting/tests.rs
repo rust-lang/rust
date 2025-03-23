@@ -1420,3 +1420,18 @@ fn template() {}
         false,
     );
 }
+
+#[test]
+fn issue_19357() {
+    check_highlighting(
+        r#"
+//- /foo.rs
+fn main() {
+    let x = &raw mut 5;
+}
+//- /main.rs
+"#,
+        expect_file!["./test_data/highlight_issue_19357.html"],
+        false,
+    );
+}
