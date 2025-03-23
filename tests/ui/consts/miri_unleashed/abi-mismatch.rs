@@ -13,3 +13,5 @@ static VAL: () = call_rust_fn(unsafe { std::mem::transmute(c_fn as extern "C" fn
 //~| NOTE calling a function with calling convention C using calling convention Rust
 
 fn main() {}
+
+//~? WARN skipping const checks

@@ -5,3 +5,5 @@
 // the path of the dylib.
 
 fn main() {}
+
+//~? ERROR couldn't load codegen backend /non-existing-one.so

@@ -6,3 +6,6 @@
 include!("auxiliary/issue-94340-inc.rs");
 
 fn main() {}
+
+//~? ERROR an inner attribute is not permitted in this context
+//~? ERROR an inner attribute is not permitted in this context

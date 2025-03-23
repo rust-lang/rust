@@ -9,8 +9,6 @@ use std::sync::OnceLock;
 use regex::Regex;
 use tracing::*;
 
-use self::WhichLine::*;
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ErrorKind {
     Help,
@@ -50,7 +48,7 @@ impl fmt::Display for ErrorKind {
 
 #[derive(Debug)]
 pub struct Error {
-    pub line_num: usize,
+    pub line_num: Option<usize>,
     /// What kind of message we expect (e.g., warning, error, suggestion).
     /// `None` if not specified or unknown message kind.
     pub kind: Option<ErrorKind>,
@@ -63,17 +61,14 @@ impl Error {
         format!(
             "{: <10}line {: >3}: {}",
             self.kind.map(|kind| kind.to_string()).unwrap_or_default().to_uppercase(),
-            self.line_num,
+            self.line_num_str(),
             self.msg.cyan(),
         )
     }
-}
 
-#[derive(PartialEq, Debug)]
-enum WhichLine {
-    ThisLine,
-    FollowPrevious(usize),
-    AdjustBackward(usize),
+    pub fn line_num_str(&self) -> String {
+        self.line_num.map_or("?".to_string(), |line_num| line_num.to_string())
+    }
 }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"
@@ -105,12 +100,10 @@ pub fn load_errors(testfile: &Path, revision: Option<&str>) -> Vec<Error> {
         .filter(|(_, line)| line.is_ok())
         .filter_map(|(line_num, line)| {
             parse_expected(last_nonfollow_error, line_num + 1, &line.unwrap(), revision).map(
-                |(which, error)| {
-                    match which {
-                        FollowPrevious(_) => {}
-                        _ => last_nonfollow_error = Some(error.line_num),
+                |(follow_prev, error)| {
+                    if !follow_prev {
+                        last_nonfollow_error = error.line_num;
                     }
-
                     error
                 },
             )
@@ -123,18 +116,19 @@ fn parse_expected(
     line_num: usize,
     line: &str,
     test_revision: Option<&str>,
-) -> Option<(WhichLine, Error)> {
+) -> Option<(bool, Error)> {
     // Matches comments like:
     //     //~
     //     //~|
     //     //~^
     //     //~^^^^^
+    //     //~?
     //     //[rev1]~
     //     //[rev1,rev2]~^^
     static RE: OnceLock<Regex> = OnceLock::new();
 
     let captures = RE
-        .get_or_init(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\||\^*)").unwrap())
+        .get_or_init(|| Regex::new(r"//(?:\[(?P<revs>[\w\-,]+)])?~(?P<adjust>\?|\||\^*)").unwrap())
         .captures(line)?;
 
     match (test_revision, captures.name("revs")) {
@@ -151,11 +145,6 @@ fn parse_expected(
         (Some(_), None) | (None, None) => {}
     }
 
-    let (follow, adjusts) = match &captures["adjust"] {
-        "|" => (true, 0),
-        circumflexes => (false, circumflexes.len()),
-    };
-
     // Get the part of the comment after the sigil (e.g. `~^^` or ~|).
     let whole_match = captures.get(0).unwrap();
     let (_, mut msg) = line.split_at(whole_match.end());
@@ -170,28 +159,24 @@ fn parse_expected(
 
     let msg = msg.trim().to_owned();
 
-    let (which, line_num) = if follow {
-        assert_eq!(adjusts, 0, "use either //~| or //~^, not both.");
-        let line_num = last_nonfollow_error.expect(
-            "encountered //~| without \
-             preceding //~^ line.",
-        );
-        (FollowPrevious(line_num), line_num)
+    let line_num_adjust = &captures["adjust"];
+    let (follow_prev, line_num) = if line_num_adjust == "|" {
+        (true, Some(last_nonfollow_error.expect("encountered //~| without preceding //~^ line")))
+    } else if line_num_adjust == "?" {
+        (false, None)
     } else {
-        let which = if adjusts > 0 { AdjustBackward(adjusts) } else { ThisLine };
-        let line_num = line_num - adjusts;
-        (which, line_num)
+        (false, Some(line_num - line_num_adjust.len()))
     };
 
     debug!(
-        "line={} tag={:?} which={:?} kind={:?} msg={:?}",
+        "line={:?} tag={:?} follow_prev={:?} kind={:?} msg={:?}",
         line_num,
         whole_match.as_str(),
-        which,
+        follow_prev,
         kind,
         msg
     );
-    Some((which, Error { line_num, kind, msg }))
+    Some((follow_prev, Error { line_num, kind, msg }))
 }
 
 #[cfg(test)]

@@ -58,3 +58,8 @@ pub fn main() {
 global_asm!(".intel_syntax noprefix", "nop");
 //[x86_64]~^ WARN avoid using `.intel_syntax`
 // Global assembly errors don't have line numbers, so no error on ARM.
+
+//[arm_llvm_18]~? ERROR unknown directive
+//[arm_llvm_18]~? ERROR unknown directive
+//[arm]~? ERROR unknown directive
+//[arm]~? ERROR unknown directive

@@ -8,3 +8,6 @@
 // ignore-tidy-linelength
 
 fn main() {}
+
+//[one]~? ERROR some `-C link-self-contained` components were both enabled and disabled: linker
+//[many]~? ERROR some `-C link-self-contained` components were both enabled and disabled: crto, linker
