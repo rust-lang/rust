@@ -3291,7 +3291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self, handle_candidates))]
     fn suggest_use_candidates<F>(&self, candidates: Vec<DefId>, handle_candidates: F)
     where
         F: FnOnce(Vec<String>, Vec<String>, Span),

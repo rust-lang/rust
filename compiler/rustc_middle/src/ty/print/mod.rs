@@ -6,6 +6,7 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
+#[allow(unused_imports)]
 use tracing::{debug, instrument, trace};
 
 use crate::ty::{self, GenericArg, ShortInstance, Ty, TyCtxt};
@@ -111,14 +112,14 @@ pub trait Printer<'tcx>: Sized {
 
     // Defaults (should not be overridden):
 
-    #[instrument(skip(self), level = "debug")]
+    // #[instrument(skip(self), level = "debug")]
     fn default_print_def_path(
         &mut self,
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
         let key = self.tcx().def_key(def_id);
-        debug!(?key);
+        // debug!(?key);
 
         match key.disambiguated_data.data {
             DefPathData::CrateRoot => {
@@ -207,10 +208,10 @@ pub trait Printer<'tcx>: Sized {
         self_ty: Ty<'tcx>,
         impl_trait_ref: Option<ty::TraitRef<'tcx>>,
     ) -> Result<(), PrintError> {
-        debug!(
-            "default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
-            impl_def_id, self_ty, impl_trait_ref
-        );
+        // debug!(
+        //     "default_print_impl_path: impl_def_id={:?}, self_ty={}, impl_trait_ref={:?}",
+        //     impl_def_id, self_ty, impl_trait_ref
+        // );
 
         let key = self.tcx().def_key(impl_def_id);
         let parent_def_id = DefId { index: key.parent.unwrap(), ..impl_def_id };

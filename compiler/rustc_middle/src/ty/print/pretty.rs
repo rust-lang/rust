@@ -370,6 +370,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     /// from at least one local module, and returns `true`. If the crate defining `def_id` is
     /// declared with an `extern crate`, the path is guaranteed to use the `extern crate`.
     fn try_print_visible_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
+        debug!("try_print_visible_def_path: def_id={:?}", def_id);
         if with_no_visible_paths() {
             return Ok(false);
         }
@@ -488,7 +489,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         def_id: DefId,
         callers: &mut Vec<DefId>,
     ) -> Result<bool, PrintError> {
-        debug!("try_print_visible_def_path: def_id={:?}", def_id);
+        // debug!("try_print_visible_def_path: def_id={:?}", def_id);
 
         // If `def_id` is a direct or injected extern crate, return the
         // path to the crate followed by the path to the item within the crate.
@@ -551,7 +552,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         let visible_parent_map = self.tcx().visible_parent_map(());
 
         let mut cur_def_key = self.tcx().def_key(def_id);
-        debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
+        // debug!("try_print_visible_def_path: cur_def_key={:?}", cur_def_key);
 
         // For a constructor, we want the name of its parent rather than <unnamed>.
         if let DefPathData::Ctor = cur_def_key.disambiguated_data.data {
@@ -566,20 +567,21 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
         }
 
         let Some(visible_parent) = visible_parent_map.get(&def_id).cloned() else {
+            debug!("try_print_visible_def_path: no visible parent for {:?}", def_id);
             return Ok(false);
         };
 
         let actual_parent = self.tcx().opt_parent(def_id);
-        debug!(
-            "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
-            visible_parent, actual_parent,
-        );
+        // debug!(
+        //     "try_print_visible_def_path: visible_parent={:?} actual_parent={:?}",
+        //     visible_parent, actual_parent,
+        // );
 
         let mut data = cur_def_key.disambiguated_data.data;
-        debug!(
-            "try_print_visible_def_path: data={:?} visible_parent={:?} actual_parent={:?}",
-            data, visible_parent, actual_parent,
-        );
+        // debug!(
+        //     "try_print_visible_def_path: data={:?} visible_parent={:?} actual_parent={:?}",
+        //     data, visible_parent, actual_parent,
+        // );
 
         match data {
             // In order to output a path that could actually be imported (valid and visible),
@@ -616,6 +618,10 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             DefPathData::TypeNs(Some(ref mut name)) if Some(visible_parent) != actual_parent => {
                 // Item might be re-exported several times, but filter for the one
                 // that's public and whose identifier isn't `_`.
+                debug!(
+                    "try_print_visible_def_path: def_id={:?}, visible_parent={:?}, actual_parent={:?}",
+                    def_id, visible_parent, actual_parent
+                );
                 let reexport = self
                     .tcx()
                     // FIXME(typed_def_id): Further propagate ModDefId
@@ -624,6 +630,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
                     .filter(|child| child.res.opt_def_id() == Some(def_id))
                     .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
                     .map(|child| child.ident.name);
+                debug!("try_print_visible_def_path: reexport={:?}", reexport);
 
                 if let Some(new_name) = reexport {
                     *name = new_name;
@@ -638,7 +645,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
             }
             _ => {}
         }
-        debug!("try_print_visible_def_path: data={:?}", data);
+        // debug!("try_print_visible_def_path: data={:?}", data);
 
         if callers.contains(&visible_parent) {
             return Ok(false);
@@ -2185,7 +2192,7 @@ impl<'t> TyCtxt<'t> {
     ) -> String {
         let def_id = def_id.into_query_param();
         let ns = guess_def_namespace(self, def_id);
-        debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
+        // debug!("def_path_str: def_id={:?}, ns={:?}", def_id, ns);
 
         FmtPrinter::print_string(self, ns, |cx| cx.print_def_path(def_id, args)).unwrap()
     }
