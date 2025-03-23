@@ -1,0 +1,38 @@
+error[E0658]: inner macro attributes are unstable
+  --> $DIR/attribute-affected-trait-bound-issue-137129.rs:4:4
+   |
+LL | #![core::contracts::ensures]
+   |    ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54726 <https://github.com/rust-lang/rust/issues/54726> for more information
+   = help: add `#![feature(custom_inner_attributes)]` to the crate attributes to enable
+   = note: this compiler was built on YYYY-MM-DD; consider upgrading it if it is out of date
+
+error: contract annotations can only be used on functions
+  --> $DIR/attribute-affected-trait-bound-issue-137129.rs:4:1
+   |
+LL | #![core::contracts::ensures]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: the feature `contracts` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/attribute-affected-trait-bound-issue-137129.rs:1:12
+   |
+LL | #![feature(contracts)]
+   |            ^^^^^^^^^
+   |
+   = note: see issue #128044 <https://github.com/rust-lang/rust/issues/128044> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error: `#[panic_handler]` function required, but not found
+
+error: unwinding panics are not supported without std
+   |
+   = help: using nightly cargo, use -Zbuild-std with panic="abort" to avoid unwinding
+   = note: since the core library is usually precompiled with panic="unwind", rebuilding your crate with panic="abort" may not be enough to fix the problem
+
+error[E0601]: `main` function not found in crate `attribute_affected_trait_bound_issue_137129`
+
+error: aborting due to 5 previous errors; 1 warning emitted
+
+Some errors have detailed explanations: E0601, E0658.
+For more information about an error, try `rustc --explain E0601`.
