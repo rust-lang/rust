@@ -49,6 +49,7 @@ error: error reading Clippy's configuration file: unknown field `foobar`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -142,6 +143,7 @@ error: error reading Clippy's configuration file: unknown field `barfoo`, expect
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else
@@ -235,6 +237,7 @@ error: error reading Clippy's configuration file: unknown field `allow_mixed_uni
            future-size-threshold
            ignore-interior-mutability
            large-error-threshold
+           lint-commented-code
            lint-inconsistent-struct-field-initializers
            literal-representation-threshold
            matches-for-let-else

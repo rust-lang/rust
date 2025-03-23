@@ -83,27 +83,6 @@ fn main() {
         assert!(true); // assert! is just an `if`
     }
 
-
-    // The following tests check for the fix of https://github.com/rust-lang/rust-clippy/issues/798
-    if x == "hello" {// Not collapsible
-        if y == "world" {
-            println!("Hello world!");
-        }
-    }
-
-    if x == "hello" { // Not collapsible
-        if y == "world" {
-            println!("Hello world!");
-        }
-    }
-
-    if x == "hello" {
-        // Not collapsible
-        if y == "world" {
-            println!("Hello world!");
-        }
-    }
-
     if x == "hello" {
         if y == "world" { // Collapsible
             println!("Hello world!");
@@ -115,7 +94,7 @@ fn main() {
         print!("Hello ");
     } else {
         // Not collapsible
-        if y == "world" {
+        if let Some(42) = Some(42) {
             println!("world!")
         }
     }
@@ -124,21 +103,8 @@ fn main() {
         print!("Hello ");
     } else {
         // Not collapsible
-        if let Some(42) = Some(42) {
+        if y == "world" {
             println!("world!")
-        }
-    }
-
-    if x == "hello" {
-        /* Not collapsible */
-        if y == "world" {
-            println!("Hello world!");
-        }
-    }
-
-    if x == "hello" { /* Not collapsible */
-        if y == "world" {
-            println!("Hello world!");
         }
     }
 
@@ -177,6 +143,20 @@ fn main() {
 
     if true {
         #[cfg(not(teehee))]
+        if true {
+            println!("Hello world!");
+        }
+    }
+
+    if true {
+        if true {
+            println!("No comment, linted");
+        }
+    }
+    //~^^^^^ collapsible_if
+
+    if true {
+        // Do not collapse because of this comment
         if true {
             println!("Hello world!");
         }
