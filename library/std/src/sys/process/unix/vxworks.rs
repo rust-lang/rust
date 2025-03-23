@@ -1,11 +1,11 @@
 #![forbid(unsafe_op_in_unsafe_fn)]
 use libc::{self, RTP_ID, c_char, c_int};
 
+use super::common::*;
 use crate::io::{self, ErrorKind};
 use crate::num::NonZero;
 use crate::sys::cvt;
-use crate::sys::pal::unix::thread;
-use crate::sys::process::process_common::*;
+use crate::sys::pal::thread;
 use crate::{fmt, sys};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -200,7 +200,7 @@ impl ExitStatus {
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
-        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
+        // unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero::try_from(self.0) {
             Ok(failure) => Err(ExitStatusError(failure)),
             Err(_) => Ok(()),

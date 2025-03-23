@@ -1,12 +1,13 @@
 use r_efi::protocols::simple_text_output;
 
-use super::helpers;
 use crate::collections::BTreeMap;
 pub use crate::ffi::OsString as EnvKey;
 use crate::ffi::{OsStr, OsString};
 use crate::num::{NonZero, NonZeroI32};
 use crate::path::Path;
 use crate::sys::fs::File;
+use crate::sys::pal::helpers;
+use crate::sys::pal::os::error_string;
 use crate::sys::pipe::AnonPipe;
 use crate::sys::unsupported;
 use crate::sys_common::process::{CommandEnv, CommandEnvs};
@@ -225,7 +226,7 @@ impl ExitStatus {
 
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = super::os::error_string(self.0.as_usize());
+        let err_str = error_string(self.0.as_usize());
         write!(f, "{}", err_str)
     }
 }
@@ -241,7 +242,7 @@ pub struct ExitStatusError(r_efi::efi::Status);
 
 impl fmt::Debug for ExitStatusError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let err_str = super::os::error_string(self.0.as_usize());
+        let err_str = error_string(self.0.as_usize());
         write!(f, "{}", err_str)
     }
 }
@@ -335,7 +336,6 @@ impl<'a> fmt::Debug for CommandArgs<'a> {
 mod uefi_command_internal {
     use r_efi::protocols::{loaded_image, simple_text_output};
 
-    use super::super::helpers;
     use crate::ffi::{OsStr, OsString};
     use crate::io::{self, const_error};
     use crate::mem::MaybeUninit;
@@ -343,7 +343,7 @@ mod uefi_command_internal {
     use crate::os::uefi::ffi::{OsStrExt, OsStringExt};
     use crate::ptr::NonNull;
     use crate::slice;
-    use crate::sys::pal::uefi::helpers::OwnedTable;
+    use crate::sys::pal::helpers::{self, OwnedTable};
     use crate::sys_common::wstr::WStrUnits;
 
     pub struct Image {

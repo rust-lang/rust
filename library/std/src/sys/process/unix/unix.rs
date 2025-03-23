@@ -10,12 +10,12 @@ use libc::{c_int, pid_t};
 )))]
 use libc::{gid_t, uid_t};
 
+use super::common::*;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZero;
 use crate::sys::cvt;
 #[cfg(target_os = "linux")]
-use crate::sys::pal::unix::linux::pidfd::PidFd;
-use crate::sys::process::process_common::*;
+use crate::sys::pal::linux::pidfd::PidFd;
 use crate::{fmt, mem, sys};
 
 cfg_if::cfg_if! {
@@ -1051,7 +1051,7 @@ impl ExitStatus {
         // true on all actual versions of Unix, is widely assumed, and is specified in SuS
         // https://pubs.opengroup.org/onlinepubs/9699919799/functions/wait.html. If it is not
         // true for a platform pretending to be Unix, the tests (our doctests, and also
-        // process_unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
+        // unix/tests.rs) will spot it. `ExitStatusError::code` assumes this too.
         match NonZero::try_from(self.0) {
             /* was nonzero */ Ok(failure) => Err(ExitStatusError(failure)),
             /* was zero, couldn't convert */ Err(_) => Ok(()),
@@ -1232,10 +1232,9 @@ impl ExitStatusError {
 
 #[cfg(target_os = "linux")]
 mod linux_child_ext {
-
+    use crate::io::ErrorKind;
     use crate::os::linux::process as os;
-    use crate::sys::pal::unix::ErrorKind;
-    use crate::sys::pal::unix::linux::pidfd as imp;
+    use crate::sys::pal::linux::pidfd as imp;
     use crate::sys_common::FromInner;
     use crate::{io, mem};
 
@@ -1261,10 +1260,9 @@ mod linux_child_ext {
 }
 
 #[cfg(test)]
-#[path = "process_unix/tests.rs"]
 mod tests;
 
-// See [`process_unsupported_wait_status::compare_with_linux`];
+// See [`unsupported_wait_status::compare_with_linux`];
 #[cfg(all(test, target_os = "linux"))]
-#[path = "process_unsupported/wait_status.rs"]
-mod process_unsupported_wait_status;
+#[path = "unsupported/wait_status.rs"]
+mod unsupported_wait_status;
