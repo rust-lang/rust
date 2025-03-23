@@ -10,7 +10,7 @@ use crate::crate_def::{CrateDef, CrateDefItems, CrateDefType};
 use crate::mir::alloc::{AllocId, read_target_int, read_target_uint};
 use crate::mir::mono::StaticDef;
 use crate::target::MachineInfo;
-use crate::{Filename, Opaque};
+use crate::{AssocItems, Filename, Opaque};
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash, Serialize)]
 pub struct Ty(usize);
@@ -777,7 +777,7 @@ impl CrateDefItems for AdtDef {
     fn associated_items(&self) -> AssocItems {
         match &self.kind() {
             AdtKind::Enum | AdtKind::Struct => with(|cx| cx.associated_items(self.def_id())),
-            AdtKind::Union => AssocItems { items: Vec::new() },
+            AdtKind::Union => Vec::new(),
         }
     }
 }
@@ -1572,11 +1572,6 @@ index_impl!(Span);
 pub struct VariantIdx(usize);
 
 index_impl!(VariantIdx);
-
-#[derive(Clone, Debug, Eq, PartialEq, Serialize)]
-pub struct AssocItems {
-    pub items: Vec<(Symbol, AssocItem)>,
-}
 
 crate_def! {
     /// Hold infomation about an Opaque definition, particularly useful in `RPITIT`.

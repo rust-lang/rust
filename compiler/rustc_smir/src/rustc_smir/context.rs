@@ -823,23 +823,17 @@ impl<'tcx> Context for TablesWrapper<'tcx> {
         ty.stable(&mut *tables)
     }
 
-    fn associated_items(&self, def_id: stable_mir::DefId) -> stable_mir::ty::AssocItems {
+    fn associated_items(&self, def_id: stable_mir::DefId) -> stable_mir::AssocItems {
         let mut tables = self.0.borrow_mut();
         let tcx = tables.tcx;
         let def_id = tables[def_id];
         let assoc_items = if tcx.is_trait_alias(def_id) {
-            stable_mir::ty::AssocItems { items: Vec::new() }
+            Vec::new()
         } else {
-            let items: Vec<(Symbol, stable_mir::ty::AssocItem)> = tcx
-                .associated_item_def_ids(def_id)
+            tcx.associated_item_def_ids(def_id)
                 .iter()
-                .map(|did| {
-                    let item = tcx.associated_item(*did).stable(&mut *tables);
-                    (item.name.clone(), item)
-                })
-                .collect();
-
-            stable_mir::ty::AssocItems { items }
+                .map(|did| tcx.associated_item(*did).stable(&mut *tables))
+                .collect()
         };
         assoc_items
     }
