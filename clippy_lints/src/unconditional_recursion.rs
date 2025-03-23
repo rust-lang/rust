@@ -23,8 +23,8 @@ declare_clippy_lint! {
     /// implementations.
     ///
     /// ### Why is this bad?
-    /// This is a hard to find infinite recursion that will crash any code
-    /// using it.
+    /// Infinite recursion in trait implementation will either cause crashes
+    /// or result in an infinite loop, and it is hard to detect.
     ///
     /// ### Example
     /// ```no_run
@@ -39,9 +39,31 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    ///
     /// Use instead:
     ///
-    /// In such cases, either use `#[derive(PartialEq)]` or don't implement it.
+    /// ```no_run
+    /// #[derive(PartialEq)]
+    /// enum Foo {
+    ///     A,
+    ///     B,
+    /// }
+    /// ```
+    ///
+    /// As an alternative, rewrite the logic without recursion:
+    ///
+    /// ```no_run
+    /// enum Foo {
+    ///     A,
+    ///     B,
+    /// }
+    ///
+    /// impl PartialEq for Foo {
+    ///     fn eq(&self, other: &Self) -> bool {
+    ///         matches!((self, other), (Foo::A, Foo::A) | (Foo::B, Foo::B))
+    ///     }
+    /// }
+    /// ```
     #[clippy::version = "1.77.0"]
     pub UNCONDITIONAL_RECURSION,
     suspicious,
