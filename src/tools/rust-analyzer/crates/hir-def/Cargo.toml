@@ -15,7 +15,6 @@ rust-version.workspace = true
 arrayvec.workspace = true
 bitflags.workspace = true
 cov-mark = "2.0.0-pre.1"
-dashmap.workspace = true
 drop_bomb = "0.1.5"
 either.workspace = true
 fst = { version = "0.4.7", default-features = false }
@@ -25,14 +24,12 @@ la-arena.workspace = true
 rustc-hash.workspace = true
 tracing.workspace = true
 smallvec.workspace = true
-hashbrown.workspace = true
 triomphe.workspace = true
 rustc_apfloat = "0.2.0"
 text-size.workspace = true
 salsa.workspace = true
 query-group.workspace = true
 
-ra-ap-rustc_hashes.workspace = true
 ra-ap-rustc_parse_format.workspace = true
 ra-ap-rustc_abi.workspace = true
 

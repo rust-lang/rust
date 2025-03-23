@@ -11,6 +11,7 @@
 //!   rustc rather than `unstable`. (Although in general ABI compatibility is still an issue)…
 
 #![cfg(any(feature = "sysroot-abi", rust_analyzer))]
+#![cfg_attr(not(feature = "sysroot-abi"), allow(unused_crate_dependencies))]
 #![cfg_attr(feature = "in-rust-tree", feature(rustc_private))]
 #![feature(proc_macro_internals, proc_macro_diagnostic, proc_macro_span)]
 #![allow(unreachable_pub, internal_features, clippy::disallowed_types, clippy::print_stderr)]
