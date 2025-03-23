@@ -1,8 +1,6 @@
 use crate::array;
 use crate::iter::adapters::SourceIter;
-use crate::iter::{
-    ByRefSized, FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce,
-};
+use crate::iter::{FusedIterator, InPlaceIterable, TrustedFused, TrustedRandomAccessNoCoerce};
 use crate::num::NonZero;
 use crate::ops::{ControlFlow, NeverShortCircuit, Try};
 
@@ -128,7 +126,7 @@ where
         self.next_back_remainder();
 
         let mut acc = init;
-        let mut iter = ByRefSized(&mut self.iter).rev();
+        let mut iter = (&mut self.iter).rev();
 
         // NB remainder is handled by `next_back_remainder`, so
         // `next_chunk` can't return `Err` with non-empty remainder

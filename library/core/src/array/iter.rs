@@ -260,7 +260,7 @@ impl<T, const N: usize> Iterator for IntoIter<T, N> {
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         let data = &mut self.data;
-        iter::ByRefSized(&mut self.alive).fold(init, |acc, idx| {
+        (&mut self.alive).fold(init, |acc, idx| {
             // SAFETY: idx is obtained by folding over the `alive` range, which implies the
             // value is currently considered alive but as the range is being consumed each value
             // we read here will only be read once and then considered dead.
@@ -323,7 +323,7 @@ impl<T, const N: usize> DoubleEndedIterator for IntoIter<T, N> {
         Fold: FnMut(Acc, Self::Item) -> Acc,
     {
         let data = &mut self.data;
-        iter::ByRefSized(&mut self.alive).rfold(init, |acc, idx| {
+        (&mut self.alive).rfold(init, |acc, idx| {
             // SAFETY: idx is obtained by folding over the `alive` range, which implies the
             // value is currently considered alive but as the range is being consumed each value
             // we read here will only be read once and then considered dead.

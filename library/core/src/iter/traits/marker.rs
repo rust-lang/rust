@@ -31,9 +31,6 @@ pub unsafe trait TrustedFused {}
 #[lang = "fused_iterator"]
 pub trait FusedIterator: Iterator {}
 
-#[stable(feature = "fused", since = "1.26.0")]
-impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
-
 /// An iterator that reports an accurate length using size_hint.
 ///
 /// The iterator reports a size hint where it is either exact
@@ -64,9 +61,6 @@ impl<I: FusedIterator + ?Sized> FusedIterator for &mut I {}
 #[unstable(feature = "trusted_len", issue = "37572")]
 #[rustc_unsafe_specialization_marker]
 pub unsafe trait TrustedLen: Iterator {}
-
-#[unstable(feature = "trusted_len", issue = "37572")]
-unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 
 /// An iterator that when yielding an item will have taken at least one element
 /// from its underlying [`SourceIter`].

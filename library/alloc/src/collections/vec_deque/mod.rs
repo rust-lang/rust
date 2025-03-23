@@ -9,7 +9,7 @@
 
 use core::cmp::{self, Ordering};
 use core::hash::{Hash, Hasher};
-use core::iter::{ByRefSized, repeat_n, repeat_with};
+use core::iter::{repeat_n, repeat_with};
 // This is used in a bunch of intra-doc links.
 // FIXME: For some reason, `#[cfg(doc)]` wasn't sufficient, resulting in
 // failures in linkchecker even though rustdoc built the docs just fine.
@@ -477,11 +477,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
             unsafe { guard.deque.write_iter(dst, iter, &mut guard.written) };
         } else {
             unsafe {
-                guard.deque.write_iter(
-                    dst,
-                    ByRefSized(&mut iter).take(head_room),
-                    &mut guard.written,
-                );
+                guard.deque.write_iter(dst, (&mut iter).take(head_room), &mut guard.written);
                 guard.deque.write_iter(0, iter, &mut guard.written)
             };
         }
