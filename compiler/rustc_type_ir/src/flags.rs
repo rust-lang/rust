@@ -111,18 +111,20 @@ bitflags::bitflags! {
 
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
-        const STILL_FURTHER_SPECIALIZABLE = 1 << 21;
+        const STILL_FURTHER_SPECIALIZABLE = TypeFlags::HAS_TY_PARAM.bits()
+                                          | TypeFlags::HAS_TY_PLACEHOLDER.bits()
+                                          | TypeFlags::HAS_TY_INFER.bits()
+                                          | TypeFlags::HAS_CT_PARAM.bits()
+                                          | TypeFlags::HAS_CT_PLACEHOLDER.bits()
+                                          | TypeFlags::HAS_CT_INFER.bits();
 
         /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
-        const HAS_TY_FRESH                = 1 << 22;
+        const HAS_TY_FRESH                = 1 << 21;
 
         /// Does this value have `InferConst::Fresh`?
-        const HAS_CT_FRESH                = 1 << 23;
-
-        /// Does this have `Coroutine` or `CoroutineWitness`?
-        const HAS_TY_COROUTINE            = 1 << 24;
+        const HAS_CT_FRESH                = 1 << 22;
 
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
-        const HAS_BINDER_VARS             = 1 << 25;
+        const HAS_BINDER_VARS             = 1 << 23;
     }
 }

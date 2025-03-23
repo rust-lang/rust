@@ -1724,8 +1724,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
             return;
         };
         let define_opaque = define_opaque.iter().filter_map(|(id, path)| {
-            let res = self.resolver.get_partial_res(*id).unwrap();
-            let Some(did) = res.expect_full_res().opt_def_id() else {
+            let res = self.resolver.get_partial_res(*id);
+            let Some(did) = res.and_then(|res| res.expect_full_res().opt_def_id()) else {
                 self.dcx().span_delayed_bug(path.span, "should have errored in resolve");
                 return None;
             };
