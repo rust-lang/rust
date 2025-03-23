@@ -13,7 +13,7 @@ use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, UnOp};
 use rustc_lint::{LateContext, LateLintPass, Level};
 use rustc_session::impl_lint_pass;
 use rustc_span::def_id::LocalDefId;
-use rustc_span::{Span, sym};
+use rustc_span::{Span, SyntaxContext, sym};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -349,9 +349,13 @@ impl SuggestContext<'_, '_, '_> {
                     if let Some(str) = simplify_not(self.cx, self.msrv, terminal) {
                         self.output.push_str(&str);
                     } else {
-                        self.output.push('!');
-                        self.output
-                            .push_str(&Sugg::hir_opt(self.cx, terminal)?.maybe_par().to_string());
+                        let mut app = Applicability::MachineApplicable;
+                        let snip = Sugg::hir_with_context(self.cx, terminal, SyntaxContext::root(), "", &mut app);
+                        // Ignore the case If the expression is inside a macro expansion, or the default snippet is used
+                        if app != Applicability::MachineApplicable {
+                            return None;
+                        }
+                        self.output.push_str(&(!snip).to_string());
                     }
                 },
                 True | False | Not(_) => {
