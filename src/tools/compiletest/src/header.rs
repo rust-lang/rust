@@ -1385,7 +1385,7 @@ pub fn make_test_description<R: Read>(
             decision!(cfg::handle_ignore(config, ln));
             decision!(cfg::handle_only(config, ln));
             decision!(needs::handle_needs(&cache.needs, config, ln));
-            decision!(ignore_llvm(config, ln));
+            decision!(ignore_llvm(config, path, ln));
             decision!(ignore_cdb(config, ln));
             decision!(ignore_gdb(config, ln));
             decision!(ignore_lldb(config, ln));
@@ -1525,7 +1525,7 @@ fn ignore_lldb(config: &Config, line: &str) -> IgnoreDecision {
     IgnoreDecision::Continue
 }
 
-fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
+fn ignore_llvm(config: &Config, path: &Path, line: &str) -> IgnoreDecision {
     if let Some(needed_components) =
         config.parse_name_value_directive(line, "needs-llvm-components")
     {
@@ -1536,8 +1536,9 @@ fn ignore_llvm(config: &Config, line: &str) -> IgnoreDecision {
         {
             if env::var_os("COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS").is_some() {
                 panic!(
-                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set",
-                    missing_component
+                    "missing LLVM component {}, and COMPILETEST_REQUIRE_ALL_LLVM_COMPONENTS is set: {}",
+                    missing_component,
+                    path.display()
                 );
             }
             return IgnoreDecision::Ignore {
