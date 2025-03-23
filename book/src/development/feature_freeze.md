@@ -2,7 +2,7 @@
 
 This is a temporary notice.
 
-From March 28, 2025 to June 20, 2025 we will perform a feature freeze. Only bugfix PRs will be reviewed with the
+From May 9th, 2025 until the 1st of August, 2025 we will perform a feature freeze. Only bugfix PRs will be reviewed with the
 exception of already open ones. Every feature-adding PR open in between those dates will be moved into a milestone
 to be reviewed separately at another time.
 
