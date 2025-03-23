@@ -958,9 +958,13 @@ impl<'a> Linker for MsvcLinker<'a> {
         if let Some(path) = try_find_native_static_library(self.sess, name, verbatim) {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
-            let prefix = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let suffix = if verbatim { "" } else { ".lib" };
-            self.link_arg(format!("{prefix}{name}{suffix}"));
+            let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
+            let (prefix, suffix) = if verbatim {
+                ("", "")
+            } else {
+                (&*self.sess.target.staticlib_prefix, &*self.sess.target.staticlib_suffix)
+            };
+            self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
 
