@@ -120,39 +120,6 @@ pub(crate) fn open_protocol<T>(
     }
 }
 
-pub(crate) fn create_event(
-    signal: u32,
-    tpl: efi::Tpl,
-    handler: Option<efi::EventNotify>,
-    context: *mut crate::ffi::c_void,
-) -> io::Result<NonNull<crate::ffi::c_void>> {
-    let boot_services: NonNull<efi::BootServices> =
-        boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
-    let mut event: r_efi::efi::Event = crate::ptr::null_mut();
-    let r = unsafe {
-        let create_event = (*boot_services.as_ptr()).create_event;
-        (create_event)(signal, tpl, handler, context, &mut event)
-    };
-    if r.is_error() {
-        Err(crate::io::Error::from_raw_os_error(r.as_usize()))
-    } else {
-        NonNull::new(event).ok_or(const_error!(io::ErrorKind::Other, "null protocol"))
-    }
-}
-
-/// # SAFETY
-/// - The supplied event must be valid
-pub(crate) unsafe fn close_event(evt: NonNull<crate::ffi::c_void>) -> io::Result<()> {
-    let boot_services: NonNull<efi::BootServices> =
-        boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
-    let r = unsafe {
-        let close_event = (*boot_services.as_ptr()).close_event;
-        (close_event)(evt.as_ptr())
-    };
-
-    if r.is_error() { Err(crate::io::Error::from_raw_os_error(r.as_usize())) } else { Ok(()) }
-}
-
 /// Gets the Protocol for current system handle.
 ///
 /// Note: Some protocols need to be manually freed. It is the caller's responsibility to do so.
@@ -731,6 +698,59 @@ impl Drop for ServiceProtocol {
             // SAFETY: Child handle must be allocated by the current service binding protocol.
             let _ = unsafe {
                 ((*sbp.as_ptr()).destroy_child)(sbp.as_ptr(), self.child_handle.as_ptr())
+            };
+        }
+    }
+}
+
+#[repr(transparent)]
+pub(crate) struct OwnedEvent(NonNull<crate::ffi::c_void>);
+
+impl OwnedEvent {
+    pub(crate) fn new(
+        signal: u32,
+        tpl: efi::Tpl,
+        handler: Option<efi::EventNotify>,
+        context: Option<NonNull<crate::ffi::c_void>>,
+    ) -> io::Result<Self> {
+        let boot_services: NonNull<efi::BootServices> =
+            boot_services().ok_or(BOOT_SERVICES_UNAVAILABLE)?.cast();
+        let mut event: r_efi::efi::Event = crate::ptr::null_mut();
+        let context = context.map(NonNull::as_ptr).unwrap_or(crate::ptr::null_mut());
+
+        let r = unsafe {
+            let create_event = (*boot_services.as_ptr()).create_event;
+            (create_event)(signal, tpl, handler, context, &mut event)
+        };
+
+        if r.is_error() {
+            Err(crate::io::Error::from_raw_os_error(r.as_usize()))
+        } else {
+            NonNull::new(event)
+                .ok_or(const_error!(io::ErrorKind::Other, "failed to create event"))
+                .map(Self)
+        }
+    }
+
+    pub(crate) fn into_raw(self) -> *mut crate::ffi::c_void {
+        let r = self.0.as_ptr();
+        crate::mem::forget(self);
+        r
+    }
+
+    /// SAFETY: Assumes that ptr is a non-null valid UEFI event
+    pub(crate) unsafe fn from_raw(ptr: *mut crate::ffi::c_void) -> Self {
+        Self(unsafe { NonNull::new_unchecked(ptr) })
+    }
+}
+
+impl Drop for OwnedEvent {
+    fn drop(&mut self) {
+        if let Some(boot_services) = boot_services() {
+            let bt: NonNull<r_efi::efi::BootServices> = boot_services.cast();
+            unsafe {
+                let close_event = (*bt.as_ptr()).close_event;
+                (close_event)(self.0.as_ptr())
             };
         }
     }
