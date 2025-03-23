@@ -22,6 +22,10 @@
 //@[check_cfg] compile-flags: --print=check-cfg
 //@[check_cfg] error-pattern: the `-Z unstable-options` flag must also be passed
 
+//@ revisions: supported_crate_types
+//@[supported_crate_types] compile-flags: --print=supported-crate-types
+//@[supported_crate_types] error-pattern: the `-Z unstable-options` flag must also be passed
+
 //@ revisions: target_spec_json
 //@[target_spec_json] compile-flags: --print=target-spec-json
 //@[target_spec_json] error-pattern: the `-Z unstable-options` flag must also be passed
