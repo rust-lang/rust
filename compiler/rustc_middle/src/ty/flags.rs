@@ -113,6 +113,7 @@ impl FlagComputation {
                     self.flags -= TypeFlags::STILL_FURTHER_SPECIALIZABLE;
                 }
 
+                self.add_ty(args.kind_ty());
                 self.add_ty(args.resume_ty());
                 self.add_ty(args.return_ty());
                 self.add_ty(args.witness());
