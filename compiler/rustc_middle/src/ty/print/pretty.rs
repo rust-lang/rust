@@ -372,6 +372,7 @@ pub trait PrettyPrinter<'tcx>: Printer<'tcx> + fmt::Write {
     fn try_print_visible_def_path(&mut self, def_id: DefId) -> Result<bool, PrintError> {
         debug!("try_print_visible_def_path: def_id={:?}", def_id);
         if with_no_visible_paths() {
+            debug!("with no visible path: def_id={:?}", def_id);
             return Ok(false);
         }
 
@@ -2227,6 +2228,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         def_id: DefId,
         args: &'tcx [GenericArg<'tcx>],
     ) -> Result<(), PrintError> {
+        debug!("print_def_path: def_id={:?}, args={:?}", def_id, args);
         if args.is_empty() {
             match self.try_print_trimmed_def_path(def_id)? {
                 true => return Ok(()),
@@ -2240,6 +2242,7 @@ impl<'tcx> Printer<'tcx> for FmtPrinter<'_, 'tcx> {
         }
 
         let key = self.tcx.def_key(def_id);
+        debug!("print_def_path: def_id={:?}, key={:?}", def_id, key);
         if let DefPathData::Impl = key.disambiguated_data.data {
             // Always use types for non-local impls, where types are always
             // available, and filename/line-number is mostly uninteresting.

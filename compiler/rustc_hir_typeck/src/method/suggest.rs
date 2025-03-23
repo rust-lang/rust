@@ -3330,11 +3330,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let prefix = if visible { "use " } else { "" };
             let postfix = if visible { ";" } else { "" };
             let path_strings = candidates.iter().map(|trait_did| {
-                debug!(
-                    "trait_did={:?} with_crate_prefix={:?}",
-                    trait_did,
-                    with_crate_prefix!(self.tcx.def_path_str(*trait_did))
-                );
+                // debug!(
+                //     "trait_did={:?} with_crate_prefix={:?}",
+                //     trait_did,
+                //     with_crate_prefix!(self.tcx.def_path_str(*trait_did))
+                // );
                 format!(
                     "{prefix}{}{postfix}\n",
                     with_crate_prefix!(self.tcx.def_path_str(*trait_did)),
