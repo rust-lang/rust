@@ -468,10 +468,10 @@ pub(super) fn codegen_tagged_field_value<'tcx, V>(
         Variants::Multiple { tag_encoding: TagEncoding::Direct, tag_field, .. } => {
             let discr = layout.ty.discriminant_for_variant(cx.tcx(), variant_index);
             let to = discr.unwrap().val;
-            let tag_layout = layout.field(cx, tag_field);
+            let tag_layout = layout.field(cx, tag_field.as_usize());
             let tag_llty = cx.immediate_backend_type(tag_layout);
             let imm = cx.const_uint_big(tag_llty, to);
-            Some((FieldIdx::from_usize(tag_field), imm))
+            Some((tag_field, imm))
         }
         Variants::Multiple {
             tag_encoding: TagEncoding::Niche { untagged_variant, ref niche_variants, niche_start },
@@ -479,7 +479,7 @@ pub(super) fn codegen_tagged_field_value<'tcx, V>(
             ..
         } => {
             if variant_index != untagged_variant {
-                let niche_layout = layout.field(cx, tag_field);
+                let niche_layout = layout.field(cx, tag_field.as_usize());
                 let niche_llty = cx.immediate_backend_type(niche_layout);
                 let BackendRepr::Scalar(scalar) = niche_layout.backend_repr else {
                     bug!("expected a scalar placeref for the niche");
@@ -497,7 +497,7 @@ pub(super) fn codegen_tagged_field_value<'tcx, V>(
                     scalar,
                     niche_llty,
                 );
-                Some((FieldIdx::from_usize(tag_field), niche_llval))
+                Some((tag_field, niche_llval))
             } else {
                 None
             }

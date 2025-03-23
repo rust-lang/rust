@@ -758,7 +758,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
                         niche_variants,
                         niche_start,
                     },
-                    tag_field: 0,
+                    tag_field: FieldIdx::new(0),
                     variants: IndexVec::new(),
                 },
                 fields: FieldsShape::Arbitrary {
@@ -1072,7 +1072,7 @@ impl<Cx: HasDataLayout> LayoutCalculator<Cx> {
             variants: Variants::Multiple {
                 tag,
                 tag_encoding: TagEncoding::Direct,
-                tag_field: 0,
+                tag_field: FieldIdx::new(0),
                 variants: IndexVec::new(),
             },
             fields: FieldsShape::Arbitrary {
