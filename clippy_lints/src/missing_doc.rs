@@ -48,6 +48,8 @@ pub struct MissingDoc {
     /// Whether to **only** check for missing documentation in items visible within the current
     /// crate. For example, `pub(crate)` items.
     crate_items_only: bool,
+    /// Whether to allow fields starting with underscore to skip documentation requirements
+    allow_unused: bool,
     /// Stack of whether #[doc(hidden)] is set
     /// at each level which has lint attributes.
     doc_hidden_stack: Vec<bool>,
@@ -59,6 +61,7 @@ impl MissingDoc {
     pub fn new(conf: &'static Conf) -> Self {
         Self {
             crate_items_only: conf.missing_docs_in_crate_items,
+            allow_unused: conf.missing_docs_allow_unused,
             doc_hidden_stack: vec![false],
             prev_span: None,
         }
@@ -88,6 +91,14 @@ impl MissingDoc {
         article: &'static str,
         desc: &'static str,
     ) {
+        // Skip checking if the item starts with underscore and allow_unused is enabled
+        if self.allow_unused {
+            if let Some(name) = cx.tcx.opt_item_name(def_id.to_def_id()) {
+                if name.as_str().starts_with('_') {
+                    return;
+                }
+            }
+        }
         // If we're building a test harness, then warning about
         // documentation is probably not really relevant right now.
         if cx.sess().opts.test {

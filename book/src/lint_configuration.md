@@ -734,6 +734,16 @@ Minimum chars an ident can have, anything below or equal to this will be linted.
 * [`min_ident_chars`](https://rust-lang.github.io/rust-clippy/master/index.html#min_ident_chars)
 
 
+## `missing-docs-allow-unused`
+Whether to allow fields starting with underscore to skip documentation requirements
+
+**Default Value:** `false`
+
+---
+**Affected lints:**
+* [`missing_docs_in_private_items`](https://rust-lang.github.io/rust-clippy/master/index.html#missing_docs_in_private_items)
+
+
 ## `missing-docs-in-crate-items`
 Whether to **only** check for missing documentation in items visible within the current
 crate. For example, `pub(crate)` items.
