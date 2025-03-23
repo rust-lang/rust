@@ -119,10 +119,7 @@ bitflags::bitflags! {
         /// Does this value have `InferConst::Fresh`?
         const HAS_CT_FRESH                = 1 << 23;
 
-        /// Does this have `Coroutine` or `CoroutineWitness`?
-        const HAS_TY_COROUTINE            = 1 << 24;
-
         /// Does this have any binders with bound vars (e.g. that need to be anonymized)?
-        const HAS_BINDER_VARS             = 1 << 25;
+        const HAS_BINDER_VARS             = 1 << 24;
     }
 }
