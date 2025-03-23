@@ -286,7 +286,6 @@ impl<'a> ExtCtxt<'a> {
             rules: BlockCheckMode::Default,
             span,
             tokens: None,
-            could_be_bare_literal: false,
         })
     }
 

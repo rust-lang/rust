@@ -395,7 +395,6 @@ mod llvm_enzyme {
             tokens: None,
             rules: unsf,
             span,
-            could_be_bare_literal: false,
         };
         let unsf_expr = ecx.expr_block(P(unsf_block));
         let blackbox_call_expr = ecx.expr_path(ecx.path(span, blackbox_path));

@@ -423,7 +423,6 @@ fn rewrite_empty_macro_def_body(
         rules: ast::BlockCheckMode::Default,
         span,
         tokens: None,
-        could_be_bare_literal: false,
     };
     block.rewrite_result(context, shape)
 }
