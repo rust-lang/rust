@@ -718,18 +718,17 @@ pub(super) fn definition(
             }
             _ => return None,
         };
-        let rendered_drop_glue = match drop_info.drop_glue {
-            DropGlue::None => "does not contain types with destructors (drop glue)",
-            DropGlue::DependOnParams => {
-                "may contain types with destructors (drop glue) depending on type parameters"
+        let rendered_drop_glue = if drop_info.has_dtor == Some(true) {
+            "impl Drop"
+        } else {
+            match drop_info.drop_glue {
+                DropGlue::HasDropGlue => "needs Drop",
+                DropGlue::None => "no Drop",
+                DropGlue::DependOnParams => "type param may need Drop",
             }
-            DropGlue::HasDropGlue => "contain types with destructors (drop glue)",
         };
-        Some(match drop_info.has_dtor {
-            Some(true) => format!("{}; has a destructor", rendered_drop_glue),
-            Some(false) => format!("{}; doesn't have a destructor", rendered_drop_glue),
-            None => rendered_drop_glue.to_owned(),
-        })
+
+        Some(rendered_drop_glue.to_owned())
     };
 
     let dyn_compatibility_info = || match def {
@@ -761,14 +760,17 @@ pub(super) fn definition(
         if let Some(layout_info) = layout_info() {
             extra.push_str("\n___\n");
             extra.push_str(&layout_info);
+            if let Some(drop_info) = drop_info() {
+                extra.push_str(", ");
+                extra.push_str(&drop_info)
+            }
+        } else if let Some(drop_info) = drop_info() {
+            extra.push_str("\n___\n");
+            extra.push_str(&drop_info);
         }
         if let Some(dyn_compatibility_info) = dyn_compatibility_info() {
             extra.push_str("\n___\n");
             extra.push_str(&dyn_compatibility_info);
-        }
-        if let Some(drop_info) = drop_info() {
-            extra.push_str("\n___\n");
-            extra.push_str(&drop_info);
         }
     }
     let mut desc = String::new();
