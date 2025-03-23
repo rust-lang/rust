@@ -14,11 +14,13 @@ rust-version.workspace = true
 [dependencies]
 backtrace = { version = "0.3.67", optional = true }
 jod-thread = "0.1.2"
-libc.workspace = true
 crossbeam-channel.workspace = true
 itertools.workspace = true
 tracing.workspace = true
 # Think twice before adding anything here
+
+[target.'cfg(unix)'.dependencies]
+libc.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 miow = "0.6.0"

@@ -47,7 +47,6 @@ tracing-tree.workspace = true
 triomphe.workspace = true
 toml = "0.8.8"
 nohash-hasher.workspace = true
-always-assert = "0.2.0"
 walkdir = "2.3.2"
 semver.workspace = true
 memchr = "2.7.1"
@@ -95,9 +94,7 @@ syntax-bridge.workspace = true
 [features]
 jemalloc = ["jemallocator", "profile/jemalloc"]
 force-always-assert = ["stdx/force-always-assert"]
-sysroot-abi = []
 in-rust-tree = [
-  "sysroot-abi",
   "syntax/in-rust-tree",
   "parser/in-rust-tree",
   "hir/in-rust-tree",

@@ -1465,7 +1465,7 @@ pub(crate) fn handle_code_action(
     // Fixes from `cargo check`.
     for fix in snap
         .check_fixes
-        .values()
+        .iter()
         .flat_map(|it| it.values())
         .filter_map(|it| it.get(&frange.file_id))
         .flatten()
