@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 fn assert_nb<Int: ToString + FromStr + Debug + Display + Eq>(value: Int) {
     let s = value.to_string();
-    let s2 = format!("{}", value);
+    let s2 = format!("s: {}.", value);
 
-    assert_eq!(s, s2);
+    assert_eq!(format!("s: {s}."), s2);
     let Ok(ret) = Int::from_str(&s) else {
         panic!("failed to convert into to string");
     };
