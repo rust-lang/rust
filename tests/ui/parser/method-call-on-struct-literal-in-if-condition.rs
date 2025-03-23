@@ -7,7 +7,7 @@ impl Example {
 fn one() -> i32 { 1 }
 
 fn main() {
-    if Example { a: one(), }.is_pos() { //~ ERROR invalid struct literal
+    if Example { a: one(), }.is_pos() { //~ ERROR struct literals are not allowed here
         println!("Positive!");
     }
 }

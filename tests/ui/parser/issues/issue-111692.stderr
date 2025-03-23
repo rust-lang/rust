@@ -1,43 +1,43 @@
-error: invalid struct literal
-  --> $DIR/issue-111692.rs:12:21
+error: struct literals are not allowed here
+  --> $DIR/issue-111692.rs:12:13
    |
 LL |     if x == module::Type { x: module::C, y: 1 } {
-   |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal with parentheses
+help: surround the struct literal with parentheses
    |
 LL |     if x == (module::Type { x: module::C, y: 1 }) {
    |             +                                   +
 
-error: invalid struct literal
-  --> $DIR/issue-111692.rs:17:20
+error: struct literals are not allowed here
+  --> $DIR/issue-111692.rs:17:12
    |
 LL |     if x ==module::Type { x: module::C, y: 1 } {
-   |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal with parentheses
+help: surround the struct literal with parentheses
    |
 LL |     if x ==(module::Type { x: module::C, y: 1 }) {
    |            +                                   +
 
-error: invalid struct literal
-  --> $DIR/issue-111692.rs:23:13
+error: struct literals are not allowed here
+  --> $DIR/issue-111692.rs:24:13
    |
 LL |     if x == Type { x: module::C, y: 1 } {
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal with parentheses
+help: surround the struct literal with parentheses
    |
 LL |     if x == (Type { x: module::C, y: 1 }) {
    |             +                           +
 
-error: invalid struct literal
-  --> $DIR/issue-111692.rs:28:26
+error: struct literals are not allowed here
+  --> $DIR/issue-111692.rs:30:13
    |
 LL |     if x == demo_module::Type { x: module::C, y: 1 } {
-   |                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-help: you might need to surround the struct literal with parentheses
+help: surround the struct literal with parentheses
    |
 LL |     if x == (demo_module::Type { x: module::C, y: 1 }) {
    |             +                                        +

@@ -1,11 +1,10 @@
 fn foo(x: bool) -> i32 {
-    match x {
+    match x { //~ ERROR struct literals are not allowed here
         x: i32 => x, //~ ERROR expected
-        //~^ ERROR mismatched types
-        true => 42.,
-        false => 0.333,
+        true => 42., //~ ERROR expected identifier
+        false => 0.333, //~ ERROR expected identifier
     }
-}
+} //~ ERROR expected one of
 
 fn main() {
     match foo(true) {
