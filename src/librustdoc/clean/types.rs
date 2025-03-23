@@ -1068,6 +1068,13 @@ pub(crate) fn extract_cfg_from_attrs<'a, I: Iterator<Item = &'a hir::Attribute> 
                         .meta_item()
                         .and_then(|item| rustc_expand::config::parse_cfg(item, sess))
                     {
+                        // The result is unused here but we can gate unstable predicates
+                        rustc_attr_parsing::cfg_matches(
+                            cfg_mi,
+                            tcx.sess,
+                            rustc_ast::CRATE_NODE_ID,
+                            Some(tcx.features()),
+                        );
                         match Cfg::parse(cfg_mi) {
                             Ok(new_cfg) => cfg &= new_cfg,
                             Err(e) => {
