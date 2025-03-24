@@ -28,7 +28,7 @@ use rustc_session::lint::builtin::{
     UNUSED_MACRO_RULES, UNUSED_MACROS,
 };
 use rustc_session::parse::feature_err;
-use rustc_span::edit_distance::edit_distance;
+use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{self, AstPass, ExpnData, ExpnKind, LocalExpnId, MacroKind};
 use rustc_span::{DUMMY_SP, Ident, Span, Symbol, kw, sym};
@@ -652,13 +652,13 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         if res == Res::NonMacroAttr(NonMacroAttrKind::Tool)
             && let [namespace, attribute, ..] = &*path.segments
             && namespace.ident.name == sym::diagnostic
-            && !(attribute.ident.name == sym::on_unimplemented
-                || attribute.ident.name == sym::do_not_recommend)
+            && ![sym::on_unimplemented, sym::do_not_recommend].contains(&attribute.ident.name)
         {
-            let distance =
-                edit_distance(attribute.ident.name.as_str(), sym::on_unimplemented.as_str(), 5);
-
-            let typo_name = distance.map(|_| sym::on_unimplemented);
+            let typo_name = find_best_match_for_name(
+                &[sym::on_unimplemented, sym::do_not_recommend],
+                attribute.ident.name,
+                Some(5),
+            );
 
             self.tcx.sess.psess.buffer_lint(
                 UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
