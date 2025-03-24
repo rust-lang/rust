@@ -9,7 +9,7 @@ use crate::os::solid::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, Owne
 use crate::sys::abi;
 use crate::sys_common::{FromInner, IntoInner};
 use crate::time::Duration;
-use crate::{cmp, mem, ptr, str};
+use crate::{mem, ptr, str};
 
 pub(super) mod netc {
     pub use crate::sys::abi::sockets::*;
@@ -222,13 +222,10 @@ impl Socket {
         self.recv_with_flags(buf, 0)
     }
 
-    pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+    pub fn read_vectored(&self, mut bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        IoSliceMut::limit_slices(&mut bufs, max_iov());
         let ret = cvt(unsafe {
-            netc::readv(
-                self.as_raw_fd(),
-                bufs.as_ptr() as *const netc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
-            )
+            netc::readv(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;
         Ok(ret as usize)
     }
@@ -267,13 +264,10 @@ impl Socket {
         self.recv_from_with_flags(buf, MSG_PEEK)
     }
 
-    pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+    pub fn write_vectored(&self, mut bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        IoSlice::limit_slices(&mut bufs, max_iov());
         let ret = cvt(unsafe {
-            netc::writev(
-                self.as_raw_fd(),
-                bufs.as_ptr() as *const netc::iovec,
-                cmp::min(bufs.len(), max_iov()) as c_int,
-            )
+            netc::writev(self.as_raw_fd(), bufs.as_ptr() as *const netc::iovec, bufs.len() as c_int)
         })?;
         Ok(ret as usize)
     }

@@ -297,6 +297,7 @@
 #[cfg(test)]
 mod tests;
 
+use core::intrinsics;
 #[unstable(feature = "read_buf", issue = "78485")]
 pub use core::io::{BorrowedBuf, BorrowedCursor};
 use core::slice::memchr;
@@ -1428,6 +1429,25 @@ impl<'a> IoSliceMut<'a> {
         }
     }
 
+    /// Limits a slice of buffers to at most `n` buffers.
+    ///
+    /// When the slice contains over `n` buffers, ensure that at least one
+    /// non-empty buffer is in the truncated slice, if there is one.
+    #[allow(dead_code)] // Not used on all platforms
+    #[inline]
+    pub(crate) fn limit_slices(bufs: &mut &mut [IoSliceMut<'a>], n: usize) {
+        if intrinsics::unlikely(bufs.len() > n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    *bufs = &mut take(bufs)[i..i + len];
+                    return;
+                }
+            }
+            *bufs = &mut take(bufs)[..0];
+        }
+    }
+
     /// Get the underlying bytes as a mutable slice with the original lifetime.
     ///
     /// # Examples
@@ -1586,6 +1606,25 @@ impl<'a> IoSlice<'a> {
             assert!(left == 0, "advancing io slices beyond their length");
         } else {
             bufs[0].advance(left);
+        }
+    }
+
+    /// Limits a slice of buffers to at most `n` buffers.
+    ///
+    /// When the slice contains over `n` buffers, ensure that at least one
+    /// non-empty buffer is in the truncated slice, if there is one.
+    #[allow(dead_code)] // Not used on all platforms
+    #[inline]
+    pub(crate) fn limit_slices(bufs: &mut &[IoSlice<'a>], n: usize) {
+        if intrinsics::unlikely(bufs.len() > n) {
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    let len = cmp::min(bufs.len() - i, n);
+                    *bufs = &bufs[i..i + len];
+                    return;
+                }
+            }
+            *bufs = &bufs[..0];
         }
     }
 
