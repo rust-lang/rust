@@ -217,11 +217,14 @@ mir_build_literal_in_range_out_of_bounds =
     literal out of range for `{$ty}`
     .label = this value does not fit into the type `{$ty}` whose range is `{$min}..={$max}`
 
+mir_build_loop_match_arm_with_guard =
+    match arms that are part of a `#[loop_match]` cannot have guards
+
 mir_build_loop_match_bad_rhs =
     this expression must be a single `match` wrapped in a labeled block
 
 mir_build_loop_match_bad_statements =
-    statements are not allowed in this position within a `loop_match`
+    statements are not allowed in this position within a `#[loop_match]`
 
 mir_build_loop_match_invalid_match =
     invalid match on `loop_match` state

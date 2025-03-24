@@ -41,7 +41,7 @@ fn bad_statements_1() {
     #[loop_match]
     loop {
         1;
-        //~^ ERROR statements are not allowed in this position within a `loop_match`
+        //~^ ERROR statements are not allowed in this position within a `#[loop_match]`
         state = 'blk: {
             match State::A {
                 _ => State::B,
@@ -56,7 +56,7 @@ fn bad_statements_2() {
     loop {
         state = 'blk: {
             1;
-            //~^ ERROR statements are not allowed in this position within a `loop_match`
+            //~^ ERROR statements are not allowed in this position within a `#[loop_match]`
             match State::A {
                 _ => State::B,
             }
@@ -138,6 +138,24 @@ fn break_without_value_unit() {
                     break 'blk;
                     //~^ ERROR a `#[const_continue]` must break to a label with a value
                 }
+            }
+        }
+    }
+}
+
+fn arm_has_guard(cond: bool) {
+    let state = State::A;
+    #[loop_match]
+    'a: loop {
+        state = 'blk: {
+            match state {
+                State::A => {
+                    #[const_continue]
+                    break 'blk State::B;
+                }
+                State::B if cond => break 'a,
+                //~^ ERROR match arms that are part of a `#[loop_match]` cannot have guards
+                _ => break 'a,
             }
         }
     }

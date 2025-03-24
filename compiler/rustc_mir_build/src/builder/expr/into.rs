@@ -17,6 +17,7 @@ use tracing::{debug, instrument};
 use crate::builder::expr::category::{Category, RvalueFunc};
 use crate::builder::matches::{DeclareLetBindings, HasMatchGuard};
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, NeedsTemporary};
+use crate::errors::LoopMatchArmWithGuard;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr`, storing the result into `destination`, which
@@ -268,15 +269,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         unpack!(body_block = this.as_place_builder(body_block, state));
                     let scrutinee_span = this.thir.exprs[state].span;
                     let match_start_span = scrutinee_span; // span.shrink_to_lo().to(scrutinee_span); FIXME
-                    let patterns = arms
-                        .iter()
-                        .map(|&arm_id| {
-                            // FIXME nice error for guards (which are not allowed)
-                            let arm = &this.thir[arm_id];
-                            assert!(arm.guard.is_none());
-                            (&*arm.pattern, HasMatchGuard::No)
-                        })
-                        .collect();
+
+                    let mut patterns = Vec::with_capacity(arms.len());
+                    for &arm_id in arms.iter() {
+                        let arm = &this.thir[arm_id];
+
+                        if let Some(guard) = arm.guard {
+                            let span = this.thir.exprs[guard].span;
+                            this.tcx.dcx().emit_fatal(LoopMatchArmWithGuard { span })
+                        }
+
+                        patterns.push((&*arm.pattern, HasMatchGuard::No));
+                    }
 
                     let built_tree = this.lower_match_tree(
                         body_block,

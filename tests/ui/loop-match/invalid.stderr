@@ -26,13 +26,13 @@ LL |             match State::A {
    |
    = note: only matches on local variables are valid
 
-error: statements are not allowed in this position within a `loop_match`
+error: statements are not allowed in this position within a `#[loop_match]`
   --> $DIR/invalid.rs:43:9
    |
 LL |         1;
    |         ^^
 
-error: statements are not allowed in this position within a `loop_match`
+error: statements are not allowed in this position within a `#[loop_match]`
   --> $DIR/invalid.rs:58:13
    |
 LL |             1;
@@ -80,6 +80,12 @@ error: a `#[const_continue]` must break to a label with a value
 LL |                     break 'blk;
    |                     ^^^^^^^^^^
 
-error: aborting due to 11 previous errors
+error: match arms that are part of a `#[loop_match]` cannot have guards
+  --> $DIR/invalid.rs:156:29
+   |
+LL |                 State::B if cond => break 'a,
+   |                             ^^^^
+
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
