@@ -36,8 +36,7 @@ impl GitCtx {
     }
 
     pub fn check_modifications(&self, target_paths: &[&str], ci_env: CiEnv) -> PathFreshness {
-        check_path_modifications(Some(self.dir.path()), &self.git_config(), target_paths, ci_env)
-            .unwrap()
+        check_path_modifications(self.dir.path(), &self.git_config(), target_paths, ci_env).unwrap()
     }
 
     pub fn create_upstream_merge(&self, modified_files: &[&str]) -> String {
