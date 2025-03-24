@@ -167,19 +167,12 @@ impl flags::AnalysisStats {
         eprintln!("  item trees: {workspace_item_trees}");
         let item_tree_time = item_tree_sw.elapsed();
 
-        eprintln!("Source stats:");
         eprintln!(
             "  dependency lines of code: {}, item trees: {}",
             UsizeWithUnderscore(dep_loc),
             UsizeWithUnderscore(dep_item_trees),
         );
         eprintln!("  dependency item stats: {}", dep_item_stats);
-        eprintln!(
-            "  workspace lines of code: {}, item trees: {}",
-            UsizeWithUnderscore(workspace_loc),
-            UsizeWithUnderscore(workspace_item_trees),
-        );
-        eprintln!("  workspace stats: {}", workspace_item_stats);
 
         // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
         // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
@@ -197,8 +190,9 @@ impl flags::AnalysisStats {
         // }
         // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
 
-        eprintln!("{:<20} {}", "Item Tree Collection (workspace):", item_tree_time);
+        eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
         report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
+        eprintln!("  Total Statistics:");
 
         let mut crate_def_map_sw = self.stop_watch();
         let mut num_crates = 0;
@@ -221,7 +215,7 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut visit_queue);
         }
 
-        eprint!("  crates: {num_crates}");
+        eprint!("    crates: {num_crates}");
         let mut num_decls = 0;
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
@@ -279,7 +273,7 @@ impl flags::AnalysisStats {
             }
         }
         eprintln!(
-            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {},",
+            ", mods: {}, decls: {num_decls}, bodies: {}, adts: {}, consts: {}",
             visited_modules.len(),
             bodies.len(),
             adts.len(),
@@ -288,7 +282,25 @@ impl flags::AnalysisStats {
                 .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
                 .count(),
         );
-        eprintln!("  traits: {num_traits}, macro_rules macros: {num_macro_rules_macros}, proc_macros: {num_proc_macros}");
+
+        eprintln!("  Workspace:");
+        eprintln!(
+            "    traits: {num_traits}, macro_rules macros: {num_macro_rules_macros}, proc_macros: {num_proc_macros}"
+        );
+        eprintln!(
+            "    lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(workspace_loc),
+            UsizeWithUnderscore(workspace_item_trees),
+        );
+        eprintln!("    usages: {}", workspace_item_stats);
+
+        eprintln!("  Dependencies:");
+        eprintln!(
+            "    lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(dep_loc),
+            UsizeWithUnderscore(dep_item_trees),
+        );
+        eprintln!("    declarations: {}", dep_item_stats);
 
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
