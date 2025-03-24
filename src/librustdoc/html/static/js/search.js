@@ -3153,26 +3153,22 @@ class DocSearch {
                     }
                 }
             };
-            // @ts-expect-error
+            /** @type {string[]} */
             const type = [];
             onEachBtwn(
                 fnInputs,
-                // @ts-expect-error
                 fnType => writeFn(fnType, type),
                 // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
-            // @ts-expect-error
             pushText({ name: " -> ", highlighted: false }, type);
             onEachBtwn(
                 fnOutput,
-                // @ts-expect-error
                 fnType => writeFn(fnType, type),
                 // @ts-expect-error
                 () => pushText({ name: ", ",  highlighted: false }, type),
             );
 
-            // @ts-expect-error
             return {type, mappedNames, whereClause};
         };
 
