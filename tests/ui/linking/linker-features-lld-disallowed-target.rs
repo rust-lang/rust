@@ -6,3 +6,5 @@
 
 #![feature(no_core)]
 #![no_core]
+
+//~? ERROR `-C linker-features` with lld are unstable for the `x86_64-unknown-linux-musl` target, the `-Z unstable-options` flag must also be passed to use it on this target

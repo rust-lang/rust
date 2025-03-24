@@ -6,3 +6,5 @@
 
 #![feature(no_core)]
 #![no_core]
+
+//~? ERROR incorrect value `+cc` for codegen option `linker-features` - a list of enabled (`+` prefix) and disabled (`-` prefix) features: `lld` was expected
