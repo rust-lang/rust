@@ -1632,9 +1632,15 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-std");
             prepare("rust-analysis");
-            prepare("clippy");
-            prepare("rust-analyzer");
-            for tool in &["rust-docs", "miri", "rustc-codegen-cranelift"] {
+
+            for tool in &[
+                "clippy",
+                "rustfmt",
+                "rust-analyzer",
+                "rust-docs",
+                "miri",
+                "rustc-codegen-cranelift",
+            ] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1674,6 +1680,8 @@ impl Step for Extended {
                     "rust-analyzer-preview".to_string()
                 } else if name == "clippy" {
                     "clippy-preview".to_string()
+                } else if name == "rustfmt" {
+                    "rustfmt-preview".to_string()
                 } else if name == "miri" {
                     "miri-preview".to_string()
                 } else if name == "rustc-codegen-cranelift" {
@@ -1693,7 +1701,7 @@ impl Step for Extended {
             prepare("cargo");
             prepare("rust-analysis");
             prepare("rust-std");
-            for tool in &["clippy", "rust-analyzer", "rust-docs", "miri"] {
+            for tool in &["clippy", "rustfmt", "rust-analyzer", "rust-docs", "miri"] {
                 if built_tools.contains(tool) {
                     prepare(tool);
                 }
@@ -1811,6 +1819,24 @@ impl Step for Extended {
                     .arg(etc.join("msi/remove-duplicates.xsl"))
                     .run(builder);
             }
+            if built_tools.contains("rustfmt") {
+                command(&heat)
+                    .current_dir(&exe)
+                    .arg("dir")
+                    .arg("rustfmt")
+                    .args(heat_flags)
+                    .arg("-cg")
+                    .arg("RustFmtGroup")
+                    .arg("-dr")
+                    .arg("RustFmt")
+                    .arg("-var")
+                    .arg("var.RustFmtDir")
+                    .arg("-out")
+                    .arg(exe.join("RustFmtGroup.wxs"))
+                    .arg("-t")
+                    .arg(etc.join("msi/remove-duplicates.xsl"))
+                    .run(builder);
+            }
             if built_tools.contains("miri") {
                 command(&heat)
                     .current_dir(&exe)
@@ -1877,10 +1903,13 @@ impl Step for Extended {
                     .arg("-out")
                     .arg(&output)
                     .arg(input);
-                add_env(builder, &mut cmd, target);
+                add_env(builder, &mut cmd, target, &built_tools);
 
                 if built_tools.contains("clippy") {
                     cmd.arg("-dClippyDir=clippy");
+                }
+                if built_tools.contains("rustfmt") {
+                    cmd.arg("-dRustFmtDir=rustfmt");
                 }
                 if built_tools.contains("rust-docs") {
                     cmd.arg("-dDocsDir=rust-docs");
@@ -1907,6 +1936,9 @@ impl Step for Extended {
             candle("StdGroup.wxs".as_ref());
             if built_tools.contains("clippy") {
                 candle("ClippyGroup.wxs".as_ref());
+            }
+            if built_tools.contains("rustfmt") {
+                candle("RustFmtGroup.wxs".as_ref());
             }
             if built_tools.contains("miri") {
                 candle("MiriGroup.wxs".as_ref());
@@ -1946,6 +1978,9 @@ impl Step for Extended {
             if built_tools.contains("clippy") {
                 cmd.arg("ClippyGroup.wixobj");
             }
+            if built_tools.contains("rustfmt") {
+                cmd.arg("RustFmtGroup.wixobj");
+            }
             if built_tools.contains("miri") {
                 cmd.arg("MiriGroup.wixobj");
             }
@@ -1972,7 +2007,12 @@ impl Step for Extended {
     }
 }
 
-fn add_env(builder: &Builder<'_>, cmd: &mut BootstrapCommand, target: TargetSelection) {
+fn add_env(
+    builder: &Builder<'_>,
+    cmd: &mut BootstrapCommand,
+    target: TargetSelection,
+    built_tools: &HashSet<&'static str>,
+) {
     let mut parts = builder.version.split('.');
     cmd.env("CFG_RELEASE_INFO", builder.rust_version())
         .env("CFG_RELEASE_NUM", &builder.version)
@@ -1993,6 +2033,15 @@ fn add_env(builder: &Builder<'_>, cmd: &mut BootstrapCommand, target: TargetSele
     } else {
         cmd.env("CFG_MINGW", "0").env("CFG_ABI", "MSVC");
     }
+
+    // ensure these variables are defined
+    let mut define_optional_tool = |tool_name: &str, env_name: &str| {
+        cmd.env(env_name, if built_tools.contains(tool_name) { "1" } else { "0" });
+    };
+    define_optional_tool("rustfmt", "CFG_RUSTFMT");
+    define_optional_tool("clippy", "CFG_CLIPPY");
+    define_optional_tool("miri", "CFG_MIRI");
+    define_optional_tool("rust-analyzer", "CFG_RA");
 }
 
 fn install_llvm_file(
