@@ -3,8 +3,8 @@ use std::{cell::OnceCell, mem};
 
 use hir_expand::{AstId, HirFileId, InFile, span_map::SpanMap};
 use span::{AstIdMap, AstIdNode, Edition, EditionedFileId, FileId, RealSpanMap};
-use stdx::thin_vec::ThinVec;
 use syntax::ast;
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{

@@ -198,7 +198,7 @@ impl InferenceContext<'_> {
         match &self.body[expr] {
             // Lang item paths cannot currently be local variables or statics.
             Expr::Path(Path::LangItem(_, _)) => false,
-            Expr::Path(Path::Normal(path)) => path.type_anchor().is_none(),
+            Expr::Path(Path::Normal(path)) => path.type_anchor.is_none(),
             Expr::Path(path) => self
                 .resolver
                 .resolve_path_in_value_ns_fully(

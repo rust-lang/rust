@@ -318,15 +318,15 @@ impl<'a> TyLoweringContext<'a> {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     Substitution::from_iter(
                         Interner,
-                        fn_.params().iter().map(|&(_, tr)| ctx.lower_ty(tr)),
+                        fn_.params.iter().map(|&(_, tr)| ctx.lower_ty(tr)),
                     )
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
                     sig: FnSig {
-                        abi: fn_.abi().as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
-                        safety: if fn_.is_unsafe() { Safety::Unsafe } else { Safety::Safe },
-                        variadic: fn_.is_varargs(),
+                        abi: fn_.abi.as_ref().map_or(FnAbi::Rust, FnAbi::from_symbol),
+                        safety: if fn_.is_unsafe { Safety::Unsafe } else { Safety::Safe },
+                        variadic: fn_.is_varargs,
                     },
                     substitution: FnSubst(substs),
                 })

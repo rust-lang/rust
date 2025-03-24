@@ -12,11 +12,11 @@ use hir_expand::{
 use intern::{Symbol, sym};
 use la_arena::{Arena, ArenaMap, Idx};
 use span::Edition;
-use stdx::thin_vec::{EmptyOptimizedThinVec, ThinVec, thin_vec_with_header_struct};
 use syntax::{
     AstPtr,
     ast::{self, HasGenericArgs, HasName, IsString},
 };
+use thin_vec::ThinVec;
 
 use crate::{
     SyntheticSyntax,
@@ -120,13 +120,12 @@ impl TraitRef {
     }
 }
 
-thin_vec_with_header_struct! {
-    pub new(pub(crate)) struct FnType, FnTypeHeader {
-        pub params: [(Option<Name>, TypeRefId)],
-        pub is_varargs: bool,
-        pub is_unsafe: bool,
-        pub abi: Option<Symbol>; ref,
-    }
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+pub struct FnType {
+    pub params: Box<[(Option<Name>, TypeRefId)]>,
+    pub is_varargs: bool,
+    pub is_unsafe: bool,
+    pub abi: Option<Symbol>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]
@@ -148,14 +147,14 @@ pub struct RefType {
 pub enum TypeRef {
     Never,
     Placeholder,
-    Tuple(EmptyOptimizedThinVec<TypeRefId>),
+    Tuple(ThinVec<TypeRefId>),
     Path(Path),
     RawPtr(TypeRefId, Mutability),
     Reference(Box<RefType>),
     Array(Box<ArrayType>),
     Slice(TypeRefId),
     /// A fn pointer. Last element of the vector is the return type.
-    Fn(FnType),
+    Fn(Box<FnType>),
     ImplTrait(ThinVec<TypeBound>),
     DynTrait(ThinVec<TypeBound>),
     Macro(AstId<ast::MacroCall>),
@@ -273,9 +272,9 @@ impl TypeRef {
     pub fn from_ast(ctx: &mut LowerCtx<'_>, node: ast::Type) -> TypeRefId {
         let ty = match &node {
             ast::Type::ParenType(inner) => return TypeRef::from_ast_opt(ctx, inner.ty()),
-            ast::Type::TupleType(inner) => TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(
-                Vec::from_iter(inner.fields().map(|it| TypeRef::from_ast(ctx, it))),
-            )),
+            ast::Type::TupleType(inner) => TypeRef::Tuple(ThinVec::from_iter(Vec::from_iter(
+                inner.fields().map(|it| TypeRef::from_ast(ctx, it)),
+            ))),
             ast::Type::NeverType(..) => TypeRef::Never,
             ast::Type::PathType(inner) => {
                 // FIXME: Use `Path::from_src`
@@ -342,7 +341,12 @@ impl TypeRef {
 
                 let abi = inner.abi().map(lower_abi);
                 params.push((None, ret_ty));
-                TypeRef::Fn(FnType::new(is_varargs, inner.unsafe_token().is_some(), abi, params))
+                TypeRef::Fn(Box::new(FnType {
+                    params: params.into(),
+                    is_varargs,
+                    is_unsafe: inner.unsafe_token().is_some(),
+                    abi,
+                }))
             }
             // for types are close enough for our purposes to the inner type for now...
             ast::Type::ForType(inner) => return TypeRef::from_ast_opt(ctx, inner.ty()),
@@ -375,7 +379,7 @@ impl TypeRef {
     }
 
     pub(crate) fn unit() -> TypeRef {
-        TypeRef::Tuple(EmptyOptimizedThinVec::empty())
+        TypeRef::Tuple(ThinVec::new())
     }
 
     pub fn walk(this: TypeRefId, map: &TypesMap, f: &mut impl FnMut(&TypeRef)) {
@@ -386,7 +390,7 @@ impl TypeRef {
             f(type_ref);
             match type_ref {
                 TypeRef::Fn(fn_) => {
-                    fn_.params().iter().for_each(|&(_, param_type)| go(param_type, f, map))
+                    fn_.params.iter().for_each(|&(_, param_type)| go(param_type, f, map))
                 }
                 TypeRef::Tuple(types) => types.iter().for_each(|&t| go(t, f, map)),
                 TypeRef::RawPtr(type_ref, _) | TypeRef::Slice(type_ref) => go(*type_ref, f, map),

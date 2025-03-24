@@ -12,11 +12,11 @@ use intern::{Symbol, sym};
 use la_arena::Arena;
 use rustc_hash::FxHashMap;
 use span::{AstIdMap, SyntaxContext};
-use stdx::thin_vec::ThinVec;
 use syntax::{
     AstNode,
     ast::{self, HasModuleItem, HasName, HasTypeBounds, IsString},
 };
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
