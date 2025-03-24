@@ -1105,11 +1105,12 @@ pub fn determine_cgu_reuse<'tcx>(tcx: TyCtxt<'tcx>, cgu: &CodegenUnit<'tcx>) -> 
     // know that later). If we are not doing LTO, there is only one optimized
     // version of each module, so we re-use that.
     let dep_node = cgu.codegen_dep_node(tcx);
-    assert!(
-        !tcx.dep_graph.dep_node_exists(&dep_node),
-        "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
-        cgu.name()
-    );
+    tcx.dep_graph.assert_dep_node_not_yet_allocated_in_current_session(&dep_node, || {
+        format!(
+            "CompileCodegenUnit dep-node for CGU `{}` already exists before marking.",
+            cgu.name()
+        )
+    });
 
     if tcx.try_mark_green(&dep_node) {
         // We can re-use either the pre- or the post-thinlto state. If no LTO is

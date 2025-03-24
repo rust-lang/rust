@@ -2227,7 +2227,8 @@ options! {
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],
         "verify extended properties for incr. comp. (default: no):
         - hashes of green query instances
-        - hash collisions of query keys"),
+        - hash collisions of query keys
+        - hash collisions when creating dep-nodes"),
     inline_llvm: bool = (true, parse_bool, [TRACKED],
         "enable LLVM inlining (default: yes)"),
     inline_mir: Option<bool> = (None, parse_opt_bool, [TRACKED],

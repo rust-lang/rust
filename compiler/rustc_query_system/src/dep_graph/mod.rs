@@ -100,6 +100,8 @@ pub trait Deps {
     where
         OP: for<'a> FnOnce(TaskDepsRef<'a>);
 
+    fn name(&self, dep_kind: DepKind) -> &'static str;
+
     /// We use this for most things when incr. comp. is turned off.
     const DEP_KIND_NULL: DepKind;
 
@@ -154,7 +156,7 @@ pub enum FingerprintStyle {
 
 impl FingerprintStyle {
     #[inline]
-    pub fn reconstructible(self) -> bool {
+    pub const fn reconstructible(self) -> bool {
         match self {
             FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
                 true
