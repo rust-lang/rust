@@ -1,6 +1,7 @@
 # The `rustdoc` test suite
 
-This page is specifically about the test suite named `rustdoc`, for other test suites used for testing rustdoc, see [Rustdoc tests](../rustdoc.md#tests).
+This page is specifically about the test suite named `rustdoc`.
+For other test suites used for testing rustdoc, see [Rustdoc tests](../rustdoc.md#tests).
 
 The `rustdoc` test suite is specifically used to test the HTML output of rustdoc.
 
