@@ -3483,8 +3483,7 @@ class DocSearch {
                         }
                     }
                 }
-                // @ts-expect-error
-                return false;
+                return null;
             }
 
             // Multiple element recursive case
