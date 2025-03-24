@@ -33,6 +33,20 @@ function onEachBtwn(arr, func, funcBtwn) {
     }
 }
 
+/**
+ * Convert any `undefined` to `null`.
+ *
+ * @template T
+ * @param {T|undefined} x
+ * @returns {T|null}
+ */
+function undef2null(x) {
+    if (x !== undefined) {
+        return x;
+    }
+    return null;
+}
+
 // ==================== Core search logic begin ====================
 // This mapping table should match the discriminants of
 // `rustdoc::formats::item_type::ItemType` type in Rust.
@@ -2133,8 +2147,7 @@ class DocSearch {
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
             let len = rawPaths.length;
-            const lastPathU = itemPaths.get(0);
-            let lastPath = lastPathU === undefined ? null : lastPathU;
+            let lastPath = undef2null(itemPaths.get(0));
             for (let i = 0; i < len; ++i) {
                 const elem = rawPaths[i];
                 const ty = elem[0];
@@ -2192,12 +2205,11 @@ class DocSearch {
                 }
                 const name = itemNames[i] === "" ? lastName : itemNames[i];
                 const word = itemNames[i] === "" ? lastWord : itemNames[i].toLowerCase();
-                /** @type {string} */
-                // @ts-expect-error
-                const path = itemPaths.has(i) ? itemPaths.get(i) : lastPath;
-                const paramNames = itemParamNames.has(i) ?
-                    // @ts-expect-error
-                    itemParamNames.get(i).split(",") :
+                const pathU = itemPaths.get(i);
+                const path = pathU !== undefined ? pathU : lastPath;
+                const paramNameString = itemParamNames.get(i);
+                const paramNames = paramNameString !== undefined ?
+                    paramNameString.split(",") :
                     lastParamNames;
                 const type = itemFunctionDecoder.next();
                 if (type !== null) {
@@ -2239,8 +2251,7 @@ class DocSearch {
                     word,
                     normalizedName,
                     bitIndex,
-                    implDisambiguator: implDisambiguator.has(i) ?
-                        implDisambiguator.get(i) : null,
+                    implDisambiguator: undef2null(implDisambiguator.get(i)),
                 };
                 this.nameTrie.insert(normalizedName, id, this.tailTable);
                 id += 1;
