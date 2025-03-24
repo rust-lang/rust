@@ -652,13 +652,7 @@ impl<'a> State<'a> {
     ) {
         let ast::Fn { defaultness, generics, sig, contract, body, define_opaque } = func;
 
-        if let Some(define_opaque) = define_opaque {
-            for (_, path) in define_opaque {
-                self.word("define opaques from ");
-                self.print_path(path, false, 0);
-                self.word(",");
-            }
-        }
+        self.print_define_opaques(define_opaque);
 
         if body.is_some() {
             self.head("");
@@ -676,6 +670,24 @@ impl<'a> State<'a> {
         } else {
             self.word(";");
         }
+    }
+
+    fn print_define_opaques(
+        &mut self,
+        define_opaque: Option<&[(ast::NodeId, ast::Path)]>,
+    ) {
+        if let Some(define_opaque) = define_opaque {
+            self.word("#[define_opaque(");
+            for (i, (_, path)) in define_opaque.iter().enumerate() {
+                if i != 0 {
+                    self.word_space(",");
+                }
+
+                self.print_path(path, false, 0);
+            }
+            self.word(")]");
+        }
+        self.hardbreak_if_not_bol();
     }
 
     fn print_contract(&mut self, contract: &ast::FnContract) {
