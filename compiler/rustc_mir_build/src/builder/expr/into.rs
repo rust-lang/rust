@@ -245,7 +245,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     None
                 })
             }
-            ExprKind::LoopMatch { state, region_scope, ref arms } => {
+            ExprKind::LoopMatch { state, region_scope, match_span, ref arms } => {
                 // FIXME add diagram
 
                 let loop_block = this.cfg.start_new_block();
@@ -268,7 +268,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     let scrutinee_place_builder =
                         unpack!(body_block = this.as_place_builder(body_block, state));
                     let scrutinee_span = this.thir.exprs[state].span;
-                    let match_start_span = scrutinee_span; // span.shrink_to_lo().to(scrutinee_span); FIXME
+                    let match_start_span = match_span.shrink_to_lo().to(scrutinee_span);
 
                     let mut patterns = Vec::with_capacity(arms.len());
                     for &arm_id in arms.iter() {
@@ -311,8 +311,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                                 scrutinee_span,
                                                 arms,
                                                 built_tree,
-                                                // FIXME this should be the span of just the match
-                                                this.source_info(expr_span),
+                                                this.source_info(match_span),
                                             )
                                         },
                                     ))
