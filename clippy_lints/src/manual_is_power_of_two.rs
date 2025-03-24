@@ -35,8 +35,8 @@ declare_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
 
 impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
-        if let ExprKind::Binary(bin_op, lhs, rhs) = expr.kind
-            && bin_op.node == BinOpKind::Eq
+        if !expr.span.from_expansion()
+            && let Some((lhs, rhs)) = unexpanded_binop_operands(expr, BinOpKind::Eq)
         {
             if let Some(a) = count_ones_receiver(cx, lhs)
                 && is_integer_literal(rhs, 1)
@@ -92,8 +92,7 @@ fn is_one_less<'tcx>(
     greater: &'tcx Expr<'tcx>,
     smaller: &Expr<'tcx>,
 ) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Binary(op, lhs, rhs) = smaller.kind
-        && op.node == BinOpKind::Sub
+    if let Some((lhs, rhs)) = unexpanded_binop_operands(smaller, BinOpKind::Sub)
         && SpanlessEq::new(cx).eq_expr(greater, lhs)
         && is_integer_literal(rhs, 1)
         && matches!(cx.typeck_results().expr_ty_adjusted(greater).kind(), ty::Uint(_))
@@ -106,10 +105,19 @@ fn is_one_less<'tcx>(
 
 /// Return `v` if `expr` is `v & (v - 1)` or `(v - 1) & v`
 fn is_and_minus_one<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
-    if let ExprKind::Binary(op, lhs, rhs) = expr.kind
-        && op.node == BinOpKind::BitAnd
+    let (lhs, rhs) = unexpanded_binop_operands(expr, BinOpKind::BitAnd)?;
+    is_one_less(cx, lhs, rhs).or_else(|| is_one_less(cx, rhs, lhs))
+}
+
+/// Return the operands of the `expr` binary operation if the operator is `op` and none of the
+/// operands come from expansion.
+fn unexpanded_binop_operands<'hir>(expr: &Expr<'hir>, op: BinOpKind) -> Option<(&'hir Expr<'hir>, &'hir Expr<'hir>)> {
+    if let ExprKind::Binary(binop, lhs, rhs) = expr.kind
+        && binop.node == op
+        && !lhs.span.from_expansion()
+        && !rhs.span.from_expansion()
     {
-        is_one_less(cx, lhs, rhs).or_else(|| is_one_less(cx, rhs, lhs))
+        Some((lhs, rhs))
     } else {
         None
     }

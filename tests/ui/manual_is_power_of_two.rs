@@ -1,4 +1,17 @@
 #![warn(clippy::manual_is_power_of_two)]
+#![allow(clippy::precedence)]
+
+macro_rules! binop {
+    ($a: expr, equal, $b: expr) => {
+        $a == $b
+    };
+    ($a: expr, and, $b: expr) => {
+        $a & $b
+    };
+    ($a: expr, minus, $b: expr) => {
+        $a - $b
+    };
+}
 
 fn main() {
     let a = 16_u64;
@@ -27,4 +40,8 @@ fn main() {
     let i: i32 = 3;
     let _ = i as u32 & (i as u32 - 1) == 0;
     //~^ manual_is_power_of_two
+
+    let _ = binop!(a.count_ones(), equal, 1);
+    let _ = binop!(a, and, a - 1) == 0;
+    let _ = a & binop!(a, minus, 1) == 0;
 }
