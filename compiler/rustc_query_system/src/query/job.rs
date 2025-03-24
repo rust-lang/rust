@@ -163,13 +163,6 @@ struct QueryWaiter {
     cycle: Mutex<Option<CycleError>>,
 }
 
-impl QueryWaiter {
-    fn notify(&self, registry: &rayon_core::Registry) {
-        rayon_core::mark_unblocked(registry);
-        self.condvar.notify_one();
-    }
-}
-
 #[derive(Debug)]
 struct QueryLatchInfo {
     complete: bool,
@@ -232,7 +225,8 @@ impl QueryLatch {
         info.complete = true;
         let registry = rayon_core::Registry::current();
         for waiter in info.waiters.drain(..) {
-            waiter.notify(&registry);
+            rayon_core::mark_unblocked(&registry);
+            waiter.condvar.notify_one();
         }
     }
 
