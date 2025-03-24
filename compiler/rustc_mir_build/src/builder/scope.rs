@@ -99,6 +99,7 @@ use tracing::{debug, instrument};
 
 use super::matches::BuiltMatchTree;
 use crate::builder::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
+use crate::errors::ConstContinueUnknownJumpTarget;
 
 #[derive(Debug)]
 pub(crate) struct Scopes<'tcx> {
@@ -812,8 +813,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let Some(real_target) =
                     self.static_pattern_match(&cx, value, &*scope.arms, &scope.built_match_tree)
                 else {
-                    // self.tcx.dcx().emit_fatal()
-                    todo!()
+                    self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
                 };
 
                 self.block_context.push(BlockFrame::SubExpr);

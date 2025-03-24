@@ -136,7 +136,7 @@ fn break_without_value_unit() {
                 () => {
                     #[const_continue]
                     break 'blk;
-                    //~^ ERROR a `const_continue` must break to a label with a value
+                    //~^ ERROR a `#[const_continue]` must break to a label with a value
                 }
             }
         }

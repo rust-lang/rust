@@ -74,7 +74,7 @@ LL | |
 LL | |     }
    | |_____^
 
-error: a `const_continue` must break to a label with a value
+error: a `#[const_continue]` must break to a label with a value
   --> $DIR/invalid.rs:138:21
    |
 LL |                     break 'blk;
