@@ -1081,7 +1081,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// `CrateNum` resolutions of `extern crate` items.
     extern_crate_map: UnordMap<LocalDefId, CrateNum>,
     module_children: LocalDefIdMap<Vec<ModChild>>,
-    trait_map: NodeMap<Vec<TraitCandidate>>,
 
     /// A map from nodes to anonymous modules.
     /// Anonymous modules are pseudo-modules that are implicitly created around items
@@ -1499,7 +1498,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
             module_children: Default::default(),
-            trait_map: NodeMap::default(),
             underscore_disambiguator: 0,
             empty_module,
             module_map,
@@ -1702,7 +1700,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,
-            trait_map: self.trait_map,
             lint_buffer: Steal::new(self.lint_buffer),
             delegation_fn_sigs: self.delegation_fn_sigs,
         };

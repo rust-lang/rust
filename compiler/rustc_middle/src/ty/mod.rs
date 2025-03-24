@@ -195,6 +195,8 @@ pub struct PerOwnerResolverData {
     pub label_res_map: NodeMap<ast::NodeId>,
     /// List functions and methods for which lifetime elision was successful.
     pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
+
+    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
     /// The id of the owner
     pub id: ast::NodeId,
 }
@@ -207,6 +209,7 @@ impl PerOwnerResolverData {
             legacy_const_generic_args: Default::default(),
             id,
             lifetime_elision_allowed: Default::default(),
+            trait_map: Default::default(),
         }
     }
 }
@@ -227,8 +230,6 @@ pub struct ResolverAstLowering {
     pub owners: NodeMap<PerOwnerResolverData>,
 
     pub next_node_id: ast::NodeId,
-
-    pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,

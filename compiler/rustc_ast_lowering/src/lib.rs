@@ -708,7 +708,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.children.push((def_id, hir::MaybeOwner::NonOwner(hir_id)));
         }
 
-        if let Some(traits) = self.resolver.general.trait_map.remove(&ast_node_id) {
+        if let Some(traits) = self.resolver.item.trait_map.remove(&ast_node_id) {
             self.trait_map.insert(hir_id.local_id, traits.into_boxed_slice());
         }
 
