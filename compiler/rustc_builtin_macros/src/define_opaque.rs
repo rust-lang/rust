@@ -52,7 +52,10 @@ pub(crate) fn expand(
                 .collect(),
         );
     } else {
-        ecx.dcx().span_err(meta_item.span, "only functions and methods can define opaque types");
+        ecx.dcx().span_err(
+            meta_item.span,
+            "only functions, statics, and consts can define opaque types",
+        );
     }
 
     vec![item]
