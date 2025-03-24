@@ -2,8 +2,8 @@
 
 --------------------
 
-The `-Zlinker-features` compiler flag allows enabling or disabling specific features used during
-linking, and is intended to be stabilized under the codegen options as `-Clinker-features`.
+The `-Clinker-features` compiler flag allows enabling or disabling specific features used during
+linking.
 
 These feature flags are a flexible extension mechanism that is complementary to linker flavors,
 designed to avoid the combinatorial explosion of having to create a new set of flavors for each
