@@ -503,18 +503,18 @@ enum ModuleKind {
     ///
     /// * A normal module – either `mod from_file;` or `mod from_block { }` –
     ///   or the crate root (which is conceptually a top-level module).
-    ///   Note that the crate root's [name][Self::name] will be [`kw::Empty`].
+    ///   The crate root will have `None` for the symbol.
     /// * A trait or an enum (it implicitly contains associated types, methods and variant
     ///   constructors).
-    Def(DefKind, DefId, Symbol),
+    Def(DefKind, DefId, Option<Symbol>),
 }
 
 impl ModuleKind {
     /// Get name of the module.
     fn name(&self) -> Option<Symbol> {
-        match self {
+        match *self {
             ModuleKind::Block => None,
-            ModuleKind::Def(.., name) => Some(*name),
+            ModuleKind::Def(.., name) => name,
         }
     }
 }
@@ -1402,7 +1402,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut module_self_bindings = FxHashMap::default();
         let graph_root = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             crate_span,
             attr::contains_name(attrs, sym::no_implicit_prelude),
@@ -1411,7 +1411,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         );
         let empty_module = arenas.new_module(
             None,
-            ModuleKind::Def(DefKind::Mod, root_def_id, kw::Empty),
+            ModuleKind::Def(DefKind::Mod, root_def_id, None),
             ExpnId::root(),
             DUMMY_SP,
             true,
@@ -2286,7 +2286,8 @@ fn module_to_string(mut module: Module<'_>) -> Option<String> {
     loop {
         if let ModuleKind::Def(.., name) = module.kind {
             if let Some(parent) = module.parent {
-                names.push(name);
+                // `unwrap` is safe: the presence of a parent means it's not the crate root.
+                names.push(name.unwrap());
                 module = parent
             } else {
                 break;
