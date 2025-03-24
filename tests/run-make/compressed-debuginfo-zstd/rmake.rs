@@ -28,7 +28,6 @@ fn prepare_and_check<F: FnOnce(&mut Rustc) -> &mut Rustc>(to_find: &str, prepare
         rustc
             .arg("-Clinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
             .arg("-Cdebuginfo=full")
             .input("main.rs");
         prepare_rustc(&mut rustc).run();

@@ -362,9 +362,20 @@ impl LinkSelfContained {
     /// components was set individually. This would also require the `-Zunstable-options` flag, to
     /// be allowed.
     fn are_unstable_variants_set(&self) -> bool {
-        let any_component_set =
-            !self.enabled_components.is_empty() || !self.disabled_components.is_empty();
-        self.explicitly_set.is_none() && any_component_set
+        if self.explicitly_set.is_some() {
+            return false;
+        }
+
+        let mentioned_components = self.enabled_components.union(self.disabled_components);
+        for component in LinkSelfContainedComponents::all() {
+            if mentioned_components.contains(component) {
+                // Only the linker component is stable now
+                if component != LinkSelfContainedComponents::LINKER {
+                    return true;
+                }
+            }
+        }
+        false
     }
 
     /// Returns whether the self-contained linker component was enabled on the CLI, using the
@@ -2531,7 +2542,7 @@ pub fn build_session_options(early_dcx: &mut EarlyDiagCtxt, matches: &getopts::M
             cg.link_self_contained.are_unstable_variants_set();
         if uses_unstable_self_contained_option {
             early_dcx.early_fatal(
-                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off` are stable, \
+                "only `-C link-self-contained` values `y`/`yes`/`on`/`n`/`no`/`off`/`-linker`/`+linker` are stable, \
                 the `-Z unstable-options` flag must also be passed to use the unstable values",
             );
         }
