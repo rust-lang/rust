@@ -1662,7 +1662,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             c_variadic,
             lifetime_elision_allowed: self
                 .resolver
-                .general
+                .item
                 .lifetime_elision_allowed
                 .contains(&fn_node_id),
             implicit_self: decl.inputs.get(0).map_or(hir::ImplicitSelfKind::None, |arg| {

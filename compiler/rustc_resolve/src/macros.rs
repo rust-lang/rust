@@ -523,10 +523,12 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
                     id: _,
                     legacy_const_generic_args,
                     label_res_map,
+                    lifetime_elision_allowed,
                 } = old;
                 assert!(node_id_to_def_id.is_empty());
                 assert!(legacy_const_generic_args.is_empty());
                 assert!(label_res_map.is_empty());
+                assert!(lifetime_elision_allowed.is_empty());
             }
         } else {
             assert!(self.owners.insert(old.id, old).is_none());

@@ -193,6 +193,8 @@ pub struct PerOwnerResolverData {
     pub node_id_to_def_id: NodeMap<LocalDefId>,
     /// Resolutions for labels (node IDs of their corresponding blocks or loops).
     pub label_res_map: NodeMap<ast::NodeId>,
+    /// List functions and methods for which lifetime elision was successful.
+    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
     /// The id of the owner
     pub id: ast::NodeId,
 }
@@ -204,6 +206,7 @@ impl PerOwnerResolverData {
             label_res_map: Default::default(),
             legacy_const_generic_args: Default::default(),
             id,
+            lifetime_elision_allowed: Default::default(),
         }
     }
 }
@@ -226,8 +229,6 @@ pub struct ResolverAstLowering {
     pub next_node_id: ast::NodeId,
 
     pub trait_map: NodeMap<Vec<hir::TraitCandidate>>,
-    /// List functions and methods for which lifetime elision was successful.
-    pub lifetime_elision_allowed: FxHashSet<ast::NodeId>,
 
     /// Lints that were emitted by the resolver and early lints.
     pub lint_buffer: Steal<LintBuffer>,
