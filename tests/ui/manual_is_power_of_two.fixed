@@ -23,4 +23,8 @@ fn main() {
     // is_power_of_two only works for unsigned integers
     let _ = b.count_ones() == 1;
     let _ = b & (b - 1) == 0;
+
+    let i: i32 = 3;
+    let _ = (i as u32).is_power_of_two();
+    //~^ manual_is_power_of_two
 }

@@ -69,7 +69,7 @@ fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
         expr.span,
         "manually reimplementing `is_power_of_two`",
         "consider using `.is_power_of_two()`",
-        format!("{snippet}.is_power_of_two()"),
+        format!("{}.is_power_of_two()", snippet.maybe_paren()),
         applicability,
     );
 }

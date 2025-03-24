@@ -37,5 +37,11 @@ error: manually reimplementing `is_power_of_two`
 LL |     let _ = 0 == (a - 1) & a;
    |             ^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `a.is_power_of_two()`
 
-error: aborting due to 6 previous errors
+error: manually reimplementing `is_power_of_two`
+  --> tests/ui/manual_is_power_of_two.rs:28:13
+   |
+LL |     let _ = i as u32 & (i as u32 - 1) == 0;
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `.is_power_of_two()`: `(i as u32).is_power_of_two()`
+
+error: aborting due to 7 previous errors
 
