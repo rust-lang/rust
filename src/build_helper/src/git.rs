@@ -54,7 +54,7 @@ pub enum PathFreshness {
 /// local git history.
 ///
 /// `target_paths` should be a non-empty slice of paths (git `pathspec`s) relative to `git_dir`
-/// or the current working directory whose modifications would invalidate the artifact.
+/// whose modifications would invalidate the artifact.
 /// Each pathspec can also be a negative match, i.e. `:!foo`. This matches changes outside
 /// the `foo` directory.
 /// See https://git-scm.com/docs/gitglossary#Documentation/gitglossary.txt-aiddefpathspecapathspec
@@ -79,7 +79,7 @@ pub enum PathFreshness {
 /// In that case we simply take the latest upstream commit, because on CI there is no need to avoid
 /// redownloading.
 pub fn check_path_modifications(
-    git_dir: Option<&Path>,
+    git_dir: &Path,
     config: &GitConfig<'_>,
     target_paths: &[&str],
     ci_env: CiEnv,
@@ -109,7 +109,7 @@ pub fn check_path_modifications(
         // Do not include HEAD, as it is never an upstream commit
         // If we do not find an upstream commit in CI, something is seriously wrong.
         Some(
-            get_closest_upstream_commit(git_dir, config, ci_env)?
+            get_closest_upstream_commit(Some(git_dir), config, ci_env)?
                 .expect("No upstream commit was found on CI"),
         )
     } else {
@@ -124,7 +124,7 @@ pub fn check_path_modifications(
         )?;
         match upstream_with_modifications {
             Some(sha) => Some(sha),
-            None => get_closest_upstream_commit(git_dir, config, ci_env)?,
+            None => get_closest_upstream_commit(Some(git_dir), config, ci_env)?,
         }
     };
 
@@ -145,12 +145,9 @@ pub fn check_path_modifications(
 }
 
 /// Returns true if any of the passed `paths` have changed since the `base` commit.
-pub fn has_changed_since(git_dir: Option<&Path>, base: &str, paths: &[&str]) -> bool {
+pub fn has_changed_since(git_dir: &Path, base: &str, paths: &[&str]) -> bool {
     let mut git = Command::new("git");
-
-    if let Some(git_dir) = git_dir {
-        git.current_dir(git_dir);
-    }
+    git.current_dir(git_dir);
 
     git.args(["diff-index", "--quiet", base, "--"]).args(paths);
 
@@ -162,15 +159,12 @@ pub fn has_changed_since(git_dir: Option<&Path>, base: &str, paths: &[&str]) -> 
 /// Returns the latest commit that modified `target_paths`, or `None` if no such commit was found.
 /// If `author` is `Some`, only considers commits made by that author.
 fn get_latest_commit_that_modified_files(
-    git_dir: Option<&Path>,
+    git_dir: &Path,
     target_paths: &[&str],
     author: &str,
 ) -> Result<Option<String>, String> {
     let mut git = Command::new("git");
-
-    if let Some(git_dir) = git_dir {
-        git.current_dir(git_dir);
-    }
+    git.current_dir(git_dir);
 
     git.args(["rev-list", "-n1", "--first-parent", "HEAD", "--author", author]);
 

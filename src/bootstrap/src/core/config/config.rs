@@ -3316,13 +3316,8 @@ impl Config {
             .unwrap()
             .entry(paths.to_vec())
             .or_insert_with(|| {
-                check_path_modifications(
-                    Some(&self.src),
-                    &self.git_config(),
-                    paths,
-                    CiEnv::current(),
-                )
-                .unwrap()
+                check_path_modifications(&self.src, &self.git_config(), paths, CiEnv::current())
+                    .unwrap()
             })
             .clone()
     }
