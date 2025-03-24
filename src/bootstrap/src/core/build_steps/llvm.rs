@@ -696,7 +696,7 @@ fn configure_cmake(
         // CMakeFiles (and then only in tests), and so far no issues have been
         // reported, the system version is currently left unset.
 
-        if target.contains("darwin") {
+        if target.contains("apple") {
             // Make sure that CMake does not build universal binaries on macOS.
             // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
