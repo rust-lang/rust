@@ -500,5 +500,6 @@ fn trait_specialization_kind<'tcx>(
         | ty::ClauseKind::WellFormed(_)
         | ty::ClauseKind::ConstEvaluatable(..)
         | ty::ClauseKind::HostEffect(..) => None,
+        ty::ClauseKind::UnstableImpl => todo!(),
     }
 }
