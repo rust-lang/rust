@@ -14,7 +14,7 @@ fn main() {
         rustc()
             .arg("-Clinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
+            .arg("-Zunstable-options") // needed for targets other than `x86_64-unknown-linux-gnu`
             .input("main.rs"),
     );
 
