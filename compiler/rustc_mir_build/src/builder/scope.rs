@@ -752,7 +752,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 (break_index, None)
             }
             BreakableTarget::ConstContinue(scope) => {
-                assert!(value.is_some());
+                let Some(value) = value else {
+                    span_bug!(span, "#[const_continue] must break with a value")
+                };
+
+                // A break can only break out of a scope, so the value should be a scope
+                let rustc_middle::thir::ExprKind::Scope { value, .. } = self.thir[value].kind
+                else {
+                    span_bug!(span, "break value must be a scope")
+                };
+
                 let break_index = self
                     .scopes
                     .const_continuable_scopes
@@ -763,12 +772,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     .unwrap_or_else(|| {
                         span_bug!(span, "no enclosing const-continuable scope found")
                     });
-
-                let rustc_middle::thir::ExprKind::Scope { value, .. } =
-                    self.thir[value.unwrap()].kind
-                else {
-                    panic!();
-                };
 
                 let scope = &self.scopes.const_continuable_scopes[break_index];
 
