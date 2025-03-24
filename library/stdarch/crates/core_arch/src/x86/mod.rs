@@ -340,7 +340,7 @@ types! {
     ///
     /// Note that unlike `__m512i`, the integer version of the 512-bit
     /// registers, this `__m512d` type has *one* interpretation. Each instance
-    /// of `__m512d` always corresponds to `f64x4`, or eight `f64` types packed
+    /// of `__m512d` always corresponds to `f64x8`, or eight `f64` types packed
     /// together.
     ///
     /// The in-memory representation of this type is the same as the one of an
