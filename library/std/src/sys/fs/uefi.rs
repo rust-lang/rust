@@ -1,3 +1,5 @@
+use r_efi::protocols::file;
+
 use crate::ffi::OsString;
 use crate::fmt;
 use crate::hash::Hash;
@@ -22,7 +24,12 @@ pub struct ReadDir(!);
 pub struct DirEntry(!);
 
 #[derive(Clone, Debug)]
-pub struct OpenOptions {}
+pub struct OpenOptions {
+    mode: u64,
+    append: bool,
+    truncate: bool,
+    create_new: bool,
+}
 
 #[derive(Copy, Clone, Debug, Default)]
 pub struct FileTimes {}
@@ -141,15 +148,58 @@ impl DirEntry {
 
 impl OpenOptions {
     pub fn new() -> OpenOptions {
-        OpenOptions {}
+        OpenOptions { mode: 0, append: false, create_new: false, truncate: false }
     }
 
-    pub fn read(&mut self, _read: bool) {}
-    pub fn write(&mut self, _write: bool) {}
-    pub fn append(&mut self, _append: bool) {}
-    pub fn truncate(&mut self, _truncate: bool) {}
-    pub fn create(&mut self, _create: bool) {}
-    pub fn create_new(&mut self, _create_new: bool) {}
+    pub fn read(&mut self, read: bool) {
+        if read {
+            self.mode |= file::MODE_READ;
+        } else {
+            self.mode &= !file::MODE_READ;
+        }
+    }
+
+    pub fn write(&mut self, write: bool) {
+        if write {
+            // Valid Combinations: Read, Read/Write, Read/Write/Create
+            self.read(true);
+            self.mode |= file::MODE_WRITE;
+        } else {
+            self.mode &= !file::MODE_WRITE;
+        }
+    }
+
+    pub fn append(&mut self, append: bool) {
+        // Docs state that `.write(true).append(true)` has the same effect as `.append(true)`
+        if append {
+            self.write(true);
+        }
+        self.append = append;
+    }
+
+    pub fn truncate(&mut self, truncate: bool) {
+        self.truncate = truncate;
+    }
+
+    pub fn create(&mut self, create: bool) {
+        if create {
+            self.mode |= file::MODE_CREATE;
+        } else {
+            self.mode &= !file::MODE_CREATE;
+        }
+    }
+
+    pub fn create_new(&mut self, create_new: bool) {
+        self.create_new = create_new;
+    }
+
+    #[expect(dead_code)]
+    const fn is_mode_valid(&self) -> bool {
+        // Valid Combinations: Read, Read/Write, Read/Write/Create
+        self.mode == file::MODE_READ
+            || self.mode == (file::MODE_READ | file::MODE_WRITE)
+            || self.mode == (file::MODE_READ | file::MODE_WRITE | file::MODE_CREATE)
+    }
 }
 
 impl File {
@@ -311,12 +361,12 @@ pub fn stat(_p: &Path) -> io::Result<FileAttr> {
     unsupported()
 }
 
-pub fn lstat(_p: &Path) -> io::Result<FileAttr> {
-    unsupported()
+pub fn lstat(p: &Path) -> io::Result<FileAttr> {
+    stat(p)
 }
 
-pub fn canonicalize(_p: &Path) -> io::Result<PathBuf> {
-    unsupported()
+pub fn canonicalize(p: &Path) -> io::Result<PathBuf> {
+    crate::path::absolute(p)
 }
 
 pub fn copy(_from: &Path, _to: &Path) -> io::Result<u64> {
