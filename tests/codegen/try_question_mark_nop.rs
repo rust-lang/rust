@@ -16,12 +16,17 @@ use std::ptr::NonNull;
 #[no_mangle]
 pub fn option_nop_match_32(x: Option<u32>) -> Option<u32> {
     // CHECK: start:
-    // TWENTY-NEXT: %[[IS_SOME:.+]] = trunc nuw i32 %0 to i1
-    // TWENTY-NEXT: %[[PAYLOAD:.+]] = select i1 %[[IS_SOME]], i32 %1, i32 undef
-    // CHECK-NEXT: [[REG1:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
-    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %1, 1
-    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } [[REG1]], i32 %[[PAYLOAD]], 1
-    // CHECK-NEXT: ret { i32, i32 } [[REG2]]
+    // CHECK-NEXT: [[TRUNC:%.*]] = trunc nuw i32 %0 to i1
+
+    // NINETEEN-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %0, i32 0
+    // NINETEEN-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 [[SELECT]], 0
+    // NINETEEN-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 %1, 1
+
+    // TWENTY-NEXT: [[SELECT:%.*]] = select i1 [[TRUNC]], i32 %1, i32 undef
+    // TWENTY-NEXT: [[REG2:%.*]] = insertvalue { i32, i32 } poison, i32 %0, 0
+    // TWENTY-NEXT: [[REG3:%.*]] = insertvalue { i32, i32 } [[REG2]], i32 [[SELECT]], 1
+
+    // CHECK-NEXT: ret { i32, i32 } [[REG3]]
     match x {
         Some(x) => Some(x),
         None => None,
@@ -164,8 +169,8 @@ pub fn control_flow_nop_traits_64(x: ControlFlow<i64, u64>) -> ControlFlow<i64, 
 #[no_mangle]
 pub fn result_nop_match_128(x: Result<i128, u128>) -> Result<i128, u128> {
     // CHECK: start:
-    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
     // CHECK-NEXT: store i128
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
     // CHECK-NEXT: store i128
     // CHECK-NEXT: ret void
     match x {
@@ -189,8 +194,8 @@ pub fn result_nop_traits_128(x: Result<i128, u128>) -> Result<i128, u128> {
 #[no_mangle]
 pub fn control_flow_nop_match_128(x: ControlFlow<i128, u128>) -> ControlFlow<i128, u128> {
     // CHECK: start:
-    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
     // CHECK-NEXT: store i128
+    // CHECK-NEXT: getelementptr inbounds {{(nuw )?}}i8
     // CHECK-NEXT: store i128
     // CHECK-NEXT: ret void
     match x {

@@ -1098,9 +1098,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         }
 
-        // unsound: https://github.com/rust-lang/rust/issues/132353
-        if tcx.sess.opts.unstable_opts.unsound_mir_opts
-            && let AggregateTy::Def(_, _) = ty
+        if let AggregateTy::Def(_, _) = ty
             && let Some(value) =
                 self.simplify_aggregate_to_copy(rvalue, location, &fields, variant_index)
         {
