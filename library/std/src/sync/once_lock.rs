@@ -535,7 +535,8 @@ impl<T> OnceLock<T> {
     ///
     /// The cell must be initialized
     #[inline]
-    unsafe fn get_unchecked(&self) -> &T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    pub unsafe fn get_unchecked(&self) -> &T {
         debug_assert!(self.is_initialized());
         unsafe { (&*self.value.get()).assume_init_ref() }
     }
@@ -544,7 +545,8 @@ impl<T> OnceLock<T> {
     ///
     /// The cell must be initialized
     #[inline]
-    unsafe fn get_unchecked_mut(&mut self) -> &mut T {
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    pub unsafe fn get_unchecked_mut(&mut self) -> &mut T {
         debug_assert!(self.is_initialized());
         unsafe { (&mut *self.value.get()).assume_init_mut() }
     }

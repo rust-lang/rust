@@ -174,14 +174,14 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
             guard.0.once.set_state(ExclusiveState::Complete);
             core::mem::forget(guard);
             // SAFETY: We put the value there above.
-            unsafe { &mut this.data.get_mut().value }
+            unsafe { LazyLock::get_unchecked_mut(this) }
         }
 
         let state = this.once.state();
         match state {
             ExclusiveState::Poisoned => panic_poisoned(),
             // SAFETY: The `Once` states we completed the initialization.
-            ExclusiveState::Complete => unsafe { &mut this.data.get_mut().value },
+            ExclusiveState::Complete => unsafe { LazyLock::get_unchecked_mut(this) },
             // SAFETY: The state is `Incomplete`.
             ExclusiveState::Incomplete => unsafe { really_init_mut(this) },
         }
@@ -222,7 +222,7 @@ impl<T, F: FnOnce() -> T> LazyLock<T, F> {
         // * the closure was not called because the Once is poisoned, so this point
         //   is never reached.
         // So `value` has definitely been initialized and will not be modified again.
-        unsafe { &*(*this.data.get()).value }
+        unsafe { LazyLock::get_unchecked(this) }
     }
 }
 
@@ -251,7 +251,7 @@ impl<T, F> LazyLock<T, F> {
         match state {
             // SAFETY:
             // The closure has been run successfully, so `value` has been initialized.
-            ExclusiveState::Complete => Some(unsafe { &mut this.data.get_mut().value }),
+            ExclusiveState::Complete => Some(unsafe { LazyLock::get_unchecked_mut(this) }),
             _ => None,
         }
     }
@@ -278,10 +278,30 @@ impl<T, F> LazyLock<T, F> {
             // SAFETY:
             // The closure has been run successfully, so `value` has been initialized
             // and will not be modified again.
-            Some(unsafe { &(*this.data.get()).value })
+            Some(unsafe { LazyLock::get_unchecked(this) })
         } else {
             None
         }
+    }
+
+    /// # Safety
+    ///
+    /// The lazy must be initialized
+    #[inline]
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    pub unsafe fn get_unchecked(this: &LazyLock<T, F>) -> &T {
+        debug_assert!(this.once.is_completed());
+        unsafe { &*(*this.data.get()).value }
+    }
+
+    /// # Safety
+    ///
+    /// The lazy must be initialized
+    #[inline]
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    pub unsafe fn get_unchecked_mut(this: &mut LazyLock<T, F>) -> &mut T {
+        debug_assert!(this.once.is_completed());
+        unsafe { &mut *this.data.get_mut().value }
     }
 }
 
