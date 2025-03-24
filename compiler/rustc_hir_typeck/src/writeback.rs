@@ -548,7 +548,8 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         let fcx_typeck_results = self.fcx.typeck_results.borrow();
         assert_eq!(fcx_typeck_results.hir_owner, self.typeck_results.hir_owner);
         for (predicate, cause) in &fcx_typeck_results.coroutine_stalled_predicates {
-            let (predicate, cause) = self.resolve((*predicate, cause.clone()), &cause.span);
+            let (predicate, cause) =
+                self.resolve_coroutine_predicate((*predicate, cause.clone()), &cause.span);
             self.typeck_results.coroutine_stalled_predicates.insert((predicate, cause));
         }
     }
@@ -730,7 +731,25 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         T: TypeFoldable<TyCtxt<'tcx>>,
     {
         let value = self.fcx.resolve_vars_if_possible(value);
-        let value = value.fold_with(&mut Resolver::new(self.fcx, span, self.body));
+        let value = value.fold_with(&mut Resolver::new(self.fcx, span, self.body, true));
+        assert!(!value.has_infer());
+
+        // We may have introduced e.g. `ty::Error`, if inference failed, make sure
+        // to mark the `TypeckResults` as tainted in that case, so that downstream
+        // users of the typeck results don't produce extra errors, or worse, ICEs.
+        if let Err(guar) = value.error_reported() {
+            self.typeck_results.tainted_by_errors = Some(guar);
+        }
+
+        value
+    }
+
+    fn resolve_coroutine_predicate<T>(&mut self, value: T, span: &dyn Locatable) -> T
+    where
+        T: TypeFoldable<TyCtxt<'tcx>>,
+    {
+        let value = self.fcx.resolve_vars_if_possible(value);
+        let value = value.fold_with(&mut Resolver::new(self.fcx, span, self.body, false));
         assert!(!value.has_infer());
 
         // We may have introduced e.g. `ty::Error`, if inference failed, make sure
@@ -774,8 +793,9 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         fcx: &'cx FnCtxt<'cx, 'tcx>,
         span: &'cx dyn Locatable,
         body: &'tcx hir::Body<'tcx>,
+        should_normalize: bool,
     ) -> Resolver<'cx, 'tcx> {
-        Resolver { fcx, span, body, should_normalize: fcx.next_trait_solver() }
+        Resolver { fcx, span, body, should_normalize }
     }
 
     fn report_error(&self, p: impl Into<ty::GenericArg<'tcx>>) -> ErrorGuaranteed {
@@ -805,10 +825,9 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
         T: Into<ty::GenericArg<'tcx>> + TypeSuperFoldable<TyCtxt<'tcx>> + Copy,
     {
         let tcx = self.fcx.tcx;
-        // We must deeply normalize in the new solver, since later lints
-        // expect that types that show up in the typeck are fully
-        // normalized.
-        let mut value = if self.should_normalize {
+        // We must deeply normalize in the new solver, since later lints expect
+        // that types that show up in the typeck are fully normalized.
+        let mut value = if self.should_normalize && self.fcx.next_trait_solver() {
             let body_id = tcx.hir_body_owner_def_id(self.body.id());
             let cause = ObligationCause::misc(self.span.to_span(tcx), body_id);
             let at = self.fcx.at(&cause, self.fcx.param_env);
@@ -864,20 +883,15 @@ impl<'cx, 'tcx> TypeFolder<TyCtxt<'tcx>> for Resolver<'cx, 'tcx> {
     }
 
     fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-        self.handle_term(ct, ty::Const::outer_exclusive_binder, |tcx, guar| {
-            ty::Const::new_error(tcx, guar)
-        })
-        .super_fold_with(self)
+        self.handle_term(ct, ty::Const::outer_exclusive_binder, ty::Const::new_error)
     }
 
     fn fold_predicate(&mut self, predicate: ty::Predicate<'tcx>) -> ty::Predicate<'tcx> {
-        // Do not normalize predicates in the new solver. The new solver is
-        // supposed to handle unnormalized predicates and incorrectly normalizing
-        // them can be unsound, e.g. for `WellFormed` predicates.
-        let prev = mem::replace(&mut self.should_normalize, false);
-        let predicate = predicate.super_fold_with(self);
-        self.should_normalize = prev;
-        predicate
+        assert!(
+            !self.should_normalize,
+            "normalizing predicates in writeback is not generally sound"
+        );
+        predicate.super_fold_with(self)
     }
 }
 
