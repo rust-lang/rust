@@ -3097,6 +3097,14 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         let trait_assoc_items =
             replace(&mut self.diag_metadata.current_trait_assoc_items, Some(trait_items));
 
+        for item in trait_items {
+            self.resolve_trait_item(item);
+        }
+
+        self.diag_metadata.current_trait_assoc_items = trait_assoc_items;
+    }
+
+    fn resolve_trait_item(&mut self, item: &'ast P<Item<AssocItemKind>>) {
         let walk_assoc_item =
             |this: &mut Self, generics: &Generics, kind, item: &'ast AssocItem| {
                 this.with_generic_param_rib(
@@ -3106,80 +3114,71 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     |this| visit::walk_assoc_item(this, item, AssocCtxt::Trait),
                 );
             };
+        self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
+        match &item.kind {
+            AssocItemKind::Const(box ast::ConstItem {
+                generics, ty, expr, define_opaque, ..
+            }) => {
+                self.with_generic_param_rib(
+                    &generics.params,
+                    RibKind::AssocItem,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        span: generics.span,
+                        kind: LifetimeBinderKind::ConstItem,
+                    },
+                    |this| {
+                        this.with_lifetime_rib(
+                            LifetimeRibKind::StaticIfNoLifetimeInScope {
+                                lint_id: item.id,
+                                emit_lint: false,
+                            },
+                            |this| {
+                                this.visit_generics(generics);
+                                this.visit_ty(ty);
 
-        for item in trait_items {
-            self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
-            match &item.kind {
-                AssocItemKind::Const(box ast::ConstItem {
-                    generics,
-                    ty,
-                    expr,
-                    define_opaque,
-                    ..
-                }) => {
-                    self.with_generic_param_rib(
-                        &generics.params,
-                        RibKind::AssocItem,
-                        LifetimeRibKind::Generics {
-                            binder: item.id,
-                            span: generics.span,
-                            kind: LifetimeBinderKind::ConstItem,
-                        },
-                        |this| {
-                            this.with_lifetime_rib(
-                                LifetimeRibKind::StaticIfNoLifetimeInScope {
-                                    lint_id: item.id,
-                                    emit_lint: false,
-                                },
-                                |this| {
-                                    this.visit_generics(generics);
-                                    this.visit_ty(ty);
+                                // Only impose the restrictions of `ConstRibKind` for an
+                                // actual constant expression in a provided default.
+                                if let Some(expr) = expr {
+                                    // We allow arbitrary const expressions inside of associated consts,
+                                    // even if they are potentially not const evaluatable.
+                                    //
+                                    // Type parameters can already be used and as associated consts are
+                                    // not used as part of the type system, this is far less surprising.
+                                    this.resolve_const_body(expr, None);
+                                }
+                            },
+                        )
+                    },
+                );
 
-                                    // Only impose the restrictions of `ConstRibKind` for an
-                                    // actual constant expression in a provided default.
-                                    if let Some(expr) = expr {
-                                        // We allow arbitrary const expressions inside of associated consts,
-                                        // even if they are potentially not const evaluatable.
-                                        //
-                                        // Type parameters can already be used and as associated consts are
-                                        // not used as part of the type system, this is far less surprising.
-                                        this.resolve_const_body(expr, None);
-                                    }
-                                },
-                            )
-                        },
-                    );
+                self.resolve_define_opaques(define_opaque);
+            }
+            AssocItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
+                walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
 
-                    self.resolve_define_opaques(define_opaque);
-                }
-                AssocItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
-                    walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
-
-                    self.resolve_define_opaques(define_opaque);
-                }
-                AssocItemKind::Delegation(delegation) => {
-                    self.with_generic_param_rib(
-                        &[],
-                        RibKind::AssocItem,
-                        LifetimeRibKind::Generics {
-                            binder: item.id,
-                            kind: LifetimeBinderKind::Function,
-                            span: delegation.path.segments.last().unwrap().ident.span,
-                        },
-                        |this| this.resolve_delegation(delegation),
-                    );
-                }
-                AssocItemKind::Type(box TyAlias { generics, .. }) => self
-                    .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
-                        walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
-                    }),
-                AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
-                    panic!("unexpanded macro in resolve!")
-                }
-            };
+                self.resolve_define_opaques(define_opaque);
+            }
+            AssocItemKind::Delegation(delegation) => {
+                self.with_generic_param_rib(
+                    &[],
+                    RibKind::AssocItem,
+                    LifetimeRibKind::Generics {
+                        binder: item.id,
+                        kind: LifetimeBinderKind::Function,
+                        span: delegation.path.segments.last().unwrap().ident.span,
+                    },
+                    |this| this.resolve_delegation(delegation),
+                );
+            }
+            AssocItemKind::Type(box TyAlias { generics, .. }) => self
+                .with_lifetime_rib(LifetimeRibKind::AnonymousReportError, |this| {
+                    walk_assoc_item(this, generics, LifetimeBinderKind::Item, item)
+                }),
+            AssocItemKind::MacCall(_) | AssocItemKind::DelegationMac(..) => {
+                panic!("unexpanded macro in resolve!")
+            }
         }
-
-        self.diag_metadata.current_trait_assoc_items = trait_assoc_items;
     }
 
     /// This is called to resolve a trait reference from an `impl` (i.e., `impl Trait for Foo`).
