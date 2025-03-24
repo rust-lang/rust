@@ -84,7 +84,10 @@ mir_build_call_to_unsafe_fn_requires_unsafe_unsafe_op_in_unsafe_fn_allowed =
 
 mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as a constant pattern, not a new variable
 
-mir_build_const_continue_missing_value = a `const_continue` must break to a label with a value
+mir_build_const_continue_missing_value = a `#[const_continue]` must break to a label with a value
+
+mir_build_const_continue_unknown_jump_target = the target of this `#[const_continue]` is not statically known
+    .note = this value must be an integer or enum literal
 
 mir_build_const_defined_here = constant defined here
 
