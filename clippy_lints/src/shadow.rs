@@ -65,7 +65,7 @@ declare_clippy_lint! {
     #[clippy::version = "pre 1.29.0"]
     pub SHADOW_REUSE,
     restriction,
-    "rebinding a name to an expression that re-uses the original value, e.g., `let x = x + 1`"
+    "rebinding a name to an expression that reuses the original value, e.g., `let x = x + 1`"
 }
 
 declare_clippy_lint! {
