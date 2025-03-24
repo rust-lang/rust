@@ -18,7 +18,7 @@ fn main() {
             .input("main.rs"),
     );
 
-    // It should not be used when we explicitly opt-out of lld.
+    // It should not be used when we explicitly opt out of lld.
     assert_rustc_doesnt_use_lld(rustc().arg("-Zlinker-features=-lld").input("main.rs"));
 
     // While we're here, also check that the last linker feature flag "wins" when passed multiple
