@@ -1,20 +1,20 @@
 use std::ptr;
-
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
 use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
-use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
-use rustc_errors::FatalError;
+use rustc_errors::{DiagCtxt, FatalError};
+use rustc_middle::bug;
 use tracing::{debug, trace};
 
 use crate::back::write::llvm_err;
 use crate::builder::SBuilder;
 use crate::context::SimpleCx;
 use crate::declare::declare_simple_fn;
-use crate::errors::{AutoDiffWithoutEnable, LlvmError};
+use crate::errors::{AutoDiffUnusedArgs, AutoDiffWithoutEnable, LlvmError};
 use crate::llvm::AttributePlace::Function;
 use crate::llvm::{Metadata, True};
 use crate::value::Value;
+
 use crate::{CodegenContext, LlvmCodegenBackend, ModuleLlvm, attributes, llvm};
 
 fn get_params(fnc: &Value) -> Vec<&Value> {
@@ -28,6 +28,25 @@ fn get_params(fnc: &Value) -> Vec<&Value> {
     }
 }
 
+    fn has_sret(fnc: &Value) -> bool {
+        let num_args = unsafe { llvm::LLVMCountParams(fnc) as usize };
+        if num_args == 0 {
+            false
+        } else {
+            unsafe { llvm::LLVMRustHasAttributeAtIndex(fnc, 0, llvm::AttributeKind::StructRet) }
+        }
+    }
+
+// When we call the `__enzyme_autodiff` or `__enzyme_fwddiff` function, we need to pass all the
+// original inputs, as well as metadata and the additional shadow arguments.
+// This function matches the arguments from the outer function to the inner enzyme call.
+//
+// This function also considers that Rust level arguments not always match the llvm-ir level
+// arguments. A slice, `&[f32]`, for example, is represented as a pointer and a length on
+// llvm-ir level. The number of activities matches the number of Rust level arguments, so we
+// need to match those.
+// FIXME(ZuseZ4): This logic is a bit more complicated than it should be, can we simplify it
+// using iterators and peek()?
 fn match_args_from_caller_to_enzyme<'ll>(
     cx: &SimpleCx<'ll>,
     args: &mut Vec<&'ll llvm::Value>,
@@ -135,6 +154,78 @@ fn match_args_from_caller_to_enzyme<'ll>(
     }
 }
 
+
+// On LLVM-IR, we can luckily declare __enzyme_ functions without specifying the input
+// arguments. We do however need to declare them with their correct return type.
+// We already figured the correct return type out in our frontend, when generating the outer_fn,
+// so we can now just go ahead and use that. This is not always trivial, e.g. because sret.
+// Beyond sret, this article describes our challenges nicely:
+// <https://yorickpeterse.com/articles/the-mess-that-is-handling-structure-arguments-and-returns-in-llvm/>
+// I.e. (i32, f32) will get merged into i64, but we don't handle that yet.
+fn compute_enzyme_fn_ty<'ll>(
+    cx: &SimpleCx<'ll>,
+    attrs: &AutoDiffAttrs,
+    fn_to_diff: &'ll Value,
+    outer_fn: &'ll Value,
+) -> &'ll llvm::Type {
+    let fn_ty = cx.get_type_of_global(outer_fn);
+    let mut ret_ty = cx.get_return_type(fn_ty);
+
+    let has_sret = has_sret(outer_fn);
+
+    if has_sret {
+        // Now we don't just forward the return type, so we have to figure it out based on the
+        // primal return type, in combination with the autodiff settings.
+        let fn_ty = cx.get_type_of_global(fn_to_diff);
+        let inner_ret_ty = cx.get_return_type(fn_ty);
+
+        let void_ty = unsafe { llvm::LLVMVoidTypeInContext(cx.llcx) };
+        if inner_ret_ty == void_ty {
+            dbg!(&fn_to_diff);
+            // This indicates that even the inner function has an sret.
+            // Right now I only look for an sret in the outer function.
+            // This *probably* needs some extra handling, but I never ran
+            // into such a case. So I'll wait for user reports to have a test case.
+            bug!("sret in inner function");
+        }
+
+        if attrs.width == 1 {
+            todo!("Handle sret for scalar ad");
+        } else {
+            // First we check if we also have to deal with the primal return.
+            if attrs.mode.is_fwd() {
+                match attrs.ret_activity {
+                    DiffActivity::Dual => {
+                        let arr_ty =
+                            unsafe { llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64 + 1) };
+                        ret_ty = arr_ty;
+                    }
+                    DiffActivity::DualOnly => {
+                        let arr_ty =
+                            unsafe { llvm::LLVMArrayType2(inner_ret_ty, attrs.width as u64) };
+                        ret_ty = arr_ty;
+                    }
+                    DiffActivity::Const => {
+                        todo!("Not sure, do we need to do something here?");
+                    }
+                    _ => {
+                        bug!("unreachable");
+                    }
+                }
+            } else if attrs.mode.is_rev() {
+                todo!("Handle sret for reverse mode");
+            } else {
+                bug!("unreachable");
+            }
+        }
+    }
+
+    dbg!(&outer_fn);
+
+    // LLVM can figure out the input types on it's own, so we take a shortcut here.
+    unsafe { llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True) }
+}
+
 /// When differentiating `fn_to_diff`, take a `outer_fn` and generate another
 /// function with expected naming and calling conventions[^1] which will be
 /// discovered by the enzyme LLVM pass and its body populated with the differentiated
@@ -145,6 +236,7 @@ fn match_args_from_caller_to_enzyme<'ll>(
 // FIXME(ZuseZ4): `outer_fn` should include upstream safety checks to
 // cover some assumptions of enzyme/autodiff, which could lead to UB otherwise.
 fn generate_enzyme_call<'ll>(
+    _dcx: &DiagCtxt,
     cx: &SimpleCx<'ll>,
     fn_to_diff: &'ll Value,
     outer_fn: &'ll Value,
@@ -197,17 +289,9 @@ fn generate_enzyme_call<'ll>(
     // }
     // ```
     unsafe {
-        // On LLVM-IR, we can luckily declare __enzyme_ functions without specifying the input
-        // arguments. We do however need to declare them with their correct return type.
-        // We already figured the correct return type out in our frontend, when generating the outer_fn,
-        // so we can now just go ahead and use that. FIXME(ZuseZ4): This doesn't handle sret yet.
-        let fn_ty = llvm::LLVMGlobalGetValueType(outer_fn);
-        let ret_ty = llvm::LLVMGetReturnType(fn_ty);
+        let enzyme_ty = compute_enzyme_fn_ty(cx, &attrs, fn_to_diff, outer_fn);
 
-        // LLVM can figure out the input types on it's own, so we take a shortcut here.
-        let enzyme_ty = llvm::LLVMFunctionType(ret_ty, ptr::null(), 0, True);
-
-        //FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
+        // FIXME(ZuseZ4): the CC/Addr/Vis values are best effort guesses, we should look at tests and
         // think a bit more about what should go here.
         let cc = llvm::LLVMGetFunctionCallConv(outer_fn);
         let ad_fn = declare_simple_fn(
@@ -268,11 +352,30 @@ fn generate_enzyme_call<'ll>(
         // Now that we copied the metadata, get rid of dummy code.
         llvm::LLVMRustEraseInstUntilInclusive(entry, last_inst);
 
-        if cx.val_ty(call) == cx.type_void() {
+        let has_sret = has_sret(outer_fn);
+
+        if cx.val_ty(call) == cx.type_void() || has_sret {
+            if has_sret {
+                // This is what we already have in our outer_fn (shortened):
+                // define void @_foo(ptr <..> sret([32 x i8]) initializes((0, 32)) %0, <...>) {
+                //   %7 = call [4 x double] (...) @__enzyme_fwddiff_foo(ptr @square, metadata !"enzyme_width", i64 4, <...>)
+                //   <Here we are, we want to add the following two lines>
+                //   store [4 x double] %7, ptr %0, align 8
+                //   ret void
+                // }
+
+                // now store the result of the enzyme call into the sret pointer.
+                let sret_ptr = outer_args[0];
+                let call_ty = cx.val_ty(call);
+                assert!(llvm::LLVMRustIsArrayTy(call_ty));
+                llvm::LLVMBuildStore(&builder.llbuilder, call, sret_ptr);
+            }
             builder.ret_void();
         } else {
             builder.ret(call);
         }
+
+        dbg!(&outer_fn);
 
         // Let's crash in case that we messed something up above and generated invalid IR.
         llvm::LLVMRustVerifyFunction(
@@ -300,8 +403,7 @@ pub(crate) fn differentiate<'ll>(
     if !diff_items.is_empty()
         && !cgcx.opts.unstable_opts.autodiff.contains(&rustc_session::config::AutoDiff::Enable)
     {
-        let dcx = cgcx.create_dcx();
-        return Err(dcx.handle().emit_almost_fatal(AutoDiffWithoutEnable));
+        return Err(diag_handler.handle().emit_almost_fatal(AutoDiffWithoutEnable));
     }
 
     // Before dumping the module, we want all the TypeTrees to become part of the module.
@@ -331,7 +433,7 @@ pub(crate) fn differentiate<'ll>(
             ));
         };
 
-        generate_enzyme_call(&cx, fn_def, fn_target, item.attrs.clone());
+        generate_enzyme_call(&diag_handler, &cx, fn_def, fn_target, item.attrs.clone());
     }
 
     // FIXME(ZuseZ4): support SanitizeHWAddress and prevent illegal/unsupported opts
