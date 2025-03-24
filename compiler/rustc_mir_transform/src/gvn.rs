@@ -130,7 +130,7 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
 
         for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
-            let opaque = state.new_opaque().unwrap();
+            let opaque = state.new_opaque();
             state.assign(local, opaque);
         }
 
@@ -237,8 +237,7 @@ struct VnState<'body, 'tcx> {
     /// Values evaluated as constants if possible.
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
-    /// This is an option to stop creating opaques during replacement.
-    next_opaque: Option<usize>,
+    next_opaque: usize,
     /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
@@ -270,7 +269,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             rev_locals: IndexVec::with_capacity(num_values),
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
-            next_opaque: Some(1),
+            next_opaque: 1,
             feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
@@ -291,32 +290,31 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             let evaluated = self.eval_to_const(index);
             let _index = self.evaluated.push(evaluated);
             debug_assert_eq!(index, _index);
-            // No need to push to `rev_locals` if we finished listing assignments.
-            if self.next_opaque.is_some() {
-                let _index = self.rev_locals.push(SmallVec::new());
-                debug_assert_eq!(index, _index);
-            }
+            let _index = self.rev_locals.push(SmallVec::new());
+            debug_assert_eq!(index, _index);
         }
         index
+    }
+
+    fn next_opaque(&mut self) -> usize {
+        let next_opaque = self.next_opaque;
+        self.next_opaque += 1;
+        next_opaque
     }
 
     /// Create a new `Value` for which we have no information at all, except that it is distinct
     /// from all the others.
     #[instrument(level = "trace", skip(self), ret)]
-    fn new_opaque(&mut self) -> Option<VnIndex> {
-        let next_opaque = self.next_opaque.as_mut()?;
-        let value = Value::Opaque(*next_opaque);
-        *next_opaque += 1;
-        Some(self.insert(value))
+    fn new_opaque(&mut self) -> VnIndex {
+        let value = Value::Opaque(self.next_opaque());
+        self.insert(value)
     }
 
     /// Create a new `Value::Address` distinct from all the others.
     #[instrument(level = "trace", skip(self), ret)]
-    fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> Option<VnIndex> {
-        let next_opaque = self.next_opaque.as_mut()?;
-        let value = Value::Address { place, kind, provenance: *next_opaque };
-        *next_opaque += 1;
-        Some(self.insert(value))
+    fn new_pointer(&mut self, place: Place<'tcx>, kind: AddressKind) -> VnIndex {
+        let value = Value::Address { place, kind, provenance: self.next_opaque() };
+        self.insert(value)
     }
 
     fn get(&self, index: VnIndex) -> &Value<'tcx> {
@@ -337,21 +335,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         }
     }
 
-    fn insert_constant(&mut self, value: Const<'tcx>) -> Option<VnIndex> {
+    fn insert_constant(&mut self, value: Const<'tcx>) -> VnIndex {
         let disambiguator = if value.is_deterministic() {
             // The constant is deterministic, no need to disambiguate.
             0
         } else {
             // Multiple mentions of this constant will yield different values,
             // so assign a different `disambiguator` to ensure they do not get the same `VnIndex`.
-            let next_opaque = self.next_opaque.as_mut()?;
-            let disambiguator = *next_opaque;
-            *next_opaque += 1;
+            let disambiguator = self.next_opaque();
             // `disambiguator: 0` means deterministic.
             debug_assert_ne!(disambiguator, 0);
             disambiguator
         };
-        Some(self.insert(Value::Constant { value, disambiguator }))
+        self.insert(Value::Constant { value, disambiguator })
     }
 
     fn insert_bool(&mut self, flag: bool) -> VnIndex {
@@ -812,7 +808,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         location: Location,
     ) -> Option<VnIndex> {
         match *operand {
-            Operand::Constant(ref constant) => self.insert_constant(constant.const_),
+            Operand::Constant(ref constant) => Some(self.insert_constant(constant.const_)),
             Operand::Copy(ref mut place) | Operand::Move(ref mut place) => {
                 let value = self.simplify_place_value(place, location)?;
                 if let Some(const_) = self.try_as_constant(value) {
@@ -848,11 +844,11 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             Rvalue::Aggregate(..) => return self.simplify_aggregate(rvalue, location),
             Rvalue::Ref(_, borrow_kind, ref mut place) => {
                 self.simplify_place_projection(place, location);
-                return self.new_pointer(*place, AddressKind::Ref(borrow_kind));
+                return Some(self.new_pointer(*place, AddressKind::Ref(borrow_kind)));
             }
             Rvalue::RawPtr(mutbl, ref mut place) => {
                 self.simplify_place_projection(place, location);
-                return self.new_pointer(*place, AddressKind::Address(mutbl));
+                return Some(self.new_pointer(*place, AddressKind::Address(mutbl)));
             }
             Rvalue::WrapUnsafeBinder(ref mut op, ty) => {
                 let value = self.simplify_operand(op, location)?;
@@ -1016,7 +1012,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
             if is_zst {
                 let ty = rvalue.ty(self.local_decls, tcx);
-                return self.insert_constant(Const::zero_sized(ty));
+                return Some(self.insert_constant(Const::zero_sized(ty)));
             }
         }
 
@@ -1045,11 +1041,10 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             }
         };
 
-        let fields: Option<Vec<_>> = field_ops
+        let mut fields: Vec<_> = field_ops
             .iter_mut()
-            .map(|op| self.simplify_operand(op, location).or_else(|| self.new_opaque()))
+            .map(|op| self.simplify_operand(op, location).unwrap_or_else(|| self.new_opaque()))
             .collect();
-        let mut fields = fields?;
 
         if let AggregateTy::RawPtr { data_pointer_ty, output_pointer_ty } = &mut ty {
             let mut was_updated = false;
@@ -1177,7 +1172,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             ) if let ty::Slice(..) = to.builtin_deref(true).unwrap().kind()
                 && let ty::Array(_, len) = from.builtin_deref(true).unwrap().kind() =>
             {
-                return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
+                return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
             }
             _ => Value::UnaryOp(op, arg_index),
         };
@@ -1373,7 +1368,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         if let CastKind::PointerCoercion(ReifyFnPointer | ClosureFnPointer(_), _) = kind {
             // Each reification of a generic fn may get a different pointer.
             // Do not try to merge them.
-            return self.new_opaque();
+            return Some(self.new_opaque());
         }
 
         let mut was_ever_updated = false;
@@ -1489,7 +1484,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
         // Trivial case: we are fetching a statically known length.
         let place_ty = place.ty(self.local_decls, self.tcx).ty;
         if let ty::Array(_, len) = place_ty.kind() {
-            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
+            return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
         }
 
         let mut inner = self.simplify_place_value(place, location)?;
@@ -1511,7 +1506,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             && let Some(to) = to.builtin_deref(true)
             && let ty::Slice(..) = to.kind()
         {
-            return self.insert_constant(Const::Ty(self.tcx.types.usize, *len));
+            return Some(self.insert_constant(Const::Ty(self.tcx.types.usize, *len)));
         }
 
         // Fallback: a symbolic `Len`.
@@ -1740,7 +1735,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 // `local` as reusable if we have an exact type match.
                 && self.local_decls[local].ty == rvalue.ty(self.local_decls, self.tcx)
             {
-                let value = value.or_else(|| self.new_opaque()).unwrap();
+                let value = value.unwrap_or_else(|| self.new_opaque());
                 self.assign(local, value);
                 Some(value)
             } else {
@@ -1767,7 +1762,7 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             && let Some(local) = destination.as_local()
             && self.ssa.is_ssa(local)
         {
-            let opaque = self.new_opaque().unwrap();
+            let opaque = self.new_opaque();
             self.assign(local, opaque);
         }
         self.super_terminator(terminator, location);
