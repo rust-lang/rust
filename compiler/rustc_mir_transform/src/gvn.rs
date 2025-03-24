@@ -1779,8 +1779,14 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 let opaque = self.new_opaque();
                 self.assign(local, opaque);
             }
-            // Function calls maybe invalidate nested deref, and non-local assignments maybe invalidate deref.
-            // Currently, no distinction is made between these two cases.
+        }
+        // Function calls and ASM may invalidate (nested) derefs. We must handle them carefully.
+        // Currently, only preserving derefs for trivial terminators like SwitchInt and Goto.
+        let safe_to_preserve_derefs = matches!(
+            terminator.kind,
+            TerminatorKind::SwitchInt { .. } | TerminatorKind::Goto { .. }
+        );
+        if !safe_to_preserve_derefs {
             self.invalidate_derefs();
         }
         self.super_terminator(terminator, location);
