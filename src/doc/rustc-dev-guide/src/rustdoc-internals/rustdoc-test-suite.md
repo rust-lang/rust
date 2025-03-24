@@ -5,7 +5,7 @@ For other test suites used for testing rustdoc, see [Rustdoc tests](../rustdoc.m
 
 The `rustdoc` test suite is specifically used to test the HTML output of rustdoc.
 
-This is achived by means of `htmldocck.py`, a custom checker script that leverages [XPath].
+This is achieved by means of `htmldocck.py`, a custom checker script that leverages [XPath].
 
 [XPath]: https://en.wikipedia.org/wiki/XPath
 
