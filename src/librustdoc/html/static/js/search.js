@@ -2583,9 +2583,9 @@ class DocSearch {
             if ((elem.id === null && parsedQuery.totalElems > 1 && elem.typeFilter === -1
                 && elem.generics.length === 0 && elem.bindings.size === 0)
                 || elem.typeFilter === TY_GENERIC) {
-                if (genericSymbols.has(elem.normalizedPathLast)) {
-                    // @ts-expect-error
-                    elem.id = genericSymbols.get(elem.normalizedPathLast);
+                const id = genericSymbols.get(elem.normalizedPathLast);
+                if (id !== undefined) {
+                    elem.id = id;
                 } else {
                     elem.id = -(genericSymbols.size + 1);
                     genericSymbols.set(elem.normalizedPathLast, elem.id);
