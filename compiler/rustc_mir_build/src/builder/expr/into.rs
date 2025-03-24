@@ -246,7 +246,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 })
             }
             ExprKind::LoopMatch { state, region_scope, match_span, ref arms } => {
-                // FIXME add diagram
+                // Intuitively, this is a combination of a loop containing a labeled block
+                // containing a match.
+                //
+                // The only new bit here is that the lowering of the match is wrapped in a
+                // `in_const_continuable_scope`, which makes the match arms and their target basic
+                // block available to the lowering of `#[const_continue]`.
 
                 let loop_block = this.cfg.start_new_block();
 
@@ -254,6 +259,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 this.cfg.goto(block, source_info, loop_block);
 
                 this.in_breakable_scope(Some(loop_block), destination, expr_span, |this| {
+                    // logic for `loop`
                     let mut body_block = this.cfg.start_new_block();
                     this.cfg.terminate(
                         loop_block,
@@ -265,6 +271,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     );
                     this.diverge_from(loop_block);
 
+                    // logic for `match`
                     let scrutinee_place_builder =
                         unpack!(body_block = this.as_place_builder(body_block, state));
                     let scrutinee_span = this.thir.exprs[state].span;
@@ -282,6 +289,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         patterns.push((&*arm.pattern, HasMatchGuard::No));
                     }
 
+                    // The `built_tree` maps match arms to their basic block (where control flow
+                    // jumps to when a value matches the arm). This structure is stored so that a
+                    // #[const_continue] can figure out what basic block to jump to.
                     let built_tree = this.lower_match_tree(
                         body_block,
                         scrutinee_span,
@@ -293,6 +303,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     let state_place = scrutinee_place_builder.to_place(this);
 
+                    // this is logic for the labeled block: a block is a drop scope, hence
+                    // `in_scope`, and a labeled block can be broken out of with a `break 'label`,
+                    // hence the `in_breakable_scope`.
+                    //
+                    // Inside of that information for #[const_continue] is stored, and the match is
+                    // lowered in the standard way.
                     unpack!(
                         body_block = this.in_scope(
                             (region_scope, source_info),
