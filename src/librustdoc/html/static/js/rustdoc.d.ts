@@ -6,8 +6,10 @@
 declare global {
     /** Map from crate name to directory structure, for source view */
     declare var srcIndex: Map<string, rustdoc.Dir>;
-    /** Defined and documented in `main.js` */
+    /** Defined and documented in `storage.js` */
     declare function nonnull(x: T|null, msg: string|undefined);
+    /** Defined and documented in `storage.js` */
+    declare function nonundef(x: T|undefined, msg: string|undefined);
     interface Window {
         /** Make the current theme easy to find */
         currentTheme: HTMLLinkElement|null;

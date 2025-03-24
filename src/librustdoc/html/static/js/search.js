@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue, getVar */
+/* global addClass, getNakedUrl, getSettingValue, getVar, nonnull, nonundef */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
 "use strict";
@@ -338,9 +338,8 @@ function getFilteredNextElem(query, parserState, elems, isInGenerics) {
         // The type filter doesn't count as an element since it's a modifier.
         const typeFilterElem = elems.pop();
         checkExtraTypeFilterCharacters(start, parserState);
-        // typeFilterElem is not null. If it was, the elems.length check would have fired.
-        // @ts-expect-error
-        parserState.typeFilter = typeFilterElem.normalizedPathLast;
+        // typeFilterElem is not undefined. If it was, the elems.length check would have fired.
+        parserState.typeFilter = nonundef(typeFilterElem).normalizedPathLast;
         parserState.pos += 1;
         parserState.totalElems -= 1;
         query.literalSearch = false;
