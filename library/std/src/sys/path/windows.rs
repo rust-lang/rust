@@ -350,3 +350,46 @@ pub(crate) fn absolute(path: &Path) -> io::Result<PathBuf> {
 pub(crate) fn is_absolute(path: &Path) -> bool {
     path.has_root() && path.prefix().is_some()
 }
+
+/// Test that the path is absolute, fully qualified and unchanged when processed by the Windows API.
+///
+/// For example:
+///
+/// - `C:\path\to\file` will return true.
+/// - `C:\path\to\nul` returns false because the Windows API will convert it to \\.\NUL
+/// - `C:\path\to\..\file` returns false because it will be resolved to `C:\path\file`.
+///
+/// This is a useful property because it means the path can be converted from and to and verbatim
+/// path just by changing the prefix.
+pub(crate) fn is_absolute_exact(path: &[u16]) -> bool {
+    // This is implemented by checking that passing the path through
+    // GetFullPathNameW does not change the path in any way.
+
+    // Windows paths are limited to i16::MAX length
+    // though the API here accepts a u32 for the length.
+    if path.is_empty() || path.len() > u32::MAX as usize || path.last() != Some(&0) {
+        return false;
+    }
+    // The path returned by `GetFullPathNameW` must be the same length as the
+    // given path, otherwise they're not equal.
+    let buffer_len = path.len();
+    let mut new_path = Vec::with_capacity(buffer_len);
+    let result = unsafe {
+        c::GetFullPathNameW(
+            path.as_ptr(),
+            new_path.capacity() as u32,
+            new_path.as_mut_ptr(),
+            crate::ptr::null_mut(),
+        )
+    };
+    // Note: if non-zero, the returned result is the length of the buffer without the null termination
+    if result == 0 || result as usize != buffer_len - 1 {
+        false
+    } else {
+        // SAFETY: `GetFullPathNameW` initialized `result` bytes and does not exceed `nBufferLength - 1` (capacity).
+        unsafe {
+            new_path.set_len((result as usize) + 1);
+        }
+        path == &new_path
+    }
+}
