@@ -988,6 +988,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             mir::BinOp::Cmp => {
                 use std::cmp::Ordering;
                 assert!(!is_float);
+                if let Some(value) = bx.three_way_compare(lhs_ty, lhs, rhs) {
+                    return value;
+                }
                 let pred = |op| base::bin_op_to_icmp_predicate(op, is_signed);
                 if bx.cx().tcx().sess.opts.optimize == OptLevel::No {
                     // FIXME: This actually generates tighter assembly, and is a classic trick
