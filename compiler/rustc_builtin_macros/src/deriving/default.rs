@@ -51,6 +51,7 @@ pub(crate) fn expand_deriving_default(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }

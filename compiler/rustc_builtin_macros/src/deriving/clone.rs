@@ -82,6 +82,9 @@ pub(crate) fn expand_deriving_clone(
             associated_types: Vec::new(),
             is_const,
             safety: Safety::Unsafe(DUMMY_SP),
+            // `TrivialClone` is not part of an API guarantee, so it shouldn't
+            // appear in rustdoc output.
+            document: false,
         };
 
         trivial_def.expand_ext(cx, mitem, item, push, true);
@@ -107,6 +110,7 @@ pub(crate) fn expand_deriving_clone(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)

@@ -1583,6 +1583,7 @@ impl<T: ?Sized> Clone for NonNull<T> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 impl<T: ?Sized> Copy for NonNull<T> {}
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 unsafe impl<T: ?Sized> TrivialClone for NonNull<T> {}
 

@@ -65,6 +65,7 @@ pub(crate) fn expand_deriving_partial_ord(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }

@@ -61,6 +61,7 @@ macro_rules! phantom_type {
 
         impl<T> Copy for $name<T> where T: ?Sized {}
 
+        #[doc(hidden)]
         unsafe impl<T> TrivialClone for $name<T> where T: ?Sized {}
 
         impl<T> PartialEq for $name<T>

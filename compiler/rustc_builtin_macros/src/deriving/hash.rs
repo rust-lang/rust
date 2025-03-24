@@ -42,6 +42,7 @@ pub(crate) fn expand_deriving_hash(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     hash_trait_def.expand(cx, mitem, item, push);

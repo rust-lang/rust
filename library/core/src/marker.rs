@@ -813,6 +813,7 @@ impl<T: ?Sized> Clone for PhantomData<T> {
     }
 }
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 unsafe impl<T: ?Sized> TrivialClone for PhantomData<T> {}
 

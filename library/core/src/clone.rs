@@ -539,6 +539,7 @@ mod impls {
                     }
                 }
 
+                #[doc(hidden)]
                 #[unstable(feature = "trivial_clone", issue = "none")]
                 unsafe impl TrivialClone for $t {}
             )*
@@ -560,9 +561,11 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     unsafe impl TrivialClone for ! {}
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     unsafe impl TrivialClone for () {}
 
@@ -574,6 +577,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     unsafe impl<T: ?Sized> TrivialClone for *const T {}
 
@@ -585,6 +589,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     unsafe impl<T: ?Sized> TrivialClone for *mut T {}
 
@@ -598,6 +603,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     unsafe impl<T: ?Sized> TrivialClone for &T {}
 

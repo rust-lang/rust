@@ -24,6 +24,7 @@ pub(crate) fn expand_deriving_copy(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -48,6 +49,7 @@ pub(crate) fn expand_deriving_const_param_ty(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -63,6 +65,7 @@ pub(crate) fn expand_deriving_const_param_ty(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -87,6 +90,7 @@ pub(crate) fn expand_deriving_unsized_const_param_ty(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);

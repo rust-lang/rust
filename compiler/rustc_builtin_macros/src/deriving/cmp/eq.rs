@@ -44,6 +44,7 @@ pub(crate) fn expand_deriving_eq(
         associated_types: Vec::new(),
         is_const,
         safety: Safety::Default,
+        document: true,
     };
     trait_def.expand_ext(cx, mitem, item, push, true)
 }

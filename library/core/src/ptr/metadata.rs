@@ -229,6 +229,7 @@ impl<Dyn: ?Sized> Clone for DynMetadata<Dyn> {
     }
 }
 
+#[doc(hidden)]
 unsafe impl<Dyn: ?Sized> TrivialClone for DynMetadata<Dyn> {}
 
 impl<Dyn: ?Sized> Eq for DynMetadata<Dyn> {}
