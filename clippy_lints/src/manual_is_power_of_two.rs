@@ -1,12 +1,10 @@
-use clippy_utils::SpanlessEq;
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::source::snippet_with_applicability;
-use rustc_ast::LitKind;
-use rustc_data_structures::packed::Pu128;
+use clippy_utils::sugg::Sugg;
+use clippy_utils::{SpanlessEq, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::Uint;
+use rustc_middle::ty;
 use rustc_session::declare_lint_pass;
 
 declare_clippy_lint! {
@@ -35,88 +33,35 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
 
-impl LateLintPass<'_> for ManualIsPowerOfTwo {
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
-        let mut applicability = Applicability::MachineApplicable;
-
-        if let ExprKind::Binary(bin_op, left, right) = expr.kind
+impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
+        if let ExprKind::Binary(bin_op, lhs, rhs) = expr.kind
             && bin_op.node == BinOpKind::Eq
         {
-            // a.count_ones() == 1
-            if let ExprKind::MethodCall(method_name, receiver, [], _) = left.kind
-                && method_name.ident.as_str() == "count_ones"
-                && let &Uint(_) = cx.typeck_results().expr_ty(receiver).kind()
-                && check_lit(right, 1)
+            if let Some(a) = count_ones_receiver(cx, lhs)
+                && is_integer_literal(rhs, 1)
             {
-                build_sugg(cx, expr, receiver, &mut applicability);
-            }
-
-            // 1 == a.count_ones()
-            if let ExprKind::MethodCall(method_name, receiver, [], _) = right.kind
-                && method_name.ident.as_str() == "count_ones"
-                && let &Uint(_) = cx.typeck_results().expr_ty(receiver).kind()
-                && check_lit(left, 1)
+                build_sugg(cx, expr, a);
+            } else if let Some(a) = count_ones_receiver(cx, rhs)
+                && is_integer_literal(lhs, 1)
             {
-                build_sugg(cx, expr, receiver, &mut applicability);
-            }
-
-            // a & (a - 1) == 0
-            if let ExprKind::Binary(op1, left1, right1) = left.kind
-                && op1.node == BinOpKind::BitAnd
-                && let ExprKind::Binary(op2, left2, right2) = right1.kind
-                && op2.node == BinOpKind::Sub
-                && check_eq_expr(cx, left1, left2)
-                && let &Uint(_) = cx.typeck_results().expr_ty(left1).kind()
-                && check_lit(right2, 1)
-                && check_lit(right, 0)
+                build_sugg(cx, expr, a);
+            } else if is_integer_literal(rhs, 0)
+                && let Some(a) = is_and_minus_one(cx, lhs)
             {
-                build_sugg(cx, expr, left1, &mut applicability);
-            }
-
-            // (a - 1) & a == 0;
-            if let ExprKind::Binary(op1, left1, right1) = left.kind
-                && op1.node == BinOpKind::BitAnd
-                && let ExprKind::Binary(op2, left2, right2) = left1.kind
-                && op2.node == BinOpKind::Sub
-                && check_eq_expr(cx, right1, left2)
-                && let &Uint(_) = cx.typeck_results().expr_ty(right1).kind()
-                && check_lit(right2, 1)
-                && check_lit(right, 0)
+                build_sugg(cx, expr, a);
+            } else if is_integer_literal(lhs, 0)
+                && let Some(a) = is_and_minus_one(cx, rhs)
             {
-                build_sugg(cx, expr, right1, &mut applicability);
-            }
-
-            // 0 == a & (a - 1);
-            if let ExprKind::Binary(op1, left1, right1) = right.kind
-                && op1.node == BinOpKind::BitAnd
-                && let ExprKind::Binary(op2, left2, right2) = right1.kind
-                && op2.node == BinOpKind::Sub
-                && check_eq_expr(cx, left1, left2)
-                && let &Uint(_) = cx.typeck_results().expr_ty(left1).kind()
-                && check_lit(right2, 1)
-                && check_lit(left, 0)
-            {
-                build_sugg(cx, expr, left1, &mut applicability);
-            }
-
-            // 0 == (a - 1) & a
-            if let ExprKind::Binary(op1, left1, right1) = right.kind
-                && op1.node == BinOpKind::BitAnd
-                && let ExprKind::Binary(op2, left2, right2) = left1.kind
-                && op2.node == BinOpKind::Sub
-                && check_eq_expr(cx, right1, left2)
-                && let &Uint(_) = cx.typeck_results().expr_ty(right1).kind()
-                && check_lit(right2, 1)
-                && check_lit(left, 0)
-            {
-                build_sugg(cx, expr, right1, &mut applicability);
+                build_sugg(cx, expr, a);
             }
         }
     }
 }
 
-fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, applicability: &mut Applicability) {
-    let snippet = snippet_with_applicability(cx, receiver.span, "..", applicability);
+fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
+    let mut applicability = Applicability::MachineApplicable;
+    let snippet = Sugg::hir_with_applicability(cx, receiver, "_", &mut applicability);
 
     span_lint_and_sugg(
         cx,
@@ -125,20 +70,47 @@ fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, applic
         "manually reimplementing `is_power_of_two`",
         "consider using `.is_power_of_two()`",
         format!("{snippet}.is_power_of_two()"),
-        *applicability,
+        applicability,
     );
 }
 
-fn check_lit(expr: &Expr<'_>, expected_num: u128) -> bool {
-    if let ExprKind::Lit(lit) = expr.kind
-        && let LitKind::Int(Pu128(num), _) = lit.node
-        && num == expected_num
+/// Return the unsigned integer receiver of `.count_ones()`
+fn count_ones_receiver<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::MethodCall(method_name, receiver, [], _) = expr.kind
+        && method_name.ident.as_str() == "count_ones"
+        && matches!(cx.typeck_results().expr_ty_adjusted(receiver).kind(), ty::Uint(_))
     {
-        return true;
+        Some(receiver)
+    } else {
+        None
     }
-    false
 }
 
-fn check_eq_expr(cx: &LateContext<'_>, lhs: &Expr<'_>, rhs: &Expr<'_>) -> bool {
-    SpanlessEq::new(cx).eq_expr(lhs, rhs)
+/// Return `greater` if `smaller == greater - 1`
+fn is_one_less<'tcx>(
+    cx: &LateContext<'tcx>,
+    greater: &'tcx Expr<'tcx>,
+    smaller: &Expr<'tcx>,
+) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Binary(op, lhs, rhs) = smaller.kind
+        && op.node == BinOpKind::Sub
+        && SpanlessEq::new(cx).eq_expr(greater, lhs)
+        && is_integer_literal(rhs, 1)
+        && matches!(cx.typeck_results().expr_ty_adjusted(greater).kind(), ty::Uint(_))
+    {
+        Some(greater)
+    } else {
+        None
+    }
+}
+
+/// Return `v` if `expr` is `v & (v - 1)` or `(v - 1) & v`
+fn is_and_minus_one<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>) -> Option<&'tcx Expr<'tcx>> {
+    if let ExprKind::Binary(op, lhs, rhs) = expr.kind
+        && op.node == BinOpKind::BitAnd
+    {
+        is_one_less(cx, lhs, rhs).or_else(|| is_one_less(cx, rhs, lhs))
+    } else {
+        None
+    }
 }
