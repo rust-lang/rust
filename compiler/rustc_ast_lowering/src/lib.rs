@@ -536,6 +536,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
+    /// Given the id of an owner node in the AST, returns the corresponding `OwnerId`.
+    fn owner_id(&self, node: NodeId) -> hir::OwnerId {
+        hir::OwnerId { def_id: self.local_def_id(node) }
+    }
+
     /// Freshen the `LoweringContext` and ready it to lower a nested item.
     /// The lowered item is registered into `self.children`.
     ///
@@ -547,7 +552,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         owner: NodeId,
         f: impl FnOnce(&mut Self) -> hir::OwnerNode<'hir>,
     ) {
-        let def_id = self.local_def_id(owner);
+        let owner_id = self.owner_id(owner);
 
         let current_attrs = std::mem::take(&mut self.attrs);
         let current_bodies = std::mem::take(&mut self.bodies);
@@ -558,8 +563,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         #[cfg(debug_assertions)]
         let current_node_id_to_local_id = std::mem::take(&mut self.node_id_to_local_id);
         let current_trait_map = std::mem::take(&mut self.trait_map);
-        let current_owner =
-            std::mem::replace(&mut self.current_hir_id_owner, hir::OwnerId { def_id });
+        let current_owner = std::mem::replace(&mut self.current_hir_id_owner, owner_id);
         let current_local_counter =
             std::mem::replace(&mut self.item_local_id_counter, hir::ItemLocalId::new(1));
         let current_impl_trait_defs = std::mem::take(&mut self.impl_trait_defs);
@@ -577,7 +581,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         }
 
         let item = f(self);
-        debug_assert_eq!(def_id, item.def_id().def_id);
+        debug_assert_eq!(owner_id, item.def_id());
         // `f` should have consumed all the elements in these vectors when constructing `item`.
         debug_assert!(self.impl_trait_defs.is_empty());
         debug_assert!(self.impl_trait_bounds.is_empty());
@@ -598,8 +602,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
 
-        debug_assert!(!self.children.iter().any(|(id, _)| id == &def_id));
-        self.children.push((def_id, hir::MaybeOwner::Owner(info)));
+        debug_assert!(!self.children.iter().any(|(id, _)| id == &owner_id.def_id));
+        self.children.push((owner_id.def_id, hir::MaybeOwner::Owner(info)));
     }
 
     fn make_owner_info(&mut self, node: hir::OwnerNode<'hir>) -> &'hir hir::OwnerInfo<'hir> {
