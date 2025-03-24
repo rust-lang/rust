@@ -80,7 +80,7 @@ impl<'tcx> ObligationStorage<'tcx> {
             // change.
             // FIXME: <https://github.com/Gankra/thin-vec/pull/66> is merged, this can be removed.
             self.overflowed.extend(ExtractIf::new(&mut self.pending, |o| {
-                let goal = o.clone().into();
+                let goal = o.as_goal();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No, o.cause.span)
                     .0;
@@ -161,7 +161,7 @@ where
 
             let mut has_changed = false;
             for obligation in self.obligations.unstalled_for_select() {
-                let goal = obligation.clone().into();
+                let goal = obligation.as_goal();
                 let result = <&SolverDelegate<'tcx>>::from(infcx)
                     .evaluate_root_goal(goal, GenerateProofTree::No, obligation.cause.span)
                     .0;

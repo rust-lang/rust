@@ -54,6 +54,12 @@ pub struct Obligation<'tcx, T> {
     pub recursion_depth: usize,
 }
 
+impl<'tcx, T: Copy> Obligation<'tcx, T> {
+    pub fn as_goal(&self) -> solve::Goal<'tcx, T> {
+        solve::Goal { param_env: self.param_env, predicate: self.predicate }
+    }
+}
+
 impl<'tcx, T: PartialEq> PartialEq<Obligation<'tcx, T>> for Obligation<'tcx, T> {
     #[inline]
     fn eq(&self, other: &Obligation<'tcx, T>) -> bool {
@@ -72,12 +78,6 @@ impl<T: Hash> Hash for Obligation<'_, T> {
         // See the comment on `Obligation::eq`.
         self.param_env.hash(state);
         self.predicate.hash(state);
-    }
-}
-
-impl<'tcx, P> From<Obligation<'tcx, P>> for solve::Goal<'tcx, P> {
-    fn from(value: Obligation<'tcx, P>) -> Self {
-        solve::Goal { param_env: value.param_env, predicate: value.predicate }
     }
 }
 
