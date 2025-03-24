@@ -1221,15 +1221,15 @@ fn precise_macro_call_location(
                     .nth(derive_attr_index.ast_index())
                     .and_then(|x| Either::left(x.1))?;
                 let token_tree = derive_attr.meta()?.token_tree()?;
-                let group_by = token_tree
+                let chunk_by = token_tree
                     .syntax()
                     .children_with_tokens()
                     .filter_map(|elem| match elem {
                         syntax::NodeOrToken::Token(tok) => Some(tok),
                         _ => None,
                     })
-                    .group_by(|t| t.kind() == T![,]);
-                let (_, mut group) = group_by
+                    .chunk_by(|t| t.kind() == T![,]);
+                let (_, mut group) = chunk_by
                     .into_iter()
                     .filter(|&(comma, _)| !comma)
                     .nth(*derive_index as usize)?;

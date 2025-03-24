@@ -380,7 +380,7 @@ fn parse_comma_sep_expr(input: ast::TokenTree) -> Option<Vec<ast::Expr>> {
         .children_with_tokens()
         .skip(1)
         .take_while(|it| it.as_token() != Some(&r_paren));
-    let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
+    let input_expressions = tokens.chunk_by(|tok| tok.kind() == T![,]);
     Some(
         input_expressions
             .into_iter()

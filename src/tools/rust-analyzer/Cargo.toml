@@ -97,60 +97,57 @@ ra-ap-rustc_pattern_analysis = { version = "0.100", default-features = false }
 # in-tree crates that are published separately and follow semver. See lib/README.md
 line-index = { version = "0.1.2" }
 la-arena = { version = "0.3.1" }
-lsp-server = { version = "0.7.6" }
+lsp-server = { version = "0.7.8" }
 
 # non-local crates
-anyhow = "1.0.75"
-arrayvec = "0.7.4"
-bitflags = "2.4.1"
-cargo_metadata = "0.18.1"
-camino = "1.1.6"
+anyhow = "1.0.97"
+arrayvec = "0.7.6"
+bitflags = "2.9.0"
+cargo_metadata = "0.19.2"
+camino = "1.1.9"
 chalk-solve = { version = "0.100.0", default-features = false }
 chalk-ir = "0.100.0"
 chalk-recursive = { version = "0.100.0", default-features = false }
 chalk-derive = "0.100.0"
-crossbeam-channel = "0.5.8"
-dissimilar = "1.0.7"
+crossbeam-channel = "0.5.14"
+dissimilar = "1.0.10"
 dot = "0.1.4"
-either = "1.9.0"
-expect-test = "1.4.0"
-hashbrown = { version = "0.14", features = [
-  "inline-more",
-], default-features = false }
-indexmap = { version = "2.1.0", features = ["serde"] }
-itertools = "0.12.0"
-libc = "0.2.150"
-libloading = "0.8.0"
-memmap2 = "0.5.4"
+either = "1.15.0"
+expect-test = "1.5.1"
+indexmap = { version = "2.8.0", features = ["serde"] }
+itertools = "0.14.0"
+libc = "0.2.171"
+libloading = "0.8.6"
+memmap2 = "0.9.5"
 nohash-hasher = "0.2.0"
-oorandom = "11.1.3"
-object = { version = "0.33.0", default-features = false, features = [
+oorandom = "11.1.5"
+object = { version = "0.36.7", default-features = false, features = [
   "std",
   "read_core",
   "elf",
   "macho",
   "pe",
 ] }
-process-wrap = { version = "8.0.2", features = ["std"] }
+process-wrap = { version = "8.2.0", features = ["std"] }
 pulldown-cmark-to-cmark = "10.0.4"
-pulldown-cmark = { version = "0.9.0", default-features = false }
-rayon = "1.8.0"
+pulldown-cmark = { version = "0.9.6", default-features = false }
+rayon = "1.10.0"
 salsa = "0.19"
-rustc-hash = "2.0.0"
-semver = "1.0.14"
-serde = { version = "1.0.192" }
-serde_derive = { version = "1.0.192" }
-serde_json = "1.0.108"
-smallvec = { version = "1.10.0", features = [
+rustc-hash = "2.1.1"
+semver = "1.0.26"
+serde = { version = "1.0.219" }
+serde_derive = { version = "1.0.219" }
+serde_json = "1.0.140"
+smallvec = { version = "1.14.0", features = [
   "const_new",
   "union",
   "const_generics",
 ] }
 smol_str = "0.3.2"
 text-size = "1.1.1"
-tracing = "0.1.40"
-tracing-tree = "0.3.0"
-tracing-subscriber = { version = "0.3.18", default-features = false, features = [
+tracing = "0.1.41"
+tracing-tree = "0.4.0"
+tracing-subscriber = { version = "0.3.19", default-features = false, features = [
   "registry",
   "fmt",
   "local-time",
@@ -159,12 +156,16 @@ tracing-subscriber = { version = "0.3.18", default-features = false, features = 
   "tracing-log",
 ] }
 triomphe = { version = "0.1.14", default-features = false, features = ["std"] }
-url = "2.3.1"
-xshell = "0.2.5"
+url = "2.5.4"
+xshell = "0.2.7"
 
 
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable
 dashmap = { version = "=5.5.3", features = ["raw-api"] }
+# We need to freeze the version of the crate, as it needs to match with dashmap
+hashbrown = { version = "=0.14.5", features = [
+  "inline-more",
+], default-features = false }
 
 [workspace.lints.rust]
 # remember to update RUSTFLAGS in ci.yml if you add something here

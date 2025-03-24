@@ -343,7 +343,12 @@ impl WorkspaceBuildScripts {
                     Message::CompilerArtifact(message) => {
                         with_output_for(&message.package_id.repr, &mut |name, data| {
                             progress(format!("building proc-macros: {name}"));
-                            if message.target.kind.iter().any(|k| k == "proc-macro") {
+                            if message
+                                .target
+                                .kind
+                                .iter()
+                                .any(|k| *k == cargo_metadata::TargetKind::ProcMacro)
+                            {
                                 // Skip rmeta file
                                 if let Some(filename) =
                                     message.filenames.iter().find(|file| is_dylib(file))

@@ -18,5 +18,5 @@ quote = "1.0"
 syn = { version = "2.0", features = ["full", "extra-traits"] }
 
 [dev-dependencies]
-expect-test = "1.5.0"
+expect-test = "1.5.1"
 salsa.workspace = true
