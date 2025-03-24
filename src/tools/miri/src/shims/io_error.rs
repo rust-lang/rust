@@ -20,14 +20,12 @@ impl From<io::Error> for IoError {
 }
 
 impl From<io::ErrorKind> for IoError {
-    /// Convert a `io::ErrorKind` to a `io::Error` then wrap in `HostError`.
     fn from(value: io::ErrorKind) -> Self {
         IoError::HostError(value.into())
     }
 }
 
 impl From<Scalar> for IoError {
-    /// Create a `Raw` `IoError` with a `Scalar`.
     fn from(value: Scalar) -> Self {
         IoError::Raw(value)
     }

@@ -80,7 +80,6 @@ impl Idx for ThreadId {
 }
 
 impl From<ThreadId> for u64 {
-    /// Return inner `u32` converted to `u64`.
     fn from(t: ThreadId) -> Self {
         t.0.into()
     }
