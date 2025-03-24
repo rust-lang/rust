@@ -93,7 +93,7 @@ use rustc_const_eval::interpret::{
     ImmTy, Immediate, InterpCx, MemPlaceMeta, MemoryKind, OpTy, Projectable, Scalar,
     intern_const_alloc_for_constprop,
 };
-use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::fx::{FxIndexSet, MutableValues};
 use rustc_data_structures::graph::dominators::Dominators;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::DenseBitSet;
@@ -238,6 +238,8 @@ struct VnState<'body, 'tcx> {
     evaluated: IndexVec<VnIndex, Option<OpTy<'tcx>>>,
     /// Counter to generate different values.
     next_opaque: usize,
+    /// Cache the deref values.
+    derefs: Vec<VnIndex>,
     /// Cache the value of the `unsized_locals` features, to avoid fetching it repeatedly in a loop.
     feature_unsized_locals: bool,
     ssa: &'body SsaLocals,
@@ -270,6 +272,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
             values: FxIndexSet::with_capacity_and_hasher(num_values, Default::default()),
             evaluated: IndexVec::with_capacity(num_values),
             next_opaque: 1,
+            derefs: Vec::new(),
             feature_unsized_locals: tcx.features().unsized_locals(),
             ssa,
             dominators,
@@ -366,6 +369,19 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
 
     fn insert_tuple(&mut self, values: Vec<VnIndex>) -> VnIndex {
         self.insert(Value::Aggregate(AggregateTy::Tuple, VariantIdx::ZERO, values))
+    }
+
+    fn insert_deref(&mut self, value: VnIndex) -> VnIndex {
+        let value = self.insert(Value::Projection(value, ProjectionElem::Deref));
+        self.derefs.push(value);
+        value
+    }
+
+    fn invalidate_derefs(&mut self) {
+        for deref in std::mem::take(&mut self.derefs) {
+            let opaque = self.next_opaque();
+            *self.values.get_index_mut2(deref.index()).unwrap() = Value::Opaque(opaque);
+        }
     }
 
     #[instrument(level = "trace", skip(self), ret)]
@@ -634,7 +650,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
                 {
                     // An immutable borrow `_x` always points to the same value for the
                     // lifetime of the borrow, so we can merge all instances of `*_x`.
-                    ProjectionElem::Deref
+                    return Some(self.insert_deref(value));
                 } else {
                     return None;
                 }
@@ -1739,6 +1755,8 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 self.assign(local, value);
                 Some(value)
             } else {
+                // Non-local assignments maybe invalidate deref.
+                self.invalidate_derefs();
                 value
             };
             let Some(value) = value else { return };
@@ -1758,12 +1776,16 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
     }
 
     fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
-        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator
-            && let Some(local) = destination.as_local()
-            && self.ssa.is_ssa(local)
-        {
-            let opaque = self.new_opaque();
-            self.assign(local, opaque);
+        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator {
+            if let Some(local) = destination.as_local()
+                && self.ssa.is_ssa(local)
+            {
+                let opaque = self.new_opaque();
+                self.assign(local, opaque);
+            }
+            // Function calls maybe invalidate nested deref, and non-local assignments maybe invalidate deref.
+            // Currently, no distinction is made between these two cases.
+            self.invalidate_derefs();
         }
         self.super_terminator(terminator, location);
     }
