@@ -35,8 +35,9 @@ pub(super) fn hints(
 
     let param_list = closure.param_list()?;
 
-    let closure = sema.descend_node_into_attributes(closure).pop()?;
-    let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(closure.clone()))?.adjusted();
+    let resolve_parent = Some(closure.syntax().text_range());
+    let descended_closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
+    let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(descended_closure.clone()))?.adjusted();
     let callable = ty.as_callable(sema.db)?;
     let ty = callable.return_type();
     if arrow.is_none() && ty.is_unit() {
@@ -52,7 +53,7 @@ pub(super) fn hints(
         ty_to_text_edit(
             sema,
             config,
-            closure.syntax(),
+            descended_closure.syntax(),
             &ty,
             arrow
                 .as_ref()
@@ -70,7 +71,7 @@ pub(super) fn hints(
             let mut builder = TextEdit::builder();
             let insert_pos = param_list.syntax().text_range().end();
 
-            let rendered = match sema.scope(closure.syntax()).and_then(|scope| {
+            let rendered = match sema.scope(descended_closure.syntax()).and_then(|scope| {
                 ty.display_source_code(scope.db, scope.module().into(), false).ok()
             }) {
                 Some(rendered) => rendered,
@@ -95,7 +96,7 @@ pub(super) fn hints(
         position: InlayHintPosition::After,
         pad_left: false,
         pad_right: false,
-        resolve_parent: Some(closure.syntax().text_range()),
+        resolve_parent,
     });
     Some(())
 }
