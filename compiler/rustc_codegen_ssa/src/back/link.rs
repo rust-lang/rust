@@ -1494,11 +1494,7 @@ fn print_native_static_libs(
                 | NativeLibKind::Unspecified => {
                     let verbatim = lib.verbatim;
                     if sess.target.is_like_msvc {
-                        let (prefix, suffix) = if verbatim {
-                            ("", "")
-                        } else {
-                            (&*sess.target.staticlib_prefix, &*sess.target.staticlib_suffix)
-                        };
+                        let (prefix, suffix) = sess.staticlib_components(verbatim);
                         Some(format!("{prefix}{name}{suffix}"))
                     } else if sess.target.linker_flavor.is_gnu() {
                         Some(format!("-l{}{}", if verbatim { ":" } else { "" }, name))

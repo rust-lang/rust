@@ -450,9 +450,10 @@ impl<'a> GccLinker<'a> {
                     // The output filename already contains `dll_suffix` so
                     // the resulting import library will have a name in the
                     // form of libfoo.dll.a
-                    let mut implib_name = OsString::from(&*self.sess.target.staticlib_prefix);
+                    let (prefix, suffix) = self.sess.staticlib_components(false);
+                    let mut implib_name = OsString::from(prefix);
                     implib_name.push(name);
-                    implib_name.push(&*self.sess.target.staticlib_suffix);
+                    implib_name.push(suffix);
                     let mut out_implib = OsString::from("--out-implib=");
                     out_implib.push(out_filename.with_file_name(implib_name));
                     self.link_arg(out_implib);
@@ -959,11 +960,7 @@ impl<'a> Linker for MsvcLinker<'a> {
             self.link_staticlib_by_path(&path, whole_archive);
         } else {
             let opts = if whole_archive { "/WHOLEARCHIVE:" } else { "" };
-            let (prefix, suffix) = if verbatim {
-                ("", "")
-            } else {
-                (&*self.sess.target.staticlib_prefix, &*self.sess.target.staticlib_suffix)
-            };
+            let (prefix, suffix) = self.sess.staticlib_components(verbatim);
             self.link_arg(format!("{opts}{prefix}{name}{suffix}"));
         }
     }
