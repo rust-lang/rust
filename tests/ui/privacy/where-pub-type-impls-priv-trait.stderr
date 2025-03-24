@@ -1,30 +1,30 @@
 warning: trait `PrivTr` is more private than the item `S`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:20:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:19:1
    |
 LL | pub struct S
    | ^^^^^^^^^^^^ struct `S` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:10:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:9:1
    |
 LL | trait PrivTr {}
    | ^^^^^^^^^^^^
    = note: `#[warn(private_bounds)]` on by default
 
 warning: trait `PrivTr` is more private than the item `E`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:27:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:26:1
    |
 LL | pub enum E
    | ^^^^^^^^^^ enum `E` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:10:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:9:1
    |
 LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 warning: trait `PrivTr` is more private than the item `f`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:34:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:33:1
    |
 LL | / pub fn f()
 LL | |
@@ -33,13 +33,13 @@ LL | |     PubTy: PrivTr
    | |_________________^ function `f` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:10:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:9:1
    |
 LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 warning: trait `PrivTr` is more private than the item `S`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:41:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:40:1
    |
 LL | / impl S
 LL | |
@@ -48,13 +48,13 @@ LL | |     PubTy: PrivTr
    | |_________________^ implementation `S` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:10:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:9:1
    |
 LL | trait PrivTr {}
    | ^^^^^^^^^^^^
 
 warning: trait `PrivTr` is more private than the item `S::f`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:46:5
+  --> $DIR/where-pub-type-impls-priv-trait.rs:45:5
    |
 LL | /     pub fn f()
 LL | |
@@ -63,7 +63,7 @@ LL | |         PubTy: PrivTr
    | |_____________________^ associated function `S::f` is reachable at visibility `pub`
    |
 note: but trait `PrivTr` is only usable at visibility `pub(crate)`
-  --> $DIR/where-pub-type-impls-priv-trait.rs:10:1
+  --> $DIR/where-pub-type-impls-priv-trait.rs:9:1
    |
 LL | trait PrivTr {}
    | ^^^^^^^^^^^^
