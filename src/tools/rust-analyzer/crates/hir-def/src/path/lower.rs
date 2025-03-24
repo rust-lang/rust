@@ -9,8 +9,8 @@ use hir_expand::{
     name::{AsName, Name},
 };
 use intern::{Interned, sym};
-use stdx::thin_vec::EmptyOptimizedThinVec;
 use syntax::ast::{self, AstNode, HasGenericArgs, HasTypeBounds};
+use thin_vec::ThinVec;
 
 use crate::{
     path::{
@@ -213,7 +213,11 @@ pub(super) fn lower_path(ctx: &mut LowerCtx<'_>, mut path: ast::Path) -> Option<
     if type_anchor.is_none() && generic_args.is_empty() {
         return Some(Path::BarePath(mod_path));
     } else {
-        return Some(Path::Normal(NormalPath::new(type_anchor, mod_path, generic_args)));
+        return Some(Path::Normal(Box::new(NormalPath {
+            generic_args: generic_args.into_boxed_slice(),
+            type_anchor,
+            mod_path,
+        })));
     }
 
     fn qualifier(path: &ast::Path) -> Option<ast::Path> {
@@ -344,7 +348,7 @@ fn lower_generic_args_from_fn_path(
         param_types.push(type_ref);
     }
     let args = Box::new([GenericArg::Type(
-        ctx.alloc_type_ref_desugared(TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(param_types))),
+        ctx.alloc_type_ref_desugared(TypeRef::Tuple(ThinVec::from_iter(param_types))),
     )]);
     let bindings = if let Some(ret_type) = ret_type {
         let type_ref = TypeRef::from_ast_opt(ctx, ret_type.ty());

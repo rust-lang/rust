@@ -12,11 +12,9 @@ use hir_expand::{
 };
 use intern::sym;
 use la_arena::{Arena, RawIdx};
-use stdx::{
-    impl_from,
-    thin_vec::{EmptyOptimizedThinVec, ThinVec},
-};
+use stdx::impl_from;
 use syntax::ast::{self, HasGenericParams, HasName, HasTypeBounds};
+use thin_vec::ThinVec;
 use triomphe::Arc;
 
 use crate::{
@@ -753,12 +751,17 @@ fn copy_type_ref(
 ) -> TypeRefId {
     let result = match &from[type_ref] {
         TypeRef::Fn(fn_) => {
-            let params = fn_.params().iter().map(|(name, param_type)| {
+            let params = fn_.params.iter().map(|(name, param_type)| {
                 (name.clone(), copy_type_ref(*param_type, from, from_source_map, to, to_source_map))
             });
-            TypeRef::Fn(FnType::new(fn_.is_varargs(), fn_.is_unsafe(), fn_.abi().clone(), params))
+            TypeRef::Fn(Box::new(FnType {
+                params: params.collect(),
+                is_varargs: fn_.is_varargs,
+                is_unsafe: fn_.is_unsafe,
+                abi: fn_.abi.clone(),
+            }))
         }
-        TypeRef::Tuple(types) => TypeRef::Tuple(EmptyOptimizedThinVec::from_iter(
+        TypeRef::Tuple(types) => TypeRef::Tuple(ThinVec::from_iter(
             types.iter().map(|&t| copy_type_ref(t, from, from_source_map, to, to_source_map)),
         )),
         &TypeRef::RawPtr(type_ref, mutbl) => TypeRef::RawPtr(
@@ -817,13 +820,17 @@ fn copy_path(
         Path::BarePath(mod_path) => Path::BarePath(mod_path.clone()),
         Path::Normal(path) => {
             let type_anchor = path
-                .type_anchor()
+                .type_anchor
                 .map(|type_ref| copy_type_ref(type_ref, from, from_source_map, to, to_source_map));
-            let mod_path = path.mod_path().clone();
-            let generic_args = path.generic_args().iter().map(|generic_args| {
+            let mod_path = path.mod_path.clone();
+            let generic_args = path.generic_args.iter().map(|generic_args| {
                 copy_generic_args(generic_args, from, from_source_map, to, to_source_map)
             });
-            Path::Normal(NormalPath::new(type_anchor, mod_path, generic_args))
+            Path::Normal(Box::new(NormalPath {
+                generic_args: generic_args.collect(),
+                type_anchor,
+                mod_path,
+            }))
         }
         Path::LangItem(lang_item, name) => Path::LangItem(*lang_item, name.clone()),
     }
@@ -879,7 +886,7 @@ fn copy_type_bounds<'a>(
     from_source_map: &'a TypesSourceMap,
     to: &'a mut TypesMap,
     to_source_map: &'a mut TypesSourceMap,
-) -> impl stdx::thin_vec::TrustedLen<Item = TypeBound> + 'a {
+) -> impl Iterator<Item = TypeBound> + 'a {
     bounds.iter().map(|bound| copy_type_bound(bound, from, from_source_map, to, to_source_map))
 }
 

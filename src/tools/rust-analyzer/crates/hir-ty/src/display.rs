@@ -2128,16 +2128,16 @@ impl HirDisplayWithTypesMap for TypeRefId {
                 write!(f, "]")?;
             }
             TypeRef::Fn(fn_) => {
-                if fn_.is_unsafe() {
+                if fn_.is_unsafe {
                     write!(f, "unsafe ")?;
                 }
-                if let Some(abi) = fn_.abi() {
+                if let Some(abi) = &fn_.abi {
                     f.write_str("extern \"")?;
                     f.write_str(abi.as_str())?;
                     f.write_str("\" ")?;
                 }
                 write!(f, "fn(")?;
-                if let Some(((_, return_type), function_parameters)) = fn_.params().split_last() {
+                if let Some(((_, return_type), function_parameters)) = fn_.params.split_last() {
                     for index in 0..function_parameters.len() {
                         let (param_name, param_type) = &function_parameters[index];
                         if let Some(name) = param_name {
@@ -2150,8 +2150,8 @@ impl HirDisplayWithTypesMap for TypeRefId {
                             write!(f, ", ")?;
                         }
                     }
-                    if fn_.is_varargs() {
-                        write!(f, "{}...", if fn_.params().len() == 1 { "" } else { ", " })?;
+                    if fn_.is_varargs {
+                        write!(f, "{}...", if fn_.params.len() == 1 { "" } else { ", " })?;
                     }
                     write!(f, ")")?;
                     match &types_map[*return_type] {

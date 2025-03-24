@@ -181,7 +181,7 @@ impl Resolver {
     {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
-            Path::Normal(it) => it.mod_path(),
+            Path::Normal(it) => &it.mod_path,
             Path::LangItem(l, seg) => {
                 let type_ns = match *l {
                     LangItemTarget::Union(it) => TypeNs::AdtId(it.into()),
@@ -304,7 +304,7 @@ impl Resolver {
     ) -> Option<(ResolveValueResult, ResolvePathResultPrefixInfo)> {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
-            Path::Normal(it) => it.mod_path(),
+            Path::Normal(it) => &it.mod_path,
             Path::LangItem(l, None) => {
                 return Some((
                     ResolveValueResult::ValueNs(
