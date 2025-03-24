@@ -1201,11 +1201,12 @@ impl LangString {
                         seen_rust_tags = !seen_other_tags;
                     }
                     LangStringToken::LangToken(x)
-                        if let Some(ignore) = x.strip_prefix("ignore-")
-                            && enable_per_target_ignores =>
+                        if let Some(ignore) = x.strip_prefix("ignore-") =>
                     {
-                        ignores.push(ignore.to_owned());
-                        seen_rust_tags = !seen_other_tags;
+                        if enable_per_target_ignores {
+                            ignores.push(ignore.to_owned());
+                            seen_rust_tags = !seen_other_tags;
+                        }
                     }
                     LangStringToken::LangToken("rust") => {
                         data.rust = true;
