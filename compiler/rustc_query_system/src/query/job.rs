@@ -506,9 +506,15 @@ pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) 
         );
     }
 
-    // FIXME: Ensure this won't cause a deadlock before we return
+    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
+    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
+    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
+    for _ in 0..wakelist.len() {
+        rayon_core::mark_unblocked(registry);
+    }
+
     for waiter in wakelist.into_iter() {
-        waiter.notify(registry);
+        waiter.condvar.notify_one();
     }
 }
 
