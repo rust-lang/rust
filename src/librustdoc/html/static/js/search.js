@@ -1310,10 +1310,9 @@ class NameTrie {
                 let sste;
                 if (substart >= 2) {
                     const tail = name.substring(substart - 2, substart + 1);
-                    if (tailTable.has(tail)) {
-                        // it's not undefined
-                        // @ts-expect-error
-                        sste = tailTable.get(tail);
+                    const entry = tailTable.get(tail);
+                    if (entry !== undefined) {
+                        sste = entry;
                     } else {
                         sste = [];
                         tailTable.set(tail, sste);
@@ -1337,10 +1336,9 @@ class NameTrie {
                 new Lev1TParametricDescription(name.length);
             this.searchLev(name, 0, levParams, results);
             const tail = name.substring(0, 3);
-            if (tailTable.has(tail)) {
-                // it's not undefined
-                // @ts-expect-error
-                for (const entry of tailTable.get(tail)) {
+            const list = tailTable.get(tail);
+            if (list !== undefined) {
+                for (const entry of list) {
                     entry.searchSubstringPrefix(name, 3, results);
                 }
             }
@@ -1599,10 +1597,8 @@ class DocSearch {
             return null;
         }
 
-        if (this.typeNameIdMap.has(name)) {
-            /** @type {{id: number, assocOnly: boolean}} */
-            // @ts-expect-error
-            const obj = this.typeNameIdMap.get(name);
+        const obj = this.typeNameIdMap.get(name);
+        if (obj !== undefined) {
             obj.assocOnly = !!(isAssocType && obj.assocOnly);
             return obj.id;
         } else {
@@ -2145,7 +2141,6 @@ class DocSearch {
                 const name = elem[1];
                 let path = null;
                 if (elem.length > 2 && elem[2] !== null) {
-                    // @ts-expect-error
                     path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
                     lastPath = path;
                 }
