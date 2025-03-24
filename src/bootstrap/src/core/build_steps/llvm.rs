@@ -697,6 +697,14 @@ fn configure_cmake(
         // reported, the system version is currently left unset.
 
         if target.contains("apple") {
+            if !target.contains("darwin") {
+                // FIXME(madsmtm): compiler-rt's CMake setup is kinda weird, it seems like they do
+                // version testing etc. for macOS (i.e. Darwin), even while building for iOS?
+                //
+                // So for now we set it to "Darwin" on all Apple platforms.
+                cfg.define("CMAKE_SYSTEM_NAME", "Darwin");
+            }
+
             // Make sure that CMake does not build universal binaries on macOS.
             // Explicitly specify the one single target architecture.
             if target.starts_with("aarch64") {
