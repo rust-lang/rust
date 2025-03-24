@@ -1552,6 +1552,10 @@ impl Type {
         matches!(self, Type::BorrowedRef { .. })
     }
 
+    fn is_type_alias(&self) -> bool {
+        matches!(self, Type::Path { path: Path { res: Res::Def(DefKind::TyAlias, _), .. } })
+    }
+
     /// Check if two types are "the same" for documentation purposes.
     ///
     /// This is different from `Eq`, because it knows that things like
@@ -1580,6 +1584,16 @@ impl Type {
         } else {
             (self, other)
         };
+
+        // FIXME: `Cache` does not have the data required to unwrap type aliases,
+        // so we just assume they are equal.
+        // This is only remotely acceptable because we were previously
+        // assuming all types were equal when used
+        // as a generic parameter of a type in `Deref::Target`.
+        if self_cleared.is_type_alias() || other_cleared.is_type_alias() {
+            return true;
+        }
+
         match (self_cleared, other_cleared) {
             // Recursive cases.
             (Type::Tuple(a), Type::Tuple(b)) => {
