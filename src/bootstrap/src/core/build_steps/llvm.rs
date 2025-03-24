@@ -188,11 +188,7 @@ pub(crate) fn detect_llvm_freshness(config: &Config, is_git: bool) -> PathFreshn
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        eprintln!("error: could not find commit hash for downloading LLVM");
-        eprintln!("HELP: maybe your repository history is too shallow?");
-        eprintln!("HELP: consider disabling `download-ci-llvm`");
-        eprintln!("HELP: or fetch enough history to include one upstream commit");
-        crate::exit!(1);
+        PathFreshness::MissingUpstream
     }
 }
 

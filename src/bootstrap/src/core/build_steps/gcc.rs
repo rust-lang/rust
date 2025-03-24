@@ -133,7 +133,10 @@ fn try_download_gcc(builder: &Builder<'_>, target: TargetSelection) -> Option<Pa
             None
         }
         PathFreshness::MissingUpstream => {
-            eprintln!("No upstream commit found, GCC will *not* be downloaded");
+            eprintln!("error: could not find commit hash for downloading GCC");
+            eprintln!("HELP: maybe your repository history is too shallow?");
+            eprintln!("HELP: consider disabling `download-ci-gcc`");
+            eprintln!("HELP: or fetch enough history to include one upstream commit");
             None
         }
     }
@@ -295,10 +298,6 @@ fn detect_gcc_freshness(config: &crate::Config, is_git: bool) -> build_helper::g
     } else if let Some(info) = crate::utils::channel::read_commit_info_file(&config.src) {
         PathFreshness::LastModifiedUpstream { upstream: info.sha.trim().to_owned() }
     } else {
-        eprintln!("error: could not find commit hash for downloading GCC");
-        eprintln!("HELP: maybe your repository history is too shallow?");
-        eprintln!("HELP: consider disabling `download-ci-gcc`");
-        eprintln!("HELP: or fetch enough history to include one upstream commit");
-        crate::exit!(1);
+        PathFreshness::MissingUpstream
     }
 }
