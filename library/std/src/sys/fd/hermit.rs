@@ -1,6 +1,5 @@
 #![unstable(reason = "not public", issue = "none", feature = "fd")]
 
-use crate::cmp;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, SeekFrom};
 use crate::os::hermit::hermit_abi;
 use crate::os::hermit::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, OwnedFd, RawFd};
@@ -39,11 +38,12 @@ impl FileDesc {
     }
 
     pub fn read_vectored(&self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices_mut!(bufs, max_iov());
         let ret = cvt(unsafe {
             hermit_abi::readv(
                 self.as_raw_fd(),
                 bufs.as_mut_ptr() as *mut hermit_abi::iovec as *const hermit_abi::iovec,
-                cmp::min(bufs.len(), max_iov()),
+                bufs.len(),
             )
         })?;
         Ok(ret as usize)
@@ -66,11 +66,12 @@ impl FileDesc {
     }
 
     pub fn write_vectored(&self, bufs: &[IoSlice<'_>]) -> io::Result<usize> {
+        let bufs = io::limit_slices!(bufs, max_iov());
         let ret = cvt(unsafe {
             hermit_abi::writev(
                 self.as_raw_fd(),
                 bufs.as_ptr() as *const hermit_abi::iovec,
-                cmp::min(bufs.len(), max_iov()),
+                bufs.len(),
             )
         })?;
         Ok(ret as usize)

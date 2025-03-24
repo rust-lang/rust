@@ -1626,6 +1626,64 @@ impl<'a> Deref for IoSlice<'a> {
     }
 }
 
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &[IoSlice<'_>] = $bufs;
+        let n: usize = $n;
+        super let empty = &[IoSlice::new(&[])];
+        if bufs.len() > n || bufs.is_empty() {
+            crate::hint::cold_path();
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    // Take all buffers after the first non-empty buffer,
+                    // clamped to `n`.
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &bufs[i..i + len];
+                }
+            }
+            // POSIX requires at least one buffer for writev.
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/writev.html
+            break 'slices empty;
+        }
+        bufs
+    }
+}
+
+/// Limits a slice of buffers to at most `n` buffers and ensures that it has at
+/// least one buffer, even if empty.
+///
+/// When the slice contains over `n` buffers, ensure that at least one non-empty
+/// buffer is in the truncated slice, if there is one.
+#[allow(unused_macros)] // Not used on all platforms
+pub(crate) macro limit_slices_mut($bufs:expr, $n:expr) {
+    'slices: {
+        let bufs: &mut [IoSliceMut<'_>] = $bufs;
+        let n: usize = $n;
+        super let empty = &mut [IoSliceMut::new(&mut [])];
+        if bufs.len() > n || bufs.is_empty() {
+            crate::hint::cold_path();
+            for (i, buf) in bufs.iter().enumerate() {
+                if !buf.is_empty() {
+                    // Take all buffers after the first non-empty buffer,
+                    // clamped to `n`.
+                    let len = cmp::min(bufs.len() - i, n);
+                    break 'slices &mut bufs[i..i + len];
+                }
+            }
+            // POSIX requires at least one buffer for readv.
+            // https://pubs.opengroup.org/onlinepubs/9799919799/functions/readv.html
+            break 'slices empty;
+        }
+        bufs
+    }
+}
+
 /// A trait for objects which are byte-oriented sinks.
 ///
 /// Implementors of the `Write` trait are sometimes called 'writers'.
