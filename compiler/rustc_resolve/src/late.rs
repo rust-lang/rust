@@ -672,7 +672,7 @@ struct DiagMetadata<'ast> {
 
     /// A list of labels as of yet unused. Labels will be removed from this map when
     /// they are used (in a `break` or `continue` statement)
-    unused_labels: FxHashMap<NodeId, Span>,
+    unused_labels: FxIndexMap<NodeId, Span>,
 
     /// Only used for better errors on `let x = { foo: bar };`.
     /// In the case of a parse error with `let x = { foo: bar, };`, this isn't needed, it's only
@@ -4776,7 +4776,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     Ok((node_id, _)) => {
                         // Since this res is a label, it is never read.
                         self.r.label_res_map.insert(expr.id, node_id);
-                        self.diag_metadata.unused_labels.remove(&node_id);
+                        self.diag_metadata.unused_labels.swap_remove(&node_id);
                     }
                     Err(error) => {
                         self.report_error(label.ident.span, error);
@@ -5198,7 +5198,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
         let mut late_resolution_visitor = LateResolutionVisitor::new(self);
         late_resolution_visitor.resolve_doc_links(&krate.attrs, MaybeExported::Ok(CRATE_NODE_ID));
         visit::walk_crate(&mut late_resolution_visitor, krate);
-        #[allow(rustc::potential_query_instability)] // FIXME
         for (id, span) in late_resolution_visitor.diag_metadata.unused_labels.iter() {
             self.lint_buffer.buffer_lint(
                 lint::builtin::UNUSED_LABELS,
