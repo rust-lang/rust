@@ -132,8 +132,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     }
 
     pub(super) fn lower_item_ref(&mut self, i: &Item) -> SmallVec<[hir::ItemId; 1]> {
-        let mut node_ids =
-            smallvec![hir::ItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } }];
+        let mut node_ids = smallvec![hir::ItemId { owner_id: self.owner_id(i.id) }];
         if let ItemKind::Use(use_tree) = &i.kind {
             self.lower_item_id_use_tree(use_tree, &mut node_ids);
         }
@@ -144,9 +143,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match &tree.kind {
             UseTreeKind::Nested { items, .. } => {
                 for &(ref nested, id) in items {
-                    vec.push(hir::ItemId {
-                        owner_id: hir::OwnerId { def_id: self.local_def_id(id) },
-                    });
+                    vec.push(hir::ItemId { owner_id: self.owner_id(id) });
                     self.lower_item_id_use_tree(nested, vec);
                 }
             }
@@ -585,7 +582,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
                 // Add all the nested `PathListItem`s to the HIR.
                 for &(ref use_tree, id) in trees {
-                    let new_hir_id = self.local_def_id(id);
+                    let owner_id = self.owner_id(id);
 
                     // Each `use` import is an item and thus are owners of the
                     // names in the path. Up to this point the nested import is
@@ -602,7 +599,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         }
 
                         let item = hir::Item {
-                            owner_id: hir::OwnerId { def_id: new_hir_id },
+                            owner_id,
                             kind,
                             vis_span,
                             span: this.lower_span(use_tree.span),
@@ -710,7 +707,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_foreign_item_ref(&mut self, i: &ForeignItem) -> hir::ForeignItemRef {
         hir::ForeignItemRef {
-            id: hir::ForeignItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } },
+            id: hir::ForeignItemId { owner_id: self.owner_id(i.id) },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
         }
@@ -931,7 +928,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 panic!("macros should have been expanded by now")
             }
         };
-        let id = hir::TraitItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } };
+        let id = hir::TraitItemId { owner_id: self.owner_id(i.id) };
         hir::TraitItemRef {
             id,
             ident: self.lower_ident(i.ident),
@@ -1046,7 +1043,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
     fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
         hir::ImplItemRef {
-            id: hir::ImplItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } },
+            id: hir::ImplItemId { owner_id: self.owner_id(i.id) },
             ident: self.lower_ident(i.ident),
             span: self.lower_span(i.span),
             kind: match &i.kind {
