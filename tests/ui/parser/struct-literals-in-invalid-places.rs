@@ -45,12 +45,30 @@ fn main() {
         println!("yo");
     }
 
+    // This uses `one()` over `1` as token `one` may begin a type and thus back when type ascription
+    // `$expr : $ty` still existed, `{ x: one` could've been the start of a block expr which used to
+    // make the compiler take a different execution path. Now it no longer makes a difference tho.
+
     // Regression test for <https://github.com/rust-lang/rust/issues/82051>.
     if Foo { x: one(), }.hi() { //~ ERROR struct literals are not allowed here
         println!("Positive!");
     }
+
+    const FOO: Foo = Foo { x: 1 };
+    // Below, test that we correctly parenthesize the struct literals.
+
+    // Regression test for <https://github.com/rust-lang/rust/issues/112278>.
+    if FOO == self::Foo { x: one() } {} //~ ERROR struct literals are not allowed here
+
+    if FOO == Foo::<> { x: one() } {} //~ ERROR struct literals are not allowed here
+
+    fn env<T: Trait<Out = Foo>>() {
+        if FOO == <T as Trait>::Out { x: one() } {} //~ ERROR struct literals are not allowed here
+        //~^ ERROR usage of qualified paths in this context is experimental
+    }
 }
 
+#[derive(PartialEq, Eq)]
 struct Foo {
     x: isize,
 }
@@ -70,3 +88,5 @@ enum E {
 }
 
 fn one() -> isize { 1 }
+
+trait Trait { type Out; }
