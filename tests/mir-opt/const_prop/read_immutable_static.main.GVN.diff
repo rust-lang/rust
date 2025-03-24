@@ -14,19 +14,23 @@
   
       bb0: {
           StorageLive(_1);
-          StorageLive(_2);
+-         StorageLive(_2);
 -         StorageLive(_3);
 +         nop;
++         nop;
           _3 = const {ALLOC0: &u8};
-          _2 = copy (*_3);
+-         _2 = copy (*_3);
++         _2 = const 2_u8;
           StorageLive(_4);
           StorageLive(_5);
           _5 = const {ALLOC0: &u8};
 -         _4 = copy (*_5);
-+         _4 = copy (*_3);
-          _1 = Add(move _2, move _4);
+-         _1 = Add(move _2, move _4);
++         _4 = const 2_u8;
++         _1 = const 4_u8;
           StorageDead(_4);
-          StorageDead(_2);
+-         StorageDead(_2);
++         nop;
           StorageDead(_5);
 -         StorageDead(_3);
 +         nop;
