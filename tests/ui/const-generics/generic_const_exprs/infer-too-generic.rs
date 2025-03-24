@@ -1,6 +1,7 @@
 //@ run-pass
 #![feature(generic_const_exprs)]
 #![allow(incomplete_features)]
+#![allow(unnecessary_refs)]
 
 use std::{mem, ptr};
 

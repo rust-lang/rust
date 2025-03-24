@@ -1,0 +1,15 @@
+warning: creating a intermediate reference implies aliasing requirements even when immediately casting to raw pointers
+  --> $DIR/function.rs:9:5
+   |
+LL |     &v as *const _ as usize
+   |     ^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unnecessary_refs)]` on by default
+help: consider using `&raw const` for a safer and more explicit raw pointer
+   |
+LL -     &v as *const _ as usize
+LL +     &raw const v as usize
+   |
+
+warning: 1 warning emitted
+

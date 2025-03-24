@@ -1399,6 +1399,7 @@ mod self_upper_keyword {}
 /// like [`RefCell`]. See the [Reference] for more information.
 ///
 /// ```rust
+/// # #![allow(unnecessary_refs)]
 /// static FOO: [i32; 5] = [1, 2, 3, 4, 5];
 ///
 /// let r1 = &FOO as *const _;
@@ -1974,6 +1975,7 @@ mod type_keyword {}
 ///
 /// ```rust
 /// # #![allow(dead_code)]
+/// # #![allow(unnecessary_refs)]
 /// #![deny(unsafe_op_in_unsafe_fn)]
 ///
 /// /// Dereference the given pointer.

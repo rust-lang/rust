@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 use std::rc::Rc;
 use std::sync::Arc;
 use std::cmp::PartialEq;

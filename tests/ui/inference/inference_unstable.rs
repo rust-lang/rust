@@ -5,6 +5,8 @@
 //@ aux-build:inference_unstable_itertools.rs
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 extern crate inference_unstable_iterator;
 extern crate inference_unstable_itertools;
 

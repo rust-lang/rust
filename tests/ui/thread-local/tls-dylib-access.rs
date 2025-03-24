@@ -2,6 +2,7 @@
 //@ aux-build: tls-export.rs
 //@ run-pass
 
+#![allow(unnecessary_refs)]
 #![feature(cfg_target_thread_local)]
 
 #[cfg(target_thread_local)]

@@ -1,6 +1,8 @@
 //@ run-pass
 // Test DST raw pointers
 
+#![allow(unnecessary_refs)]
+
 trait Trait {
     fn foo(&self) -> isize;
 }

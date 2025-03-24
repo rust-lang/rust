@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     let ptr = std::ptr::null_mut::<i32>();
     let addr = &raw const *ptr;

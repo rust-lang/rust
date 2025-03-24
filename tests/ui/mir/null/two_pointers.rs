@@ -2,6 +2,8 @@
 //@ compile-flags: -C debug-assertions
 //@ error-pattern: null pointer dereference occurred
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     let ptr = std::ptr::null();
     let mut dest = 0u32;

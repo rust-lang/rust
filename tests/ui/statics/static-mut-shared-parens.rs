@@ -1,6 +1,7 @@
 //Missing paren in diagnostic msg: https://github.com/rust-lang/rust/issues/131977
 //@check-pass
 
+#![allow(unnecessary_refs)]
 
 static mut TEST: usize = 0;
 

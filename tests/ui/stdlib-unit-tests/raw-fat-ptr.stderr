@@ -1,5 +1,5 @@
 warning: method `foo` is never used
-  --> $DIR/raw-fat-ptr.rs:35:16
+  --> $DIR/raw-fat-ptr.rs:37:16
    |
 LL | trait Foo { fn foo(&self) -> usize; }
    |       ---      ^^^

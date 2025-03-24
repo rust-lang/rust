@@ -1,5 +1,6 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
 #![feature(repr_simd, core_intrinsics)]
 
 use std::intrinsics::simd::{simd_cast_ptr, simd_expose_provenance, simd_with_exposed_provenance};

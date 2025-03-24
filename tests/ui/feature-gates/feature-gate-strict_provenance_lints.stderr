@@ -1,5 +1,5 @@
 warning: unknown lint: `fuzzy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance_lints.rs:3:9
+  --> $DIR/feature-gate-strict_provenance_lints.rs:5:9
    |
 LL | #![deny(fuzzy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^
@@ -11,7 +11,7 @@ LL | #![deny(fuzzy_provenance_casts)]
    = note: `#[warn(unknown_lints)]` on by default
 
 warning: unknown lint: `lossy_provenance_casts`
-  --> $DIR/feature-gate-strict_provenance_lints.rs:5:9
+  --> $DIR/feature-gate-strict_provenance_lints.rs:7:9
    |
 LL | #![deny(lossy_provenance_casts)]
    |         ^^^^^^^^^^^^^^^^^^^^^^

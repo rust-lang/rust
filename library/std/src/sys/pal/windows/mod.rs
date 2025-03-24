@@ -139,6 +139,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
     let ptr = haystack.as_ptr();
     let mut start = haystack;

@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
 //~^ WARN shared reference to mutable static is discouraged [static_mut_refs]
 

@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 #![deny(fuzzy_provenance_casts)]
 //~^ WARNING unknown lint: `fuzzy_provenance_casts`
 #![deny(lossy_provenance_casts)]

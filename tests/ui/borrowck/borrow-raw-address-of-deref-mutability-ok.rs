@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 fn raw_reborrow() {
     let x = &0;
     let y = &mut 0;

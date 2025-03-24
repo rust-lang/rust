@@ -1,5 +1,7 @@
 //@ check-fail
 
+#![allow(unnecessary_refs)]
+
 extern "C" {
     // N.B., mutability can be easily incorrect in FFI calls -- as
     // in C, the default is mutable pointers.

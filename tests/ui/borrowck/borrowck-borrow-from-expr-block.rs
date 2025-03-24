@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 fn borrow<F>(x: &isize, f: F) where F: FnOnce(&isize) {
     f(x)
 }

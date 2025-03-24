@@ -1,4 +1,7 @@
 //@ run-pass
+
+#![allow(unnecessary_refs)]
+
 use std::ptr;
 
 #[repr(C)]

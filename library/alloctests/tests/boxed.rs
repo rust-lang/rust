@@ -5,6 +5,7 @@ use core::ptr::NonNull;
 
 #[test]
 #[expect(dangling_pointers_from_temporaries)]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn uninitialized_zero_size_box() {
     assert_eq!(
         &*Box::<()>::new_uninit() as *const _,

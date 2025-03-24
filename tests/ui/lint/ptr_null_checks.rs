@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 use std::ptr;
 
 extern "C" fn c_fn() {}

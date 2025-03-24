@@ -1723,6 +1723,7 @@ impl<T: Clone, A: Allocator + Clone> Clone for Box<T, A> {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let x = Box::new(5);
     /// let y = x.clone();
     ///

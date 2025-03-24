@@ -1149,6 +1149,7 @@ impl DirBuilder {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     // We push a `*` to the end of the path which cause the empty path to be
     // treated as the current directory. So, for consistency with other platforms,
@@ -1420,6 +1421,7 @@ impl ReparsePoint {
     }
 }
 
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn metadata(path: &Path, reparse: ReparsePoint) -> io::Result<FileAttr> {
     let mut opts = OpenOptions::new();
     // No read or write permissions are necessary

@@ -1,5 +1,5 @@
 //@ run-pass
-#![allow(dead_code)]
+#![allow(dead_code, unnecessary_refs)]
 // check that we don't have linear stack usage with multiple calls to `push`
 
 #![feature(test)]

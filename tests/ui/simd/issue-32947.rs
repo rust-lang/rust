@@ -1,5 +1,6 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
 #![feature(repr_simd, test)]
 
 extern crate test;

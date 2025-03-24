@@ -1,6 +1,7 @@
 //@ run-pass
 
 #![feature(coroutines, coroutine_trait, stmt_expr_attributes)]
+#![allow(unnecessary_refs)]
 
 use std::ops::{Coroutine, CoroutineState};
 use std::pin::Pin;

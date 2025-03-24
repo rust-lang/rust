@@ -147,6 +147,7 @@ fn test_spawn_sched_childs_on_default_sched() {
     rx.recv().unwrap();
 }
 
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn avoid_copying_the_body<F>(spawnfn: F)
 where
     F: FnOnce(Box<dyn Fn() + Send>),

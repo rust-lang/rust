@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 use std::cell::Cell;
 use std::ptr::NonNull;
 

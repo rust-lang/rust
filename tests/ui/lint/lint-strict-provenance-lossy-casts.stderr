@@ -1,5 +1,5 @@
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `usize`
-  --> $DIR/lint-strict-provenance-lossy-casts.rs:6:23
+  --> $DIR/lint-strict-provenance-lossy-casts.rs:7:23
    |
 LL |     let addr: usize = &x as *const u8 as usize;
    |                       ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL +     let addr: usize = (&x as *const u8).addr();
    |
 
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `u32`
-  --> $DIR/lint-strict-provenance-lossy-casts.rs:9:22
+  --> $DIR/lint-strict-provenance-lossy-casts.rs:10:22
    |
 LL |     let addr_32bit = &x as *const u8 as u32;
    |                      ^^^^^^^^^^^^^^^^^^^^^^
@@ -29,7 +29,7 @@ LL |     let addr_32bit = (&x as *const u8).addr() as u32;
    |                      +               ++++++++
 
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `usize`
-  --> $DIR/lint-strict-provenance-lossy-casts.rs:14:20
+  --> $DIR/lint-strict-provenance-lossy-casts.rs:15:20
    |
 LL |     let ptr_addr = ptr as usize;
    |                    ^^^---------
@@ -39,7 +39,7 @@ LL |     let ptr_addr = ptr as usize;
    = help: if you can't comply with strict provenance and need to expose the pointer provenance you can use `.expose_provenance()` instead
 
 error: under strict provenance it is considered bad style to cast pointer `*const u8` to integer `u32`
-  --> $DIR/lint-strict-provenance-lossy-casts.rs:16:26
+  --> $DIR/lint-strict-provenance-lossy-casts.rs:17:26
    |
 LL |     let ptr_addr_32bit = ptr as u32;
    |                          ^^^-------

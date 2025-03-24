@@ -1,4 +1,5 @@
 //@ run-pass
+#![allow(unnecessary_refs)]
 #![feature(
     slice_from_ptr_range,
     const_slice_from_ptr_range,

@@ -1,5 +1,5 @@
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-recursive.rs:3:36
+  --> $DIR/static-recursive.rs:5:36
    |
 LL | static mut S: *const u8 = unsafe { &S as *const *const u8 as *const u8 };
    |                                    ^^ shared reference to mutable static
@@ -13,7 +13,7 @@ LL | static mut S: *const u8 = unsafe { &raw const S as *const *const u8 as *con
    |                                     +++++++++
 
 warning: creating a shared reference to mutable static is discouraged
-  --> $DIR/static-recursive.rs:19:20
+  --> $DIR/static-recursive.rs:21:20
    |
 LL |         assert_eq!(S, *(S as *const *const u8));
    |                    ^ shared reference to mutable static

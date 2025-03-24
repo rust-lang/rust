@@ -1,4 +1,6 @@
 //@ run-pass
+
+#![allow(unnecessary_refs)]
 #![feature(arbitrary_self_types_pointers)]
 
 use std::ptr;

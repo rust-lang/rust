@@ -304,6 +304,7 @@ fn test_hash_no_concat_alias() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn test_write_short_works() {
     let test_usize = 0xd0c0b0a0usize;
     let mut h1 = SipHasher::new();

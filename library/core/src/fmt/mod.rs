@@ -2881,7 +2881,7 @@ impl<T: ?Sized> Pointer for &T {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for &mut T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        Pointer::fmt(&(&**self as *const T), f)
+        Pointer::fmt(&(&raw const **self), f)
     }
 }
 

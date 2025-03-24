@@ -103,6 +103,7 @@ impl<T: ?Sized> *const T {
     ///
     /// ```rust,no_run
     /// #![feature(set_ptr_value)]
+    /// #![allow(unnecessary_refs)]
     /// let x = 0u32;
     /// let y = 1u32;
     ///
@@ -266,6 +267,7 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
@@ -282,6 +284,7 @@ impl<T: ?Sized> *const T {
     /// dereference the pointer directly.
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
@@ -314,6 +317,7 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(ptr_as_ref_unchecked)]
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
     /// unsafe {
@@ -351,6 +355,7 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(ptr_as_uninit)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let ptr: *const u8 = &10u8 as *const u8;
     ///
@@ -1416,6 +1421,7 @@ impl<T: ?Sized> *const T {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedI32(i32);
@@ -1449,6 +1455,7 @@ impl<T: ?Sized> *const T {
     ///
     /// ```
     /// #![feature(pointer_is_aligned_to)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
@@ -1564,6 +1571,7 @@ impl<T> *const [T] {
     ///
     /// ```
     /// #![feature(slice_ptr_get)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let x = &[1, 2, 4] as *const [i32];
     ///
@@ -1663,6 +1671,7 @@ impl<T, const N: usize> *const [T; N] {
     ///
     /// ```
     /// #![feature(array_ptr_get)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let arr: *const [i32; 3] = &[1, 2, 4] as *const [i32; 3];
     /// let slice: *const [i32] = arr.as_slice();

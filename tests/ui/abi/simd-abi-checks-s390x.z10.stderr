@@ -1,5 +1,5 @@
 error: this function definition uses SIMD vector type `i8x8` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:39:1
+  --> $DIR/simd-abi-checks-s390x.rs:40:1
    |
 LL | extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -14,7 +14,7 @@ LL | #![deny(abi_unsupported_vector_types)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: this function definition uses SIMD vector type `i8x16` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:45:1
+  --> $DIR/simd-abi-checks-s390x.rs:46:1
    |
 LL | extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -24,7 +24,7 @@ LL | extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:92:1
+  --> $DIR/simd-abi-checks-s390x.rs:93:1
    |
 LL | / extern "C" fn vector_transparent_wrapper_ret_small(
 LL | |     x: &TransparentWrapper<i8x8>,
@@ -36,7 +36,7 @@ LL | | ) -> TransparentWrapper<i8x8> {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:100:1
+  --> $DIR/simd-abi-checks-s390x.rs:101:1
    |
 LL | / extern "C" fn vector_transparent_wrapper_ret(
 LL | |     x: &TransparentWrapper<i8x16>,
@@ -48,7 +48,7 @@ LL | | ) -> TransparentWrapper<i8x16> {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `i8x8` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:116:1
+  --> $DIR/simd-abi-checks-s390x.rs:117:1
    |
 LL | extern "C" fn vector_arg_small(x: i8x8) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -58,7 +58,7 @@ LL | extern "C" fn vector_arg_small(x: i8x8) -> i64 {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `i8x16` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:122:1
+  --> $DIR/simd-abi-checks-s390x.rs:123:1
    |
 LL | extern "C" fn vector_arg(x: i8x16) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -68,7 +68,7 @@ LL | extern "C" fn vector_arg(x: i8x16) -> i64 {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `Wrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:134:1
+  --> $DIR/simd-abi-checks-s390x.rs:135:1
    |
 LL | extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -78,7 +78,7 @@ LL | extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `Wrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:140:1
+  --> $DIR/simd-abi-checks-s390x.rs:141:1
    |
 LL | extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -88,7 +88,7 @@ LL | extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:152:1
+  --> $DIR/simd-abi-checks-s390x.rs:153:1
    |
 LL | extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -98,7 +98,7 @@ LL | extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8
    = help: consider enabling it globally (`-C target-feature=+vector`) or locally (`#[target_feature(enable="vector")]`)
 
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:158:1
+  --> $DIR/simd-abi-checks-s390x.rs:159:1
    |
 LL | extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -111,7 +111,7 @@ error: aborting due to 10 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
 error: this function definition uses SIMD vector type `i8x8` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:39:1
+  --> $DIR/simd-abi-checks-s390x.rs:40:1
    |
 LL | extern "C" fn vector_ret_small(x: &i8x8) -> i8x8 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -127,7 +127,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `i8x16` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:45:1
+  --> $DIR/simd-abi-checks-s390x.rs:46:1
    |
 LL | extern "C" fn vector_ret(x: &i8x16) -> i8x16 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -143,7 +143,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:92:1
+  --> $DIR/simd-abi-checks-s390x.rs:93:1
    |
 LL | / extern "C" fn vector_transparent_wrapper_ret_small(
 LL | |     x: &TransparentWrapper<i8x8>,
@@ -161,7 +161,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:100:1
+  --> $DIR/simd-abi-checks-s390x.rs:101:1
    |
 LL | / extern "C" fn vector_transparent_wrapper_ret(
 LL | |     x: &TransparentWrapper<i8x16>,
@@ -179,7 +179,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `i8x8` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:116:1
+  --> $DIR/simd-abi-checks-s390x.rs:117:1
    |
 LL | extern "C" fn vector_arg_small(x: i8x8) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -195,7 +195,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `i8x16` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:122:1
+  --> $DIR/simd-abi-checks-s390x.rs:123:1
    |
 LL | extern "C" fn vector_arg(x: i8x16) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -211,7 +211,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `Wrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:134:1
+  --> $DIR/simd-abi-checks-s390x.rs:135:1
    |
 LL | extern "C" fn vector_wrapper_arg_small(x: Wrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -227,7 +227,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `Wrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:140:1
+  --> $DIR/simd-abi-checks-s390x.rs:141:1
    |
 LL | extern "C" fn vector_wrapper_arg(x: Wrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -243,7 +243,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x8>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:152:1
+  --> $DIR/simd-abi-checks-s390x.rs:153:1
    |
 LL | extern "C" fn vector_transparent_wrapper_arg_small(x: TransparentWrapper<i8x8>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here
@@ -259,7 +259,7 @@ LL | #![deny(abi_unsupported_vector_types)]
 
 Future breakage diagnostic:
 error: this function definition uses SIMD vector type `TransparentWrapper<i8x16>` which (with the chosen ABI) requires the `vector` target feature, which is not enabled
-  --> $DIR/simd-abi-checks-s390x.rs:158:1
+  --> $DIR/simd-abi-checks-s390x.rs:159:1
    |
 LL | extern "C" fn vector_transparent_wrapper_arg(x: TransparentWrapper<i8x16>) -> i64 {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ function defined here

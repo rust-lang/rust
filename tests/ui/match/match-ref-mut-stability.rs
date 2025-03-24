@@ -3,6 +3,8 @@
 
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 // Test that z always point to the same temporary.
 fn referent_stability() {
     let p;

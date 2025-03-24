@@ -1838,6 +1838,7 @@ fn test_collect_from_into_iter_keeps_allocation() {
     v.extend(0..7);
     check(&v[0], &v[v.len() - 1], v.into_iter());
 
+    #[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
     fn check(buf: *const i32, last: *const i32, mut it: impl Iterator<Item = i32>) {
         assert_eq!(it.next(), Some(0));
         assert_eq!(it.next(), Some(1));

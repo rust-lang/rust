@@ -1380,6 +1380,7 @@ fn assert_covariance() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn from_into_inner() {
     let vec = vec![1, 2, 3];
     let ptr = vec.as_ptr();

@@ -7,6 +7,8 @@
 // Adapted from comex's proof of concept:
 // https://github.com/rust-lang/rust/issues/63787#issuecomment-523588164
 
+#![allow(unnecessary_refs)]
+
 use std::cell::RefCell;
 use std::ops::Deref;
 

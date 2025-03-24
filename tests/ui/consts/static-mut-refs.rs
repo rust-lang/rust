@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(dead_code)]
+#![allow(unnecessary_refs)]
 
 // FIXME(static_mut_refs): Do not allow `static_mut_refs` lint
 #![allow(static_mut_refs)]

@@ -199,6 +199,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
@@ -240,6 +241,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
@@ -407,6 +409,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
@@ -470,6 +473,7 @@ impl<T: ?Sized> NonNull<T> {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// use std::ptr::NonNull;
     ///
     /// let mut x = 0u32;
@@ -1295,6 +1299,7 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// ```
     /// #![feature(pointer_is_aligned_to)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]

@@ -1,5 +1,6 @@
 #![feature(strict_provenance_lints)]
 #![deny(lossy_provenance_casts)]
+#![allow(unnecessary_refs)]
 
 fn main() {
     let x: u8 = 37;

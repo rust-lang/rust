@@ -1,6 +1,8 @@
 //@ run-pass
 // check raw fat pointer ops
 
+#![allow(unnecessary_refs)]
+
 use std::mem;
 
 fn assert_inorder<T: PartialEq + PartialOrd>(a: &[T]) {

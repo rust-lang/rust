@@ -4,6 +4,8 @@
 // Loads of partially-initialized data could produce completely-uninitialized results.
 // Test to make sure that we no longer do such a "deinitializing" load.
 
+#![allow(unnecessary_refs)]
+
 // Or, equivalently: `MaybeUninit`.
 pub union BagOfBits<T: Copy> {
     uninit: (),
