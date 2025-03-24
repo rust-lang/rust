@@ -140,9 +140,10 @@ By default, log goes to stderr, but the stderr itself is processed by VS Code.
 `--log-file <PATH>` CLI argument allows logging to file.
 Setting the `RA_LOG_FILE=<PATH>` environment variable will also log to file, it will also override `--log-file`.
 
-To see stderr in the running VS Code instance, go to the "Output" tab of the panel and select `Rust Analyzer Client`.
+To see the server stderr output in the running VS Code instance, go to the "Output" tab of the panel
+and select `rust-analyzer Language Server`.
 This shows `eprintln!` as well.
-Note that `stdout` is used for the actual protocol, so `println!` will break things.
+Note that `stdout` is used by LSP messages, so using `println!`—or anything that writes to `stdout`—will break rust-analyzer!
 
 To log all communication between the server and the client, there are two choices:
 
@@ -153,8 +154,10 @@ To log all communication between the server and the client, there are two choice
   ```
 
 * You can log on the client side, by the `rust-analyzer: Toggle LSP Logs` command or enabling `"rust-analyzer.trace.server": "verbose"` workspace setting.
-  These logs are shown in a separate tab in the output and could be used with LSP inspector.
+  These logs are shown in a separate tab named `rust-analyzer LSP Trace` in the output and could be used with LSP inspector.
   Kudos to [@DJMcNab](https://github.com/DJMcNab) for setting this awesome infra up!
+
+Finally there are the logs of the VSCode extension itself which go into the `rust-analyzer Extension` output tab.
 
 There are also several VS Code commands which might be of interest:
 

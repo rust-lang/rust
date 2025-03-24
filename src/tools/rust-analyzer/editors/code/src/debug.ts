@@ -6,10 +6,8 @@ import type * as ra from "./lsp_ext";
 import { Cargo } from "./toolchain";
 import type { Ctx } from "./ctx";
 import { createTaskFromRunnable, prepareEnv } from "./run";
-import { execute, isCargoRunnableArgs, unwrapUndefinable } from "./util";
+import { execute, isCargoRunnableArgs, unwrapUndefinable, log } from "./util";
 import type { Config } from "./config";
-
-const debugOutput = vscode.window.createOutputChannel("Debug");
 
 // Here we want to keep track on everything that's currently running
 const activeDebugSessionIds: string[] = [];
@@ -56,15 +54,14 @@ export async function startDebugSession(ctx: Ctx, runnable: ra.Runnable): Promis
     if (-1 !== index) {
         debugConfig = configurations[index];
         message = " (from launch.json)";
-        debugOutput.clear();
     } else {
         debugConfig = await getDebugConfiguration(ctx.config, runnable);
     }
 
     if (!debugConfig) return false;
 
-    debugOutput.appendLine(`Launching debug configuration${message}:`);
-    debugOutput.appendLine(JSON.stringify(debugConfig, null, 2));
+    log.debug(`Launching debug configuration${message}:`);
+    log.debug(JSON.stringify(debugConfig, null, 2));
     return vscode.debug.startDebugging(undefined, debugConfig);
 }
 
@@ -118,10 +115,6 @@ async function getDebugConfiguration(
         return;
     }
 
-    debugOutput.clear();
-    if (config.debug.openDebugPane) {
-        debugOutput.show(true);
-    }
     // folder exists or RA is not active.
 
     const workspaceFolders = vscode.workspace.workspaceFolders!;
@@ -321,7 +314,7 @@ async function getDebugExecutable(
     runnableArgs: ra.CargoRunnableArgs,
     env: Record<string, string>,
 ): Promise<string> {
-    const cargo = new Cargo(runnableArgs.workspaceRoot || ".", debugOutput, env);
+    const cargo = new Cargo(runnableArgs.workspaceRoot || ".", env);
     const executable = await cargo.executableFromArgs(runnableArgs);
 
     // if we are here, there were no compilation errors.
