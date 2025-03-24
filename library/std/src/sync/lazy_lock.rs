@@ -288,7 +288,7 @@ impl<T, F> LazyLock<T, F> {
     ///
     /// The lazy must be initialized
     #[inline]
-    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "138914")]
     pub unsafe fn get_unchecked(this: &LazyLock<T, F>) -> &T {
         debug_assert!(this.once.is_completed());
         unsafe { &*(*this.data.get()).value }
@@ -298,7 +298,7 @@ impl<T, F> LazyLock<T, F> {
     ///
     /// The lazy must be initialized
     #[inline]
-    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "1")]
+    #[unstable(feature = "once_lazy_lock_get_unchecked", issue = "138914")]
     pub unsafe fn get_unchecked_mut(this: &mut LazyLock<T, F>) -> &mut T {
         debug_assert!(this.once.is_completed());
         unsafe { &mut *this.data.get_mut().value }
