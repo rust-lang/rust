@@ -1,11 +1,13 @@
+use clippy_config::Conf;
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{SpanlessEq, is_integer_literal};
+use clippy_utils::{SpanlessEq, is_in_const_context, is_integer_literal};
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
-use rustc_session::declare_lint_pass;
+use rustc_session::impl_lint_pass;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -31,7 +33,36 @@ declare_clippy_lint! {
     "manually reimplementing `is_power_of_two`"
 }
 
-declare_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
+pub struct ManualIsPowerOfTwo {
+    msrv: Msrv,
+}
+
+impl_lint_pass!(ManualIsPowerOfTwo => [MANUAL_IS_POWER_OF_TWO]);
+
+impl ManualIsPowerOfTwo {
+    pub fn new(conf: &'static Conf) -> Self {
+        Self { msrv: conf.msrv }
+    }
+
+    fn build_sugg(&self, cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
+        if is_in_const_context(cx) && !self.msrv.meets(cx, msrvs::CONST_IS_POWER_OF_TWO) {
+            return;
+        }
+
+        let mut applicability = Applicability::MachineApplicable;
+        let snippet = Sugg::hir_with_applicability(cx, receiver, "_", &mut applicability);
+
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_POWER_OF_TWO,
+            expr.span,
+            "manually reimplementing `is_power_of_two`",
+            "consider using `.is_power_of_two()`",
+            format!("{}.is_power_of_two()", snippet.maybe_paren()),
+            applicability,
+        );
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &Expr<'tcx>) {
@@ -41,37 +72,22 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsPowerOfTwo {
             if let Some(a) = count_ones_receiver(cx, lhs)
                 && is_integer_literal(rhs, 1)
             {
-                build_sugg(cx, expr, a);
+                self.build_sugg(cx, expr, a);
             } else if let Some(a) = count_ones_receiver(cx, rhs)
                 && is_integer_literal(lhs, 1)
             {
-                build_sugg(cx, expr, a);
+                self.build_sugg(cx, expr, a);
             } else if is_integer_literal(rhs, 0)
                 && let Some(a) = is_and_minus_one(cx, lhs)
             {
-                build_sugg(cx, expr, a);
+                self.build_sugg(cx, expr, a);
             } else if is_integer_literal(lhs, 0)
                 && let Some(a) = is_and_minus_one(cx, rhs)
             {
-                build_sugg(cx, expr, a);
+                self.build_sugg(cx, expr, a);
             }
         }
     }
-}
-
-fn build_sugg(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>) {
-    let mut applicability = Applicability::MachineApplicable;
-    let snippet = Sugg::hir_with_applicability(cx, receiver, "_", &mut applicability);
-
-    span_lint_and_sugg(
-        cx,
-        MANUAL_IS_POWER_OF_TWO,
-        expr.span,
-        "manually reimplementing `is_power_of_two`",
-        "consider using `.is_power_of_two()`",
-        format!("{}.is_power_of_two()", snippet.maybe_paren()),
-        applicability,
-    );
 }
 
 /// Return the unsigned integer receiver of `.count_ones()`

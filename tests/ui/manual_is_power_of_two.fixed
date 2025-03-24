@@ -45,3 +45,14 @@ fn main() {
     let _ = binop!(a, and, a - 1) == 0;
     let _ = a & binop!(a, minus, 1) == 0;
 }
+
+#[clippy::msrv = "1.31"]
+const fn low_msrv(a: u32) -> bool {
+    a & (a - 1) == 0
+}
+
+#[clippy::msrv = "1.32"]
+const fn high_msrv(a: u32) -> bool {
+    a.is_power_of_two()
+    //~^ manual_is_power_of_two
+}
