@@ -739,7 +739,10 @@ download-rustc = false
             PathFreshness::LastModifiedUpstream { upstream } => upstream,
             PathFreshness::HasLocalModifications { upstream } => upstream,
             PathFreshness::MissingUpstream => {
-                eprintln!("No upstream commit for downloading LLVM found");
+                eprintln!("error: could not find commit hash for downloading LLVM");
+                eprintln!("HELP: maybe your repository history is too shallow?");
+                eprintln!("HELP: consider disabling `download-ci-llvm`");
+                eprintln!("HELP: or fetch enough history to include one upstream commit");
                 crate::exit!(1);
             }
         };
