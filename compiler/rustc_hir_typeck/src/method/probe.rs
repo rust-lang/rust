@@ -927,6 +927,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 | ty::ClauseKind::WellFormed(_)
                 | ty::ClauseKind::ConstEvaluatable(_)
                 | ty::ClauseKind::HostEffect(..) => None,
+                ty::ClauseKind::UnstableImpl => todo!(),
             }
         });
 

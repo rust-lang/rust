@@ -752,7 +752,8 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                             "unexpected non-`Self` predicate when computing \
                             `{filter:?}` implied bounds: {clause:?}"
                         );
-                    }
+                    },
+                    ty::ClauseKind::UnstableImpl => todo!()
                 }
             }
         }
@@ -780,6 +781,7 @@ pub(super) fn assert_only_contains_predicates_from<'tcx>(
                             `{filter:?}` implied bounds: {clause:?}"
                         );
                     }
+                    ty::ClauseKind::UnstableImpl => todo!()
                 }
             }
         }
