@@ -17,3 +17,15 @@ pub fn compare() -> bool {
             [0x00, 0x00, 0x48, 0x41]
         }
 }
+
+// CHECK-LABEL: @array_of_tuple_le
+// CHECK: call{{.+}}i8 @llvm.scmp.i8.i16
+// CHECK: call{{.+}}i8 @llvm.ucmp.i8.i16
+// CHECK: call{{.+}}i8 @llvm.scmp.i8.i16
+// CHECK: call{{.+}}i8 @llvm.ucmp.i8.i16
+// CHECK: %[[RET:.+]] = icmp slt i8 {{.+}}, 1
+// CHECK: ret i8 %[[RET]]
+#[no_mangle]
+pub fn array_of_tuple_le(a: &[(i16, u16); 2], b: &[(i16, u16); 2]) -> bool {
+    a <= b
+}
