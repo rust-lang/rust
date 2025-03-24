@@ -3,7 +3,7 @@
 
 //@ check-fail
 //@ revisions: one many
-//@ [one] compile-flags: -Clink-self-contained=-linker -Clink-self-contained=+linker -Zunstable-options
+//@ [one] compile-flags: -Clink-self-contained=-linker -Clink-self-contained=+linker
 //@ [many] compile-flags: -Clink-self-contained=+linker,+crto -Clink-self-contained=-linker,-crto -Zunstable-options
 // ignore-tidy-linelength
 

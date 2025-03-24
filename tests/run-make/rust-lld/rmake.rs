@@ -11,11 +11,7 @@ fn main() {
     // Opt-in to lld and the self-contained linker, to link with rust-lld. We'll check that by
     // asking the linker to display its version number with a link-arg.
     assert_rustc_uses_lld(
-        rustc()
-            .arg("-Clinker-features=+lld")
-            .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
-            .input("main.rs"),
+        rustc().arg("-Clinker-features=+lld").arg("-Clink-self-contained=+linker").input("main.rs"),
     );
 
     // It should not be used when we explicitly opt-out of lld.
@@ -26,7 +22,6 @@ fn main() {
     assert_rustc_uses_lld(
         rustc()
             .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
             .arg("-Clinker-features=-lld")
             .arg("-Clinker-features=+lld")
             .arg("-Clinker-features=-lld,+lld")
