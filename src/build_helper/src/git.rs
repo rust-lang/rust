@@ -63,7 +63,7 @@ pub enum PathFreshness {
 /// The function behaves differently in CI and outside CI.
 ///
 /// - Outside CI, we want to find out if `target_paths` were modified in some local commit on
-/// top of the local master branch.
+/// top of the latest upstream commit that is available in local git history.
 /// If not, we try to find the most recent upstream commit (which we assume are commits
 /// made by bors) that modified `target_paths`.
 /// We don't want to simply take the latest master commit to avoid changing the output of
@@ -71,7 +71,8 @@ pub enum PathFreshness {
 /// were not modified upstream in the meantime. In that case we would be redownloading CI
 /// artifacts unnecessarily.
 ///
-/// - In CI, we always fetch only a single parent merge commit, so we do not have access
+/// - In CI, we use a shallow clone of depth 2, i.e., we fetch only a single parent commit
+/// (which will be the most recent bors merge commit) and do not have access
 /// to the full git history. Luckily, we only need to distinguish between two situations:
 /// 1) The current PR made modifications to `target_paths`.
 /// In that case, a build is typically necessary.
