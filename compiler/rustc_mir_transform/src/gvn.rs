@@ -3,14 +3,16 @@
 //! MIR may contain repeated and/or redundant computations. The objective of this pass is to detect
 //! such redundancies and re-use the already-computed result when possible.
 //!
-//! In a first pass, we compute a symbolic representation of values that are assigned to SSA
-//! locals. This symbolic representation is defined by the `Value` enum. Each produced instance of
-//! `Value` is interned as a `VnIndex`, which allows us to cheaply compute identical values.
-//!
 //! From those assignments, we construct a mapping `VnIndex -> Vec<(Local, Location)>` of available
 //! values, the locals in which they are stored, and the assignment location.
 //!
-//! In a second pass, we traverse all (non SSA) assignments `x = rvalue` and operands. For each
+//! We traverse all assignments `x = rvalue` and operands.
+//!
+//! For each SSA one, we compute a symbolic representation of values that are assigned to SSA
+//! locals. This symbolic representation is defined by the `Value` enum. Each produced instance of
+//! `Value` is interned as a `VnIndex`, which allows us to cheaply compute identical values.
+//!
+//! For each non-SSA
 //! one, we compute the `VnIndex` of the rvalue. If this `VnIndex` is associated to a constant, we
 //! replace the rvalue/operand by that constant. Otherwise, if there is an SSA local `y`
 //! associated to this `VnIndex`, and if its definition location strictly dominates the assignment
@@ -107,7 +109,7 @@ use rustc_span::def_id::DefId;
 use smallvec::SmallVec;
 use tracing::{debug, instrument, trace};
 
-use crate::ssa::{AssignedValue, SsaLocals};
+use crate::ssa::SsaLocals;
 
 pub(super) struct GVN;
 
@@ -126,31 +128,11 @@ impl<'tcx> crate::MirPass<'tcx> for GVN {
         let dominators = body.basic_blocks.dominators().clone();
 
         let mut state = VnState::new(tcx, body, typing_env, &ssa, dominators, &body.local_decls);
-        ssa.for_each_assignment_mut(
-            body.basic_blocks.as_mut_preserves_cfg(),
-            |local, value, location| {
-                let value = match value {
-                    // We do not know anything of this assigned value.
-                    AssignedValue::Arg | AssignedValue::Terminator => None,
-                    // Try to get some insight.
-                    AssignedValue::Rvalue(rvalue) => {
-                        let value = state.simplify_rvalue(rvalue, location);
-                        // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
-                        // `local` as reusable if we have an exact type match.
-                        if state.local_decls[local].ty != rvalue.ty(state.local_decls, tcx) {
-                            return;
-                        }
-                        value
-                    }
-                };
-                // `next_opaque` is `Some`, so `new_opaque` must return `Some`.
-                let value = value.or_else(|| state.new_opaque()).unwrap();
-                state.assign(local, value);
-            },
-        );
 
-        // Stop creating opaques during replacement as it is useless.
-        state.next_opaque = None;
+        for local in body.args_iter().filter(|&local| ssa.is_ssa(local)) {
+            let opaque = state.new_opaque().unwrap();
+            state.assign(local, opaque);
+        }
 
         let reverse_postorder = body.basic_blocks.reverse_postorder().to_vec();
         for bb in reverse_postorder {
@@ -250,7 +232,6 @@ struct VnState<'body, 'tcx> {
     locals: IndexVec<Local, Option<VnIndex>>,
     /// Locals that are assigned that value.
     // This vector does not hold all the values of `VnIndex` that we create.
-    // It stops at the largest value created in the first phase of collecting assignments.
     rev_locals: IndexVec<VnIndex, SmallVec<[Local; 1]>>,
     values: FxIndexSet<Value<'tcx>>,
     /// Values evaluated as constants if possible.
@@ -345,6 +326,7 @@ impl<'body, 'tcx> VnState<'body, 'tcx> {
     /// Record that `local` is assigned `value`. `local` must be SSA.
     #[instrument(level = "trace", skip(self))]
     fn assign(&mut self, local: Local, value: VnIndex) {
+        debug_assert!(self.ssa.is_ssa(local));
         self.locals[local] = Some(value);
 
         // Only register the value if its type is `Sized`, as we will emit copies of it.
@@ -1751,15 +1733,19 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         if let StatementKind::Assign(box (ref mut lhs, ref mut rvalue)) = stmt.kind {
             self.simplify_place_projection(lhs, location);
 
-            // Do not try to simplify a constant, it's already in canonical shape.
-            if matches!(rvalue, Rvalue::Use(Operand::Constant(_))) {
-                return;
-            }
-
-            let value = lhs
-                .as_local()
-                .and_then(|local| self.locals[local])
-                .or_else(|| self.simplify_rvalue(rvalue, location));
+            let value = self.simplify_rvalue(rvalue, location);
+            let value = if let Some(local) = lhs.as_local()
+                && self.ssa.is_ssa(local)
+                // FIXME(#112651) `rvalue` may have a subtype to `local`. We can only mark
+                // `local` as reusable if we have an exact type match.
+                && self.local_decls[local].ty == rvalue.ty(self.local_decls, self.tcx)
+            {
+                let value = value.or_else(|| self.new_opaque()).unwrap();
+                self.assign(local, value);
+                Some(value)
+            } else {
+                value
+            };
             let Some(value) = value else { return };
 
             if let Some(const_) = self.try_as_constant(value) {
@@ -1774,6 +1760,17 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
             return;
         }
         self.super_statement(stmt, location);
+    }
+
+    fn visit_terminator(&mut self, terminator: &mut Terminator<'tcx>, location: Location) {
+        if let Terminator { kind: TerminatorKind::Call { destination, .. }, .. } = terminator
+            && let Some(local) = destination.as_local()
+            && self.ssa.is_ssa(local)
+        {
+            let opaque = self.new_opaque().unwrap();
+            self.assign(local, opaque);
+        }
+        self.super_terminator(terminator, location);
     }
 }
 
