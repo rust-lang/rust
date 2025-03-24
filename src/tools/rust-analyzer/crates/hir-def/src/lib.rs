@@ -18,9 +18,6 @@ extern crate ra_ap_rustc_parse_format as rustc_parse_format;
 #[cfg(feature = "in-rust-tree")]
 extern crate rustc_abi;
 
-#[cfg(feature = "in-rust-tree")]
-extern crate rustc_hashes;
-
 #[cfg(not(feature = "in-rust-tree"))]
 extern crate ra_ap_rustc_abi as rustc_abi;
 
