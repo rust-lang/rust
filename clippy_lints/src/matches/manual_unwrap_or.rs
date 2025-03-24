@@ -120,7 +120,7 @@ fn lint<'tcx>(
     let reindented_or_body = reindent_multiline(or_body_snippet, true, Some(indent));
 
     let mut app = Applicability::MachineApplicable;
-    let suggestion = sugg::Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_par();
+    let suggestion = sugg::Sugg::hir_with_context(cx, scrutinee, expr.span.ctxt(), "..", &mut app).maybe_paren();
     span_lint_and_sugg(
         cx,
         MANUAL_UNWRAP_OR,

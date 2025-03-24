@@ -287,8 +287,8 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                 is_null_path(cx, l),
                 is_null_path(cx, r),
             ) {
-                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_par(),
-                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_par(),
+                (false, true, false) if let Some(sugg) = Sugg::hir_opt(cx, r) => sugg.maybe_paren(),
+                (false, false, true) if let Some(sugg) = Sugg::hir_opt(cx, l) => sugg.maybe_paren(),
                 _ => return check_ptr_eq(cx, expr, op.node, l, r),
             };
 

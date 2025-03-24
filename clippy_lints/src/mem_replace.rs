@@ -145,7 +145,7 @@ fn check_replace_option_with_none(cx: &LateContext<'_>, src: &Expr<'_>, dest: &E
             "consider `Option::take()` instead",
             format!(
                 "{}.take()",
-                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_par()
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "", &mut applicability).maybe_paren()
             ),
             applicability,
         );
@@ -178,7 +178,7 @@ fn check_replace_option_with_some(
             "consider `Option::replace()` instead",
             format!(
                 "{}.replace({})",
-                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_par(),
+                Sugg::hir_with_context(cx, sugg_expr, expr_span.ctxt(), "_", &mut applicability).maybe_paren(),
                 snippet_with_applicability(cx, src_arg.span, "_", &mut applicability)
             ),
             applicability,

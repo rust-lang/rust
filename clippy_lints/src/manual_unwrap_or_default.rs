@@ -150,7 +150,7 @@ fn handle<'tcx>(cx: &LateContext<'tcx>, if_let_or_match: IfLetOrMatch<'tcx>, exp
         // We now check the `None` arm is calling a method equivalent to `Default::default`.
         && let body_none = peel_blocks(body_none)
         && is_default_equivalent(cx, body_none)
-        && let Some(receiver) = Sugg::hir_opt(cx, condition).map(Sugg::maybe_par)
+        && let Some(receiver) = Sugg::hir_opt(cx, condition).map(Sugg::maybe_paren)
     {
         // Machine applicable only if there are no comments present
         let applicability = if span_contains_comment(cx.sess().source_map(), expr.span) {

@@ -239,7 +239,7 @@ fn check_subtraction(
             // This part of the condition is voluntarily split from the one before to ensure that
             // if `snippet_opt` fails, it won't try the next conditions.
             if (!is_in_const_context(cx) || msrv.meets(cx, msrvs::SATURATING_SUB_CONST))
-                && let Some(big_expr_sugg) = Sugg::hir_opt(cx, big_expr).map(Sugg::maybe_par)
+                && let Some(big_expr_sugg) = Sugg::hir_opt(cx, big_expr).map(Sugg::maybe_paren)
                 && let Some(little_expr_sugg) = Sugg::hir_opt(cx, little_expr)
             {
                 let sugg = format!(

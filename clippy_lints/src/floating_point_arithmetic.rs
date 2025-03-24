@@ -154,7 +154,7 @@ fn prepare_receiver_sugg<'a>(cx: &LateContext<'_>, mut expr: &'a Expr<'a>) -> Su
         };
     }
 
-    suggestion.maybe_par()
+    suggestion.maybe_paren()
 }
 
 fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: &[Expr<'_>]) {
@@ -165,7 +165,7 @@ fn check_log_base(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, ar
             expr.span,
             "logarithm for bases 2, 10 and e can be computed more accurately",
             "consider using",
-            format!("{}.{method}()", Sugg::hir(cx, receiver, "..").maybe_par()),
+            format!("{}.{method}()", Sugg::hir(cx, receiver, "..").maybe_paren()),
             Applicability::MachineApplicable,
         );
     }
@@ -254,13 +254,13 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
             (
                 SUBOPTIMAL_FLOPS,
                 "square-root of a number can be computed more efficiently and accurately",
-                format!("{}.sqrt()", Sugg::hir(cx, receiver, "..").maybe_par()),
+                format!("{}.sqrt()", Sugg::hir(cx, receiver, "..").maybe_paren()),
             )
         } else if F32(1.0 / 3.0) == value || F64(1.0 / 3.0) == value {
             (
                 IMPRECISE_FLOPS,
                 "cube-root of a number can be computed more accurately",
-                format!("{}.cbrt()", Sugg::hir(cx, receiver, "..").maybe_par()),
+                format!("{}.cbrt()", Sugg::hir(cx, receiver, "..").maybe_paren()),
             )
         } else if let Some(exponent) = get_integer_from_float_constant(&value) {
             (
@@ -268,7 +268,7 @@ fn check_powf(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
                 "exponentiation with integer powers can be computed more efficiently",
                 format!(
                     "{}.powi({})",
-                    Sugg::hir(cx, receiver, "..").maybe_par(),
+                    Sugg::hir(cx, receiver, "..").maybe_paren(),
                     numeric_literal::format(&exponent.to_string(), None, false)
                 ),
             )
@@ -330,7 +330,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
                         "consider using",
                         format!(
                             "{}.mul_add({}, {})",
-                            Sugg::hir(cx, receiver, "..").maybe_par(),
+                            Sugg::hir(cx, receiver, "..").maybe_paren(),
                             maybe_neg_sugg(receiver, expr.hir_id),
                             maybe_neg_sugg(other_addend, other_addend.hir_id),
                         ),
@@ -371,7 +371,7 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         {
             return Some(format!(
                 "{}.hypot({})",
-                Sugg::hir(cx, lmul_lhs, "..").maybe_par(),
+                Sugg::hir(cx, lmul_lhs, "..").maybe_paren(),
                 Sugg::hir(cx, rmul_lhs, "..")
             ));
         }
@@ -403,7 +403,7 @@ fn detect_hypot(cx: &LateContext<'_>, receiver: &Expr<'_>) -> Option<String> {
         {
             return Some(format!(
                 "{}.hypot({})",
-                Sugg::hir(cx, largs_0, "..").maybe_par(),
+                Sugg::hir(cx, largs_0, "..").maybe_paren(),
                 Sugg::hir(cx, rargs_0, "..")
             ));
         }
@@ -449,7 +449,7 @@ fn check_expm1(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "(e.pow(x) - 1) can be computed more accurately",
             "consider using",
-            format!("{}.exp_m1()", Sugg::hir(cx, self_arg, "..").maybe_par()),
+            format!("{}.exp_m1()", Sugg::hir(cx, self_arg, "..").maybe_paren()),
             Applicability::MachineApplicable,
         );
     }
@@ -591,11 +591,11 @@ fn check_custom_abs(cx: &LateContext<'_>, expr: &Expr<'_>) {
     {
         let positive_abs_sugg = (
             "manual implementation of `abs` method",
-            format!("{}.abs()", Sugg::hir(cx, body, "..").maybe_par()),
+            format!("{}.abs()", Sugg::hir(cx, body, "..").maybe_paren()),
         );
         let negative_abs_sugg = (
             "manual implementation of negation of `abs` method",
-            format!("-{}.abs()", Sugg::hir(cx, body, "..").maybe_par()),
+            format!("-{}.abs()", Sugg::hir(cx, body, "..").maybe_paren()),
         );
         let sugg = if is_testing_positive(cx, cond, body) {
             if if_expr_positive {
@@ -672,7 +672,7 @@ fn check_log_division(cx: &LateContext<'_>, expr: &Expr<'_>) {
             "consider using",
             format!(
                 "{}.log({})",
-                Sugg::hir(cx, largs_self, "..").maybe_par(),
+                Sugg::hir(cx, largs_self, "..").maybe_paren(),
                 Sugg::hir(cx, rargs_self, ".."),
             ),
             Applicability::MachineApplicable,
@@ -703,7 +703,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         if (F32(f32_consts::PI) == rvalue || F64(f64_consts::PI) == rvalue)
             && (F32(180_f32) == lvalue || F64(180_f64) == lvalue)
         {
-            let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
+            let mut proposal = format!("{}.to_degrees()", Sugg::hir(cx, mul_lhs, "..").maybe_paren());
             if let ExprKind::Lit(literal) = mul_lhs.kind
                 && let ast::LitKind::Float(ref value, float_type) = literal.node
                 && float_type == ast::LitFloatType::Unsuffixed
@@ -726,7 +726,7 @@ fn check_radians(cx: &LateContext<'_>, expr: &Expr<'_>) {
         } else if (F32(180_f32) == rvalue || F64(180_f64) == rvalue)
             && (F32(f32_consts::PI) == lvalue || F64(f64_consts::PI) == lvalue)
         {
-            let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_par());
+            let mut proposal = format!("{}.to_radians()", Sugg::hir(cx, mul_lhs, "..").maybe_paren());
             if let ExprKind::Lit(literal) = mul_lhs.kind
                 && let ast::LitKind::Float(ref value, float_type) = literal.node
                 && float_type == ast::LitFloatType::Unsuffixed

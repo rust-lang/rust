@@ -154,7 +154,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     || is_receiver_of_method_call(cx, e)
                     || is_as_argument(cx, e)
                 {
-                    snip = snip.maybe_par();
+                    snip = snip.maybe_paren();
                 }
 
                 span_lint_and_sugg(

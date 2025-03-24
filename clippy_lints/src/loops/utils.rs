@@ -263,7 +263,7 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
     if impls_iterator {
         format!(
             "{}",
-            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+            sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_paren()
         )
     } else {
         // (&x).into_iter() ==> x.iter()
@@ -281,12 +281,12 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                 };
                 format!(
                     "{}.{method_name}()",
-                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
+                    sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_paren(),
                 )
             },
             _ => format!(
                 "{}.into_iter()",
-                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_par()
+                sugg::Sugg::hir_with_applicability(cx, arg, "_", applic_ref).maybe_paren()
             ),
         }
     }
