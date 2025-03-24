@@ -1326,8 +1326,8 @@ enum TestKind<'tcx> {
     Eq {
         value: Const<'tcx>,
         // Integer types are handled by `SwitchInt`, and constants with ADT
-        // types are converted back into patterns, so this can only be `&str`,
-        // `&[T]`, `f32` or `f64`.
+        // types and `&[T]` types are converted back into patterns, so this can
+        // only be `&str`, `f32` or `f64`.
         ty: Ty<'tcx>,
     },
 
