@@ -1057,8 +1057,7 @@ impl FileAttr {
     }
 }
 impl From<c::WIN32_FIND_DATAW> for FileAttr {
-    /// Map `c::WIN32_FIND_DATAW`s fields to a `FileAttr`,
-    /// with some conditionals for `file_size` and `reparse_tag`.
+    /// Map `c::WIN32_FIND_DATAW`s fields to a `FileAttr`.
     fn from(wfd: c::WIN32_FIND_DATAW) -> Self {
         FileAttr {
             attributes: wfd.dwFileAttributes,

@@ -14,7 +14,6 @@ pub enum IoError {
 pub use self::IoError::*;
 
 impl From<io::Error> for IoError {
-    /// Wrap `io::Error` in `HostError`.
     fn from(value: io::Error) -> Self {
         IoError::HostError(value)
     }
@@ -28,7 +27,7 @@ impl From<io::ErrorKind> for IoError {
 }
 
 impl From<Scalar> for IoError {
-    /// Wrap `Scalar` in `Raw`.
+    /// Create a `Raw` `IoError` with a `Scalar`.
     fn from(value: Scalar) -> Self {
         IoError::Raw(value)
     }

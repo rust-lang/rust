@@ -245,10 +245,7 @@ impl From<ByteString> for Vec<u8> {
 
 #[unstable(feature = "bstr", issue = "134915")]
 impl<'a> From<&'a ByteStr> for ByteString {
-    /// Convert the `ByteStr` to a `Vec` then wrap it in a `ByteString`.
-    ///
-    /// ## Cost
-    /// Allocates a new `Vec`
+    /// Allocates a `ByteString` containing the bytes of `ByteStr`.
     #[inline]
     fn from(s: &'a ByteStr) -> Self {
         ByteString(s.0.to_vec())
@@ -642,7 +639,7 @@ impl From<Box<ByteStr>> for Box<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<[u8]>> for Rc<ByteStr> {
-    /// Create a `Rc<[u8]>` from `Rc<ByteStr>`s raw.
+    /// Create an `Rc<[u8]>` from the inner bytes of `Rc<ByteStr>`.
     #[inline]
     fn from(s: Rc<[u8]>) -> Rc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -653,7 +650,7 @@ impl From<Rc<[u8]>> for Rc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(not(no_rc))]
 impl From<Rc<ByteStr>> for Rc<[u8]> {
-    /// Create a `Rc<ByteStr>` from `Rc<[u8]>`s raw.
+    /// Create a `Rc<ByteStr>` from the bytes of `Rc<[u8]>`.
     #[inline]
     fn from(s: Rc<ByteStr>) -> Rc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -664,7 +661,7 @@ impl From<Rc<ByteStr>> for Rc<[u8]> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<[u8]>> for Arc<ByteStr> {
-    /// Create a `Arc<ByteStr>` from `Arc<[u8]>`s raw.
+    /// Create an `Arc<ByteStr>` from the bytes of `Arc<[u8]>`.
     #[inline]
     fn from(s: Arc<[u8]>) -> Arc<ByteStr> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
@@ -675,7 +672,8 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
 #[unstable(feature = "bstr", issue = "134915")]
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
-    /// Create a `Arc<ByteStr>` from `Arc<[u8]>`s raw.
+    /// Create a `Arc<[u8]>` from the inner bytes of `Arc<ByteStr>`.
+    
     #[inline]
     fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
