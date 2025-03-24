@@ -2901,7 +2901,7 @@ class DocSearch {
             const whereClause = new Map();
 
             const fnParamNames = obj.paramNames || [];
-            // @ts-expect-error
+            /** @type {string[]} */
             const queryParamNames = [];
             /**
              * Recursively writes a map of IDs to query generic names,
@@ -2934,7 +2934,7 @@ class DocSearch {
              * index 2 is not highlighted, etc.
              *
              * @param {{name?: string, highlighted?: boolean}} fnType - input
-             * @param {[string]} result
+             * @param {string[]} result
              */
             const pushText = (fnType, result) => {
                 // If !!(result.length % 2) == false, then pushing a new slot starts an even
@@ -2946,7 +2946,6 @@ class DocSearch {
                 // needs coerced to a boolean.
                 if (!!(result.length % 2) === !!fnType.highlighted) {
                     result.push("");
-                // @ts-expect-error
                 } else if (result.length === 0 && !!fnType.highlighted) {
                     result.push("");
                     result.push("");
@@ -2960,7 +2959,7 @@ class DocSearch {
              * or a trait bound on Fn, FnMut, or FnOnce.
              *
              * @param {rustdoc.HighlightedFunctionType} fnType - input
-             * @param {[string]} result
+             * @param {string[]} result
              */
             const writeHof = (fnType, result) => {
                 const hofOutput = fnType.bindings.get(this.typeNameIdOfOutput) || [];
@@ -3000,7 +2999,7 @@ class DocSearch {
              * Returns `false` if the supplied type isn't special.
              *
              * @param {rustdoc.HighlightedFunctionType} fnType
-             * @param {[string]} result
+             * @param {string[]} result
              */
             const writeSpecialPrimitive = (fnType, result) => {
                 if (fnType.id === this.typeNameIdOfArray || fnType.id === this.typeNameIdOfSlice ||
@@ -3047,7 +3046,7 @@ class DocSearch {
              * updating the where clause and generic type param map.
              *
              * @param {rustdoc.HighlightedFunctionType} fnType
-             * @param {[string]} result
+             * @param {string[]} result
              */
             const writeFn = (fnType, result) => {
                 if (fnType.id !== null && fnType.id < 0) {
@@ -3065,7 +3064,6 @@ class DocSearch {
                         for (const [queryId, fnId] of mgens) {
                             if (fnId === fnType.id) {
                                 mappedNames.set(
-                                    // @ts-expect-error
                                     queryParamNames[-1 - queryId],
                                     fnParamNames[-1 - fnType.id],
                                 );
@@ -3080,7 +3078,6 @@ class DocSearch {
                     const where = [];
                     onEachBtwn(
                         fnType.generics,
-                        // @ts-expect-error
                         nested => writeFn(nested, where),
                         // @ts-expect-error
                         () => pushText({ name: " + ", highlighted: false }, where),
@@ -3115,7 +3112,6 @@ class DocSearch {
                                     // shown in the where clause and name mapping output, but is
                                     // redundant in this spot
                                     for (const value of values) {
-                                        // @ts-expect-error
                                         writeFn(value, []);
                                     }
                                     return true;
