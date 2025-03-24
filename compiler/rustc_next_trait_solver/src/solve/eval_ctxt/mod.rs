@@ -971,15 +971,17 @@ where
         rhs: T,
     ) -> Result<(), NoSolution> {
         let goals = self.delegate.relate(param_env, lhs, variance, rhs, self.origin_span)?;
-        if cfg!(debug_assertions) {
-            for g in goals.iter() {
-                match g.predicate.kind().skip_binder() {
-                    ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {}
-                    p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+        for &goal in goals.iter() {
+            let source = match goal.predicate.kind().skip_binder() {
+                ty::PredicateKind::Subtype { .. } | ty::PredicateKind::AliasRelate(..) => {
+                    GoalSource::TypeRelating
                 }
-            }
+                // FIXME(-Znext-solver=coinductive): should these WF goals also be unproductive?
+                ty::PredicateKind::Clause(ty::ClauseKind::WellFormed(_)) => GoalSource::Misc,
+                p => unreachable!("unexpected nested goal in `relate`: {p:?}"),
+            };
+            self.add_goal(source, goal);
         }
-        self.add_goals(GoalSource::TypeRelating, goals);
         Ok(())
     }
 
