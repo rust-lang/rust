@@ -963,12 +963,12 @@ impl Target {
                 // about what the intended ABI is.
                 match &*self.llvm_abiname {
                     "ilp32d" | "lp64d" => {
-                        // Requires d (which implies f), incompatible with e.
-                        FeatureConstraints { required: &["d"], incompatible: &["e"] }
+                        // Requires d (which implies f), incompatible with e and zfinx.
+                        FeatureConstraints { required: &["d"], incompatible: &["e", "zfinx"] }
                     }
                     "ilp32f" | "lp64f" => {
-                        // Requires f, incompatible with e.
-                        FeatureConstraints { required: &["f"], incompatible: &["e"] }
+                        // Requires f, incompatible with e and zfinx.
+                        FeatureConstraints { required: &["f"], incompatible: &["e", "zfinx"] }
                     }
                     "ilp32" | "lp64" => {
                         // Requires nothing, incompatible with e.
