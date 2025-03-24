@@ -2216,6 +2216,7 @@ where
 #[unstable(feature = "ergonomic_clones", issue = "132290")]
 impl<T> crate::clone::UseCloned for Option<T> where T: crate::clone::UseCloned {}
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
 unsafe impl<T> const TrivialClone for Option<T> where T: [const] TrivialClone + [const] Destruct {}

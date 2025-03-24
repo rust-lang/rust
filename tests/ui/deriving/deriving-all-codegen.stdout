@@ -28,6 +28,7 @@ use std::from::From;
 // Empty struct.
 struct Empty;
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Empty { }
 #[automatically_derived]
 impl ::core::clone::Clone for Empty {
@@ -90,6 +91,7 @@ struct Point {
     y: u32,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Point { }
 #[automatically_derived]
 impl ::core::clone::Clone for Point {
@@ -177,6 +179,7 @@ struct PackedPoint {
     y: u32,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for PackedPoint { }
 #[automatically_derived]
 impl ::core::clone::Clone for PackedPoint {
@@ -260,6 +263,7 @@ impl ::core::cmp::Ord for PackedPoint {
 
 struct TupleSingleField(u32);
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for TupleSingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for TupleSingleField {
@@ -334,6 +338,7 @@ struct SingleField {
     foo: bool,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for SingleField { }
 #[automatically_derived]
 impl ::core::clone::Clone for SingleField {
@@ -417,6 +422,7 @@ struct Big {
     b8: u32,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Big { }
 #[automatically_derived]
 impl ::core::clone::Clone for Big {
@@ -1019,6 +1025,7 @@ impl<T: ::core::cmp::Ord + ::core::marker::Copy + Trait, U: ::core::cmp::Ord +
 // An empty enum.
 enum Enum0 {}
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Enum0 { }
 #[automatically_derived]
 impl ::core::clone::Clone for Enum0 {
@@ -1216,6 +1223,7 @@ enum Fieldless {
     C,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Fieldless { }
 #[automatically_derived]
 impl ::core::clone::Clone for Fieldless {
@@ -1300,6 +1308,7 @@ enum Mixed {
     },
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Mixed { }
 #[automatically_derived]
 impl ::core::clone::Clone for Mixed {
@@ -1770,6 +1779,7 @@ pub union Union {
     pub i: i32,
 }
 #[automatically_derived]
+#[doc(hidden)]
 unsafe impl ::core::clone::TrivialClone for Union { }
 #[automatically_derived]
 impl ::core::clone::Clone for Union {

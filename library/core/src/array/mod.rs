@@ -452,6 +452,7 @@ impl<T: Clone, const N: usize> Clone for [T; N] {
     }
 }
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 unsafe impl<T: TrivialClone, const N: usize> TrivialClone for [T; N] {}
 

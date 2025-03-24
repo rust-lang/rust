@@ -25,6 +25,7 @@ pub(crate) fn expand_deriving_copy(
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);
@@ -50,6 +51,7 @@ pub(crate) fn expand_deriving_const_param_ty(
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand(cx, mitem, item, push);

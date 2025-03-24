@@ -45,6 +45,7 @@ pub(crate) fn expand_deriving_eq(
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
     trait_def.expand_ext(cx, mitem, item, push, true)
 }

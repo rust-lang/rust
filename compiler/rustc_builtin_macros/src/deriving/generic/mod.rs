@@ -228,6 +228,9 @@ pub(crate) struct TraitDef<'a> {
 
     /// The safety of the `impl`.
     pub safety: Safety,
+
+    /// Whether the added `impl` should appear in rustdoc output.
+    pub document: bool,
 }
 
 pub(crate) struct MethodDef<'a> {
@@ -827,6 +830,10 @@ impl<'a> TraitDef<'a> {
                     self.span,
                 ),
             )
+        }
+
+        if !self.document {
+            attrs.push(cx.attr_nested_word(sym::doc, sym::hidden, self.span));
         }
 
         cx.item(

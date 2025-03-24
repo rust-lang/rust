@@ -83,6 +83,9 @@ pub(crate) fn expand_deriving_clone(
             is_const,
             is_staged_api_crate: cx.ecfg.features.staged_api(),
             safety: Safety::Unsafe(DUMMY_SP),
+            // `TrivialClone` is not part of an API guarantee, so it shouldn't
+            // appear in rustdoc output.
+            document: false,
         };
 
         trivial_def.expand_ext(cx, mitem, item, push, true);
@@ -109,6 +112,7 @@ pub(crate) fn expand_deriving_clone(
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
 
     trait_def.expand_ext(cx, mitem, item, push, is_simple)

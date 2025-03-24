@@ -616,6 +616,7 @@ mod impls {
                     }
                 }
 
+                #[doc(hidden)]
                 #[unstable(feature = "trivial_clone", issue = "none")]
                 #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
                 unsafe impl const TrivialClone for $t {}
@@ -639,6 +640,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl const TrivialClone for ! {}
@@ -652,6 +654,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for *const T {}
@@ -665,6 +668,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for *mut T {}
@@ -680,6 +684,7 @@ mod impls {
         }
     }
 
+    #[doc(hidden)]
     #[unstable(feature = "trivial_clone", issue = "none")]
     #[rustc_const_unstable(feature = "const_clone", issue = "142757")]
     unsafe impl<T: PointeeSized> const TrivialClone for &T {}

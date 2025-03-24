@@ -31,6 +31,7 @@ pub(crate) fn expand_deriving_partial_eq(
         is_const: false,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
     structural_trait_def.expand(cx, mitem, item, push);
 
@@ -61,6 +62,7 @@ pub(crate) fn expand_deriving_partial_eq(
         is_const,
         is_staged_api_crate: cx.ecfg.features.staged_api(),
         safety: Safety::Default,
+        document: true,
     };
     trait_def.expand(cx, mitem, item, push)
 }

@@ -262,6 +262,7 @@ where
     }
 }
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 unsafe impl<T> TrivialClone for Exclusive<T> where T: Sync + TrivialClone {}
 

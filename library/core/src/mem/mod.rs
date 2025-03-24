@@ -1071,6 +1071,7 @@ impl<T> clone::Clone for Discriminant<T> {
     }
 }
 
+#[doc(hidden)]
 #[unstable(feature = "trivial_clone", issue = "none")]
 unsafe impl<T> TrivialClone for Discriminant<T> {}
 
