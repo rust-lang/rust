@@ -3539,7 +3539,7 @@ class DocSearch {
                 }
                 /** @type {rustdoc.HighlightedFunctionType[]|null} */
                 let unifiedGenerics = [];
-                // @ts-expect-error
+                /** @type {null|Map<number, number>} */
                 let unifiedGenericsMgens = null;
                 /** @type {rustdoc.HighlightedFunctionType[]|null} */
                 const passesUnification = unifyFunctionTypes(
@@ -3593,7 +3593,6 @@ class DocSearch {
                                 // @ts-expect-error
                                 queryElem.bindings.get(k),
                                 whereClause,
-                                // @ts-expect-error
                                 unifiedGenericsMgens,
                                 solutionCb,
                                 unboxingDepth,
