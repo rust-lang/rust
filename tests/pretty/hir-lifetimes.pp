@@ -73,7 +73,7 @@ fn h<'b, F>(f: F, y: Foo<'b>) where F: for<'d> MyTrait<'d, 'b> { }
 struct S<'a>(&'a u32);
 
 extern "C" {
-    unsafe fn g1(s: S<>);
+    unsafe fn g1(s: S<'_>);
     unsafe fn g2(s: S<'_>);
     unsafe fn g3<'a>(s: S<'a>);
 }
@@ -86,7 +86,7 @@ fn f() { { let _ = St{ x: &0,}; }; { let _ = St{ x: &0,}; }; }
 
 struct Name<'a>(&'a str);
 
-const A: Name<> = Name("a");
+const A: Name<'_> = Name("a");
 const B: &'_ str = "";
 static C: &'_ str = "";
 static D: &'static str = "";

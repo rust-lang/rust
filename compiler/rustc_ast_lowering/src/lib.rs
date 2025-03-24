@@ -55,7 +55,8 @@ use rustc_errors::{DiagArgFromDisplay, DiagCtxtHandle, StashKey};
 use rustc_hir::def::{DefKind, LifetimeRes, Namespace, PartialRes, PerNS, Res};
 use rustc_hir::def_id::{CRATE_DEF_ID, LOCAL_CRATE, LocalDefId};
 use rustc_hir::{
-    self as hir, ConstArg, GenericArg, HirId, ItemLocalMap, LangItem, ParamName, TraitCandidate,
+    self as hir, ConstArg, GenericArg, HirId, IsAnonInPath, ItemLocalMap, LangItem, ParamName,
+    TraitCandidate,
 };
 use rustc_index::{Idx, IndexSlice, IndexVec};
 use rustc_macros::extension;
@@ -1755,7 +1756,11 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn lower_lifetime(&mut self, l: &Lifetime) -> &'hir hir::Lifetime {
-        self.new_named_lifetime(l.id, l.id, l.ident)
+        self.new_named_lifetime(l.id, l.id, l.ident, IsAnonInPath::No)
+    }
+
+    fn lower_lifetime_anon_in_path(&mut self, id: NodeId, span: Span) -> &'hir hir::Lifetime {
+        self.new_named_lifetime(id, id, Ident::new(kw::UnderscoreLifetime, span), IsAnonInPath::Yes)
     }
 
     #[instrument(level = "debug", skip(self))]
@@ -1764,28 +1769,43 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         id: NodeId,
         new_id: NodeId,
         ident: Ident,
+        is_anon_in_path: IsAnonInPath,
     ) -> &'hir hir::Lifetime {
+        debug_assert_ne!(ident.name, kw::Empty);
         let res = self.resolver.get_lifetime_res(id).unwrap_or(LifetimeRes::Error);
         let res = match res {
             LifetimeRes::Param { param, .. } => hir::LifetimeName::Param(param),
             LifetimeRes::Fresh { param, .. } => {
+                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
                 let param = self.local_def_id(param);
                 hir::LifetimeName::Param(param)
             }
-            LifetimeRes::Infer => hir::LifetimeName::Infer,
-            LifetimeRes::Static { .. } => hir::LifetimeName::Static,
+            LifetimeRes::Infer => {
+                debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+                hir::LifetimeName::Infer
+            }
+            LifetimeRes::Static { .. } => {
+                debug_assert!(matches!(ident.name, kw::StaticLifetime | kw::UnderscoreLifetime));
+                hir::LifetimeName::Static
+            }
             LifetimeRes::Error => hir::LifetimeName::Error,
             LifetimeRes::ElidedAnchor { .. } => {
                 panic!("Unexpected `ElidedAnchar` {:?} at {:?}", ident, ident.span);
             }
         };
 
+        #[cfg(debug_assertions)]
+        if is_anon_in_path == IsAnonInPath::Yes {
+            debug_assert_eq!(ident.name, kw::UnderscoreLifetime);
+        }
+
         debug!(?res);
-        self.arena.alloc(hir::Lifetime {
-            hir_id: self.lower_node_id(new_id),
-            ident: self.lower_ident(ident),
+        self.arena.alloc(hir::Lifetime::new(
+            self.lower_node_id(new_id),
+            self.lower_ident(ident),
             res,
-        })
+            is_anon_in_path,
+        ))
     }
 
     fn lower_generic_params_mut(
@@ -2369,11 +2389,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// when the bound is written, even if it is written with `'_` like in
     /// `Box<dyn Debug + '_>`. In those cases, `lower_lifetime` is invoked.
     fn elided_dyn_bound(&mut self, span: Span) -> &'hir hir::Lifetime {
-        let r = hir::Lifetime {
-            hir_id: self.next_id(),
-            ident: Ident::new(kw::Empty, self.lower_span(span)),
-            res: hir::LifetimeName::ImplicitObjectLifetimeDefault,
-        };
+        let r = hir::Lifetime::new(
+            self.next_id(),
+            Ident::new(kw::UnderscoreLifetime, self.lower_span(span)),
+            hir::LifetimeName::ImplicitObjectLifetimeDefault,
+            IsAnonInPath::No,
+        );
         debug!("elided_dyn_bound: r={:?}", r);
         self.arena.alloc(r)
     }
