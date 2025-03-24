@@ -9,8 +9,8 @@
       let mut _4: i32;
       let mut _5: !;
       let _6: !;
-+     scope 1 (inlined panic) {
-+         let mut _7: !;
++     scope 1 (inlined calls_panic) {
++         let _7: !;
 +     }
   
       bb0: {
@@ -34,9 +34,9 @@
       bb2: {
           StorageDead(_3);
           StorageLive(_6);
--         _6 = panic() -> unwind continue;
+-         _6 = calls_panic() -> unwind continue;
 +         StorageLive(_7);
-+         _7 = begin_panic::<&str>(const "explicit panic") -> unwind continue;
++         _7 = panic_cold_explicit() -> unwind continue;
       }
   }
   
