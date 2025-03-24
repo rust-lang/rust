@@ -1544,20 +1544,17 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         ret
     }
 
-    fn with_scope<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
-        if let Some(module) = self.r.get_module(self.r.local_def_id(id).to_def_id()) {
-            // Move down in the graph.
-            let orig_module = replace(&mut self.parent_scope.module, module);
-            self.with_rib(ValueNS, RibKind::Module(module), |this| {
-                this.with_rib(TypeNS, RibKind::Module(module), |this| {
-                    let ret = f(this);
-                    this.parent_scope.module = orig_module;
-                    ret
-                })
+    fn with_mod_rib<T>(&mut self, id: NodeId, f: impl FnOnce(&mut Self) -> T) -> T {
+        let module = self.r.expect_module(self.r.local_def_id(id).to_def_id());
+        // Move down in the graph.
+        let orig_module = replace(&mut self.parent_scope.module, module);
+        self.with_rib(ValueNS, RibKind::Module(module), |this| {
+            this.with_rib(TypeNS, RibKind::Module(module), |this| {
+                let ret = f(this);
+                this.parent_scope.module = orig_module;
+                ret
             })
-        } else {
-            f(self)
-        }
+        })
     }
 
     fn visit_generic_params(&mut self, params: &'ast [GenericParam], add_self_upper: bool) {
@@ -2738,7 +2735,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
             }
 
             ItemKind::Mod(..) => {
-                self.with_scope(item.id, |this| {
+                self.with_mod_rib(item.id, |this| {
                     if mod_inner_docs {
                         this.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
                     }
