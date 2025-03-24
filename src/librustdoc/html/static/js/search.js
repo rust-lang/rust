@@ -2077,7 +2077,8 @@ class DocSearch {
                 descIndex += 1;
             }
 
-            // a String of one character item type codes
+            // see `RawSearchIndexCrate` in `rustdoc.d.ts` for a more
+            // up to date description of these fields
             const itemTypes = crateCorpus.t;
             // an array of (String) item names
             const itemNames = crateCorpus.n;
@@ -2094,8 +2095,6 @@ class DocSearch {
             const itemParentIdxDecoder = new VlqHexDecoder(crateCorpus.i, noop => noop);
             // a map Number, string for impl disambiguators
             const implDisambiguator = new Map(crateCorpus.b);
-            // an array of [(Number) item type,
-            //              (String) name]
             const rawPaths = crateCorpus.p;
             const aliases = crateCorpus.a;
             // an array of [(Number) item index,
@@ -2134,28 +2133,31 @@ class DocSearch {
             // convert `rawPaths` entries into object form
             // generate normalizedPaths for function search mode
             let len = rawPaths.length;
-            let lastPath = itemPaths.get(0);
+            const lastPathU = itemPaths.get(0);
+            let lastPath = lastPathU === undefined ? null : lastPathU;
             for (let i = 0; i < len; ++i) {
                 const elem = rawPaths[i];
                 const ty = elem[0];
                 const name = elem[1];
-                let path = null;
-                if (elem.length > 2 && elem[2] !== null) {
-                    path = itemPaths.has(elem[2]) ? itemPaths.get(elem[2]) : lastPath;
-                    lastPath = path;
-                }
-                let exactPath = elem.length > 3 && elem[3] !== null ?
-                    // @ts-expect-error
-                    itemPaths.get(elem[3]) :
-                    path;
+                /**
+                 * @param {2|3} idx
+                 * @param {string|null} if_null
+                 * @param {string|null} if_not_found
+                 * @returns {string|null}
+                 */
+                const elemPath = (idx, if_null, if_not_found) => {
+                    if (elem.length > idx && elem[idx] !== undefined) {
+                        const p = itemPaths.get(elem[idx]);
+                        if (p !== undefined) {
+                            return p;
+                        }
+                        return if_not_found;
+                    }
+                    return if_null;
+                };
+                const path = elemPath(2, lastPath, null);
+                const exactPath = elemPath(3, path, path);
                 const unboxFlag = elem.length > 4 && !!elem[4];
-
-                if (path === undefined) {
-                    path = null;
-                }
-                if (exactPath === undefined) {
-                    exactPath = null;
-                }
 
                 lowercasePaths.push({ ty, name: name.toLowerCase(), path, exactPath, unboxFlag });
                 paths[i] = { ty, name, path, exactPath, unboxFlag };
