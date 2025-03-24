@@ -1073,8 +1073,6 @@ pub struct Resolver<'ra, 'tcx> {
     import_res_map: NodeMap<PerNS<Option<Res>>>,
     /// An import will be inserted into this map if it has been used.
     import_use_map: FxHashMap<Import<'ra>, Used>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    label_res_map: NodeMap<NodeId>,
     /// Resolutions for lifetimes.
     lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.
@@ -1499,7 +1497,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             partial_res_map: Default::default(),
             import_res_map: Default::default(),
             import_use_map: Default::default(),
-            label_res_map: Default::default(),
             lifetimes_res_map: Default::default(),
             extra_lifetime_params_map: Default::default(),
             extern_crate_map: Default::default(),
@@ -1705,7 +1702,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             owners: self.owners,
             partial_res_map: self.partial_res_map,
             import_res_map: self.import_res_map,
-            label_res_map: self.label_res_map,
             lifetimes_res_map: self.lifetimes_res_map,
             extra_lifetime_params_map: self.extra_lifetime_params_map,
             next_node_id: self.next_node_id,

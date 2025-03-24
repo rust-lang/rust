@@ -191,6 +191,8 @@ pub struct ResolverGlobalCtxt {
 pub struct PerOwnerResolverData {
     pub legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     pub node_id_to_def_id: NodeMap<LocalDefId>,
+    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
+    pub label_res_map: NodeMap<ast::NodeId>,
     /// The id of the owner
     pub id: ast::NodeId,
 }
@@ -199,6 +201,7 @@ impl PerOwnerResolverData {
     pub fn new(id: ast::NodeId) -> Self {
         Self {
             node_id_to_def_id: Default::default(),
+            label_res_map: Default::default(),
             legacy_const_generic_args: Default::default(),
             id,
         }
@@ -213,8 +216,6 @@ pub struct ResolverAstLowering {
     pub partial_res_map: NodeMap<hir::def::PartialRes>,
     /// Resolutions for import nodes, which have multiple resolutions in different namespaces.
     pub import_res_map: NodeMap<hir::def::PerNS<Option<Res<ast::NodeId>>>>,
-    /// Resolutions for labels (node IDs of their corresponding blocks or loops).
-    pub label_res_map: NodeMap<ast::NodeId>,
     /// Resolutions for lifetimes.
     pub lifetimes_res_map: NodeMap<LifetimeRes>,
     /// Lifetime parameters that lowering will have to introduce.

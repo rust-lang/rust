@@ -256,7 +256,7 @@ impl PerOwnerResolver<'_> {
 
     /// Obtains resolution for a label with the given `NodeId`.
     fn get_label_res(&self, id: NodeId) -> Option<NodeId> {
-        self.general.label_res_map.get(&id).copied()
+        self.item.label_res_map.get(&id).copied()
     }
 
     /// Obtains resolution for a lifetime with the given `NodeId`.

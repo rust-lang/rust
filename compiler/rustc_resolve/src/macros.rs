@@ -518,10 +518,15 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
         let old_id = old.id;
         if old.id == DUMMY_NODE_ID {
             if cfg!(debug_assertions) {
-                let PerOwnerResolverData { node_id_to_def_id, id: _, legacy_const_generic_args } =
-                    old;
+                let PerOwnerResolverData {
+                    node_id_to_def_id,
+                    id: _,
+                    legacy_const_generic_args,
+                    label_res_map,
+                } = old;
                 assert!(node_id_to_def_id.is_empty());
                 assert!(legacy_const_generic_args.is_empty());
+                assert!(label_res_map.is_empty());
             }
         } else {
             assert!(self.owners.insert(old.id, old).is_none());
