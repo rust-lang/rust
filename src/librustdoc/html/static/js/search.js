@@ -3990,7 +3990,7 @@ class DocSearch {
                     }
                     const fnTypeBindings = fnType.bindings.get(name);
                     mgensSolutionSet = mgensSolutionSet.flatMap(mgens => {
-                        // @ts-expect-error
+                        /** @type{Array<Map<number, number> | null>} */
                         const newSolutions = [];
                         unifyFunctionTypes(
                             // @ts-expect-error
@@ -4006,7 +4006,6 @@ class DocSearch {
                             },
                             unboxingDepth,
                         );
-                        // @ts-expect-error
                         return newSolutions;
                     });
                 }
@@ -4254,6 +4253,7 @@ class DocSearch {
             return false;
         }
 
+        // this does not yet have a type in `rustdoc.d.ts`.
         // @ts-expect-error
         function createAliasFromItem(item) {
             return {
