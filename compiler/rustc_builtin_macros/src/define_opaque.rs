@@ -11,15 +11,20 @@ pub(crate) fn expand(
     let define_opaque = match &mut item {
         Annotatable::Item(p) => match &mut p.kind {
             ast::ItemKind::Fn(f) => Some(&mut f.define_opaque),
+            ast::ItemKind::Const(ct) => Some(&mut ct.define_opaque),
+            ast::ItemKind::Static(si) => Some(&mut si.define_opaque),
             _ => None,
         },
         Annotatable::AssocItem(i, _assoc_ctxt) => match &mut i.kind {
             ast::AssocItemKind::Fn(func) => Some(&mut func.define_opaque),
+            ast::AssocItemKind::Const(ct) => Some(&mut ct.define_opaque),
             _ => None,
         },
         Annotatable::Stmt(s) => match &mut s.kind {
             ast::StmtKind::Item(p) => match &mut p.kind {
                 ast::ItemKind::Fn(f) => Some(&mut f.define_opaque),
+                ast::ItemKind::Const(ct) => Some(&mut ct.define_opaque),
+                ast::ItemKind::Static(si) => Some(&mut si.define_opaque),
                 _ => None,
             },
             _ => None,

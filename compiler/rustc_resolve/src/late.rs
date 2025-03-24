@@ -36,6 +36,7 @@ use rustc_session::parse::feature_err;
 use rustc_span::source_map::{Spanned, respan};
 use rustc_span::{BytePos, Ident, Span, Symbol, SyntaxContext, kw, sym};
 use smallvec::{SmallVec, smallvec};
+use thin_vec::ThinVec;
 use tracing::{debug, instrument, trace};
 
 use crate::{
@@ -2662,10 +2663,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                     |this| visit::walk_item(this, item),
                 );
-
-                for (id, path) in define_opaque.iter().flatten() {
-                    self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
-                }
+                self.resolve_define_opaques(define_opaque);
             }
 
             ItemKind::Enum(_, ref generics)
@@ -2751,7 +2749,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 });
             }
 
-            ItemKind::Static(box ast::StaticItem { ref ty, ref expr, .. }) => {
+            ItemKind::Static(box ast::StaticItem {
+                ref ty, ref expr, ref define_opaque, ..
+            }) => {
                 self.with_static_rib(def_kind, |this| {
                     this.with_lifetime_rib(
                         LifetimeRibKind::Elided(LifetimeRes::Static {
@@ -2767,9 +2767,16 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         this.resolve_const_body(expr, Some((item.ident, ConstantItemKind::Static)));
                     }
                 });
+                self.resolve_define_opaques(define_opaque);
             }
 
-            ItemKind::Const(box ast::ConstItem { ref generics, ref ty, ref expr, .. }) => {
+            ItemKind::Const(box ast::ConstItem {
+                ref generics,
+                ref ty,
+                ref expr,
+                ref define_opaque,
+                ..
+            }) => {
                 self.with_generic_param_rib(
                     &generics.params,
                     RibKind::Item(
@@ -2803,6 +2810,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         }
                     },
                 );
+                self.resolve_define_opaques(define_opaque);
             }
 
             ItemKind::Use(ref use_tree) => {
@@ -3102,7 +3110,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         for item in trait_items {
             self.resolve_doc_links(&item.attrs, MaybeExported::Ok(item.id));
             match &item.kind {
-                AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
+                AssocItemKind::Const(box ast::ConstItem {
+                    generics,
+                    ty,
+                    expr,
+                    define_opaque,
+                    ..
+                }) => {
                     self.with_generic_param_rib(
                         &generics.params,
                         RibKind::AssocItem,
@@ -3135,13 +3149,13 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             )
                         },
                     );
+
+                    self.resolve_define_opaques(define_opaque);
                 }
                 AssocItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
                     walk_assoc_item(self, generics, LifetimeBinderKind::Function, item);
 
-                    for (id, path) in define_opaque.iter().flatten() {
-                        self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
-                    }
+                    self.resolve_define_opaques(define_opaque);
                 }
                 AssocItemKind::Delegation(delegation) => {
                     self.with_generic_param_rib(
@@ -3306,7 +3320,9 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
         use crate::ResolutionError::*;
         self.resolve_doc_links(&item.attrs, MaybeExported::ImplItem(trait_id.ok_or(&item.vis)));
         match &item.kind {
-            AssocItemKind::Const(box ast::ConstItem { generics, ty, expr, .. }) => {
+            AssocItemKind::Const(box ast::ConstItem {
+                generics, ty, expr, define_opaque, ..
+            }) => {
                 debug!("resolve_implementation AssocItemKind::Const");
                 self.with_generic_param_rib(
                     &generics.params,
@@ -3350,6 +3366,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                         );
                     },
                 );
+                self.resolve_define_opaques(define_opaque);
             }
             AssocItemKind::Fn(box Fn { generics, define_opaque, .. }) => {
                 debug!("resolve_implementation AssocItemKind::Fn");
@@ -3379,9 +3396,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                 );
 
-                for (id, path) in define_opaque.iter().flatten() {
-                    self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
-                }
+                self.resolve_define_opaques(define_opaque);
             }
             AssocItemKind::Type(box TyAlias { generics, .. }) => {
                 self.diag_metadata.in_non_gat_assoc_type = Some(generics.params.is_empty());
@@ -5101,6 +5116,14 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                 path_span: finalize.path_span,
                 removal_span: path[0].ident.span.until(seg.ident.span),
             });
+        }
+    }
+
+    fn resolve_define_opaques(&mut self, define_opaque: &Option<ThinVec<(NodeId, Path)>>) {
+        if let Some(define_opaque) = define_opaque {
+            for (id, path) in define_opaque {
+                self.smart_resolve_path(*id, &None, path, PathSource::DefineOpaques);
+            }
         }
     }
 }
