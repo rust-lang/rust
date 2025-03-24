@@ -1189,6 +1189,13 @@ pub(crate) struct LoopMatchMissingAssignment {
 }
 
 #[derive(Diagnostic)]
+#[diag(mir_build_loop_match_arm_with_guard)]
+pub(crate) struct LoopMatchArmWithGuard {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(mir_build_const_continue_missing_value)]
 pub(crate) struct ConstContinueMissingValue {
     #[primary_span]
