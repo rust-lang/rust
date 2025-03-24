@@ -2777,15 +2777,28 @@ class DocSearch {
             for (const result of results) {
                 if (result.id !== -1) {
                     const res = buildHrefAndPath(this.searchIndex[result.id]);
+                    // many of these properties don't strictly need to be
+                    // copied over, but copying them over satisfies tsc,
+                    // and hopefully plays nice with the shape optimization
+                    // of the browser engine.
+                    /** @type {rustdoc.ResultObject} */
                     const obj = Object.assign({
+                        parent: result.parent,
+                        type: result.type,
                         dist: result.dist,
+                        path_dist: result.path_dist,
+                        index: result.index,
+                        desc: result.desc,
+                        item: result.item,
                         displayPath: pathSplitter(res[0]),
+                        fullPath: "",
+                        href: "",
+                        displayTypeSignature: null,
                     }, this.searchIndex[result.id]);
 
                     // To be sure than it some items aren't considered as duplicate.
-                    // @ts-expect-error
-                    obj.fullPath = res[2] + "|" + obj.ty;
-                    // @ts-expect-error
+                    obj.fullPath = res[2] + "|" + obj.ty
+                    
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
@@ -2798,18 +2811,15 @@ class DocSearch {
                     if (duplicates.has(res[2] + "|" + TY_IMPORT)) {
                         continue;
                     }
-                    // @ts-expect-error
                     duplicates.add(obj.fullPath);
                     duplicates.add(res[2]);
 
                     if (typeInfo !== null) {
-                        // @ts-expect-error
                         obj.displayTypeSignature =
                             // @ts-expect-error
                             this.formatDisplayTypeSignature(obj, typeInfo);
                     }
 
-                    // @ts-expect-error
                     obj.href = res[1];
                     out.push(obj);
                     if (out.length >= MAX_RESULTS) {
@@ -2817,7 +2827,6 @@ class DocSearch {
                     }
                 }
             }
-            // @ts-expect-error
             return out;
         };
 
@@ -2830,11 +2839,7 @@ class DocSearch {
          *
          * @param {rustdoc.ResultObject} obj
          * @param {"sig"|"elems"|"returned"|null} typeInfo
-         * @returns {Promise<{
-         *   "type": Array<string>,
-         *   "mappedNames": Map<string, string>,
-         *   "whereClause": Map<string, Array<string>>,
-         * }>}
+         * @returns {Promise<rustdoc.DisplayTypeSignature>}
          */
         this.formatDisplayTypeSignature = async(obj, typeInfo) => {
             const objType = obj.type;

@@ -257,10 +257,18 @@ declare namespace rustdoc {
         ty: number,
         type?: FunctionSearchType,
         paramNames?: string[],
-        displayType: Promise<Array<Array<string>>>|null,
-        displayTypeMappedNames: Promise<Array<[string, Array<string>]>>|null,
+        displayTypeSignature: Promise<rustdoc.DisplayTypeSignature> | null,
         item: Row,
         dontValidate?: boolean,
+    }
+
+    /**
+     * output of `formatDisplayTypeSignature`
+     */
+    interface DisplayTypeSignature {
+        type: Array<string>,
+        mappedNames: Map<string, string>,
+        whereClause: Map<string, Array<string>>,
     }
 
     /**
