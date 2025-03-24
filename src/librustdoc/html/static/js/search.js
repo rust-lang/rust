@@ -2489,9 +2489,13 @@ class DocSearch {
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
-            // is string list
-            // @ts-expect-error
-            query.error = err;
+            if (Array.isArray(err) && err.every((elem) => typeof elem == 'string')) {
+                query.error = err;
+            } else {
+                // rethrow the error if it isn't a string array
+                throw err;
+            }
+
             return query;
         }
         if (!query.literalSearch) {
