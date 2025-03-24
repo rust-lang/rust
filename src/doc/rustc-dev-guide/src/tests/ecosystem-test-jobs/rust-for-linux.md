@@ -48,4 +48,4 @@ line to your PR description:
 Then when you `@bors try` it will pick the job that builds the Rust for Linux
 integration.
 
-[rfl-ping]: ../notification-groups/rust-for-linux.md
+[rfl-ping]: ../../notification-groups/rust-for-linux.md
