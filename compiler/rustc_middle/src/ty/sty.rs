@@ -721,26 +721,23 @@ impl<'tcx> Ty<'tcx> {
     ) -> Ty<'tcx> {
         if cfg!(debug_assertions) {
             let projection_count = obj.projection_bounds().count();
-            let expected_count: usize = obj
-                .principal_def_id()
-                .into_iter()
-                .flat_map(|principal_def_id| {
-                    // NOTE: This should agree with `needed_associated_types` in
-                    // dyn trait lowering, or else we'll have ICEs.
-                    elaborate::supertraits(
-                        tcx,
-                        ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
-                    )
-                    .map(|principal| {
-                        tcx.associated_items(principal.def_id())
-                            .in_definition_order()
-                            .filter(|item| item.kind == ty::AssocKind::Type)
-                            .filter(|item| !item.is_impl_trait_in_trait())
-                            .filter(|item| !tcx.generics_require_sized_self(item.def_id))
-                            .count()
-                    })
+            let expected_count = obj.principal_def_id().map_or(0, |principal_def_id| {
+                // NOTE: This should agree with `needed_associated_types` in
+                // dyn trait lowering, or else we'll have ICEs.
+                elaborate::supertraits(
+                    tcx,
+                    ty::Binder::dummy(ty::TraitRef::identity(tcx, principal_def_id)),
+                )
+                .map(|principal| {
+                    tcx.associated_items(principal.def_id())
+                        .in_definition_order()
+                        .filter(|item| item.kind == ty::AssocKind::Type)
+                        .filter(|item| !item.is_impl_trait_in_trait())
+                        .filter(|item| !tcx.generics_require_sized_self(item.def_id))
+                        .count()
                 })
-                .sum();
+                .sum()
+            });
             assert_eq!(
                 projection_count, expected_count,
                 "expected {obj:?} to have {expected_count} projections, \
