@@ -17,6 +17,8 @@ pub struct File(!);
 pub struct FileAttr {
     attr: u64,
     size: u64,
+    created: SystemTime,
+    times: FileTimes,
 }
 
 pub struct ReadDir(!);
@@ -31,8 +33,11 @@ pub struct OpenOptions {
     create_new: bool,
 }
 
-#[derive(Copy, Clone, Debug, Default)]
-pub struct FileTimes {}
+#[derive(Copy, Clone, Debug)]
+pub struct FileTimes {
+    accessed: SystemTime,
+    modified: SystemTime,
+}
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 // Bool indicates if file is readonly
@@ -59,15 +64,15 @@ impl FileAttr {
     }
 
     pub fn modified(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.times.modified)
     }
 
     pub fn accessed(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.times.accessed)
     }
 
     pub fn created(&self) -> io::Result<SystemTime> {
-        unsupported()
+        Ok(self.created)
     }
 }
 
@@ -91,8 +96,19 @@ impl FilePermissions {
 }
 
 impl FileTimes {
-    pub fn set_accessed(&mut self, _t: SystemTime) {}
-    pub fn set_modified(&mut self, _t: SystemTime) {}
+    pub fn set_accessed(&mut self, t: SystemTime) {
+        self.accessed = t;
+    }
+
+    pub fn set_modified(&mut self, t: SystemTime) {
+        self.modified = t;
+    }
+}
+
+impl Default for FileTimes {
+    fn default() -> Self {
+        Self { modified: SystemTime::ZERO, accessed: SystemTime::ZERO }
+    }
 }
 
 impl FileType {
