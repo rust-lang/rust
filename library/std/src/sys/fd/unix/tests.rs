@@ -1,6 +1,7 @@
 use core::mem::ManuallyDrop;
 
-use super::{FileDesc, IoSlice};
+use super::FileDesc;
+use crate::io::IoSlice;
 use crate::os::unix::io::FromRawFd;
 
 #[test]

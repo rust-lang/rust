@@ -11,7 +11,6 @@ use crate::sync::atomic::{AtomicBool, Ordering};
 pub mod abi;
 pub mod args;
 pub mod env;
-pub mod fd;
 mod libunwind_integration;
 pub mod os;
 #[path = "../unsupported/pipe.rs"]
