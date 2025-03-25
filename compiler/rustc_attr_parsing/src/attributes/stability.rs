@@ -5,7 +5,7 @@ use rustc_attr_data_structures::{
     StableSince, UnstableReason, VERSION_PLACEHOLDER,
 };
 use rustc_errors::ErrorGuaranteed;
-use rustc_span::{Span, Symbol, kw, sym};
+use rustc_span::{Span, Symbol, sym};
 
 use super::util::parse_version;
 use super::{AcceptMapping, AttributeParser, SingleAttributeParser};
@@ -61,11 +61,7 @@ impl AttributeParser for StabilityParser {
         }),
         (&[sym::rustc_allowed_through_unstable_modules], |this, cx, args| {
             reject_outside_std!(cx);
-            this.allowed_through_unstable_modules =
-                Some(match args.name_value().and_then(|i| i.value_as_str()) {
-                    Some(msg) => msg,
-                    None => kw::Empty,
-                });
+            this.allowed_through_unstable_modules = args.name_value().and_then(|i| i.value_as_str())
         }),
     ];
 
