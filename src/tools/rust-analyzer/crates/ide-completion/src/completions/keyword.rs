@@ -56,6 +56,8 @@ mod tests {
                 kw extern
                 kw fn
                 kw impl
+                kw impl for
+                kw impl<> for <>
                 kw trait
             "#]],
         );

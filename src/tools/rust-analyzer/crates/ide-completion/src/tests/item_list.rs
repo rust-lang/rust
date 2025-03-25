@@ -16,6 +16,8 @@ fn in_mod_item_list() {
             kw extern
             kw fn
             kw impl
+            kw impl for
+            kw impl<> for <>
             kw mod
             kw pub
             kw pub(crate)
@@ -50,6 +52,8 @@ fn in_source_file_item_list() {
             kw extern
             kw fn
             kw impl
+            kw impl for
+            kw impl<> for <>
             kw mod
             kw pub
             kw pub(crate)
@@ -83,6 +87,8 @@ fn in_item_list_after_attr() {
             kw extern
             kw fn
             kw impl
+            kw impl for
+            kw impl<> for <>
             kw mod
             kw pub
             kw pub(crate)
@@ -122,6 +128,8 @@ fn after_unsafe_token() {
             kw extern
             kw fn
             kw impl
+            kw impl for
+            kw impl<> for <>
             kw trait
         "#]],
     );
@@ -385,6 +393,8 @@ fn after_unit_struct() {
             kw extern
             kw fn
             kw impl
+            kw impl for
+            kw impl<> for <>
             kw mod
             kw pub
             kw pub(crate)
