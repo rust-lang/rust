@@ -15,6 +15,6 @@
    LL|     12|            }
    LL|     16|        };
    LL|     16|        executor::block_on(future);
-   LL|     16|    }
+   LL|       |    }
    LL|      1|}
 

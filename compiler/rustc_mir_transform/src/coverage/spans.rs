@@ -1,4 +1,5 @@
 use std::collections::VecDeque;
+use std::iter;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
@@ -83,9 +84,7 @@ pub(super) fn extract_refined_covspans(
     // Split the covspans into separate buckets that don't overlap any holes.
     let buckets = divide_spans_into_buckets(covspans, &holes);
 
-    for mut covspans in buckets {
-        // Make sure each individual bucket is internally sorted.
-        covspans.sort_by(compare_covspans);
+    for covspans in buckets {
         let _span = debug_span!("processing bucket", ?covspans).entered();
 
         let mut covspans = remove_unwanted_overlapping_spans(covspans);
@@ -161,50 +160,37 @@ fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
 }
 
 /// Uses the holes to divide the given covspans into buckets, such that:
-/// - No span in any hole overlaps a bucket (truncating the spans if necessary).
+/// - No span in any hole overlaps a bucket (discarding spans if necessary).
 /// - The spans in each bucket are strictly after all spans in previous buckets,
 ///   and strictly before all spans in subsequent buckets.
 ///
-/// The resulting buckets are sorted relative to each other, but might not be
-/// internally sorted.
+/// The lists of covspans and holes must be sorted.
+/// The resulting buckets are sorted relative to each other, and each bucket's
+/// contents are sorted.
 #[instrument(level = "debug")]
 fn divide_spans_into_buckets(input_covspans: Vec<Covspan>, holes: &[Hole]) -> Vec<Vec<Covspan>> {
     debug_assert!(input_covspans.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
     debug_assert!(holes.is_sorted_by(|a, b| compare_spans(a.span, b.span).is_le()));
 
-    // Now we're ready to start carving holes out of the initial coverage spans,
-    // and grouping them in buckets separated by the holes.
+    // Now we're ready to start grouping spans into buckets separated by holes.
 
     let mut input_covspans = VecDeque::from(input_covspans);
-    let mut fragments = vec![];
 
     // For each hole:
     // - Identify the spans that are entirely or partly before the hole.
-    // - Put those spans in a corresponding bucket, truncated to the start of the hole.
-    // - If one of those spans also extends after the hole, put the rest of it
-    //   in a "fragments" vector that is processed by the next hole.
+    // - Discard any that overlap with the hole.
+    // - Add the remaining identified spans to the corresponding bucket.
     let mut buckets = (0..holes.len()).map(|_| vec![]).collect::<Vec<_>>();
     for (hole, bucket) in holes.iter().zip(&mut buckets) {
-        let fragments_from_prev = std::mem::take(&mut fragments);
-
-        // Only inspect spans that precede or overlap this hole,
-        // leaving the rest to be inspected by later holes.
-        // (This relies on the spans and holes both being sorted.)
-        let relevant_input_covspans =
-            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi());
-
-        for covspan in fragments_from_prev.into_iter().chain(relevant_input_covspans) {
-            let (before, after) = covspan.split_around_hole_span(hole.span);
-            bucket.extend(before);
-            fragments.extend(after);
-        }
+        bucket.extend(
+            drain_front_while(&mut input_covspans, |c| c.span.lo() < hole.span.hi())
+                .filter(|c| !c.span.overlaps(hole.span)),
+        );
     }
 
-    // After finding the spans before each hole, any remaining fragments/spans
-    // form their own final bucket, after the final hole.
+    // Any remaining spans form their own final bucket, after the final hole.
     // (If there were no holes, this will just be all of the initial spans.)
-    fragments.extend(input_covspans);
-    buckets.push(fragments);
+    buckets.push(Vec::from(input_covspans));
 
     buckets
 }
@@ -215,7 +201,7 @@ fn drain_front_while<'a, T>(
     queue: &'a mut VecDeque<T>,
     mut pred_fn: impl FnMut(&T) -> bool,
 ) -> impl Iterator<Item = T> {
-    std::iter::from_fn(move || if pred_fn(queue.front()?) { queue.pop_front() } else { None })
+    iter::from_fn(move || queue.pop_front_if(|x| pred_fn(x)))
 }
 
 /// Takes one of the buckets of (sorted) spans extracted from MIR, and "refines"
@@ -258,22 +244,6 @@ struct Covspan {
 }
 
 impl Covspan {
-    /// Splits this covspan into 0-2 parts:
-    /// - The part that is strictly before the hole span, if any.
-    /// - The part that is strictly after the hole span, if any.
-    fn split_around_hole_span(&self, hole_span: Span) -> (Option<Self>, Option<Self>) {
-        let before = try {
-            let span = self.span.trim_end(hole_span)?;
-            Self { span, ..*self }
-        };
-        let after = try {
-            let span = self.span.trim_start(hole_span)?;
-            Self { span, ..*self }
-        };
-
-        (before, after)
-    }
-
     /// If `self` and `other` can be merged (i.e. they have the same BCB),
     /// mutates `self.span` to also include `other.span` and returns true.
     ///

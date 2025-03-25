@@ -20,18 +20,18 @@
    LL|      1|        some_string
    LL|      1|            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
-   LL|      1|            ||
+   LL|       |        (
+   LL|       |            ||
    LL|      0|            {
    LL|      0|                let mut countdown = 0;
    LL|      0|                if is_false {
    LL|      0|                    countdown = 10;
    LL|      0|                }
    LL|      0|                "alt string 1".to_owned()
-   LL|      1|            }
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
+   LL|      0|            }
+   LL|       |        )
+   LL|       |    );
+   LL|       |
    LL|      1|    some_string = Some(String::from("the string content"));
    LL|      1|    let
    LL|      1|        a
@@ -62,8 +62,8 @@
    LL|      1|        some_string
    LL|      1|            .
    LL|      1|            unwrap_or_else
-   LL|      1|        (
-   LL|      1|            ||
+   LL|       |        (
+   LL|       |            ||
    LL|      1|            {
    LL|      1|                let mut countdown = 0;
    LL|      1|                if is_false {
@@ -71,9 +71,9 @@
    LL|      1|                }
    LL|      1|                "alt string 3".to_owned()
    LL|      1|            }
-   LL|      1|        )
-   LL|      1|    );
-   LL|      1|
+   LL|       |        )
+   LL|       |    );
+   LL|       |
    LL|      1|    some_string = None;
    LL|      1|    let
    LL|      1|        a

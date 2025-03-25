@@ -12,6 +12,7 @@
 #![feature(map_try_insert)]
 #![feature(never_type)]
 #![feature(try_blocks)]
+#![feature(vec_deque_pop_if)]
 #![feature(yeet_expr)]
 // tidy-alphabetical-end
 
