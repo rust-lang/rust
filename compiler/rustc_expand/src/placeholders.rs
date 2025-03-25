@@ -86,6 +86,17 @@ pub(crate) fn placeholder(
             kind: ast::AssocItemKind::MacCall(mac_placeholder()),
             tokens: None,
         })]),
+        AstFragmentKind::TraitImplItems => {
+            AstFragment::TraitImplItems(smallvec![P(ast::AssocItem {
+                id,
+                span,
+                ident,
+                vis,
+                attrs,
+                kind: ast::AssocItemKind::MacCall(mac_placeholder()),
+                tokens: None,
+            })])
+        }
         AstFragmentKind::ForeignItems => {
             AstFragment::ForeignItems(smallvec![P(ast::ForeignItem {
                 id,
@@ -308,7 +319,8 @@ impl MutVisitor for PlaceholderExpander {
                 let it = self.remove(item.id);
                 match ctxt {
                     AssocCtxt::Trait => it.make_trait_items(),
-                    AssocCtxt::Impl => it.make_impl_items(),
+                    AssocCtxt::Impl { of_trait: false } => it.make_impl_items(),
+                    AssocCtxt::Impl { of_trait: true } => it.make_trait_impl_items(),
                 }
             }
             _ => walk_flat_map_assoc_item(self, item, ctxt),

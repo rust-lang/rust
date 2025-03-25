@@ -1318,7 +1318,9 @@ impl WalkItemKind for ItemKind {
                 visit_polarity(vis, polarity);
                 visit_opt(of_trait, |trait_ref| vis.visit_trait_ref(trait_ref));
                 vis.visit_ty(self_ty);
-                items.flat_map_in_place(|item| vis.flat_map_assoc_item(item, AssocCtxt::Impl));
+                items.flat_map_in_place(|item| {
+                    vis.flat_map_assoc_item(item, AssocCtxt::Impl { of_trait: of_trait.is_some() })
+                });
             }
             ItemKind::Trait(box Trait { safety, is_auto: _, generics, bounds, items }) => {
                 visit_safety(vis, safety);

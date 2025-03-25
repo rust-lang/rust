@@ -23,7 +23,7 @@ use crate::ptr::P;
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AssocCtxt {
     Trait,
-    Impl,
+    Impl { of_trait: bool },
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -422,7 +422,12 @@ impl WalkItemKind for ItemKind {
                 try_visit!(visitor.visit_generics(generics));
                 visit_opt!(visitor, visit_trait_ref, of_trait);
                 try_visit!(visitor.visit_ty(self_ty));
-                walk_list!(visitor, visit_assoc_item, items, AssocCtxt::Impl);
+                walk_list!(
+                    visitor,
+                    visit_assoc_item,
+                    items,
+                    AssocCtxt::Impl { of_trait: of_trait.is_some() }
+                );
             }
             ItemKind::Struct(struct_definition, generics)
             | ItemKind::Union(struct_definition, generics) => {

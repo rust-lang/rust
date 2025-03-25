@@ -3376,7 +3376,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                             |i, s, c| MethodNotMemberOfTrait(i, s, c),
                         );
 
-                        visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                        visit::walk_assoc_item(this, item, AssocCtxt::Impl { of_trait: true })
                     },
                 );
 
@@ -3410,7 +3410,7 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                                 |i, s, c| TypeNotMemberOfTrait(i, s, c),
                             );
 
-                            visit::walk_assoc_item(this, item, AssocCtxt::Impl)
+                            visit::walk_assoc_item(this, item, AssocCtxt::Impl { of_trait: true })
                         });
                     },
                 );

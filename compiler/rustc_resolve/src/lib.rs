@@ -1191,10 +1191,6 @@ pub struct Resolver<'ra, 'tcx> {
     /// and how the `impl Trait` fragments were introduced.
     invocation_parents: FxHashMap<LocalExpnId, InvocationParent>,
 
-    /// Some way to know that we are in a *trait* impl in `visit_assoc_item`.
-    /// FIXME: Replace with a more general AST map (together with some other fields).
-    trait_impl_items: FxHashSet<LocalDefId>,
-
     legacy_const_generic_args: FxHashMap<DefId, Option<Vec<usize>>>,
     /// Amount of lifetime parameters for each item in the crate.
     item_generics_num_lifetimes: FxHashMap<LocalDefId, usize>,
@@ -1558,7 +1554,6 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
             def_id_to_node_id,
             placeholder_field_indices: Default::default(),
             invocation_parents,
-            trait_impl_items: Default::default(),
             legacy_const_generic_args: Default::default(),
             item_generics_num_lifetimes: Default::default(),
             main_def: Default::default(),

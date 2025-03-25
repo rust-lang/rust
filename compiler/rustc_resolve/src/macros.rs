@@ -264,7 +264,7 @@ impl<'ra, 'tcx> ResolverExpand for Resolver<'ra, 'tcx> {
             }
             InvocationKind::Bang { ref mac, .. } => (&mac.path, MacroKind::Bang),
             InvocationKind::Derive { ref path, .. } => (path, MacroKind::Derive),
-            InvocationKind::GlobDelegation { ref item } => {
+            InvocationKind::GlobDelegation { ref item, .. } => {
                 let ast::AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 deleg_impl = Some(self.invocation_parent(invoc_id));
                 // It is sufficient to consider glob delegation a bang macro for now.
