@@ -326,7 +326,7 @@ impl<'a> Sugg<'a> {
     /// `self` argument of a method call
     /// (e.g., to build `bar.foo()` or `(1 + 2).foo()`).
     #[must_use]
-    pub fn maybe_par(self) -> Self {
+    pub fn maybe_paren(self) -> Self {
         match self {
             Sugg::NonParen(..) => self,
             // `(x)` and `(x).y()` both don't need additional parens.
@@ -494,7 +494,7 @@ impl<T: Display> Display for ParenHelper<T> {
 /// operators have the same
 /// precedence.
 pub fn make_unop(op: &str, expr: Sugg<'_>) -> Sugg<'static> {
-    Sugg::MaybeParen(format!("{op}{}", expr.maybe_par()).into())
+    Sugg::MaybeParen(format!("{op}{}", expr.maybe_paren()).into())
 }
 
 /// Builds the string for `<lhs> <op> <rhs>` adding parenthesis when necessary.
@@ -1009,12 +1009,12 @@ mod test {
     }
 
     #[test]
-    fn binop_maybe_par() {
+    fn binop_maybe_paren() {
         let sugg = Sugg::BinOp(AssocOp::Binary(ast::BinOpKind::Add), "1".into(), "1".into());
-        assert_eq!("(1 + 1)", sugg.maybe_par().to_string());
+        assert_eq!("(1 + 1)", sugg.maybe_paren().to_string());
 
         let sugg = Sugg::BinOp(AssocOp::Binary(ast::BinOpKind::Add), "(1 + 1)".into(), "(1 + 1)".into());
-        assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_par().to_string());
+        assert_eq!("((1 + 1) + (1 + 1))", sugg.maybe_paren().to_string());
     }
     #[test]
     fn not_op() {

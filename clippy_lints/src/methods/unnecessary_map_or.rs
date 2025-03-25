@@ -109,8 +109,8 @@ pub(super) fn check<'a>(
 
         let sugg = if let Some(parent_expr) = get_parent_expr(cx, expr) {
             match parent_expr.kind {
-                ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_par(),
-                ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_par(),
+                ExprKind::Binary(..) | ExprKind::Unary(..) | ExprKind::Cast(..) => binop.maybe_paren(),
+                ExprKind::MethodCall(_, receiver, _, _) if receiver.hir_id == expr.hir_id => binop.maybe_paren(),
                 _ => binop,
             }
         } else {

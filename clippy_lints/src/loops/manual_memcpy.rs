@@ -184,7 +184,12 @@ fn build_manual_memcpy_suggestion<'tcx>(
     {
         dst_base_str
     } else {
-        format!("{dst_base_str}[{}..{}]", dst_offset.maybe_par(), dst_limit.maybe_par()).into()
+        format!(
+            "{dst_base_str}[{}..{}]",
+            dst_offset.maybe_paren(),
+            dst_limit.maybe_paren()
+        )
+        .into()
     };
 
     let method_str = if is_copy(cx, elem_ty) {
@@ -196,7 +201,12 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let src = if is_array_length_equal_to_range(cx, start, end, src.base) {
         src_base_str
     } else {
-        format!("{src_base_str}[{}..{}]", src_offset.maybe_par(), src_limit.maybe_par()).into()
+        format!(
+            "{src_base_str}[{}..{}]",
+            src_offset.maybe_paren(),
+            src_limit.maybe_paren()
+        )
+        .into()
     };
 
     format!("{dst}.{method_str}(&{src});")

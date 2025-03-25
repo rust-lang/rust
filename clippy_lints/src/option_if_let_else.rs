@@ -106,7 +106,7 @@ struct OptionOccurrence {
 fn format_option_in_sugg(cond_sugg: Sugg<'_>, as_ref: bool, as_mut: bool) -> String {
     format!(
         "{}{}",
-        cond_sugg.maybe_par(),
+        cond_sugg.maybe_paren(),
         if as_mut {
             ".as_mut()"
         } else if as_ref {

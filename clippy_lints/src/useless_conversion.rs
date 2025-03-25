@@ -356,7 +356,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
                     if cx.tcx.is_diagnostic_item(sym::from_fn, def_id) && same_type_and_consts(a, b) {
                         let mut app = Applicability::MachineApplicable;
-                        let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_par();
+                        let sugg = Sugg::hir_with_context(cx, arg, e.span.ctxt(), "<expr>", &mut app).maybe_paren();
                         let sugg_msg = format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                         span_lint_and_sugg(
                             cx,

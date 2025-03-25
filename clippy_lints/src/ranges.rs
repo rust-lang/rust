@@ -361,8 +361,8 @@ fn check_exclusive_range_plus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             span,
             "an inclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 match span.with_source_text(cx, |src| src.starts_with('(') && src.ends_with(')')) {
                     Some(true) => {
                         diag.span_suggestion(span, "use", format!("({start}..={end})"), Applicability::MaybeIncorrect);
@@ -398,8 +398,8 @@ fn check_inclusive_range_minus_one(cx: &LateContext<'_>, expr: &Expr<'_>) {
             expr.span,
             "an exclusive range would be more readable",
             |diag| {
-                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_par().to_string());
-                let end = Sugg::hir(cx, y, "y").maybe_par();
+                let start = start.map_or(String::new(), |x| Sugg::hir(cx, x, "x").maybe_paren().to_string());
+                let end = Sugg::hir(cx, y, "y").maybe_paren();
                 diag.span_suggestion(
                     expr.span,
                     "use",

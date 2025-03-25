@@ -185,7 +185,7 @@ fn offer_suggestion(
 ) {
     let cast_to_snip = snippet(cx, cast_to_span, "..");
     let suggestion = if cast_to_snip == "_" {
-        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_par())
+        format!("{}.try_into()", Sugg::hir(cx, cast_expr, "..").maybe_paren())
     } else {
         format!("{cast_to_snip}::try_from({})", Sugg::hir(cx, cast_expr, ".."))
     };

@@ -45,7 +45,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, pat: &'tcx Pat<'_>, arg: &'tcx
                             "use the corresponding method",
                             vec![
                                 (pat_span, snippet(cx, new_pat_span, kind).into_owned()),
-                                (arg_span, format!("{}.{kind}s{mutbl}()", map.maybe_par())),
+                                (arg_span, format!("{}.{kind}s{mutbl}()", map.maybe_paren())),
                             ],
                             Applicability::MachineApplicable,
                         );
