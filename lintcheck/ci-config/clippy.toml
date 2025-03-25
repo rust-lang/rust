@@ -4,3 +4,4 @@
 # to `$PWD/lintcheck/ci-config`.
 
 avoid-breaking-exported-api = false
+lint-commented-code = false

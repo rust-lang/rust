@@ -327,22 +327,22 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
             return;
         }
 
-        if path_to_local_id(expr, self.var) {
+        if path_to_local_id(expr, self.var)
             // Check that this is a read, not a write.
-            if !is_in_assignment_position(self.cx, expr) {
-                span_lint_and_then(
-                    self.cx,
-                    MIXED_READ_WRITE_IN_EXPRESSION,
-                    expr.span,
-                    format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
-                    |diag| {
-                        diag.span_note(
-                            self.write_expr.span,
-                            "whether read occurs before this write depends on evaluation order",
-                        );
-                    },
-                );
-            }
+            && !is_in_assignment_position(self.cx, expr)
+        {
+            span_lint_and_then(
+                self.cx,
+                MIXED_READ_WRITE_IN_EXPRESSION,
+                expr.span,
+                format!("unsequenced read of `{}`", self.cx.tcx.hir_name(self.var)),
+                |diag| {
+                    diag.span_note(
+                        self.write_expr.span,
+                        "whether read occurs before this write depends on evaluation order",
+                    );
+                },
+            );
         }
         match expr.kind {
             // We're about to descend a closure. Since we don't know when (or
