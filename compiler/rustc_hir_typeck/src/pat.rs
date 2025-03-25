@@ -775,6 +775,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
+        // When `deref_patterns` is enabled, in order to allow `deref!("..."): String`, we allow
+        // string literal patterns to have type `str`. This is accounted for when lowering to MIR.
+        if self.tcx.features().deref_patterns()
+            && let hir::PatExprKind::Lit {
+                lit: Spanned { node: ast::LitKind::Str(..), .. }, ..
+            } = lt.kind
+            && self.try_structurally_resolve_type(span, expected).is_str()
+        {
+            pat_ty = self.tcx.types.str_;
+        }
+
         if self.tcx.features().string_deref_patterns()
             && let hir::PatExprKind::Lit {
                 lit: Spanned { node: ast::LitKind::Str(..), .. }, ..

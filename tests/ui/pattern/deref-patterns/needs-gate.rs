@@ -12,4 +12,11 @@ fn main() {
         //~^ ERROR: mismatched types
         _ => {}
     }
+
+    // `deref_patterns` allows string and byte string literals to have non-ref types.
+    match *"test" {
+        "test" => {}
+        //~^ ERROR: mismatched types
+        _ => {}
+    }
 }
