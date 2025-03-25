@@ -151,23 +151,18 @@ impl Lifetime {
     pub fn suggestion(&self, new_lifetime: &str) -> (Span, String) {
         debug_assert!(new_lifetime.starts_with('\''));
 
-        if self.ident.name == kw::Empty {
-            if self.ident.span.is_empty() {
-                // The user wrote `Path<T>`, and omitted the `'_,`.
-                (self.ident.span, format!("{new_lifetime}, "))
-            } else {
-                // The user wrote `Path` and omitted the `<'_>`.
-                (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>"))
-            }
-        } else if self.res == LifetimeName::ImplicitObjectLifetimeDefault {
-            // The user wrote `dyn Trait` and omitted the `+ '_`.
-            (self.ident.span, format!("+ {new_lifetime}"))
-        } else if self.ident.span.is_empty() {
+        match (self.ident.name.is_empty(), self.ident.span.is_empty()) {
+            // The user wrote `Path<T>`, and omitted the `'_,`.
+            (true, true) => (self.ident.span, format!("{new_lifetime}, ")),
+
+            // The user wrote `Path` and omitted the `<'_>`.
+            (true, false) => (self.ident.span.shrink_to_hi(), format!("<{new_lifetime}>")),
+
             // The user wrote `&type` or `&mut type`.
-            (self.ident.span, format!("{new_lifetime} "))
-        } else {
+            (false, true) => (self.ident.span, format!("{new_lifetime} ")),
+
             // The user wrote `'a` or `'_`.
-            (self.ident.span, format!("{new_lifetime}"))
+            (false, false) => (self.ident.span, format!("{new_lifetime}")),
         }
     }
 }
