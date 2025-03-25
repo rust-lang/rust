@@ -1,6 +1,7 @@
 use anyhow::Context;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::Parser;
+use environment::TestConfig;
 use log::LevelFilter;
 use utils::io;
 
@@ -148,6 +149,11 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
 
             let is_aarch64 = target_triple.starts_with("aarch64");
 
+            // Parse the optional build components that impact the test environment.
+            let rust_configure_args = std::env::var("RUST_CONFIGURE_ARGS")
+                .expect("RUST_CONFIGURE_ARGS environment variable missing");
+            let test_config = TestConfig::from_configure_args(&rust_configure_args);
+
             let checkout_dir = Utf8PathBuf::from("/checkout");
             let env = EnvironmentBuilder::default()
                 .host_tuple(target_triple)
@@ -160,6 +166,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 // FIXME: Enable bolt for aarch64 once it's fixed upstream. Broken as of December 2024.
                 .use_bolt(!is_aarch64)
                 .skipped_tests(vec![])
+                .test_config(test_config)
                 .build()?;
 
             (env, shared.build_args)
@@ -167,6 +174,11 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
         EnvironmentCmd::WindowsCi { shared } => {
             let target_triple =
                 std::env::var("PGO_HOST").expect("PGO_HOST environment variable missing");
+
+            // Parse the optional build components that impact the test environment.
+            let rust_configure_args = std::env::var("RUST_CONFIGURE_ARGS")
+                .expect("RUST_CONFIGURE_ARGS environment variable missing");
+            let test_config = TestConfig::from_configure_args(&rust_configure_args);
 
             let checkout_dir: Utf8PathBuf = std::env::current_dir()?.try_into()?;
             let env = EnvironmentBuilder::default()
@@ -179,6 +191,7 @@ fn create_environment(args: Args) -> anyhow::Result<(Environment, Vec<String>)> 
                 .shared_llvm(false)
                 .use_bolt(false)
                 .skipped_tests(vec![])
+                .test_config(test_config)
                 .build()?;
 
             (env, shared.build_args)

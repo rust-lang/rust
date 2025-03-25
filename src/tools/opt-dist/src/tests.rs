@@ -72,6 +72,7 @@ change-id = 115898
 [rust]
 channel = "{channel}"
 verbose-tests = true
+debug-assertions = {debug_assertions}
 
 [build]
 rustc = "{rustc}"
@@ -83,7 +84,8 @@ llvm-config = "{llvm_config}"
 "#,
         rustc = rustc_path.to_string().replace('\\', "/"),
         cargo = cargo_path.to_string().replace('\\', "/"),
-        llvm_config = llvm_config.to_string().replace('\\', "/")
+        llvm_config = llvm_config.to_string().replace('\\', "/"),
+        debug_assertions = env.test_config().enable_debug_assertions,
     );
     log::info!("Using following `bootstrap.toml` for running tests:\n{config_content}");
 
