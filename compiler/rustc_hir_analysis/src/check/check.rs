@@ -17,11 +17,10 @@ use rustc_lint_defs::builtin::{
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_bound_vars::ResolvedArg;
 use rustc_middle::middle::stability::EvalResult;
-use rustc_middle::ty::error::TypeErrorToStringExt;
 use rustc_middle::ty::layout::{LayoutError, MAX_SIMD_LANES};
 use rustc_middle::ty::util::{Discr, IntTypeExt};
 use rustc_middle::ty::{
-    AdtDef, BottomUpFolder, GenericArgKind, RegionKind, TypeFoldable, TypeSuperVisitable,
+    AdtDef, GenericArgKind, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeSuperVisitable,
     TypeVisitable, TypeVisitableExt, fold_regions,
 };
 use rustc_session::lint::builtin::UNINHABITED_STATIC;
@@ -30,7 +29,6 @@ use rustc_trait_selection::error_reporting::traits::on_unimplemented::OnUnimplem
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
 use tracing::{debug, instrument};
-use ty::TypingMode;
 use {rustc_attr_parsing as attr, rustc_hir as hir};
 
 use super::compare_impl_item::check_type_bounds;
@@ -254,14 +252,18 @@ fn check_opaque_meets_bounds<'tcx>(
         | hir::OpaqueTyOrigin::AsyncFn { parent, .. }
         | hir::OpaqueTyOrigin::TyAlias { parent, .. } => parent,
     };
+
+    let misc_cause = ObligationCause::misc(span, def_id);
+
+    // FIXME: We should reveal the TAITs that end up in where clauses here, otherwise we
+    // will not be able to match param-env candidates in the old solver, since we don't
+    // have eq-modulo-normalization. This is less of a problem than it seems, since this
+    // only matters if we have TAITs in where clauses, which isn't achievable with RPIT
+    // anyways.
     let param_env = tcx.param_env(defining_use_anchor);
 
-    // FIXME(#132279): Once `PostBorrowckAnalysis` is supported in the old solver, this branch should be removed.
-    let infcx = tcx.infer_ctxt().build(if tcx.next_trait_solver_globally() {
-        TypingMode::post_borrowck_analysis(tcx, defining_use_anchor)
-    } else {
-        TypingMode::analysis_in_body(tcx, defining_use_anchor)
-    });
+    let infcx =
+        tcx.infer_ctxt().build(TypingMode::post_borrowck_analysis(tcx, defining_use_anchor));
     let ocx = ObligationCtxt::new_with_diagnostics(&infcx);
 
     let args = match origin {
@@ -275,33 +277,25 @@ fn check_opaque_meets_bounds<'tcx>(
         }),
     };
 
-    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
-
     // `ReErased` regions appear in the "parent_args" of closures/coroutines.
     // We're ignoring them here and replacing them with fresh region variables.
     // See tests in ui/type-alias-impl-trait/closure_{parent_args,wf_outlives}.rs.
     //
     // FIXME: Consider wrapping the hidden type in an existential `Binder` and instantiating it
     // here rather than using ReErased.
+    let opaque_ty = Ty::new_opaque(tcx, def_id.to_def_id(), args);
     let hidden_ty = tcx.type_of(def_id.to_def_id()).instantiate(tcx, args);
     let hidden_ty = fold_regions(tcx, hidden_ty, |re, _dbi| match re.kind() {
         ty::ReErased => infcx.next_region_var(RegionVariableOrigin::MiscVariable(span)),
         _ => re,
     });
 
-    // HACK: We eagerly instantiate some bounds to report better errors for them...
-    // This isn't necessary for correctness, since we register these bounds when
-    // equating the opaque below, but we should clean this up in the new solver.
+    // NOTE: We elaborate the explicit item bounds for better spans.
     for (predicate, pred_span) in
         tcx.explicit_item_bounds(def_id).iter_instantiated_copied(tcx, args)
     {
-        let predicate = predicate.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |ty| if ty == opaque_ty { hidden_ty } else { ty },
-            lt_op: |lt| lt,
-            ct_op: |ct| ct,
-        });
-
+        let predicate = predicate.fold_with(&mut ReplaceOpaques { tcx, opaque_ty, hidden_ty });
+        let predicate = ocx.normalize(&misc_cause, param_env, predicate);
         ocx.register_obligation(Obligation::new(
             tcx,
             ObligationCause::new(
@@ -314,24 +308,24 @@ fn check_opaque_meets_bounds<'tcx>(
         ));
     }
 
-    let misc_cause = ObligationCause::misc(span, def_id);
-    // FIXME: We should just register the item bounds here, rather than equating.
-    // FIXME(const_trait_impl): When we do that, please make sure to also register
-    // the `~const` bounds.
-    match ocx.eq(&misc_cause, param_env, opaque_ty, hidden_ty) {
-        Ok(()) => {}
-        Err(ty_err) => {
-            // Some types may be left "stranded" if they can't be reached
-            // from a lowered rustc_middle bound but they're mentioned in the HIR.
-            // This will happen, e.g., when a nested opaque is inside of a non-
-            // existent associated type, like `impl Trait<Missing = impl Trait>`.
-            // See <tests/ui/impl-trait/stranded-opaque.rs>.
-            let ty_err = ty_err.to_string(tcx);
-            let guar = tcx.dcx().span_delayed_bug(
-                span,
-                format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
+    // And check the `~const` bounds for an RPIT.
+    if tcx.is_conditionally_const(def_id) {
+        for (predicate, pred_span) in tcx.const_conditions(def_id).instantiate(tcx, args) {
+            let predicate = ocx.normalize(
+                &misc_cause,
+                param_env,
+                predicate.to_host_effect_clause(tcx, ty::BoundConstness::Maybe),
             );
-            return Err(guar);
+            ocx.register_obligation(Obligation::new(
+                tcx,
+                ObligationCause::new(
+                    span,
+                    def_id,
+                    ObligationCauseCode::OpaqueTypeBound(pred_span, definition_def_id),
+                ),
+                param_env,
+                predicate,
+            ));
         }
     }
 
@@ -353,26 +347,28 @@ fn check_opaque_meets_bounds<'tcx>(
     let wf_tys = ocx.assumed_wf_types_and_report_errors(param_env, defining_use_anchor)?;
     ocx.resolve_regions_and_report_errors(defining_use_anchor, param_env, wf_tys)?;
 
-    if infcx.next_trait_solver() {
-        Ok(())
-    } else if let hir::OpaqueTyOrigin::FnReturn { .. } | hir::OpaqueTyOrigin::AsyncFn { .. } =
-        origin
-    {
-        // HACK: this should also fall through to the hidden type check below, but the original
-        // implementation had a bug where equivalent lifetimes are not identical. This caused us
-        // to reject existing stable code that is otherwise completely fine. The real fix is to
-        // compare the hidden types via our type equivalence/relation infra instead of doing an
-        // identity check.
-        let _ = infcx.take_opaque_types();
-        Ok(())
-    } else {
-        // Check that any hidden types found during wf checking match the hidden types that `type_of` sees.
-        for (mut key, mut ty) in infcx.take_opaque_types() {
-            ty.ty = infcx.resolve_vars_if_possible(ty.ty);
-            key = infcx.resolve_vars_if_possible(key);
-            sanity_check_found_hidden_type(tcx, key, ty)?;
+    Ok(())
+}
+
+struct ReplaceOpaques<'tcx> {
+    tcx: TyCtxt<'tcx>,
+    opaque_ty: Ty<'tcx>,
+    hidden_ty: Ty<'tcx>,
+}
+
+impl<'tcx> TypeFolder<TyCtxt<'tcx>> for ReplaceOpaques<'tcx> {
+    fn cx(&self) -> TyCtxt<'tcx> {
+        self.tcx
+    }
+
+    fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
+        if ty == self.opaque_ty {
+            self.hidden_ty
+        } else if ty.has_opaque_types() {
+            ty.super_fold_with(self)
+        } else {
+            ty
         }
-        Ok(())
     }
 }
 
@@ -458,50 +454,6 @@ fn best_definition_site_of_opaque<'tcx>(
         hir::OpaqueTyOrigin::TyAlias { in_assoc_ty: false, .. } => {
             tcx.hir_walk_toplevel_module(&mut locator).break_value()
         }
-    }
-}
-
-fn sanity_check_found_hidden_type<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    key: ty::OpaqueTypeKey<'tcx>,
-    mut ty: ty::OpaqueHiddenType<'tcx>,
-) -> Result<(), ErrorGuaranteed> {
-    if ty.ty.is_ty_var() {
-        // Nothing was actually constrained.
-        return Ok(());
-    }
-    if let ty::Alias(ty::Opaque, alias) = ty.ty.kind() {
-        if alias.def_id == key.def_id.to_def_id() && alias.args == key.args {
-            // Nothing was actually constrained, this is an opaque usage that was
-            // only discovered to be opaque after inference vars resolved.
-            return Ok(());
-        }
-    }
-    let strip_vars = |ty: Ty<'tcx>| {
-        ty.fold_with(&mut BottomUpFolder {
-            tcx,
-            ty_op: |t| t,
-            ct_op: |c| c,
-            lt_op: |l| match l.kind() {
-                RegionKind::ReVar(_) => tcx.lifetimes.re_erased,
-                _ => l,
-            },
-        })
-    };
-    // Closures frequently end up containing erased lifetimes in their final representation.
-    // These correspond to lifetime variables that never got resolved, so we patch this up here.
-    ty.ty = strip_vars(ty.ty);
-    // Get the hidden type.
-    let hidden_ty = tcx.type_of(key.def_id).instantiate(tcx, key.args);
-    let hidden_ty = strip_vars(hidden_ty);
-
-    // If the hidden types differ, emit a type mismatch diagnostic.
-    if hidden_ty == ty.ty {
-        Ok(())
-    } else {
-        let span = tcx.def_span(key.def_id);
-        let other = ty::OpaqueHiddenType { ty: hidden_ty, span };
-        Err(ty.build_mismatch_error(&other, tcx)?.emit())
     }
 }
 
@@ -1801,11 +1753,7 @@ pub(super) fn check_coroutine_obligations(
 
     debug!(?typeck_results.coroutine_stalled_predicates);
 
-    let mode = if tcx.next_trait_solver_globally() {
-        TypingMode::post_borrowck_analysis(tcx, def_id)
-    } else {
-        TypingMode::analysis_in_body(tcx, def_id)
-    };
+    let mode = TypingMode::post_borrowck_analysis(tcx, def_id);
 
     let infcx = tcx
         .infer_ctxt()
@@ -1823,16 +1771,6 @@ pub(super) fn check_coroutine_obligations(
     debug!(?errors);
     if !errors.is_empty() {
         return Err(infcx.err_ctxt().report_fulfillment_errors(errors));
-    }
-
-    if !tcx.next_trait_solver_globally() {
-        // Check that any hidden types found when checking these stalled coroutine obligations
-        // are valid.
-        for (key, ty) in infcx.take_opaque_types() {
-            let hidden_type = infcx.resolve_vars_if_possible(ty);
-            let key = infcx.resolve_vars_if_possible(key);
-            sanity_check_found_hidden_type(tcx, key, hidden_type)?;
-        }
     }
 
     Ok(())

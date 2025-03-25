@@ -711,7 +711,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             // Already reported.
             Overflow(OverflowError::Error(guar)) => {
                 self.set_tainted_by_errors(guar);
-                return guar
+                return guar;
             },
 
             Overflow(_) => {
@@ -719,6 +719,10 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
             }
 
             SelectionError::ConstArgHasWrongType { ct, ct_ty, expected_ty } => {
+                if let Err(guar) = expected_ty.error_reported() {
+                    return guar;
+                }
+
                 let mut diag = self.dcx().struct_span_err(
                     span,
                     format!("the constant `{ct}` is not of type `{expected_ty}`"),
