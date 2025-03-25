@@ -10,8 +10,9 @@
           StorageLive(_1);
           StorageLive(_2);
 -         _2 = ();
+-         _1 = Union32 { value: move _2 };
 +         _2 = const ();
-          _1 = Union32 { value: move _2 };
++         _1 = Union32 { value: const () };
           StorageDead(_2);
           _0 = move _1 as u32 (Transmute);
           StorageDead(_1);
