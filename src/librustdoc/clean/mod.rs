@@ -210,7 +210,7 @@ fn generate_item_with_correct_attrs(
 
     let name = renamed.or(Some(name));
     let mut item = Item::from_def_id_and_attrs_and_parts(def_id, name, kind, attrs, cfg);
-    item.inline_stmt_id = import_id;
+    item.inner.inline_stmt_id = import_id;
     item
 }
 
