@@ -96,7 +96,7 @@ pub(super) fn extract_all_mapping_info_from_mir<'tcx>(
         }
     } else {
         // Extract coverage spans from MIR statements/terminators as normal.
-        extract_refined_covspans(mir_body, hir_info, graph, &mut code_mappings);
+        extract_refined_covspans(tcx, mir_body, hir_info, graph, &mut code_mappings);
     }
 
     branch_pairs.extend(extract_branch_pairs(mir_body, hir_info, graph));
