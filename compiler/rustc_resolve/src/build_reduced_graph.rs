@@ -884,10 +884,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(box Impl { of_trait: Some(..), .. }) => {
-                self.r.trait_impl_items.insert(local_def_id);
-            }
-            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl(box Impl { of_trait: Some(..), .. })
+            | ItemKind::Impl { .. }
+            | ItemKind::ForeignMod(..)
+            | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
@@ -1377,7 +1377,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 AssocCtxt::Trait => {
                     self.visit_invoc_in_module(item.id);
                 }
-                AssocCtxt::Impl => {
+                AssocCtxt::Impl { .. } => {
                     let invoc_id = item.id.placeholder_to_expn_id();
                     if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
                         self.r
@@ -1397,9 +1397,8 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
 
-        if !(ctxt == AssocCtxt::Impl
-            && matches!(item.vis.kind, ast::VisibilityKind::Inherited)
-            && self.r.trait_impl_items.contains(&self.r.tcx.local_parent(local_def_id)))
+        if !(matches!(ctxt, AssocCtxt::Impl { of_trait: true })
+            && matches!(item.vis.kind, ast::VisibilityKind::Inherited))
         {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,

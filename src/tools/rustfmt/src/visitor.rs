@@ -624,7 +624,8 @@ impl<'b, 'a: 'b> FmtVisitor<'a> {
         // TODO(calebcartwright): Not sure the skip spans are correct
         let (ai, skip_span, assoc_ctxt) = match visitor_kind {
             AssocTraitItem(ai) => (*ai, ai.span(), visit::AssocCtxt::Trait),
-            AssocImplItem(ai) => (*ai, ai.span, visit::AssocCtxt::Impl),
+            // There is no difference between trait and inherent assoc item formatting
+            AssocImplItem(ai) => (*ai, ai.span, visit::AssocCtxt::Impl { of_trait: false }),
             _ => unreachable!(),
         };
         skip_out_of_file_lines_range_visitor!(self, ai.span);
