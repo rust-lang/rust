@@ -1,6 +1,6 @@
 avoid-breaking-exported-api = false
 
-lint-inconsistent-struct-field-initializers = true
+check-inconsistent-struct-field-initializers = true
 
 [[disallowed-methods]]
 path = "rustc_lint::context::LintContext::lint"
