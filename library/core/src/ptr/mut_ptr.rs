@@ -233,18 +233,22 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Returns `None` if the pointer is null, or else returns a shared reference to
-    /// the value wrapped in `Some`. If the value may be uninitialized, [`as_uninit_ref`]
-    /// must be used instead.
+    /// the value wrapped in `Some`.
     ///
     /// For the mutable counterpart see [`as_mut`].
     ///
-    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
     /// [`as_mut`]: #method.as_mut
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// When calling this method, you have to ensure that:
+    ///
+    /// * *Either* the pointer is null *or* the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * The value of memory pointed by the ptr must be initialized. If not, [`as_uninit_ref`] must be used instead.
+    ///
+    /// * Note that after obtaining the reference, the original pointer must not
+    ///   be mutated until the reference's lifetime ends (except inside `UnsafeCell`).
     ///
     /// # Panics during const evaluation
     ///
@@ -252,6 +256,7 @@ impl<T: ?Sized> *mut T {
     /// determined to be null or not. See [`is_null`] for more information.
     ///
     /// [`is_null`]: #method.is_null-1
+    /// [`as_uninit_ref`]: pointer#method.as_uninit_ref-1
     ///
     /// # Examples
     ///
@@ -289,18 +294,25 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Returns a shared reference to the value behind the pointer.
-    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_ref`] must be used instead.
-    /// If the pointer may be null, but the value is known to have been initialized, [`as_ref`] must be used instead.
     ///
     /// For the mutable counterpart see [`as_mut_unchecked`].
     ///
-    /// [`as_ref`]: #method.as_ref
-    /// [`as_uninit_ref`]: #method.as_uninit_ref
     /// [`as_mut_unchecked`]: #method.as_mut_unchecked
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// When calling this method, you have to ensure that:
+    ///
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * If the pointer may be null or the value may be uninitialized, [`as_uninit_ref`] must be used instead.
+    ///   If the pointer may be null, but the value is known to have been initialized, [`as_ref`] must be used instead.
+    ///
+    /// * Note that after obtaining the reference, the original pointer must not
+    ///   be mutated until the reference's lifetime ends (except inside `UnsafeCell`).
+    ///
+    /// [`as_ref`]: #method.as_ref
+    /// [`as_uninit_ref`]: #method.as_uninit_ref
     ///
     /// # Examples
     ///
@@ -332,10 +344,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
-    /// Note that because the created reference is to `MaybeUninit<T>`, the
-    /// source pointer can point to uninitialized memory.
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * Note that after obtaining the reference, the original pointer must not
+    ///   be mutated until the reference's lifetime ends (except inside `UnsafeCell`).
     ///
     /// # Panics during const evaluation
     ///
@@ -607,7 +619,8 @@ impl<T: ?Sized> *mut T {
     ///
     /// * The value of memory pointed by the ptr must be initialized. If not, [`as_uninit_mut`] must be used instead.
     ///
-    /// * Note that multiple calls to this API may create multiple mutable references simultaneously, violating the exclusive mutable reference principle.
+    /// * Note that after obtaining the mutable reference, the original pointer
+    ///   must not be used to access the data until the reference's lifetime ends.
     ///
     /// # Panics during const evaluation
     ///
@@ -653,19 +666,25 @@ impl<T: ?Sized> *mut T {
     }
 
     /// Returns a unique reference to the value behind the pointer.
-    /// If the pointer may be null or the value may be uninitialized, [`as_uninit_mut`] must be used instead.
-    /// If the pointer may be null, but the value is known to have been initialized, [`as_mut`] must be used instead.
     ///
     /// For the shared counterpart see [`as_ref_unchecked`].
     ///
-    /// [`as_mut`]: #method.as_mut
-    /// [`as_uninit_mut`]: #method.as_uninit_mut
     /// [`as_ref_unchecked`]: #method.as_mut_unchecked
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// When calling this method, you have to ensure that:
+    ///
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * If the pointer may be null or the value may be uninitialized, [`as_uninit_mut`] must be used instead.
+    ///   If the pointer may be null, but the value is known to have been initialized, [`as_mut`] must be used instead.
+    ///
+    /// * Note that after obtaining the mutable reference, the original pointer
+    ///   must not be used to access the data until the reference's lifetime ends.
+    ///
+    /// [`as_mut`]: #method.as_mut
+    /// [`as_uninit_mut`]: #method.as_uninit_mut
     ///
     /// # Examples
     ///
@@ -698,8 +717,10 @@ impl<T: ?Sized> *mut T {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that *either* the pointer is null *or*
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * Note that after obtaining the mutable reference, the original pointer must not
+    ///   be used to access the data until the reference's lifetime ends.
     ///
     /// # Panics during const evaluation
     ///

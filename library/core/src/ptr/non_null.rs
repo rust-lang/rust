@@ -152,10 +152,11 @@ impl<T: Sized> NonNull<T> {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
-    /// Note that because the created reference is to `MaybeUninit<T>`, the
-    /// source pointer can point to uninitialized memory.
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * Note that after obtaining the reference, the original pointer must not
+    ///   be mutated until the reference's lifetime ends (except inside `UnsafeCell`).
+    ///
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
@@ -175,10 +176,11 @@ impl<T: Sized> NonNull<T> {
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
-    /// Note that because the created reference is to `MaybeUninit<T>`, the
-    /// source pointer can point to uninitialized memory.
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * Note that after obtaining the mutable reference, the original pointer must not
+    ///   be used to access the data until the reference's lifetime ends.
+    ///
     #[inline]
     #[must_use]
     #[unstable(feature = "ptr_as_uninit", issue = "75402")]
@@ -391,18 +393,24 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { mem::transmute::<Self, *mut T>(self) }
     }
 
-    /// Returns a shared reference to the value. If the value may be uninitialized, [`as_uninit_ref`]
-    /// must be used instead.
+    /// Returns a shared reference to the value.
     ///
     /// For the mutable counterpart see [`as_mut`].
     ///
-    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
     /// [`as_mut`]: NonNull::as_mut
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// When calling this method, you have to ensure that:
+    ///
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * The value of memory pointed by the ptr must be initialized. If not, [`as_uninit_ref`] must be used instead.
+    ///
+    /// * Note that after obtaining the mutable reference, the original pointer must not
+    ///   be mutated until the reference's lifetime ends (except inside `UnsafeCell`).
+    ///
+    /// [`as_uninit_ref`]: NonNull::as_uninit_ref
     ///
     /// # Examples
     ///
@@ -442,7 +450,8 @@ impl<T: ?Sized> NonNull<T> {
     ///
     /// * The value of memory pointed by the ptr must be initialized. If not, [`as_uninit_mut`] must be used instead.
     ///
-    /// * Note that multiple calls to this API may create multiple mutable references simultaneously, violating the exclusive mutable reference principle.
+    /// * Note that after obtaining the mutable reference, the original pointer
+    ///   must not be used to access the data until the reference's lifetime ends.
     ///
     /// [`as_uninit_mut`]: NonNull::as_uninit_mut
     ///
