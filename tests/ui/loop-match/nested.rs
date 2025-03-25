@@ -37,7 +37,7 @@ fn run() -> String {
                 State1::A => {
                     accum.push('a');
                     #[const_continue]
-                    break 'blk1 const { State1::B };
+                    break 'blk1 State1::B;
                 }
                 State1::B => {
                     accum.push('b');
@@ -48,22 +48,22 @@ fn run() -> String {
                                 State2::X => {
                                     accum.push('x');
                                     #[const_continue]
-                                    break 'blk2 const { State2::Y };
+                                    break 'blk2 State2::Y;
                                 }
                                 State2::Y => {
                                     accum.push('y');
                                     #[const_continue]
-                                    break 'blk2 const { State2::Z };
+                                    break 'blk2 State2::Z;
                                 }
                                 State2::Z => {
                                     accum.push('z');
                                     if first {
                                         first = false;
                                         #[const_continue]
-                                        break 'blk2 const { State2::X };
+                                        break 'blk2 State2::X;
                                     } else {
                                         #[const_continue]
-                                        break 'blk1 const { State1::C };
+                                        break 'blk1 State1::C;
                                     }
                                 }
                             }
