@@ -1337,6 +1337,8 @@ impl RecordField {
     pub fn colon_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![:]) }
     #[inline]
     pub fn eq_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![=]) }
+    #[inline]
+    pub fn unsafe_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![unsafe]) }
 }
 pub struct RecordFieldList {
     pub(crate) syntax: SyntaxNode,
