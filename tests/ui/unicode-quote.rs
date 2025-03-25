@@ -2,7 +2,7 @@
 // <https://github.com/rust-lang/rust/issues/128858>
 fn main() {
     dbg!("\″"); //U+2033
-    //~^ERROR 4:12: 4:13: unknown character escape: `\u{2033}`
+    //~^ERROR unknown character escape: `\u{2033}`
     dbg!("\ʺ"); //U+02BA
     //~^ERROR 6:12: 6:13: unknown character escape: `\u{2ba}`
     dbg!("\˝"); //U+02DD

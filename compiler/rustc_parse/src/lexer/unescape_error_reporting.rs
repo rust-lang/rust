@@ -169,7 +169,7 @@ pub(crate) fn emit_unescape_error(
                 );
 
                 diag.help(format!(
-                    "{ec} is not an ascii quote, but may look like one in some fonts; \
+                    "{ec} is not an ASCII quote, but may look like one in some fonts; \
                      consider writing it in its escaped form for clarity."
                 ));
             } else {
