@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/too_generic_eval_ice.rs:7:13
+  --> $DIR/too_generic_eval_ice.rs:11:13
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |             ^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/too_generic_eval_ice.rs:7:9
+  --> $DIR/too_generic_eval_ice.rs:11:9
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |         ^^^^^^^^^^^^^^^^^^^^
@@ -15,7 +15,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = note: this may fail depending on what value the parameter takes
 
 error: constant expression depends on a generic parameter
-  --> $DIR/too_generic_eval_ice.rs:7:30
+  --> $DIR/too_generic_eval_ice.rs:11:30
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |                              ^^
@@ -23,7 +23,7 @@ LL |         [5; Self::HOST_SIZE] == [6; 0]
    = note: this may fail depending on what value the parameter takes
 
 error[E0277]: can't compare `[{integer}; Self::HOST_SIZE]` with `[{integer}; 0]`
-  --> $DIR/too_generic_eval_ice.rs:7:30
+  --> $DIR/too_generic_eval_ice.rs:11:30
    |
 LL |         [5; Self::HOST_SIZE] == [6; 0]
    |                              ^^ no implementation for `[{integer}; Self::HOST_SIZE] == [{integer}; 0]`

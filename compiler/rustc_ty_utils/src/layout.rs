@@ -611,7 +611,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Param(_) => {
+        ty::Param(_) | ty::Placeholder(..) => {
             return Err(error(cx, LayoutError::TooGeneric(ty)));
         }
 
@@ -628,11 +628,7 @@ fn layout_of_uncached<'tcx>(
             return Err(error(cx, err));
         }
 
-        ty::Placeholder(..)
-        | ty::Bound(..)
-        | ty::CoroutineWitness(..)
-        | ty::Infer(_)
-        | ty::Error(_) => {
+        ty::Bound(..) | ty::CoroutineWitness(..) | ty::Infer(_) | ty::Error(_) => {
             // `ty::Error` is handled at the top of this function.
             bug!("layout_of: unexpected type `{ty}`")
         }
