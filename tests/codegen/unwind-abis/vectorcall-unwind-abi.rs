@@ -1,9 +1,18 @@
 //@ needs-llvm-components: x86
 //@ compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib -Cno-prepopulate-passes
 #![no_core]
-#![feature(no_core, lang_items, abi_vectorcall)]
+#![feature(no_core, lang_items, abi_vectorcall, const_trait_impl)]
+
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 // Test that `nounwind` attributes are correctly applied to exported `vectorcall` and
 // `vectorcall-unwind` extern functions. `vectorcall-unwind` functions MUST NOT have this attribute.

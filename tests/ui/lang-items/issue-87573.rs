@@ -1,14 +1,22 @@
 // Regression test for #87573, ensures that duplicate lang items or invalid generics
 // for lang items doesn't cause ICE.
 
-#![feature(no_core, lang_items)]
+#![feature(no_core, lang_items, const_trait_impl)]
 #![no_core]
 #![crate_type = "lib"]
 
 pub static STATIC_BOOL: bool = true;
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+trait Sized: MetaSized {}
 
 #[lang = "copy"]
 trait Copy {}

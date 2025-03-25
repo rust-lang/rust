@@ -1,11 +1,15 @@
 //@ check-pass
 
+#![allow(sized_hierarchy_migration)]
+#![feature(sized_hierarchy)]
 #![feature(non_lifetime_binders)]
 //~^ WARN the feature `non_lifetime_binders` is incomplete
 
-trait Trait<T: ?Sized> {}
+use std::marker::PointeeSized;
 
-impl<T: ?Sized> Trait<T> for i32 {}
+trait Trait<T: PointeeSized> {}
+
+impl<T: PointeeSized> Trait<T> for i32 {}
 
 fn produce() -> impl for<T> Trait<T> {
     16

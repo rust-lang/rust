@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/issue-50716.rs:14:14
+  --> $DIR/issue-50716.rs:13:14
    |
 LL | fn foo<'a, T: 'static>(s: Box<<&'a T as A>::X>)
    |        -- lifetime `'a` defined here

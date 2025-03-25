@@ -1,14 +1,17 @@
 use std::collections::{BTreeMap, VecDeque};
 
 use rustc_data_structures::fx::{FxHashSet, FxIndexMap};
+use rustc_hir::LangItem;
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::InferCtxt;
 pub use rustc_infer::traits::util::*;
 use rustc_middle::bug;
 use rustc_middle::ty::{
-    self, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
+    self, SizedTraitKind, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitableExt,
 };
 use rustc_span::Span;
+use rustc_type_ir::lang_items::TraitSolverLangItem;
+use rustc_type_ir::{InferCtxtLike, Interner, Upcast};
 use smallvec::{SmallVec, smallvec};
 use tracing::debug;
 
@@ -503,4 +506,134 @@ impl<'tcx> TypeFolder<TyCtxt<'tcx>> for PlaceholderReplacer<'_, 'tcx> {
             ct.super_fold_with(self)
         }
     }
+}
+
+/// To improve performance, Sizedness traits are not elaborated and so special-casing is required
+/// in the trait solver to find a `Sized` candidate for a `MetaSized` predicate. This is a helper
+/// function for that special-casing, intended to be used when the obligation to be proven has been
+/// confirmed to be `MetaSized`, and checking whether the `param_env` contains `Sized` for the same
+/// `self_ty` is all that remains to be done.
+// Ideally this would be re-used by the next solver, but there is no `InferCtxtLike` implementor.
+pub(crate) fn sizedness_elab_opt_fast_path_from_paramenv<Infcx, I>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    param_env: I::ParamEnv,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitPredicate<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+{
+    #[allow(rustc::usage_of_type_ir_inherent)]
+    use rustc_type_ir::inherent::*;
+    sizedness_elab_opt_fast_path_from_clauses(infcx, self_ty, param_env.caller_bounds().iter())
+}
+
+/// Same as `sizedness_elab_opt_fast_path_from_paramenv` but takes an iterator of clauses instead
+/// of a parameter environment.
+pub(crate) fn sizedness_elab_opt_fast_path_from_clauses<Infcx, I, Trs>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    clauses: Trs,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitPredicate<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+    Trs: IntoIterator<Item = I::Clause>,
+{
+    #[allow(rustc::usage_of_type_ir_inherent)]
+    use rustc_type_ir::inherent::*;
+    sizedness_elab_opt_fast_path_from_traitrefs(
+        infcx,
+        self_ty,
+        clauses
+            .into_iter()
+            .filter_map(|p| p.as_trait_clause())
+            .map(|c| c.map_bound(|c| c.trait_ref)),
+    )
+    .map(|f| f.map_bound(|f| f.upcast(infcx.cx())))
+}
+
+/// Same as `sizedness_elab_opt_fast_path_from_paramenv` but takes an iterator of trait refs instead
+/// of a parameter environment.
+pub(crate) fn sizedness_elab_opt_fast_path_from_traitrefs<Infcx, I, TraitRefs>(
+    infcx: &Infcx,
+    self_ty: rustc_type_ir::Binder<I, I::Ty>,
+    trait_refs: TraitRefs,
+) -> Option<rustc_type_ir::Binder<I, rustc_type_ir::TraitRef<I>>>
+where
+    I: Interner,
+    Infcx: InferCtxtLike<Interner = I>,
+    TraitRefs: IntoIterator<Item = rustc_type_ir::Binder<I, rustc_type_ir::TraitRef<I>>>,
+{
+    trait_refs.into_iter().find(|c| {
+        let expected_self_ty = infcx.resolve_vars_if_possible(self_ty);
+        let found_self_ty = infcx.resolve_vars_if_possible(c.self_ty());
+        expected_self_ty == found_self_ty
+            && infcx.cx().is_lang_item(c.def_id(), TraitSolverLangItem::Sized)
+    })
+}
+
+pub fn sizedness_fast_path<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicate: ty::Predicate<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+) -> bool {
+    // Proving `Sized`/`MetaSized`/`PointeeSized`, very often on "obviously sized" types like
+    // `&T`, accounts for about 60% percentage of the predicates we have to prove. No need to
+    // canonicalize and all that for such cases.
+    if let ty::PredicateKind::Clause(ty::ClauseKind::Trait(trait_ref)) =
+        predicate.kind().skip_binder()
+    {
+        let sizedness = if tcx.is_lang_item(trait_ref.def_id(), LangItem::Sized) {
+            Some(SizedTraitKind::Sized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::MetaSized) {
+            Some(SizedTraitKind::MetaSized)
+        } else if tcx.is_lang_item(trait_ref.def_id(), LangItem::PointeeSized) {
+            Some(SizedTraitKind::PointeeSized)
+        } else {
+            None
+        };
+
+        if let Some(sizedness) = sizedness
+            && trait_ref.self_ty().has_trivial_sizedness(tcx, sizedness)
+        {
+            debug!("fast path -- trivial sizedness");
+            return true;
+        }
+
+        if matches!(sizedness, Some(SizedTraitKind::MetaSized)) {
+            let has_sized_in_param_env = param_env
+                .caller_bounds()
+                .iter()
+                .rev() // sizedness predicates are normally at the end for diagnostics reasons
+                .filter_map(|p| p.as_trait_clause())
+                .any(|c| {
+                    trait_ref.self_ty() == c.skip_binder().self_ty()
+                        && tcx.is_lang_item(c.def_id(), LangItem::Sized)
+                });
+            if has_sized_in_param_env {
+                debug!("fast path -- metasized paramenv");
+                return true;
+            }
+        }
+    }
+
+    // Likewise, determining if a sizedness trait is implemented const-ly is a trivial
+    // determination that can happen in the fast path.
+    //
+    // NOTE: Keep this in sync with `evaluate_host_effect_for_sizedness_goal` in the old solver,
+    // `const_conditions_for_sizedness` in the new solver.
+    if let ty::PredicateKind::Clause(ty::ClauseKind::HostEffect(host_pred)) =
+        predicate.kind().skip_binder()
+    {
+        let is_sizedness = tcx.is_lang_item(host_pred.def_id(), LangItem::Sized)
+            || tcx.is_lang_item(host_pred.def_id(), LangItem::MetaSized);
+
+        if is_sizedness && !host_pred.self_ty().has_non_const_sizedness() {
+            debug!("fast path -- host effect");
+            return true;
+        }
+    }
+
+    false
 }

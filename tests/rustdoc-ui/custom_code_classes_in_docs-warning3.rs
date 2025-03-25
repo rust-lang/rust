@@ -3,10 +3,19 @@
 
 #![deny(warnings)]
 #![feature(no_core, lang_items)]
+#![feature(const_trait_impl)]
 #![no_core]
 
+#[lang = "pointee_sized"]
+pub trait PointeeSized {}
+
+#[lang = "meta_sized"]
+#[const_trait]
+pub trait MetaSized: PointeeSized {}
+
 #[lang = "sized"]
-trait Sized {}
+#[const_trait]
+pub trait Sized: MetaSized {}
 
 /// ```{class="}
 /// main;

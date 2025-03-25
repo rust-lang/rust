@@ -5,7 +5,7 @@ use libffi::high::call as ffi;
 use libffi::low::CodePtr;
 use rustc_abi::{BackendRepr, HasDataLayout, Size};
 use rustc_middle::mir::interpret::Pointer;
-use rustc_middle::ty::{self as ty, IntTy, UintTy};
+use rustc_middle::ty::{self as ty, inherent::SliceLike, IntTy, UintTy};
 use rustc_span::Symbol;
 
 use crate::*;
