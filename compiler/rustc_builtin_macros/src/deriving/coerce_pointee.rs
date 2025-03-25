@@ -30,7 +30,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
     item.visit_with(&mut DetectNonGenericPointeeAttr { cx });
 
     let (name_ident, generics) = if let Annotatable::Item(aitem) = item
-        && let ItemKind::Struct(struct_data, g) = &aitem.kind
+        && let ItemKind::Struct(ident, struct_data, g) = &aitem.kind
     {
         if !matches!(
             struct_data,
@@ -40,7 +40,7 @@ pub(crate) fn expand_deriving_coerce_pointee(
             cx.dcx().emit_err(RequireOneField { span });
             return;
         }
-        (aitem.ident, g)
+        (*ident, g)
     } else {
         cx.dcx().emit_err(RequireTransparent { span });
         return;
@@ -108,7 +108,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
         push(Annotatable::Item(
             cx.item(
                 span,
-                Ident::empty(),
                 attrs.clone(),
                 ast::ItemKind::Impl(Box::new(ast::Impl {
                     safety: ast::Safety::Default,
@@ -153,7 +152,6 @@ pub(crate) fn expand_deriving_coerce_pointee(
         let trait_ref = cx.trait_ref(trait_path);
         let item = cx.item(
             span,
-            Ident::empty(),
             attrs.clone(),
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 safety: ast::Safety::Default,

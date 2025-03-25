@@ -10,9 +10,9 @@ ast-stats-1 - DocComment                32 ( 0.5%)             1
 ast-stats-1 - Normal                    32 ( 0.5%)             1
 ast-stats-1 WherePredicate            72 ( 1.1%)             1            72
 ast-stats-1 - BoundPredicate            72 ( 1.1%)             1
+ast-stats-1 ForeignItem               80 ( 1.2%)             1            80
+ast-stats-1 - Fn                        80 ( 1.2%)             1
 ast-stats-1 Local                     80 ( 1.2%)             1            80
-ast-stats-1 ForeignItem               88 ( 1.3%)             1            88
-ast-stats-1 - Fn                        88 ( 1.3%)             1
 ast-stats-1 Arm                       96 ( 1.4%)             2            48
 ast-stats-1 FnDecl                   120 ( 1.8%)             5            24
 ast-stats-1 Param                    160 ( 2.4%)             4            40
@@ -23,37 +23,37 @@ ast-stats-1 - Expr                      96 ( 1.4%)             3
 ast-stats-1 Block                    192 ( 2.9%)             6            32
 ast-stats-1 FieldDef                 208 ( 3.1%)             2           104
 ast-stats-1 Variant                  208 ( 3.1%)             2           104
-ast-stats-1 AssocItem                352 ( 5.3%)             4            88
-ast-stats-1 - Fn                       176 ( 2.6%)             2
-ast-stats-1 - Type                     176 ( 2.6%)             2
-ast-stats-1 GenericBound             352 ( 5.3%)             4            88
-ast-stats-1 - Trait                    352 ( 5.3%)             4
-ast-stats-1 GenericParam             480 ( 7.2%)             5            96
+ast-stats-1 AssocItem                320 ( 4.8%)             4            80
+ast-stats-1 - Fn                       160 ( 2.4%)             2
+ast-stats-1 - Type                     160 ( 2.4%)             2
+ast-stats-1 GenericBound             352 ( 5.2%)             4            88
+ast-stats-1 - Trait                    352 ( 5.2%)             4
+ast-stats-1 GenericParam             480 ( 7.1%)             5            96
 ast-stats-1 Pat                      504 ( 7.5%)             7            72
 ast-stats-1 - Struct                    72 ( 1.1%)             1
 ast-stats-1 - Wild                      72 ( 1.1%)             1
-ast-stats-1 - Ident                    360 ( 5.4%)             5
+ast-stats-1 - Ident                    360 ( 5.3%)             5
 ast-stats-1 Expr                     576 ( 8.6%)             8            72
 ast-stats-1 - Match                     72 ( 1.1%)             1
 ast-stats-1 - Path                      72 ( 1.1%)             1
 ast-stats-1 - Struct                    72 ( 1.1%)             1
 ast-stats-1 - Lit                      144 ( 2.1%)             2
 ast-stats-1 - Block                    216 ( 3.2%)             3
-ast-stats-1 PathSegment              744 (11.1%)            31            24
-ast-stats-1 Ty                       896 (13.4%)            14            64
+ast-stats-1 PathSegment              744 (11.0%)            31            24
+ast-stats-1 Ty                       896 (13.3%)            14            64
 ast-stats-1 - Ptr                       64 ( 1.0%)             1
 ast-stats-1 - Ref                       64 ( 1.0%)             1
 ast-stats-1 - ImplicitSelf             128 ( 1.9%)             2
 ast-stats-1 - Path                     640 ( 9.5%)            10
-ast-stats-1 Item                   1_224 (18.3%)             9           136
-ast-stats-1 - Enum                     136 ( 2.0%)             1
-ast-stats-1 - ForeignMod               136 ( 2.0%)             1
-ast-stats-1 - Impl                     136 ( 2.0%)             1
-ast-stats-1 - Trait                    136 ( 2.0%)             1
-ast-stats-1 - Fn                       272 ( 4.1%)             2
-ast-stats-1 - Use                      408 ( 6.1%)             3
+ast-stats-1 Item                   1_296 (19.2%)             9           144
+ast-stats-1 - Enum                     144 ( 2.1%)             1
+ast-stats-1 - ForeignMod               144 ( 2.1%)             1
+ast-stats-1 - Impl                     144 ( 2.1%)             1
+ast-stats-1 - Trait                    144 ( 2.1%)             1
+ast-stats-1 - Fn                       288 ( 4.3%)             2
+ast-stats-1 - Use                      432 ( 6.4%)             3
 ast-stats-1 ----------------------------------------------------------------
-ast-stats-1 Total                  6_704                   116
+ast-stats-1 Total                  6_736                   116
 ast-stats-1
 ast-stats-2 POST EXPANSION AST STATS
 ast-stats-2 Name                Accumulated Size         Count     Item Size
@@ -61,12 +61,12 @@ ast-stats-2 ----------------------------------------------------------------
 ast-stats-2 Crate                     40 ( 0.5%)             1            40
 ast-stats-2 GenericArgs               40 ( 0.5%)             1            40
 ast-stats-2 - AngleBracketed            40 ( 0.5%)             1
-ast-stats-2 ExprField                 48 ( 0.7%)             1            48
+ast-stats-2 ExprField                 48 ( 0.6%)             1            48
 ast-stats-2 WherePredicate            72 ( 1.0%)             1            72
 ast-stats-2 - BoundPredicate            72 ( 1.0%)             1
+ast-stats-2 ForeignItem               80 ( 1.1%)             1            80
+ast-stats-2 - Fn                        80 ( 1.1%)             1
 ast-stats-2 Local                     80 ( 1.1%)             1            80
-ast-stats-2 ForeignItem               88 ( 1.2%)             1            88
-ast-stats-2 - Fn                        88 ( 1.2%)             1
 ast-stats-2 Arm                       96 ( 1.3%)             2            48
 ast-stats-2 FnDecl                   120 ( 1.6%)             5            24
 ast-stats-2 InlineAsm                120 ( 1.6%)             1           120
@@ -81,13 +81,13 @@ ast-stats-2 - Expr                      96 ( 1.3%)             3
 ast-stats-2 Block                    192 ( 2.6%)             6            32
 ast-stats-2 FieldDef                 208 ( 2.8%)             2           104
 ast-stats-2 Variant                  208 ( 2.8%)             2           104
-ast-stats-2 AssocItem                352 ( 4.8%)             4            88
-ast-stats-2 - Fn                       176 ( 2.4%)             2
-ast-stats-2 - Type                     176 ( 2.4%)             2
+ast-stats-2 AssocItem                320 ( 4.3%)             4            80
+ast-stats-2 - Fn                       160 ( 2.2%)             2
+ast-stats-2 - Type                     160 ( 2.2%)             2
 ast-stats-2 GenericBound             352 ( 4.8%)             4            88
 ast-stats-2 - Trait                    352 ( 4.8%)             4
 ast-stats-2 GenericParam             480 ( 6.5%)             5            96
-ast-stats-2 Pat                      504 ( 6.9%)             7            72
+ast-stats-2 Pat                      504 ( 6.8%)             7            72
 ast-stats-2 - Struct                    72 ( 1.0%)             1
 ast-stats-2 - Wild                      72 ( 1.0%)             1
 ast-stats-2 - Ident                    360 ( 4.9%)             5
@@ -96,24 +96,24 @@ ast-stats-2 - InlineAsm                 72 ( 1.0%)             1
 ast-stats-2 - Match                     72 ( 1.0%)             1
 ast-stats-2 - Path                      72 ( 1.0%)             1
 ast-stats-2 - Struct                    72 ( 1.0%)             1
-ast-stats-2 - Lit                      144 ( 2.0%)             2
+ast-stats-2 - Lit                      144 ( 1.9%)             2
 ast-stats-2 - Block                    216 ( 2.9%)             3
-ast-stats-2 PathSegment              864 (11.8%)            36            24
-ast-stats-2 Ty                       896 (12.2%)            14            64
+ast-stats-2 PathSegment              864 (11.7%)            36            24
+ast-stats-2 Ty                       896 (12.1%)            14            64
 ast-stats-2 - Ptr                       64 ( 0.9%)             1
 ast-stats-2 - Ref                       64 ( 0.9%)             1
 ast-stats-2 - ImplicitSelf             128 ( 1.7%)             2
-ast-stats-2 - Path                     640 ( 8.7%)            10
-ast-stats-2 Item                   1_496 (20.3%)            11           136
-ast-stats-2 - Enum                     136 ( 1.8%)             1
-ast-stats-2 - ExternCrate              136 ( 1.8%)             1
-ast-stats-2 - ForeignMod               136 ( 1.8%)             1
-ast-stats-2 - Impl                     136 ( 1.8%)             1
-ast-stats-2 - Trait                    136 ( 1.8%)             1
-ast-stats-2 - Fn                       272 ( 3.7%)             2
-ast-stats-2 - Use                      544 ( 7.4%)             4
+ast-stats-2 - Path                     640 ( 8.6%)            10
+ast-stats-2 Item                   1_584 (21.4%)            11           144
+ast-stats-2 - Enum                     144 ( 1.9%)             1
+ast-stats-2 - ExternCrate              144 ( 1.9%)             1
+ast-stats-2 - ForeignMod               144 ( 1.9%)             1
+ast-stats-2 - Impl                     144 ( 1.9%)             1
+ast-stats-2 - Trait                    144 ( 1.9%)             1
+ast-stats-2 - Fn                       288 ( 3.9%)             2
+ast-stats-2 - Use                      576 ( 7.8%)             4
 ast-stats-2 ----------------------------------------------------------------
-ast-stats-2 Total                  7_352                   127
+ast-stats-2 Total                  7_400                   127
 ast-stats-2
 hir-stats HIR STATS
 hir-stats Name                Accumulated Size         Count     Item Size

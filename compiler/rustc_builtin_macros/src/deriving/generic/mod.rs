@@ -487,28 +487,28 @@ impl<'a> TraitDef<'a> {
                 );
 
                 let newitem = match &item.kind {
-                    ast::ItemKind::Struct(struct_def, generics) => self.expand_struct_def(
+                    ast::ItemKind::Struct(ident, struct_def, generics) => self.expand_struct_def(
                         cx,
                         struct_def,
-                        item.ident,
+                        *ident,
                         generics,
                         from_scratch,
                         is_packed,
                     ),
-                    ast::ItemKind::Enum(enum_def, generics) => {
+                    ast::ItemKind::Enum(ident, enum_def, generics) => {
                         // We ignore `is_packed` here, because `repr(packed)`
                         // enums cause an error later on.
                         //
                         // This can only cause further compilation errors
                         // downstream in blatantly illegal code, so it is fine.
-                        self.expand_enum_def(cx, enum_def, item.ident, generics, from_scratch)
+                        self.expand_enum_def(cx, enum_def, *ident, generics, from_scratch)
                     }
-                    ast::ItemKind::Union(struct_def, generics) => {
+                    ast::ItemKind::Union(ident, struct_def, generics) => {
                         if self.supports_unions {
                             self.expand_struct_def(
                                 cx,
                                 struct_def,
-                                item.ident,
+                                *ident,
                                 generics,
                                 from_scratch,
                                 is_packed,
@@ -596,7 +596,6 @@ impl<'a> TraitDef<'a> {
             P(ast::AssocItem {
                 id: ast::DUMMY_NODE_ID,
                 span: self.span,
-                ident,
                 vis: ast::Visibility {
                     span: self.span.shrink_to_lo(),
                     kind: ast::VisibilityKind::Inherited,
@@ -605,6 +604,7 @@ impl<'a> TraitDef<'a> {
                 attrs: ast::AttrVec::new(),
                 kind: ast::AssocItemKind::Type(Box::new(ast::TyAlias {
                     defaultness: ast::Defaultness::Final,
+                    ident,
                     generics: Generics::default(),
                     where_clauses: ast::TyAliasWhereClauses::default(),
                     bounds: Vec::new(),
@@ -789,7 +789,6 @@ impl<'a> TraitDef<'a> {
 
         cx.item(
             self.span,
-            Ident::empty(),
             attrs,
             ast::ItemKind::Impl(Box::new(ast::Impl {
                 safety: ast::Safety::Default,
@@ -1033,10 +1032,10 @@ impl<'a> MethodDef<'a> {
                 kind: ast::VisibilityKind::Inherited,
                 tokens: None,
             },
-            ident: method_ident,
             kind: ast::AssocItemKind::Fn(Box::new(ast::Fn {
                 defaultness,
                 sig,
+                ident: method_ident,
                 generics: fn_generics,
                 contract: None,
                 body: Some(body_block),

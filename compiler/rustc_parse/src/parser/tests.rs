@@ -2922,7 +2922,7 @@ fn out_of_line_mod() {
         .unwrap()
         .unwrap();
 
-        let ast::ItemKind::Mod(_, mod_kind) = &item.kind else { panic!() };
+        let ast::ItemKind::Mod(_, _, mod_kind) = &item.kind else { panic!() };
         assert_matches!(mod_kind, ast::ModKind::Loaded(items, ..) if items.len() == 2);
     });
 }
