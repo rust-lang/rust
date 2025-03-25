@@ -830,6 +830,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             span_bug!(span, "break value must be a scope")
         };
 
+        // FIXME accept bare MyEnum::Foo as constant
+        let constant = self.as_constant(&self.thir[value]);
+
         let break_index = self
             .scopes
             .const_continuable_scopes
@@ -871,7 +874,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         };
 
         let Some(real_target) =
-            self.static_pattern_match(&cx, value, &*scope.arms, &scope.built_match_tree)
+            self.static_pattern_match(&cx, constant, &*scope.arms, &scope.built_match_tree)
         else {
             self.tcx.dcx().emit_fatal(ConstContinueUnknownJumpTarget { span })
         };

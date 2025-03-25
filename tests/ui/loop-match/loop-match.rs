@@ -19,7 +19,7 @@ fn main() {
             match state {
                 State::A => {
                     #[const_continue]
-                    break 'blk State::B;
+                    break 'blk const { State::B };
                 }
                 State::B => {
                     // without special logic, the compiler believes this is a re-assignment to
@@ -29,10 +29,10 @@ fn main() {
 
                     if true {
                         #[const_continue]
-                        break 'blk State::C;
+                        break 'blk const { State::C };
                     } else {
                         #[const_continue]
-                        break 'blk State::A;
+                        break 'blk const { State::A };
                     }
                 }
                 State::C => break 'a,

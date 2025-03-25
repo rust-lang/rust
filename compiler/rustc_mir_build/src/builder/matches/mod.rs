@@ -11,15 +11,16 @@ use std::mem;
 use std::sync::Arc;
 
 use rustc_abi::VariantIdx;
-use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
-use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
-use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
+use rustc_middle::ty::{
+    self, CanonicalUserTypeAnnotation, Ty, TypeVisitableExt, ValTree, ValTreeKind,
+};
+use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::{DeconstructedPat, RustcPatCtxt};
 use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
@@ -2871,7 +2872,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn static_pattern_match(
         &self,
         cx: &RustcPatCtxt<'_, 'tcx>,
-        value: ExprId,
+        constant: ConstOperand<'tcx>,
         arms: &[ArmId],
         built_match_tree: &BuiltMatchTree<'tcx>,
     ) -> Option<BasicBlock> {
@@ -2890,12 +2891,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         .or_else(|| branch.sub_branches.last())
                         .unwrap();
 
-                    match self.static_pattern_match_help(value, &pat.pat) {
+                    match self.static_pattern_match_help(constant, &pat.pat) {
                         true => return Some(sub_branch.success_block),
                         false => continue,
                     }
                 }
-            } else if self.static_pattern_match_help(value, &pat) {
+            } else if self.static_pattern_match_help(constant, &pat) {
                 return Some(branch.sub_branches[0].success_block);
             }
         }
@@ -2903,43 +2904,68 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         None
     }
 
-    fn static_pattern_match_help(&self, value: ExprId, pat: &DeconstructedPat<'_, 'tcx>) -> bool {
-        use rustc_middle::thir::ExprKind;
+    fn static_pattern_match_help(
+        &self,
+        constant: ConstOperand<'tcx>,
+        pat: &DeconstructedPat<'_, 'tcx>,
+    ) -> bool {
         use rustc_pattern_analysis::constructor::{IntRange, MaybeInfiniteInt};
         use rustc_pattern_analysis::rustc::Constructor;
 
+        // Based on eval_unevaluated_mir_constant_to_valtree
+        let (valtree, ty) = 'a: {
+            assert!(!constant.const_.ty().has_param());
+            let (uv, ty) = match constant.const_ {
+                mir::Const::Unevaluated(uv, ty) => (uv.shrink(), ty),
+                mir::Const::Ty(_, c) => match c.kind() {
+                    // A constant that came from a const generic but was then used as an argument to
+                    // old-style simd_shuffle (passing as argument instead of as a generic param).
+                    ty::ConstKind::Value(cv) => break 'a (cv.valtree, cv.ty),
+                    other => span_bug!(constant.span, "{other:#?}"),
+                },
+                mir::Const::Val(mir::ConstValue::Scalar(mir::interpret::Scalar::Int(val)), ty) => {
+                    break 'a (ValTree::from_scalar_int(self.tcx, val), ty);
+                }
+                // We should never encounter `Const::Val` unless MIR opts (like const prop) evaluate
+                // a constant and write that value back into `Operand`s. This could happen, but is
+                // unlikely. Also: all users of `simd_shuffle` are on unstable and already need to take
+                // a lot of care around intrinsics. For an issue to happen here, it would require a
+                // macro expanding to a `simd_shuffle` call without wrapping the constant argument in a
+                // `const {}` block, but the user pass through arbitrary expressions.
+                // FIXME(oli-obk): replace the magic const generic argument of `simd_shuffle` with a
+                // real const generic, and get rid of this entire function.
+                other => span_bug!(constant.span, "{other:#?}"),
+            };
+            (
+                self.tcx
+                    .const_eval_resolve_for_typeck(self.typing_env(), uv, constant.span)
+                    .unwrap()
+                    .unwrap(),
+                ty,
+            )
+        };
+        assert!(!ty.has_param());
+
         match pat.ctor() {
-            Constructor::Variant(variant_index) => match &self.thir[value].kind {
-                ExprKind::Adt(value_adt) => {
-                    return *variant_index == value_adt.variant_index;
+            Constructor::Variant(variant_index) => match *valtree {
+                ValTreeKind::Branch(box [actual_variant_idx]) => {
+                    *variant_index
+                        == VariantIdx::from_u32(actual_variant_idx.unwrap_leaf().to_u32())
                 }
                 other => todo!("{other:?}"),
             },
-            Constructor::IntRange(int_range) => match &self.thir[value].kind {
-                ExprKind::Literal { lit, neg } => match &lit.node {
-                    LitKind::Int(n, _) => {
-                        let n = if pat.ty().is_signed() {
-                            let size = pat.ty().primitive_size(self.tcx);
-                            MaybeInfiniteInt::new_finite_int(
-                                if *neg {
-                                    size.truncate((n.get() as i128).overflowing_neg().0 as u128)
-                                } else {
-                                    n.get()
-                                },
-                                size.bits(),
-                            )
-                        } else {
-                            MaybeInfiniteInt::new_finite_uint(n.get())
-                        };
-
-                        return IntRange::from_singleton(n).is_subrange(int_range);
-                    }
-
-                    other => todo!("{other:?}"),
-                },
-                other => todo!("{other:?}"),
-            },
-            Constructor::Wildcard => return true,
+            Constructor::IntRange(int_range) => {
+                let size = pat.ty().primitive_size(self.tcx);
+                let actual_int = valtree.unwrap_leaf().to_bits(size);
+                let actual_int = if pat.ty().is_signed() {
+                    MaybeInfiniteInt::new_finite_int(actual_int, size.bits())
+                } else {
+                    MaybeInfiniteInt::new_finite_uint(actual_int)
+                };
+                IntRange::from_singleton(actual_int).is_subrange(int_range)
+            }
+            Constructor::Wildcard => true,
+            // FIXME error out before static_pattern_match gets run and replace this with bug!()
             _ => false,
         }
     }

@@ -13,12 +13,12 @@ fn main() {
                 State::A => {
                     #[const_continue]
                     //~^ ERROR the `#[const_continue]` attribute is an experimental feature
-                    break 'blk State::B;
+                    break 'blk const { State::B };
                 }
                 State::B => {
                     #[const_continue]
                     //~^ ERROR the `#[const_continue]` attribute is an experimental feature
-                    break 'blk State::C;
+                    break 'blk const { State::C };
                 }
                 State::C => break 'a,
             }
