@@ -88,8 +88,8 @@ use rustc_hir::HirId;
 use rustc_index::{IndexSlice, IndexVec};
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
-use rustc_middle::thir::{ArmId, ExprId, LintLevel};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::thir::{AdtExpr, AdtExprBase, ArmId, ExprId, ExprKind, LintLevel};
+use rustc_middle::ty::{self, TyCtxt, ValTree};
 use rustc_middle::{bug, span_bug};
 use rustc_pattern_analysis::rustc::RustcPatCtxt;
 use rustc_session::lint::Level;
@@ -830,8 +830,28 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             span_bug!(span, "break value must be a scope")
         };
 
-        // FIXME accept bare MyEnum::Foo as constant
-        let constant = self.as_constant(&self.thir[value]);
+        let constant = match &self.thir[value].kind {
+            ExprKind::Adt(box AdtExpr { variant_index, fields, base, .. }) => {
+                assert!(matches!(base, AdtExprBase::None));
+                assert!(fields.is_empty());
+                ConstOperand {
+                    span: self.thir[value].span,
+                    user_ty: None,
+                    const_: Const::Ty(
+                        self.thir[value].ty,
+                        ty::Const::new_value(
+                            self.tcx,
+                            ValTree::from_branches(
+                                self.tcx,
+                                [ValTree::from_scalar_int(self.tcx, variant_index.as_u32().into())],
+                            ),
+                            self.thir[value].ty,
+                        ),
+                    ),
+                }
+            }
+            _ => self.as_constant(&self.thir[value]),
+        };
 
         let break_index = self
             .scopes

@@ -25,10 +25,10 @@ fn main() {
                     states.push(state);
                     if first {
                         #[const_continue]
-                        break 'blk const { State::B };
+                        break 'blk State::B;
                     } else {
                         #[const_continue]
-                        break 'blk const { State::D };
+                        break 'blk State::D;
                     }
                 }
                 State::B | State::D => {
@@ -36,10 +36,10 @@ fn main() {
                     if first {
                         first = false;
                         #[const_continue]
-                        break 'blk const { State::A };
+                        break 'blk State::A;
                     } else {
                         #[const_continue]
-                        break 'blk const { State::C };
+                        break 'blk State::C;
                     }
                 }
                 State::C => {
