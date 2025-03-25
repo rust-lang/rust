@@ -16,9 +16,7 @@ use rustc_macros::{HashStable, TyDecodable, TyEncodable, extension};
 use rustc_session::config::OptLevel;
 use rustc_span::{DUMMY_SP, ErrorGuaranteed, Span, Symbol, sym};
 use rustc_target::callconv::FnAbi;
-use rustc_target::spec::{
-    HasTargetSpec, HasWasmCAbiOpt, HasX86AbiOpt, PanicStrategy, Target, WasmCAbi, X86Abi,
-};
+use rustc_target::spec::{HasTargetSpec, HasX86AbiOpt, PanicStrategy, Target, X86Abi};
 use tracing::debug;
 use {rustc_abi as abi, rustc_hir as hir};
 
@@ -565,12 +563,6 @@ impl<'tcx> HasTargetSpec for TyCtxt<'tcx> {
     }
 }
 
-impl<'tcx> HasWasmCAbiOpt for TyCtxt<'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.sess.opts.unstable_opts.wasm_c_abi
-    }
-}
-
 impl<'tcx> HasX86AbiOpt for TyCtxt<'tcx> {
     fn x86_abi_opt(&self) -> X86Abi {
         X86Abi {
@@ -622,12 +614,6 @@ impl<'tcx> HasDataLayout for LayoutCx<'tcx> {
 impl<'tcx> HasTargetSpec for LayoutCx<'tcx> {
     fn target_spec(&self) -> &Target {
         self.calc.cx.target_spec()
-    }
-}
-
-impl<'tcx> HasWasmCAbiOpt for LayoutCx<'tcx> {
-    fn wasm_c_abi_opt(&self) -> WasmCAbi {
-        self.calc.cx.wasm_c_abi_opt()
     }
 }
 
