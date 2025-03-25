@@ -1,5 +1,3 @@
-//@no-rustfix
-
 #![allow(
     clippy::if_same_then_else,
     clippy::no_effect,
@@ -8,7 +6,7 @@
     clippy::uninlined_format_args
 )]
 #![warn(clippy::needless_pass_by_ref_mut)]
-
+//@no-rustfix
 use std::ptr::NonNull;
 
 fn foo(s: &mut Vec<u32>, b: &u32, x: &mut u32) {
