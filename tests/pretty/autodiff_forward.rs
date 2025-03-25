@@ -36,4 +36,12 @@ pub fn f5(x: &[f64], y: f64) -> f64 {
     unimplemented!()
 }
 
+// We want to make sure that we can use the macro for functions defined inside of functions
+pub fn f6() {
+    #[autodiff(d_inner, Forward, Dual, DualOnly)]
+    fn inner(x: f32) -> f32 {
+        x * x
+    }
+}
+
 fn main() {}
