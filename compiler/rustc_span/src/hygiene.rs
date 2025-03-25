@@ -1440,7 +1440,8 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
                 }
             }
             Entry::Vacant(entry) => {
-                // We are the first thread to start decoding. Mark the current thread as being progress.
+                // We are the first thread to start decoding. Mark the current thread as being
+                // progress.
                 context.local_in_progress.borrow_mut().insert(raw_id);
 
                 // Allocate and store SyntaxContext id *before* calling the decoder function,
