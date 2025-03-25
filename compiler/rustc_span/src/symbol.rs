@@ -26,13 +26,13 @@ symbols! {
     // documents (such as the Rust Reference) about whether it is a keyword
     // (e.g. `_`).
     //
-    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*` predicates and
-    // `used_keywords`.
-    // But this should rarely be necessary if the keywords are kept in alphabetic order.
+    // If you modify this list, adjust any relevant `Symbol::{is,can_be}_*`
+    // predicates and `used_keywords`. Also consider adding new keywords to the
+    // `ui/parser/raw/raw-idents.rs` test.
     Keywords {
         // Special reserved identifiers used internally for elided lifetimes,
         // unnamed method parameters, crate root module, error recovery etc.
-        // Matching predicates: `is_any_keyword`, `is_special`/`is_reserved`
+        // Matching predicates: `is_special`/`is_reserved`
         //
         // Notes about `kw::Empty`:
         // - Its use can blur the lines between "empty symbol" and "no symbol".
@@ -42,13 +42,16 @@ symbols! {
         //   present, it's better to use `sym::dummy` than `kw::Empty`, because
         //   it's clearer that it's intended as a dummy value, and more likely
         //   to be detected if it accidentally does get used.
+        // tidy-alphabetical-start
+        DollarCrate:        "$crate",
         Empty:              "",
         PathRoot:           "{{root}}",
-        DollarCrate:        "$crate",
         Underscore:         "_",
+        // tidy-alphabetical-end
 
         // Keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_always`/`is_reserved`
+        // Matching predicates: `is_used_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         As:                 "as",
         Break:              "break",
         Const:              "const",
@@ -84,9 +87,11 @@ symbols! {
         Use:                "use",
         Where:              "where",
         While:              "while",
+        // tidy-alphabetical-end
 
         // Keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_always`/`is_reserved`
+        // Matching predicates: `is_unused_keyword_always`/`is_reserved`
+        // tidy-alphabetical-start
         Abstract:           "abstract",
         Become:             "become",
         Box:                "box",
@@ -99,41 +104,48 @@ symbols! {
         Unsized:            "unsized",
         Virtual:            "virtual",
         Yield:              "yield",
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in stable Rust.
-        // Matching predicates: `is_any_keyword`, `is_used_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_used_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Async:              "async", // >= 2018 Edition only
         Await:              "await", // >= 2018 Edition only
         Dyn:                "dyn", // >= 2018 Edition only
+        // tidy-alphabetical-end
 
         // Edition-specific keywords that are used in unstable Rust or reserved for future use.
-        // Matching predicates: `is_any_keyword`, `is_unused_keyword_conditional`/`is_reserved` (if
+        // Matching predicates: `is_unused_keyword_conditional`/`is_reserved` (if
         // the edition suffices)
+        // tidy-alphabetical-start
         Gen:                "gen", // >= 2024 Edition only
         Try:                "try", // >= 2018 Edition only
-
-        // NOTE: When adding new keywords, consider adding them to the ui/parser/raw/raw-idents.rs test.
+        // tidy-alphabetical-end
 
         // "Lifetime keywords": regular keywords with a leading `'`.
-        // Matching predicates: `is_any_keyword`
-        UnderscoreLifetime: "'_",
+        // Matching predicates: none
+        // tidy-alphabetical-start
         StaticLifetime:     "'static",
+        UnderscoreLifetime: "'_",
+        // tidy-alphabetical-end
 
         // Weak keywords, have special meaning only in specific contexts.
-        // Matching predicates: `is_any_keyword`
+        // Matching predicates: none
+        // tidy-alphabetical-start
         Auto:               "auto",
         Builtin:            "builtin",
         Catch:              "catch",
+        ContractEnsures:    "contract_ensures",
+        ContractRequires:   "contract_requires",
         Default:            "default",
         MacroRules:         "macro_rules",
         Raw:                "raw",
         Reuse:              "reuse",
-        ContractEnsures:  "contract_ensures",
-        ContractRequires: "contract_requires",
         Safe:               "safe",
         Union:              "union",
         Yeet:               "yeet",
+        // tidy-alphabetical-end
     }
 
     // Pre-interned symbols that can be referred to with `rustc_span::sym::*`.
@@ -2677,11 +2689,6 @@ pub mod sym {
 }
 
 impl Symbol {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self >= kw::As && self <= kw::Yeet
-    }
-
     fn is_special(self) -> bool {
         self <= kw::Underscore
     }
@@ -2690,12 +2697,12 @@ impl Symbol {
         self >= kw::As && self <= kw::While
     }
 
-    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
-        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
-    }
-
     fn is_unused_keyword_always(self) -> bool {
         self >= kw::Abstract && self <= kw::Yield
+    }
+
+    fn is_used_keyword_conditional(self, edition: impl FnOnce() -> Edition) -> bool {
+        (self >= kw::Async && self <= kw::Dyn) && edition() >= Edition::Edition2018
     }
 
     fn is_unused_keyword_conditional(self, edition: impl Copy + FnOnce() -> Edition) -> bool {
@@ -2738,11 +2745,6 @@ impl Symbol {
 }
 
 impl Ident {
-    /// Don't use this unless you're doing something very loose and heuristic-y.
-    pub fn is_any_keyword(self) -> bool {
-        self.name.is_any_keyword()
-    }
-
     /// Returns `true` for reserved identifiers used internally for elided lifetimes,
     /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
@@ -2792,7 +2794,7 @@ impl Ident {
 /// *Note:* Please update this if a new keyword is added beyond the current
 /// range.
 pub fn used_keywords(edition: impl Copy + FnOnce() -> Edition) -> Vec<Symbol> {
-    (kw::Empty.as_u32()..kw::Yeet.as_u32())
+    (kw::DollarCrate.as_u32()..kw::Yeet.as_u32())
         .filter_map(|kw| {
             let kw = Symbol::new(kw);
             if kw.is_used_keyword_always() || kw.is_used_keyword_conditional(edition) {
