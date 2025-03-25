@@ -337,7 +337,8 @@ fn calc_unused_spans(
                     }
                 }
                 contains_self |= use_tree.prefix == kw::SelfLower
-                    && matches!(use_tree.kind, ast::UseTreeKind::Simple(None));
+                    && matches!(use_tree.kind, ast::UseTreeKind::Simple(_))
+                    && !unused_import.unused.contains(&use_tree_id);
                 previous_unused = remove.is_some();
             }
             if unused_spans.is_empty() {
