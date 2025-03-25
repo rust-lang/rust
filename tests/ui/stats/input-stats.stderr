@@ -95,10 +95,6 @@ hir-stats - Wild                      72 (NN.N%)             1
 hir-stats - Binding                  216 (NN.N%)             3
 hir-stats GenericParam             400 (NN.N%)             5            80
 hir-stats Generics                 560 (NN.N%)            10            56
-hir-stats Ty                       720 (NN.N%)            15            48
-hir-stats - Ptr                       48 (NN.N%)             1
-hir-stats - Ref                       48 (NN.N%)             1
-hir-stats - Path                     624 (NN.N%)            13
 hir-stats Expr                     768 (NN.N%)            12            64
 hir-stats - InlineAsm                 64 (NN.N%)             1
 hir-stats - Match                     64 (NN.N%)             1
@@ -106,6 +102,10 @@ hir-stats - Path                      64 (NN.N%)             1
 hir-stats - Struct                    64 (NN.N%)             1
 hir-stats - Lit                      128 (NN.N%)             2
 hir-stats - Block                    384 (NN.N%)             6
+hir-stats Ty                       840 (NN.N%)            15            56
+hir-stats - Ptr                       56 (NN.N%)             1
+hir-stats - Ref                       56 (NN.N%)             1
+hir-stats - Path                     728 (NN.N%)            13
 hir-stats Item                     968 (NN.N%)            11            88
 hir-stats - Enum                      88 (NN.N%)             1
 hir-stats - ExternCrate               88 (NN.N%)             1
@@ -117,5 +117,5 @@ hir-stats - Use                      352 (NN.N%)             4
 hir-stats Path                   1_040 (NN.N%)            26            40
 hir-stats PathSegment            1_776 (NN.N%)            37            48
 hir-stats ----------------------------------------------------------------
-hir-stats Total                  8_644                   172
+hir-stats Total                  8_764                   172
 hir-stats

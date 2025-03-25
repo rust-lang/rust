@@ -1650,7 +1650,7 @@ fn first_non_private<'tcx>(
 }
 
 fn clean_qpath<'tcx>(hir_ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> Type {
-    let hir::Ty { hir_id, span, ref kind } = *hir_ty;
+    let hir::Ty { hir_id, span, ref kind, source: _ } = *hir_ty;
     let hir::TyKind::Path(qpath) = kind else { unreachable!() };
 
     match qpath {
