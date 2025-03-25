@@ -103,7 +103,7 @@ impl MultiItemModifier for Expander {
 fn dummy_annotatable() -> Annotatable {
     Annotatable::GenericParam(ast::GenericParam {
         id: ast::DUMMY_NODE_ID,
-        ident: Ident::empty(),
+        ident: Ident::dummy(),
         attrs: Default::default(),
         bounds: Default::default(),
         is_placeholder: false,

@@ -260,8 +260,11 @@ where
     Q: QueryConfig<Qcx>,
     Qcx: QueryContext,
 {
-    let error =
-        try_execute.find_cycle_in_stack(qcx.collect_active_jobs(), &qcx.current_query_job(), span);
+    // Ensure there was no errors collecting all active jobs.
+    // We need the complete map to ensure we find a cycle to break.
+    let query_map = qcx.collect_active_jobs().expect("failed to collect active queries");
+
+    let error = try_execute.find_cycle_in_stack(query_map, &qcx.current_query_job(), span);
     (mk_cycle(query, qcx, error), None)
 }
 

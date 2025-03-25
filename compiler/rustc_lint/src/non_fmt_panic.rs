@@ -7,7 +7,7 @@ use rustc_parse_format::{ParseMode, Parser, Piece};
 use rustc_session::lint::FutureIncompatibilityReason;
 use rustc_session::{declare_lint, declare_lint_pass};
 use rustc_span::edition::Edition;
-use rustc_span::{InnerSpan, Span, Symbol, hygiene, kw, sym};
+use rustc_span::{InnerSpan, Span, Symbol, hygiene, sym};
 use rustc_trait_selection::infer::InferCtxtExt;
 
 use crate::lints::{NonFmtPanicBraces, NonFmtPanicUnused};
@@ -167,7 +167,7 @@ fn check_panic<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>, arg: &'tc
                     .get_diagnostic_item(sym::Debug)
                     .is_some_and(|t| infcx.type_implements_trait(t, [ty], param_env).may_apply());
 
-            let suggest_panic_any = !is_str && panic == sym::std_panic_macro;
+            let suggest_panic_any = !is_str && panic == Some(sym::std_panic_macro);
 
             let fmt_applicability = if suggest_panic_any {
                 // If we can use panic_any, use that as the MachineApplicable suggestion.
@@ -297,10 +297,13 @@ fn find_delimiters(cx: &LateContext<'_>, span: Span) -> Option<(Span, Span, char
     ))
 }
 
-fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, Symbol, Symbol) {
+fn panic_call<'tcx>(
+    cx: &LateContext<'tcx>,
+    f: &'tcx hir::Expr<'tcx>,
+) -> (Span, Option<Symbol>, Symbol) {
     let mut expn = f.span.ctxt().outer_expn_data();
 
-    let mut panic_macro = kw::Empty;
+    let mut panic_macro = None;
 
     // Unwrap more levels of macro expansion, as panic_2015!()
     // was likely expanded from panic!() and possibly from
@@ -320,7 +323,7 @@ fn panic_call<'tcx>(cx: &LateContext<'tcx>, f: &'tcx hir::Expr<'tcx>) -> (Span, 
             break;
         }
         expn = parent;
-        panic_macro = name;
+        panic_macro = Some(name);
     }
 
     let macro_symbol =

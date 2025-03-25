@@ -157,7 +157,7 @@ mod llvm_enzyme {
                 };
                 (sig.clone(), false)
             }
-            Annotatable::AssocItem(assoc_item, _) => {
+            Annotatable::AssocItem(assoc_item, Impl { of_trait: false }) => {
                 let sig = match &assoc_item.kind {
                     ast::AssocItemKind::Fn(box ast::Fn { sig, .. }) => sig,
                     _ => {
@@ -296,7 +296,7 @@ mod llvm_enzyme {
                 }
                 Annotatable::Item(iitem.clone())
             }
-            Annotatable::AssocItem(ref mut assoc_item, i @ Impl) => {
+            Annotatable::AssocItem(ref mut assoc_item, i @ Impl { of_trait: false }) => {
                 if !assoc_item.attrs.iter().any(|a| same_attribute(&a.kind, &attr.kind)) {
                     assoc_item.attrs.push(attr);
                 }
@@ -327,7 +327,7 @@ mod llvm_enzyme {
                 kind: assoc_item,
                 tokens: None,
             });
-            Annotatable::AssocItem(d_fn, Impl)
+            Annotatable::AssocItem(d_fn, Impl { of_trait: false })
         } else {
             let mut d_fn =
                 ecx.item(span, d_ident, thin_vec![d_attr, inline_never], ItemKind::Fn(asdf));

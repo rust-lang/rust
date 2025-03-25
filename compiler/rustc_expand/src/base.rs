@@ -153,7 +153,7 @@ impl Annotatable {
 
     pub fn expect_impl_item(self) -> P<ast::AssocItem> {
         match self {
-            Annotatable::AssocItem(i, AssocCtxt::Impl) => i,
+            Annotatable::AssocItem(i, AssocCtxt::Impl { .. }) => i,
             _ => panic!("expected Item"),
         }
     }
@@ -403,6 +403,11 @@ pub trait MacResult {
         None
     }
 
+    /// Creates zero or more impl items.
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        None
+    }
+
     /// Creates zero or more trait items.
     fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         None
@@ -516,6 +521,10 @@ impl MacResult for MacEager {
         self.impl_items
     }
 
+    fn make_trait_impl_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        self.impl_items
+    }
+
     fn make_trait_items(self: Box<Self>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         self.trait_items
     }
@@ -610,6 +619,10 @@ impl MacResult for DummyResult {
     }
 
     fn make_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
+        Some(SmallVec::new())
+    }
+
+    fn make_trait_impl_items(self: Box<DummyResult>) -> Option<SmallVec<[P<ast::AssocItem>; 1]>> {
         Some(SmallVec::new())
     }
 

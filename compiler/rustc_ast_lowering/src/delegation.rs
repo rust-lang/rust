@@ -61,8 +61,14 @@ pub(crate) struct DelegationResults<'hir> {
 
 impl<'hir> LoweringContext<'_, 'hir> {
     /// Defines whether the delegatee is an associated function whose first parameter is `self`.
-    pub(crate) fn delegatee_is_method(&self, item_id: NodeId, path_id: NodeId, span: Span) -> bool {
-        let sig_id = self.get_delegation_sig_id(item_id, path_id, span);
+    pub(crate) fn delegatee_is_method(
+        &self,
+        item_id: NodeId,
+        path_id: NodeId,
+        span: Span,
+        is_in_trait_impl: bool,
+    ) -> bool {
+        let sig_id = self.get_delegation_sig_id(item_id, path_id, span, is_in_trait_impl);
         let Ok(sig_id) = sig_id else {
             return false;
         };
@@ -88,9 +94,10 @@ impl<'hir> LoweringContext<'_, 'hir> {
         &mut self,
         delegation: &Delegation,
         item_id: NodeId,
+        is_in_trait_impl: bool,
     ) -> DelegationResults<'hir> {
         let span = self.lower_span(delegation.path.segments.last().unwrap().ident.span);
-        let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span);
+        let sig_id = self.get_delegation_sig_id(item_id, delegation.id, span, is_in_trait_impl);
         match sig_id {
             Ok(sig_id) => {
                 let (param_count, c_variadic) = self.param_count(sig_id);
@@ -110,8 +117,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
         item_id: NodeId,
         path_id: NodeId,
         span: Span,
+        is_in_trait_impl: bool,
     ) -> Result<DefId, ErrorGuaranteed> {
-        let sig_id = if self.is_in_trait_impl { item_id } else { path_id };
+        let sig_id = if is_in_trait_impl { item_id } else { path_id };
         self.get_resolution_id(sig_id, span)
     }
 

@@ -188,8 +188,14 @@ ast_fragments! {
     ImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
         "impl item";
         many fn flat_map_assoc_item;
-        fn visit_assoc_item(AssocCtxt::Impl);
+        fn visit_assoc_item(AssocCtxt::Impl { of_trait: false });
         fn make_impl_items;
+    }
+    TraitImplItems(SmallVec<[P<ast::AssocItem>; 1]>) {
+        "impl item";
+        many fn flat_map_assoc_item;
+        fn visit_assoc_item(AssocCtxt::Impl { of_trait: true });
+        fn make_trait_impl_items;
     }
     ForeignItems(SmallVec<[P<ast::ForeignItem>; 1]>) {
         "foreign item";
@@ -257,6 +263,7 @@ impl AstFragmentKind {
             AstFragmentKind::Items
             | AstFragmentKind::TraitItems
             | AstFragmentKind::ImplItems
+            | AstFragmentKind::TraitImplItems
             | AstFragmentKind::ForeignItems
             | AstFragmentKind::Crate => SupportsMacroExpansion::Yes { supports_inner_attrs: true },
             AstFragmentKind::Arms
@@ -306,6 +313,9 @@ impl AstFragmentKind {
             AstFragmentKind::ImplItems => {
                 AstFragment::ImplItems(items.map(Annotatable::expect_impl_item).collect())
             }
+            AstFragmentKind::TraitImplItems => {
+                AstFragment::TraitImplItems(items.map(Annotatable::expect_impl_item).collect())
+            }
             AstFragmentKind::TraitItems => {
                 AstFragment::TraitItems(items.map(Annotatable::expect_trait_item).collect())
             }
@@ -347,10 +357,10 @@ pub enum InvocationKind {
     },
     Attr {
         attr: ast::Attribute,
-        // Re-insertion position for inert attributes.
+        /// Re-insertion position for inert attributes.
         pos: usize,
         item: Annotatable,
-        // Required for resolving derive helper attributes.
+        /// Required for resolving derive helper attributes.
         derives: Vec<ast::Path>,
     },
     Derive {
@@ -360,6 +370,8 @@ pub enum InvocationKind {
     },
     GlobDelegation {
         item: P<ast::AssocItem>,
+        /// Whether this is a trait impl or an inherent impl
+        of_trait: bool,
     },
 }
 
@@ -388,7 +400,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => *span,
             InvocationKind::Attr { attr, .. } => attr.span,
             InvocationKind::Derive { path, .. } => path.span,
-            InvocationKind::GlobDelegation { item } => item.span,
+            InvocationKind::GlobDelegation { item, .. } => item.span,
         }
     }
 
@@ -397,7 +409,7 @@ impl Invocation {
             InvocationKind::Bang { span, .. } => span,
             InvocationKind::Attr { attr, .. } => &mut attr.span,
             InvocationKind::Derive { path, .. } => &mut path.span,
-            InvocationKind::GlobDelegation { item } => &mut item.span,
+            InvocationKind::GlobDelegation { item, .. } => &mut item.span,
         }
     }
 }
@@ -820,7 +832,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::GlobDelegation { item } => {
+            InvocationKind::GlobDelegation { item, of_trait } => {
                 let AssocItemKind::DelegationMac(deleg) = &item.kind else { unreachable!() };
                 let suffixes = match ext {
                     SyntaxExtensionKind::GlobDelegation(expander) => match expander.expand(self.cx)
@@ -829,7 +841,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         ExpandResult::Retry(()) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::GlobDelegation { item },
+                                kind: InvocationKind::GlobDelegation { item, of_trait },
                                 ..invoc
                             });
                         }
@@ -847,7 +859,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.cx, deleg, &item, &suffixes, item.span, true,
                 );
                 fragment_kind.expect_from_annotatables(
-                    single_delegations.map(|item| Annotatable::AssocItem(P(item), AssocCtxt::Impl)),
+                    single_delegations
+                        .map(|item| Annotatable::AssocItem(P(item), AssocCtxt::Impl { of_trait })),
                 )
             }
         })
@@ -972,6 +985,13 @@ pub fn parse_ast_fragment<'a>(
                 items.extend(item);
             }
             AstFragment::ImplItems(items)
+        }
+        AstFragmentKind::TraitImplItems => {
+            let mut items = SmallVec::new();
+            while let Some(item) = this.parse_impl_item(ForceCollect::No)? {
+                items.extend(item);
+            }
+            AstFragment::TraitImplItems(items)
         }
         AstFragmentKind::ForeignItems => {
             let mut items = SmallVec::new();
@@ -1355,13 +1375,13 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     type ItemKind = AssocItemKind;
     const KIND: AstFragmentKind = AstFragmentKind::ImplItems;
     fn to_annotatable(self) -> Annotatable {
-        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl)
+        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl { of_trait: false })
     }
     fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
         fragment.make_impl_items()
     }
     fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
-        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl)
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl { of_trait: false })
     }
     fn is_mac_call(&self) -> bool {
         matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
@@ -1384,6 +1404,47 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, ImplItemTag> 
     }
     fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
         AstNodeWrapper::new(P(item), ImplItemTag)
+    }
+    fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
+        items.flatten().collect()
+    }
+}
+
+struct TraitImplItemTag;
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::AssocItem>, TraitImplItemTag> {
+    type OutputTy = SmallVec<[P<ast::AssocItem>; 1]>;
+    type ItemKind = AssocItemKind;
+    const KIND: AstFragmentKind = AstFragmentKind::TraitImplItems;
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::AssocItem(self.wrapped, AssocCtxt::Impl { of_trait: true })
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        fragment.make_trait_impl_items()
+    }
+    fn walk_flat_map<V: MutVisitor>(self, visitor: &mut V) -> Self::OutputTy {
+        walk_flat_map_assoc_item(visitor, self.wrapped, AssocCtxt::Impl { of_trait: true })
+    }
+    fn is_mac_call(&self) -> bool {
+        matches!(self.wrapped.kind, AssocItemKind::MacCall(..))
+    }
+    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+        let item = self.wrapped.into_inner();
+        match item.kind {
+            AssocItemKind::MacCall(mac) => (mac, item.attrs, AddSemicolon::No),
+            _ => unreachable!(),
+        }
+    }
+    fn delegation(&self) -> Option<(&ast::DelegationMac, &ast::Item<Self::ItemKind>)> {
+        match &self.wrapped.kind {
+            AssocItemKind::DelegationMac(deleg) => Some((deleg, &self.wrapped)),
+            _ => None,
+        }
+    }
+    fn delegation_item_kind(deleg: Box<ast::Delegation>) -> Self::ItemKind {
+        AssocItemKind::Delegation(deleg)
+    }
+    fn from_item(item: ast::Item<Self::ItemKind>) -> Self {
+        AstNodeWrapper::new(P(item), TraitImplItemTag)
     }
     fn flatten_outputs(items: impl Iterator<Item = Self::OutputTy>) -> Self::OutputTy {
         items.flatten().collect()
@@ -1855,9 +1916,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
     fn collect_glob_delegation(
         &mut self,
         item: P<ast::AssocItem>,
+        of_trait: bool,
         kind: AstFragmentKind,
     ) -> AstFragment {
-        self.collect(kind, InvocationKind::GlobDelegation { item })
+        self.collect(kind, InvocationKind::GlobDelegation { item, of_trait })
     }
 
     /// If `item` is an attribute invocation, remove the attribute and return it together with
@@ -2030,8 +2092,10 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                     let Some(suffixes) = &deleg.suffixes else {
                         let traitless_qself =
                             matches!(&deleg.qself, Some(qself) if qself.position == 0);
-                        let item = match node.to_annotatable() {
-                            Annotatable::AssocItem(item, AssocCtxt::Impl) => item,
+                        let (item, of_trait) = match node.to_annotatable() {
+                            Annotatable::AssocItem(item, AssocCtxt::Impl { of_trait }) => {
+                                (item, of_trait)
+                            }
                             ann @ (Annotatable::Item(_)
                             | Annotatable::AssocItem(..)
                             | Annotatable::Stmt(_)) => {
@@ -2046,7 +2110,9 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                             self.cx.dcx().emit_err(GlobDelegationTraitlessQpath { span });
                             return Default::default();
                         }
-                        return self.collect_glob_delegation(item, Node::KIND).make_ast::<Node>();
+                        return self
+                            .collect_glob_delegation(item, of_trait, Node::KIND)
+                            .make_ast::<Node>();
                     };
 
                     let single_delegations = build_single_delegations::<Node>(
@@ -2126,7 +2192,12 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
     ) -> SmallVec<[P<ast::AssocItem>; 1]> {
         match ctxt {
             AssocCtxt::Trait => self.flat_map_node(AstNodeWrapper::new(node, TraitItemTag)),
-            AssocCtxt::Impl => self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag)),
+            AssocCtxt::Impl { of_trait: false } => {
+                self.flat_map_node(AstNodeWrapper::new(node, ImplItemTag))
+            }
+            AssocCtxt::Impl { of_trait: true } => {
+                self.flat_map_node(AstNodeWrapper::new(node, TraitImplItemTag))
+            }
         }
     }
 

@@ -131,7 +131,7 @@ impl<'ra, 'tcx> Resolver<'ra, 'tcx> {
                 let expn_id = self.cstore().expn_that_defined_untracked(def_id, self.tcx.sess);
                 return Some(self.new_module(
                     parent,
-                    ModuleKind::Def(def_kind, def_id, self.tcx.item_name(def_id)),
+                    ModuleKind::Def(def_kind, def_id, Some(self.tcx.item_name(def_id))),
                     expn_id,
                     self.def_span(def_id),
                     // FIXME: Account for `#[no_implicit_prelude]` attributes.
@@ -594,7 +594,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                         // HACK(eddyb) unclear how good this is, but keeping `$crate`
                         // in `source` breaks `tests/ui/imports/import-crate-var.rs`,
                         // while the current crate doesn't have a valid `crate_name`.
-                        if crate_name != kw::Empty {
+                        if let Some(crate_name) = crate_name {
                             // `crate_name` should not be interpreted as relative.
                             module_path.push(Segment::from_ident_and_id(
                                 Ident { name: kw::PathRoot, span: source.ident.span },
@@ -603,7 +603,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                             source.ident.name = crate_name;
                         }
                         if rename.is_none() {
-                            ident.name = crate_name;
+                            ident.name = sym::dummy;
                         }
 
                         self.r.dcx().emit_err(errors::CrateImported { span: item.span });
@@ -775,7 +775,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Mod(.., ref mod_kind) => {
                 let module = self.r.new_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, ident.name),
+                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude
@@ -811,7 +811,7 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             ItemKind::Enum(_, _) | ItemKind::Trait(..) => {
                 let module = self.r.new_module(
                     Some(parent),
-                    ModuleKind::Def(def_kind, def_id, ident.name),
+                    ModuleKind::Def(def_kind, def_id, Some(ident.name)),
                     expansion.to_expn_id(),
                     item.span,
                     parent.no_implicit_prelude,
@@ -884,10 +884,10 @@ impl<'a, 'ra, 'tcx> BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
             }
 
             // These items do not add names to modules.
-            ItemKind::Impl(box Impl { of_trait: Some(..), .. }) => {
-                self.r.trait_impl_items.insert(local_def_id);
-            }
-            ItemKind::Impl { .. } | ItemKind::ForeignMod(..) | ItemKind::GlobalAsm(..) => {}
+            ItemKind::Impl(box Impl { of_trait: Some(..), .. })
+            | ItemKind::Impl { .. }
+            | ItemKind::ForeignMod(..)
+            | ItemKind::GlobalAsm(..) => {}
 
             ItemKind::MacroDef(..) | ItemKind::MacCall(_) | ItemKind::DelegationMac(..) => {
                 unreachable!()
@@ -1377,7 +1377,7 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
                 AssocCtxt::Trait => {
                     self.visit_invoc_in_module(item.id);
                 }
-                AssocCtxt::Impl => {
+                AssocCtxt::Impl { .. } => {
                     let invoc_id = item.id.placeholder_to_expn_id();
                     if !self.r.glob_delegation_invoc_ids.contains(&invoc_id) {
                         self.r
@@ -1397,9 +1397,8 @@ impl<'a, 'ra, 'tcx> Visitor<'a> for BuildReducedGraphVisitor<'a, 'ra, 'tcx> {
         let local_def_id = feed.key();
         let def_id = local_def_id.to_def_id();
 
-        if !(ctxt == AssocCtxt::Impl
-            && matches!(item.vis.kind, ast::VisibilityKind::Inherited)
-            && self.r.trait_impl_items.contains(&self.r.tcx.local_parent(local_def_id)))
+        if !(matches!(ctxt, AssocCtxt::Impl { of_trait: true })
+            && matches!(item.vis.kind, ast::VisibilityKind::Inherited))
         {
             // Trait impl item visibility is inherited from its trait when not specified
             // explicitly. In that case we cannot determine it here in early resolve,
