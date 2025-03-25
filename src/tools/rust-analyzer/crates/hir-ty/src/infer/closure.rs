@@ -223,7 +223,7 @@ impl HirPlace {
             kind: MutBorrowKind::Default | MutBorrowKind::TwoPhasedBorrow,
         }) = current_capture
         {
-            if self.projections[len..].iter().any(|it| *it == ProjectionElem::Deref) {
+            if self.projections[len..].contains(&ProjectionElem::Deref) {
                 current_capture =
                     CaptureKind::ByRef(BorrowKind::Mut { kind: MutBorrowKind::ClosureCapture });
             }
