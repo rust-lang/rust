@@ -156,25 +156,30 @@ impl BuildStep {
             child.find_by_type(r#type, result);
         }
     }
+
+    /// Returns a Vec with all substeps, ordered by their hierarchical order.
+    /// The first element of the tuple is the depth of a given step.
+    fn linearize_steps(&self) -> Vec<(u32, &BuildStep)> {
+        let mut substeps: Vec<(u32, &BuildStep)> = Vec::new();
+
+        fn visit<'a>(step: &'a BuildStep, level: u32, substeps: &mut Vec<(u32, &'a BuildStep)>) {
+            substeps.push((level, step));
+            for child in &step.children {
+                visit(child, level + 1, substeps);
+            }
+        }
+
+        visit(self, 0, &mut substeps);
+        substeps
+    }
 }
 
 /// Writes build steps into a nice indented table.
 pub fn format_build_steps(root: &BuildStep) -> String {
     use std::fmt::Write;
 
-    let mut substeps: Vec<(u32, &BuildStep)> = Vec::new();
-
-    fn visit<'a>(step: &'a BuildStep, level: u32, substeps: &mut Vec<(u32, &'a BuildStep)>) {
-        substeps.push((level, step));
-        for child in &step.children {
-            visit(child, level + 1, substeps);
-        }
-    }
-
-    visit(root, 0, &mut substeps);
-
     let mut output = String::new();
-    for (level, step) in substeps {
+    for (level, step) in root.linearize_steps() {
         let label = format!(
             "{}{}",
             ".".repeat(level as usize),
