@@ -74,68 +74,8 @@ pub(crate) struct AuxVec {
 /// [auxvec_h]: https://github.com/torvalds/linux/blob/master/include/uapi/linux/auxvec.h
 /// [auxv_docs]: https://docs.rs/auxv/0.3.3/auxv/
 pub(crate) fn auxv() -> Result<AuxVec, ()> {
-    #[cfg(all(
-        feature = "std_detect_dlsym_getauxval",
-        not(all(
-            target_os = "linux",
-            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
-        )),
-        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
-        not(all(target_os = "android", target_pointer_width = "64")),
-    ))]
-    {
-        // Try to call a dynamically-linked getauxval function.
-        if let Ok(hwcap) = getauxval(AT_HWCAP) {
-            // Targets with only AT_HWCAP:
-            #[cfg(any(
-                target_arch = "riscv32",
-                target_arch = "riscv64",
-                target_arch = "mips",
-                target_arch = "mips64"
-            ))]
-            {
-                // Zero could indicate that no features were detected, but it's also used to
-                // indicate an error. In either case, try the fallback.
-                if hwcap != 0 {
-                    return Ok(AuxVec { hwcap });
-                }
-            }
-
-            // Targets with AT_HWCAP and AT_HWCAP2:
-            #[cfg(any(
-                target_arch = "aarch64",
-                target_arch = "arm",
-                target_arch = "powerpc",
-                target_arch = "powerpc64",
-                target_arch = "s390x",
-            ))]
-            {
-                if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
-                    // Zero could indicate that no features were detected, but it's also used to
-                    // indicate an error. In particular, on many platforms AT_HWCAP2 will be
-                    // legitimately zero, since it contains the most recent feature flags. Use the
-                    // fallback only if no features were detected at all.
-                    if hwcap != 0 || hwcap2 != 0 {
-                        return Ok(AuxVec { hwcap, hwcap2 });
-                    }
-                }
-            }
-
-            // Intentionnaly not used
-            let _ = hwcap;
-        }
-    }
-
-    #[cfg(not(all(
-        feature = "std_detect_dlsym_getauxval",
-        not(all(
-            target_os = "linux",
-            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
-        )),
-        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
-        not(all(target_os = "android", target_pointer_width = "64")),
-    )))]
-    {
+    // Try to call a getauxval function.
+    if let Ok(hwcap) = getauxval(AT_HWCAP) {
         // Targets with only AT_HWCAP:
         #[cfg(any(
             target_arch = "riscv32",
@@ -145,7 +85,6 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "loongarch64",
         ))]
         {
-            let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
             // Zero could indicate that no features were detected, but it's also used to indicate
             // an error. In either case, try the fallback.
             if hwcap != 0 {
@@ -162,16 +101,19 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
             target_arch = "s390x",
         ))]
         {
-            let hwcap = unsafe { libc::getauxval(AT_HWCAP as libc::c_ulong) as usize };
-            let hwcap2 = unsafe { libc::getauxval(AT_HWCAP2 as libc::c_ulong) as usize };
-            // Zero could indicate that no features were detected, but it's also used to indicate
-            // an error. In particular, on many platforms AT_HWCAP2 will be legitimately zero,
-            // since it contains the most recent feature flags. Use the fallback only if no
-            // features were detected at all.
-            if hwcap != 0 || hwcap2 != 0 {
-                return Ok(AuxVec { hwcap, hwcap2 });
+            if let Ok(hwcap2) = getauxval(AT_HWCAP2) {
+                // Zero could indicate that no features were detected, but it's also used to indicate
+                // an error. In particular, on many platforms AT_HWCAP2 will be legitimately zero,
+                // since it contains the most recent feature flags. Use the fallback only if no
+                // features were detected at all.
+                if hwcap != 0 || hwcap2 != 0 {
+                    return Ok(AuxVec { hwcap, hwcap2 });
+                }
             }
         }
+
+        // Intentionnaly not used
+        let _ = hwcap;
     }
 
     #[cfg(feature = "std_detect_file_io")]
@@ -187,32 +129,31 @@ pub(crate) fn auxv() -> Result<AuxVec, ()> {
 }
 
 /// Tries to read the `key` from the auxiliary vector by calling the
-/// dynamically-linked `getauxval` function. If the function is not linked,
-/// this function return `Err`.
-#[cfg(any(
-    test,
-    all(
-        feature = "std_detect_dlsym_getauxval",
-        not(all(
-            target_os = "linux",
-            any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
-        )),
-        // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
-        not(all(target_os = "android", target_pointer_width = "64")),
-    )
-))]
+/// `getauxval` function. If the function is not linked, this function return `Err`.
 fn getauxval(key: usize) -> Result<usize, ()> {
-    use libc;
-    pub type F = unsafe extern "C" fn(usize) -> usize;
-    unsafe {
-        let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
-        if ptr.is_null() {
-            return Err(());
+    type F = unsafe extern "C" fn(libc::c_ulong) -> libc::c_ulong;
+    cfg_if::cfg_if! {
+        if #[cfg(all(
+            feature = "std_detect_dlsym_getauxval",
+            not(all(
+                target_os = "linux",
+                any(target_env = "gnu", target_env = "musl", target_env = "ohos"),
+            )),
+            // TODO: libc crate currently doesn't provide getauxval on 32-bit Android.
+            not(all(target_os = "android", target_pointer_width = "64")),
+        ))] {
+            let ffi_getauxval: F = unsafe {
+                let ptr = libc::dlsym(libc::RTLD_DEFAULT, c"getauxval".as_ptr());
+                if ptr.is_null() {
+                    return Err(());
+                }
+                core::mem::transmute(ptr)
+            };
+        } else {
+            let ffi_getauxval: F = libc::getauxval;
         }
-
-        let ffi_getauxval: F = core::mem::transmute(ptr);
-        Ok(ffi_getauxval(key))
     }
+    Ok(unsafe { ffi_getauxval(key as libc::c_ulong) as usize })
 }
 
 /// Tries to read the auxiliary vector from the `file`. If this fails, this
