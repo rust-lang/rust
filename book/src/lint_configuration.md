@@ -1070,7 +1070,8 @@ The maximum allowed size of a bit mask before suggesting to use 'trailing_zeros'
 
 
 ## `warn-on-all-wildcard-imports`
-Whether to allow certain wildcard imports (prelude, super in tests).
+Whether to emit warnings on all wildcard imports, including those from `prelude`, from `super` in tests,
+or for `pub use` reexports.
 
 **Default Value:** `false`
 
