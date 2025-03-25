@@ -71,7 +71,7 @@ declare_clippy_lint! {
     /// ### Example
     /// ```no_run
     /// let y: i8 = -1;
-    /// y as u128; // will return 18446744073709551615
+    /// y as u64; // will return 18446744073709551615
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub CAST_SIGN_LOSS,
