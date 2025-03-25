@@ -1091,6 +1091,20 @@ impl Step for Rustc {
 
         rustc_cargo(builder, &mut cargo, target, &compiler, &self.crates);
 
+        // The stage0 compiler changes infrequently and does not directly depend on code
+        // in the current working directory. Therefore, caching it with sccache should be
+        // useful.
+        // This is only performed for non-incremental builds, as ccache cannot deal with these.
+        if let Some(ref ccache) = builder.config.ccache {
+            eprintln!(
+                "RUSTC SCCACHE CONFIGURED at {}, incremental: {}",
+                ccache, builder.config.incremental
+            );
+            if compiler.stage == 0 && !builder.config.incremental {
+                cargo.env("RUSTC_WRAPPER", ccache);
+            }
+        }
+
         // NB: all RUSTFLAGS should be added to `rustc_cargo()` so they will be
         // consistently applied by check/doc/test modes too.
 

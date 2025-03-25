@@ -148,6 +148,20 @@ impl Step for ToolBuild {
             &self.extra_features,
         );
 
+        // The stage0 compiler changes infrequently and does not directly depend on code
+        // in the current working directory. Therefore, caching it with sccache should be
+        // useful.
+        // This is only performed for non-incremental builds, as ccache cannot deal with these.
+        if let Some(ref ccache) = builder.config.ccache {
+            eprintln!(
+                "TOOL SCCACHE CONFIGURED at {}, mode: {:?}, incremental: {}",
+                ccache, self.mode, builder.config.incremental
+            );
+            if matches!(self.mode, Mode::ToolBootstrap) && !builder.config.incremental {
+                cargo.env("RUSTC_WRAPPER", ccache);
+            }
+        }
+
         if path.ends_with("/rustdoc") &&
             // rustdoc is performance sensitive, so apply LTO to it.
             is_lto_stage(&self.compiler)
