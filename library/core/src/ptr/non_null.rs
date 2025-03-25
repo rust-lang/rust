@@ -428,18 +428,24 @@ impl<T: ?Sized> NonNull<T> {
         unsafe { &*self.as_ptr().cast_const() }
     }
 
-    /// Returns a unique reference to the value. If the value may be uninitialized, [`as_uninit_mut`]
-    /// must be used instead.
+    /// Returns a unique reference to the value.
     ///
     /// For the shared counterpart see [`as_ref`].
     ///
-    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
     /// [`as_ref`]: NonNull::as_ref
     ///
     /// # Safety
     ///
-    /// When calling this method, you have to ensure that
-    /// the pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    /// When calling this method, you have to ensure that:
+    ///
+    /// * The pointer is [convertible to a reference](crate::ptr#pointer-to-reference-conversion).
+    ///
+    /// * The value of memory pointed by the ptr must be initialized. If not, [`as_uninit_mut`] must be used instead.
+    ///
+    /// * Note that multiple calls to this API may create multiple mutable references simultaneously, violating the exclusive mutable reference principle.
+    ///
+    /// [`as_uninit_mut`]: NonNull::as_uninit_mut
+    ///
     /// # Examples
     ///
     /// ```
