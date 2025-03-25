@@ -122,7 +122,7 @@ pub fn run_tests(env: &Environment) -> anyhow::Result<()> {
     for test_path in env.skipped_tests() {
         args.extend(["--skip".to_string(), test_path.to_string()]);
     }
-    cmd(&[env.python_binary(), env.checkout_path().join("x.py").as_str(), "clean"]);
+    cmd(&[env.python_binary(), env.checkout_path().join("x.py").as_str(), "clean"]).run().unwrap();
     cmd(&args)
         .env("COMPILETEST_FORCE_STAGE0", "1")
         // Also run dist-only tests
