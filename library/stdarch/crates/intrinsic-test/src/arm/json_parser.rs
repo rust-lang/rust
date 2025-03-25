@@ -3,9 +3,9 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use crate::argument::{Argument, ArgumentList};
-use crate::intrinsic::Intrinsic;
-use crate::types::IntrinsicType;
+use super::argument::{Argument, ArgumentList};
+use super::intrinsic::Intrinsic;
+use super::types::IntrinsicType;
 
 #[derive(Deserialize, Debug)]
 #[serde(deny_unknown_fields)]

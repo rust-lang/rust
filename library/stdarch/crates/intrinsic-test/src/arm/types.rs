@@ -3,9 +3,9 @@ use std::str::FromStr;
 
 use itertools::Itertools as _;
 
-use crate::Language;
-use crate::format::Indentation;
-use crate::values::value_for_array;
+use super::format::Indentation;
+use crate::common::types::Language;
+use crate::common::values::value_for_array;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TypeKind {

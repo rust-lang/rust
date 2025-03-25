@@ -1,5 +1,5 @@
-use crate::format::Indentation;
-use crate::types::{IntrinsicType, TypeKind};
+use super::format::Indentation;
+use super::types::{IntrinsicType, TypeKind};
 
 use super::argument::ArgumentList;
 

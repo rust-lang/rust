@@ -1,9 +1,9 @@
 use std::ops::Range;
 
-use crate::Language;
-use crate::format::Indentation;
-use crate::json_parser::ArgPrep;
-use crate::types::{IntrinsicType, TypeKind};
+use super::format::Indentation;
+use super::json_parser::ArgPrep;
+use super::types::{IntrinsicType, TypeKind};
+use crate::common::types::Language;
 
 /// An argument for the intrinsic.
 #[derive(Debug, PartialEq, Clone)]
