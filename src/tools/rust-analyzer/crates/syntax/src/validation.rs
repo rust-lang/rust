@@ -363,11 +363,40 @@ fn validate_trait_object_ty(ty: ast::DynTraitType) -> Option<SyntaxError> {
 }
 
 fn validate_impl_object_ty(ty: ast::ImplTraitType, errors: &mut Vec<SyntaxError>) {
-    if ty.type_bound_list().map_or(0, |tbl| tbl.bounds().count()) == 0 {
+    let Some(bound_list) = ty.type_bound_list() else {
         errors.push(SyntaxError::new(
             "At least one trait must be specified",
             ty.syntax().text_range(),
         ));
+        return;
+    };
+
+    let bounds: Vec<_> = bound_list.bounds().collect();
+
+    if !bounds.iter().any(|b| !matches!(b.kind(), ast::TypeBoundKind::Lifetime(_))) {
+        errors.push(SyntaxError::new(
+            "At least one trait must be specified",
+            ty.syntax().text_range(),
+        ));
+        return;
+    }
+
+    if bounds.len() == 1 {
+        return;
+    }
+
+    let Some(preceding_token) = ty
+        .impl_token()
+        .and_then(|token| token.prev_token())
+        .and_then(|prev| algo::skip_trivia_token(prev, Direction::Prev))
+    else {
+        return;
+    };
+
+    if !matches!(preceding_token.kind(), T!['('] | T![<] | T![=])
+        && matches!(preceding_token.kind(), T![&])
+    {
+        errors.push(SyntaxError::new("ambiguous `+` in a type", ty.syntax().text_range()));
     }
 }
 
