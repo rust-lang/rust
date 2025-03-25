@@ -2798,7 +2798,7 @@ class DocSearch {
 
                     // To be sure than it some items aren't considered as duplicate.
                     obj.fullPath = res[2] + "|" + obj.ty
-                    
+
                     if (duplicates.has(obj.fullPath)) {
                         continue;
                     }
