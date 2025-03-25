@@ -1552,20 +1552,25 @@ impl Config {
             toml.profile = Some("dist".into());
         }
 
-        if let Some(include) = &toml.profile {
-            // Allows creating alias for profile names, allowing
-            // profiles to be renamed while maintaining back compatibility
-            // Keep in sync with `profile_aliases` in bootstrap.py
-            let profile_aliases = HashMap::from([("user", "dist")]);
-            let include = match profile_aliases.get(include.as_str()) {
-                Some(alias) => alias,
-                None => include.as_str(),
-            };
-            let mut include_path = config.src.clone();
-            include_path.push("src");
-            include_path.push("bootstrap");
-            include_path.push("defaults");
-            include_path.push(format!("bootstrap.{include}.toml"));
+        if let Some(profile) = &toml.profile {
+            let mut include_path = PathBuf::from(format!("{profile}.toml"));
+
+            if !include_path.exists() {
+                // Allows creating alias for profile names, allowing
+                // profiles to be renamed while maintaining back compatibility
+                // Keep in sync with `profile_aliases` in bootstrap.py
+                let profile_aliases = HashMap::from([("user", "dist")]);
+                let profile = match profile_aliases.get(profile.as_str()) {
+                    Some(alias) => alias,
+                    None => profile.as_str(),
+                };
+
+                include_path = config
+                    .src
+                    .join("src/bootstrap/defaults")
+                    .join(format!("bootstrap.{profile}.toml"));
+            }
+
             let included_toml = get_toml(&include_path).unwrap_or_else(|e| {
                 eprintln!(
                     "ERROR: Failed to parse default config profile at '{}': {e}",
@@ -1573,6 +1578,7 @@ impl Config {
                 );
                 exit!(2);
             });
+
             toml.merge(included_toml, ReplaceOpt::IgnoreDuplicate);
         }
 
