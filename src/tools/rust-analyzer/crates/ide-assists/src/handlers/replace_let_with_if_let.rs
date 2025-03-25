@@ -45,19 +45,31 @@ pub(crate) fn replace_let_with_if_let(acc: &mut Assists, ctx: &AssistContext<'_>
             let mut editor = builder.make_editor(let_stmt.syntax());
             let make = SyntaxFactory::new();
             let ty = ctx.sema.type_of_expr(&init);
-            let happy_variant = ty
-                .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
-                .map(|it| it.happy_case());
-            let pat = match happy_variant {
-                None => original_pat,
-                Some(var_name) => {
-                    make.tuple_struct_pat(make.ident_path(var_name), [original_pat]).into()
+            let pat = if let_stmt.let_else().is_some() {
+                // Do not add the wrapper type that implements `Try`,
+                // since the statement already wraps the pattern.
+                original_pat
+            } else {
+                let happy_variant = ty
+                    .and_then(|ty| TryEnum::from_ty(&ctx.sema, &ty.adjusted()))
+                    .map(|it| it.happy_case());
+                match happy_variant {
+                    None => original_pat,
+                    Some(var_name) => {
+                        make.tuple_struct_pat(make.ident_path(var_name), [original_pat]).into()
+                    }
                 }
             };
 
             let block = make.block_expr([], None);
             block.indent(IndentLevel::from_node(let_stmt.syntax()));
-            let if_expr = make.expr_if(make.expr_let(pat, init).into(), block, None);
+            let if_expr = make.expr_if(
+                make.expr_let(pat, init).into(),
+                block,
+                let_stmt
+                    .let_else()
+                    .and_then(|let_else| let_else.block_expr().map(ast::ElseBranch::from)),
+            );
             let if_stmt = make.expr_stmt(if_expr.into());
 
             editor.replace(let_stmt.syntax(), if_stmt.syntax());
@@ -90,6 +102,27 @@ enum E<T> { X(T), Y(T) }
 fn main() {
     if let x = E::X(92) {
     }
+}
+            ",
+        )
+    }
+
+    #[test]
+    fn replace_let_else() {
+        check_assist(
+            replace_let_with_if_let,
+            r"
+//- minicore: option
+fn main() {
+    let a = Some(1);
+    $0let Some(_) = a else { unreachable!() };
+}
+            ",
+            r"
+fn main() {
+    let a = Some(1);
+    if let Some(_) = a {
+    } else { unreachable!() }
 }
             ",
         )
