@@ -1728,12 +1728,18 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
         self.tcx
     }
 
-    fn visit_place(&mut self, place: &mut Place<'tcx>, _: PlaceContext, location: Location) {
+    fn visit_place(&mut self, place: &mut Place<'tcx>, context: PlaceContext, location: Location) {
         self.simplify_place_projection(place, location);
+        if context.is_mutating_use() && !place.projection.is_empty() {
+            // Non-local mutation maybe invalidate deref.
+            self.invalidate_derefs();
+        }
+        self.super_place(place, context, location);
     }
 
     fn visit_operand(&mut self, operand: &mut Operand<'tcx>, location: Location) {
         self.simplify_operand(operand, location);
+        self.super_operand(operand, location);
     }
 
     fn visit_statement(&mut self, stmt: &mut Statement<'tcx>, location: Location) {
@@ -1751,22 +1757,18 @@ impl<'tcx> MutVisitor<'tcx> for VnState<'_, 'tcx> {
                 self.assign(local, value);
                 Some(value)
             } else {
-                // Non-local assignments maybe invalidate deref.
-                self.invalidate_derefs();
                 value
             };
-            let Some(value) = value else { return };
-
-            if let Some(const_) = self.try_as_constant(value) {
-                *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
-            } else if let Some(local) = self.try_as_local(value, location)
-                && *rvalue != Rvalue::Use(Operand::Move(local.into()))
-            {
-                *rvalue = Rvalue::Use(Operand::Copy(local.into()));
-                self.reused_locals.insert(local);
+            if let Some(value) = value {
+                if let Some(const_) = self.try_as_constant(value) {
+                    *rvalue = Rvalue::Use(Operand::Constant(Box::new(const_)));
+                } else if let Some(local) = self.try_as_local(value, location)
+                    && *rvalue != Rvalue::Use(Operand::Move(local.into()))
+                {
+                    *rvalue = Rvalue::Use(Operand::Copy(local.into()));
+                    self.reused_locals.insert(local);
+                }
             }
-
-            return;
         }
         self.super_statement(stmt, location);
     }

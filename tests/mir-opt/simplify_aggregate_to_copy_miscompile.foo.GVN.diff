@@ -20,7 +20,7 @@
           StorageLive(_2);
           StorageLive(_3);
           _3 = &(*_1);
-          _2 = get(move _3) -> [return: bb1, unwind unreachable];
+          _2 = get::<Option<i32>>(move _3) -> [return: bb1, unwind unreachable];
       }
   
       bb1: {
