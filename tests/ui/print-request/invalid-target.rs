@@ -2,3 +2,5 @@
 //@ needs-llvm-components: x86
 
 fn main() {}
+
+//~? ERROR only Apple targets currently support deployment version info

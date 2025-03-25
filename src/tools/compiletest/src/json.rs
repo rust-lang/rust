@@ -2,7 +2,9 @@
 
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+use std::sync::OnceLock;
 
+use regex::Regex;
 use serde::Deserialize;
 
 use crate::errors::{Error, ErrorKind};
@@ -213,36 +215,24 @@ fn push_expected_errors(
     // also ensure that `//~ ERROR E123` *always* works. The
     // assumption is that these multi-line error messages are on their
     // way out anyhow.
-    let with_code = |span: &DiagnosticSpan, text: &str| {
-        match diagnostic.code {
-            Some(ref code) =>
-            // FIXME(#33000) -- it'd be better to use a dedicated
-            // UI harness than to include the line/col number like
-            // this, but some current tests rely on it.
-            //
-            // Note: Do NOT include the filename. These can easily
-            // cause false matches where the expected message
-            // appears in the filename, and hence the message
-            // changes but the test still passes.
-            {
-                format!(
-                    "{}:{}: {}:{}: {} [{}]",
-                    span.line_start,
-                    span.column_start,
-                    span.line_end,
-                    span.column_end,
-                    text,
-                    code.code.clone()
-                )
+    let with_code = |span: Option<&DiagnosticSpan>, text: &str| {
+        // FIXME(#33000) -- it'd be better to use a dedicated
+        // UI harness than to include the line/col number like
+        // this, but some current tests rely on it.
+        //
+        // Note: Do NOT include the filename. These can easily
+        // cause false matches where the expected message
+        // appears in the filename, and hence the message
+        // changes but the test still passes.
+        let span_str = match span {
+            Some(DiagnosticSpan { line_start, column_start, line_end, column_end, .. }) => {
+                format!("{line_start}:{column_start}: {line_end}:{column_end}")
             }
-            None =>
-            // FIXME(#33000) -- it'd be better to use a dedicated UI harness
-            {
-                format!(
-                    "{}:{}: {}:{}: {}",
-                    span.line_start, span.column_start, span.line_end, span.column_end, text
-                )
-            }
+            None => format!("?:?: ?:?"),
+        };
+        match &diagnostic.code {
+            Some(code) => format!("{span_str}: {text} [{}]", code.code),
+            None => format!("{span_str}: {text}"),
         }
     };
 
@@ -251,19 +241,41 @@ fn push_expected_errors(
     // more structured shortly anyhow.
     let mut message_lines = diagnostic.message.lines();
     if let Some(first_line) = message_lines.next() {
-        for span in primary_spans {
-            let msg = with_code(span, first_line);
+        let ignore = |s| {
+            static RE: OnceLock<Regex> = OnceLock::new();
+            RE.get_or_init(|| {
+                Regex::new(r"aborting due to \d+ previous errors?|\d+ warnings? emitted").unwrap()
+            })
+            .is_match(s)
+        };
+
+        if primary_spans.is_empty() && !ignore(first_line) {
+            let msg = with_code(None, first_line);
             let kind = ErrorKind::from_str(&diagnostic.level).ok();
-            expected_errors.push(Error { line_num: span.line_start, kind, msg });
+            expected_errors.push(Error { line_num: None, kind, msg });
+        } else {
+            for span in primary_spans {
+                let msg = with_code(Some(span), first_line);
+                let kind = ErrorKind::from_str(&diagnostic.level).ok();
+                expected_errors.push(Error { line_num: Some(span.line_start), kind, msg });
+            }
         }
     }
     for next_line in message_lines {
-        for span in primary_spans {
+        if primary_spans.is_empty() {
             expected_errors.push(Error {
-                line_num: span.line_start,
+                line_num: None,
                 kind: None,
-                msg: with_code(span, next_line),
+                msg: with_code(None, next_line),
             });
+        } else {
+            for span in primary_spans {
+                expected_errors.push(Error {
+                    line_num: Some(span.line_start),
+                    kind: None,
+                    msg: with_code(Some(span), next_line),
+                });
+            }
         }
     }
 
@@ -272,7 +284,7 @@ fn push_expected_errors(
         if let Some(ref suggested_replacement) = span.suggested_replacement {
             for (index, line) in suggested_replacement.lines().enumerate() {
                 expected_errors.push(Error {
-                    line_num: span.line_start + index,
+                    line_num: Some(span.line_start + index),
                     kind: Some(ErrorKind::Suggestion),
                     msg: line.to_string(),
                 });
@@ -290,7 +302,7 @@ fn push_expected_errors(
     // Add notes for any labels that appear in the message.
     for span in spans_in_this_file.iter().filter(|span| span.label.is_some()) {
         expected_errors.push(Error {
-            line_num: span.line_start,
+            line_num: Some(span.line_start),
             kind: Some(ErrorKind::Note),
             msg: span.label.clone().unwrap(),
         });
@@ -309,7 +321,7 @@ fn push_backtrace(
 ) {
     if Path::new(&expansion.span.file_name) == Path::new(&file_name) {
         expected_errors.push(Error {
-            line_num: expansion.span.line_start,
+            line_num: Some(expansion.span.line_start),
             kind: Some(ErrorKind::Note),
             msg: format!("in this expansion of {}", expansion.macro_decl_name),
         });

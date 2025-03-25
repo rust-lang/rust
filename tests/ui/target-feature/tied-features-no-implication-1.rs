@@ -18,3 +18,5 @@ trait Sized {}
 #[cfg(target_feature = "pacg")]
 pub unsafe fn foo() {
 }
+
+//~? ERROR the target features paca, pacg must all be either enabled or disabled together

@@ -9,3 +9,5 @@ extern crate rmeta_meta;
 fn main() {
     rmeta_meta::missing_optimized_mir();
 }
+
+//~? ERROR missing optimized MIR for an item in the crate `rmeta_meta`
