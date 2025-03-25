@@ -410,8 +410,7 @@ unsafe impl<#[may_dangle] T, A: Allocator> Drop for RawVec<T, A> {
 impl<A: Allocator> RawVecInner<A> {
     #[inline]
     const fn new_in(alloc: A, align: Alignment) -> Self {
-        // SAFETY: `Alignment` is non-zero.
-        let ptr = unsafe { core::mem::transmute(align) };
+        let ptr = Unique::from_non_null(NonNull::without_provenance(align.as_nonzero()));
         // `cap: 0` means "unallocated". zero-sized types are ignored.
         Self { ptr, cap: ZERO_CAP, alloc }
     }
