@@ -3,7 +3,7 @@ use std::sync::Arc;
 use rustc_ast::{self as ast, *};
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::def_id::DefId;
-use rustc_hir::{self as hir, GenericArg};
+use rustc_hir::{self as hir, GenericArg, TySource};
 use rustc_middle::span_bug;
 use rustc_session::parse::add_feature_diagnostics;
 use rustc_span::{BytePos, DUMMY_SP, DesugaringKind, Ident, Span, Symbol, sym};
@@ -169,7 +169,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // e.g., `Vec` in `Vec::new` or `<I as Iterator>::Item` in
             // `<I as Iterator>::Item::default`.
             let new_id = self.next_id();
-            self.arena.alloc(self.ty_path(new_id, path.span, hir::QPath::Resolved(qself, path)))
+            self.arena.alloc(self.ty_path_with_source(
+                new_id,
+                path.span,
+                hir::QPath::Resolved(qself, path),
+                TySource::ImplicitSelf,
+            ))
         };
 
         // Anything after the base path are associated "extensions",
