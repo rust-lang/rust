@@ -6,7 +6,6 @@ pub(crate) mod types;
 
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::Command;
 
 use intrinsic::Intrinsic;
@@ -17,6 +16,7 @@ use types::TypeKind;
 use argument::Argument;
 use format::Indentation;
 use json_parser::get_neon_intrinsics;
+use crate::common::cli::Cli;
 
 // The number of times each intrinsic will be called.
 const PASSES: u32 = 20;
@@ -441,49 +441,6 @@ path = "{intrinsic}/main.rs""#,
         error!("Command failed: {:#?}", output);
         false
     }
-}
-
-/// Intrinsic test tool
-#[derive(clap::Parser)]
-#[command(
-    name = "Intrinsic test tool",
-    about = "Generates Rust and C programs for intrinsics and compares the output"
-)]
-struct Cli {
-    /// The input file containing the intrinsics
-    input: PathBuf,
-
-    /// The rust toolchain to use for building the rust code
-    #[arg(long)]
-    toolchain: Option<String>,
-
-    /// The C++ compiler to use for compiling the c++ code
-    #[arg(long, default_value_t = String::from("clang++"))]
-    cppcompiler: String,
-
-    /// Run the C programs under emulation with this command
-    #[arg(long)]
-    runner: Option<String>,
-
-    /// Filename for a list of intrinsics to skip (one per line)
-    #[arg(long)]
-    skip: Option<PathBuf>,
-
-    /// Regenerate test programs, but don't build or run them
-    #[arg(long)]
-    generate_only: bool,
-
-    /// Pass a target the test suite
-    #[arg(long, default_value_t = String::from("aarch64-unknown-linux-gnu"))]
-    target: String,
-
-    /// Set the linker
-    #[arg(long)]
-    linker: Option<String>,
-
-    /// Set the sysroot for the C++ compiler
-    #[arg(long)]
-    cxx_toolchain_dir: Option<String>,
 }
 
 pub fn test() {
