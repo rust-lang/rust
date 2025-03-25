@@ -254,7 +254,7 @@ impl TidyDocs {
             d.file_name()
                 .unwrap_or_default()
                 .to_str()
-                .map(|f_n| file_names.iter().any(|name| *name == f_n))
+                .map(|f_n| file_names.contains(&f_n))
                 .unwrap_or(false)
         }
     }

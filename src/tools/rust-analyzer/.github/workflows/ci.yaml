@@ -15,7 +15,6 @@ env:
   CARGO_NET_RETRY: 10
   CI: 1
   RUST_BACKTRACE: short
-  RUSTFLAGS: "-D warnings"
   RUSTUP_MAX_RETRIES: 10
 
 jobs:
@@ -45,6 +44,9 @@ jobs:
     if: github.repository == 'rust-lang/rust-analyzer' && needs.changes.outputs.proc_macros == 'true'
     name: proc-macro-srv
     runs-on: ubuntu-latest
+    env:
+      RUSTFLAGS: "-D warnings"
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -73,6 +75,7 @@ jobs:
     name: Rust
     runs-on: ${{ matrix.os }}
     env:
+      RUSTFLAGS: "-D warnings"
       CC: deny_c
 
     strategy:
@@ -168,7 +171,7 @@ jobs:
       - name: Cache Dependencies
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
 
-      - run: cargo +nightly miri test --locked
+      - run: cargo +nightly miri test -p intern --locked
 
   # Weird targets to catch non-portable code
   rust-cross:
@@ -181,6 +184,7 @@ jobs:
       # The rust-analyzer binary is not expected to compile on WASM, but the IDE
       # crate should
       targets_ide: "wasm32-unknown-unknown"
+      RUSTFLAGS: "-D warnings"
 
     steps:
       - name: Checkout repository
@@ -283,7 +287,7 @@ jobs:
         run: typos
 
   conclusion:
-    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv]
+    needs: [rust, rust-cross, typescript, typo-check, proc-macro-srv, miri]
     # We need to ensure this job does *not* get skipped if its dependencies fail,
     # because a skipped job is considered a success by GitHub. So we have to
     # overwrite `if:`. We use `!cancelled()` to ensure the job does still not get run
