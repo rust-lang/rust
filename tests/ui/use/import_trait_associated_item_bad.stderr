@@ -1,0 +1,14 @@
+error: cannot infer type, type annotations needed
+  --> $DIR/import_trait_associated_item_bad.rs:11:15
+   |
+LL | type Alias1 = AssocTy;
+   |               ^^^^^^^
+
+error: cannot infer type, type annotations needed
+  --> $DIR/import_trait_associated_item_bad.rs:14:20
+   |
+LL | type Alias2 = [u8; CONST];
+   |                    ^^^^^
+
+error: aborting due to 2 previous errors
+
