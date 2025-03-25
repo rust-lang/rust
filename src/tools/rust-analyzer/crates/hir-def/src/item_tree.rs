@@ -218,6 +218,22 @@ impl ItemTree {
         Attrs::filter(db, krate, self.raw_attrs(of).clone())
     }
 
+    /// Returns a count of a few, expensive items.
+    ///
+    /// For more detail, see [`ItemTreeDataStats`].
+    pub fn item_tree_stats(&self) -> ItemTreeDataStats {
+        match self.data {
+            Some(ref data) => ItemTreeDataStats {
+                traits: data.traits.len(),
+                impls: data.impls.len(),
+                mods: data.mods.len(),
+                macro_calls: data.macro_calls.len(),
+                macro_rules: data.macro_rules.len(),
+            },
+            None => ItemTreeDataStats::default(),
+        }
+    }
+
     pub fn pretty_print(&self, db: &dyn DefDatabase, edition: Edition) -> String {
         pretty::print_item_tree(db, self, edition)
     }
@@ -326,6 +342,15 @@ struct ItemTreeData {
     macro_defs: Arena<Macro2>,
 
     vis: ItemVisibilities,
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+pub struct ItemTreeDataStats {
+    pub traits: usize,
+    pub impls: usize,
+    pub mods: usize,
+    pub macro_calls: usize,
+    pub macro_rules: usize,
 }
 
 #[derive(Default, Debug, Eq, PartialEq)]

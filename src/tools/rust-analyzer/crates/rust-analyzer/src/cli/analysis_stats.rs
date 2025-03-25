@@ -2,7 +2,8 @@
 //! errors.
 
 use std::{
-    env,
+    env, fmt,
+    ops::AddAssign,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -118,29 +119,80 @@ impl flags::AnalysisStats {
         }
 
         let mut item_tree_sw = self.stop_watch();
-        let mut num_item_trees = 0;
         let source_roots = krates
             .iter()
             .cloned()
             .map(|krate| db.file_source_root(krate.root_file(db)).source_root_id(db))
             .unique();
+
+        let mut dep_loc = 0;
+        let mut workspace_loc = 0;
+        let mut dep_item_trees = 0;
+        let mut workspace_item_trees = 0;
+
+        let mut workspace_item_stats = PrettyItemStats::default();
+        let mut dep_item_stats = PrettyItemStats::default();
+
         for source_root_id in source_roots {
             let source_root = db.source_root(source_root_id).source_root(db);
-            if !source_root.is_library || self.with_deps {
-                for file_id in source_root.iter() {
-                    if let Some(p) = source_root.path_for_file(&file_id) {
-                        if let Some((_, Some("rs"))) = p.name_and_extension() {
-                            db.file_item_tree(EditionedFileId::current_edition(file_id).into());
-                            num_item_trees += 1;
+            for file_id in source_root.iter() {
+                if let Some(p) = source_root.path_for_file(&file_id) {
+                    if let Some((_, Some("rs"))) = p.name_and_extension() {
+                        // measure workspace/project code
+                        if !source_root.is_library || self.with_deps {
+                            let length = db.file_text(file_id).text(db).lines().count();
+                            let item_stats = db
+                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .item_tree_stats()
+                                .into();
+
+                            workspace_loc += length;
+                            workspace_item_trees += 1;
+                            workspace_item_stats += item_stats;
+                        } else {
+                            let length = db.file_text(file_id).text(db).lines().count();
+                            let item_stats = db
+                                .file_item_tree(EditionedFileId::current_edition(file_id).into())
+                                .item_tree_stats()
+                                .into();
+
+                            dep_loc += length;
+                            dep_item_trees += 1;
+                            dep_item_stats += item_stats;
                         }
                     }
                 }
             }
         }
-        eprintln!("  item trees: {num_item_trees}");
+        eprintln!("  item trees: {workspace_item_trees}");
         let item_tree_time = item_tree_sw.elapsed();
+
+        eprintln!(
+            "  dependency lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(dep_loc),
+            UsizeWithUnderscore(dep_item_trees),
+        );
+        eprintln!("  dependency item stats: {}", dep_item_stats);
+
+        // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
+        // and ParseMacroExpansionQuery (macro expansion "file") size whenever we implement
+        // Salsa's memory usage tracking works with tracked functions.
+
+        // let mut total_file_size = Bytes::default();
+        // for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
+        //     total_file_size += syntax_len(db.parse(e.key).syntax_node())
+        // }
+
+        // let mut total_macro_file_size = Bytes::default();
+        // for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
+        //     let val = db.parse_macro_expansion(e.key).value.0;
+        //     total_macro_file_size += syntax_len(val.syntax_node())
+        // }
+        // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
+
         eprintln!("{:<20} {}", "Item Tree Collection:", item_tree_time);
         report_metric("item tree time", item_tree_time.time.as_millis() as u64, "ms");
+        eprintln!("  Total Statistics:");
 
         let mut crate_def_map_sw = self.stop_watch();
         let mut num_crates = 0;
@@ -163,11 +215,16 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut visit_queue);
         }
 
-        eprint!("  crates: {num_crates}");
+        eprint!("    crates: {num_crates}");
         let mut num_decls = 0;
         let mut bodies = Vec::new();
         let mut adts = Vec::new();
         let mut file_ids = Vec::new();
+
+        let mut num_traits = 0;
+        let mut num_macro_rules_macros = 0;
+        let mut num_proc_macros = 0;
+
         while let Some(module) = visit_queue.pop() {
             if visited_modules.insert(module) {
                 file_ids.extend(module.as_source_file_id(db));
@@ -189,6 +246,14 @@ impl flags::AnalysisStats {
                             bodies.push(DefWithBody::from(c));
                         }
                         ModuleDef::Static(s) => bodies.push(DefWithBody::from(s)),
+                        ModuleDef::Trait(_) => num_traits += 1,
+                        ModuleDef::Macro(m) => match m.kind(db) {
+                            hir::MacroKind::Declarative => num_macro_rules_macros += 1,
+                            hir::MacroKind::Derive
+                            | hir::MacroKind::Attr
+                            | hir::MacroKind::ProcMacro => num_proc_macros += 1,
+                            _ => (),
+                        },
                         _ => (),
                     };
                 }
@@ -217,6 +282,26 @@ impl flags::AnalysisStats {
                 .filter(|it| matches!(it, DefWithBody::Const(_) | DefWithBody::Static(_)))
                 .count(),
         );
+
+        eprintln!("  Workspace:");
+        eprintln!(
+            "    traits: {num_traits}, macro_rules macros: {num_macro_rules_macros}, proc_macros: {num_proc_macros}"
+        );
+        eprintln!(
+            "    lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(workspace_loc),
+            UsizeWithUnderscore(workspace_item_trees),
+        );
+        eprintln!("    usages: {}", workspace_item_stats);
+
+        eprintln!("  Dependencies:");
+        eprintln!(
+            "    lines of code: {}, item trees: {}",
+            UsizeWithUnderscore(dep_loc),
+            UsizeWithUnderscore(dep_item_trees),
+        );
+        eprintln!("    declarations: {}", dep_item_stats);
+
         let crate_def_map_time = crate_def_map_sw.elapsed();
         eprintln!("{:<20} {}", "Item Collection:", crate_def_map_time);
         report_metric("crate def map time", crate_def_map_time.time.as_millis() as u64, "ms");
@@ -263,24 +348,6 @@ impl flags::AnalysisStats {
             report_metric("total instructions", instructions, "#instr");
         }
         report_metric("total memory", total_span.memory.allocated.megabytes() as u64, "MB");
-
-        if self.source_stats {
-            // FIXME(salsa-transition): bring back stats for ParseQuery (file size)
-            // and ParseMacroExpansionQuery (mcaro expansion "file") size whenever we implement
-            // Salsa's memory usage tracking works with tracked functions.
-
-            // let mut total_file_size = Bytes::default();
-            // for e in ide_db::base_db::ParseQuery.in_db(db).entries::<Vec<_>>() {
-            //     total_file_size += syntax_len(db.parse(e.key).syntax_node())
-            // }
-
-            // let mut total_macro_file_size = Bytes::default();
-            // for e in hir::db::ParseMacroExpansionQuery.in_db(db).entries::<Vec<_>>() {
-            //     let val = db.parse_macro_expansion(e.key).value.0;
-            //     total_macro_file_size += syntax_len(val.syntax_node())
-            // }
-            // eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
-        }
 
         if verbosity.is_verbose() {
             print_memory_usage(host, vfs);
@@ -1215,6 +1282,78 @@ fn shuffle<T>(rng: &mut Rand32, slice: &mut [T]) {
 
 fn percentage(n: u64, total: u64) -> u64 {
     (n * 100).checked_div(total).unwrap_or(100)
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct UsizeWithUnderscore(usize);
+
+impl fmt::Display for UsizeWithUnderscore {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let num_str = self.0.to_string();
+
+        if num_str.len() <= 3 {
+            return write!(f, "{}", num_str);
+        }
+
+        let mut result = String::new();
+
+        for (count, ch) in num_str.chars().rev().enumerate() {
+            if count > 0 && count % 3 == 0 {
+                result.push('_');
+            }
+            result.push(ch);
+        }
+
+        let result = result.chars().rev().collect::<String>();
+        write!(f, "{}", result)
+    }
+}
+
+impl std::ops::AddAssign for UsizeWithUnderscore {
+    fn add_assign(&mut self, other: UsizeWithUnderscore) {
+        self.0 += other.0;
+    }
+}
+
+#[derive(Default, Debug, Eq, PartialEq)]
+struct PrettyItemStats {
+    traits: UsizeWithUnderscore,
+    impls: UsizeWithUnderscore,
+    mods: UsizeWithUnderscore,
+    macro_calls: UsizeWithUnderscore,
+    macro_rules: UsizeWithUnderscore,
+}
+
+impl From<hir_def::item_tree::ItemTreeDataStats> for PrettyItemStats {
+    fn from(value: hir_def::item_tree::ItemTreeDataStats) -> Self {
+        Self {
+            traits: UsizeWithUnderscore(value.traits),
+            impls: UsizeWithUnderscore(value.impls),
+            mods: UsizeWithUnderscore(value.mods),
+            macro_calls: UsizeWithUnderscore(value.macro_calls),
+            macro_rules: UsizeWithUnderscore(value.macro_rules),
+        }
+    }
+}
+
+impl AddAssign for PrettyItemStats {
+    fn add_assign(&mut self, rhs: Self) {
+        self.traits += rhs.traits;
+        self.impls += rhs.impls;
+        self.mods += rhs.mods;
+        self.macro_calls += rhs.macro_calls;
+        self.macro_rules += rhs.macro_rules;
+    }
+}
+
+impl fmt::Display for PrettyItemStats {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "traits: {}, impl: {}, mods: {}, macro calls: {}, macro rules: {}",
+            self.traits, self.impls, self.mods, self.macro_calls, self.macro_rules
+        )
+    }
 }
 
 // FIXME(salsa-transition): bring this back whenever we implement
