@@ -37,6 +37,12 @@ pub(crate) fn lit_to_const<'tcx>(
             let str_bytes = s.as_str().as_bytes();
             ty::ValTree::from_raw_bytes(tcx, str_bytes)
         }
+        (ast::LitKind::Str(s, _), ty::Str) if tcx.features().deref_patterns() => {
+            // String literal patterns may have type `str` if `deref_patterns` is enabled, in order
+            // to allow `deref!("..."): String`.
+            let str_bytes = s.as_str().as_bytes();
+            ty::ValTree::from_raw_bytes(tcx, str_bytes)
+        }
         (ast::LitKind::ByteStr(data, _), ty::Ref(_, inner_ty, _))
             if matches!(inner_ty.kind(), ty::Slice(_)) =>
         {
