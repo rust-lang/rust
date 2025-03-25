@@ -26,4 +26,4 @@ SOURCE_FILE@0..20
       STMT_LIST@18..20
         L_CURLY@18..19 "{"
         R_CURLY@19..20 "}"
-error 9..16: At least one trait must be specified
+error 9..16: At least one trait is required for an object type
