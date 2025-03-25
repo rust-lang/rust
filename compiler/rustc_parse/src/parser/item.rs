@@ -2871,7 +2871,7 @@ impl<'a> Parser<'a> {
                 // Skip every token until next possible arg or end.
                 p.eat_to_tokens(&[exp!(Comma), exp!(CloseParen)]);
                 // Create a placeholder argument for proper arg count (issue #34264).
-                Ok(dummy_arg(Ident::new(kw::Empty, lo.to(p.prev_token.span)), guar))
+                Ok(dummy_arg(Ident::new(sym::dummy, lo.to(p.prev_token.span)), guar))
             });
             // ...now that we've parsed the first argument, `self` is no longer allowed.
             first_param = false;
