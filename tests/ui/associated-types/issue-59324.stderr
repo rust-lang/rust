@@ -36,21 +36,6 @@ LL | |
 LL | |         &self,
 LL | |     ) -> Self::AssocType;
    | |_________________________^ the trait `Foo` is not implemented for `Bug`
-   |
-help: consider further restricting type parameter `Bug` with trait `Foo`
-   |
-LL | pub trait ThriftService<Bug: NotFoo + Foo>:
-   |                                     +++++
-
-error[E0277]: the trait bound `Bug: Foo` is not satisfied
-  --> $DIR/issue-59324.rs:16:5
-   |
-LL | /     fn get_service(
-LL | |
-LL | |
-LL | |         &self,
-LL | |     ) -> Self::AssocType;
-   | |_________________________^ the trait `Foo` is not implemented for `Bug`
 
 error[E0277]: the trait bound `(): Foo` is not satisfied
   --> $DIR/issue-59324.rs:24:29
@@ -63,6 +48,21 @@ help: this trait has no implementations, consider adding one
    |
 LL | pub trait Foo: NotFoo {
    | ^^^^^^^^^^^^^^^^^^^^^
+
+error[E0277]: the trait bound `Bug: Foo` is not satisfied
+  --> $DIR/issue-59324.rs:16:5
+   |
+LL | /     fn get_service(
+LL | |
+LL | |
+LL | |         &self,
+LL | |     ) -> Self::AssocType;
+   | |_________________________^ the trait `Foo` is not implemented for `Bug`
+   |
+help: consider further restricting type parameter `Bug` with trait `Foo`
+   |
+LL | pub trait ThriftService<Bug: NotFoo + Foo>:
+   |                                     +++++
 
 error[E0277]: the trait bound `Bug: Foo` is not satisfied
   --> $DIR/issue-59324.rs:20:10
