@@ -42,7 +42,7 @@ use tracing::debug;
 use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
-use crate::errors::{AutodiffWithoutLto, ErrorCreatingRemarkDir};
+use crate::errors::ErrorCreatingRemarkDir;
 use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
@@ -418,15 +418,18 @@ fn generate_lto_work<B: ExtraBackendMethods>(
         vec![(WorkItem::LTO(module), 0)]
     } else {
         if !autodiff.is_empty() {
-            let dcx = cgcx.create_dcx();
-            dcx.handle().emit_fatal(AutodiffWithoutLto {});
+            //let dcx = cgcx.create_dcx();
+            //dcx.handle().emit_fatal(AutodiffWithoutLto {});
         }
+        let config = cgcx.config(ModuleKind::Regular);
         assert!(needs_fat_lto.is_empty());
         let (lto_modules, copy_jobs) = B::run_thin_lto(cgcx, needs_thin_lto, import_only_modules)
             .unwrap_or_else(|e| e.raise());
         lto_modules
             .into_iter()
             .map(|module| {
+                let module =
+                    unsafe { module.autodiff(cgcx, autodiff.clone(), config).unwrap_or_else(|e| e.raise()) };
                 let cost = module.cost();
                 (WorkItem::LTO(module), cost)
             })
@@ -1469,6 +1472,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     if needs_fat_lto.is_empty()
                         && needs_thin_lto.is_empty()
                         && lto_import_only_modules.is_empty()
+                        && autodiff_items.is_empty()
                     {
                         // Nothing more to do!
                         break;
@@ -1482,13 +1486,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
                     assert!(!started_lto);
                     started_lto = true;
 
+                    let autodiff_items = mem::take(&mut autodiff_items);
                     let needs_fat_lto = mem::take(&mut needs_fat_lto);
                     let needs_thin_lto = mem::take(&mut needs_thin_lto);
                     let import_only_modules = mem::take(&mut lto_import_only_modules);
 
                     for (work, cost) in generate_lto_work(
                         &cgcx,
-                        autodiff_items.clone(),
+                        autodiff_items,
                         needs_fat_lto,
                         needs_thin_lto,
                         import_only_modules,

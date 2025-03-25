@@ -1,7 +1,6 @@
 use std::ptr;
 
 use rustc_ast::expand::autodiff_attrs::{AutoDiffAttrs, AutoDiffItem, DiffActivity, DiffMode};
-use rustc_codegen_ssa::ModuleCodegen;
 use rustc_codegen_ssa::back::write::ModuleConfig;
 use rustc_codegen_ssa::traits::BaseTypeCodegenMethods as _;
 use rustc_errors::FatalError;
@@ -283,7 +282,7 @@ fn generate_enzyme_call<'ll>(
 }
 
 pub(crate) fn differentiate<'ll>(
-    module: &'ll ModuleCodegen<ModuleLlvm>,
+    module_llvm: &'ll ModuleLlvm,
     cgcx: &CodegenContext<LlvmCodegenBackend>,
     diff_items: Vec<AutoDiffItem>,
     _config: &ModuleConfig,
@@ -293,8 +292,7 @@ pub(crate) fn differentiate<'ll>(
     }
 
     let diag_handler = cgcx.create_dcx();
-
-    let cx = SimpleCx::new(module.module_llvm.llmod(), module.module_llvm.llcx, cgcx.pointer_size);
+    let cx = SimpleCx { llmod: module_llvm.llmod(), llcx: module_llvm.llcx };
 
     // First of all, did the user try to use autodiff without using the -Zautodiff=Enable flag?
     if !diff_items.is_empty()
