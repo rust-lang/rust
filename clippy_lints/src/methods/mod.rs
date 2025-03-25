@@ -4992,7 +4992,7 @@ impl Methods {
                 },
                 ("ends_with", [arg]) => {
                     if let ExprKind::MethodCall(.., span) = expr.kind {
-                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg);
+                        case_sensitive_file_extension_comparisons::check(cx, expr, span, recv, arg, self.msrv);
                     }
                     path_ends_with_ext::check(cx, recv, arg, expr, self.msrv, &self.allowed_dotfiles);
                 },
