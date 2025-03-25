@@ -1,8 +1,8 @@
 //! This module ensures that if a function's ABI requires a particular target feature,
 //! that target feature is enabled both on the callee and all callers.
 use rustc_abi::{BackendRepr, RegKind};
-use rustc_hir::CRATE_HIR_ID;
-use rustc_middle::mir::{self, traversal};
+use rustc_hir::{CRATE_HIR_ID, HirId};
+use rustc_middle::mir::{self, Location, traversal};
 use rustc_middle::ty::layout::LayoutCx;
 use rustc_middle::ty::{self, Instance, InstanceKind, Ty, TyCtxt, TypingEnv};
 use rustc_session::lint::builtin::{ABI_UNSUPPORTED_VECTOR_TYPES, WASM_C_ABI};
@@ -33,7 +33,7 @@ fn do_check_simd_vector_abi<'tcx>(
     abi: &FnAbi<'tcx, Ty<'tcx>>,
     def_id: DefId,
     is_call: bool,
-    span: impl Fn() -> Span,
+    loc: impl Fn() -> (Span, HirId),
 ) {
     // We check this on all functions, including those using the "Rust" ABI.
     // For the "Rust" ABI it would be a bug if the lint ever triggered, but better safe than sorry.
@@ -50,10 +50,10 @@ fn do_check_simd_vector_abi<'tcx>(
             let feature = match feature_def.iter().find(|(bits, _)| size.bits() <= *bits) {
                 Some((_, feature)) => feature,
                 None => {
-                    let span = span();
+                    let (span, hir_id) = loc();
                     tcx.emit_node_span_lint(
                         ABI_UNSUPPORTED_VECTOR_TYPES,
-                        CRATE_HIR_ID,
+                        hir_id,
                         span,
                         errors::AbiErrorUnsupportedVectorType {
                             span,
@@ -66,10 +66,10 @@ fn do_check_simd_vector_abi<'tcx>(
             };
             if !have_feature(Symbol::intern(feature)) {
                 // Emit error.
-                let span = span();
+                let (span, hir_id) = loc();
                 tcx.emit_node_span_lint(
                     ABI_UNSUPPORTED_VECTOR_TYPES,
-                    CRATE_HIR_ID,
+                    hir_id,
                     span,
                     errors::AbiErrorDisabledVectorType {
                         span,
@@ -83,8 +83,9 @@ fn do_check_simd_vector_abi<'tcx>(
     }
     // The `vectorcall` ABI is special in that it requires SSE2 no matter which types are being passed.
     if abi.conv == Conv::X86VectorCall && !have_feature(sym::sse2) {
+        let (span, _hir_id) = loc();
         tcx.dcx().emit_err(errors::AbiRequiredTargetFeature {
-            span: span(),
+            span,
             required_feature: "sse2",
             abi: "vectorcall",
             is_call,
@@ -119,7 +120,7 @@ fn do_check_wasm_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     abi: &FnAbi<'tcx, Ty<'tcx>>,
     is_call: bool,
-    span: impl Fn() -> Span,
+    loc: impl Fn() -> (Span, HirId),
 ) {
     // Only proceed for `extern "C" fn` on wasm32-unknown-unknown (same check as what `adjust_for_foreign_abi` uses to call `compute_wasm_abi_info`),
     // and only proceed if `wasm_c_abi_opt` indicates we should emit the lint.
@@ -135,10 +136,10 @@ fn do_check_wasm_abi<'tcx>(
         if wasm_abi_safe(tcx, arg_abi) {
             continue;
         }
-        let span = span();
+        let (span, hir_id) = loc();
         tcx.emit_node_span_lint(
             WASM_C_ABI,
-            CRATE_HIR_ID,
+            hir_id,
             span,
             errors::WasmCAbiTransition { ty: arg_abi.layout.ty, is_call },
         );
@@ -157,10 +158,15 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
         // function.
         return;
     };
-    do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, || {
-        tcx.def_span(instance.def_id())
-    });
-    do_check_wasm_abi(tcx, abi, /*is_call*/ false, || tcx.def_span(instance.def_id()));
+    let loc = || {
+        let def_id = instance.def_id();
+        (
+            tcx.def_span(def_id),
+            def_id.as_local().map(|did| tcx.local_def_id_to_hir_id(did)).unwrap_or(CRATE_HIR_ID),
+        )
+    };
+    do_check_simd_vector_abi(tcx, abi, instance.def_id(), /*is_call*/ false, loc);
+    do_check_wasm_abi(tcx, abi, /*is_call*/ false, loc);
 }
 
 /// Checks that a call expression does not try to pass a vector-passed argument which requires a
@@ -168,8 +174,8 @@ fn check_instance_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) {
 fn check_call_site_abi<'tcx>(
     tcx: TyCtxt<'tcx>,
     callee: Ty<'tcx>,
-    span: Span,
     caller: InstanceKind<'tcx>,
+    loc: impl Fn() -> (Span, HirId) + Copy,
 ) {
     if callee.fn_sig(tcx).abi().is_rustic_abi() {
         // we directly handle the soundness of Rust ABIs
@@ -197,8 +203,8 @@ fn check_call_site_abi<'tcx>(
         // ABI failed to compute; this will not get through codegen.
         return;
     };
-    do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, || span);
-    do_check_wasm_abi(tcx, callee_abi, /*is_call*/ true, || span);
+    do_check_simd_vector_abi(tcx, callee_abi, caller.def_id(), /*is_call*/ true, loc);
+    do_check_wasm_abi(tcx, callee_abi, /*is_call*/ true, loc);
 }
 
 fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &mir::Body<'tcx>) {
@@ -214,7 +220,19 @@ fn check_callees_abi<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>, body: &m
                     ty::TypingEnv::fully_monomorphized(),
                     ty::EarlyBinder::bind(callee_ty),
                 );
-                check_call_site_abi(tcx, callee_ty, *fn_span, body.source.instance);
+                check_call_site_abi(tcx, callee_ty, body.source.instance, || {
+                    let loc = Location {
+                        block: bb,
+                        statement_index: body.basic_blocks[bb].statements.len(),
+                    };
+                    (
+                        *fn_span,
+                        body.source_info(loc)
+                            .scope
+                            .lint_root(&body.source_scopes)
+                            .unwrap_or(CRATE_HIR_ID),
+                    )
+                });
             }
             _ => {}
         }
