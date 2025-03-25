@@ -26,9 +26,8 @@ fn prepare_and_check<F: FnOnce(&mut Rustc) -> &mut Rustc>(to_find: &str, prepare
     run_in_tmpdir(|| {
         let mut rustc = Rustc::new();
         rustc
-            .arg("-Zlinker-features=+lld")
+            .arg("-Clinker-features=+lld")
             .arg("-Clink-self-contained=+linker")
-            .arg("-Zunstable-options")
             .arg("-Cdebuginfo=full")
             .input("main.rs");
         prepare_rustc(&mut rustc).run();
