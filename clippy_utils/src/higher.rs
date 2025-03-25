@@ -176,6 +176,12 @@ impl<'hir> IfLetOrMatch<'hir> {
             ),
         }
     }
+
+    pub fn scrutinee(&self) -> &'hir Expr<'hir> {
+        match self {
+            Self::Match(scrutinee, _, _) | Self::IfLet(scrutinee, _, _, _, _) => scrutinee,
+        }
+    }
 }
 
 /// An `if` or `if let` expression
