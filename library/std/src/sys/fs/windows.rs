@@ -547,7 +547,7 @@ impl File {
             ))?;
             attr.file_size = info.AllocationSize as u64;
             attr.number_of_links = Some(info.NumberOfLinks);
-            if attr.file_type().is_reparse_point() {
+            if attr.attributes & c::FILE_ATTRIBUTE_REPARSE_POINT != 0 {
                 let mut attr_tag: c::FILE_ATTRIBUTE_TAG_INFO = mem::zeroed();
                 cvt(c::GetFileInformationByHandleEx(
                     self.handle.as_raw_handle(),
