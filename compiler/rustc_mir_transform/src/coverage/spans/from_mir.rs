@@ -1,3 +1,5 @@
+use std::iter;
+
 use rustc_middle::bug;
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::{
@@ -5,87 +7,50 @@ use rustc_middle::mir::{
 };
 use rustc_span::{ExpnKind, Span};
 
-use crate::coverage::ExtractedHirInfo;
-use crate::coverage::graph::{
-    BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph, START_BCB,
-};
+use crate::coverage::graph::{BasicCoverageBlock, CoverageGraph, START_BCB};
 use crate::coverage::spans::Covspan;
-use crate::coverage::unexpand::unexpand_into_body_span_with_expn_kind;
 
-pub(crate) struct ExtractedCovspans {
-    pub(crate) covspans: Vec<SpanFromMir>,
+#[derive(Debug)]
+pub(crate) struct RawSpanFromMir {
+    /// A span that has been extracted from a MIR statement/terminator, but
+    /// hasn't been "unexpanded", so it might not lie within the function body
+    /// span and might be part of an expansion with a different context.
+    pub(crate) raw_span: Span,
+    pub(crate) bcb: BasicCoverageBlock,
 }
 
-/// Traverses the MIR body to produce an initial collection of coverage-relevant
-/// spans, each associated with a node in the coverage graph (BCB) and possibly
-/// other metadata.
-pub(crate) fn extract_covspans_from_mir(
-    mir_body: &mir::Body<'_>,
-    hir_info: &ExtractedHirInfo,
+/// Generates an initial set of coverage spans from the statements and
+/// terminators in the function's MIR body, each associated with its
+/// corresponding node in the coverage graph.
+///
+/// This is necessarily an inexact process, because MIR isn't designed to
+/// capture source spans at the level of detail we would want for coverage,
+/// but it's good enough to be better than nothing.
+pub(crate) fn extract_raw_spans_from_mir<'tcx>(
+    mir_body: &mir::Body<'tcx>,
     graph: &CoverageGraph,
-) -> ExtractedCovspans {
-    let &ExtractedHirInfo { body_span, .. } = hir_info;
+) -> Vec<RawSpanFromMir> {
+    let mut raw_spans = vec![];
 
-    let mut covspans = vec![];
-
+    // We only care about blocks that are part of the coverage graph.
     for (bcb, bcb_data) in graph.iter_enumerated() {
-        bcb_to_initial_coverage_spans(mir_body, body_span, bcb, bcb_data, &mut covspans);
-    }
+        let make_raw_span = |raw_span: Span| RawSpanFromMir { raw_span, bcb };
 
-    // Only add the signature span if we found at least one span in the body.
-    if !covspans.is_empty() {
-        // If there is no usable signature span, add a fake one (before refinement)
-        // to avoid an ugly gap between the body start and the first real span.
-        // FIXME: Find a more principled way to solve this problem.
-        let fn_sig_span = hir_info.fn_sig_span_extended.unwrap_or_else(|| body_span.shrink_to_lo());
-        covspans.push(SpanFromMir::for_fn_sig(fn_sig_span));
-    }
+        // A coverage graph node can consist of multiple basic blocks.
+        for &bb in &bcb_data.basic_blocks {
+            let bb_data = &mir_body[bb];
 
-    ExtractedCovspans { covspans }
-}
+            let statements = bb_data.statements.iter();
+            raw_spans.extend(statements.filter_map(filtered_statement_span).map(make_raw_span));
 
-// Generate a set of coverage spans from the filtered set of `Statement`s and `Terminator`s of
-// the `BasicBlock`(s) in the given `BasicCoverageBlockData`. One coverage span is generated
-// for each `Statement` and `Terminator`. (Note that subsequent stages of coverage analysis will
-// merge some coverage spans, at which point a coverage span may represent multiple
-// `Statement`s and/or `Terminator`s.)
-fn bcb_to_initial_coverage_spans<'a, 'tcx>(
-    mir_body: &'a mir::Body<'tcx>,
-    body_span: Span,
-    bcb: BasicCoverageBlock,
-    bcb_data: &'a BasicCoverageBlockData,
-    initial_covspans: &mut Vec<SpanFromMir>,
-) {
-    for &bb in &bcb_data.basic_blocks {
-        let data = &mir_body[bb];
-
-        let unexpand = move |expn_span| {
-            unexpand_into_body_span_with_expn_kind(expn_span, body_span)
-                // Discard any spans that fill the entire body, because they tend
-                // to represent compiler-inserted code, e.g. implicitly returning `()`.
-                .filter(|(span, _)| !span.source_equal(body_span))
-        };
-
-        let mut extract_statement_span = |statement| {
-            let expn_span = filtered_statement_span(statement)?;
-            let (span, expn_kind) = unexpand(expn_span)?;
-
-            initial_covspans.push(SpanFromMir::new(span, expn_kind, bcb));
-            Some(())
-        };
-        for statement in data.statements.iter() {
-            extract_statement_span(statement);
+            // There's only one terminator, but wrap it in an iterator to
+            // mirror the handling of statements.
+            let terminator = iter::once(bb_data.terminator());
+            raw_spans.extend(terminator.filter_map(filtered_terminator_span).map(make_raw_span));
         }
-
-        let mut extract_terminator_span = |terminator| {
-            let expn_span = filtered_terminator_span(terminator)?;
-            let (span, expn_kind) = unexpand(expn_span)?;
-
-            initial_covspans.push(SpanFromMir::new(span, expn_kind, bcb));
-            Some(())
-        };
-        extract_terminator_span(data.terminator());
     }
+
+    raw_spans
 }
 
 /// If the MIR `Statement` has a span contributive to computing coverage spans,
@@ -219,7 +184,7 @@ pub(crate) struct SpanFromMir {
 }
 
 impl SpanFromMir {
-    fn for_fn_sig(fn_sig_span: Span) -> Self {
+    pub(crate) fn for_fn_sig(fn_sig_span: Span) -> Self {
         Self::new(fn_sig_span, None, START_BCB)
     }
 
