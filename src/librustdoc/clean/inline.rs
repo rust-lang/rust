@@ -669,27 +669,25 @@ fn build_module_items(
                     // We can use the item's `DefId` directly since the only information ever used
                     // from it is `DefId.krate`.
                     item_id: ItemId::DefId(did),
-                    inner: Box::new(clean::ItemInner {
-                        attrs: Default::default(),
-                        stability: None,
-                        kind: clean::ImportItem(clean::Import::new_simple(
-                            item.ident.name,
-                            clean::ImportSource {
-                                path: clean::Path {
-                                    res,
-                                    segments: thin_vec![clean::PathSegment {
-                                        name: prim_ty.as_sym(),
-                                        args: clean::GenericArgs::AngleBracketed {
-                                            args: Default::default(),
-                                            constraints: ThinVec::new(),
-                                        },
-                                    }],
-                                },
-                                did: None,
+                    attrs: Default::default(),
+                    stability: None,
+                    kind: clean::ImportItem(clean::Import::new_simple(
+                        item.ident.name,
+                        clean::ImportSource {
+                            path: clean::Path {
+                                res,
+                                segments: thin_vec![clean::PathSegment {
+                                    name: prim_ty.as_sym(),
+                                    args: clean::GenericArgs::AngleBracketed {
+                                        args: Default::default(),
+                                        constraints: ThinVec::new(),
+                                    },
+                                }],
                             },
-                            true,
-                        )),
-                    }),
+                            did: None,
+                        },
+                        true,
+                    )),
                     cfg: None,
                     inline_stmt_id: None,
                 });

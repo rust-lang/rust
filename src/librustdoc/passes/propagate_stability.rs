@@ -117,7 +117,7 @@ impl DocFolder for StabilityPropagator<'_, '_> {
             }
         };
 
-        item.inner.stability = stability;
+        item.stability = stability;
         self.parent_stability = stability;
         let item = self.fold_item_recur(item);
         self.parent_stability = parent_stability;

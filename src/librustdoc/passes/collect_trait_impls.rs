@@ -210,7 +210,7 @@ pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> 
         }
     });
 
-    if let ModuleItem(Module { items, .. }) = &mut krate.module.inner.kind {
+    if let ModuleItem(Module { items, .. }) = &mut krate.module.kind {
         items.extend(synth_impls);
         items.extend(new_items_external);
         items.extend(new_items_local);
@@ -259,7 +259,7 @@ impl DocVisitor<'_> for ItemAndAliasCollector<'_> {
     fn visit_item(&mut self, i: &Item) {
         self.items.insert(i.item_id);
 
-        if let TypeAliasItem(alias) = &i.inner.kind
+        if let TypeAliasItem(alias) = &i.kind
             && let Some(did) = alias.type_.def_id(self.cache)
         {
             self.items.insert(ItemId::DefId(did));

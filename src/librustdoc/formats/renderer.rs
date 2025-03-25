@@ -85,7 +85,7 @@ fn run_format_inner<'tcx, T: FormatRenderer<'tcx>>(
 
         cx.mod_item_in(&item)?;
         let (clean::StrippedItem(box clean::ModuleItem(module)) | clean::ModuleItem(module)) =
-            item.inner.kind
+            item.kind
         else {
             unreachable!()
         };

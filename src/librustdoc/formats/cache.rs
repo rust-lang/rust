@@ -383,11 +383,7 @@ impl DocFolder for CacheBuilder<'_, '_> {
 
         // Once we've recursively found all the generics, hoard off all the
         // implementations elsewhere.
-        let ret = if let clean::Item {
-            inner: box clean::ItemInner { kind: clean::ImplItem(ref i), .. },
-            ..
-        } = item
-        {
+        let ret = if let clean::Item { kind: clean::ImplItem(ref i), .. } = item {
             // Figure out the id of this impl. This may map to a
             // primitive rather than always to a struct/enum.
             // Note: matching twice to restrict the lifetime of the `i` borrow.

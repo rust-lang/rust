@@ -3,8 +3,8 @@ use std::mem;
 use crate::clean::*;
 
 pub(crate) fn strip_item(mut item: Item) -> Item {
-    if !matches!(item.inner.kind, StrippedItem(..)) {
-        item.inner.kind = StrippedItem(Box::new(item.inner.kind));
+    if !matches!(item.kind, StrippedItem(..)) {
+        item.kind = StrippedItem(Box::new(item.kind));
     }
     item
 }
@@ -102,9 +102,9 @@ pub(crate) trait DocFolder: Sized {
 
     /// don't override!
     fn fold_item_recur(&mut self, mut item: Item) -> Item {
-        item.inner.kind = match item.inner.kind {
+        item.kind = match item.kind {
             StrippedItem(box i) => StrippedItem(Box::new(self.fold_inner_recur(i))),
-            _ => self.fold_inner_recur(item.inner.kind),
+            _ => self.fold_inner_recur(item.kind),
         };
         item
     }

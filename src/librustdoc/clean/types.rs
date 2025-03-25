@@ -314,30 +314,18 @@ pub(crate) struct Item {
     /// The name of this item.
     /// Optional because not every item has a name, e.g. impls.
     pub(crate) name: Option<Symbol>,
-    pub(crate) inner: Box<ItemInner>,
-    pub(crate) item_id: ItemId,
-    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
-    /// The crate metadata doesn't hold this information, so the `use` statement
-    /// always belongs to the current crate.
-    pub(crate) inline_stmt_id: Option<LocalDefId>,
-    pub(crate) cfg: Option<Arc<Cfg>>,
-}
-
-#[derive(Clone)]
-pub(crate) struct ItemInner {
     /// Information about this item that is specific to what kind of item it is.
     /// E.g., struct vs enum vs function.
     pub(crate) kind: ItemKind,
     pub(crate) attrs: Attributes,
     /// The effective stability, filled out by the `propagate-stability` pass.
     pub(crate) stability: Option<Stability>,
-}
-
-impl std::ops::Deref for Item {
-    type Target = ItemInner;
-    fn deref(&self) -> &ItemInner {
-        &self.inner
-    }
+    pub(crate) item_id: ItemId,
+    /// This is the `LocalDefId` of the `use` statement if the item was inlined.
+    /// The crate metadata doesn't hold this information, so the `use` statement
+    /// always belongs to the current crate.
+    pub(crate) inline_stmt_id: Option<LocalDefId>,
+    pub(crate) cfg: Option<Arc<Cfg>>,
 }
 
 /// NOTE: this does NOT unconditionally print every item, to avoid thousands of lines of logs.
@@ -383,13 +371,12 @@ impl Item {
     ///
     /// This method should only be called after the `propagate-stability` pass has been run.
     pub(crate) fn stability(&self, tcx: TyCtxt<'_>) -> Option<Stability> {
-        let stability = self.inner.stability;
         debug_assert!(
-            stability.is_some()
+            self.stability.is_some()
                 || self.def_id().is_none_or(|did| tcx.lookup_stability(did).is_none()),
             "missing stability for cleaned item: {self:?}",
         );
-        stability
+        self.stability
     }
 
     pub(crate) fn const_stability(&self, tcx: TyCtxt<'_>) -> Option<ConstStability> {
@@ -489,7 +476,9 @@ impl Item {
 
         Item {
             item_id: def_id.into(),
-            inner: Box::new(ItemInner { kind, attrs, stability: None }),
+            kind,
+            attrs,
+            stability: None,
             name,
             cfg,
             inline_stmt_id: None,
@@ -2618,13 +2607,13 @@ mod size_asserts {
 
     use super::*;
     // tidy-alphabetical-start
-    static_assert_size!(Crate, 56); // frequently moved by-value
+    static_assert_size!(Crate, 144); // frequently moved by-value
     static_assert_size!(DocFragment, 32);
     static_assert_size!(GenericArg, 32);
     static_assert_size!(GenericArgs, 24);
     static_assert_size!(GenericParamDef, 40);
     static_assert_size!(Generics, 16);
-    static_assert_size!(Item, 48);
+    static_assert_size!(Item, 136);
     static_assert_size!(ItemKind, 48);
     static_assert_size!(PathSegment, 32);
     static_assert_size!(Type, 32);

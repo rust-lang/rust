@@ -241,7 +241,7 @@ fn from_clean_item(item: clean::Item, renderer: &JsonRenderer<'_>) -> ItemEnum {
     let is_crate = item.is_crate();
     let header = item.fn_header(renderer.tcx);
 
-    match item.inner.kind {
+    match item.kind {
         ModuleItem(m) => {
             ItemEnum::Module(Module { is_crate, items: renderer.ids(m.items), is_stripped: false })
         }
