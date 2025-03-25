@@ -143,12 +143,32 @@ jobs:
         run: target/${{ matrix.target }}/debug/rust-analyzer analysis-stats --with-deps --no-sysroot --no-test $(rustc --print sysroot)/lib/rustlib/src/rust/library/
 
       - name: clippy
-        if: matrix.os == 'windows-latest'
+        if: matrix.os == 'macos-latest'
         run: cargo clippy --all-targets -- -D clippy::disallowed_macros -D clippy::dbg_macro -D clippy::todo -D clippy::print_stdout -D clippy::print_stderr
 
       - name: rustfmt
         if: matrix.os == 'ubuntu-latest'
         run: cargo fmt -- --check
+
+  # Weird targets to catch non-portable code
+  miri:
+    if: github.repository == 'rust-lang/rust-analyzer'
+    name: miri
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        run: |
+          rustup update --no-self-update nightly
+          rustup component add miri --toolchain nightly
+
+      - name: Cache Dependencies
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+
+      - run: cargo +nightly miri test --locked
 
   # Weird targets to catch non-portable code
   rust-cross:
