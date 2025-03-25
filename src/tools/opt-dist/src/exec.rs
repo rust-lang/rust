@@ -87,7 +87,7 @@ impl CmdBuilder {
     }
 }
 
-pub fn cmd(args: &[&str]) -> CmdBuilder {
+pub fn cmd<S: ToString>(args: &[S]) -> CmdBuilder {
     assert!(!args.is_empty());
     CmdBuilder { args: args.iter().map(|s| s.to_string()).collect(), ..Default::default() }
 }
