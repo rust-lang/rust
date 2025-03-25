@@ -404,10 +404,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         (trait_ref, lowered_ty)
                     });
 
-                self.is_in_trait_impl = trait_ref.is_some();
-                let new_impl_items = self
-                    .arena
-                    .alloc_from_iter(impl_items.iter().map(|item| self.lower_impl_item_ref(item)));
+                let new_impl_items = self.arena.alloc_from_iter(
+                    impl_items
+                        .iter()
+                        .map(|item| self.lower_impl_item_ref(item, trait_ref.is_some())),
+                );
 
                 // `defaultness.has_value()` is never called for an `impl`, always `true` in order
                 // to not cause an assertion failure inside the `lower_defaultness` function.
@@ -484,7 +485,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
             ItemKind::Delegation(box delegation) => {
                 debug_assert_ne!(ident.name, kw::Empty);
                 let ident = self.lower_ident(ident);
-                let delegation_results = self.lower_delegation(delegation, id);
+                let delegation_results = self.lower_delegation(delegation, id, false);
                 hir::ItemKind::Fn {
                     ident,
                     sig: delegation_results.sig,
@@ -634,10 +635,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         match ctxt {
             AssocCtxt::Trait => hir::OwnerNode::TraitItem(self.lower_trait_item(item)),
             AssocCtxt::Impl { of_trait } => {
-                if of_trait {
-                    self.is_in_trait_impl = of_trait;
-                }
-                hir::OwnerNode::ImplItem(self.lower_impl_item(item))
+                hir::OwnerNode::ImplItem(self.lower_impl_item(item, of_trait))
             }
         }
     }
@@ -879,7 +877,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 (generics, kind, ty.is_some())
             }
             AssocItemKind::Delegation(box delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id);
+                let delegation_results = self.lower_delegation(delegation, i.id, false);
                 let item_kind = hir::TraitItemKind::Fn(
                     delegation_results.sig,
                     hir::TraitFn::Provided(delegation_results.body_id),
@@ -910,7 +908,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
             }
             AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
-                has_self: self.delegatee_is_method(i.id, delegation.id, i.span),
+                has_self: self.delegatee_is_method(i.id, delegation.id, i.span, false),
             },
             AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                 panic!("macros should have been expanded by now")
@@ -930,7 +928,11 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.expr(span, hir::ExprKind::Err(guar))
     }
 
-    fn lower_impl_item(&mut self, i: &AssocItem) -> &'hir hir::ImplItem<'hir> {
+    fn lower_impl_item(
+        &mut self,
+        i: &AssocItem,
+        is_in_trait_impl: bool,
+    ) -> &'hir hir::ImplItem<'hir> {
         debug_assert_ne!(i.ident.name, kw::Empty);
         // Since `default impl` is not yet implemented, this is always true in impls.
         let has_value = true;
@@ -966,7 +968,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     generics,
                     sig,
                     i.id,
-                    if self.is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
+                    if is_in_trait_impl { FnDeclKind::Impl } else { FnDeclKind::Inherent },
                     sig.header.coroutine_kind,
                     attrs,
                 );
@@ -1006,7 +1008,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 )
             }
             AssocItemKind::Delegation(box delegation) => {
-                let delegation_results = self.lower_delegation(delegation, i.id);
+                let delegation_results = self.lower_delegation(delegation, i.id, is_in_trait_impl);
                 (
                     delegation_results.generics,
                     hir::ImplItemKind::Fn(delegation_results.sig, delegation_results.body_id),
@@ -1029,7 +1031,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         self.arena.alloc(item)
     }
 
-    fn lower_impl_item_ref(&mut self, i: &AssocItem) -> hir::ImplItemRef {
+    fn lower_impl_item_ref(&mut self, i: &AssocItem, is_in_trait_impl: bool) -> hir::ImplItemRef {
         hir::ImplItemRef {
             id: hir::ImplItemId { owner_id: hir::OwnerId { def_id: self.local_def_id(i.id) } },
             ident: self.lower_ident(i.ident),
@@ -1041,7 +1043,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     hir::AssocItemKind::Fn { has_self: sig.decl.has_self() }
                 }
                 AssocItemKind::Delegation(box delegation) => hir::AssocItemKind::Fn {
-                    has_self: self.delegatee_is_method(i.id, delegation.id, i.span),
+                    has_self: self.delegatee_is_method(
+                        i.id,
+                        delegation.id,
+                        i.span,
+                        is_in_trait_impl,
+                    ),
                 },
                 AssocItemKind::MacCall(..) | AssocItemKind::DelegationMac(..) => {
                     panic!("macros should have been expanded by now")
