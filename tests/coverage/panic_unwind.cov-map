@@ -26,14 +26,14 @@ Number of file 0 mappings: 9
 Highest counter ID seen: c3
 
 Function name: panic_unwind::might_panic
-Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 04, 01, 01, 14, 05, 02, 09, 01, 19, 02, 02, 0c, 03, 02]
+Raw bytes (21): 0x[01, 01, 01, 01, 05, 03, 01, 04, 01, 01, 14, 05, 02, 09, 01, 0f, 02, 02, 0c, 03, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 1
 - expression 0 operands: lhs = Counter(0), rhs = Counter(1)
 Number of file 0 mappings: 3
 - Code(Counter(0)) at (prev + 4, 1) to (start + 1, 20)
-- Code(Counter(1)) at (prev + 2, 9) to (start + 1, 25)
+- Code(Counter(1)) at (prev + 2, 9) to (start + 1, 15)
 - Code(Expression(0, Sub)) at (prev + 2, 12) to (start + 3, 2)
     = (c0 - c1)
 Highest counter ID seen: c1

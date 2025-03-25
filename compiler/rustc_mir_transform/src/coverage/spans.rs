@@ -3,6 +3,7 @@ use std::iter;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_middle::mir;
+use rustc_middle::ty::TyCtxt;
 use rustc_span::{DesugaringKind, ExpnKind, MacroKind, Span};
 use tracing::{debug, debug_span, instrument};
 
@@ -12,8 +13,9 @@ use crate::coverage::{ExtractedHirInfo, mappings, unexpand};
 
 mod from_mir;
 
-pub(super) fn extract_refined_covspans(
-    mir_body: &mir::Body<'_>,
+pub(super) fn extract_refined_covspans<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    mir_body: &mir::Body<'tcx>,
     hir_info: &ExtractedHirInfo,
     graph: &CoverageGraph,
     code_mappings: &mut impl Extend<mappings::CodeMapping>,
@@ -51,7 +53,7 @@ pub(super) fn extract_refined_covspans(
     // First, perform the passes that need macro information.
     covspans.sort_by(|a, b| graph.cmp_in_dominator_order(a.bcb, b.bcb));
     remove_unwanted_expansion_spans(&mut covspans);
-    split_visible_macro_spans(&mut covspans);
+    shrink_visible_macro_spans(tcx, &mut covspans);
 
     // We no longer need the extra information in `SpanFromMir`, so convert to `Covspan`.
     let mut covspans = covspans.into_iter().map(SpanFromMir::into_covspan).collect::<Vec<_>>();
@@ -128,35 +130,16 @@ fn remove_unwanted_expansion_spans(covspans: &mut Vec<SpanFromMir>) {
 }
 
 /// When a span corresponds to a macro invocation that is visible from the
-/// function body, split it into two parts. The first part covers just the
-/// macro name plus `!`, and the second part covers the rest of the macro
-/// invocation. This seems to give better results for code that uses macros.
-fn split_visible_macro_spans(covspans: &mut Vec<SpanFromMir>) {
-    let mut extra_spans = vec![];
+/// function body, truncate it to just the macro name plus `!`.
+/// This seems to give better results for code that uses macros.
+fn shrink_visible_macro_spans(tcx: TyCtxt<'_>, covspans: &mut Vec<SpanFromMir>) {
+    let source_map = tcx.sess.source_map();
 
-    covspans.retain(|covspan| {
-        let Some(ExpnKind::Macro(MacroKind::Bang, visible_macro)) = covspan.expn_kind else {
-            return true;
-        };
-
-        let split_len = visible_macro.as_str().len() as u32 + 1;
-        let (before, after) = covspan.span.split_at(split_len);
-        if !covspan.span.contains(before) || !covspan.span.contains(after) {
-            // Something is unexpectedly wrong with the split point.
-            // The debug assertion in `split_at` will have already caught this,
-            // but in release builds it's safer to do nothing and maybe get a
-            // bug report for unexpected coverage, rather than risk an ICE.
-            return true;
+    for covspan in covspans {
+        if matches!(covspan.expn_kind, Some(ExpnKind::Macro(MacroKind::Bang, _))) {
+            covspan.span = source_map.span_through_char(covspan.span, '!');
         }
-
-        extra_spans.push(SpanFromMir::new(before, covspan.expn_kind.clone(), covspan.bcb));
-        extra_spans.push(SpanFromMir::new(after, covspan.expn_kind.clone(), covspan.bcb));
-        false // Discard the original covspan that we just split.
-    });
-
-    // The newly-split spans are added at the end, so any previous sorting
-    // is not preserved.
-    covspans.extend(extra_spans);
+    }
 }
 
 /// Uses the holes to divide the given covspans into buckets, such that:

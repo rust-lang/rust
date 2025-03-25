@@ -1,19 +1,19 @@
 Function name: match_trivial::_uninhabited (unused)
-Raw bytes (9): 0x[01, 01, 00, 01, 00, 16, 01, 01, 10]
+Raw bytes (9): 0x[01, 01, 00, 01, 00, 16, 01, 01, 0e]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 1
-- Code(Zero) at (prev + 22, 1) to (start + 1, 16)
+- Code(Zero) at (prev + 22, 1) to (start + 1, 14)
 Highest counter ID seen: (none)
 
 Function name: match_trivial::trivial
-Raw bytes (14): 0x[01, 01, 00, 02, 01, 1e, 01, 01, 10, 01, 03, 0b, 05, 02]
+Raw bytes (14): 0x[01, 01, 00, 02, 01, 1e, 01, 01, 0e, 01, 03, 0b, 05, 02]
 Number of files: 1
 - file 0 => global file 1
 Number of expressions: 0
 Number of file 0 mappings: 2
-- Code(Counter(0)) at (prev + 30, 1) to (start + 1, 16)
+- Code(Counter(0)) at (prev + 30, 1) to (start + 1, 14)
 - Code(Counter(0)) at (prev + 3, 11) to (start + 5, 2)
 Highest counter ID seen: c0
 
