@@ -20,6 +20,50 @@ your `.git/hooks` folder as `pre-push` (without the `.sh` extension!).
 
 You can also install the hook as a step of running `./x setup`!
 
+## Local bootstrap profiles
+
+When working on different tasks, you might need to switch between different bootstrap configurations.
+Sometimes you may want to keep an old configuration for future use. But saving raw config values in
+random files and manually copying and pasting them can quickly become messy, especially if you have a
+long history of different configurations.
+
+To simplify managing multiple configurations, you can create local profiles and switch between them easily.
+
+For example, you can create `cross` profile by creating `cross.toml` file this:
+
+```toml
+[build]
+build = "x86_64-unknown-linux-gnu"
+host = ["i686-unknown-linux-gnu"]
+target = ["i686-unknown-linux-gnu"]
+
+
+[llvm]
+download-ci-llvm = false
+
+[target.x86_64-unknown-linux-gnu]
+llvm-config = "/path/to/llvm-19/bin/llvm-config"
+```
+
+Then, use this profile in your `bootstrap.toml`:
+
+```toml
+profile = "cross"
+```
+
+You can also define recursive profiles, meaning that local profiles can inherit other profiles.
+
+For example, you can:
+
+1. Create `some-config1` profile in `some-config1.toml`.
+2. Create `some-config2` profile in `some-config2.toml` and inherit `some-config1`.
+3. Create `some-config3` profile in `some-config3.toml` and inherit `some-config2`.
+4. ...
+
+You can chain profiles like this as deep as you need without any limitations.
+
+Note: The outer configuration file always overrides the inner one.
+
 ## Configuring `rust-analyzer` for `rustc`
 
 ### Project-local rust-analyzer setup
