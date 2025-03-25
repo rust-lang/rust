@@ -302,50 +302,6 @@ impl<'tcx> InstanceKind<'tcx> {
         )
     }
 
-    /// Returns `true` if the machine code for this instance is instantiated in
-    /// each codegen unit that references it.
-    /// Note that this is only a hint! The compiler can globally decide to *not*
-    /// do this in order to speed up compilation. CGU-internal copies are
-    /// only exist to enable inlining. If inlining is not performed (e.g. at
-    /// `-Copt-level=0`) then the time for generating them is wasted and it's
-    /// better to create a single copy with external linkage.
-    pub fn generates_cgu_internal_copy(&self, tcx: TyCtxt<'tcx>) -> bool {
-        if self.requires_inline(tcx) {
-            return true;
-        }
-        if let ty::InstanceKind::DropGlue(.., Some(ty))
-        | ty::InstanceKind::AsyncDropGlueCtorShim(.., Some(ty)) = *self
-        {
-            // Drop glue generally wants to be instantiated at every codegen
-            // unit, but without an #[inline] hint. We should make this
-            // available to normal end-users.
-            if tcx.sess.opts.incremental.is_none() {
-                return true;
-            }
-            // When compiling with incremental, we can generate a *lot* of
-            // codegen units. Including drop glue into all of them has a
-            // considerable compile time cost.
-            //
-            // We include enums without destructors to allow, say, optimizing
-            // drops of `Option::None` before LTO. We also respect the intent of
-            // `#[inline]` on `Drop::drop` implementations.
-            return ty.ty_adt_def().is_none_or(|adt_def| {
-                match *self {
-                    ty::InstanceKind::DropGlue(..) => adt_def.destructor(tcx).map(|dtor| dtor.did),
-                    ty::InstanceKind::AsyncDropGlueCtorShim(..) => {
-                        adt_def.async_destructor(tcx).map(|dtor| dtor.ctor)
-                    }
-                    _ => unreachable!(),
-                }
-                .map_or_else(|| adt_def.is_enum(), |did| tcx.cross_crate_inlinable(did))
-            });
-        }
-        if let ty::InstanceKind::ThreadLocalShim(..) = *self {
-            return false;
-        }
-        tcx.cross_crate_inlinable(self.def_id())
-    }
-
     pub fn requires_caller_location(&self, tcx: TyCtxt<'_>) -> bool {
         match *self {
             InstanceKind::Item(def_id) | InstanceKind::Virtual(def_id, _) => {

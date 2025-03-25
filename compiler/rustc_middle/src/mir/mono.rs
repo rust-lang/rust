@@ -21,7 +21,7 @@ use tracing::debug;
 
 use crate::dep_graph::{DepNode, WorkProduct, WorkProductId};
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
-use crate::ty::{GenericArgs, Instance, InstanceKind, SymbolName, TyCtxt};
+use crate::ty::{self, GenericArgs, Instance, InstanceKind, SymbolName, Ty, TyCtxt};
 
 /// Describes how a monomorphization will be instantiated in object files.
 #[derive(PartialEq)]
@@ -53,6 +53,39 @@ pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
     GlobalAsm(ItemId),
+}
+
+fn opt_incr_drop_glue_mode<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> InstantiationMode {
+    // Non-ADTs can't have a Drop impl. This case is mostly hit by closures whose captures require
+    // dropping.
+    let ty::Adt(adt_def, _) = ty.kind() else {
+        return InstantiationMode::LocalCopy;
+    };
+
+    // Types that don't have a direct Drop impl, but have fields that require dropping.
+    let Some(dtor) = adt_def.destructor(tcx) else {
+        // We use LocalCopy for drops of enums only; this code is inherited from
+        // https://github.com/rust-lang/rust/pull/67332 and the theory is that we get to optimize
+        // out code like drop_in_place(Option::None) before crate-local ThinLTO, which improves
+        // compile time. At the time of writing, simply removing this entire check does seem to
+        // regress incr-opt compile times. But it sure seems like a more sophisticated check could
+        // do better here.
+        if adt_def.is_enum() {
+            return InstantiationMode::LocalCopy;
+        } else {
+            return InstantiationMode::GloballyShared { may_conflict: true };
+        }
+    };
+
+    // We've gotten to a drop_in_place for a type that directly implements Drop.
+    // The drop glue is a wrapper for the Drop::drop impl, and we are an optimized build, so in an
+    // effort to coordinate with the mode that the actual impl will get, we make the glue also
+    // LocalCopy.
+    if tcx.cross_crate_inlinable(dtor.did) {
+        InstantiationMode::LocalCopy
+    } else {
+        InstantiationMode::GloballyShared { may_conflict: true }
+    }
 }
 
 impl<'tcx> MonoItem<'tcx> {
@@ -124,16 +157,36 @@ impl<'tcx> MonoItem<'tcx> {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
-        // FIXME: The logic for which functions are permitted to get LocalCopy is actually spread
-        // across 4 functions:
-        // * cross_crate_inlinable(def_id)
-        // * InstanceKind::requires_inline
-        // * InstanceKind::generate_cgu_internal_copy
-        // * MonoItem::instantiation_mode
-        // Since reachable_non_generics calls InstanceKind::generates_cgu_internal_copy to decide
-        // which symbols this crate exports, we are obligated to only generate LocalCopy when
-        // generates_cgu_internal_copy returns true.
-        if !instance.def.generates_cgu_internal_copy(tcx) {
+        // This is technically a heuristic even though it's in the "not a heuristic" part of
+        // instantiation mode selection.
+        // It is surely possible to untangle this; the root problem is that the way we instantiate
+        // InstanceKind other than Item is very complicated.
+        //
+        // The fallback case is to give everything else GloballyShared at OptLevel::No and
+        // LocalCopy at all other opt levels. This is a good default, except for one specific build
+        // configuration: Optimized incremental builds.
+        // In the current compiler architecture there is a fundamental tension between
+        // optimizations (which want big CGUs with as many things LocalCopy as possible) and
+        // incrementality (which wants small CGUs with as many things GloballyShared as possible).
+        // The heuristics implemented here do better than a completely naive approach in the
+        // compiler benchmark suite, but there is no reason to believe they are optimal.
+        if let InstanceKind::DropGlue(_, Some(ty)) = instance.def {
+            if tcx.sess.opts.optimize == OptLevel::No {
+                return InstantiationMode::GloballyShared { may_conflict: false };
+            }
+            if tcx.sess.opts.incremental.is_none() {
+                return InstantiationMode::LocalCopy;
+            }
+            return opt_incr_drop_glue_mode(tcx, ty);
+        }
+
+        // We need to ensure that we do not decide the InstantiationMode of an exported symbol is
+        // LocalCopy. Since exported symbols are computed based on the output of
+        // cross_crate_inlinable, we are beholden to our previous decisions.
+        //
+        // Note that just like above, this check for requires_inline is technically a heuristic
+        // even though it's in the "not a heuristic" part of instantiation mode selection.
+        if !tcx.cross_crate_inlinable(instance.def_id()) && !instance.def.requires_inline(tcx) {
             return InstantiationMode::GloballyShared { may_conflict: false };
         }
 
