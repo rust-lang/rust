@@ -22,8 +22,6 @@ const FOO: <[()] as Bad>::Assert = todo!();
 //[bad]~| ERROR the size for values of type `[()]` cannot be known at compilation time
 //[bad_new]~^^^ ERROR the size for values of type `[()]` cannot be known at compilation time
 //[bad_new]~| ERROR the size for values of type `[()]` cannot be known at compilation time
-//[bad_new]~| ERROR type mismatch resolving `<[()] as Bad>::Assert normalizes-to <[()] as Bad>::Assert`
-//[bad_new]~| ERROR type mismatch resolving `<[()] as Bad>::Assert normalizes-to <[()] as Bad>::Assert`
 
 #[cfg(any(good, good_new))]
 // Well-formed in trivially false param-env

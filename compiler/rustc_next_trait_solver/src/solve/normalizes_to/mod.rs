@@ -134,7 +134,7 @@ where
                     // Add GAT where clauses from the trait's definition
                     // FIXME: We don't need these, since these are the type's own WF obligations.
                     ecx.add_goals(
-                        GoalSource::Misc,
+                        GoalSource::AliasWellFormed,
                         cx.own_predicates_of(goal.predicate.def_id())
                             .iter_instantiated(cx, goal.predicate.alias.args)
                             .map(|pred| goal.with(cx, pred)),
@@ -199,7 +199,7 @@ where
             // Add GAT where clauses from the trait's definition.
             // FIXME: We don't need these, since these are the type's own WF obligations.
             ecx.add_goals(
-                GoalSource::Misc,
+                GoalSource::AliasWellFormed,
                 cx.own_predicates_of(goal.predicate.def_id())
                     .iter_instantiated(cx, goal.predicate.alias.args)
                     .map(|pred| goal.with(cx, pred)),
