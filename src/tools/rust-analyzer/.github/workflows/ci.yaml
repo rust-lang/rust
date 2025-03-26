@@ -70,6 +70,9 @@ jobs:
       - name: Test
         run: cargo test --features sysroot-abi -p proc-macro-srv -p proc-macro-srv-cli -p proc-macro-api -- --quiet
 
+      - name: Check salsa dependency
+        run: "! (cargo tree -p proc-macro-srv-cli | grep -q salsa)"
+
   rust:
     if: github.repository == 'rust-lang/rust-analyzer'
     name: Rust

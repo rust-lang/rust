@@ -180,6 +180,22 @@ impl EditionedFileId {
     }
 }
 
+#[cfg(not(feature = "salsa"))]
+mod salsa {
+    #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub(crate) struct Id(u32);
+
+    impl Id {
+        pub(crate) const fn from_u32(u32: u32) -> Self {
+            Self(u32)
+        }
+
+        pub(crate) const fn as_u32(self) -> u32 {
+            self.0
+        }
+    }
+}
+
 /// Input to the analyzer is a set of files, where each file is identified by
 /// `FileId` and contains source code. However, another source of source code in
 /// Rust are macros: each macro can be thought of as producing a "temporary
@@ -201,12 +217,14 @@ impl EditionedFileId {
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct HirFileId(salsa::Id);
 
+#[cfg(feature = "salsa")]
 impl salsa::plumbing::AsId for HirFileId {
     fn as_id(&self) -> salsa::Id {
         self.0
     }
 }
 
+#[cfg(feature = "salsa")]
 impl salsa::plumbing::FromId for HirFileId {
     fn from_id(id: salsa::Id) -> Self {
         HirFileId(id)
@@ -273,12 +291,14 @@ pub struct MacroFileId {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MacroCallId(salsa::Id);
 
+#[cfg(feature = "salsa")]
 impl salsa::plumbing::AsId for MacroCallId {
     fn as_id(&self) -> salsa::Id {
         self.0
     }
 }
 
+#[cfg(feature = "salsa")]
 impl salsa::plumbing::FromId for MacroCallId {
     fn from_id(id: salsa::Id) -> Self {
         MacroCallId(id)
