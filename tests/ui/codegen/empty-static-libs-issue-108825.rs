@@ -5,7 +5,7 @@
 //@ build-pass
 //@ error-pattern: note: native-static-libs:
 //@ dont-check-compiler-stderr libcore links `/defaultlib:msvcrt` or `/defaultlib:libcmt` on MSVC
-//@ ignore-cross-compile doesn't produce any output on i686-unknown-linux-gnu for some reason?
+//-@ ignore-cross-compile doesn't produce any output on i686-unknown-linux-gnu for some reason?
 
 #![crate_type = "staticlib"]
 #![no_std]
