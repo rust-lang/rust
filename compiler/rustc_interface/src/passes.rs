@@ -1,5 +1,5 @@
 use std::any::Any;
-use std::ffi::OsString;
+use std::ffi::{OsStr, OsString};
 use std::io::{self, BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, LazyLock, OnceLock};
@@ -359,6 +359,31 @@ fn early_lint_checks(tcx: TyCtxt<'_>, (): ()) {
         rustc_lint::BuiltinCombinedEarlyLintPass::new(),
         (&**krate, &*krate.attrs),
     )
+}
+
+fn env_var_os<'tcx>(tcx: TyCtxt<'tcx>, key: &'tcx OsStr) -> Option<&'tcx OsStr> {
+    let value = env::var_os(key);
+
+    let value_tcx = value.as_ref().map(|value| {
+        let encoded_bytes = tcx.arena.alloc_slice(value.as_encoded_bytes());
+        debug_assert_eq!(value.as_encoded_bytes(), encoded_bytes);
+        // SAFETY: The bytes came from `as_encoded_bytes`, and we assume that
+        // `alloc_slice` is implemented correctly, and passes the same bytes
+        // back (debug asserted above).
+        unsafe { OsStr::from_encoded_bytes_unchecked(encoded_bytes) }
+    });
+
+    // Also add the variable to Cargo's dependency tracking
+    //
+    // NOTE: This only works for passes run before `write_dep_info`. See that
+    // for extension points for configuring environment variables to be
+    // properly change-tracked.
+    tcx.sess.psess.env_depinfo.borrow_mut().insert((
+        Symbol::intern(&key.to_string_lossy()),
+        value.as_ref().and_then(|value| value.to_str()).map(|value| Symbol::intern(&value)),
+    ));
+
+    value_tcx
 }
 
 // Returns all the paths that correspond to generated files.
@@ -725,6 +750,7 @@ pub static DEFAULT_QUERY_PROVIDERS: LazyLock<Providers> = LazyLock::new(|| {
         |tcx, _| tcx.arena.alloc_from_iter(tcx.resolutions(()).stripped_cfg_items.steal());
     providers.resolutions = |tcx, ()| tcx.resolver_for_lowering_raw(()).1;
     providers.early_lint_checks = early_lint_checks;
+    providers.env_var_os = env_var_os;
     limits::provide(providers);
     proc_macro_decls::provide(providers);
     rustc_const_eval::provide(providers);

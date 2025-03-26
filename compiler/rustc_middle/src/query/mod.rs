@@ -6,6 +6,7 @@
 
 #![allow(unused_parens)]
 
+use std::ffi::OsStr;
 use std::mem;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -117,6 +118,21 @@ rustc_queries! {
 
     query early_lint_checks(_: ()) {
         desc { "perform lints prior to AST lowering" }
+    }
+
+    /// Tracked access to environment variables.
+    ///
+    /// Useful for the implementation of `std::env!`, `proc-macro`s change
+    /// detection and other changes in the compiler's behaviour that is easier
+    /// to control with an environment variable than a flag.
+    ///
+    /// NOTE: This currently does not work with dependency info in the
+    /// analysis, codegen and linking passes, place extra code at the top of
+    /// `rustc_interface::passes::write_dep_info` to make that work.
+    query env_var_os(key: &'tcx OsStr) -> Option<&'tcx OsStr> {
+        // Environment variables are global state
+        eval_always
+        desc { "get the value of an environment variable" }
     }
 
     query resolutions(_: ()) -> &'tcx ty::ResolverGlobalCtxt {
