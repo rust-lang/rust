@@ -123,18 +123,6 @@ unsafe extern "C" fn invalid_may_unwind() {
 }
 
 #[naked]
-pub unsafe fn default_abi() {
-    //~^ WARN Rust ABI is unsupported in naked functions
-    naked_asm!("");
-}
-
-#[naked]
-pub unsafe fn rust_abi() {
-    //~^ WARN Rust ABI is unsupported in naked functions
-    naked_asm!("");
-}
-
-#[naked]
 pub extern "C" fn valid_a<T>() -> T {
     unsafe {
         naked_asm!("");
