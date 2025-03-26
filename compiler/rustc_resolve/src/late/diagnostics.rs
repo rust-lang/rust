@@ -450,7 +450,6 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
             err.span_suggestion_verbose(sugg.0, sugg.1, &sugg.2, Applicability::MaybeIncorrect);
         }
 
-        self.suggest_bare_struct_literal(&mut err);
         self.suggest_changing_type_to_const_param(&mut err, res, source, span);
         self.explain_functions_in_pattern(&mut err, res, source);
 
@@ -1276,19 +1275,6 @@ impl<'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'_, 'ast, 'ra, 'tcx> {
                     vec![(trait_ref.path.span, self_ty_str), (self_ty.span, trait_ref_str)],
                     Applicability::MaybeIncorrect,
                 );
-        }
-    }
-
-    fn suggest_bare_struct_literal(&mut self, err: &mut Diag<'_>) {
-        if let Some(span) = self.diag_metadata.current_block_could_be_bare_struct_literal {
-            err.multipart_suggestion(
-                "you might have meant to write a `struct` literal",
-                vec![
-                    (span.shrink_to_lo(), "{ SomeStruct ".to_string()),
-                    (span.shrink_to_hi(), "}".to_string()),
-                ],
-                Applicability::HasPlaceholders,
-            );
         }
     }
 

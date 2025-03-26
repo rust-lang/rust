@@ -1,31 +1,132 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::fmt::Debug;
 
 use build_helper::metrics::{
-    BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, format_build_steps,
+    BuildStep, JsonRoot, TestOutcome, TestSuite, TestSuiteMetadata, escape_step_name,
+    format_build_steps,
 };
 
 use crate::metrics;
 use crate::metrics::{JobMetrics, JobName, get_test_suites};
 use crate::utils::{output_details, pluralize};
 
-pub fn output_bootstrap_stats(metrics: &JsonRoot) {
+/// Outputs durations of individual bootstrap steps from the gathered bootstrap invocations,
+/// and also a table with summarized information about executed tests.
+pub fn output_bootstrap_stats(metrics: &JsonRoot, parent_metrics: Option<&JsonRoot>) {
     if !metrics.invocations.is_empty() {
         println!("# Bootstrap steps");
-        record_bootstrap_step_durations(&metrics);
+        record_bootstrap_step_durations(&metrics, parent_metrics);
         record_test_suites(&metrics);
     }
 }
 
-fn record_bootstrap_step_durations(metrics: &JsonRoot) {
+fn record_bootstrap_step_durations(metrics: &JsonRoot, parent_metrics: Option<&JsonRoot>) {
+    let parent_steps: HashMap<String, BuildStep> = parent_metrics
+        .map(|metrics| {
+            metrics
+                .invocations
+                .iter()
+                .map(|invocation| {
+                    (invocation.cmdline.clone(), BuildStep::from_invocation(invocation))
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     for invocation in &metrics.invocations {
         let step = BuildStep::from_invocation(invocation);
         let table = format_build_steps(&step);
         eprintln!("Step `{}`\n{table}\n", invocation.cmdline);
-        output_details(&invocation.cmdline, || {
+        output_details(&format!("{} (steps)", invocation.cmdline), || {
             println!("<pre><code>{table}</code></pre>");
         });
+
+        // If there was a parent bootstrap invocation with the same cmdline, diff it
+        if let Some(parent_step) = parent_steps.get(&invocation.cmdline) {
+            let table = format_build_step_diffs(&step, parent_step);
+
+            let duration_before = parent_step.duration.as_secs();
+            let duration_after = step.duration.as_secs();
+            output_details(
+                &format!("{} (diff) ({duration_before}s -> {duration_after}s)", invocation.cmdline),
+                || {
+                    println!("{table}");
+                },
+            );
+        }
     }
     eprintln!("Recorded {} bootstrap invocation(s)", metrics.invocations.len());
+}
+
+/// Creates a table that displays a diff between the durations of steps between
+/// two bootstrap invocations.
+/// It also shows steps that were missing before/after.
+fn format_build_step_diffs(current: &BuildStep, parent: &BuildStep) -> String {
+    use std::fmt::Write;
+
+    // Helper struct that compares steps by their full name
+    struct StepByName<'a>((u32, &'a BuildStep));
+
+    impl<'a> PartialEq for StepByName<'a> {
+        fn eq(&self, other: &Self) -> bool {
+            self.0.1.full_name.eq(&other.0.1.full_name)
+        }
+    }
+
+    fn get_steps(step: &BuildStep) -> Vec<StepByName> {
+        step.linearize_steps().into_iter().map(|v| StepByName(v)).collect()
+    }
+
+    let steps_before = get_steps(parent);
+    let steps_after = get_steps(current);
+
+    let mut table = "| Step | Before | After | Change |\n".to_string();
+    writeln!(table, "|:-----|-------:|------:|-------:|").unwrap();
+
+    // Try to match removed, added and same steps using a classic diff algorithm
+    for result in diff::slice(&steps_before, &steps_after) {
+        let (step, before, after, change) = match result {
+            // The step was found both before and after
+            diff::Result::Both(before, after) => {
+                let duration_before = before.0.1.duration;
+                let duration_after = after.0.1.duration;
+                let pct_change = duration_after.as_secs_f64() / duration_before.as_secs_f64();
+                let pct_change = pct_change * 100.0;
+                // Normalize around 100, to get + for regression and - for improvements
+                let pct_change = pct_change - 100.0;
+                (
+                    before,
+                    format!("{:.2}s", duration_before.as_secs_f64()),
+                    format!("{:.2}s", duration_after.as_secs_f64()),
+                    format!("{pct_change:.1}%"),
+                )
+            }
+            // The step was only found in the parent, so it was likely removed
+            diff::Result::Left(removed) => (
+                removed,
+                format!("{:.2}s", removed.0.1.duration.as_secs_f64()),
+                "".to_string(),
+                "(removed)".to_string(),
+            ),
+            // The step was only found in the current commit, so it was likely added
+            diff::Result::Right(added) => (
+                added,
+                "".to_string(),
+                format!("{:.2}s", added.0.1.duration.as_secs_f64()),
+                "(added)".to_string(),
+            ),
+        };
+
+        let prefix = ".".repeat(step.0.0 as usize);
+        writeln!(
+            table,
+            "| {prefix}{} | {before} | {after} | {change} |",
+            escape_step_name(step.0.1),
+        )
+        .unwrap();
+    }
+
+    table
 }
 
 fn record_test_suites(metrics: &JsonRoot) {
@@ -82,8 +183,7 @@ fn render_table(suites: BTreeMap<String, TestSuiteRecord>) -> String {
     table
 }
 
-/// Computes a post merge CI analysis report of test differences
-/// between the `parent` and `current` commits.
+/// Outputs a report of test differences between the `parent` and `current` commits.
 pub fn output_test_diffs(job_metrics: HashMap<JobName, JobMetrics>) {
     let aggregated_test_diffs = aggregate_test_diffs(&job_metrics);
     report_test_diffs(aggregated_test_diffs);

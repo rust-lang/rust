@@ -545,14 +545,6 @@ pub struct Block {
     pub rules: BlockCheckMode,
     pub span: Span,
     pub tokens: Option<LazyAttrTokenStream>,
-    /// The following *isn't* a parse error, but will cause multiple errors in following stages.
-    /// ```compile_fail
-    /// let x = {
-    ///     foo: var
-    /// };
-    /// ```
-    /// #34255
-    pub could_be_bare_literal: bool,
 }
 
 /// A match pattern.

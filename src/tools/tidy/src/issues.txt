@@ -3189,7 +3189,6 @@ ui/parser/issues/issue-108495-dec.rs
 ui/parser/issues/issue-110014.rs
 ui/parser/issues/issue-111148.rs
 ui/parser/issues/issue-111416.rs
-ui/parser/issues/issue-111692.rs
 ui/parser/issues/issue-112188.rs
 ui/parser/issues/issue-112458.rs
 ui/parser/issues/issue-113110-non-item-at-module-root.rs

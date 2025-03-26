@@ -14,7 +14,7 @@ use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId, LocalModDefId};
 use rustc_hir::*;
 use rustc_macros::{Decodable, Encodable, HashStable};
-use rustc_span::{ErrorGuaranteed, ExpnId};
+use rustc_span::{ErrorGuaranteed, ExpnId, Span};
 
 use crate::query::Providers;
 use crate::ty::{EarlyBinder, ImplSubject, TyCtxt};
@@ -157,6 +157,7 @@ impl<'tcx> TyCtxt<'tcx> {
         node: OwnerNode<'_>,
         bodies: &SortedMap<ItemLocalId, &Body<'_>>,
         attrs: &SortedMap<ItemLocalId, &[Attribute]>,
+        define_opaque: Option<&[(Span, LocalDefId)]>,
     ) -> (Option<Fingerprint>, Option<Fingerprint>) {
         if self.needs_crate_hash() {
             self.with_stable_hashing_context(|mut hcx| {
@@ -168,6 +169,10 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 let mut stable_hasher = StableHasher::new();
                 attrs.hash_stable(&mut hcx, &mut stable_hasher);
+
+                // Hash the defined opaque types, which are not present in the attrs.
+                define_opaque.hash_stable(&mut hcx, &mut stable_hasher);
+
                 let h2 = stable_hasher.finish();
                 (Some(h1), Some(h2))
             })

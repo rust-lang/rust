@@ -470,8 +470,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // than one, but it'd be very unusual to have two sides that
         // both require tests; you'd expect one side to be simplified
         // away.)
-        let (match_pair_index, match_pair) =
-            candidate.match_pairs.iter().enumerate().find(|&(_, mp)| mp.place == test_place)?;
+        let (match_pair_index, match_pair) = candidate
+            .match_pairs
+            .iter()
+            .enumerate()
+            .find(|&(_, mp)| mp.place == Some(test_place))?;
 
         // If true, the match pair is completely entailed by its corresponding test
         // branch, so it can be removed. If false, the match pair is _compatible_
@@ -514,7 +517,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     candidate
                         .match_pairs
                         .iter()
-                        .any(|mp| mp.place == test_place && is_covering_range(&mp.test_case))
+                        .any(|mp| mp.place == Some(test_place) && is_covering_range(&mp.test_case))
                 };
                 if sorted_candidates
                     .get(&TestBranch::Failure)

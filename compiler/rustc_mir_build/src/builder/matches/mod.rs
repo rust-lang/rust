@@ -13,13 +13,13 @@ use std::sync::Arc;
 use rustc_abi::VariantIdx;
 use rustc_data_structures::fx::FxIndexMap;
 use rustc_data_structures::stack::ensure_sufficient_stack;
-use rustc_hir::{BindingMode, ByRef};
+use rustc_hir::{BindingMode, ByRef, LetStmt, LocalSource, Node};
 use rustc_middle::bug;
 use rustc_middle::middle::region;
 use rustc_middle::mir::{self, *};
 use rustc_middle::thir::{self, *};
 use rustc_middle::ty::{self, CanonicalUserTypeAnnotation, Ty};
-use rustc_span::{BytePos, Pos, Span, Symbol};
+use rustc_span::{BytePos, Pos, Span, Symbol, sym};
 use tracing::{debug, instrument};
 
 use crate::builder::ForGuard::{self, OutsideGuard, RefWithinGuard};
@@ -1279,7 +1279,13 @@ impl<'tcx> TestCase<'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPairTree<'tcx> {
     /// This place...
-    place: Place<'tcx>,
+    ///
+    /// ---
+    /// This can be `None` if it referred to a non-captured place in a closure.
+    ///
+    /// Invariant: Can only be `None` when `test_case` is `Or`.
+    /// Therefore this must be `Some(_)` after or-pattern expansion.
+    place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
     test_case: TestCase<'tcx>,
@@ -2099,9 +2105,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
+        // Unwrap is ok after simplification.
+        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
-        (match_pair.place, test)
+        (match_place, test)
     }
 
     /// Given a test, we partition the input candidates into several buckets.
@@ -2796,13 +2804,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             )))),
         };
         let for_arm_body = self.local_decls.push(local);
-        self.var_debug_info.push(VarDebugInfo {
-            name,
-            source_info: debug_source_info,
-            value: VarDebugInfoContents::Place(for_arm_body.into()),
-            composite: None,
-            argument_index: None,
-        });
+        if self.should_emit_debug_info_for_binding(name, var_id) {
+            self.var_debug_info.push(VarDebugInfo {
+                name,
+                source_info: debug_source_info,
+                value: VarDebugInfoContents::Place(for_arm_body.into()),
+                composite: None,
+                argument_index: None,
+            });
+        }
         let locals = if has_guard.0 {
             let ref_for_guard = self.local_decls.push(LocalDecl::<'tcx> {
                 // This variable isn't mutated but has a name, so has to be
@@ -2815,18 +2825,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     BindingForm::RefForGuard,
                 ))),
             });
-            self.var_debug_info.push(VarDebugInfo {
-                name,
-                source_info: debug_source_info,
-                value: VarDebugInfoContents::Place(ref_for_guard.into()),
-                composite: None,
-                argument_index: None,
-            });
+            if self.should_emit_debug_info_for_binding(name, var_id) {
+                self.var_debug_info.push(VarDebugInfo {
+                    name,
+                    source_info: debug_source_info,
+                    value: VarDebugInfoContents::Place(ref_for_guard.into()),
+                    composite: None,
+                    argument_index: None,
+                });
+            }
             LocalsForNode::ForGuard { ref_for_guard, for_arm_body }
         } else {
             LocalsForNode::One(for_arm_body)
         };
         debug!(?locals);
         self.var_indices.insert(var_id, locals);
+    }
+
+    /// Some bindings are introduced when producing HIR from the AST and don't
+    /// actually exist in the source. Skip producing debug info for those when
+    /// we can recognize them.
+    fn should_emit_debug_info_for_binding(&self, name: Symbol, var_id: LocalVarId) -> bool {
+        // For now we only recognize the output of desugaring assigns.
+        if name != sym::lhs {
+            return true;
+        }
+
+        let tcx = self.tcx;
+        for (_, node) in tcx.hir_parent_iter(var_id.0) {
+            // FIXME(khuey) at what point is it safe to bail on the iterator?
+            // Can we stop at the first non-Pat node?
+            if matches!(node, Node::LetStmt(&LetStmt { source: LocalSource::AssignDesugar(_), .. }))
+            {
+                return false;
+            }
+        }
+
+        true
     }
 }
