@@ -4,7 +4,7 @@ error[E0505]: cannot move out of `ts` because it is borrowed
 LL |     let _b = || { match ts {
    |              --         -- borrow occurs due to use in closure
    |              |
-   |              borrow of `ts` occurs here
+   |              borrow of `ts.x` occurs here
 ...
 LL |     let mut mut_ts = ts;
    |                      ^^ move out of `ts` occurs here
