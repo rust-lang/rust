@@ -645,6 +645,7 @@ define_Conf! {
         iter_kv_map,
         legacy_numeric_constants,
         lines_filter_map_ok,
+        manual_abs_diff,
         manual_bits,
         manual_c_str_literals,
         manual_clamp,

@@ -313,6 +313,7 @@ pub static LINTS: &[&crate::LintInfo] = &[
     crate::macro_metavars_in_unsafe::MACRO_METAVARS_IN_UNSAFE_INFO,
     crate::macro_use::MACRO_USE_IMPORTS_INFO,
     crate::main_recursion::MAIN_RECURSION_INFO,
+    crate::manual_abs_diff::MANUAL_ABS_DIFF_INFO,
     crate::manual_assert::MANUAL_ASSERT_INFO,
     crate::manual_async_fn::MANUAL_ASYNC_FN_INFO,
     crate::manual_bits::MANUAL_BITS_INFO,
