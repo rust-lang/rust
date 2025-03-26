@@ -1810,9 +1810,9 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialEq for $t {
                 #[inline]
-                fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
+                fn eq(&self, other: &Self) -> bool { *self == *other }
                 #[inline]
-                fn ne(&self, other: &$t) -> bool { (*self) != (*other) }
+                fn ne(&self, other: &Self) -> bool { *self != *other }
             }
         )*)
     }
@@ -1842,8 +1842,18 @@ mod impls {
 
     eq_impl! { () bool char usize u8 u16 u32 u64 u128 isize i8 i16 i32 i64 i128 }
 
-    macro_rules! chaining_methods_impl {
-        ($t:ty) => {
+    #[rustfmt::skip]
+    macro_rules! partial_ord_methods_primitive_impl {
+        () => {
+            #[inline(always)]
+            fn lt(&self, other: &Self) -> bool { *self <  *other }
+            #[inline(always)]
+            fn le(&self, other: &Self) -> bool { *self <= *other }
+            #[inline(always)]
+            fn gt(&self, other: &Self) -> bool { *self >  *other }
+            #[inline(always)]
+            fn ge(&self, other: &Self) -> bool { *self >= *other }
+
             // These implementations are the same for `Ord` or `PartialOrd` types
             // because if either is NAN the `==` test will fail so we end up in
             // the `Break` case and the comparison will correctly return `false`.
@@ -1876,7 +1886,7 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
                 #[inline]
-                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     match (*self <= *other, *self >= *other) {
                         (false, false) => None,
                         (false, true) => Some(Greater),
@@ -1884,16 +1894,8 @@ mod impls {
                         (true, true) => Some(Equal),
                     }
                 }
-                #[inline(always)]
-                fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline(always)]
-                fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline(always)]
-                fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline(always)]
-                fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
 
-                chaining_methods_impl!($t);
+                partial_ord_methods_primitive_impl!();
             }
         )*)
     }
@@ -1912,6 +1914,8 @@ mod impls {
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
             Some(self.cmp(other))
         }
+
+        partial_ord_methods_primitive_impl!();
     }
 
     partial_ord_impl! { f16 f32 f64 f128 }
@@ -1921,25 +1925,17 @@ mod impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
                 #[inline]
-                fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
+                fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
                     Some(crate::intrinsics::three_way_compare(*self, *other))
                 }
-                #[inline(always)]
-                fn lt(&self, other: &$t) -> bool { (*self) < (*other) }
-                #[inline(always)]
-                fn le(&self, other: &$t) -> bool { (*self) <= (*other) }
-                #[inline(always)]
-                fn ge(&self, other: &$t) -> bool { (*self) >= (*other) }
-                #[inline(always)]
-                fn gt(&self, other: &$t) -> bool { (*self) > (*other) }
 
-                chaining_methods_impl!($t);
+                partial_ord_methods_primitive_impl!();
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl Ord for $t {
                 #[inline]
-                fn cmp(&self, other: &$t) -> Ordering {
+                fn cmp(&self, other: &Self) -> Ordering {
                     crate::intrinsics::three_way_compare(*self, *other)
                 }
             }
