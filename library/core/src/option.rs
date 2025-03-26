@@ -159,11 +159,17 @@
 //!
 //! ## Querying the variant
 //!
-//! The [`is_some`] and [`is_none`] methods return [`true`] if the [`Option`]
-//! is [`Some`] or [`None`], respectively.
+//! The [`is_some`] and [`is_none`] methods take a borrow of the [`Option`]
+//! and return [`true`] if the [`Option`] is [`Some`] or [`None`], respectively.
+//!
+//! The [`is_some_and`] and [`is_none_or`] methods take ownership of the [`Option`]
+//! and apply the provided function to make a decision.
+//! The methods return the same boolean value as the function returns.
 //!
 //! [`is_none`]: Option::is_none
 //! [`is_some`]: Option::is_some
+//! [`is_some_and`]: Option::is_some_and
+//! [`is_none_or`]: Option::is_none_or
 //!
 //! ## Adapters for working with references
 //!
@@ -177,6 +183,10 @@
 //!   <code>[Option]<[Pin]<[&]T>></code>
 //! * [`as_pin_mut`] converts from <code>[Pin]<[&mut] [Option]\<T>></code> to
 //!   <code>[Option]<[Pin]<[&mut] T>></code>
+//! * [`as_slice`] returns a slice of the contained value, if any.
+//!   If this is [`None`], an empty slice is returned.
+//! * [`as_mut_slice`] returns a mutable slice of the contained value, if any.
+//!   If this is [`None`], an empty slice is returned.
 //!
 //! [&]: reference "shared reference"
 //! [&mut]: reference "mutable reference"
@@ -187,6 +197,8 @@
 //! [`as_pin_mut`]: Option::as_pin_mut
 //! [`as_pin_ref`]: Option::as_pin_ref
 //! [`as_ref`]: Option::as_ref
+//! [`as_slice`]: Option::as_slice
+//! [`as_mut_slice`]: Option::as_mut_slice
 //!
 //! ## Extracting the contained value
 //!
@@ -200,12 +212,16 @@
 //!   (which must implement the [`Default`] trait)
 //! * [`unwrap_or_else`] returns the result of evaluating the provided
 //!   function
+//! * [`unwrap_unchecked`] returns the contained value, without checking
+//!   calling this method on None is *[undefined behavior]*
 //!
 //! [`expect`]: Option::expect
 //! [`unwrap`]: Option::unwrap
 //! [`unwrap_or`]: Option::unwrap_or
 //! [`unwrap_or_default`]: Option::unwrap_or_default
 //! [`unwrap_or_else`]: Option::unwrap_or_else
+//! [`unwrap_unchecked`]: Option::unwrap_unchecked
+//! [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
 //!
 //! ## Transforming contained values
 //!
@@ -232,6 +248,8 @@
 //!   if the function returns `true`; otherwise, returns [`None`]
 //! * [`flatten`] removes one level of nesting from an
 //!   [`Option<Option<T>>`]
+//! * [`insert`] calls the provided function with a reference to
+//!   the contained value if [`Some`]
 //! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
 //!   provided function to the contained value of [`Some`] and leaving
 //!   [`None`] values unchanged
@@ -239,6 +257,7 @@
 //! [`Some(t)`]: Some
 //! [`filter`]: Option::filter
 //! [`flatten`]: Option::flatten
+//! [`insert`]: Option::insert
 //! [`map`]: Option::map
 //!
 //! These methods transform [`Option<T>`] to a value of a possibly
