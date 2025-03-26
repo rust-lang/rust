@@ -27,9 +27,9 @@
 use std::cell::RefCell;
 use std::collections::hash_map::Entry;
 use std::collections::hash_set::Entry as SetEntry;
-use std::fmt;
 use std::hash::Hash;
 use std::sync::Arc;
+use std::{fmt, iter, mem};
 
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -57,7 +57,11 @@ pub struct SyntaxContext(u32);
 impl !Ord for SyntaxContext {}
 impl !PartialOrd for SyntaxContext {}
 
-#[derive(Debug, Encodable, Decodable, Clone)]
+/// If this part of two syntax contexts is equal, then the whole syntax contexts should be equal.
+/// The other fields are only for caching.
+type SyntaxContextKey = (SyntaxContext, ExpnId, Transparency);
+
+#[derive(Clone, Copy, PartialEq, Debug, Encodable, Decodable)]
 pub struct SyntaxContextData {
     outer_expn: ExpnId,
     outer_transparency: Transparency,
@@ -68,6 +72,31 @@ pub struct SyntaxContextData {
     opaque_and_semitransparent: SyntaxContext,
     /// Name of the crate to which `$crate` with this context would resolve.
     dollar_crate_name: Symbol,
+}
+
+impl SyntaxContextData {
+    fn root() -> SyntaxContextData {
+        SyntaxContextData {
+            outer_expn: ExpnId::root(),
+            outer_transparency: Transparency::Opaque,
+            parent: SyntaxContext::root(),
+            opaque: SyntaxContext::root(),
+            opaque_and_semitransparent: SyntaxContext::root(),
+            dollar_crate_name: kw::DollarCrate,
+        }
+    }
+
+    fn decode_placeholder() -> SyntaxContextData {
+        SyntaxContextData { dollar_crate_name: kw::Empty, ..SyntaxContextData::root() }
+    }
+
+    fn is_decode_placeholder(&self) -> bool {
+        self.dollar_crate_name == kw::Empty
+    }
+
+    fn key(&self) -> SyntaxContextKey {
+        (self.parent, self.outer_expn, self.outer_transparency)
+    }
 }
 
 rustc_index::newtype_index! {
@@ -342,7 +371,7 @@ pub(crate) struct HygieneData {
     foreign_expn_hashes: FxHashMap<ExpnId, ExpnHash>,
     expn_hash_to_expn_id: UnhashMap<ExpnHash, ExpnId>,
     syntax_context_data: Vec<SyntaxContextData>,
-    syntax_context_map: FxHashMap<(SyntaxContext, ExpnId, Transparency), SyntaxContext>,
+    syntax_context_map: FxHashMap<SyntaxContextKey, SyntaxContext>,
     /// Maps the `local_hash` of an `ExpnData` to the next disambiguator value.
     /// This is used by `update_disambiguator` to keep track of which `ExpnData`s
     /// would have collisions without a disambiguator.
@@ -361,22 +390,16 @@ impl HygieneData {
             None,
         );
 
+        let root_ctxt_data = SyntaxContextData::root();
         HygieneData {
             local_expn_data: IndexVec::from_elem_n(Some(root_data), 1),
             local_expn_hashes: IndexVec::from_elem_n(ExpnHash(Fingerprint::ZERO), 1),
             foreign_expn_data: FxHashMap::default(),
             foreign_expn_hashes: FxHashMap::default(),
-            expn_hash_to_expn_id: std::iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
+            expn_hash_to_expn_id: iter::once((ExpnHash(Fingerprint::ZERO), ExpnId::root()))
                 .collect(),
-            syntax_context_data: vec![SyntaxContextData {
-                outer_expn: ExpnId::root(),
-                outer_transparency: Transparency::Opaque,
-                parent: SyntaxContext(0),
-                opaque: SyntaxContext(0),
-                opaque_and_semitransparent: SyntaxContext(0),
-                dollar_crate_name: kw::DollarCrate,
-            }],
-            syntax_context_map: FxHashMap::default(),
+            syntax_context_data: vec![root_ctxt_data],
+            syntax_context_map: iter::once((root_ctxt_data.key(), SyntaxContext(0))).collect(),
             expn_data_disambiguators: UnhashMap::default(),
         }
     }
@@ -425,23 +448,28 @@ impl HygieneData {
     }
 
     fn normalize_to_macros_2_0(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].opaque
     }
 
     fn normalize_to_macro_rules(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent
     }
 
     fn outer_expn(&self, ctxt: SyntaxContext) -> ExpnId {
+        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].outer_expn
     }
 
     fn outer_mark(&self, ctxt: SyntaxContext) -> (ExpnId, Transparency) {
+        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         let data = &self.syntax_context_data[ctxt.0 as usize];
         (data.outer_expn, data.outer_transparency)
     }
 
     fn parent_ctxt(&self, ctxt: SyntaxContext) -> SyntaxContext {
+        debug_assert!(!self.syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         self.syntax_context_data[ctxt.0 as usize].parent
     }
 
@@ -551,6 +579,7 @@ impl HygieneData {
         transparency: Transparency,
     ) -> SyntaxContext {
         let syntax_context_data = &mut self.syntax_context_data;
+        debug_assert!(!syntax_context_data[ctxt.0 as usize].is_decode_placeholder());
         let mut opaque = syntax_context_data[ctxt.0 as usize].opaque;
         let mut opaque_and_semitransparent =
             syntax_context_data[ctxt.0 as usize].opaque_and_semitransparent;
@@ -561,7 +590,7 @@ impl HygieneData {
                 .syntax_context_map
                 .entry((parent, expn_id, transparency))
                 .or_insert_with(|| {
-                    let new_opaque = SyntaxContext(syntax_context_data.len() as u32);
+                    let new_opaque = SyntaxContext::from_usize(syntax_context_data.len());
                     syntax_context_data.push(SyntaxContextData {
                         outer_expn: expn_id,
                         outer_transparency: transparency,
@@ -581,7 +610,7 @@ impl HygieneData {
                 .entry((parent, expn_id, transparency))
                 .or_insert_with(|| {
                     let new_opaque_and_semitransparent =
-                        SyntaxContext(syntax_context_data.len() as u32);
+                        SyntaxContext::from_usize(syntax_context_data.len());
                     syntax_context_data.push(SyntaxContextData {
                         outer_expn: expn_id,
                         outer_transparency: transparency,
@@ -596,8 +625,6 @@ impl HygieneData {
 
         let parent = ctxt;
         *self.syntax_context_map.entry((parent, expn_id, transparency)).or_insert_with(|| {
-            let new_opaque_and_semitransparent_and_transparent =
-                SyntaxContext(syntax_context_data.len() as u32);
             syntax_context_data.push(SyntaxContextData {
                 outer_expn: expn_id,
                 outer_transparency: transparency,
@@ -606,7 +633,7 @@ impl HygieneData {
                 opaque_and_semitransparent,
                 dollar_crate_name: kw::DollarCrate,
             });
-            new_opaque_and_semitransparent_and_transparent
+            SyntaxContext::from_usize(syntax_context_data.len() - 1)
         })
     }
 }
@@ -626,25 +653,26 @@ pub fn walk_chain_collapsed(span: Span, to: Span) -> Span {
 
 pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symbol) {
     // The new contexts that need updating are at the end of the list and have `$crate` as a name.
-    let (len, to_update) = HygieneData::with(|data| {
-        (
-            data.syntax_context_data.len(),
-            data.syntax_context_data
-                .iter()
-                .rev()
-                .take_while(|scdata| scdata.dollar_crate_name == kw::DollarCrate)
-                .count(),
-        )
+    // Also decoding placeholders can be encountered among both old and new contexts.
+    let mut to_update = vec![];
+    HygieneData::with(|data| {
+        for (idx, scdata) in data.syntax_context_data.iter().enumerate().rev() {
+            if scdata.dollar_crate_name == kw::DollarCrate {
+                to_update.push((idx, kw::DollarCrate));
+            } else if !scdata.is_decode_placeholder() {
+                break;
+            }
+        }
     });
     // The callback must be called from outside of the `HygieneData` lock,
     // since it will try to acquire it too.
-    let range_to_update = len - to_update..len;
-    let names: Vec<_> =
-        range_to_update.clone().map(|idx| get_name(SyntaxContext::from_u32(idx as u32))).collect();
+    for (idx, name) in &mut to_update {
+        *name = get_name(SyntaxContext::from_usize(*idx));
+    }
     HygieneData::with(|data| {
-        range_to_update.zip(names).for_each(|(idx, name)| {
+        for (idx, name) in to_update {
             data.syntax_context_data[idx].dollar_crate_name = name;
-        })
+        }
     })
 }
 
@@ -711,6 +739,10 @@ impl SyntaxContext {
     #[inline]
     pub(crate) const fn from_u16(raw: u16) -> SyntaxContext {
         SyntaxContext(raw as u32)
+    }
+
+    fn from_usize(raw: usize) -> SyntaxContext {
+        SyntaxContext(u32::try_from(raw).unwrap())
     }
 
     /// Extend a syntax context with a given expansion and transparency.
@@ -893,7 +925,10 @@ impl SyntaxContext {
     }
 
     pub(crate) fn dollar_crate_name(self) -> Symbol {
-        HygieneData::with(|data| data.syntax_context_data[self.0 as usize].dollar_crate_name)
+        HygieneData::with(|data| {
+            debug_assert!(!data.syntax_context_data[self.0 as usize].is_decode_placeholder());
+            data.syntax_context_data[self.0 as usize].dollar_crate_name
+        })
     }
 
     pub fn edition(self) -> Edition {
@@ -1244,7 +1279,7 @@ impl HygieneEncodeContext {
 
             // Consume the current round of SyntaxContexts.
             // Drop the lock() temporary early
-            let latest_ctxts = { std::mem::take(&mut *self.latest_ctxts.lock()) };
+            let latest_ctxts = { mem::take(&mut *self.latest_ctxts.lock()) };
 
             // It's fine to iterate over a HashMap, because the serialization
             // of the table that we insert data into doesn't depend on insertion
@@ -1256,7 +1291,7 @@ impl HygieneEncodeContext {
                 }
             });
 
-            let latest_expns = { std::mem::take(&mut *self.latest_expns.lock()) };
+            let latest_expns = { mem::take(&mut *self.latest_expns.lock()) };
 
             // Same as above, this is fine as we are inserting into a order-independent hashset
             #[allow(rustc::potential_query_instability)]
@@ -1373,9 +1408,11 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
         return SyntaxContext::root();
     }
 
-    let ctxt = {
+    let pending_ctxt = {
         let mut inner = context.inner.lock();
 
+        // Reminder: `HygieneDecodeContext` is per-crate, so there are no collisions between
+        // raw ids from different crate metadatas.
         if let Some(ctxt) = inner.remapped_ctxts.get(raw_id as usize).copied().flatten() {
             // This has already been decoded.
             return ctxt;
@@ -1383,18 +1420,21 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
         match inner.decoding.entry(raw_id) {
             Entry::Occupied(ctxt_entry) => {
+                let pending_ctxt = *ctxt_entry.get();
                 match context.local_in_progress.borrow_mut().entry(raw_id) {
-                    SetEntry::Occupied(..) => {
-                        // We're decoding this already on the current thread. Return here
-                        // and let the function higher up the stack finish decoding to handle
-                        // recursive cases.
-                        return *ctxt_entry.get();
-                    }
+                    // We're decoding this already on the current thread. Return here and let the
+                    // function higher up the stack finish decoding to handle recursive cases.
+                    // Hopefully having a `SyntaxContext` that refers to an incorrect data is ok
+                    // during reminder of the decoding process, it's certainly not ok after the
+                    // top level decoding function returns.
+                    SetEntry::Occupied(..) => return pending_ctxt,
+                    // Some other thread is currently decoding this.
+                    // Race with it (alternatively we could wait here).
+                    // We cannot return this value, unlike in the recursive case above, because it
+                    // may expose a `SyntaxContext` pointing to incorrect data to arbitrary code.
                     SetEntry::Vacant(entry) => {
                         entry.insert();
-
-                        // Some other thread is current decoding this. Race with it.
-                        *ctxt_entry.get()
+                        pending_ctxt
                     }
                 }
             }
@@ -1405,18 +1445,10 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
                 // Allocate and store SyntaxContext id *before* calling the decoder function,
                 // as the SyntaxContextData may reference itself.
                 let new_ctxt = HygieneData::with(|hygiene_data| {
-                    let new_ctxt = SyntaxContext(hygiene_data.syntax_context_data.len() as u32);
                     // Push a dummy SyntaxContextData to ensure that nobody else can get the
-                    // same ID as us. This will be overwritten after call `decode_Data`
-                    hygiene_data.syntax_context_data.push(SyntaxContextData {
-                        outer_expn: ExpnId::root(),
-                        outer_transparency: Transparency::Transparent,
-                        parent: SyntaxContext::root(),
-                        opaque: SyntaxContext::root(),
-                        opaque_and_semitransparent: SyntaxContext::root(),
-                        dollar_crate_name: kw::Empty,
-                    });
-                    new_ctxt
+                    // same ID as us. This will be overwritten after call `decode_data`.
+                    hygiene_data.syntax_context_data.push(SyntaxContextData::decode_placeholder());
+                    SyntaxContext::from_usize(hygiene_data.syntax_context_data.len() - 1)
                 });
                 entry.insert(new_ctxt);
                 new_ctxt
@@ -1426,27 +1458,42 @@ pub fn decode_syntax_context<D: Decoder, F: FnOnce(&mut D, u32) -> SyntaxContext
 
     // Don't try to decode data while holding the lock, since we need to
     // be able to recursively decode a SyntaxContext
-    let mut ctxt_data = decode_data(d, raw_id);
-    // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`
-    // We don't care what the encoding crate set this to - we want to resolve it
-    // from the perspective of the current compilation session
-    ctxt_data.dollar_crate_name = kw::DollarCrate;
+    let ctxt_data = decode_data(d, raw_id);
+    let ctxt_key = ctxt_data.key();
 
-    // Overwrite the dummy data with our decoded SyntaxContextData
-    HygieneData::with(|hygiene_data| {
-        if let Some(old) = hygiene_data.syntax_context_data.get(raw_id as usize)
-            && old.outer_expn == ctxt_data.outer_expn
-            && old.outer_transparency == ctxt_data.outer_transparency
-            && old.parent == ctxt_data.parent
-        {
-            ctxt_data = old.clone();
+    let ctxt = HygieneData::with(|hygiene_data| {
+        match hygiene_data.syntax_context_map.get(&ctxt_key) {
+            // Ensure that syntax contexts are unique.
+            // If syntax contexts with the given key already exists, reuse it instead of
+            // using `pending_ctxt`.
+            // `pending_ctxt` will leave an unused hole in the vector of syntax contexts.
+            // Hopefully its value isn't stored anywhere during decoding and its dummy data
+            // is never accessed later. The `is_decode_placeholder` asserts on all
+            // accesses to syntax context data attempt to ensure it.
+            Some(&ctxt) => ctxt,
+            // This is a completely new context.
+            // Overwrite its placeholder data with our decoded data.
+            None => {
+                let ctxt_data_ref =
+                    &mut hygiene_data.syntax_context_data[pending_ctxt.as_u32() as usize];
+                let prev_ctxt_data = mem::replace(ctxt_data_ref, ctxt_data);
+                // Reset `dollar_crate_name` so that it will be updated by `update_dollar_crate_names`.
+                // We don't care what the encoding crate set this to - we want to resolve it
+                // from the perspective of the current compilation session.
+                ctxt_data_ref.dollar_crate_name = kw::DollarCrate;
+                // Make sure nothing weird happened while `decode_data` was running.
+                if !prev_ctxt_data.is_decode_placeholder() {
+                    // Another thread may have already inserted the decoded data,
+                    // but the decoded data should match.
+                    assert_eq!(prev_ctxt_data, *ctxt_data_ref);
+                }
+                hygiene_data.syntax_context_map.insert(ctxt_key, pending_ctxt);
+                pending_ctxt
+            }
         }
-
-        hygiene_data.syntax_context_data[ctxt.as_u32() as usize] = ctxt_data;
     });
 
     // Mark the context as completed
-
     context.local_in_progress.borrow_mut().remove(&raw_id);
 
     let mut inner = context.inner.lock();
