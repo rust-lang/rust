@@ -23,7 +23,7 @@ use rustc_macros::{Decodable, Encodable, HashStable_Generic};
 use rustc_span::edition::{DEFAULT_EDITION, EDITION_NAME_LIST, Edition, LATEST_STABLE_EDITION};
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::{
-    FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm, Symbol, sym,
+    FileName, FileNameDisplayPreference, RealFileName, SourceFileHashAlgorithm, Symbol, kw, sym,
 };
 use rustc_target::spec::{
     FramePointer, LinkSelfContainedComponents, LinkerFeatures, SplitDebuginfo, Target, TargetTuple,
@@ -2941,13 +2941,13 @@ pub(crate) mod dep_tracking {
     };
 
     use super::{
-        AutoDiff, BranchProtection, CFGuard, CFProtection, CollapseMacroDebuginfo, CoverageOptions,
-        CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug, FunctionReturn,
-        InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto, LocationDetail,
-        LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel, OutFileName,
-        OutputType, OutputTypes, PatchableFunctionEntry, Polonius, RemapPathScopeComponents,
-        ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind, SwitchWithOptPath,
-        SymbolManglingVersion, WasiExecModel,
+        AutoDiff, BranchProtection, CCharType, CFGuard, CFProtection, CollapseMacroDebuginfo,
+        CoverageOptions, CrateType, DebugInfo, DebugInfoCompression, ErrorOutputType, FmtDebug,
+        FunctionReturn, InliningThreshold, InstrumentCoverage, InstrumentXRay, LinkerPluginLto,
+        LocationDetail, LtoCli, MirStripDebugInfo, NextSolverConfig, OomStrategy, OptLevel,
+        OutFileName, OutputType, OutputTypes, PatchableFunctionEntry, Polonius,
+        RemapPathScopeComponents, ResolveDocLinks, SourceFileHashAlgorithm, SplitDwarfKind,
+        SwitchWithOptPath, SymbolManglingVersion, WasiExecModel,
     };
     use crate::lint;
     use crate::utils::NativeLib;
@@ -3050,6 +3050,7 @@ pub(crate) mod dep_tracking {
         FunctionReturn,
         WasmCAbi,
         Align,
+        CCharType,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
@@ -3322,5 +3323,33 @@ impl MirIncludeSpans {
     /// purposes, except for the NLL MIR dump pass.
     pub fn is_enabled(self) -> bool {
         self == MirIncludeSpans::On
+    }
+}
+
+/// The different settings that the `-Zc-char-type` flag can have.
+#[derive(Clone, Copy, PartialEq, Hash, Debug, Default)]
+pub enum CCharType {
+    /// Use default signed/unsigned c_char according to target configuration
+    #[default]
+    Default,
+
+    /// Set c_char to signed i8
+    Signed,
+
+    /// Set c_char to unsigned u8
+    Unsigned,
+}
+
+impl CCharType {
+    pub const fn desc_symbol(&self) -> Symbol {
+        match *self {
+            Self::Default => kw::Default,
+            Self::Signed => sym::signed,
+            Self::Unsigned => sym::unsigned,
+        }
+    }
+
+    pub const fn all() -> [Symbol; 3] {
+        [Self::Unsigned.desc_symbol(), Self::Signed.desc_symbol(), Self::Default.desc_symbol()]
     }
 }

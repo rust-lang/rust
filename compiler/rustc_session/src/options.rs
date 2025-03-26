@@ -798,6 +798,7 @@ mod desc {
     pub(crate) const parse_mir_include_spans: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), or `nll` (default: `nll`)";
     pub(crate) const parse_align: &str = "a number that is a power of 2 between 1 and 2^29";
+    pub(crate) const parse_c_char_type: &str = "one of `default`, `unsigned`, `signed`";
 }
 
 pub mod parse {
@@ -953,6 +954,16 @@ pub mod parse {
             Some("full") => FmtDebug::Full,
             Some("shallow") => FmtDebug::Shallow,
             Some("none") => FmtDebug::None,
+            _ => return false,
+        };
+        true
+    }
+
+    pub(crate) fn parse_c_char_type(slot: &mut CCharType, v: Option<&str>) -> bool {
+        *slot = match v {
+            Some("unsigned") => CCharType::Unsigned,
+            Some("signed") => CCharType::Signed,
+            Some("default") => CCharType::Default,
             _ => return false,
         };
         true
@@ -2104,6 +2115,8 @@ options! {
         "emit noalias metadata for box (default: yes)"),
     branch_protection: Option<BranchProtection> = (None, parse_branch_protection, [TRACKED],
         "set options for branch target identification and pointer authentication on AArch64"),
+    c_char_type: CCharType = (CCharType::default(), parse_c_char_type, [TRACKED TARGET_MODIFIER],
+        "Make c_char type unsigned [default|signed|unsigned]"),
     cf_protection: CFProtection = (CFProtection::None, parse_cfprotection, [TRACKED],
         "instrument control-flow architecture protection"),
     check_cfg_all_expected: bool = (false, parse_bool, [UNTRACKED],

@@ -39,6 +39,7 @@ const GATED_CFGS: &[GatedCfg] = &[
     // this is consistent with naming of the compiler flag it's for
     (sym::fmt_debug, sym::fmt_debug, Features::fmt_debug),
     (sym::emscripten_wasm_eh, sym::cfg_emscripten_wasm_eh, Features::cfg_emscripten_wasm_eh),
+    (sym::c_char_type, sym::c_char_type, Features::c_char_type),
 ];
 
 /// Find a gated cfg determined by the `pred`icate which is given the cfg's name.
