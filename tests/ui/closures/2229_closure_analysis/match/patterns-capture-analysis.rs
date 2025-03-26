@@ -14,7 +14,6 @@ fn test_1_should_capture() {
     //~| ERROR Min Capture analysis includes:
         match variant {
         //~^ NOTE: Capturing variant[] -> Immutable
-        //~| NOTE: Capturing variant[] -> Immutable
         //~| NOTE: Min Capture variant[] -> Immutable
             Some(_) => {}
             _ => {}
@@ -65,9 +64,8 @@ fn test_6_should_capture_single_variant() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match variant {
-            //~^ NOTE: Capturing variant[] -> Immutable
-            //~| NOTE: Capturing variant[(0, 0)] -> Immutable
-            //~| NOTE: Min Capture variant[] -> Immutable
+            //~^ NOTE: Capturing variant[(0, 0)] -> Immutable
+            //~| NOTE: Min Capture variant[(0, 0)] -> Immutable
             SingleVariant::Points(a) => {
                 println!("{:?}", a);
             }
@@ -133,7 +131,6 @@ fn test_5_should_capture_multi_variant() {
     //~| ERROR Min Capture analysis includes:
         match variant {
         //~^ NOTE: Capturing variant[] -> Immutable
-        //~| NOTE: Capturing variant[] -> Immutable
         //~| NOTE: Min Capture variant[] -> Immutable
             MVariant::A => {}
             _ => {}
@@ -151,9 +148,8 @@ fn test_7_should_capture_slice_len() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> Immutable
-            //~| NOTE: Capturing slice[Deref] -> Immutable
-            //~| NOTE: Min Capture slice[] -> Immutable
+            //~^ NOTE: Capturing slice[Deref] -> Immutable
+            //~| NOTE: Min Capture slice[Deref] -> Immutable
             [_,_,_] => {},
             _ => {}
         }
@@ -164,9 +160,8 @@ fn test_7_should_capture_slice_len() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> Immutable
-            //~| NOTE: Capturing slice[Deref] -> Immutable
-            //~| NOTE: Min Capture slice[] -> Immutable
+            //~^ NOTE: Capturing slice[Deref] -> Immutable
+            //~| NOTE: Min Capture slice[Deref] -> Immutable
             [] => {},
             _ => {}
         }
@@ -177,9 +172,8 @@ fn test_7_should_capture_slice_len() {
     //~^ ERROR First Pass analysis includes:
     //~| ERROR Min Capture analysis includes:
         match slice {
-            //~^ NOTE: Capturing slice[] -> Immutable
-            //~| NOTE: Capturing slice[Deref] -> Immutable
-            //~| NOTE: Min Capture slice[] -> Immutable
+            //~^ NOTE: Capturing slice[Deref] -> Immutable
+            //~| NOTE: Min Capture slice[Deref] -> Immutable
             [_, .. ,_] => {},
             _ => {}
         }
