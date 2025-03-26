@@ -224,7 +224,7 @@ pub struct ScopeTree {
     /// and not the enclosing *statement*. Expressions that are not present in this
     /// table are not rvalue candidates. The set of rvalue candidates is computed
     /// during type check based on a traversal of the AST.
-    pub rvalue_candidates: HirIdMap<RvalueCandidateType>,
+    pub rvalue_candidates: HirIdMap<RvalueCandidate>,
 
     /// Backwards incompatible scoping that will be introduced in future editions.
     /// This information is used later for linting to identify locals and
@@ -308,15 +308,14 @@ pub struct ScopeTree {
     pub yield_in_scope: UnordMap<Scope, Vec<YieldData>>,
 }
 
-/// Identifies the reason that a given expression is an rvalue candidate
-/// (see the `rvalue_candidates` field for more information what rvalue
-/// candidates in general). In constants, the `lifetime` field is None
-/// to indicate that certain expressions escape into 'static and
-/// should have no local cleanup scope.
+/// See the `rvalue_candidates` field for more information on rvalue
+/// candidates in general.
+/// The `lifetime` field is None to indicate that certain expressions escape
+/// into 'static and should have no local cleanup scope.
 #[derive(Debug, Copy, Clone, HashStable)]
-pub enum RvalueCandidateType {
-    Borrow { target: hir::ItemLocalId, lifetime: Option<Scope> },
-    Pattern { target: hir::ItemLocalId, lifetime: Option<Scope> },
+pub struct RvalueCandidate {
+    pub target: hir::ItemLocalId,
+    pub lifetime: Option<Scope>,
 }
 
 #[derive(Debug, Copy, Clone, HashStable)]
@@ -344,16 +343,12 @@ impl ScopeTree {
         self.var_map.insert(var, lifetime);
     }
 
-    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate_type: RvalueCandidateType) {
-        debug!("record_rvalue_candidate(var={var:?}, type={candidate_type:?})");
-        match &candidate_type {
-            RvalueCandidateType::Borrow { lifetime: Some(lifetime), .. }
-            | RvalueCandidateType::Pattern { lifetime: Some(lifetime), .. } => {
-                assert!(var.local_id != lifetime.local_id)
-            }
-            _ => {}
+    pub fn record_rvalue_candidate(&mut self, var: HirId, candidate: RvalueCandidate) {
+        debug!("record_rvalue_candidate(var={var:?}, candidate={candidate:?})");
+        if let Some(lifetime) = &candidate.lifetime {
+            assert!(var.local_id != lifetime.local_id)
         }
-        self.rvalue_candidates.insert(var, candidate_type);
+        self.rvalue_candidates.insert(var, candidate);
     }
 
     /// Returns the narrowest scope that encloses `id`, if any.

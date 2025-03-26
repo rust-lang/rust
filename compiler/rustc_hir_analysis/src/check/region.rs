@@ -623,10 +623,7 @@ fn resolve_local<'tcx>(
             if is_binding_pat(pat) {
                 visitor.scope_tree.record_rvalue_candidate(
                     expr.hir_id,
-                    RvalueCandidateType::Pattern {
-                        target: expr.hir_id.local_id,
-                        lifetime: blk_scope,
-                    },
+                    RvalueCandidate { target: expr.hir_id.local_id, lifetime: blk_scope },
                 );
             }
         }
@@ -731,10 +728,7 @@ fn resolve_local<'tcx>(
                 record_rvalue_scope_if_borrow_expr(visitor, subexpr, blk_id);
                 visitor.scope_tree.record_rvalue_candidate(
                     subexpr.hir_id,
-                    RvalueCandidateType::Borrow {
-                        target: subexpr.hir_id.local_id,
-                        lifetime: blk_id,
-                    },
+                    RvalueCandidate { target: subexpr.hir_id.local_id, lifetime: blk_id },
                 );
             }
             hir::ExprKind::Struct(_, fields, _) => {
