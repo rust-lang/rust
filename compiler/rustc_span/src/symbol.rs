@@ -1583,6 +1583,7 @@ symbols! {
         pre_dash_lto: "pre-lto",
         precise_capturing,
         precise_capturing_in_traits,
+        precise_capturing_of_types,
         precise_pointer_size_matching,
         pref_align_of,
         prefetch_read_data,
