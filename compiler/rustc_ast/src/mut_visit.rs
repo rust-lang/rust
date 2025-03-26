@@ -987,10 +987,7 @@ fn walk_fn<T: MutVisitor>(vis: &mut T, kind: FnKind<'_>) {
             }
             vis.visit_span(span);
 
-            for (id, path) in define_opaque.iter_mut().flatten() {
-                vis.visit_id(id);
-                vis.visit_path(path)
-            }
+            walk_define_opaques(vis, define_opaque);
         }
         FnKind::Closure(binder, coroutine_kind, decl, body) => {
             vis.visit_closure_binder(binder);
@@ -1258,12 +1255,19 @@ impl WalkItemKind for ItemKind {
         match self {
             ItemKind::ExternCrate(_orig_name) => {}
             ItemKind::Use(use_tree) => vis.visit_use_tree(use_tree),
-            ItemKind::Static(box StaticItem { ty, safety: _, mutability: _, expr }) => {
+            ItemKind::Static(box StaticItem {
+                ty,
+                safety: _,
+                mutability: _,
+                expr,
+                define_opaque,
+            }) => {
                 vis.visit_ty(ty);
                 visit_opt(expr, |expr| vis.visit_expr(expr));
+                walk_define_opaques(vis, define_opaque);
             }
             ItemKind::Const(item) => {
-                visit_const_item(item, vis);
+                walk_const_item(vis, item);
             }
             ItemKind::Fn(func) => {
                 vis.visit_fn(FnKind::Fn(FnCtxt::Free, ident, visibility, &mut *func), span, id);
@@ -1384,7 +1388,7 @@ impl WalkItemKind for AssocItemKind {
     ) {
         match self {
             AssocItemKind::Const(item) => {
-                visit_const_item(item, visitor);
+                walk_const_item(visitor, item);
             }
             AssocItemKind::Fn(func) => {
                 visitor.visit_fn(
@@ -1444,14 +1448,13 @@ impl WalkItemKind for AssocItemKind {
     }
 }
 
-fn visit_const_item<T: MutVisitor>(
-    ConstItem { defaultness, generics, ty, expr }: &mut ConstItem,
-    visitor: &mut T,
-) {
-    visit_defaultness(visitor, defaultness);
-    visitor.visit_generics(generics);
-    visitor.visit_ty(ty);
-    visit_opt(expr, |expr| visitor.visit_expr(expr));
+fn walk_const_item<T: MutVisitor>(vis: &mut T, item: &mut ConstItem) {
+    let ConstItem { defaultness, generics, ty, expr, define_opaque } = item;
+    visit_defaultness(vis, defaultness);
+    vis.visit_generics(generics);
+    vis.visit_ty(ty);
+    visit_opt(expr, |expr| vis.visit_expr(expr));
+    walk_define_opaques(vis, define_opaque);
 }
 
 fn walk_fn_header<T: MutVisitor>(vis: &mut T, header: &mut FnHeader) {
@@ -1528,9 +1531,16 @@ impl WalkItemKind for ForeignItemKind {
         visitor: &mut impl MutVisitor,
     ) {
         match self {
-            ForeignItemKind::Static(box StaticItem { ty, mutability: _, expr, safety: _ }) => {
+            ForeignItemKind::Static(box StaticItem {
+                ty,
+                mutability: _,
+                expr,
+                safety: _,
+                define_opaque,
+            }) => {
                 visitor.visit_ty(ty);
                 visit_opt(expr, |expr| visitor.visit_expr(expr));
+                walk_define_opaques(visitor, define_opaque);
             }
             ForeignItemKind::Fn(func) => {
                 visitor.visit_fn(
@@ -1927,6 +1937,18 @@ fn walk_capture_by<T: MutVisitor>(vis: &mut T, capture_by: &mut CaptureBy) {
         }
         CaptureBy::Use { use_kw } => {
             vis.visit_span(use_kw);
+        }
+    }
+}
+
+fn walk_define_opaques<T: MutVisitor>(
+    vis: &mut T,
+    define_opaque: &mut Option<ThinVec<(NodeId, Path)>>,
+) {
+    if let Some(define_opaque) = define_opaque {
+        for (id, path) in define_opaque {
+            vis.visit_id(id);
+            vis.visit_path(path)
         }
     }
 }

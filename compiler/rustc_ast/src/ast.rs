@@ -3535,6 +3535,7 @@ pub struct StaticItem {
     pub safety: Safety,
     pub mutability: Mutability,
     pub expr: Option<P<Expr>>,
+    pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
@@ -3543,6 +3544,7 @@ pub struct ConstItem {
     pub generics: Generics,
     pub ty: P<Ty>,
     pub expr: Option<P<Expr>>,
+    pub define_opaque: Option<ThinVec<(NodeId, Path)>>,
 }
 
 // Adding a new variant? Please update `test_item` in `tests/ui/macros/stringify.rs`.
