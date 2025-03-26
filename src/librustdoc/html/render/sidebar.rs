@@ -734,20 +734,20 @@ fn get_methods<'a>(
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
-        .filter_map(|item| match item.name {
-            Some(ref name) if !name.is_empty() && item.is_method() => {
-                if !for_deref || super::should_render_item(item, deref_mut, tcx) {
-                    Some(Link::new(
-                        get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
-                        name.as_str(),
-                    ))
-                } else {
-                    None
-                }
+        .filter_map(|item| {
+            if let Some(ref name) = item.name
+                && item.is_method()
+                && (!for_deref || super::should_render_item(item, deref_mut, tcx))
+            {
+                Some(Link::new(
+                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::Method)),
+                    name.as_str(),
+                ))
+            } else {
+                None
             }
-            _ => None,
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 fn get_associated_constants<'a>(
@@ -756,14 +756,19 @@ fn get_associated_constants<'a>(
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
-        .filter_map(|item| match item.name {
-            Some(ref name) if !name.is_empty() && item.is_associated_const() => Some(Link::new(
-                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
-                name.as_str(),
-            )),
-            _ => None,
+        .filter_map(|item| {
+            if let Some(ref name) = item.name
+                && item.is_associated_const()
+            {
+                Some(Link::new(
+                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocConst)),
+                    name.as_str(),
+                ))
+            } else {
+                None
+            }
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
 
 fn get_associated_types<'a>(
@@ -772,12 +777,17 @@ fn get_associated_types<'a>(
 ) -> Vec<Link<'a>> {
     i.items
         .iter()
-        .filter_map(|item| match item.name {
-            Some(ref name) if !name.is_empty() && item.is_associated_type() => Some(Link::new(
-                get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
-                name.as_str(),
-            )),
-            _ => None,
+        .filter_map(|item| {
+            if let Some(ref name) = item.name
+                && item.is_associated_type()
+            {
+                Some(Link::new(
+                    get_next_url(used_links, format!("{typ}.{name}", typ = ItemType::AssocType)),
+                    name.as_str(),
+                ))
+            } else {
+                None
+            }
         })
-        .collect::<Vec<_>>()
+        .collect()
 }
