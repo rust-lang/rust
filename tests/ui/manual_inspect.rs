@@ -197,3 +197,12 @@ fn main() {
         });
     }
 }
+
+#[rustfmt::skip]
+fn layout_check() {
+    if let Some(x) = Some(1).map(|x| { println!("{x}"); //~ manual_inspect
+        // Do not collapse code into this comment
+        x }) {
+        println!("{x}");
+    }
+}

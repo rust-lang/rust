@@ -172,5 +172,23 @@ LL |             println!("No comment, linted");
 LL ~         }
    |
 
-error: aborting due to 10 previous errors
+error: this `if` statement can be collapsed
+  --> tests/ui/collapsible_if.rs:168:5
+   |
+LL | /     if true {
+LL | |         if true {
+...  |
+LL | |     }; 3
+   | |_____^
+   |
+help: collapse nested if block
+   |
+LL ~     if true
+LL ~         && true {
+LL |         }
+LL |         // This is a comment, do not collapse code to it
+LL ~     ; 3
+   |
+
+error: aborting due to 11 previous errors
 
