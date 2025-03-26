@@ -18,7 +18,7 @@ use rustc_session::{EarlyDiagCtxt, Session, filesearch};
 use rustc_span::edit_distance::find_best_match_for_name;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMapInputs;
-use rustc_span::{Symbol, sym};
+use rustc_span::{SessionGlobals, Symbol, sym};
 use rustc_target::spec::Target;
 use tracing::info;
 
@@ -188,26 +188,11 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
             // On deadlock, creates a new thread and forwards information in thread
             // locals to it. The new thread runs the deadlock handler.
 
-            // Get a `GlobalCtxt` reference from `CurrentGcx` as we cannot rely on having a
-            // `TyCtxt` TLS reference here.
-            let query_map = current_gcx2.access(|gcx| {
-                tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
-                    tls::with(|tcx| {
-                        match QueryCtxt::new(tcx).collect_active_jobs() {
-                            Ok(query_map) => query_map,
-                            Err(_) => {
-                                // There was an unexpected error collecting all active jobs, which we need
-                                // to find cycles to break.
-                                // We want to avoid panicking in the deadlock handler, so we abort instead.
-                                eprintln!("internal compiler error: failed to get query map in deadlock handler, aborting process");
-                                process::abort();
-                            }
-                        }
-                    })
-                })
-            });
-            let query_map = FromDyn::from(query_map);
+            let current_gcx2 = current_gcx2.clone();
             let registry = rayon_core::Registry::current();
+            let session_globals = rustc_span::with_session_globals(|session_globals| {
+                session_globals as *const SessionGlobals as usize
+            });
             thread::Builder::new()
                 .name("rustc query cycle handler".to_string())
                 .spawn(move || {
@@ -217,7 +202,24 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                         // otherwise the compiler could just hang,
                         process::abort();
                     });
-                    break_query_cycles(query_map.into_inner(), &registry);
+
+                    // Get a `GlobalCtxt` reference from `CurrentGcx` as we cannot rely on having a
+                    // `TyCtxt` TLS reference here.
+                    current_gcx2.access(|gcx| {
+                        tls::enter_context(&tls::ImplicitCtxt::new(gcx), || {
+                            tls::with(|tcx| {
+                                // Accessing session globals is sound as they outlive `GlobalCtxt`.
+                                // They are needed to hash query keys containing spans or symbols.
+                                let query_map = rustc_span::set_session_globals_then(unsafe { &*(session_globals as *const SessionGlobals) }, || {
+                                    // Ensure there was no errors collecting all active jobs.
+                                    // We need the complete map to ensure we find a cycle to break.
+                                    QueryCtxt::new(tcx).collect_active_jobs().ok().expect("failed to collect active queries in deadlock handler")
+                                });
+                                break_query_cycles(query_map, &registry);
+                            })
+                        })
+                    });
+
                     on_panic.disable();
                 })
                 .unwrap();
