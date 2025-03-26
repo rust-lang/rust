@@ -3,7 +3,6 @@
 //! manage the caches, and so forth.
 
 use std::num::NonZero;
-use std::sync::Arc;
 
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_data_structures::sync::{DynSend, DynSync};
@@ -312,6 +311,45 @@ macro_rules! should_ever_cache_on_disk {
     };
 }
 
+fn create_query_frame_extra<'tcx, K: Key + Copy + 'tcx>(
+    (tcx, key, kind, name, do_describe): (
+        TyCtxt<'tcx>,
+        K,
+        DepKind,
+        &'static str,
+        fn(TyCtxt<'tcx>, K) -> String,
+    ),
+) -> QueryStackFrameExtra {
+    let def_id = key.key_as_def_id();
+
+    // If reduced queries are requested, we may be printing a query stack due
+    // to a panic. Avoid using `default_span` and `def_kind` in that case.
+    let reduce_queries = with_reduced_queries();
+
+    // Avoid calling queries while formatting the description
+    let description = ty::print::with_no_queries!(do_describe(tcx, key));
+    let description = if tcx.sess.verbose_internals() {
+        format!("{description} [{name:?}]")
+    } else {
+        description
+    };
+    let span = if kind == dep_graph::dep_kinds::def_span || reduce_queries {
+        // The `def_span` query is used to calculate `default_span`,
+        // so exit to avoid infinite recursion.
+        None
+    } else {
+        Some(key.default_span(tcx))
+    };
+
+    let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
+        // Try to avoid infinite recursion.
+        None
+    } else {
+        def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
+    };
+    QueryStackFrameExtra::new(description, span, def_kind)
+}
+
 pub(crate) fn create_query_frame<
     'tcx,
     K: Copy + DynSend + DynSync + Key + for<'a> HashStable<StableHashingContext<'a>> + 'tcx,
@@ -324,35 +362,6 @@ pub(crate) fn create_query_frame<
 ) -> QueryStackFrame<QueryStackDeferred<'tcx>> {
     let def_id = key.key_as_def_id();
 
-    let extra = move || {
-        // If reduced queries are requested, we may be printing a query stack due
-        // to a panic. Avoid using `default_span` and `def_kind` in that case.
-        let reduce_queries = with_reduced_queries();
-
-        // Avoid calling queries while formatting the description
-        let description = ty::print::with_no_queries!(do_describe(tcx, key));
-        let description = if tcx.sess.verbose_internals() {
-            format!("{description} [{name:?}]")
-        } else {
-            description
-        };
-        let span = if kind == dep_graph::dep_kinds::def_span || reduce_queries {
-            // The `def_span` query is used to calculate `default_span`,
-            // so exit to avoid infinite recursion.
-            None
-        } else {
-            Some(key.default_span(tcx))
-        };
-
-        let def_kind = if kind == dep_graph::dep_kinds::def_kind || reduce_queries {
-            // Try to avoid infinite recursion.
-            None
-        } else {
-            def_id.and_then(|def_id| def_id.as_local()).map(|def_id| tcx.def_kind(def_id))
-        };
-        QueryStackFrameExtra::new(description, span, def_kind)
-    };
-
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
             let mut hasher = StableHasher::new();
@@ -363,9 +372,8 @@ pub(crate) fn create_query_frame<
     };
     let def_id_for_ty_in_cycle = key.def_id_for_ty_in_cycle();
 
-    // SAFETY: None of the captures in `extra` have destructors that access 'tcx
-    // as they don't have destructors.
-    let info = unsafe { QueryStackDeferred::new(Arc::new(extra)) };
+    let info =
+        QueryStackDeferred::new((tcx, key, kind, name, do_describe), create_query_frame_extra);
 
     QueryStackFrame::new(info, kind, hash, def_id, def_id_for_ty_in_cycle)
 }

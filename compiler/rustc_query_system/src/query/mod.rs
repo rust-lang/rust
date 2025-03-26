@@ -108,10 +108,14 @@ pub struct QueryStackDeferred<'tcx> {
 }
 
 impl<'tcx> QueryStackDeferred<'tcx> {
-    /// SAFETY: `extract` may not access 'tcx in its destructor.
-    pub unsafe fn new(
-        extract: Arc<dyn Fn() -> QueryStackFrameExtra + DynSync + DynSend + 'tcx>,
+    pub fn new<C: Copy + DynSync + DynSend + 'tcx>(
+        context: C,
+        extract: fn(C) -> QueryStackFrameExtra,
     ) -> Self {
+        let extract: Arc<dyn Fn() -> QueryStackFrameExtra + DynSync + DynSend + 'tcx> =
+            Arc::new(move || extract(context));
+        // SAFETY: The `extract` closure does not access 'tcx in its destructor as the only
+        // captured variable is `context` which is Copy and cannot have a destructor.
         Self { _dummy: PhantomData, extract: unsafe { transmute(extract) } }
     }
 
