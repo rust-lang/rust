@@ -517,14 +517,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         span: Span,
         base_type: Span,
     ) -> &'hir hir::ConstArg<'hir> {
-        let parent_def_id = self.current_hir_id_owner.def_id;
         let node_id = self.next_node_id();
 
         // Add a definition for the in-band const def.
         // We're generating a range end that didn't exist in the AST,
         // so the def collector didn't create the def ahead of time. That's why we have to do
         // it here.
-        let def_id = self.create_def(parent_def_id, node_id, None, DefKind::AnonConst, span);
+        let def_id = self.create_def(node_id, None, DefKind::AnonConst, span);
         let hir_id = self.lower_node_id(node_id);
 
         let unstable_span = self.mark_span_with_reason(
