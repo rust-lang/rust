@@ -171,6 +171,13 @@
 //! [`is_some_and`]: Option::is_some_and
 //! [`is_none_or`]: Option::is_none_or
 //!
+//! ## Inspecting the variant
+//!
+//! The [`inspect`] method takes ownership of the [`Option`]
+//! and applies the provided function to the contained value by reference if [`Some`]
+//!
+//! [`inspect`]: Option::inspect
+//!
 //! ## Adapters for working with references
 //!
 //! * [`as_ref`] converts from <code>[&][][Option]\<T></code> to <code>[Option]<[&]T></code>
@@ -248,8 +255,6 @@
 //!   if the function returns `true`; otherwise, returns [`None`]
 //! * [`flatten`] removes one level of nesting from an
 //!   [`Option<Option<T>>`]
-//! * [`insert`] calls the provided function with a reference to
-//!   the contained value if [`Some`]
 //! * [`map`] transforms [`Option<T>`] to [`Option<U>`] by applying the
 //!   provided function to the contained value of [`Some`] and leaving
 //!   [`None`] values unchanged
@@ -257,7 +262,6 @@
 //! [`Some(t)`]: Some
 //! [`filter`]: Option::filter
 //! [`flatten`]: Option::flatten
-//! [`insert`]: Option::insert
 //! [`map`]: Option::map
 //!
 //! These methods transform [`Option<T>`] to a value of a possibly
