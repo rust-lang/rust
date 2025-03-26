@@ -225,8 +225,8 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Interner, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
@@ -967,7 +967,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
     {
         // `#[rustc_force_inline]` items should never be codegened. This should be caught by
         // the MIR validator.
-        tcx.delay_bug("attempt to codegen `#[rustc_force_inline]` item");
+        tcx.dcx().delayed_bug("attempt to codegen `#[rustc_force_inline]` item");
     }
 
     if def_id.is_local() {
