@@ -162,3 +162,13 @@ fn main() {
         }
     }
 }
+
+#[rustfmt::skip]
+fn layout_check() -> u32 {
+    if true {
+        if true {
+        }
+        // This is a comment, do not collapse code to it
+    }; 3
+    //~^^^^^ collapsible_if
+}
