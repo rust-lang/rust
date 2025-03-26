@@ -944,6 +944,11 @@ pub(crate) struct TyQualified {
 pub(crate) struct TypeIrInherentUsage;
 
 #[derive(LintDiagnostic)]
+#[diag(lint_type_ir_trait_usage)]
+#[note]
+pub(crate) struct TypeIrTraitUsage;
+
+#[derive(LintDiagnostic)]
 #[diag(lint_non_glob_import_type_ir_inherent)]
 pub(crate) struct NonGlobImportTypeIrInherent {
     #[suggestion(code = "{snippet}", applicability = "maybe-incorrect")]

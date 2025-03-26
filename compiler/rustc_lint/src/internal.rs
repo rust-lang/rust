@@ -15,7 +15,7 @@ use crate::lints::{
     BadOptAccessDiag, DefaultHashTypesDiag, DiagOutOfImpl, LintPassByHand,
     NonGlobImportTypeIrInherent, QueryInstability, QueryUntracked, SpanUseEqCtxtDiag,
     SymbolInternStringLiteralDiag, TyQualified, TykindDiag, TykindKind, TypeIrInherentUsage,
-    UntranslatableDiag,
+    TypeIrTraitUsage, UntranslatableDiag,
 };
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 
@@ -280,7 +280,7 @@ declare_tool_lint! {
 }
 
 declare_tool_lint! {
-    /// The `usage_of_type_ir_inherent` lint detects usage `rustc_type_ir::inherent`.
+    /// The `usage_of_type_ir_inherent` lint detects usage of `rustc_type_ir::inherent`.
     ///
     /// This module should only be used within the trait solver.
     pub rustc::USAGE_OF_TYPE_IR_INHERENT,
@@ -289,9 +289,42 @@ declare_tool_lint! {
     report_in_external_macro: true
 }
 
-declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT]);
+declare_tool_lint! {
+    /// The `usage_of_type_ir_traits` lint detects usage of `rustc_type_ir::Interner`,
+    /// or `rustc_infer::InferCtxtLike`.
+    ///
+    /// Methods of this trait should only be used within the type system abstraction layer,
+    /// and in the generic next trait solver implementation. Look for an analogously named
+    /// method on `TyCtxt` or `InferCtxt` (respectively).
+    pub rustc::USAGE_OF_TYPE_IR_TRAITS,
+    Allow,
+    "usage `rustc_type_ir`-specific abstraction traits outside of trait system",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(TypeIr => [NON_GLOB_IMPORT_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_INHERENT, USAGE_OF_TYPE_IR_TRAITS]);
 
 impl<'tcx> LateLintPass<'tcx> for TypeIr {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>) {
+        let res_def_id = match expr.kind {
+            hir::ExprKind::Path(hir::QPath::Resolved(_, path)) => path.res.opt_def_id(),
+            hir::ExprKind::Path(hir::QPath::TypeRelative(..)) | hir::ExprKind::MethodCall(..) => {
+                cx.typeck_results().type_dependent_def_id(expr.hir_id)
+            }
+            _ => return,
+        };
+        let Some(res_def_id) = res_def_id else {
+            return;
+        };
+        if let Some(assoc_item) = cx.tcx.opt_associated_item(res_def_id)
+            && let Some(trait_def_id) = assoc_item.trait_container(cx.tcx)
+            && (cx.tcx.is_diagnostic_item(sym::type_ir_interner, trait_def_id)
+                | cx.tcx.is_diagnostic_item(sym::type_ir_infer_ctxt_like, trait_def_id))
+        {
+            cx.emit_span_lint(USAGE_OF_TYPE_IR_TRAITS, expr.span, TypeIrTraitUsage);
+        }
+    }
+
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let rustc_hir::ItemKind::Use(path, kind) = item.kind else { return };
 
