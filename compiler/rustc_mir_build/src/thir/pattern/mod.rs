@@ -130,7 +130,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         // Lower the endpoint into a temporary `PatKind` that will then be
         // deconstructed to obtain the constant value and other data.
-        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr);
+        let mut kind: PatKind<'tcx> = self.lower_pat_expr(expr, None);
 
         // Unpeel any ascription or inline-const wrapper nodes.
         loop {
@@ -294,7 +294,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::Never => PatKind::Never,
 
-            hir::PatKind::Expr(value) => self.lower_pat_expr(value),
+            hir::PatKind::Expr(value) => self.lower_pat_expr(value, Some(ty)),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -630,7 +630,11 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// - Paths (e.g. `FOO`, `foo::BAR`, `Option::None`)
     /// - Inline const blocks (e.g. `const { 1 + 1 }`)
     /// - Literals, possibly negated (e.g. `-128u8`, `"hello"`)
-    fn lower_pat_expr(&mut self, expr: &'tcx hir::PatExpr<'tcx>) -> PatKind<'tcx> {
+    fn lower_pat_expr(
+        &mut self,
+        expr: &'tcx hir::PatExpr<'tcx>,
+        pat_ty: Option<Ty<'tcx>>,
+    ) -> PatKind<'tcx> {
         let (lit, neg) = match &expr.kind {
             hir::PatExprKind::Path(qpath) => {
                 return self.lower_path(qpath, expr.hir_id, expr.span).kind;
@@ -641,7 +645,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatExprKind::Lit { lit, negated } => (lit, *negated),
         };
 
-        let ct_ty = self.typeck_results.node_type(expr.hir_id);
+        // We handle byte string literal patterns by using the pattern's type instead of the
+        // literal's type in `const_to_pat`: if the literal `b"..."` matches on a slice reference,
+        // the pattern's type will be `&[u8]` whereas the literal's type is `&[u8; 3]`; using the
+        // pattern's type means we'll properly translate it to a slice reference pattern. This works
+        // because slices and arrays have the same valtree representation.
+        let ct_ty = pat_ty.unwrap_or_else(|| self.typeck_results.node_type(expr.hir_id));
         let lit_input = LitToConstInput { lit: &lit.node, ty: ct_ty, neg };
         let constant = self.tcx.at(expr.span).lit_to_const(lit_input);
         self.const_to_pat(constant, ct_ty, expr.hir_id, lit.span).kind
