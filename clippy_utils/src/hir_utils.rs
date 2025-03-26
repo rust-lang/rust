@@ -1124,6 +1124,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
     pub fn hash_pat(&mut self, pat: &Pat<'_>) {
         std::mem::discriminant(&pat.kind).hash(&mut self.s);
         match pat.kind {
+            PatKind::Missing => unreachable!(),
             PatKind::Binding(BindingMode(by_ref, mutability), _, _, pat) => {
                 std::mem::discriminant(&by_ref).hash(&mut self.s);
                 std::mem::discriminant(&mutability).hash(&mut self.s);
