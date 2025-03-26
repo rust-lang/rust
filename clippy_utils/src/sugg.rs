@@ -947,11 +947,10 @@ impl<'tcx> Delegate<'tcx> for DerefDelegate<'_, 'tcx> {
                             // some items do not need explicit deref, such as array accesses,
                             // so we mark them as already processed
                             // i.e.: don't suggest `*sub[1..4].len()` for `|sub| sub[1..4].len() == 3`
-                            if let ty::Ref(_, inner, _) = cmt.place.ty_before_projection(i).kind() {
-                                if matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array()) {
+                            if let ty::Ref(_, inner, _) = cmt.place.ty_before_projection(i).kind()
+                                && matches!(inner.kind(), ty::Ref(_, innermost, _) if innermost.is_array()) {
                                     projections_handled = true;
                                 }
-                            }
                         },
                     }
                 });

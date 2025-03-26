@@ -242,11 +242,11 @@ struct Hir2Qmm<'a, 'tcx, 'v> {
 impl<'v> Hir2Qmm<'_, '_, 'v> {
     fn extract(&mut self, op: BinOpKind, a: &[&'v Expr<'_>], mut v: Vec<Bool>) -> Result<Vec<Bool>, String> {
         for a in a {
-            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind {
-                if binop.node == op {
-                    v = self.extract(op, &[lhs, rhs], v)?;
-                    continue;
-                }
+            if let ExprKind::Binary(binop, lhs, rhs) = &a.kind
+                && binop.node == op
+            {
+                v = self.extract(op, &[lhs, rhs], v)?;
+                continue;
             }
             v.push(self.run(a)?);
         }
@@ -418,12 +418,12 @@ fn simplify_not(cx: &LateContext<'_>, curr_msrv: Msrv, expr: &Expr<'_>) -> Optio
                 let lhs_snippet = lhs.span.get_source_text(cx)?;
                 let rhs_snippet = rhs.span.get_source_text(cx)?;
 
-                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')')) {
-                    if let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node) {
-                        // e.g. `(a as u64) < b`. Without the parens the `<` is
-                        // interpreted as a start of generic arguments for `u64`
-                        return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
-                    }
+                if !(lhs_snippet.starts_with('(') && lhs_snippet.ends_with(')'))
+                    && let (ExprKind::Cast(..), BinOpKind::Ge) = (&lhs.kind, binop.node)
+                {
+                    // e.g. `(a as u64) < b`. Without the parens the `<` is
+                    // interpreted as a start of generic arguments for `u64`
+                    return Some(format!("({lhs_snippet}){op}{rhs_snippet}"));
                 }
 
                 Some(format!("{lhs_snippet}{op}{rhs_snippet}"))

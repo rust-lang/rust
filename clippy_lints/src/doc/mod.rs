@@ -880,19 +880,18 @@ fn check_for_code_clusters<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a
                 if let Some(start) = code_starts_at
                     && let Some(end) = code_ends_at
                     && code_includes_link
+                    && let Some(span) = fragments.span(cx, start..end)
                 {
-                    if let Some(span) = fragments.span(cx, start..end) {
-                        span_lint_and_then(cx, DOC_LINK_CODE, span, "code link adjacent to code text", |diag| {
-                            let sugg = format!("<code>{}</code>", doc[start..end].replace('`', ""));
-                            diag.span_suggestion_verbose(
-                                span,
-                                "wrap the entire group in `<code>` tags",
-                                sugg,
-                                Applicability::MaybeIncorrect,
-                            );
-                            diag.help("separate code snippets will be shown with a gap");
-                        });
-                    }
+                    span_lint_and_then(cx, DOC_LINK_CODE, span, "code link adjacent to code text", |diag| {
+                        let sugg = format!("<code>{}</code>", doc[start..end].replace('`', ""));
+                        diag.span_suggestion_verbose(
+                            span,
+                            "wrap the entire group in `<code>` tags",
+                            sugg,
+                            Applicability::MaybeIncorrect,
+                        );
+                        diag.help("separate code snippets will be shown with a gap");
+                    });
                 }
                 code_includes_link = false;
                 code_starts_at = None;
@@ -1201,16 +1200,15 @@ impl<'tcx> Visitor<'tcx> for FindPanicUnwrap<'_, 'tcx> {
             return;
         }
 
-        if let Some(macro_call) = root_macro_call_first_node(self.cx, expr) {
-            if is_panic(self.cx, macro_call.def_id)
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, expr)
+            && (is_panic(self.cx, macro_call.def_id)
                 || matches!(
                     self.cx.tcx.item_name(macro_call.def_id).as_str(),
                     "assert" | "assert_eq" | "assert_ne"
-                )
-            {
-                self.is_const = self.cx.tcx.hir_is_inside_const_context(expr.hir_id);
-                self.panic_span = Some(macro_call.span);
-            }
+                ))
+        {
+            self.is_const = self.cx.tcx.hir_is_inside_const_context(expr.hir_id);
+            self.panic_span = Some(macro_call.span);
         }
 
         // check for `unwrap` and `expect` for both `Option` and `Result`

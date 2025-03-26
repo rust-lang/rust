@@ -86,13 +86,13 @@ fn extern_flags() -> Vec<String> {
             let name = name.strip_prefix("lib").unwrap_or(name);
             Some((name, path_str))
         };
-        if let Some((name, path)) = parse_name_path() {
-            if TEST_DEPENDENCIES.contains(&name) {
-                // A dependency may be listed twice if it is available in sysroot,
-                // and the sysroot dependencies are listed first. As of the writing,
-                // this only seems to apply to if_chain.
-                crates.insert(name, path);
-            }
+        if let Some((name, path)) = parse_name_path()
+            && TEST_DEPENDENCIES.contains(&name)
+        {
+            // A dependency may be listed twice if it is available in sysroot,
+            // and the sysroot dependencies are listed first. As of the writing,
+            // this only seems to apply to if_chain.
+            crates.insert(name, path);
         }
     }
     let not_found: Vec<&str> = TEST_DEPENDENCIES

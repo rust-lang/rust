@@ -118,18 +118,17 @@ impl<'hir> IfLet<'hir> {
         ) = expr.kind
         {
             let mut iter = cx.tcx.hir_parent_iter(expr.hir_id);
-            if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next() {
-                if let Some((
+            if let Some((_, Node::Block(Block { stmts: [], .. }))) = iter.next()
+                && let Some((
                     _,
                     Node::Expr(Expr {
                         kind: ExprKind::Loop(_, _, LoopSource::While, _),
                         ..
                     }),
                 )) = iter.next()
-                {
-                    // while loop desugar
-                    return None;
-                }
+            {
+                // while loop desugar
+                return None;
             }
             return Some(Self {
                 let_pat,

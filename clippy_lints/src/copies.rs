@@ -539,10 +539,10 @@ fn check_for_warn_of_moved_symbol(cx: &LateContext<'_>, symbols: &[(HirId, Symbo
                     .filter(|stmt| !ignore_span.overlaps(stmt.span))
                     .try_for_each(|stmt| intravisit::walk_stmt(&mut walker, stmt));
 
-                if let Some(expr) = block.expr {
-                    if res.is_continue() {
-                        res = intravisit::walk_expr(&mut walker, expr);
-                    }
+                if let Some(expr) = block.expr
+                    && res.is_continue()
+                {
+                    res = intravisit::walk_expr(&mut walker, expr);
                 }
 
                 res.is_break()

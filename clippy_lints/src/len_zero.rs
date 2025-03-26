@@ -523,10 +523,10 @@ fn check_cmp(cx: &LateContext<'_>, span: Span, method: &Expr<'_>, lit: &Expr<'_>
 
     if let (&ExprKind::MethodCall(method_path, receiver, [], _), ExprKind::Lit(lit)) = (&method.kind, &lit.kind) {
         // check if we are in an is_empty() method
-        if let Some(name) = get_item_name(cx, method) {
-            if name.as_str() == "is_empty" {
-                return;
-            }
+        if let Some(name) = get_item_name(cx, method)
+            && name.as_str() == "is_empty"
+        {
+            return;
         }
 
         check_len(cx, span, method_path.ident.name, receiver, &lit.node, op, compare_to);
@@ -588,11 +588,11 @@ fn check_empty_expr(cx: &LateContext<'_>, span: Span, lit1: &Expr<'_>, lit2: &Ex
 }
 
 fn is_empty_string(expr: &Expr<'_>) -> bool {
-    if let ExprKind::Lit(lit) = expr.kind {
-        if let LitKind::Str(lit, _) = lit.node {
-            let lit = lit.as_str();
-            return lit.is_empty();
-        }
+    if let ExprKind::Lit(lit) = expr.kind
+        && let LitKind::Str(lit, _) = lit.node
+    {
+        let lit = lit.as_str();
+        return lit.is_empty();
     }
     false
 }

@@ -135,10 +135,10 @@ impl<'tcx> DivergenceVisitor<'_, 'tcx> {
     }
 
     fn report_diverging_sub_expr(&mut self, e: &Expr<'_>) {
-        if let Some(macro_call) = root_macro_call_first_node(self.cx, e) {
-            if self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo" {
-                return;
-            }
+        if let Some(macro_call) = root_macro_call_first_node(self.cx, e)
+            && self.cx.tcx.item_name(macro_call.def_id).as_str() == "todo"
+        {
+            return;
         }
         span_lint(self.cx, DIVERGING_SUB_EXPRESSION, e.span, "sub-expression diverges");
     }
@@ -372,10 +372,10 @@ impl<'tcx> Visitor<'tcx> for ReadVisitor<'_, 'tcx> {
 
 /// Returns `true` if `expr` is the LHS of an assignment, like `expr = ...`.
 fn is_in_assignment_position(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
-    if let Some(parent) = get_parent_expr(cx, expr) {
-        if let ExprKind::Assign(lhs, ..) = parent.kind {
-            return lhs.hir_id == expr.hir_id;
-        }
+    if let Some(parent) = get_parent_expr(cx, expr)
+        && let ExprKind::Assign(lhs, ..) = parent.kind
+    {
+        return lhs.hir_id == expr.hir_id;
     }
     false
 }

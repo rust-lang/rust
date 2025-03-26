@@ -263,10 +263,11 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                         continue;
                     }
 
-                    if let Some(cur_v) = cur_v {
-                        if cur_v.ident.name.as_str() > variant.ident.name.as_str() && cur_v.span != variant.span {
-                            Self::lint_member_name(cx, &variant.ident, &cur_v.ident);
-                        }
+                    if let Some(cur_v) = cur_v
+                        && cur_v.ident.name.as_str() > variant.ident.name.as_str()
+                        && cur_v.span != variant.span
+                    {
+                        Self::lint_member_name(cx, &variant.ident, &cur_v.ident);
                     }
                     cur_v = Some(variant);
                 }
@@ -278,10 +279,11 @@ impl<'tcx> LateLintPass<'tcx> for ArbitrarySourceItemOrdering {
                         continue;
                     }
 
-                    if let Some(cur_f) = cur_f {
-                        if cur_f.ident.name.as_str() > field.ident.name.as_str() && cur_f.span != field.span {
-                            Self::lint_member_name(cx, &field.ident, &cur_f.ident);
-                        }
+                    if let Some(cur_f) = cur_f
+                        && cur_f.ident.name.as_str() > field.ident.name.as_str()
+                        && cur_f.span != field.span
+                    {
+                        Self::lint_member_name(cx, &field.ident, &cur_f.ident);
                     }
                     cur_f = Some(field);
                 }

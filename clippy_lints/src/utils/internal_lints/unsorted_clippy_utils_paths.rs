@@ -21,28 +21,26 @@ declare_lint_pass!(UnsortedClippyUtilsPaths => [UNSORTED_CLIPPY_UTILS_PATHS]);
 
 impl EarlyLintPass for UnsortedClippyUtilsPaths {
     fn check_crate(&mut self, cx: &EarlyContext<'_>, krate: &Crate) {
-        if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils") {
-            if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind {
-                if let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths") {
-                    if let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind {
-                        let mut last_name: Option<&str> = None;
-                        for item in items {
-                            let name = item.ident.as_str();
-                            if let Some(last_name) = last_name {
-                                if *last_name > *name {
-                                    span_lint(
-                                        cx,
-                                        UNSORTED_CLIPPY_UTILS_PATHS,
-                                        item.span,
-                                        "this constant should be before the previous constant due to lexical \
+        if let Some(utils) = krate.items.iter().find(|item| item.ident.name.as_str() == "utils")
+            && let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = utils.kind
+            && let Some(paths) = items.iter().find(|item| item.ident.name.as_str() == "paths")
+            && let ItemKind::Mod(_, ModKind::Loaded(ref items, ..)) = paths.kind
+        {
+            let mut last_name: Option<&str> = None;
+            for item in items {
+                let name = item.ident.as_str();
+                if let Some(last_name) = last_name
+                    && *last_name > *name
+                {
+                    span_lint(
+                        cx,
+                        UNSORTED_CLIPPY_UTILS_PATHS,
+                        item.span,
+                        "this constant should be before the previous constant due to lexical \
                                          ordering",
-                                    );
-                                }
-                            }
-                            last_name = Some(name);
-                        }
-                    }
+                    );
                 }
+                last_name = Some(name);
             }
         }
     }

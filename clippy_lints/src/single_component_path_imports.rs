@@ -204,17 +204,17 @@ impl SingleComponentPathImports {
                     if let UseTreeKind::Nested { items, .. } = &use_tree.kind {
                         for tree in items {
                             let segments = &tree.0.prefix.segments;
-                            if segments.len() == 1 {
-                                if let UseTreeKind::Simple(None) = tree.0.kind {
-                                    let name = segments[0].ident.name;
-                                    if !macros.contains(&name) {
-                                        single_use_usages.push(SingleUse {
-                                            name,
-                                            span: tree.0.span,
-                                            item_id: item.id,
-                                            can_suggest: false,
-                                        });
-                                    }
+                            if segments.len() == 1
+                                && let UseTreeKind::Simple(None) = tree.0.kind
+                            {
+                                let name = segments[0].ident.name;
+                                if !macros.contains(&name) {
+                                    single_use_usages.push(SingleUse {
+                                        name,
+                                        span: tree.0.span,
+                                        item_id: item.id,
+                                        can_suggest: false,
+                                    });
                                 }
                             }
                         }

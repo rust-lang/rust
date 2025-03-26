@@ -40,10 +40,10 @@ pub(super) fn check(
         .map_or_else(|| cx.typeck_results().expr_ty(arg), |a| a.target);
 
     let ty = cx.typeck_results().expr_ty(expr);
-    if let ty::Ref(_, inner, _) = arg_ty.kind() {
-        if let ty::Ref(..) = inner.kind() {
-            return; // don't report clone_on_copy
-        }
+    if let ty::Ref(_, inner, _) = arg_ty.kind()
+        && let ty::Ref(..) = inner.kind()
+    {
+        return; // don't report clone_on_copy
     }
 
     if is_copy(cx, ty) {

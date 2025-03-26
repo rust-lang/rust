@@ -384,10 +384,10 @@ pub fn snippet_indent(sess: &impl HasSession, span: Span) -> Option<String> {
 // For some reason these attributes don't have any expansion info on them, so
 // we have to check it this way until there is a better way.
 pub fn is_present_in_source(sess: &impl HasSession, span: Span) -> bool {
-    if let Some(snippet) = snippet_opt(sess, span) {
-        if snippet.is_empty() {
-            return false;
-        }
+    if let Some(snippet) = snippet_opt(sess, span)
+        && snippet.is_empty()
+    {
+        return false;
     }
     true
 }
@@ -408,11 +408,11 @@ pub fn position_before_rarrow(s: &str) -> Option<usize> {
         let mut rpos = rpos;
         let chars: Vec<char> = s.chars().collect();
         while rpos > 1 {
-            if let Some(c) = chars.get(rpos - 1) {
-                if c.is_whitespace() {
-                    rpos -= 1;
-                    continue;
-                }
+            if let Some(c) = chars.get(rpos - 1)
+                && c.is_whitespace()
+            {
+                rpos -= 1;
+                continue;
             }
             break;
         }
