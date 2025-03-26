@@ -11,6 +11,24 @@ use crate::errors::AppleDeploymentTarget;
 #[cfg(test)]
 mod tests;
 
+/// The canonical name of the desired SDK for a given target.
+pub(super) fn sdk_name(target: &Target) -> &'static str {
+    match (&*target.os, &*target.abi) {
+        ("macos", "") => "MacOSX",
+        ("ios", "") => "iPhoneOS",
+        ("ios", "sim") => "iPhoneSimulator",
+        // Mac Catalyst uses the macOS SDK
+        ("ios", "macabi") => "MacOSX",
+        ("tvos", "") => "AppleTVOS",
+        ("tvos", "sim") => "AppleTVSimulator",
+        ("visionos", "") => "XROS",
+        ("visionos", "sim") => "XRSimulator",
+        ("watchos", "") => "WatchOS",
+        ("watchos", "sim") => "WatchSimulator",
+        (os, abi) => unreachable!("invalid os '{os}' / abi '{abi}' combination for Apple target"),
+    }
+}
+
 pub(super) fn macho_platform(target: &Target) -> u32 {
     match (&*target.os, &*target.abi) {
         ("macos", _) => object::macho::PLATFORM_MACOS,

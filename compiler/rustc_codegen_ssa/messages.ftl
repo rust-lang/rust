@@ -391,8 +391,6 @@ codegen_ssa_unknown_atomic_ordering = unknown ordering in atomic intrinsic
 
 codegen_ssa_unknown_reuse_kind = unknown cgu-reuse-kind `{$kind}` specified
 
-codegen_ssa_unsupported_arch = unsupported arch `{$arch}` for os `{$os}`
-
 codegen_ssa_unsupported_instruction_set = target does not support `#[instruction_set]`
 
 codegen_ssa_unsupported_link_self_contained = option `-C link-self-contained` is not supported on this target
