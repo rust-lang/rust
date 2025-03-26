@@ -849,13 +849,12 @@ impl<'tcx> Visitor<'tcx> for ScopeResolutionVisitor<'tcx> {
         self.enter_body(body.value.hir_id, |this| {
             if this.tcx.hir_body_owner_kind(owner_id).is_fn_or_closure() {
                 // The arguments and `self` are parented to the fn.
-                this.cx.var_parent = this.cx.parent.take();
+                this.cx.var_parent = this.cx.parent;
                 for param in body.params {
                     this.visit_pat(param.pat);
                 }
 
                 // The body of the every fn is a root scope.
-                this.cx.parent = this.cx.var_parent;
                 this.visit_expr(body.value)
             } else {
                 // Only functions have an outer terminating (drop) scope, while
