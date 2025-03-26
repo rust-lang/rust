@@ -14,6 +14,7 @@ fn test_1_should_capture() {
     //~| ERROR Min Capture analysis includes:
         match variant {
         //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Capturing variant[] -> Immutable
         //~| NOTE: Min Capture variant[] -> Immutable
             Some(_) => {}
             _ => {}
@@ -132,6 +133,7 @@ fn test_5_should_capture_multi_variant() {
     //~| ERROR Min Capture analysis includes:
         match variant {
         //~^ NOTE: Capturing variant[] -> Immutable
+        //~| NOTE: Capturing variant[] -> Immutable
         //~| NOTE: Min Capture variant[] -> Immutable
             MVariant::A => {}
             _ => {}
@@ -150,6 +152,7 @@ fn test_7_should_capture_slice_len() {
     //~| ERROR Min Capture analysis includes:
         match slice {
             //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Capturing slice[Deref] -> Immutable
             //~| NOTE: Min Capture slice[] -> Immutable
             [_,_,_] => {},
             _ => {}
@@ -162,6 +165,7 @@ fn test_7_should_capture_slice_len() {
     //~| ERROR Min Capture analysis includes:
         match slice {
             //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Capturing slice[Deref] -> Immutable
             //~| NOTE: Min Capture slice[] -> Immutable
             [] => {},
             _ => {}
@@ -174,6 +178,7 @@ fn test_7_should_capture_slice_len() {
     //~| ERROR Min Capture analysis includes:
         match slice {
             //~^ NOTE: Capturing slice[] -> Immutable
+            //~| NOTE: Capturing slice[Deref] -> Immutable
             //~| NOTE: Min Capture slice[] -> Immutable
             [_, .. ,_] => {},
             _ => {}
