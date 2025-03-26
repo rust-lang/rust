@@ -240,7 +240,6 @@ const PERMITTED_DEPS_LOCATION: &str = concat!(file!(), ":", line!());
 const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     // tidy-alphabetical-start
     "adler2",
-    "ahash",
     "aho-corasick",
     "allocator-api2", // FIXME: only appears in Cargo.lock due to https://github.com/rust-lang/cargo/issues/10801
     "annotate-snippets",

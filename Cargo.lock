@@ -35,18 +35,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ahash"
-version = "0.8.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e89da841a80418a9b391ebaea17f5c112ffaaa96f621d2c285b5174da76b9011"
-dependencies = [
- "cfg-if",
- "once_cell",
- "version_check",
- "zerocopy 0.7.35",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1427,17 +1415,6 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 
 [[package]]
 name = "gimli"
-version = "0.30.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2e1d97fbe9722ba9bbd0c97051c2956e726562b61f86a25a4360398a40edfc9"
-dependencies = [
- "fallible-iterator",
- "indexmap",
- "stable_deref_trait",
-]
-
-[[package]]
-name = "gimli"
 version = "0.31.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "07e28edb80900c19c28f1072f2e8aeca7fa06b23cd4169cefe1af5aa3260783f"
@@ -1477,21 +1454,12 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.14.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
-dependencies = [
- "ahash",
- "allocator-api2",
-]
-
-[[package]]
-name = "hashbrown"
 version = "0.15.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bf151400ff0baff5465007dd2f3e717f3fe502074ca563069ce3a6629d07b289"
 dependencies = [
  "allocator-api2",
+ "equivalent",
  "foldhash",
  "serde",
 ]
@@ -1815,7 +1783,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "62f822373a4fe84d4bb149bf54e584a7f4abec90e072ed49cda0edea5b95471f"
 dependencies = [
  "equivalent",
- "hashbrown 0.15.2",
+ "hashbrown",
  "serde",
 ]
 
@@ -2470,7 +2438,7 @@ checksum = "62948e14d923ea95ea2c7c86c71013138b66525b86bdc08d2dcc262bdb497b87"
 dependencies = [
  "crc32fast",
  "flate2",
- "hashbrown 0.15.2",
+ "hashbrown",
  "indexmap",
  "memchr",
  "ruzstd",
@@ -3413,7 +3381,7 @@ name = "rustc_codegen_llvm"
 version = "0.0.0"
 dependencies = [
  "bitflags",
- "gimli 0.30.0",
+ "gimli 0.31.1",
  "itertools",
  "libc",
  "measureme 12.0.1",
@@ -3527,7 +3495,7 @@ dependencies = [
  "either",
  "elsa",
  "ena",
- "hashbrown 0.15.2",
+ "hashbrown",
  "indexmap",
  "jobserver",
  "libc",
@@ -4306,7 +4274,7 @@ dependencies = [
 name = "rustc_query_system"
 version = "0.0.0"
 dependencies = [
- "hashbrown 0.15.2",
+ "hashbrown",
  "parking_lot",
  "rustc-rayon-core",
  "rustc_abi",
@@ -5241,12 +5209,12 @@ dependencies = [
 
 [[package]]
 name = "thorin-dwp"
-version = "0.8.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "813ba76597db32dc4f6992fd8bf8f394715b88d352fd97401da67dab6283b4c6"
+checksum = "9e9c1e705f82a260173f3eec93f2ff6d7807f23ad5a8cc2e7316a891733ea7a1"
 dependencies = [
- "gimli 0.30.0",
- "hashbrown 0.14.5",
+ "gimli 0.31.1",
+ "hashbrown",
  "object 0.36.7",
  "tracing",
 ]
@@ -5972,7 +5940,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5a99faceb1a5a84dd6084ec4bfa4b2ab153b5793b43fd8f58b89232634afc35"
 dependencies = [
  "bitflags",
- "hashbrown 0.15.2",
+ "hashbrown",
  "indexmap",
  "semver",
  "serde",
