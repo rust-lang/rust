@@ -448,8 +448,9 @@ pub enum TokenKind {
 
     /// Identifier token.
     /// Do not forget about `NtIdent` when you want to match on identifiers.
-    /// It's recommended to use `Token::(ident,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated identifiers in the same way.
+    /// It's recommended to use `Token::{ident,uninterpolate}` and
+    /// `Parser::token_uninterpolated_span` to treat regular and interpolated
+    /// identifiers in the same way.
     Ident(Symbol, IdentIsRaw),
     /// This identifier (and its span) is the identifier passed to the
     /// declarative macro. The span in the surrounding `Token` is the span of
@@ -458,8 +459,9 @@ pub enum TokenKind {
 
     /// Lifetime identifier token.
     /// Do not forget about `NtLifetime` when you want to match on lifetime identifiers.
-    /// It's recommended to use `Token::(lifetime,uninterpolate,uninterpolated_span)` to
-    /// treat regular and interpolated lifetime identifiers in the same way.
+    /// It's recommended to use `Token::{ident,uninterpolate}` and
+    /// `Parser::token_uninterpolated_span` to treat regular and interpolated
+    /// identifiers in the same way.
     Lifetime(Symbol, IdentIsRaw),
     /// This identifier (and its span) is the lifetime passed to the
     /// declarative macro. The span in the surrounding `Token` is the span of
@@ -583,23 +585,6 @@ impl Token {
     /// Recovers a `Token` from an `Ident`. This creates a raw identifier if necessary.
     pub fn from_ast_ident(ident: Ident) -> Self {
         Token::new(Ident(ident.name, ident.is_raw_guess().into()), ident.span)
-    }
-
-    /// For interpolated tokens, returns a span of the fragment to which the interpolated
-    /// token refers. For all other tokens this is just a regular span.
-    /// It is particularly important to use this for identifiers and lifetimes
-    /// for which spans affect name resolution and edition checks.
-    /// Note that keywords are also identifiers, so they should use this
-    /// if they keep spans or perform edition checks.
-    //
-    // Note: `Parser::uninterpolated_token_span` may give better information
-    // than this method does.
-    pub fn uninterpolated_span(&self) -> Span {
-        match self.kind {
-            NtIdent(ident, _) | NtLifetime(ident, _) => ident.span,
-            Interpolated(ref nt) => nt.use_span(),
-            _ => self.span,
-        }
     }
 
     pub fn is_range_separator(&self) -> bool {
