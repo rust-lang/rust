@@ -491,7 +491,7 @@ impl CrateGraphBuilder {
         if **old_all_crates != *all_crates {
             db.set_all_crates_with_durability(
                 Arc::new(all_crates.into_boxed_slice()),
-                Durability::HIGH,
+                Durability::MEDIUM,
             );
         }
 
@@ -549,30 +549,30 @@ impl CrateGraphBuilder {
                 Entry::Occupied(entry) => {
                     let old_crate = *entry.get();
                     if crate_data != *old_crate.data(db) {
-                        old_crate.set_data(db).with_durability(Durability::HIGH).to(crate_data);
+                        old_crate.set_data(db).with_durability(Durability::MEDIUM).to(crate_data);
                     }
                     if krate.extra != *old_crate.extra_data(db) {
                         old_crate
                             .set_extra_data(db)
-                            .with_durability(Durability::HIGH)
+                            .with_durability(Durability::MEDIUM)
                             .to(krate.extra.clone());
                     }
                     if krate.cfg_options != *old_crate.cfg_options(db) {
                         old_crate
                             .set_cfg_options(db)
-                            .with_durability(Durability::HIGH)
+                            .with_durability(Durability::MEDIUM)
                             .to(krate.cfg_options.clone());
                     }
                     if krate.env != *old_crate.env(db) {
                         old_crate
                             .set_env(db)
-                            .with_durability(Durability::HIGH)
+                            .with_durability(Durability::MEDIUM)
                             .to(krate.env.clone());
                     }
                     if krate.ws_data != *old_crate.workspace_data(db) {
                         old_crate
                             .set_workspace_data(db)
-                            .with_durability(Durability::HIGH)
+                            .with_durability(Durability::MEDIUM)
                             .to(krate.ws_data.clone());
                     }
                     old_crate
@@ -585,7 +585,7 @@ impl CrateGraphBuilder {
                         krate.cfg_options.clone(),
                         krate.env.clone(),
                     )
-                    .durability(Durability::HIGH)
+                    .durability(Durability::MEDIUM)
                     .new(db);
                     entry.insert(input);
                     input

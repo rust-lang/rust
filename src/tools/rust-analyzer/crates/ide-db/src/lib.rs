@@ -220,9 +220,9 @@ impl RootDatabase {
         // This needs to be here otherwise `CrateGraphBuilder` will panic.
         db.set_all_crates(Arc::new(Box::new([])));
         CrateGraphBuilder::default().set_in_db(&mut db);
-        db.set_proc_macros_with_durability(Default::default(), Durability::HIGH);
-        db.set_local_roots_with_durability(Default::default(), Durability::HIGH);
-        db.set_library_roots_with_durability(Default::default(), Durability::HIGH);
+        db.set_proc_macros_with_durability(Default::default(), Durability::MEDIUM);
+        db.set_local_roots_with_durability(Default::default(), Durability::MEDIUM);
+        db.set_library_roots_with_durability(Default::default(), Durability::MEDIUM);
         db.set_expand_proc_attr_macros_with_durability(false, Durability::HIGH);
         db.update_base_query_lru_capacities(lru_capacity);
         db

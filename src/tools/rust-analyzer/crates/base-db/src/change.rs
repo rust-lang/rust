@@ -55,7 +55,7 @@ impl FileChange {
         if let Some(roots) = self.roots {
             for (idx, root) in roots.into_iter().enumerate() {
                 let root_id = SourceRootId(idx as u32);
-                let durability = durability(&root);
+                let durability = source_root_durability(&root);
                 for file_id in root.iter() {
                     db.set_file_source_root_with_durability(file_id, root_id, durability);
                 }
@@ -68,7 +68,7 @@ impl FileChange {
             let source_root_id = db.file_source_root(file_id);
             let source_root = db.source_root(source_root_id.source_root_id(db));
 
-            let durability = durability(&source_root.source_root(db));
+            let durability = file_text_durability(&source_root.source_root(db));
             // XXX: can't actually remove the file, just reset the text
             let text = text.unwrap_or_default();
             db.set_file_text_with_durability(file_id, &text, durability)
@@ -81,6 +81,10 @@ impl FileChange {
     }
 }
 
-fn durability(source_root: &SourceRoot) -> Durability {
+fn source_root_durability(source_root: &SourceRoot) -> Durability {
+    if source_root.is_library { Durability::MEDIUM } else { Durability::LOW }
+}
+
+fn file_text_durability(source_root: &SourceRoot) -> Durability {
     if source_root.is_library { Durability::HIGH } else { Durability::LOW }
 }
