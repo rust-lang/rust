@@ -210,6 +210,7 @@ struct TestSuiteData {
 #[derive(Hash, PartialEq, Eq, Debug, Clone)]
 struct Test {
     name: String,
+    stage: u8,
     is_doctest: bool,
 }
 
@@ -218,27 +219,24 @@ fn aggregate_tests(metrics: &JsonRoot) -> TestSuiteData {
     let mut tests = HashMap::new();
     let test_suites = get_test_suites(&metrics);
     for suite in test_suites {
+        let stage = match suite.metadata {
+            TestSuiteMetadata::CargoPackage { stage, .. } => stage,
+            TestSuiteMetadata::Compiletest { stage, .. } => stage,
+        } as u8;
         for test in &suite.tests {
             // Poor man's detection of doctests based on the "(line XYZ)" suffix
             let is_doctest = matches!(suite.metadata, TestSuiteMetadata::CargoPackage { .. })
                 && test.name.contains("(line");
-            let test_entry = Test { name: generate_test_name(&test.name, &suite), is_doctest };
+            let test_entry = Test { name: generate_test_name(&test.name), stage, is_doctest };
             tests.insert(test_entry, test.outcome.clone());
         }
     }
     TestSuiteData { tests }
 }
 
-/// Normalizes Windows-style path delimiters to Unix-style paths
-/// and adds suite metadata to the test name.
-fn generate_test_name(name: &str, suite: &TestSuite) -> String {
-    let name = name.replace('\\', "/");
-    let stage = match suite.metadata {
-        TestSuiteMetadata::CargoPackage { stage, .. } => stage,
-        TestSuiteMetadata::Compiletest { stage, .. } => stage,
-    };
-
-    format!("{name} (stage {stage})")
+/// Normalizes Windows-style path delimiters to Unix-style paths.
+fn generate_test_name(name: &str) -> String {
+    name.replace('\\', "/")
 }
 
 /// Prints test changes in Markdown format to stdout.
@@ -321,16 +319,25 @@ fn report_test_diffs(diff: AggregatedTestDiffs) {
     // Sort diffs by job group and test name
     grouped_diffs.sort_by(|(d1, g1), (d2, g2)| g1.cmp(&g2).then(d1.test.name.cmp(&d2.test.name)));
 
+    // Now group the tests by stage
+    let mut grouped_by_stage: BTreeMap<u8, Vec<(&TestDiff, u64)>> = Default::default();
+    for (diff, group) in grouped_diffs {
+        grouped_by_stage.entry(diff.test.stage).or_default().push((diff, group))
+    }
+
     output_details(
         &format!("Show {} test {}\n", original_diff_count, pluralize("diff", original_diff_count)),
         || {
-            for (diff, job_group) in grouped_diffs {
-                println!(
-                    "- `{}`: {} ({})",
-                    diff.test.name,
-                    format_diff(&diff.diff),
-                    format_job_group(job_group)
-                );
+            for (stage, diffs) in grouped_by_stage {
+                println!("## Stage {stage}");
+                for (diff, job_group) in diffs {
+                    println!(
+                        "- `{}`: {} ({})",
+                        diff.test.name,
+                        format_diff(&diff.diff),
+                        format_job_group(job_group)
+                    );
+                }
             }
 
             let extra_diffs = diffs.len().saturating_sub(max_diff_count);
