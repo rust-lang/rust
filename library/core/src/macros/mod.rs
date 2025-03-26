@@ -1743,8 +1743,8 @@ pub(crate) mod builtin {
         /* compiler built-in */
     }
 
-    /// Provide a list of type aliases and other opaque-type-containing type definitions.
-    /// This list will be used in the body of the item it is applied to define opaque
+    /// Provide a list of type aliases and other opaque-type-containing type definitions
+    /// to an item with a body. This list will be used in that body to define opaque
     /// types' hidden types.
     /// Can only be applied to things that have bodies.
     #[unstable(
