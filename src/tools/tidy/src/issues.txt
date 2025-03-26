@@ -3950,6 +3950,7 @@ ui/traits/issue-104322.rs
 ui/traits/issue-105231.rs
 ui/traits/issue-106072.rs
 ui/traits/issue-117794.rs
+ui/traits/issue-138932.rs
 ui/traits/issue-15155.rs
 ui/traits/issue-18400.rs
 ui/traits/issue-18412.rs
