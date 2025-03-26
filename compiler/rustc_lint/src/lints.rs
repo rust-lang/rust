@@ -2541,10 +2541,6 @@ pub(crate) struct DuplicateMacroAttribute;
 pub(crate) struct CfgAttrNoAttributes;
 
 #[derive(LintDiagnostic)]
-#[diag(lint_missing_fragment_specifier)]
-pub(crate) struct MissingFragmentSpecifier;
-
-#[derive(LintDiagnostic)]
 #[diag(lint_metavariable_still_repeating)]
 pub(crate) struct MetaVariableStillRepeating {
     pub name: MacroRulesNormalizedIdent,
