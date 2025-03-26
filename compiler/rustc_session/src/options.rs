@@ -1886,7 +1886,8 @@ pub mod parse {
     pub(crate) fn parse_wasm_c_abi(slot: &mut WasmCAbi, v: Option<&str>) -> bool {
         match v {
             Some("spec") => *slot = WasmCAbi::Spec,
-            Some("legacy") => *slot = WasmCAbi::Legacy,
+            // Explicitly setting the `-Z` flag suppresses the lint.
+            Some("legacy") => *slot = WasmCAbi::Legacy { with_lint: false },
             _ => return false,
         }
         true
@@ -2600,7 +2601,7 @@ written to standard error output)"),
         Requires `-Clto[=[fat,yes]]`"),
     wasi_exec_model: Option<WasiExecModel> = (None, parse_wasi_exec_model, [TRACKED],
         "whether to build a wasi command or reactor"),
-    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy, parse_wasm_c_abi, [TRACKED],
+    wasm_c_abi: WasmCAbi = (WasmCAbi::Legacy { with_lint: true }, parse_wasm_c_abi, [TRACKED],
         "use spec-compliant C ABI for `wasm32-unknown-unknown` (default: legacy)"),
     write_long_types_to_disk: bool = (true, parse_bool, [UNTRACKED],
         "whether long type names should be written to files instead of being printed in errors"),
