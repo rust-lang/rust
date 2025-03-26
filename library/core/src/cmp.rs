@@ -1912,6 +1912,8 @@ mod impls {
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
             Some(self.cmp(other))
         }
+
+        chaining_methods_impl!(bool);
     }
 
     partial_ord_impl! { f16 f32 f64 f128 }
@@ -2057,6 +2059,22 @@ mod impls {
         fn ge(&self, other: &&B) -> bool {
             PartialOrd::ge(*self, *other)
         }
+        #[inline]
+        fn __chaining_lt(&self, other: &&B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_lt(*self, *other)
+        }
+        #[inline]
+        fn __chaining_le(&self, other: &&B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_le(*self, *other)
+        }
+        #[inline]
+        fn __chaining_gt(&self, other: &&B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_gt(*self, *other)
+        }
+        #[inline]
+        fn __chaining_ge(&self, other: &&B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_ge(*self, *other)
+        }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
     impl<A: ?Sized> Ord for &A
@@ -2111,6 +2129,22 @@ mod impls {
         #[inline]
         fn ge(&self, other: &&mut B) -> bool {
             PartialOrd::ge(*self, *other)
+        }
+        #[inline]
+        fn __chaining_lt(&self, other: &&mut B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_lt(*self, *other)
+        }
+        #[inline]
+        fn __chaining_le(&self, other: &&mut B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_le(*self, *other)
+        }
+        #[inline]
+        fn __chaining_gt(&self, other: &&mut B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_gt(*self, *other)
+        }
+        #[inline]
+        fn __chaining_ge(&self, other: &&mut B) -> ControlFlow<bool> {
+            PartialOrd::__chaining_ge(*self, *other)
         }
     }
     #[stable(feature = "rust1", since = "1.0.0")]
