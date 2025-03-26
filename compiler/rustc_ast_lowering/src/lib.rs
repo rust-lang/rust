@@ -1495,6 +1495,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn lower_fn_params_to_names(&mut self, decl: &FnDecl) -> &'hir [Option<Ident>] {
         self.arena.alloc_from_iter(decl.inputs.iter().map(|param| match param.pat.kind {
+            PatKind::Missing => None,
             PatKind::Ident(_, ident, _) => {
                 if ident.name != kw::Empty {
                     Some(self.lower_ident(ident))
@@ -1506,7 +1507,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             _ => {
                 self.dcx().span_delayed_bug(
                     param.pat.span,
-                    "non-ident/wild param pat must trigger an error",
+                    "non-missing/ident/wild param pat must trigger an error",
                 );
                 None
             }

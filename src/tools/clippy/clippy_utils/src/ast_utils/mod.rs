@@ -33,6 +33,7 @@ pub fn eq_id(l: Ident, r: Ident) -> bool {
 pub fn eq_pat(l: &Pat, r: &Pat) -> bool {
     use PatKind::*;
     match (&l.kind, &r.kind) {
+        (Missing, _) | (_, Missing) => unreachable!(),
         (Paren(l), _) => eq_pat(l, r),
         (_, Paren(r)) => eq_pat(l, r),
         (Wild, Wild) | (Rest, Rest) => true,
