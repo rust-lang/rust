@@ -121,7 +121,7 @@ fn get_output(cmd: &str, args: &[&str]) -> Option<String> {
 pub fn rerun_if_git_changes() -> Option<()> {
     // Make sure we get rerun when the git commit changes.
     // We want to watch two files: HEAD, which tracks which branch we are on,
-    // and the file for that branch that tracks which commit is is on.
+    // and the file for that branch that tracks which commit is checked out.
 
     // First, find the `HEAD` file. This should work even with worktrees.
     let git_head_file = PathBuf::from(get_output("git", &["rev-parse", "--git-path", "HEAD"])?);
