@@ -285,6 +285,7 @@ pub(crate) fn expand_test_or_bench(
                     defaultness: ast::Defaultness::Final,
                     generics: ast::Generics::default(),
                     ty: cx.ty(sp, ast::TyKind::Path(None, test_path("TestDescAndFn"))),
+                    define_opaque: None,
                     // test::TestDescAndFn {
                     expr: Some(
                         cx.expr_struct(

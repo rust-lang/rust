@@ -336,12 +336,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 mutability: lm,
                 expr: le,
                 safety: ls,
+                define_opaque: _,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
+                define_opaque: _,
             }),
         ) => lm == rm && ls == rs && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (
@@ -350,12 +352,14 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 expr: le,
+                define_opaque: _,
             }),
             Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
                 expr: re,
+                define_opaque: _,
             }),
         ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (
@@ -490,12 +494,14 @@ pub fn eq_foreign_item_kind(l: &ForeignItemKind, r: &ForeignItemKind) -> bool {
                 mutability: lm,
                 expr: le,
                 safety: ls,
+                define_opaque: _,
             }),
             Static(box StaticItem {
                 ty: rt,
                 mutability: rm,
                 expr: re,
                 safety: rs,
+                define_opaque: _,
             }),
         ) => lm == rm && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()) && ls == rs,
         (
@@ -557,12 +563,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
                 generics: lg,
                 ty: lt,
                 expr: le,
+                define_opaque: _,
             }),
             Const(box ConstItem {
                 defaultness: rd,
                 generics: rg,
                 ty: rt,
                 expr: re,
+                define_opaque: _,
             }),
         ) => eq_defaultness(*ld, *rd) && eq_generics(lg, rg) && eq_ty(lt, rt) && eq_expr_opt(le.as_ref(), re.as_ref()),
         (

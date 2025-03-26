@@ -1440,28 +1440,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // frequently opened issues show.
         let opaque_ty_span = self.mark_span_with_reason(DesugaringKind::OpaqueTy, span, None);
 
-        // Feature gate for RPITIT + use<..>
-        match origin {
-            rustc_hir::OpaqueTyOrigin::FnReturn { in_trait_or_impl: Some(_), .. } => {
-                if !self.tcx.features().precise_capturing_in_traits()
-                    && let Some(span) = bounds.iter().find_map(|bound| match *bound {
-                        ast::GenericBound::Use(_, span) => Some(span),
-                        _ => None,
-                    })
-                {
-                    let mut diag =
-                        self.tcx.dcx().create_err(errors::NoPreciseCapturesOnRpitit { span });
-                    add_feature_diagnostics(
-                        &mut diag,
-                        self.tcx.sess,
-                        sym::precise_capturing_in_traits,
-                    );
-                    diag.emit();
-                }
-            }
-            _ => {}
-        }
-
         self.lower_opaque_inner(opaque_ty_node_id, origin, opaque_ty_span, |this| {
             this.lower_param_bounds(bounds, itctx)
         })

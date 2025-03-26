@@ -141,9 +141,6 @@ ast_lowering_never_pattern_with_guard =
 
 ast_lowering_no_precise_captures_on_apit = `use<...>` precise capturing syntax not allowed in argument-position `impl Trait`
 
-ast_lowering_no_precise_captures_on_rpitit = `use<...>` precise capturing syntax is currently not allowed in return-position `impl Trait` in traits
-    .note = currently, return-position `impl Trait` in traits and trait implementations capture all lifetimes in scope
-
 ast_lowering_previously_used_here = previously used here
 
 ast_lowering_register1 = register `{$reg1_name}`

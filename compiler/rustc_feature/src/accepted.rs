@@ -331,6 +331,8 @@ declare_features! (
     (accepted, pattern_parentheses, "1.31.0", Some(51087)),
     /// Allows `use<'a, 'b, A, B>` in `impl Trait + use<...>` for precise capture of generic args.
     (accepted, precise_capturing, "1.82.0", Some(123432)),
+    /// Allows `use<..>` precise capturign on impl Trait in traits.
+    (accepted, precise_capturing_in_traits, "CURRENT_RUSTC_VERSION", Some(130044)),
     /// Allows procedural macros in `proc-macro` crates.
     (accepted, proc_macro, "1.29.0", Some(38356)),
     /// Allows multi-segment paths in attributes and derives.

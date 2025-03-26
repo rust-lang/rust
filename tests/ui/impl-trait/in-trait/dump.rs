@@ -1,6 +1,6 @@
 //@ compile-flags: -Zverbose-internals
 
-#![feature(precise_capturing_in_traits, rustc_attrs)]
+#![feature(rustc_attrs)]
 #![rustc_hidden_type_of_opaques]
 
 trait Foo {

@@ -586,6 +586,14 @@ impl Session {
             .or(self.target.options.default_visibility)
             .unwrap_or(SymbolVisibility::Interposable)
     }
+
+    pub fn staticlib_components(&self, verbatim: bool) -> (&str, &str) {
+        if verbatim {
+            ("", "")
+        } else {
+            (&*self.target.staticlib_prefix, &*self.target.staticlib_suffix)
+        }
+    }
 }
 
 // JUSTIFICATION: defn of the suggested wrapper fns

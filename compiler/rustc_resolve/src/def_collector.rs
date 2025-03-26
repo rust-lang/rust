@@ -244,7 +244,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_foreign_item(&mut self, fi: &'a ForeignItem) {
         let def_kind = match fi.kind {
-            ForeignItemKind::Static(box StaticItem { ty: _, mutability, expr: _, safety }) => {
+            ForeignItemKind::Static(box StaticItem {
+                ty: _,
+                mutability,
+                expr: _,
+                safety,
+                define_opaque: _,
+            }) => {
                 let safety = match safety {
                     ast::Safety::Unsafe(_) | ast::Safety::Default => hir::Safety::Unsafe,
                     ast::Safety::Safe(_) => hir::Safety::Safe,

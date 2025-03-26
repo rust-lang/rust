@@ -163,13 +163,6 @@ struct QueryWaiter {
     cycle: Mutex<Option<CycleError>>,
 }
 
-impl QueryWaiter {
-    fn notify(&self, registry: &rayon_core::Registry) {
-        rayon_core::mark_unblocked(registry);
-        self.condvar.notify_one();
-    }
-}
-
 #[derive(Debug)]
 struct QueryLatchInfo {
     complete: bool,
@@ -232,7 +225,8 @@ impl QueryLatch {
         info.complete = true;
         let registry = rayon_core::Registry::current();
         for waiter in info.waiters.drain(..) {
-            waiter.notify(&registry);
+            rayon_core::mark_unblocked(&registry);
+            waiter.condvar.notify_one();
         }
     }
 
@@ -477,8 +471,8 @@ fn remove_cycle(
 /// Detects query cycles by using depth first search over all active query jobs.
 /// If a query cycle is found it will break the cycle by finding an edge which
 /// uses a query latch and then resuming that waiter.
-/// There may be multiple cycles involved in a deadlock, but we only search
-/// one cycle at a call and resume one waiter at once. See `FIXME` below.
+/// There may be multiple cycles involved in a deadlock, so this searches
+/// all active queries for cycles before finally resuming all the waiters at once.
 pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) {
     let mut wakelist = Vec::new();
     let mut jobs: Vec<QueryJobId> = query_map.keys().cloned().collect();
@@ -488,19 +482,6 @@ pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) 
     while jobs.len() > 0 {
         if remove_cycle(&query_map, &mut jobs, &mut wakelist) {
             found_cycle = true;
-
-            // FIXME(#137731): Resume all the waiters at once may cause deadlocks,
-            // so we resume one waiter at a call for now. It's still unclear whether
-            // it's due to possible issues in rustc-rayon or instead in the handling
-            // of query cycles.
-            // This seem to only appear when multiple query cycles errors
-            // are involved, so this reduction in parallelism, while suboptimal, is not
-            // universal and only the deadlock handler will encounter these cases.
-            // The workaround shows loss of potential gains, but there still are big
-            // improvements in the common case, and no regressions compared to the
-            // single-threaded case. More investigation is still needed, and once fixed,
-            // we can wake up all the waiters up.
-            break;
         }
     }
 
@@ -519,9 +500,15 @@ pub fn break_query_cycles(query_map: QueryMap, registry: &rayon_core::Registry) 
         );
     }
 
-    // FIXME: Ensure this won't cause a deadlock before we return
+    // Mark all the thread we're about to wake up as unblocked. This needs to be done before
+    // we wake the threads up as otherwise Rayon could detect a deadlock if a thread we
+    // resumed fell asleep and this thread had yet to mark the remaining threads as unblocked.
+    for _ in 0..wakelist.len() {
+        rayon_core::mark_unblocked(registry);
+    }
+
     for waiter in wakelist.into_iter() {
-        waiter.notify(registry);
+        waiter.condvar.notify_one();
     }
 }
 

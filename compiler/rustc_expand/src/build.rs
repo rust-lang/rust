@@ -698,8 +698,14 @@ impl<'a> ExtCtxt<'a> {
             name,
             AttrVec::new(),
             ast::ItemKind::Static(
-                ast::StaticItem { ty, safety: ast::Safety::Default, mutability, expr: Some(expr) }
-                    .into(),
+                ast::StaticItem {
+                    ty,
+                    safety: ast::Safety::Default,
+                    mutability,
+                    expr: Some(expr),
+                    define_opaque: None,
+                }
+                .into(),
             ),
         )
     }
@@ -723,6 +729,7 @@ impl<'a> ExtCtxt<'a> {
                     generics: ast::Generics::default(),
                     ty,
                     expr: Some(expr),
+                    define_opaque: None,
                 }
                 .into(),
             ),
