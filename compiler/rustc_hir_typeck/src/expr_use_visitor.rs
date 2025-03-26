@@ -28,7 +28,7 @@ use rustc_middle::ty::{
 use rustc_middle::{bug, span_bug};
 use rustc_span::{ErrorGuaranteed, Span};
 use rustc_trait_selection::infer::InferCtxtExt;
-use tracing::{debug, trace};
+use tracing::{debug, instrument, trace};
 
 use crate::fn_ctxt::FnCtxt;
 
@@ -320,9 +320,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn consume_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
-        debug!("delegate_consume(place_with_id={:?})", place_with_id);
-
         if self.cx.type_is_copy_modulo_regions(place_with_id.place.ty()) {
             self.delegate.borrow_mut().copy(place_with_id, diag_expr_id);
         } else {
@@ -330,9 +329,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         }
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn consume_clone_or_copy(&self, place_with_id: &PlaceWithHirId<'tcx>, diag_expr_id: HirId) {
-        debug!("delegate_consume_or_clone(place_with_id={:?})", place_with_id);
-
         // `x.use` will do one of the following
         // * if it implements `Copy`, it will be a copy
         // * if it implements `UseCloned`, it will be a call to `clone`
@@ -357,18 +355,16 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     // FIXME: It's suspicious that this is public; clippy should probably use `walk_expr`.
+    #[instrument(skip(self), level = "debug")]
     pub fn consume_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
-        debug!("consume_expr(expr={:?})", expr);
-
         let place_with_id = self.cat_expr(expr)?;
         self.consume_or_copy(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn consume_or_clone_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
-        debug!("consume_or_clone_expr(expr={:?})", expr);
-
         let place_with_id = self.cat_expr(expr)?;
         self.consume_clone_or_copy(&place_with_id, place_with_id.hir_id);
         self.walk_expr(expr)?;
@@ -382,17 +378,15 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         Ok(())
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn borrow_expr(&self, expr: &hir::Expr<'_>, bk: ty::BorrowKind) -> Result<(), Cx::Error> {
-        debug!("borrow_expr(expr={:?}, bk={:?})", expr, bk);
-
         let place_with_id = self.cat_expr(expr)?;
         self.delegate.borrow_mut().borrow(&place_with_id, place_with_id.hir_id, bk);
         self.walk_expr(expr)
     }
 
+    #[instrument(skip(self), level = "debug")]
     pub fn walk_expr(&self, expr: &hir::Expr<'_>) -> Result<(), Cx::Error> {
-        debug!("walk_expr(expr={:?})", expr);
-
         self.walk_adjustment(expr)?;
 
         match expr.kind {
@@ -739,9 +733,8 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
 
     /// Indicates that the value of `blk` will be consumed, meaning either copied or moved
     /// depending on its type.
+    #[instrument(skip(self), level = "debug")]
     fn walk_block(&self, blk: &hir::Block<'_>) -> Result<(), Cx::Error> {
-        debug!("walk_block(blk.hir_id={})", blk.hir_id);
-
         for stmt in blk.stmts {
             self.walk_stmt(stmt)?;
         }
@@ -948,14 +941,13 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     }
 
     /// The core driver for walking a pattern
+    #[instrument(skip(self), level = "debug")]
     fn walk_pat(
         &self,
         discr_place: &PlaceWithHirId<'tcx>,
         pat: &hir::Pat<'_>,
         has_guard: bool,
     ) -> Result<(), Cx::Error> {
-        debug!("walk_pat(discr_place={:?}, pat={:?}, has_guard={:?})", discr_place, pat, has_guard);
-
         let tcx = self.cx.tcx();
         self.cat_pattern(discr_place.clone(), pat, &mut |place, pat| {
             match pat.kind {
@@ -1048,6 +1040,7 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
+    #[instrument(skip(self), level = "debug")]
     fn walk_captures(&self, closure_expr: &hir::Closure<'_>) -> Result<(), Cx::Error> {
         fn upvar_is_local_variable(
             upvars: Option<&FxIndexMap<HirId, hir::Upvar>>,
@@ -1056,8 +1049,6 @@ impl<'tcx, Cx: TypeInformationCtxt<'tcx>, D: Delegate<'tcx>> ExprUseVisitor<'tcx
         ) -> bool {
             upvars.map(|upvars| !upvars.contains_key(&upvar_id)).unwrap_or(body_owner_is_closure)
         }
-
-        debug!("walk_captures({:?})", closure_expr);
 
         let tcx = self.cx.tcx();
         let closure_def_id = closure_expr.def_id;
