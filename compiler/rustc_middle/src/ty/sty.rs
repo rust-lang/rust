@@ -2029,6 +2029,43 @@ impl<'tcx> Ty<'tcx> {
     pub fn is_known_rigid(self) -> bool {
         self.kind().is_known_rigid()
     }
+
+    /// Returns true if the type is guaranteed to be one of the three built-in unsized types:
+    /// `dyn Trait`/`[T]`/`str`. This function is *raw* because it does not compute the struct
+    /// tail of the type, so you are responsible for doing that yourself.
+    // NOTE: Keep this in sync with `rustc_type_ir`'s copy.
+    pub fn is_guaranteed_unsized_raw(self) -> bool {
+        match self.kind() {
+            Dynamic(_, _, ty::Dyn) | ty::Slice(_) | ty::Str => true,
+            Bool
+            | Char
+            | Int(_)
+            | Uint(_)
+            | Float(_)
+            | Adt(_, _)
+            | Foreign(_)
+            | Array(_, _)
+            | Pat(_, _)
+            | RawPtr(_, _)
+            | Ref(_, _, _)
+            | FnDef(_, _)
+            | FnPtr(_, _)
+            | UnsafeBinder(_)
+            | Closure(_, _)
+            | CoroutineClosure(_, _)
+            | Coroutine(_, _)
+            | CoroutineWitness(_, _)
+            | Never
+            | Tuple(_)
+            | Alias(_, _)
+            | Param(_)
+            | Bound(_, _)
+            | Placeholder(_)
+            | Infer(_)
+            | Error(_)
+            | Dynamic(_, _, ty::DynStar) => false,
+        }
+    }
 }
 
 impl<'tcx> rustc_type_ir::inherent::Tys<TyCtxt<'tcx>> for &'tcx ty::List<Ty<'tcx>> {

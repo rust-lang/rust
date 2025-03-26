@@ -943,7 +943,7 @@ fn check_impl_items_against_trait<'tcx>(
     let cause = ObligationCause::misc(tcx.def_span(impl_id), impl_id);
     let param_env = tcx.param_env(impl_id);
 
-    let self_is_guaranteed_unsized = match tcx
+    let self_is_guaranteed_unsized = tcx
         .struct_tail_raw(
             trait_ref.self_ty(),
             |ty| {
@@ -957,11 +957,7 @@ fn check_impl_items_against_trait<'tcx>(
             },
             || (),
         )
-        .kind()
-    {
-        ty::Dynamic(_, _, ty::DynKind::Dyn) | ty::Slice(_) | ty::Str => true,
-        _ => false,
-    };
+        .is_guaranteed_unsized_raw();
 
     for &impl_item in impl_item_refs {
         let ty_impl_item = tcx.associated_item(impl_item);
