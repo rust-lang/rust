@@ -3,6 +3,7 @@
 //
 //@ build-pass
 //@ compile-flags: -Ccodegen-units=1 -Clto -Zsanitizer=cfi -Ctarget-feature=-crt-static
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 //@ needs-sanitizer-cfi
 
 #![crate_type = "lib"]

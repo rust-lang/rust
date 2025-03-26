@@ -83,9 +83,76 @@ pub struct TargetModifier {
     pub value_name: String,
 }
 
+mod target_modifier_consistency_check {
+    use super::*;
+    pub(super) fn sanitizer(l: &TargetModifier, r: Option<&TargetModifier>) -> bool {
+        let mut lparsed: SanitizerSet = Default::default();
+        let lval = if l.value_name.is_empty() { None } else { Some(l.value_name.as_str()) };
+        parse::parse_sanitizers(&mut lparsed, lval);
+
+        let mut rparsed: SanitizerSet = Default::default();
+        let rval = r.filter(|v| !v.value_name.is_empty()).map(|v| v.value_name.as_str());
+        parse::parse_sanitizers(&mut rparsed, rval);
+
+        // Some sanitizers need to be target modifiers, and some do not.
+        // For now, we should mark all sanitizers as target modifiers except for these:
+        // AddressSanitizer, LeakSanitizer
+        let tmod_sanitizers = SanitizerSet::MEMORY
+            | SanitizerSet::THREAD
+            | SanitizerSet::HWADDRESS
+            | SanitizerSet::CFI
+            | SanitizerSet::MEMTAG
+            | SanitizerSet::SHADOWCALLSTACK
+            | SanitizerSet::KCFI
+            | SanitizerSet::KERNELADDRESS
+            | SanitizerSet::SAFESTACK
+            | SanitizerSet::DATAFLOW;
+
+        lparsed & tmod_sanitizers == rparsed & tmod_sanitizers
+    }
+    pub(super) fn sanitizer_cfi_normalize_integers(
+        opts: &Options,
+        l: &TargetModifier,
+        r: Option<&TargetModifier>,
+    ) -> bool {
+        // For kCFI, the helper flag -Zsanitizer-cfi-normalize-integers should also be a target modifier
+        if opts.unstable_opts.sanitizer.contains(SanitizerSet::KCFI) {
+            if let Some(r) = r {
+                return l.extend().tech_value == r.extend().tech_value;
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+}
+
 impl TargetModifier {
     pub fn extend(&self) -> ExtendedTargetModifierInfo {
         self.opt.reparse(&self.value_name)
+    }
+    // Custom consistency check for target modifiers (or default `l.tech_value == r.tech_value`)
+    // When other is None, consistency with default value is checked
+    pub fn consistent(&self, opts: &Options, other: Option<&TargetModifier>) -> bool {
+        assert!(other.is_none() || self.opt == other.unwrap().opt);
+        match self.opt {
+            OptionsTargetModifiers::UnstableOptions(unstable) => match unstable {
+                UnstableOptionsTargetModifiers::sanitizer => {
+                    return target_modifier_consistency_check::sanitizer(self, other);
+                }
+                UnstableOptionsTargetModifiers::sanitizer_cfi_normalize_integers => {
+                    return target_modifier_consistency_check::sanitizer_cfi_normalize_integers(
+                        opts, self, other,
+                    );
+                }
+                _ => {}
+            },
+            _ => {}
+        };
+        match other {
+            Some(other) => self.extend().tech_value == other.extend().tech_value,
+            None => false,
+        }
     }
 }
 
@@ -94,45 +161,49 @@ fn tmod_push_impl(
     tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
     tmods: &mut Vec<TargetModifier>,
 ) {
-    tmods.push(TargetModifier { opt, value_name: tmod_vals.get(&opt).cloned().unwrap_or_default() })
+    if let Some(v) = tmod_vals.get(&opt) {
+        tmods.push(TargetModifier { opt, value_name: v.clone() })
+    }
 }
 
 macro_rules! tmod_push {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $mods:expr, $tmod_vals:expr) => {
-        tmod_push_impl(
-            OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
-            $tmod_vals,
-            $mods,
-        );
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr) => {
+        if *$opt_expr != $init {
+            tmod_push_impl(
+                OptionsTargetModifiers::$struct_name($tmod_enum_name::$opt_name),
+                $tmod_vals,
+                $mods,
+            );
+        }
     };
 }
 
 macro_rules! gather_tmods {
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], [TARGET_MODIFIER]) => {
         compile_error!("SUBSTRUCT can't be target modifier");
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], [TARGET_MODIFIER]) => {
-        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $mods, $tmod_vals)
+        tmod_push!($struct_name, $tmod_enum_name, $opt_name, $opt_expr, $init, $mods, $tmod_vals)
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [SUBSTRUCT], []) => {
         $opt_expr.gather_target_modifiers($mods, $tmod_vals);
     };
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [UNTRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED], []) => {{}};
-    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $mods:expr, $tmod_vals:expr,
+    ($struct_name:ident, $tmod_enum_name:ident, $opt_name:ident, $opt_expr:expr, $init:expr, $mods:expr, $tmod_vals:expr,
         [TRACKED_NO_CRATE_HASH], []) => {{}};
 }
 
@@ -474,7 +545,8 @@ macro_rules! tmod_enum {
                 $($pout)*
                 Self::$opt => {
                     let mut parsed : $t = Default::default();
-                    parse::$parse(&mut parsed, Some($puser_value));
+                    let val = if $puser_value.is_empty() { None } else { Some($puser_value) };
+                    parse::$parse(&mut parsed, val);
                     ExtendedTargetModifierInfo {
                         prefix: $prefix.to_string(),
                         name: stringify!($opt).to_string().replace('_', "-"),
@@ -569,7 +641,7 @@ macro_rules! options {
             _tmod_vals: &BTreeMap<OptionsTargetModifiers, String>,
         ) {
             $({
-                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, _mods, _tmod_vals,
+                gather_tmods!($struct_name, $tmod_enum_name, $opt, &self.$opt, $init, _mods, _tmod_vals,
                     [$dep_tracking_marker], [$($tmod),*]);
             })*
         }
@@ -681,10 +753,9 @@ fn build_options<O: Default>(
                         ),
                     }
                 }
-                if let Some(tmod) = *tmod
-                    && let Some(value) = value
-                {
-                    target_modifiers.insert(tmod, value.to_string());
+                if let Some(tmod) = *tmod {
+                    let v = value.map_or(String::new(), ToOwned::to_owned);
+                    target_modifiers.insert(tmod, v);
                 }
             }
             None => early_dcx.early_fatal(format!("unknown {outputname} option: `{key}`")),
@@ -2425,13 +2496,13 @@ options! {
     remark_dir: Option<PathBuf> = (None, parse_opt_pathbuf, [UNTRACKED],
         "directory into which to write optimization remarks (if not specified, they will be \
 written to standard error output)"),
-    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED],
+    sanitizer: SanitizerSet = (SanitizerSet::empty(), parse_sanitizers, [TRACKED TARGET_MODIFIER],
         "use a sanitizer"),
     sanitizer_cfi_canonical_jump_tables: Option<bool> = (Some(true), parse_opt_bool, [TRACKED],
         "enable canonical jump tables (default: yes)"),
     sanitizer_cfi_generalize_pointers: Option<bool> = (None, parse_opt_bool, [TRACKED],
         "enable generalizing pointer types (default: no)"),
-    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED],
+    sanitizer_cfi_normalize_integers: Option<bool> = (None, parse_opt_bool, [TRACKED TARGET_MODIFIER],
         "enable normalizing integer types (default: no)"),
     sanitizer_dataflow_abilist: Vec<String> = (Vec::new(), parse_comma_list, [TRACKED],
         "additional ABI list files that control how shadow parameters are passed (comma separated)"),

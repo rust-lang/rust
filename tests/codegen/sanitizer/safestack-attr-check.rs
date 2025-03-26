@@ -2,6 +2,7 @@
 //
 //@ needs-sanitizer-safestack
 //@ compile-flags: -Zsanitizer=safestack -Copt-level=0
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
 
 #![crate_type = "lib"]
 

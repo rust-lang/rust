@@ -3,6 +3,8 @@
 //@ needs-sanitizer-cfi
 //@ compile-flags: -Clto -Ctarget-feature=-crt-static -Zsanitizer=cfi
 
+//@ compile-flags: -C unsafe-allow-abi-mismatch=sanitizer
+
 #![crate_type = "lib"]
 
 pub fn foo() {}
