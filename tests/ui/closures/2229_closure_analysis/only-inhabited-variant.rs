@@ -1,8 +1,9 @@
-// Test precise capture of a multi-variant enum (when remaining variants are
-// visibly uninhabited).
+// This example used to compile, but the fact that it should was never properly
+// discussed. With further experience, we concluded that capture precision
+// depending on whether some types are inhabited goes too far, introducing a
+// bunch of headaches without much benefit.
 //@ revisions: normal exhaustive_patterns
 //@ edition:2021
-//@ run-pass
 #![cfg_attr(exhaustive_patterns, feature(exhaustive_patterns))]
 #![feature(never_type)]
 
@@ -13,6 +14,7 @@ pub fn main() {
         *a = 1;
     };
     let mut g = || {
+    //~^ ERROR: cannot borrow `r` as mutable more than once at a time
         let Err((_, ref mut b)) = r;
         *b = 2;
     };
