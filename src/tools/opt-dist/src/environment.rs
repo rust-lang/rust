@@ -45,7 +45,7 @@ pub struct TestConfig {
     /// Whether the build under test is explicitly using `--enable-debug-assertions`.
     /// Note that this flag can be implied from others, like `rust.debug`, and we do not handle any
     /// of these subtleties and defaults here, as per the FIXME above.
-    pub enable_debug_assertions: bool,
+    pub rust_debug_assertions: bool,
 }
 
 impl Environment {
@@ -135,7 +135,7 @@ impl TestConfig {
     pub fn from_configure_args(configure_args: &str) -> TestConfig {
         let enable_debug_assertions =
             configure_args.split(" ").find(|part| *part == "--enable-debug-assertions").is_some();
-        TestConfig { enable_debug_assertions }
+        TestConfig { rust_debug_assertions: enable_debug_assertions }
     }
 }
 
