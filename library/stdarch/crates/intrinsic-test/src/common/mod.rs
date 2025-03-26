@@ -1,4 +1,4 @@
-pub mod types;
-pub mod supporting_test;
-pub mod values;
 pub mod cli;
+pub mod supporting_test;
+pub mod types;
+pub mod values;

@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use std::path::PathBuf;
 
 /// Intrinsic test tool
@@ -41,4 +42,60 @@ pub struct Cli {
     /// Set the sysroot for the C++ compiler
     #[arg(long)]
     pub cxx_toolchain_dir: Option<String>,
+}
+
+pub struct ProcessedCli {
+    pub filename: PathBuf,
+    pub toolchain: Option<String>,
+    pub cpp_compiler: Option<String>,
+    pub c_runner: String,
+    pub target: String,
+    pub linker: Option<String>,
+    pub cxx_toolchain_dir: Option<String>,
+    pub skip: Vec<String>,
+}
+
+impl ProcessedCli {
+    pub fn new(cli_options: Cli) -> Self {
+        let filename = cli_options.input;
+        let c_runner = cli_options.runner.unwrap_or_default();
+        let target = cli_options.target;
+        let linker = cli_options.linker;
+        let cxx_toolchain_dir = cli_options.cxx_toolchain_dir;
+
+        let skip = if let Some(filename) = cli_options.skip {
+            let data = std::fs::read_to_string(&filename).expect("Failed to open file");
+            data.lines()
+                .map(str::trim)
+                .filter(|s| !s.contains('#'))
+                .map(String::from)
+                .collect_vec()
+        } else {
+            Default::default()
+        };
+
+        let (toolchain, cpp_compiler) = if cli_options.generate_only {
+            (None, None)
+        } else {
+            (
+                Some(
+                    cli_options
+                        .toolchain
+                        .map_or_else(String::new, |t| format!("+{t}")),
+                ),
+                Some(cli_options.cppcompiler),
+            )
+        };
+
+        Self {
+            toolchain: toolchain,
+            cpp_compiler: cpp_compiler,
+            c_runner: c_runner,
+            target: target,
+            linker: linker,
+            cxx_toolchain_dir: cxx_toolchain_dir,
+            skip: skip,
+            filename: filename,
+        }
+    }
 }
