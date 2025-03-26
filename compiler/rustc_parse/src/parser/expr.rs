@@ -2296,7 +2296,7 @@ impl<'a> Parser<'a> {
             });
         }
 
-        let (attrs, blk) = self.parse_block_common(lo, blk_mode, true, None)?;
+        let (attrs, blk) = self.parse_block_common(lo, blk_mode, None)?;
         Ok(self.mk_expr_with_attrs(blk.span, ExprKind::Block(blk, opt_label), attrs))
     }
 
@@ -3474,19 +3474,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_certainly_not_a_block(&self) -> bool {
+        // `{ ident, ` and `{ ident: ` cannot start a block.
         self.look_ahead(1, |t| t.is_ident())
-            && (
-                // `{ ident, ` cannot start a block.
-                self.look_ahead(2, |t| t == &token::Comma)
-                    || self.look_ahead(2, |t| t == &token::Colon)
-                        && (
-                            // `{ ident: token, ` cannot start a block.
-                            self.look_ahead(4, |t| t == &token::Comma)
-                                // `{ ident: ` cannot start a block unless it's a type ascription
-                                // `ident: Type`.
-                                || self.look_ahead(3, |t| !t.can_begin_type())
-                        )
-            )
+            && self.look_ahead(2, |t| t == &token::Comma || t == &token::Colon)
     }
 
     fn maybe_parse_struct_expr(

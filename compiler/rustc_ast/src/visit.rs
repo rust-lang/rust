@@ -1067,7 +1067,7 @@ pub fn walk_field_def<'a, V: Visitor<'a>>(visitor: &mut V, field: &'a FieldDef) 
 }
 
 pub fn walk_block<'a, V: Visitor<'a>>(visitor: &mut V, block: &'a Block) -> V::Result {
-    let Block { stmts, id: _, rules: _, span: _, tokens: _, could_be_bare_literal: _ } = block;
+    let Block { stmts, id: _, rules: _, span: _, tokens: _ } = block;
     walk_list!(visitor, visit_stmt, stmts);
     V::Result::output()
 }
