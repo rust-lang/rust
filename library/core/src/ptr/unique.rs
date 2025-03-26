@@ -100,6 +100,12 @@ impl<T: ?Sized> Unique<T> {
         }
     }
 
+    /// Create a new `Unique` from a `NonNull` in const context.
+    #[inline]
+    pub const fn from_non_null(pointer: NonNull<T>) -> Self {
+        Unique { pointer, _marker: PhantomData }
+    }
+
     /// Acquires the underlying `*mut` pointer.
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
@@ -202,6 +208,6 @@ impl<T: ?Sized> From<NonNull<T>> for Unique<T> {
     /// This conversion is infallible since `NonNull` cannot be null.
     #[inline]
     fn from(pointer: NonNull<T>) -> Self {
-        Unique { pointer, _marker: PhantomData }
+        Unique::from_non_null(pointer)
     }
 }
