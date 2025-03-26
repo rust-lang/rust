@@ -673,7 +673,6 @@ impl From<Arc<[u8]>> for Arc<ByteStr> {
 #[cfg(all(not(no_rc), not(no_sync), target_has_atomic = "ptr"))]
 impl From<Arc<ByteStr>> for Arc<[u8]> {
     /// Create a `Arc<[u8]>` from the inner bytes of `Arc<ByteStr>`.
-    
     #[inline]
     fn from(s: Arc<ByteStr>) -> Arc<[u8]> {
         // SAFETY: `ByteStr` is a transparent wrapper around `[u8]`.
