@@ -1279,7 +1279,13 @@ impl<'tcx> TestCase<'tcx> {
 #[derive(Debug, Clone)]
 pub(crate) struct MatchPairTree<'tcx> {
     /// This place...
-    place: Place<'tcx>,
+    ///
+    /// ---
+    /// This can be `None` if it referred to a non-captured place in a closure.
+    ///
+    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
+    /// Therefore this must be `Some(_)` after simplification.
+    place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
     test_case: TestCase<'tcx>,
@@ -2099,9 +2105,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         // Extract the match-pair from the highest priority candidate
         let match_pair = &candidates[0].match_pairs[0];
         let test = self.pick_test_for_match_pair(match_pair);
+        // Unwrap is ok after simplification.
+        let match_place = match_pair.place.unwrap();
         debug!(?test, ?match_pair);
 
-        (match_pair.place, test)
+        (match_place, test)
     }
 
     /// Given a test, we partition the input candidates into several buckets.
