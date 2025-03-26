@@ -1283,8 +1283,8 @@ pub(crate) struct MatchPairTree<'tcx> {
     /// ---
     /// This can be `None` if it referred to a non-captured place in a closure.
     ///
-    /// Invariant: Can only be `None` when `test_case` is `Irrefutable`.
-    /// Therefore this must be `Some(_)` after simplification.
+    /// Invariant: Can only be `None` when `test_case` is `Or`.
+    /// Therefore this must be `Some(_)` after or-pattern expansion.
     place: Option<Place<'tcx>>,
 
     /// ... must pass this test...
