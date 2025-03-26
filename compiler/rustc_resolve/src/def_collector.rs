@@ -19,18 +19,15 @@ pub(crate) fn collect_definitions(
     fragment: &AstFragment,
     expansion: LocalExpnId,
 ) {
-    let InvocationParent { parent_def, impl_trait_context, in_attr } =
-        resolver.invocation_parents[&expansion];
-    let mut visitor = DefCollector { resolver, parent_def, expansion, impl_trait_context, in_attr };
+    let invocation_parent = resolver.invocation_parents[&expansion];
+    let mut visitor = DefCollector { resolver, expansion, invocation_parent };
     fragment.visit_with(&mut visitor);
 }
 
 /// Creates `DefId`s for nodes in the AST.
 struct DefCollector<'a, 'ra, 'tcx> {
     resolver: &'a mut Resolver<'ra, 'tcx>,
-    parent_def: LocalDefId,
-    impl_trait_context: ImplTraitContext,
-    in_attr: bool,
+    invocation_parent: InvocationParent,
     expansion: LocalExpnId,
 }
 
@@ -42,7 +39,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         def_kind: DefKind,
         span: Span,
     ) -> LocalDefId {
-        let parent_def = self.parent_def;
+        let parent_def = self.invocation_parent.parent_def;
         debug!(
             "create_def(node_id={:?}, def_kind={:?}, parent_def={:?})",
             node_id, def_kind, parent_def
@@ -60,9 +57,9 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn with_parent<F: FnOnce(&mut Self)>(&mut self, parent_def: LocalDefId, f: F) {
-        let orig_parent_def = mem::replace(&mut self.parent_def, parent_def);
+        let orig_parent_def = mem::replace(&mut self.invocation_parent.parent_def, parent_def);
         f(self);
-        self.parent_def = orig_parent_def;
+        self.invocation_parent.parent_def = orig_parent_def;
     }
 
     fn with_impl_trait<F: FnOnce(&mut Self)>(
@@ -70,9 +67,10 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
         impl_trait_context: ImplTraitContext,
         f: F,
     ) {
-        let orig_itc = mem::replace(&mut self.impl_trait_context, impl_trait_context);
+        let orig_itc =
+            mem::replace(&mut self.invocation_parent.impl_trait_context, impl_trait_context);
         f(self);
-        self.impl_trait_context = orig_itc;
+        self.invocation_parent.impl_trait_context = orig_itc;
     }
 
     fn collect_field(&mut self, field: &'a FieldDef, index: Option<usize>) {
@@ -96,14 +94,7 @@ impl<'a, 'ra, 'tcx> DefCollector<'a, 'ra, 'tcx> {
 
     fn visit_macro_invoc(&mut self, id: NodeId) {
         let id = id.placeholder_to_expn_id();
-        let old_parent = self.resolver.invocation_parents.insert(
-            id,
-            InvocationParent {
-                parent_def: self.parent_def,
-                impl_trait_context: self.impl_trait_context,
-                in_attr: self.in_attr,
-            },
-        );
+        let old_parent = self.resolver.invocation_parents.insert(id, self.invocation_parent);
         assert!(old_parent.is_none(), "parent `LocalDefId` is reset for an invocation");
     }
 }
@@ -367,7 +358,7 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 self.with_parent(def, |this| visit::walk_anon_const(this, constant));
                 return;
             }
-            _ => self.parent_def,
+            _ => self.invocation_parent.parent_def,
         };
 
         self.with_parent(parent_def, |this| visit::walk_expr(this, expr))
@@ -382,13 +373,13 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
                 // output or built artifacts, so replace them here...
                 // Perhaps we should instead format APITs more robustly.
                 let name = Symbol::intern(&pprust::ty_to_string(ty).replace('\n', " "));
-                let kind = match self.impl_trait_context {
+                let kind = match self.invocation_parent.impl_trait_context {
                     ImplTraitContext::Universal => DefKind::TyParam,
                     ImplTraitContext::Existential => DefKind::OpaqueTy,
                     ImplTraitContext::InBinding => return visit::walk_ty(self, ty),
                 };
                 let id = self.create_def(*id, Some(name), kind, ty.span);
-                match self.impl_trait_context {
+                match self.invocation_parent.impl_trait_context {
                     // Do not nest APIT, as we desugar them as `impl_trait: bounds`,
                     // so the `impl_trait` node is not a parent to `bounds`.
                     ImplTraitContext::Universal => visit::walk_ty(self, ty),
@@ -459,9 +450,9 @@ impl<'a, 'ra, 'tcx> visit::Visitor<'a> for DefCollector<'a, 'ra, 'tcx> {
     }
 
     fn visit_attribute(&mut self, attr: &'a Attribute) -> Self::Result {
-        let orig_in_attr = mem::replace(&mut self.in_attr, true);
+        let orig_in_attr = mem::replace(&mut self.invocation_parent.in_attr, true);
         visit::walk_attribute(self, attr);
-        self.in_attr = orig_in_attr;
+        self.invocation_parent.in_attr = orig_in_attr;
     }
 
     fn visit_inline_asm(&mut self, asm: &'a InlineAsm) {
