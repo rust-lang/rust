@@ -591,7 +591,7 @@ impl<'a> Parser<'a> {
         }
 
         // Parse stray `impl async Trait`
-        if (self.token.uninterpolated_span().at_least_rust_2018()
+        if (self.token_uninterpolated_span().at_least_rust_2018()
             && self.token.is_keyword(kw::Async))
             || self.is_kw_followed_by_ident(kw::Async)
         {
@@ -877,7 +877,7 @@ impl<'a> Parser<'a> {
             && self.look_ahead(1, |t| t.is_non_raw_ident_where(|i| i.name != kw::As))
         {
             self.bump(); // `default`
-            Defaultness::Default(self.prev_token.uninterpolated_span())
+            Defaultness::Default(self.prev_token_uninterpolated_span())
         } else {
             Defaultness::Final
         }
@@ -1208,7 +1208,7 @@ impl<'a> Parser<'a> {
         attrs: &mut AttrVec,
         mut safety: Safety,
     ) -> PResult<'a, ItemKind> {
-        let extern_span = self.prev_token.uninterpolated_span();
+        let extern_span = self.prev_token_uninterpolated_span();
         let abi = self.parse_abi(); // ABI?
         // FIXME: This recovery should be tested better.
         if safety == Safety::Default
@@ -2781,7 +2781,7 @@ impl<'a> Parser<'a> {
                             .expect("Span extracted directly from keyword should always work");
 
                         err.span_suggestion(
-                            self.token.uninterpolated_span(),
+                            self.token_uninterpolated_span(),
                             format!("`{original_kw}` already used earlier, remove this one"),
                             "",
                             Applicability::MachineApplicable,
@@ -2792,7 +2792,7 @@ impl<'a> Parser<'a> {
                     else if let Some(WrongKw::Misplaced(correct_pos_sp)) = wrong_kw {
                         let correct_pos_sp = correct_pos_sp.to(self.prev_token.span);
                         if let Ok(current_qual) = self.span_to_snippet(correct_pos_sp) {
-                            let misplaced_qual_sp = self.token.uninterpolated_span();
+                            let misplaced_qual_sp = self.token_uninterpolated_span();
                             let misplaced_qual = self.span_to_snippet(misplaced_qual_sp).unwrap();
 
                             err.span_suggestion(

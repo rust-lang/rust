@@ -1318,7 +1318,7 @@ impl<'a> Parser<'a> {
 
     /// Assuming we have just parsed `.`, continue parsing into an expression.
     fn parse_dot_suffix(&mut self, self_arg: P<Expr>, lo: Span) -> PResult<'a, P<Expr>> {
-        if self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
+        if self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await)) {
             return Ok(self.mk_await_expr(self_arg, lo));
         }
 
@@ -1509,9 +1509,9 @@ impl<'a> Parser<'a> {
                 this.parse_expr_let(restrictions)
             } else if this.eat_keyword(exp!(Underscore)) {
                 Ok(this.mk_expr(this.prev_token.span, ExprKind::Underscore))
-            } else if this.token.uninterpolated_span().at_least_rust_2018() {
+            } else if this.token_uninterpolated_span().at_least_rust_2018() {
                 // `Span::at_least_rust_2018()` is somewhat expensive; don't get it repeatedly.
-                if this.token.uninterpolated_span().at_least_rust_2024()
+                if this.token_uninterpolated_span().at_least_rust_2024()
                     // check for `gen {}` and `gen move {}`
                     // or `async gen {}` and `async gen move {}`
                     && (this.is_gen_block(kw::Gen, 0)
@@ -2186,7 +2186,7 @@ impl<'a> Parser<'a> {
     fn parse_opt_meta_item_lit(&mut self) -> Option<MetaItemLit> {
         self.recover_after_dot();
         let span = self.token.span;
-        let uninterpolated_span = self.uninterpolated_token_span();
+        let uninterpolated_span = self.token_uninterpolated_span();
         self.eat_token_lit().map(|token_lit| {
             match MetaItemLit::from_token_lit(token_lit, span) {
                 Ok(lit) => lit,
@@ -2390,7 +2390,7 @@ impl<'a> Parser<'a> {
         let movability =
             if self.eat_keyword(exp!(Static)) { Movability::Static } else { Movability::Movable };
 
-        let coroutine_kind = if self.token.uninterpolated_span().at_least_rust_2018() {
+        let coroutine_kind = if self.token_uninterpolated_span().at_least_rust_2018() {
             self.parse_coroutine_kind(Case::Sensitive)
         } else {
             None
@@ -2939,7 +2939,7 @@ impl<'a> Parser<'a> {
     /// Parses `for await? <src_pat> in <src_expr> <src_loop_block>` (`for` token already eaten).
     fn parse_expr_for(&mut self, opt_label: Option<Label>, lo: Span) -> PResult<'a, P<Expr>> {
         let is_await =
-            self.token.uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await));
+            self.token_uninterpolated_span().at_least_rust_2018() && self.eat_keyword(exp!(Await));
 
         if is_await {
             self.psess.gated_spans.gate(sym::async_for_loop, self.prev_token.span);
@@ -3529,7 +3529,7 @@ impl<'a> Parser<'a> {
         self.token.is_keyword(kw::Try)
             && self
                 .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
-            && self.token.uninterpolated_span().at_least_rust_2018()
+            && self.token_uninterpolated_span().at_least_rust_2018()
     }
 
     /// Parses an `async move? {...}` or `gen move? {...}` expression.

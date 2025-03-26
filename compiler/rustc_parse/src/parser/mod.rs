@@ -1313,14 +1313,14 @@ impl<'a> Parser<'a> {
 
     /// Parses asyncness: `async` or nothing.
     fn parse_coroutine_kind(&mut self, case: Case) -> Option<CoroutineKind> {
-        let span = self.token.uninterpolated_span();
+        let span = self.token_uninterpolated_span();
         if self.eat_keyword_case(exp!(Async), case) {
             // FIXME(gen_blocks): Do we want to unconditionally parse `gen` and then
             // error if edition <= 2024, like we do with async and edition <= 2018?
-            if self.token.uninterpolated_span().at_least_rust_2024()
+            if self.token_uninterpolated_span().at_least_rust_2024()
                 && self.eat_keyword_case(exp!(Gen), case)
             {
-                let gen_span = self.prev_token.uninterpolated_span();
+                let gen_span = self.prev_token_uninterpolated_span();
                 Some(CoroutineKind::AsyncGen {
                     span: span.to(gen_span),
                     closure_id: DUMMY_NODE_ID,
@@ -1333,7 +1333,7 @@ impl<'a> Parser<'a> {
                     return_impl_trait_id: DUMMY_NODE_ID,
                 })
             }
-        } else if self.token.uninterpolated_span().at_least_rust_2024()
+        } else if self.token_uninterpolated_span().at_least_rust_2024()
             && self.eat_keyword_case(exp!(Gen), case)
         {
             Some(CoroutineKind::Gen {
@@ -1349,9 +1349,9 @@ impl<'a> Parser<'a> {
     /// Parses fn unsafety: `unsafe`, `safe` or nothing.
     fn parse_safety(&mut self, case: Case) -> Safety {
         if self.eat_keyword_case(exp!(Unsafe), case) {
-            Safety::Unsafe(self.prev_token.uninterpolated_span())
+            Safety::Unsafe(self.prev_token_uninterpolated_span())
         } else if self.eat_keyword_case(exp!(Safe), case) {
-            Safety::Safe(self.prev_token.uninterpolated_span())
+            Safety::Safe(self.prev_token_uninterpolated_span())
         } else {
             Safety::Default
         }
@@ -1378,7 +1378,7 @@ impl<'a> Parser<'a> {
                 .look_ahead(1, |t| *t == token::OpenDelim(Delimiter::Brace) || t.is_whole_block())
             && self.eat_keyword_case(exp!(Const), case)
         {
-            Const::Yes(self.prev_token.uninterpolated_span())
+            Const::Yes(self.prev_token_uninterpolated_span())
         } else {
             Const::No
         }
@@ -1723,13 +1723,32 @@ impl<'a> Parser<'a> {
         self.num_bump_calls
     }
 
-    pub fn uninterpolated_token_span(&self) -> Span {
+    /// For interpolated `self.token`, returns a span of the fragment to which
+    /// the interpolated token refers. For all other tokens this is just a
+    /// regular span. It is particularly important to use this for identifiers
+    /// and lifetimes for which spans affect name resolution and edition
+    /// checks. Note that keywords are also identifiers, so they should use
+    /// this if they keep spans or perform edition checks.
+    pub fn token_uninterpolated_span(&self) -> Span {
         match &self.token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
             token::Interpolated(nt) => nt.use_span(),
             token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
                 self.look_ahead(1, |t| t.span)
             }
             _ => self.token.span,
+        }
+    }
+
+    /// Like `token_uninterpolated_span`, but works on `self.prev_token`.
+    pub fn prev_token_uninterpolated_span(&self) -> Span {
+        match &self.prev_token.kind {
+            token::NtIdent(ident, _) | token::NtLifetime(ident, _) => ident.span,
+            token::Interpolated(nt) => nt.use_span(),
+            token::OpenDelim(Delimiter::Invisible(InvisibleOrigin::MetaVar(_))) => {
+                self.look_ahead(0, |t| t.span)
+            }
+            _ => self.prev_token.span,
         }
     }
 }
