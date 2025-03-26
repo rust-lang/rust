@@ -343,7 +343,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn par_hir_body_owners(self, f: impl Fn(LocalDefId) + DynSend + DynSync) {
-        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&def_id| f(def_id));
+        par_for_each_in(&self.hir_crate_items(()).body_owners[..], |&&def_id| f(def_id));
     }
 
     pub fn hir_ty_param_owner(self, def_id: LocalDefId) -> LocalDefId {

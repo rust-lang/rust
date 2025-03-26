@@ -83,35 +83,35 @@ impl ModuleItems {
         &self,
         f: impl Fn(ItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.free_items[..], |&id| f(id))
+        try_par_for_each_in(&self.free_items[..], |&&id| f(id))
     }
 
     pub fn par_trait_items(
         &self,
         f: impl Fn(TraitItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.trait_items[..], |&id| f(id))
+        try_par_for_each_in(&self.trait_items[..], |&&id| f(id))
     }
 
     pub fn par_impl_items(
         &self,
         f: impl Fn(ImplItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.impl_items[..], |&id| f(id))
+        try_par_for_each_in(&self.impl_items[..], |&&id| f(id))
     }
 
     pub fn par_foreign_items(
         &self,
         f: impl Fn(ForeignItemId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.foreign_items[..], |&id| f(id))
+        try_par_for_each_in(&self.foreign_items[..], |&&id| f(id))
     }
 
     pub fn par_opaques(
         &self,
         f: impl Fn(LocalDefId) -> Result<(), ErrorGuaranteed> + DynSend + DynSync,
     ) -> Result<(), ErrorGuaranteed> {
-        try_par_for_each_in(&self.opaques[..], |&id| f(id))
+        try_par_for_each_in(&self.opaques[..], |&&id| f(id))
     }
 }
 

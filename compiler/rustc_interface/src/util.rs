@@ -179,7 +179,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
     let current_gcx = FromDyn::from(CurrentGcx::new());
     let current_gcx2 = current_gcx.clone();
 
-    let builder = rayon::ThreadPoolBuilder::new()
+    let builder = rayon_core::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
@@ -236,7 +236,7 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
             builder
                 .build_scoped(
                     // Initialize each new worker thread when created.
-                    move |thread: rayon::ThreadBuilder| {
+                    move |thread: rayon_core::ThreadBuilder| {
                         // Register the thread for use with the `WorkerLocal` type.
                         registry.register();
 
@@ -245,7 +245,9 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce(CurrentGcx) -> R + Send,
                         })
                     },
                     // Run `f` on the first thread in the thread pool.
-                    move |pool: &rayon::ThreadPool| pool.install(|| f(current_gcx.into_inner())),
+                    move |pool: &rayon_core::ThreadPool| {
+                        pool.install(|| f(current_gcx.into_inner()))
+                    },
                 )
                 .unwrap()
         })
