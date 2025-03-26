@@ -1041,11 +1041,11 @@ impl<'tcx> CheckAttrVisitor<'tcx> {
             s <= kw::Union || s == sym::SelfTy
         }
 
-        let doc_keyword = meta.value_str().unwrap_or(kw::Empty);
-        if doc_keyword == kw::Empty {
-            self.doc_attr_str_error(meta, "keyword");
-            return;
-        }
+        let doc_keyword = match meta.value_str() {
+            Some(value) if value != kw::Empty => value,
+            _ => return self.doc_attr_str_error(meta, "keyword"),
+        };
+
         let item_kind = match self.tcx.hir_node(hir_id) {
             hir::Node::Item(item) => Some(&item.kind),
             _ => None,
