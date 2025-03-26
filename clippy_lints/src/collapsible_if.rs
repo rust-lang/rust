@@ -5,6 +5,7 @@ use rustc_ast::BinOpKind;
 use rustc_errors::Applicability;
 use rustc_hir::{Block, Expr, ExprKind, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
+use rustc_middle::ty::TyCtxt;
 use rustc_session::impl_lint_pass;
 use rustc_span::Span;
 
@@ -77,12 +78,14 @@ declare_clippy_lint! {
 }
 
 pub struct CollapsibleIf {
+    let_chains_enabled: bool,
     lint_commented_code: bool,
 }
 
 impl CollapsibleIf {
-    pub fn new(conf: &'static Conf) -> Self {
+    pub fn new(tcx: TyCtxt<'_>, conf: &'static Conf) -> Self {
         Self {
+            let_chains_enabled: tcx.features().let_chains(),
             lint_commented_code: conf.lint_commented_code,
         }
     }
@@ -124,8 +127,7 @@ impl CollapsibleIf {
         if let Some(inner) = expr_block(then)
             && cx.tcx.hir_attrs(inner.hir_id).is_empty()
             && let ExprKind::If(check_inner, _, None) = &inner.kind
-            // Prevent triggering on `if c { if let a = b { .. } }`.
-            && !matches!(check_inner.kind, ExprKind::Let(..))
+            && self.eligible_condition(check_inner)
             && let ctxt = expr.span.ctxt()
             && inner.span.ctxt() == ctxt
             && (self.lint_commented_code || !block_starts_with_comment(cx, then))
@@ -160,6 +162,10 @@ impl CollapsibleIf {
             );
         }
     }
+
+    pub fn eligible_condition(&self, cond: &Expr<'_>) -> bool {
+        self.let_chains_enabled || !matches!(cond.kind, ExprKind::Let(..))
+    }
 }
 
 impl_lint_pass!(CollapsibleIf => [COLLAPSIBLE_IF, COLLAPSIBLE_ELSE_IF]);
@@ -174,11 +180,10 @@ impl LateLintPass<'_> for CollapsibleIf {
             {
                 Self::check_collapsible_else_if(cx, then.span, else_);
             } else if else_.is_none()
-                && !matches!(cond.kind, ExprKind::Let(..))
+                && self.eligible_condition(cond)
                 && let ExprKind::Block(then, None) = then.kind
             {
-                // Prevent triggering on `if c { if let a = b { .. } }`.
-                self.check_collapsible_if_if(cx, expr, cond, block!(then));
+                self.check_collapsible_if_if(cx, expr, cond, then);
             }
         }
     }
