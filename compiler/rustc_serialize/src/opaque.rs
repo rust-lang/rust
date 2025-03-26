@@ -10,6 +10,8 @@ use crate::int_overflow::DebugStrictAdd;
 use crate::leb128;
 use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 
+pub mod mem_encoder;
+
 // -----------------------------------------------------------------------------
 // Encoder
 // -----------------------------------------------------------------------------
