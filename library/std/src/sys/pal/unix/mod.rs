@@ -61,19 +61,21 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     }
 
     unsafe fn sanitize_standard_fds() {
+        #[allow(dead_code)]
         let mut opened_devnull = -1;
+        #[allow(dead_code)]
         let mut open_devnull = || {
             #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
-            use libc::open as open64;
+            use libc::open;
             #[cfg(all(target_os = "linux", target_env = "gnu"))]
-            use libc::open64;
+            use libc::open64 as open;
 
             if opened_devnull != -1 {
                 if libc::dup(opened_devnull) != -1 {
                     return;
                 }
             }
-            opened_devnull = open64(c"/dev/null".as_ptr(), libc::O_RDWR, 0);
+            opened_devnull = open(c"/dev/null".as_ptr(), libc::O_RDWR, 0);
             if opened_devnull == -1 {
                 // If the stream is closed but we failed to reopen it, abort the
                 // process. Otherwise we wouldn't preserve the safety of
