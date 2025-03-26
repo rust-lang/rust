@@ -221,8 +221,6 @@ fn resolve_arm<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, arm: &'tcx hir:
 }
 
 fn resolve_pat<'tcx>(visitor: &mut ScopeResolutionVisitor<'tcx>, pat: &'tcx hir::Pat<'tcx>) {
-    visitor.record_child_scope(Scope { local_id: pat.hir_id.local_id, data: ScopeData::Node });
-
     // If this is a binding then record the lifetime of that binding.
     if let PatKind::Binding(..) = pat.kind {
         record_var_lifetime(visitor, pat.hir_id.local_id);
