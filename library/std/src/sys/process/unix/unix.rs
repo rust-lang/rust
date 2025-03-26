@@ -461,18 +461,20 @@ impl Command {
             if #[cfg(target_os = "linux")] {
                 use crate::sys::weak::weak;
 
-                weak! {
+                weak!(
                     fn pidfd_spawnp(
-                        *mut libc::c_int,
-                        *const libc::c_char,
-                        *const libc::posix_spawn_file_actions_t,
-                        *const libc::posix_spawnattr_t,
-                        *const *mut libc::c_char,
-                        *const *mut libc::c_char
-                    ) -> libc::c_int
-                }
+                        pidfd: *mut libc::c_int,
+                        path: *const libc::c_char,
+                        file_actions: *const libc::posix_spawn_file_actions_t,
+                        attrp: *const libc::posix_spawnattr_t,
+                        argv: *const *mut libc::c_char,
+                        envp: *const *mut libc::c_char,
+                    ) -> libc::c_int;
+                );
 
-                weak! { fn pidfd_getpid(libc::c_int) -> libc::c_int }
+                weak!(
+                    fn pidfd_getpid(pidfd: libc::c_int) -> libc::c_int;
+                );
 
                 static PIDFD_SUPPORTED: AtomicU8 = AtomicU8::new(0);
                 const UNKNOWN: u8 = 0;
@@ -593,19 +595,19 @@ impl Command {
             // https://pubs.opengroup.org/onlinepubs/9799919799/functions/posix_spawn_file_actions_addchdir.html.
             // The _np version is more widely available, though, so try that first.
 
-            weak! {
+            weak!(
                 fn posix_spawn_file_actions_addchdir_np(
-                    *mut libc::posix_spawn_file_actions_t,
-                    *const libc::c_char
-                ) -> libc::c_int
-            }
+                    file_actions: *mut libc::posix_spawn_file_actions_t,
+                    path: *const libc::c_char,
+                ) -> libc::c_int;
+            );
 
-            weak! {
+            weak!(
                 fn posix_spawn_file_actions_addchdir(
-                    *mut libc::posix_spawn_file_actions_t,
-                    *const libc::c_char
-                ) -> libc::c_int
-            }
+                    file_actions: *mut libc::posix_spawn_file_actions_t,
+                    path: *const libc::c_char,
+                ) -> libc::c_int;
+            );
 
             posix_spawn_file_actions_addchdir_np
                 .get()

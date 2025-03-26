@@ -232,14 +232,14 @@ impl FileDesc {
     // implementation if `preadv` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::syscall! {
+        super::weak::syscall!(
             fn preadv(
                 fd: libc::c_int,
                 iovec: *const libc::iovec,
                 n_iovec: libc::c_int,
-                offset: off64_t
-            ) -> isize
-        }
+                offset: off64_t,
+            ) -> isize;
+        );
 
         let ret = cvt(unsafe {
             preadv(
@@ -257,7 +257,14 @@ impl FileDesc {
     // and its metadata from LLVM IR.
     #[no_sanitize(cfi)]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn preadv64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::weak!(
+            fn preadv64(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match preadv64.get() {
             Some(preadv) => {
@@ -286,7 +293,14 @@ impl FileDesc {
     // use "weak" linking.
     #[cfg(target_vendor = "apple")]
     pub fn read_vectored_at(&self, bufs: &mut [IoSliceMut<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn preadv(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::weak!(
+            fn preadv(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match preadv.get() {
             Some(preadv) => {
@@ -428,14 +442,14 @@ impl FileDesc {
     // implementation if `pwritev` is not available.
     #[cfg(all(target_os = "android", target_pointer_width = "64"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::syscall! {
+        super::weak::syscall!(
             fn pwritev(
                 fd: libc::c_int,
                 iovec: *const libc::iovec,
                 n_iovec: libc::c_int,
-                offset: off64_t
-            ) -> isize
-        }
+                offset: off64_t,
+            ) -> isize;
+        );
 
         let ret = cvt(unsafe {
             pwritev(
@@ -450,7 +464,14 @@ impl FileDesc {
 
     #[cfg(all(target_os = "android", target_pointer_width = "32"))]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn pwritev64(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::weak!(
+            fn pwritev64(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match pwritev64.get() {
             Some(pwritev) => {
@@ -479,7 +500,14 @@ impl FileDesc {
     // use "weak" linking.
     #[cfg(target_vendor = "apple")]
     pub fn write_vectored_at(&self, bufs: &[IoSlice<'_>], offset: u64) -> io::Result<usize> {
-        super::weak::weak!(fn pwritev(libc::c_int, *const libc::iovec, libc::c_int, off64_t) -> isize);
+        super::weak::weak!(
+            fn pwritev(
+                fd: libc::c_int,
+                iovec: *const libc::iovec,
+                n_iovec: libc::c_int,
+                offset: off64_t,
+            ) -> isize;
+        );
 
         match pwritev.get() {
             Some(pwritev) => {

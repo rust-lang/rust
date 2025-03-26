@@ -424,18 +424,32 @@ mod imp {
 
         let pages = PAGES.get_or_init(|| {
             use crate::sys::weak::dlsym;
-            dlsym!(fn sysctlbyname(*const libc::c_char, *mut libc::c_void, *mut libc::size_t, *const libc::c_void, libc::size_t) -> libc::c_int);
+            dlsym!(
+                fn sysctlbyname(
+                    name: *const libc::c_char,
+                    oldp: *mut libc::c_void,
+                    oldlenp: *mut libc::size_t,
+                    newp: *const libc::c_void,
+                    newlen: libc::size_t,
+                ) -> libc::c_int;
+            );
             let mut guard: usize = 0;
             let mut size = size_of_val(&guard);
             let oid = c"security.bsd.stack_guard_page";
             match sysctlbyname.get() {
-                Some(fcn) if unsafe {
-                    fcn(oid.as_ptr(),
-                        (&raw mut guard).cast(),
-                        &raw mut size,
-                        ptr::null_mut(),
-                        0) == 0
-                } => guard,
+                Some(fcn)
+                    if unsafe {
+                        fcn(
+                            oid.as_ptr(),
+                            (&raw mut guard).cast(),
+                            &raw mut size,
+                            ptr::null_mut(),
+                            0,
+                        ) == 0
+                    } =>
+                {
+                    guard
+                }
                 _ => 1,
             }
         });

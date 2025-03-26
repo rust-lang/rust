@@ -123,7 +123,12 @@ impl Timespec {
 
             // __clock_gettime64 was added to 32-bit arches in glibc 2.34,
             // and it handles both vDSO calls and ENOSYS fallbacks itself.
-            weak!(fn __clock_gettime64(libc::clockid_t, *mut __timespec64) -> libc::c_int);
+            weak!(
+                fn __clock_gettime64(
+                    clockid: libc::clockid_t,
+                    tp: *mut __timespec64,
+                ) -> libc::c_int;
+            );
 
             if let Some(clock_gettime64) = __clock_gettime64.get() {
                 let mut t = MaybeUninit::uninit();
