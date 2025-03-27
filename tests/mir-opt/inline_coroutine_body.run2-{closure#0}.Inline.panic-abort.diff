@@ -121,7 +121,7 @@
 -     }
 - 
 -     bb2: {
-+         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { __pointer: copy _5 };
++         _4 = Pin::<&mut {async fn body of ActionPermit<'_, T>::perform()}> { pointer: copy _5 };
           StorageDead(_5);
           StorageLive(_6);
           StorageLive(_7);
@@ -218,7 +218,7 @@
 +         _37 = deref_copy (_8.0: &mut {async fn body of ActionPermit<'_, T>::perform()});
 +         _21 = &mut (((*_37) as variant#3).1: std::future::Ready<()>);
 +         _20 = &mut (*_21);
-+         _19 = Pin::<&mut std::future::Ready<()>> { __pointer: copy _20 };
++         _19 = Pin::<&mut std::future::Ready<()>> { pointer: copy _20 };
 +         StorageDead(_20);
 +         StorageLive(_22);
 +         StorageLive(_23);
@@ -239,7 +239,7 @@
 +         _48 = &mut (_19.0: &mut std::future::Ready<()>);
 +         _45 = copy (_19.0: &mut std::future::Ready<()>);
 +         StorageDead(_48);
-+         _47 = Pin::<&mut std::future::Ready<()>> { __pointer: copy _45 };
++         _47 = Pin::<&mut std::future::Ready<()>> { pointer: copy _45 };
 +         StorageDead(_47);
 +         _44 = &mut ((*_45).0: std::option::Option<()>);
 +         StorageLive(_49);

@@ -1,35 +1,29 @@
-error[E0716]: temporary value dropped while borrowed
+error[E0597]: value does not live long enough
   --> $DIR/lifetime_errors_on_promotion_misusage.rs:11:35
    |
 LL |     let phantom_pinned = identity(pin!(PhantomPinned));
-   |                                   ^^^^^^^^^^^^^^^^^^^ - temporary value is freed at the end of this statement
+   |                                   ^^^^^^^^^^^^^^^^^^^ - value dropped here while still borrowed
    |                                   |
-   |                                   creates a temporary value which is freed while still in use
+   |                                   borrowed value does not live long enough
 LL |
 LL |     stuff(phantom_pinned)
    |           -------------- borrow later used here
    |
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
-help: consider using a `let` binding to create a longer lived value
-   |
-LL ~     let binding = pin!(PhantomPinned);
-LL ~     let phantom_pinned = identity(binding);
-   |
 
-error[E0716]: temporary value dropped while borrowed
+error[E0597]: value does not live long enough
   --> $DIR/lifetime_errors_on_promotion_misusage.rs:18:30
    |
 LL |     let phantom_pinned = {
    |         -------------- borrow later stored here
 LL |         let phantom_pinned = pin!(PhantomPinned);
-   |                              ^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+   |                              ^^^^^^^^^^^^^^^^^^^ borrowed value does not live long enough
 ...
 LL |     };
-   |     - temporary value is freed at the end of this statement
+   |     - value dropped here while still borrowed
    |
-   = note: consider using a `let` binding to create a longer lived value
    = note: this error originates in the macro `pin` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0716`.
+For more information about this error, try `rustc --explain E0597`.
