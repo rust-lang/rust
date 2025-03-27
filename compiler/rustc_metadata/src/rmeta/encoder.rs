@@ -1637,6 +1637,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         if let Some(destructor) = tcx.adt_destructor(local_def_id) {
             record!(self.tables.adt_destructor[def_id] <- destructor);
         }
+
+        if let Some(destructor) = tcx.adt_async_destructor(local_def_id) {
+            record!(self.tables.adt_async_destructor[def_id] <- destructor);
+        }
     }
 
     #[instrument(level = "debug", skip(self))]

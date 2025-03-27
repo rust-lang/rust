@@ -65,6 +65,7 @@ trivially_parameterized_over_tcx! {
     crate::middle::lib_features::FeatureStability,
     crate::middle::resolve_bound_vars::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
+    ty::AsyncDestructor,
     ty::AssocItemContainer,
     ty::Asyncness,
     ty::DeducedParamAttrs,
