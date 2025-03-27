@@ -13,10 +13,10 @@ and [QNX][qnx.com].
 
 ## Target maintainers
 
-- Florian Bartels, `Florian.Bartels@elektrobit.com`, https://github.com/flba-eb
-- Tristan Roach, `TRoach@blackberry.com`, https://github.com/gh-tr
-- Jonathan Pallant `Jonathan.Pallant@ferrous-systems.com`, https://github.com/jonathanpallant
-- Jorge Aparicio `Jorge.Aparicio@ferrous-systems.com`, https://github.com/japaric
+[@flba-eb](https://github.com/flba-eb)
+[@gh-tr](https://github.com/gh-tr)
+[@jonathanpallant](https://github.com/jonathanpallant)
+[@japaric](https://github.com/japaric)
 
 ## Requirements
 

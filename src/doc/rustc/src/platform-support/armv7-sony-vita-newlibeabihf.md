@@ -9,9 +9,9 @@ from nor used with any official Sony SDK.
 
 ## Target maintainers
 
-* [@nikarh](https://github.com/nikarh)
-* [@pheki](https://github.com/pheki)
-* [@ZetaNumbers](https://github.com/ZetaNumbers)
+[@nikarh](https://github.com/nikarh)
+[@pheki](https://github.com/pheki)
+[@zetanumbers](https://github.com/zetanumbers)
 
 ## Requirements
 
