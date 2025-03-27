@@ -447,6 +447,7 @@ define_tables! {
     coroutine_kind: Table<DefIndex, hir::CoroutineKind>,
     coroutine_for_closure: Table<DefIndex, RawDefId>,
     adt_destructor: Table<DefIndex, LazyValue<ty::Destructor>>,
+    adt_async_destructor: Table<DefIndex, LazyValue<ty::AsyncDestructor>>,
     coroutine_by_move_body_def_id: Table<DefIndex, RawDefId>,
     eval_static_initializer: Table<DefIndex, LazyValue<mir::interpret::ConstAllocation<'static>>>,
     trait_def: Table<DefIndex, LazyValue<ty::TraitDef>>,
