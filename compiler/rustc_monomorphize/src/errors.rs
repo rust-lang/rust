@@ -24,6 +24,7 @@ pub(crate) struct NoOptimizedMir {
     #[note]
     pub span: Span,
     pub crate_name: Symbol,
+    pub instance: String,
 }
 
 #[derive(LintDiagnostic)]
