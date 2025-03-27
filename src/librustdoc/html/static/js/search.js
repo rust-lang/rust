@@ -1,5 +1,5 @@
 // ignore-tidy-filelength
-/* global addClass, getNakedUrl, getSettingValue, getVar, nonnull, nonundef */
+/* global addClass, getNakedUrl, getSettingValue, getVar, nonundef */
 /* global onEachLazy, removeClass, searchState, browserSupportsHistoryApi, exports */
 
 "use strict";
@@ -2489,7 +2489,7 @@ class DocSearch {
             }
         } catch (err) {
             query = newParsedQuery(userQuery);
-            if (Array.isArray(err) && err.every((elem) => typeof elem == 'string')) {
+            if (Array.isArray(err) && err.every(elem => typeof elem === "string")) {
                 query.error = err;
             } else {
                 // rethrow the error if it isn't a string array
@@ -2797,7 +2797,7 @@ class DocSearch {
                     }, this.searchIndex[result.id]);
 
                     // To be sure than it some items aren't considered as duplicate.
-                    obj.fullPath = res[2] + "|" + obj.ty
+                    obj.fullPath = res[2] + "|" + obj.ty;
 
                     if (duplicates.has(obj.fullPath)) {
                         continue;
