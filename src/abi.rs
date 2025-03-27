@@ -251,6 +251,8 @@ pub fn conv_to_fn_attribute<'gcc>(conv: Conv, arch: &str) -> Option<FnAttribute<
         Conv::PreserveMost => return None,
         Conv::PreserveAll => return None,
         Conv::GpuKernel => {
+            // TODO(antoyo): remove clippy allow attribute when this is implemented.
+            #[allow(clippy::if_same_then_else)]
             if arch == "amdgpu" {
                 return None
             } else if arch == "nvptx64" {
