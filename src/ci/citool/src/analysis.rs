@@ -238,6 +238,15 @@ pub fn output_largest_duration_changes(job_metrics: &HashMap<JobName, JobMetrics
             entry.change
         );
     }
+
+    println!();
+    output_details("How to interpret the job duration changes?", || {
+        println!(
+            r#"Job durations can vary a lot, based on the actual runner instance
+that executed the job, system noise, invalidated caches, etc. The table above is provided
+mostly for t-infra members, for simpler debugging of potential CI slow-downs."#
+        );
+    });
 }
 
 #[derive(Default)]
