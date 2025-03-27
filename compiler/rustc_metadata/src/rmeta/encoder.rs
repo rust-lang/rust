@@ -1633,6 +1633,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.fn_sig[variant.def_id] <- fn_sig);
             }
         }
+
+        if let Some(destructor) = tcx.adt_destructor(local_def_id) {
+            record!(self.tables.adt_destructor[def_id] <- destructor);
+        }
     }
 
     #[instrument(level = "debug", skip(self))]
