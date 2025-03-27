@@ -1,6 +1,8 @@
 //@ run-pass
 // check that casts are not being treated as lexprs.
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     let mut a = 0i32;
     let b = &(a as i32);

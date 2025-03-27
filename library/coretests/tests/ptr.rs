@@ -108,6 +108,7 @@ fn test_is_null() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn test_as_ref() {
     unsafe {
         let p: *const isize = null();
@@ -165,6 +166,7 @@ fn test_as_ref() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn test_as_mut() {
     unsafe {
         let p: *mut isize = null_mut();
@@ -614,6 +616,7 @@ fn dyn_metadata() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn from_raw_parts() {
     let mut value = 5_u32;
     let address = &mut value as *mut _ as *mut ();
@@ -852,6 +855,7 @@ fn swap_copy_untyped() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn test_const_copy_ptr() {
     // `copy` and `copy_nonoverlapping` are thin layers on top of intrinsics. Ensure they correctly
     // deal with pointers even when the pointers cross the boundary from one "element" being copied

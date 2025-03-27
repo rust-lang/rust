@@ -2228,6 +2228,7 @@ fn test_str_escapes() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn const_str_ptr() {
     const A: [u8; 2] = ['h' as u8, 'i' as u8];
     const B: &'static [u8; 2] = &A;

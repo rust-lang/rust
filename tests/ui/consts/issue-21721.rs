@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     static NONE: Option<((), &'static u8)> = None;
     let ptr = unsafe {

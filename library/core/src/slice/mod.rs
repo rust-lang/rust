@@ -790,6 +790,7 @@ impl<T> [T] {
     /// element of this slice:
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let a = [1, 2, 3];
     /// let x = &a[1] as *const _;
     /// let y = &5 as *const _;

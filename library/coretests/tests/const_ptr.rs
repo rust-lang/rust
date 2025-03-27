@@ -7,6 +7,7 @@ const fn unaligned_ptr() -> *const u16 {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn read() {
     use core::ptr;
 
@@ -23,6 +24,7 @@ fn read() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn const_ptr_read() {
     const FOO: i32 = unsafe { (&42 as *const i32).read() };
     assert_eq!(FOO, 42);
@@ -37,6 +39,7 @@ fn const_ptr_read() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn mut_ptr_read() {
     const FOO: i32 = unsafe { (&42 as *const i32 as *mut i32).read() };
     assert_eq!(FOO, 42);
@@ -51,6 +54,7 @@ fn mut_ptr_read() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn write() {
     use core::ptr;
 
@@ -77,6 +81,7 @@ fn write() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn mut_ptr_write() {
     const fn aligned() -> i32 {
         let mut res = 0;

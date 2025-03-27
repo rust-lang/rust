@@ -43,6 +43,7 @@ use crate::{array, ptr, ub_checks};
 /// # Examples
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// use std::slice;
 ///
 /// // manifest a slice for a single element

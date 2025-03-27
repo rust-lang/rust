@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 trait Trait: Send {}
 impl Trait for () {}
 

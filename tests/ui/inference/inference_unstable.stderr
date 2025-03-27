@@ -1,5 +1,5 @@
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:16:20
+  --> $DIR/inference_unstable.rs:18:20
    |
 LL |     assert_eq!('x'.ipu_flatten(), 1);
    |                    ^^^^^^^^^^^
@@ -14,7 +14,7 @@ LL + #![feature(ipu_flatten)]
    |
 
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:19:20
+  --> $DIR/inference_unstable.rs:21:20
    |
 LL |     assert_eq!('x'.ipu_by_value_vs_by_ref(), 1);
    |                    ^^^^^^^^^^^^^^^^^^^^^^
@@ -28,7 +28,7 @@ LL + #![feature(ipu_flatten)]
    |
 
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:22:20
+  --> $DIR/inference_unstable.rs:24:20
    |
 LL |     assert_eq!('x'.ipu_by_ref_vs_by_ref_mut(), 1);
    |                    ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -42,7 +42,7 @@ LL + #![feature(ipu_flatten)]
    |
 
 warning: a method with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:25:40
+  --> $DIR/inference_unstable.rs:27:40
    |
 LL |     assert_eq!((&mut 'x' as *mut char).ipu_by_mut_ptr_vs_by_const_ptr(), 1);
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -56,7 +56,7 @@ LL + #![feature(ipu_flatten)]
    |
 
 warning: an associated constant with this name may be added to the standard library in the future
-  --> $DIR/inference_unstable.rs:28:16
+  --> $DIR/inference_unstable.rs:30:16
    |
 LL |     assert_eq!(char::C, 1);
    |                ^^^^^^^

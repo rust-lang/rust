@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 #[repr(align(4))]
 struct Foo;
 

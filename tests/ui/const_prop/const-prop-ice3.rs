@@ -1,5 +1,7 @@
 //@ run-pass (ensure that const-prop is run)
 
+#![allow(unnecessary_refs)]
+
 struct A<T: ?Sized>(T);
 
 fn main() {

@@ -2,7 +2,9 @@
 
 // tests that editions work with the tyvar warning-turned-error
 
+#![allow(unnecessary_refs)]
 #[deny(warnings)]
+
 fn main() {
     let x = 0;
     let y = &x as *const _;

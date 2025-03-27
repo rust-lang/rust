@@ -290,6 +290,7 @@
 //! represent the tagged pointer as an actual pointer and not a `usize`*. For instance:
 //!
 //! ```
+//! #![allow(unnecessary_refs)]
 //! unsafe {
 //!     // A flag we want to pack into our pointer
 //!     static HAS_DATA: usize = 0x1;
@@ -492,6 +493,7 @@ mod mut_ptr;
 /// Manually remove the last item from a vector:
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// use std::ptr;
 /// use std::rc::Rc;
 ///
@@ -759,6 +761,7 @@ pub fn with_exposed_provenance_mut<T>(addr: usize) -> *mut T {
 /// Note that this has subtle interactions with the rules for lifetime extension of temporaries in
 /// tail expressions. This code is valid, albeit in a non-obvious way:
 /// ```rust
+/// #![allow(unnecessary_refs)]
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` has its lifetime extended,
@@ -810,6 +813,7 @@ pub const fn from_ref<T: ?Sized>(r: &T) -> *const T {
 /// Note that this has subtle interactions with the rules for lifetime extension of temporaries in
 /// tail expressions. This code is valid, albeit in a non-obvious way:
 /// ```rust
+/// #![allow(unnecessary_refs)]
 /// # type T = i32;
 /// # fn foo() -> T { 42 }
 /// // The temporary holding the return value of `foo` has its lifetime extended,
@@ -1249,6 +1253,7 @@ pub const unsafe fn replace<T>(dst: *mut T, src: T) -> T {
 /// Basic usage:
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
@@ -1501,6 +1506,7 @@ pub const unsafe fn read_unaligned<T>(src: *const T) -> T {
 /// Basic usage:
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// let mut x = 0;
 /// let y = &mut x as *mut i32;
 /// let z = 12;
@@ -1722,6 +1728,7 @@ pub const unsafe fn write_unaligned<T>(dst: *mut T, src: T) {
 /// Basic usage:
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// let x = 12;
 /// let y = &x as *const i32;
 ///
@@ -1800,6 +1807,7 @@ pub unsafe fn read_volatile<T>(src: *const T) -> T {
 /// Basic usage:
 ///
 /// ```
+/// #![allow(unnecessary_refs)]
 /// let mut x = 0;
 /// let y = &mut x as *mut i32;
 /// let z = 12;

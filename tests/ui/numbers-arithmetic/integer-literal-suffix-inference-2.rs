@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 fn foo(_: *const ()) {}
 
 fn main() {

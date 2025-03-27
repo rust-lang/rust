@@ -300,6 +300,7 @@
 //! }
 //!
 //! impl AddrTracker {
+//!     #[allow(unnecessary_refs)]
 //!     fn check_for_move(self: Pin<&mut Self>) {
 //!         let current_addr = &*self as *const Self as usize;
 //!         match self.prev_addr {

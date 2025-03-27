@@ -2,6 +2,8 @@
 //@ only-x86_64
 //@ needs-asm-support
 
+#![allow(unnecessary_refs)]
+
 pub type Yes = extern "sysv64" fn(&'static u8) -> !;
 
 fn main() {

@@ -2,6 +2,7 @@
 // Test that we select between traits A and B. To do that, we must
 // consider the `Sized` bound.
 
+#![allow(unnecessary_refs)]
 
 trait A { //~ WARN trait `A` is never used
     fn foo(self);

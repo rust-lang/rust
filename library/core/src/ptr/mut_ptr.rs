@@ -85,6 +85,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```rust,no_run
     /// #![feature(set_ptr_value)]
+    /// #![allow(unnecessary_refs)]
     /// let mut x = 0u32;
     /// let mut y = 1u32;
     ///
@@ -256,6 +257,7 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
     /// unsafe {
@@ -272,6 +274,7 @@ impl<T: ?Sized> *mut T {
     /// dereference the pointer directly.
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
     /// unsafe {
@@ -306,6 +309,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(ptr_as_ref_unchecked)]
+    /// #![allow(unnecessary_refs)]
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
     /// unsafe {
@@ -348,6 +352,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(ptr_as_uninit)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let ptr: *mut u8 = &mut 10u8 as *mut u8;
     ///
@@ -1670,6 +1675,7 @@ impl<T: ?Sized> *mut T {
     /// # Examples
     ///
     /// ```
+    /// #![allow(unnecessary_refs)]
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
     /// struct AlignedI32(i32);
@@ -1703,6 +1709,7 @@ impl<T: ?Sized> *mut T {
     ///
     /// ```
     /// #![feature(pointer_is_aligned_to)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// // On some platforms, the alignment of i32 is less than 4.
     /// #[repr(align(4))]
@@ -1818,6 +1825,7 @@ impl<T> *mut [T] {
     /// ```
     /// #![feature(raw_slice_split)]
     /// #![feature(slice_ptr_get)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// let ptr = &mut v as *mut [_];
@@ -1858,6 +1866,7 @@ impl<T> *mut [T] {
     ///
     /// ```
     /// #![feature(raw_slice_split)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let mut v = [1, 0, 3, 0, 5, 6];
     /// // scoped to restrict the lifetime of the borrows
@@ -1917,6 +1926,7 @@ impl<T> *mut [T] {
     ///
     /// ```
     /// #![feature(slice_ptr_get)]
+    /// #![allow(unnecessary_refs)]
     ///
     /// let x = &mut [1, 2, 4] as *mut [i32];
     ///

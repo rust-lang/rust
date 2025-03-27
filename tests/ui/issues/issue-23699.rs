@@ -1,5 +1,6 @@
 //@ run-pass
 #![allow(unused_variables)]
+#![allow(unnecessary_refs)]
 fn gimme_a_raw_pointer<T>(_: *const T) { }
 
 fn test<T>(t: T) { }

@@ -4,6 +4,7 @@
 //@ run-pass
 
 #![feature(thread_local)]
+#![allow(unnecessary_refs)]
 
 use std::arch::asm;
 

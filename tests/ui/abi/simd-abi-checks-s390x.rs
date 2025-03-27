@@ -14,6 +14,7 @@
 #![crate_type = "lib"]
 #![allow(non_camel_case_types, improper_ctypes_definitions)]
 #![deny(abi_unsupported_vector_types)]
+#![allow(unnecessary_refs)]
 
 extern crate minicore;
 use minicore::*;

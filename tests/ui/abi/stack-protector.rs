@@ -5,6 +5,8 @@
 //@ compile-flags: -C opt-level=2
 //@ compile-flags: -g
 
+#![allow(unnecessary_refs)]
+
 use std::env;
 use std::process::{Command, ExitStatus};
 

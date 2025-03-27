@@ -1,6 +1,8 @@
 //@ run-pass
-#![allow(unused_must_use)]
 //@ needs-threads
+
+#![allow(unused_must_use)]
+#![allow(unnecessary_refs)]
 
 use std::sync::mpsc::channel;
 use std::thread;

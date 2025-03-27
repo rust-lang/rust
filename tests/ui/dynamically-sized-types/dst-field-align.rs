@@ -1,5 +1,8 @@
 //@ run-pass
+
 #![allow(dead_code)]
+#![allow(unnecessary_refs)]
+
 struct Foo<T: ?Sized> {
     a: u16,
     b: T

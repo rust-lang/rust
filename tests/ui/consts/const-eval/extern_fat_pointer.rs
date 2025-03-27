@@ -1,5 +1,6 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
 #![feature(extern_types)]
 
 extern "C" {

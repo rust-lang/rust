@@ -3,6 +3,7 @@
 //@ compile-flags: -O
 //@ ignore-nto Doesn't work without emulated TLS enabled (in LLVM)
 
+#![allow(unnecessary_refs)]
 #![feature(thread_local)]
 
 #[thread_local]

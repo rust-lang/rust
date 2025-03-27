@@ -1,6 +1,8 @@
 //@ compile-flags: -Z threads=16
 //@ build-pass
 
+#![allow(unnecessary_refs)]
+
 pub static GLOBAL: isize = 3;
 
 static GLOBAL0: isize = 4;

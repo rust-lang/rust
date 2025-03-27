@@ -1285,6 +1285,7 @@ fn test_windows_zip() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn test_iter_ref_consistency() {
     use std::fmt::Debug;
 

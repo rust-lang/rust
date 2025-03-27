@@ -2,6 +2,8 @@
 //@ needs-asm-support
 //@ only-x86_64
 
+#![allow(unnecessary_refs)]
+
 // This demonstrates why we need to erase regions before sized check in intrinsicck
 
 struct NoCopy;

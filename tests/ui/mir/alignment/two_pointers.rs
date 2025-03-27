@@ -3,6 +3,8 @@
 //@ compile-flags: -C debug-assertions
 //@ error-pattern: misaligned pointer dereference: address must be a multiple of 0x4 but is
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     let x = [0u32; 2];
     let ptr = x.as_ptr();

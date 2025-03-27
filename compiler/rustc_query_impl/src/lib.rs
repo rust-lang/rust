@@ -84,6 +84,7 @@ where
     }
 
     #[inline(always)]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
     fn query_state<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a QueryState<Self::Key>
     where
         QueryCtxt<'tcx>: 'a,
@@ -98,6 +99,7 @@ where
     }
 
     #[inline(always)]
+    #[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
     fn query_cache<'a>(self, qcx: QueryCtxt<'tcx>) -> &'a Self::Cache
     where
         'tcx: 'a,

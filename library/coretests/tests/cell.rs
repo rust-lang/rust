@@ -17,6 +17,7 @@ fn smoketest_unsafe_cell() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn unsafe_cell_raw_get() {
     let x = UnsafeCell::new(10);
     let ptr = &x as *const UnsafeCell<i32>;
@@ -89,6 +90,7 @@ fn double_imm_borrow() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn no_mut_then_imm_borrow() {
     let x = RefCell::new(0);
     let _b1 = x.borrow_mut();

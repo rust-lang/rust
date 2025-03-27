@@ -32,6 +32,7 @@
 // Windows is ignored because bootstrap doesn't yet know to compile rust_test_helpers with
 // the sysv64 ABI on Windows.
 
+#![allow(unnecessary_refs)]
 #[allow(dead_code)]
 #[allow(improper_ctypes)]
 

@@ -3,6 +3,7 @@
 // FIXME: please improve this when we get monomorphization support
 
 #![allow(ambiguous_wide_pointer_comparisons)]
+#![allow(unnecessary_refs)]
 
 use std::mem;
 

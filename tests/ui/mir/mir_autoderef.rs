@@ -1,4 +1,7 @@
 //@ run-pass
+
+#![allow(unnecessary_refs)]
+
 use std::ops::{Deref, DerefMut};
 
 pub struct MyRef(u32);

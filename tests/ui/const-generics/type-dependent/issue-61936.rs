@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 trait SliceExt<T: Clone> {
     fn array_windows_example<'a, const N: usize>(&'a self) -> ArrayWindowsExample<'a, T, N>;
 }

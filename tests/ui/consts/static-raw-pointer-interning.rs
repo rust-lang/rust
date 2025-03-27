@@ -1,5 +1,7 @@
 //@ run-pass
 
+#![allow(unnecessary_refs)]
+
 static FOO: Foo = Foo {
     field: &42 as *const i32,
 };

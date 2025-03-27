@@ -103,7 +103,7 @@ macro_rules! load_int_le {
         let mut data = 0 as $int_ty;
         ptr::copy_nonoverlapping(
             $buf.as_ptr().add($i),
-            &mut data as *mut _ as *mut u8,
+            &raw mut data as *mut u8,
             size_of::<$int_ty>(),
         );
         data.to_le()

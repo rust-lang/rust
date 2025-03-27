@@ -872,6 +872,7 @@ impl<T> MaybeUninit<T> {
     /// Nor can you use direct field access to do field-by-field gradual initialization:
     ///
     /// ```rust,no_run
+    /// #![allow(unnecessary_refs)]
     /// use std::{mem::MaybeUninit, ptr};
     ///
     /// struct Foo {

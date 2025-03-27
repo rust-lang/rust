@@ -3879,6 +3879,7 @@ pub const unsafe fn copy<T>(src: *const T, dst: *mut T, count: usize) {
 /// following is an **incorrect** use of this function:
 ///
 /// ```rust,no_run
+/// #![allow(unnecessary_refs)]
 /// unsafe {
 ///     let mut value: u8 = 0;
 ///     let ptr: *mut bool = &mut value as *mut u8 as *mut bool;

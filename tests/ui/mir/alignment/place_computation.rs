@@ -1,6 +1,8 @@
 //@ run-pass
 //@ compile-flags: -C debug-assertions
 
+#![allow(unnecessary_refs)]
+
 #[repr(align(8))]
 struct Misalignment {
     a: u8,

@@ -330,6 +330,7 @@ fn weak_self_cyclic() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn drop_arc() {
     let mut canary = AtomicUsize::new(0);
     let x = Arc::new(Canary(&mut canary as *mut AtomicUsize));
@@ -338,6 +339,7 @@ fn drop_arc() {
 }
 
 #[test]
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn drop_arc_weak() {
     let mut canary = AtomicUsize::new(0);
     let arc = Arc::new(Canary(&mut canary as *mut AtomicUsize));

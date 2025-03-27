@@ -146,6 +146,7 @@ fn ptr_add_null() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn ptr_add_data() {
     let num = 0i64;
     let n = &num as *const i64 as *mut _;
@@ -186,6 +187,7 @@ fn ptr_bitops() {
 
 #[test]
 #[cfg(any(not(target_arch = "arm"), target_os = "linux"))] // Missing intrinsic in compiler-builtins
+#[cfg_attr(not(bootstrap), allow(unnecessary_refs))]
 fn ptr_bitops_tagging() {
     #[repr(align(16))]
     struct Tagme(#[allow(dead_code)] u128);

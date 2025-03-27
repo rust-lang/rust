@@ -1,5 +1,7 @@
 //@ check-pass
 
+#![allow(unnecessary_refs)]
+
 use std::ptr::NonNull;
 
 const NON_NULL: NonNull<u8> = unsafe { NonNull::new_unchecked((&42u8 as *const u8).cast_mut()) };

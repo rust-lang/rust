@@ -1426,6 +1426,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(atomic_from_mut)]
+    /// #![allow(unnecessary_refs)]
     /// use std::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let mut data = 123;
@@ -2185,6 +2186,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(strict_provenance_atomic_ptr)]
+    /// #![allow(unnecessary_refs)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2236,6 +2238,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(strict_provenance_atomic_ptr)]
+    /// #![allow(unnecessary_refs)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;
@@ -2286,6 +2289,7 @@ impl<T> AtomicPtr<T> {
     ///
     /// ```
     /// #![feature(strict_provenance_atomic_ptr)]
+    /// #![allow(unnecessary_refs)]
     /// use core::sync::atomic::{AtomicPtr, Ordering};
     ///
     /// let pointer = &mut 3i64 as *mut i64;

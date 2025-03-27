@@ -1,6 +1,7 @@
 //@ run-pass
 
 #![allow(dead_code)]
+#![allow(unnecessary_refs)]
 
 use std::vec;
 

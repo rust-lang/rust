@@ -2,6 +2,8 @@
 //@ check-run-results
 //@ exec-env:RUST_BACKTRACE=0
 //@ normalize-stderr: "(core/src/panicking\.rs):[0-9]+:[0-9]+" -> "$1:$$LINE:$$COL"
+
+#![allow(unnecessary_refs)]
 #![feature(extern_types)]
 
 extern "C" {

@@ -1,5 +1,7 @@
 //@ run-rustfix
 
+#![allow(unnecessary_refs)]
+
 struct Something {
     pub field: u32,
 }

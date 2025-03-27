@@ -5,6 +5,7 @@
 // verifying simd([*const T; N]) and simd([*mut T; N]) pass typeck and work.
 #![feature(repr_simd, core_intrinsics)]
 #![allow(non_camel_case_types)]
+#![allow(unnecessary_refs)]
 
 use std::intrinsics::simd::{simd_gather, simd_scatter};
 

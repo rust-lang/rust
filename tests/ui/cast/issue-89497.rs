@@ -2,6 +2,8 @@
 
 //@ run-rustfix
 
+#![allow(unnecessary_refs)]
+
 fn main() {
     let pointer: usize = &1_i32 as *const i32 as usize;
     let _reference: &'static i32 = unsafe { pointer as *const i32 as &'static i32 };

@@ -1,6 +1,7 @@
 //@ compile-flags: -Zunleash-the-miri-inside-of-you
 //@ run-pass
 
+#![allow(unnecessary_refs)]
 #![feature(const_raw_ptr_comparison)]
 
 const EMPTY_SLICE: &[i32] = &[];
