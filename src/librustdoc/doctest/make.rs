@@ -25,7 +25,7 @@ use crate::html::markdown::LangString;
 #[derive(Default)]
 struct ParseSourceInfo {
     has_main_fn: bool,
-    found_extern_crate: bool,
+    already_has_extern_crate: bool,
     supports_color: bool,
     has_global_allocator: bool,
     has_macro_def: bool,
@@ -48,7 +48,7 @@ pub(crate) struct DocTestBuilder {
     pub(crate) crates: String,
     pub(crate) everything_else: String,
     pub(crate) test_id: Option<String>,
-    pub(crate) failed_ast: bool,
+    pub(crate) invalid_ast: bool,
     pub(crate) can_be_merged: bool,
 }
 
@@ -75,7 +75,7 @@ impl DocTestBuilder {
 
         let Ok(Ok(ParseSourceInfo {
             has_main_fn,
-            found_extern_crate,
+            already_has_extern_crate,
             supports_color,
             has_global_allocator,
             has_macro_def,
@@ -114,9 +114,9 @@ impl DocTestBuilder {
             maybe_crate_attrs,
             crates,
             everything_else,
-            already_has_extern_crate: found_extern_crate,
+            already_has_extern_crate,
             test_id,
-            failed_ast: false,
+            invalid_ast: false,
             can_be_merged,
         }
     }
@@ -137,7 +137,7 @@ impl DocTestBuilder {
             everything_else,
             already_has_extern_crate: false,
             test_id,
-            failed_ast: true,
+            invalid_ast: true,
             can_be_merged: false,
         }
     }
@@ -151,10 +151,10 @@ impl DocTestBuilder {
         opts: &GlobalTestOptions,
         crate_name: Option<&str>,
     ) -> (String, usize) {
-        if self.failed_ast {
+        if self.invalid_ast {
             // If the AST failed to compile, no need to go generate a complete doctest, the error
             // will be better this way.
-            debug!("failed AST:\n{test_code}");
+            debug!("invalid AST:\n{test_code}");
             return (test_code.to_string(), 0);
         }
         let mut line_offset = 0;
@@ -279,7 +279,7 @@ impl DocTestBuilder {
     }
 }
 
-fn cancel_error_count(psess: &ParseSess) {
+fn reset_error_count(psess: &ParseSess) {
     // Reset errors so that they won't be reported as compiler bugs when dropping the
     // dcx. Any errors in the tests will be reported when the test file is compiled,
     // Note that we still need to cancel the errors above otherwise `Diag` will panic on
@@ -295,7 +295,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
     use rustc_span::source_map::FilePathMapping;
 
     let mut info =
-        ParseSourceInfo { found_extern_crate: crate_name.is_none(), ..Default::default() };
+        ParseSourceInfo { already_has_extern_crate: crate_name.is_none(), ..Default::default() };
 
     let wrapped_source = format!("{DOCTEST_CODE_WRAPPER}{source}\n}}");
 
@@ -322,27 +322,21 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         Ok(p) => p,
         Err(errs) => {
             errs.into_iter().for_each(|err| err.cancel());
-            cancel_error_count(&psess);
+            reset_error_count(&psess);
             return Err(());
         }
     };
 
-    fn push_to_s(
-        s: &mut String,
-        source: &str,
-        span: rustc_span::Span,
-        prev_span_hi: &mut Option<usize>,
-    ) {
+    fn push_to_s(s: &mut String, source: &str, span: rustc_span::Span, prev_span_hi: &mut usize) {
         let extra_len = DOCTEST_CODE_WRAPPER.len();
         // We need to shift by the length of `DOCTEST_CODE_WRAPPER` because we
         // added it at the beginning of the source we provided to the parser.
-        let lo = prev_span_hi.unwrap_or(0);
         let mut hi = span.hi().0 as usize - extra_len;
         if hi > source.len() {
             hi = source.len();
         }
-        s.push_str(&source[lo..hi]);
-        *prev_span_hi = Some(hi);
+        s.push_str(&source[*prev_span_hi..hi]);
+        *prev_span_hi = hi;
     }
 
     // Recurse through functions body. It is necessary because the doctest source code is
@@ -354,7 +348,7 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         crate_name: &Option<&str>,
         is_top_level: bool,
     ) -> bool {
-        let mut is_crate = false;
+        let mut is_extern_crate = false;
         if !info.has_global_allocator
             && item.attrs.iter().any(|attr| attr.name_or_empty() == sym::global_allocator)
         {
@@ -370,17 +364,17 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 if let Some(ref body) = fn_item.body {
                     for stmt in &body.stmts {
                         if let StmtKind::Item(ref item) = stmt.kind {
-                            is_crate |= check_item(item, info, crate_name, false);
+                            is_extern_crate |= check_item(item, info, crate_name, false);
                         }
                     }
                 }
             }
             ast::ItemKind::ExternCrate(original) => {
-                is_crate = true;
-                if !info.found_extern_crate
+                is_extern_crate = true;
+                if !info.already_has_extern_crate
                     && let Some(crate_name) = crate_name
                 {
-                    info.found_extern_crate = match original {
+                    info.already_has_extern_crate = match original {
                         Some(name) => name.as_str() == *crate_name,
                         None => item.ident.as_str() == *crate_name,
                     };
@@ -391,10 +385,10 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
             }
             _ => {}
         }
-        is_crate
+        is_extern_crate
     }
 
-    let mut prev_span_hi = None;
+    let mut prev_span_hi = 0;
     let not_crate_attrs = [sym::forbid, sym::allow, sym::warn, sym::deny, sym::expect];
     let parsed = parser.parse_item(rustc_parse::parser::ForceCollect::No);
 
@@ -430,13 +424,13 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 }
             }
             for stmt in &body.stmts {
-                let mut is_crate = false;
+                let mut is_extern_crate = false;
                 match stmt.kind {
                     StmtKind::Item(ref item) => {
-                        is_crate = check_item(&item, &mut info, crate_name, true);
+                        is_extern_crate = check_item(&item, &mut info, crate_name, true);
                     }
                     StmtKind::Expr(ref expr) if matches!(expr.kind, ast::ExprKind::Err(_)) => {
-                        cancel_error_count(&psess);
+                        reset_error_count(&psess);
                         return Err(());
                     }
                     StmtKind::MacCall(ref mac_call) if !info.has_main_fn => {
@@ -471,11 +465,12 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
                 if info.everything_else.is_empty()
                     && (!info.maybe_crate_attrs.is_empty() || !info.crate_attrs.is_empty())
                 {
-                    // We add potential backlines/comments if there are some in items generated
-                    // before the wrapping function.
+                    // To keep the doctest code "as close as possible" to the original, we insert
+                    // all the code located between this new span and the previous span which
+                    // might contain code comments and backlines.
                     push_to_s(&mut info.crates, source, span.shrink_to_lo(), &mut prev_span_hi);
                 }
-                if !is_crate {
+                if !is_extern_crate {
                     push_to_s(&mut info.everything_else, source, span, &mut prev_span_hi);
                 } else {
                     push_to_s(&mut info.crates, source, span, &mut prev_span_hi);
@@ -490,6 +485,6 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         _ => Err(()),
     };
 
-    cancel_error_count(&psess);
+    reset_error_count(&psess);
     result
 }
