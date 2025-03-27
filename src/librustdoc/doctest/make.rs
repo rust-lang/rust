@@ -334,8 +334,8 @@ fn parse_source(source: &str, crate_name: &Option<&str>) -> Result<ParseSourceIn
         prev_span_hi: &mut Option<usize>,
     ) {
         let extra_len = DOCTEST_CODE_WRAPPER.len();
-        // We need to shift by 1 because we added `{` at the beginning of the source.we provided
-        // to the parser.
+        // We need to shift by the length of `DOCTEST_CODE_WRAPPER` because we
+        // added it at the beginning of the source we provided to the parser.
         let lo = prev_span_hi.unwrap_or(0);
         let mut hi = span.hi().0 as usize - extra_len;
         if hi > source.len() {
