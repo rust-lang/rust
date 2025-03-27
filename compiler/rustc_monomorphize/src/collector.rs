@@ -225,13 +225,13 @@ use rustc_middle::ty::adjustment::{CustomCoerceUnsized, PointerCoercion};
 use rustc_middle::ty::layout::ValidityRequirement;
 use rustc_middle::ty::print::{shrunk_instance_name, with_no_trimmed_paths};
 use rustc_middle::ty::{
-    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Interner, Ty, TyCtxt,
-    TypeFoldable, TypeVisitableExt, VtblEntry,
+    self, GenericArgs, GenericParamDefKind, Instance, InstanceKind, Ty, TyCtxt, TypeFoldable,
+    TypeVisitableExt, VtblEntry,
 };
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
-use rustc_session::config::EntryFnType;
+use rustc_session::config::{DebugInfo, EntryFnType};
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
@@ -967,7 +967,7 @@ fn should_codegen_locally<'tcx>(tcx: TyCtxt<'tcx>, instance: Instance<'tcx>) -> 
     {
         // `#[rustc_force_inline]` items should never be codegened. This should be caught by
         // the MIR validator.
-        tcx.delay_bug("attempt to codegen `#[rustc_force_inline]` item");
+        tcx.dcx().delayed_bug("attempt to codegen `#[rustc_force_inline]` item");
     }
 
     if def_id.is_local() {
@@ -1235,6 +1235,11 @@ fn collect_items_of_instance<'tcx>(
     };
 
     if mode == CollectionMode::UsedItems {
+        if tcx.sess.opts.debuginfo == DebugInfo::Full {
+            for var_debug_info in &body.var_debug_info {
+                collector.visit_var_debug_info(var_debug_info);
+            }
+        }
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
         }

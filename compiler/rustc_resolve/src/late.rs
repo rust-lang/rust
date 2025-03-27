@@ -3329,34 +3329,44 @@ impl<'a, 'ast, 'ra: 'ast, 'tcx> LateResolutionVisitor<'a, 'ast, 'ra, 'tcx> {
                     },
                     |this| {
                         this.with_lifetime_rib(
-                            LifetimeRibKind::StaticIfNoLifetimeInScope {
-                                lint_id: item.id,
-                                // In impls, it's not a hard error yet due to backcompat.
-                                emit_lint: true,
+                            // Until these are a hard error, we need to create them within the correct binder,
+                            // Otherwise the lifetimes of this assoc const think they are lifetimes of the trait.
+                            LifetimeRibKind::AnonymousCreateParameter {
+                                binder: item.id,
+                                report_in_path: true,
                             },
                             |this| {
-                                // If this is a trait impl, ensure the const
-                                // exists in trait
-                                this.check_trait_item(
-                                    item.id,
-                                    item.ident,
-                                    &item.kind,
-                                    ValueNS,
-                                    item.span,
-                                    seen_trait_items,
-                                    |i, s, c| ConstNotMemberOfTrait(i, s, c),
-                                );
+                                this.with_lifetime_rib(
+                                    LifetimeRibKind::StaticIfNoLifetimeInScope {
+                                        lint_id: item.id,
+                                        // In impls, it's not a hard error yet due to backcompat.
+                                        emit_lint: true,
+                                    },
+                                    |this| {
+                                        // If this is a trait impl, ensure the const
+                                        // exists in trait
+                                        this.check_trait_item(
+                                            item.id,
+                                            item.ident,
+                                            &item.kind,
+                                            ValueNS,
+                                            item.span,
+                                            seen_trait_items,
+                                            |i, s, c| ConstNotMemberOfTrait(i, s, c),
+                                        );
 
-                                this.visit_generics(generics);
-                                this.visit_ty(ty);
-                                if let Some(expr) = expr {
-                                    // We allow arbitrary const expressions inside of associated consts,
-                                    // even if they are potentially not const evaluatable.
-                                    //
-                                    // Type parameters can already be used and as associated consts are
-                                    // not used as part of the type system, this is far less surprising.
-                                    this.resolve_const_body(expr, None);
-                                }
+                                        this.visit_generics(generics);
+                                        this.visit_ty(ty);
+                                        if let Some(expr) = expr {
+                                            // We allow arbitrary const expressions inside of associated consts,
+                                            // even if they are potentially not const evaluatable.
+                                            //
+                                            // Type parameters can already be used and as associated consts are
+                                            // not used as part of the type system, this is far less surprising.
+                                            this.resolve_const_body(expr, None);
+                                        }
+                                    },
+                                )
                             },
                         );
                     },

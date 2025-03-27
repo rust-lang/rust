@@ -7,6 +7,8 @@ pub mod tls;
 use std::assert_matches::{assert_matches, debug_assert_matches};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::env::VarError;
+use std::ffi::OsStr;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::ops::{Bound, Deref};
@@ -1882,6 +1884,15 @@ impl<'tcx> TyCtxt<'tcx> {
             return Some(fun_sig.map_bound(|sig| ty::FnSig { safety: hir::Safety::Safe, ..sig }));
         }
         None
+    }
+
+    /// Helper to get a tracked environment variable via. [`TyCtxt::env_var_os`] and converting to
+    /// UTF-8 like [`std::env::var`].
+    pub fn env_var<K: ?Sized + AsRef<OsStr>>(self, key: &'tcx K) -> Result<&'tcx str, VarError> {
+        match self.env_var_os(key.as_ref()) {
+            Some(value) => value.to_str().ok_or_else(|| VarError::NotUnicode(value.to_os_string())),
+            None => Err(VarError::NotPresent),
+        }
     }
 }
 
