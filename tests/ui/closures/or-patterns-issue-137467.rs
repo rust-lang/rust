@@ -24,6 +24,13 @@ fn match_const(x: (u32, u32, u32)) {
     };
 }
 
+// related testcase reported in #138973
+fn without_bindings(x: u32) {
+    let _ = || {
+        let (0 | _) = x;
+    };
+}
+
 enum Choice { A, B }
 
 fn match_unit_variant(x: (Choice, u32, u32)) {
