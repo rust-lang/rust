@@ -230,6 +230,7 @@ impl<'a> ExtCtxt<'a> {
             self.pat_ident(sp, ident)
         };
         let local = P(ast::Local {
+            super_: None,
             pat,
             ty,
             id: ast::DUMMY_NODE_ID,
@@ -245,6 +246,7 @@ impl<'a> ExtCtxt<'a> {
     /// Generates `let _: Type;`, which is usually used for type assertions.
     pub fn stmt_let_type_only(&self, span: Span, ty: P<ast::Ty>) -> ast::Stmt {
         let local = P(ast::Local {
+            super_: None,
             pat: self.pat_wild(span),
             ty: Some(ty),
             id: ast::DUMMY_NODE_ID,
