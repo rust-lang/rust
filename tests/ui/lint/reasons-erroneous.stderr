@@ -25,7 +25,7 @@ LL | #![warn(unsafe_code, blerp = "or in league with robbers have reversed the s
 error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:15:36
    |
-LL | #![warn(elided_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
+LL | #![warn(hidden_lifetimes_in_paths, reason("disrespectful to ancestors", "irresponsible to heirs"))]
    |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ bad attribute argument
 
 error[E0452]: malformed lint attribute input

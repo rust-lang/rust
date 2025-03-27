@@ -70,17 +70,16 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `hidden_lifetimes_in_input_paths2` lint detects the use of
+    /// The `hidden_lifetimes_in_input_paths` lint detects the use of
     /// hidden lifetime parameters in types occurring as a function
     /// argument.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_input_paths2)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_input_paths)]
     /// fn foo(x: ContainsLifetime) {}
     /// ```
     ///
@@ -99,23 +98,22 @@ declare_lint! {
     /// themselves do not usually cause much confusion.
     ///
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
-    pub HIDDEN_LIFETIMES_IN_INPUT_PATHS2,
+    pub HIDDEN_LIFETIMES_IN_INPUT_PATHS,
     Allow,
     "hidden lifetime parameters in types in function arguments may be confusing"
 }
 
 declare_lint! {
-    /// The `hidden_lifetimes_in_output_paths2` lint detects the use
+    /// The `hidden_lifetimes_in_output_paths` lint detects the use
     /// of hidden lifetime parameters in types occurring as a function
     /// return value.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_output_paths2)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_output_paths)]
     /// fn foo(x: &i32) -> ContainsLifetime {
     ///     ContainsLifetime(x)
     /// }
@@ -137,15 +135,15 @@ declare_lint! {
     /// lifetime].
     ///
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
-    pub HIDDEN_LIFETIMES_IN_OUTPUT_PATHS2,
+    pub HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
     Allow,
     "hidden lifetime parameters in types in function return values are deprecated"
 }
 
 declare_lint_pass!(LifetimeStyle => [
     MISMATCHED_LIFETIME_SYNTAXES,
-    HIDDEN_LIFETIMES_IN_INPUT_PATHS2,
-    HIDDEN_LIFETIMES_IN_OUTPUT_PATHS2,
+    HIDDEN_LIFETIMES_IN_INPUT_PATHS,
+    HIDDEN_LIFETIMES_IN_OUTPUT_PATHS,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for LifetimeStyle {
@@ -171,8 +169,8 @@ impl<'tcx> LateLintPass<'tcx> for LifetimeStyle {
         }
 
         report_mismatches(cx, &input_map, &output_map);
-        report_hidden_in_paths(cx, &input_map, HIDDEN_LIFETIMES_IN_INPUT_PATHS2);
-        report_hidden_in_paths(cx, &output_map, HIDDEN_LIFETIMES_IN_OUTPUT_PATHS2);
+        report_hidden_in_paths(cx, &input_map, HIDDEN_LIFETIMES_IN_INPUT_PATHS);
+        report_hidden_in_paths(cx, &output_map, HIDDEN_LIFETIMES_IN_OUTPUT_PATHS);
     }
 }
 
@@ -427,17 +425,16 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeInfoCollector<'a, 'tcx> {
 }
 
 declare_lint! {
-    /// The `hidden_lifetimes_in_type_paths2` lint detects the use of
+    /// The `hidden_lifetimes_in_type_paths` lint detects the use of
     /// hidden lifetime parameters in types not part of a function's
     /// arguments or return values.
     ///
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(hidden_lifetimes_in_type_paths2)]
-    ///
     /// struct ContainsLifetime<'a>(&'a i32);
     ///
+    /// #[deny(hidden_lifetimes_in_type_paths)]
     /// static FOO: ContainsLifetime = ContainsLifetime(&42);
     /// ```
     ///
@@ -453,7 +450,7 @@ declare_lint! {
     /// lifetime].
     ///
     /// [placeholder lifetime]: https://doc.rust-lang.org/reference/lifetime-elision.html#lifetime-elision-in-functions
-    pub HIDDEN_LIFETIMES_IN_TYPE_PATHS2,
+    pub HIDDEN_LIFETIMES_IN_TYPE_PATHS,
     Allow,
     "hidden lifetime parameters in types outside function signatures are discouraged"
 }
@@ -463,7 +460,7 @@ pub(crate) struct HiddenLifetimesInTypePaths {
     inside_fn_signature: bool,
 }
 
-impl_lint_pass!(HiddenLifetimesInTypePaths => [HIDDEN_LIFETIMES_IN_TYPE_PATHS2]);
+impl_lint_pass!(HiddenLifetimesInTypePaths => [HIDDEN_LIFETIMES_IN_TYPE_PATHS]);
 
 impl<'tcx> LateLintPass<'tcx> for HiddenLifetimesInTypePaths {
     #[instrument(skip(self, cx))]
@@ -506,7 +503,7 @@ impl<'tcx> LateLintPass<'tcx> for HiddenLifetimesInTypePaths {
         }
 
         cx.emit_span_lint(
-            HIDDEN_LIFETIMES_IN_TYPE_PATHS2,
+            HIDDEN_LIFETIMES_IN_TYPE_PATHS,
             ty.span,
             lints::HiddenLifetimeInPath {
                 suggestions: lints::HiddenLifetimeInPathSuggestion { suggestions },
