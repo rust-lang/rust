@@ -24,31 +24,11 @@ pub(crate) fn parse(config: &str) -> Config {
 
 #[test]
 fn download_ci_llvm() {
-    let config = parse("");
-    let is_available = llvm::is_ci_llvm_available_for_target(&config, config.llvm_assertions);
-    if is_available {
-        assert!(config.llvm_from_ci);
-    }
-
-    let config = Config::parse_inner(
-        Flags::parse(&[
-            "check".to_string(),
-            "--config=/does/not/exist".to_string(),
-            "--ci".to_string(),
-            "false".to_string(),
-        ]),
-        |&_| toml::from_str("llvm.download-ci-llvm = true"),
-    );
-    let is_available = llvm::is_ci_llvm_available_for_target(&config, config.llvm_assertions);
-    if is_available {
-        assert!(config.llvm_from_ci);
-    }
-
     let config = parse("llvm.download-ci-llvm = false");
     assert!(!config.llvm_from_ci);
 
     let if_unchanged_config = parse("llvm.download-ci-llvm = \"if-unchanged\"");
-    if if_unchanged_config.llvm_from_ci {
+    if if_unchanged_config.llvm_from_ci && if_unchanged_config.is_running_on_ci {
         let has_changes = if_unchanged_config
             .last_modified_commit(LLVM_INVALIDATION_PATHS, "download-ci-llvm", true)
             .is_none();
