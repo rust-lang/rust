@@ -1943,14 +1943,11 @@ fn clean_trait_object_lifetime_bound<'tcx>(
     // latter contrary to `clean_middle_region`.
     match *region {
         ty::ReStatic => Some(Lifetime::statik()),
-        ty::ReEarlyParam(region) if region.name != kw::Empty => Some(Lifetime(region.name)),
-        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. })
-            if name != kw::Empty =>
-        {
+        ty::ReEarlyParam(region) => Some(Lifetime(region.name)),
+        ty::ReBound(_, ty::BoundRegion { kind: ty::BoundRegionKind::Named(_, name), .. }) => {
             Some(Lifetime(name))
         }
-        ty::ReEarlyParam(_)
-        | ty::ReBound(..)
+        ty::ReBound(..)
         | ty::ReLateParam(_)
         | ty::ReVar(_)
         | ty::RePlaceholder(_)
