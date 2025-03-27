@@ -850,14 +850,14 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         add_lt_suggs: &mut Vec<(Span, String)>,
     ) -> String {
         struct LifetimeReplaceVisitor<'a> {
-            needle: hir::LifetimeName,
+            needle: hir::LifetimeKind,
             new_lt: &'a str,
             add_lt_suggs: &'a mut Vec<(Span, String)>,
         }
 
         impl<'hir> hir::intravisit::Visitor<'hir> for LifetimeReplaceVisitor<'_> {
             fn visit_lifetime(&mut self, lt: &'hir hir::Lifetime) {
-                if lt.res == self.needle {
+                if lt.kind == self.needle {
                     self.add_lt_suggs.push(lt.suggestion(self.new_lt));
                 }
             }
@@ -894,7 +894,7 @@ impl<'a, 'tcx> TypeErrCtxt<'a, 'tcx> {
         };
 
         let mut visitor = LifetimeReplaceVisitor {
-            needle: hir::LifetimeName::Param(lifetime_def_id),
+            needle: hir::LifetimeKind::Param(lifetime_def_id),
             add_lt_suggs,
             new_lt: &new_lt,
         };
