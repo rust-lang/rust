@@ -216,7 +216,7 @@ fn main() {
                         8u32,
                         builtin#lang(Count::Implied),
                         builtin#lang(Count::Is)(
-                            2usize,
+                            2,
                         ),
                     ), builtin#lang(Placeholder::new)(
                         1usize,

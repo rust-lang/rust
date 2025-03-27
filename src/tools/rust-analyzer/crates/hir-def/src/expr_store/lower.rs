@@ -2400,7 +2400,8 @@ impl ExprCollector<'_> {
             Some(FormatCount::Literal(n)) => {
                 let args = self.alloc_expr_desugared(Expr::Literal(Literal::Uint(
                     *n as u128,
-                    Some(BuiltinUint::Usize),
+                    // FIXME: Change this to Some(BuiltinUint::U16) once we drop support for toolchains < 1.88
+                    None,
                 )));
                 let count_is = match LangItem::FormatCount.ty_rel_path(
                     self.db,
