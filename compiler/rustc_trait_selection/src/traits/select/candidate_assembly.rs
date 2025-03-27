@@ -16,7 +16,7 @@ use rustc_infer::traits::{Obligation, PolyTraitObligation, SelectionError};
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::{self, Ty, TypeVisitableExt, TypingMode};
 use rustc_middle::{bug, span_bug};
-use rustc_type_ir::{Interner, elaborate};
+use rustc_type_ir::elaborate;
 use tracing::{debug, instrument, trace};
 
 use super::SelectionCandidate::*;
@@ -802,7 +802,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 | ty::UnsafeBinder(_) => {
                     // Only consider auto impls of unsafe traits when there are
                     // no unsafe fields.
-                    if self.tcx().trait_is_unsafe(def_id) && self_ty.has_unsafe_fields() {
+                    if self.tcx().trait_def(def_id).safety.is_unsafe()
+                        && self_ty.has_unsafe_fields()
+                    {
                         return;
                     }
 
