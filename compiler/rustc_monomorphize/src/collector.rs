@@ -231,7 +231,7 @@ use rustc_middle::ty::{
 use rustc_middle::util::Providers;
 use rustc_middle::{bug, span_bug};
 use rustc_session::Limit;
-use rustc_session::config::EntryFnType;
+use rustc_session::config::{DebugInfo, EntryFnType};
 use rustc_span::source_map::{Spanned, dummy_spanned, respan};
 use rustc_span::{DUMMY_SP, Span};
 use tracing::{debug, instrument, trace};
@@ -1235,6 +1235,11 @@ fn collect_items_of_instance<'tcx>(
     };
 
     if mode == CollectionMode::UsedItems {
+        if tcx.sess.opts.debuginfo == DebugInfo::Full {
+            for var_debug_info in &body.var_debug_info {
+                collector.visit_var_debug_info(var_debug_info);
+            }
+        }
         for (bb, data) in traversal::mono_reachable(body, tcx, instance) {
             collector.visit_basic_block_data(bb, data)
         }
