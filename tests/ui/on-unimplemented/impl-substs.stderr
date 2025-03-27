@@ -2,7 +2,7 @@ error[E0277]: the trait bound `(i32, i32, i32): Foo<usize>` is not satisfied
   --> $DIR/impl-substs.rs:13:23
    |
 LL |     Foo::<usize>::foo((1i32, 1i32, 1i32));
-   |     ----------------- ^^^^^^^^^^^^^^^^^^ an impl did not match: usize _ _
+   |     ----------------- ^^^^^^^^^^^^^^^^^^ an impl did not match: usize {B} {C}
    |     |
    |     required by a bound introduced by this call
    |

@@ -1,3 +1,347 @@
+use std::fmt::Write;
+use std::path::PathBuf;
+
+use errors::*;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::span_bug;
+use rustc_middle::ty::{self, GenericParamDefKind, TyCtxt};
+use rustc_parse_format::{
+    Alignment, Argument, Count, FormatSpec, InnerSpan, ParseError, ParseMode, Parser,
+    Piece as RpfPiece, Position,
+};
+use rustc_session::lint::builtin::UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES;
+use rustc_span::def_id::DefId;
+use rustc_span::{BytePos, Pos, Span, Symbol, kw, sym};
+
+pub struct FormatString {
+    input: Symbol,
+    input_span: Span,
+    pieces: Vec<Piece>,
+    // the formatting string was parsed succesfully but with warnings
+    pub warnings: Vec<FormatWarning>,
+}
+
+enum Piece {
+    Lit(String),
+    Arg(FormatArg),
+}
+
+pub enum FormatArg {
+    // A generic parameter, like `{T}` if we're on the `From<T>` trait.
+    GenericParam { generic_param: Symbol, span: Span },
+    // `{Self}`
+    SelfUpper,
+    This,
+    Trait,
+    ItemContext,
+    AsIs(String),
+}
+
+pub enum Ctx<'tcx> {
+    // `#[rustc_on_unimplemented]`
+    RustcOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
+    // `#[diagnostic::...]`
+    DiagnosticOnUnimplemented { tcx: TyCtxt<'tcx>, trait_def_id: DefId },
+}
+
+pub enum FormatWarning {
+    UnknownParam { argument_name: Symbol, span: Span },
+    PositionalArgument { span: Span, help: String },
+    InvalidSpecifier { name: String, span: Span },
+    FutureIncompat { span: Span, help: String },
+}
+
+impl FormatWarning {
+    pub fn emit_warning<'tcx>(&self, tcx: TyCtxt<'tcx>, item_def_id: DefId) {
+        match *self {
+            FormatWarning::UnknownParam { argument_name, span } => {
+                let this = tcx.item_ident(item_def_id);
+                if let Some(item_def_id) = item_def_id.as_local() {
+                    tcx.emit_node_span_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.local_def_id_to_hir_id(item_def_id),
+                        span,
+                        UnknownFormatParameterForOnUnimplementedAttr {
+                            argument_name,
+                            trait_name: this,
+                        },
+                    );
+                }
+            }
+            FormatWarning::PositionalArgument { span, .. } => {
+                if let Some(item_def_id) = item_def_id.as_local() {
+                    tcx.emit_node_span_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.local_def_id_to_hir_id(item_def_id),
+                        span,
+                        DisallowedPositionalArgument,
+                    );
+                }
+            }
+            FormatWarning::InvalidSpecifier { span, .. } => {
+                if let Some(item_def_id) = item_def_id.as_local() {
+                    tcx.emit_node_span_lint(
+                        UNKNOWN_OR_MALFORMED_DIAGNOSTIC_ATTRIBUTES,
+                        tcx.local_def_id_to_hir_id(item_def_id),
+                        span,
+                        InvalidFormatSpecifier,
+                    );
+                }
+            }
+            FormatWarning::FutureIncompat { .. } => {
+                // We've never deprecated anything in diagnostic namespace format strings
+                // but if we do we will emit a warning here
+
+                // FIXME(mejrs) in a couple releases, start emitting warnings for
+                // #[rustc_on_unimplemented] deprecated args
+            }
+        }
+    }
+}
+
+impl FormatString {
+    pub fn parse(input: Symbol, input_span: Span, ctx: &Ctx<'_>) -> Result<Self, Vec<ParseError>> {
+        let s = input.as_str();
+        let mut parser = Parser::new(s, None, None, false, ParseMode::Format);
+        let mut pieces = Vec::new();
+        let mut warnings = Vec::new();
+
+        for piece in &mut parser {
+            match piece {
+                RpfPiece::Lit(lit) => {
+                    pieces.push(Piece::Lit(lit.into()));
+                }
+                RpfPiece::NextArgument(arg) => {
+                    warn_on_format_spec(arg.format, &mut warnings, input_span);
+                    let arg = parse_arg(&arg, ctx, &mut warnings, input_span);
+                    pieces.push(Piece::Arg(arg));
+                }
+            }
+        }
+
+        if parser.errors.is_empty() {
+            Ok(FormatString { input, input_span, pieces, warnings })
+        } else {
+            Err(parser.errors)
+        }
+    }
+
+    pub fn format<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        trait_ref: ty::TraitRef<'tcx>,
+        options: &FxHashMap<Symbol, String>,
+        long_ty_file: &mut Option<PathBuf>,
+    ) -> String {
+        let generics = tcx.generics_of(trait_ref.def_id);
+        let generic_map = generics
+            .own_params
+            .iter()
+            .filter_map(|param| {
+                let value = match param.kind {
+                    GenericParamDefKind::Type { .. } | GenericParamDefKind::Const { .. } => {
+                        if let Some(ty) = trait_ref.args[param.index as usize].as_type() {
+                            tcx.short_string(ty, long_ty_file)
+                        } else {
+                            trait_ref.args[param.index as usize].to_string()
+                        }
+                    }
+                    GenericParamDefKind::Lifetime => return None,
+                };
+                let name = param.name;
+                Some((name, value))
+            })
+            .collect::<FxHashMap<Symbol, String>>();
+
+        let mut ret = String::new();
+        for piece in &self.pieces {
+            match piece {
+                Piece::Lit(s) | Piece::Arg(FormatArg::AsIs(s)) => ret.push_str(&s),
+
+                // `A` if we have `trait Trait<A> {}` and `note = "i'm the actual type of {A}"`
+                Piece::Arg(FormatArg::GenericParam { generic_param, span }) => {
+                    // Should always be some but we can't raise errors here
+                    if let Some(value) = generic_map.get(&generic_param) {
+                        ret.push_str(value);
+                    } else if cfg!(debug_assertions) {
+                        span_bug!(*span, "invalid generic parameter");
+                    } else {
+                        let _ = ret.write_fmt(format_args!("{{{}}}", generic_param.as_str()));
+                    }
+                }
+                // `{Self}`
+                Piece::Arg(FormatArg::SelfUpper) => {
+                    let Some(slf) = generic_map.get(&kw::SelfUpper) else {
+                        span_bug!(
+                            self.input_span,
+                            "broken format string {:?} for {:?}: \
+                                  no argument matching `Self`",
+                            self.input,
+                            trait_ref,
+                        )
+                    };
+                    ret.push_str(&slf);
+                }
+
+                // It's only `rustc_onunimplemented` from here
+                Piece::Arg(FormatArg::This) => {
+                    let Some(this) = options.get(&sym::This) else {
+                        span_bug!(
+                            self.input_span,
+                            "broken format string {:?} for {:?}: \
+                                      no argument matching This",
+                            self.input,
+                            trait_ref,
+                        )
+                    };
+                    ret.push_str(this);
+                }
+                Piece::Arg(FormatArg::Trait) => {
+                    let Some(this) = options.get(&sym::Trait) else {
+                        span_bug!(
+                            self.input_span,
+                            "broken format string {:?} for {:?}: \
+                                      no argument matching Trait",
+                            self.input,
+                            trait_ref,
+                        )
+                    };
+                    ret.push_str(this);
+                }
+                Piece::Arg(FormatArg::ItemContext) => {
+                    let itemcontext = options.get(&sym::ItemContext);
+                    ret.push_str(itemcontext.unwrap_or(&String::new()));
+                }
+            }
+        }
+        ret
+    }
+}
+
+fn parse_arg(
+    arg: &Argument<'_>,
+    ctx: &Ctx<'_>,
+    warnings: &mut Vec<FormatWarning>,
+    input_span: Span,
+) -> FormatArg {
+    let (Ctx::RustcOnUnimplemented { tcx, trait_def_id }
+    | Ctx::DiagnosticOnUnimplemented { tcx, trait_def_id }) = ctx;
+    let trait_name = tcx.item_ident(*trait_def_id);
+    let generics = tcx.generics_of(trait_def_id);
+    let span = slice_span(input_span, arg.position_span);
+
+    match arg.position {
+        // Something like "hello {name}"
+        Position::ArgumentNamed(name) => match (ctx, Symbol::intern(name)) {
+            // accepted, but deprecated
+            (Ctx::RustcOnUnimplemented { .. }, sym::_Self) => {
+                warnings
+                    .push(FormatWarning::FutureIncompat { span, help: String::from("use {Self}") });
+                FormatArg::SelfUpper
+            }
+            (
+                Ctx::RustcOnUnimplemented { .. },
+                sym::from_desugaring
+                | sym::crate_local
+                | sym::direct
+                | sym::cause
+                | sym::float
+                | sym::integer_
+                | sym::integral,
+            ) => {
+                warnings.push(FormatWarning::FutureIncompat {
+                    span,
+                    help: String::from("don't use this in a format string"),
+                });
+                FormatArg::AsIs(String::new())
+            }
+
+            // Only `#[rustc_on_unimplemented]` can use these
+            (Ctx::RustcOnUnimplemented { .. }, sym::ItemContext) => FormatArg::ItemContext,
+            (Ctx::RustcOnUnimplemented { .. }, sym::This) => FormatArg::This,
+            (Ctx::RustcOnUnimplemented { .. }, sym::Trait) => FormatArg::Trait,
+            // `{ThisTraitsName}`. Some attrs in std use this, but I'd like to change it to the more general `{This}`
+            // because that'll be simpler to parse and extend in the future
+            (Ctx::RustcOnUnimplemented { .. }, name) if name == trait_name.name => {
+                warnings
+                    .push(FormatWarning::FutureIncompat { span, help: String::from("use {This}") });
+                FormatArg::This
+            }
+
+            // Any attribute can use these
+            (
+                Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
+                kw::SelfUpper,
+            ) => FormatArg::SelfUpper,
+            (
+                Ctx::RustcOnUnimplemented { .. } | Ctx::DiagnosticOnUnimplemented { .. },
+                generic_param,
+            ) if generics.own_params.iter().any(|param| param.name == generic_param) => {
+                FormatArg::GenericParam { generic_param, span }
+            }
+
+            (_, argument_name) => {
+                warnings.push(FormatWarning::UnknownParam { argument_name, span });
+                FormatArg::AsIs(format!("{{{}}}", argument_name.as_str()))
+            }
+        },
+
+        // `{:1}` and `{}` are ignored
+        Position::ArgumentIs(idx) => {
+            warnings.push(FormatWarning::PositionalArgument {
+                span,
+                help: format!("use `{{{idx}}}` to print a number in braces"),
+            });
+            FormatArg::AsIs(format!("{{{idx}}}"))
+        }
+        Position::ArgumentImplicitlyIs(_) => {
+            warnings.push(FormatWarning::PositionalArgument {
+                span,
+                help: String::from("use `{{}}` to print empty braces"),
+            });
+            FormatArg::AsIs(String::from("{}"))
+        }
+    }
+}
+
+/// `#[rustc_on_unimplemented]` and `#[diagnostic::...]` don't actually do anything
+/// with specifiers, so emit a warning if they are used.
+fn warn_on_format_spec(spec: FormatSpec<'_>, warnings: &mut Vec<FormatWarning>, input_span: Span) {
+    if !matches!(
+        spec,
+        FormatSpec {
+            fill: None,
+            fill_span: None,
+            align: Alignment::AlignUnknown,
+            sign: None,
+            alternate: false,
+            zero_pad: false,
+            debug_hex: None,
+            precision: Count::CountImplied,
+            precision_span: None,
+            width: Count::CountImplied,
+            width_span: None,
+            ty: _,
+            ty_span: _,
+        },
+    ) {
+        let span = spec.ty_span.map(|inner| slice_span(input_span, inner)).unwrap_or(input_span);
+        warnings.push(FormatWarning::InvalidSpecifier { span, name: spec.ty.into() })
+    }
+}
+
+fn slice_span(input: Span, inner: InnerSpan) -> Span {
+    let InnerSpan { start, end } = inner;
+    let span = input.data();
+
+    Span::new(
+        span.lo + BytePos::from_usize(start),
+        span.lo + BytePos::from_usize(end),
+        span.ctxt,
+        span.parent,
+    )
+}
+
 pub mod errors {
     use rustc_macros::LintDiagnostic;
     use rustc_middle::ty::TyCtxt;
