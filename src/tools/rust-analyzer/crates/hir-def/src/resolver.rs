@@ -107,6 +107,12 @@ pub enum TypeNs {
     // ModuleId(ModuleId)
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ModuleOrTypeNs {
+    ModuleNs(ModuleId),
+    TypeNs(TypeNs),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ResolveValueResult {
     ValueNs(ValueNs, Option<ImportOrGlob>),
@@ -163,22 +169,33 @@ impl Resolver {
         self.resolve_module_path(db, path, BuiltinShadowMode::Module)
     }
 
-    pub fn resolve_path_in_type_ns(
-        &self,
-        db: &dyn DefDatabase,
-        path: &Path,
-    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>)> {
+    pub fn resolve_path_in_type_ns<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+        path: &'a Path,
+    ) -> impl Iterator<Item = (ModuleOrTypeNs, Option<usize>, Option<ImportOrExternCrate>)> + 'a
+    {
         self.resolve_path_in_type_ns_with_prefix_info(db, path).map(
-            |(resolution, remaining_segments, import, _)| (resolution, remaining_segments, import),
+            move |(resolution, remaining_segments, import, _)| {
+                (resolution, remaining_segments, import)
+            },
         )
     }
 
-    pub fn resolve_path_in_type_ns_with_prefix_info(
-        &self,
-        db: &dyn DefDatabase,
-        path: &Path,
-    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>, ResolvePathResultPrefixInfo)>
-    {
+    pub fn resolve_path_in_type_ns_with_prefix_info<'a>(
+        &'a self,
+        db: &'a dyn DefDatabase,
+        path: &'a Path,
+    ) -> Box<
+        dyn Iterator<
+                Item = (
+                    ModuleOrTypeNs,
+                    Option<usize>,
+                    Option<ImportOrExternCrate>,
+                    ResolvePathResultPrefixInfo,
+                ),
+            > + 'a,
+    > {
         let path = match path {
             Path::BarePath(mod_path) => mod_path,
             Path::Normal(it) => &it.mod_path,
@@ -192,67 +209,73 @@ impl Resolver {
                     LangItemTarget::Trait(it) => TypeNs::TraitId(it),
                     LangItemTarget::Function(_)
                     | LangItemTarget::ImplDef(_)
-                    | LangItemTarget::Static(_) => return None,
+                    | LangItemTarget::Static(_) => return Box::new(iter::empty()),
                 };
-                return Some((
-                    type_ns,
+                return Box::new(iter::once((
+                    ModuleOrTypeNs::TypeNs(type_ns),
                     seg.as_ref().map(|_| 1),
                     None,
                     ResolvePathResultPrefixInfo::default(),
-                ));
+                )));
             }
         };
-        let first_name = path.segments().first()?;
+        let Some(first_name) = path.segments().first() else { return Box::new(iter::empty()) };
         let skip_to_mod = path.kind != PathKind::Plain;
         if skip_to_mod {
-            return self.module_scope.resolve_path_in_type_ns(db, path);
+            return Box::new(self.module_scope.resolve_path_in_type_ns(db, path).into_iter());
         }
 
         let remaining_idx = || {
             if path.segments().len() == 1 { None } else { Some(1) }
         };
 
-        for scope in self.scopes() {
-            match scope {
-                Scope::ExprScope(_) | Scope::MacroDefScope(_) => continue,
+        let ns = self
+            .scopes()
+            .filter_map(move |scope| match scope {
+                Scope::ExprScope(_) | Scope::MacroDefScope(_) => None,
                 Scope::GenericParams { params, def } => {
                     if let Some(id) = params.find_type_by_name(first_name, *def) {
                         return Some((
-                            TypeNs::GenericParam(id),
+                            ModuleOrTypeNs::TypeNs(TypeNs::GenericParam(id)),
                             remaining_idx(),
                             None,
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
+                    None
                 }
                 &Scope::ImplDefScope(impl_) => {
                     if *first_name == sym::Self_.clone() {
                         return Some((
-                            TypeNs::SelfType(impl_),
+                            ModuleOrTypeNs::TypeNs(TypeNs::SelfType(impl_)),
                             remaining_idx(),
                             None,
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
+                    None
                 }
                 &Scope::AdtScope(adt) => {
                     if *first_name == sym::Self_.clone() {
                         return Some((
-                            TypeNs::AdtSelfType(adt),
+                            ModuleOrTypeNs::TypeNs(TypeNs::AdtSelfType(adt)),
                             remaining_idx(),
                             None,
                             ResolvePathResultPrefixInfo::default(),
                         ));
                     }
+                    None
                 }
                 Scope::BlockScope(m) => {
                     if let Some(res) = m.resolve_path_in_type_ns(db, path) {
                         return Some(res);
                     }
+                    None
                 }
-            }
-        }
-        self.module_scope.resolve_path_in_type_ns(db, path)
+            })
+            .chain(self.module_scope.resolve_path_in_type_ns(db, path));
+
+        Box::new(ns)
     }
 
     pub fn resolve_path_in_type_ns_fully(
@@ -260,7 +283,13 @@ impl Resolver {
         db: &dyn DefDatabase,
         path: &Path,
     ) -> Option<TypeNs> {
-        let (res, unresolved, _) = self.resolve_path_in_type_ns(db, path)?;
+        let (res, unresolved) = self
+            .resolve_path_in_type_ns(db, path)
+            .filter_map(|(res, unresolved, _)| match res {
+                ModuleOrTypeNs::TypeNs(it) => Some((it, unresolved)),
+                ModuleOrTypeNs::ModuleNs(_) => None,
+            })
+            .next()?;
         if unresolved.is_some() {
             return None;
         }
@@ -1158,8 +1187,12 @@ impl ModuleItemMap {
         &self,
         db: &dyn DefDatabase,
         path: &ModPath,
-    ) -> Option<(TypeNs, Option<usize>, Option<ImportOrExternCrate>, ResolvePathResultPrefixInfo)>
-    {
+    ) -> Option<(
+        ModuleOrTypeNs,
+        Option<usize>,
+        Option<ImportOrExternCrate>,
+        ResolvePathResultPrefixInfo,
+    )> {
         let (module_def, idx, prefix_info) = self.def_map.resolve_path_locally(
             &self.local_def_map,
             db,
@@ -1167,7 +1200,7 @@ impl ModuleItemMap {
             path,
             BuiltinShadowMode::Other,
         );
-        let (res, import) = to_type_ns(module_def)?;
+        let (res, import) = to_module_or_type_ns(module_def)?;
         Some((res, idx, import, prefix_info))
     }
 }
@@ -1192,23 +1225,24 @@ fn to_value_ns(per_ns: PerNs) -> Option<(ValueNs, Option<ImportOrGlob>)> {
     Some((res, import))
 }
 
-fn to_type_ns(per_ns: PerNs) -> Option<(TypeNs, Option<ImportOrExternCrate>)> {
+fn to_module_or_type_ns(per_ns: PerNs) -> Option<(ModuleOrTypeNs, Option<ImportOrExternCrate>)> {
     let def = per_ns.take_types_full()?;
     let res = match def.def {
-        ModuleDefId::AdtId(it) => TypeNs::AdtId(it),
-        ModuleDefId::EnumVariantId(it) => TypeNs::EnumVariantId(it),
+        ModuleDefId::AdtId(it) => ModuleOrTypeNs::TypeNs(TypeNs::AdtId(it)),
+        ModuleDefId::EnumVariantId(it) => ModuleOrTypeNs::TypeNs(TypeNs::EnumVariantId(it)),
 
-        ModuleDefId::TypeAliasId(it) => TypeNs::TypeAliasId(it),
-        ModuleDefId::BuiltinType(it) => TypeNs::BuiltinType(it),
+        ModuleDefId::TypeAliasId(it) => ModuleOrTypeNs::TypeNs(TypeNs::TypeAliasId(it)),
+        ModuleDefId::BuiltinType(it) => ModuleOrTypeNs::TypeNs(TypeNs::BuiltinType(it)),
 
-        ModuleDefId::TraitId(it) => TypeNs::TraitId(it),
-        ModuleDefId::TraitAliasId(it) => TypeNs::TraitAliasId(it),
+        ModuleDefId::TraitId(it) => ModuleOrTypeNs::TypeNs(TypeNs::TraitId(it)),
+        ModuleDefId::TraitAliasId(it) => ModuleOrTypeNs::TypeNs(TypeNs::TraitAliasId(it)),
+
+        ModuleDefId::ModuleId(it) => ModuleOrTypeNs::ModuleNs(it),
 
         ModuleDefId::FunctionId(_)
         | ModuleDefId::ConstId(_)
         | ModuleDefId::MacroId(_)
-        | ModuleDefId::StaticId(_)
-        | ModuleDefId::ModuleId(_) => return None,
+        | ModuleDefId::StaticId(_) => return None,
     };
     Some((res, def.import))
 }
