@@ -15,6 +15,7 @@ use crate::solve::{CanonicalInput, ExternalConstraintsData, PredefinedOpaquesDat
 use crate::visit::{Flags, TypeSuperVisitable, TypeVisitable};
 use crate::{self as ty, search_graph};
 
+#[cfg_attr(feature = "nightly", rustc_diagnostic_item = "type_ir_interner")]
 pub trait Interner:
     Sized
     + Copy
