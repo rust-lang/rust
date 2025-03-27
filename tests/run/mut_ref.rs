@@ -27,7 +27,7 @@ fn update_num(num: &mut isize) {
 }
 
 #[no_mangle]
-extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
+extern "C" fn main(mut argc: isize, _argv: *const *const u8) -> i32 {
     let mut test = test(argc);
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, test.field);

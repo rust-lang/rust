@@ -17,7 +17,7 @@ extern crate mini_core;
 use mini_core::*;
 
 #[no_mangle]
-extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
+extern "C" fn main(argc: isize, _argv: *const *const u8) -> i32 {
     let string = "Arg: %d\n\0";
     let mut closure = || unsafe {
         libc::printf(string as *const str as *const i8, argc);

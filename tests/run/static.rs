@@ -34,7 +34,7 @@ static mut TEST2: Test = Test { field: 14 };
 static mut WITH_REF: WithRef = WithRef { refe: unsafe { &TEST } };
 
 #[no_mangle]
-extern "C" fn main(argc: i32, _argv: *const *const u8) -> i32 {
+extern "C" fn main(argc: isize, _argv: *const *const u8) -> i32 {
     unsafe {
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, CONSTANT);
         libc::printf(b"%ld\n\0" as *const u8 as *const i8, TEST2.field);

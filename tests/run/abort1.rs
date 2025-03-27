@@ -3,7 +3,7 @@
 // Run-time:
 //   status: signal
 
-#![feature(no_core, start)]
+#![feature(no_core)]
 #![no_std]
 #![no_core]
 #![no_main]
